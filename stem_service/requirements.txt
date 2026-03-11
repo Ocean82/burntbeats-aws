@@ -1,0 +1,12 @@
+# CPU-only stem splitting (no CUDA)
+torch>=2.0.0
+# Pin <2.9 so load/save work without torchcodec (WSL/CI)
+torchaudio>=2.0.0,<2.9
+soundfile>=0.12.0
+demucs>=4.0.0
+onnxruntime>=1.14.0
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+python-multipart>=0.0.6
+# Optional: pre-split with Silero VAD (models/silero_vad.jit); app runs without it
+silero-vad>=4.0.0

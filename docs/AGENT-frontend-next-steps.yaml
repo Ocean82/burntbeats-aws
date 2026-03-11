@@ -1,0 +1,24 @@
+last_updated: 2026-03-05
+
+alignment_with_agent_docs:
+  - AGENT-compatible-frontend-strategy: UI uses a mock UAL; no agent logic is embedded in components. Intent is sent via mockUAL.sendIntent() (e.g. remix_audio, toggle_mute, split_stems). State is received via mockUAL.subscribe(). This matches the strategy: UI expresses intent, agents own reasoning.
+  - AGENT-Knowledge-Block / AGENT-decision-knowledge-context: Workflow modes, task taxonomy, and capability profiles are backend/agent concerns. The frontend does not select models or pipelines; it only sends high-level intents (split, remix, mute, solo).
+
+current_frontend_state:
+  - Timeline: Clip selection, drag, and resize are implemented and clamped (min duration, non-negative start).
+  - Mock UAL: ual/mockUAL.ts maps store state to UIState and handles intents by updating the store. Ready to be swapped for a real UAL when the agent system is available.
+  - EffectsPanel: New panel for per-track effects (EQ Low/Mid/High, Comp threshold) using the same design system and store (updateTrackEffects). Uses selected track or first track.
+
+next_steps:
+  - Build out remaining UI
+    - Expand EffectsPanel (reverb/delay sends, comp ratio, etc.) to match stem_guide and ARCHITECTURE.
+    - Add track selection in the timeline so EffectsPanel and mixer reflect the selected track.
+    - Optional: master bus, mastering panel, and headroom indicators per mastering_ui_constraints.
+  - Replace mock UAL with real UAL
+    - When the agent system is ready, implement a real UAL that:
+      - Implements the same subscribe(callback) and sendIntent(intent) interface.
+      - Sends intents to the agent backend (e.g. HTTP or WebSocket).
+      - Maps agent outputs (pipeline description, tradeoffs, warnings) into UIState.
+    - Swap the import in App, MixerPanel, EffectsPanel, etc. from mockUAL to the real UAL so the UI stays unchanged.
+  - Keep UI intent-only
+    - Do not add model selection, pipeline choice, or mastering logic in the UI. Those stay in the agent layer; the UI only displays agent state and sends user intent.

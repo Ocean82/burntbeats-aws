@@ -1,0 +1,59 @@
+[project]
+name = "vadslice"
+version = "1.1.0"
+description = "Slices audio clips into chunks of a specific number of seconds at the closest moment of silence (decided by silero-vad). Uses onnx which avoids the pytorch dependency."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "bn-l", email = "13162197+bn-l@users.noreply.github.com" }
+]
+
+dependencies = [
+    "av>=16.0.1",
+    "loguru>=0.7.3",
+    "numpy>=2.3.5",
+    "onnxruntime>=1.23.2",
+]
+
+[project.scripts]
+vadslice = "vadslice.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/bn-l/vadslice"
+Repository = "https://github.com/bn-l/vadslice"
+Issues = "https://github.com/bn-l/vadslice/issues"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "mypy",
+    "ruff",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.11,<0.10.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+strict = true
+
+[tool.ruff]
+src = ["src"]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = []
+
+
