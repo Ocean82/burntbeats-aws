@@ -21,9 +21,10 @@ import {
 } from "lucide-react";
 import { splitStems, type SplitQuality, type StemResult } from "./api";
 import { cn } from "./utils/cn";
-import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, computeWaveformFromBuffer, NORMALIZE_PEAK_DB } from "./utils/audio";
+import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, computeWaveformFromBuffer, NORMALIZE_PEAK_DB, createStemPreviewBuffer } from "./utils/audio";
 import type { StemId, StemDefinition, MixerState, TrimState } from "./types";
 import { defaultTrim, defaultMixer } from "./types";
+import { DEFAULT_STEM_COUNT } from "./config";
 import { getStemWaveform, setStemWaveform } from "./waveform-cache";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useHistory } from "./hooks/useHistory";
@@ -46,7 +47,7 @@ const pipelineSteps = [
 /** Waveform bar count: high resolution so trim overlay matches transients (500–2000 range). */
 const WAVEFORM_BINS = 1024;
 
-function generateWaveform(seed: number, length = WAVEFORM_BINS, bias = 0.58) {
+  function generateWaveform(seed: number, length = WAVEFORM_BINS, bias = 0.58) {
   return Array.from({ length }, (_, index) => {
     const phaseA = Math.sin((index + 1) * (seed * 0.28));
     const phaseB = Math.cos((index + 4) * (seed * 0.16));
@@ -129,7 +130,7 @@ const STEM_LABEL_COLOR_CLASS: Record<string, string> = {
 function getStemDefinition(id: string): StemDefinition {
   const mapped = id === "other" ? "melody" : id;
   return stemIdToDefinition[mapped] ?? stemIdToDefinition.instrumental!;
-}
+  }
 
 const initialTrim: Record<string, TrimState> = {
   vocals: { start: 8, end: 92 },
@@ -153,78 +154,11 @@ function formatDb(value: number) {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)} dB`;
 }
 
-function createStemPreviewBuffer(context: AudioContext, stemId: StemId) {
-  const duration = 3.8;
-  const frameCount = Math.floor(context.sampleRate * duration);
-  const buffer = context.createBuffer(2, frameCount, context.sampleRate);
-
-  const renderChannel = (channelData: Float32Array, stereoOffset: number) => {
-    for (let sampleIndex = 0; sampleIndex < frameCount; sampleIndex += 1) {
-      const time = sampleIndex / context.sampleRate;
-      let value = 0;
-
-      if (stemId === "vocals") {
-        const progression = [220, 247, 262, 294];
-        const note = progression[Math.floor(time / 0.95) % progression.length];
-        const vibrato = 5 * Math.sin(2 * Math.PI * 5.4 * time);
-        const airy = Math.sin(2 * Math.PI * (note + vibrato) * time);
-        const overtone =
-          0.38 * Math.sin(2 * Math.PI * (note * 2.02) * time + stereoOffset);
-        const breath = 0.08 * Math.sin(2 * Math.PI * 28 * time);
-        value = (airy + overtone + breath) * 0.22;
-      }
-
-      if (stemId === "drums") {
-        const kickPhase = time % 0.6;
-        const kick =
-          Math.exp(-kickPhase * 14) *
-          Math.sin(2 * Math.PI * (56 - kickPhase * 18) * time);
-        const snareGate = Math.max(
-          0,
-          1 - Math.abs(((time + 0.3) % 0.6) - 0.3) * 18,
-        );
-        const snareNoise = (Math.random() * 2 - 1) * snareGate * 0.2;
-        const hatGate =
-          Math.max(0, 1 - ((time * 8.5 + stereoOffset) % 1)) * 0.05;
-        const hat = Math.sin(2 * Math.PI * 4000 * time) * hatGate;
-        value = kick * 0.82 + snareNoise + hat;
-      }
-
-      if (stemId === "bass") {
-        const progression = [55, 55, 65.4, 49];
-        const note = progression[Math.floor(time / 0.95) % progression.length];
-        const envelope = 0.7 + 0.3 * Math.sin(2 * Math.PI * 0.5 * time + 0.4);
-        const sub = Math.sin(2 * Math.PI * note * time);
-        const harmonic =
-          0.24 * Math.sin(2 * Math.PI * note * 2 * time + 0.3 + stereoOffset);
-        value = (sub + harmonic) * 0.28 * envelope;
-      }
-
-      if (stemId === "melody") {
-        const progression = [440, 523.3, 659.2, 587.3, 784, 659.2, 523.3];
-        const note = progression[Math.floor(time / 0.27) % progression.length];
-        const triangle =
-          (2 / Math.PI) *
-          Math.asin(Math.sin(2 * Math.PI * note * time + stereoOffset));
-        const shimmer = 0.2 * Math.sin(2 * Math.PI * note * 1.5 * time);
-        value = (triangle + shimmer) * 0.21;
-      }
-
-      const fadeIn = Math.min(1, time / 0.08);
-      const fadeOut = Math.min(1, (duration - time) / 0.16);
-      channelData[sampleIndex] = value * fadeIn * fadeOut;
-    }
-  };
-
-  renderChannel(buffer.getChannelData(0), 0);
-  renderChannel(buffer.getChannelData(1), 0.22);
-
-  return buffer;
-}
+  
 
 function App() {
   const [selectedPreset, setSelectedPreset] = useState(presetOptions[0]);
-  const [stemCount, setStemCount] = useState<2 | 4>(4);
+  const [stemCount, setStemCount] = useState<2 | 4>(DEFAULT_STEM_COUNT as 2 | 4);
   const [splitQuality, setSplitQuality] = useState<SplitQuality>("quality");
   const [selectedStems, setSelectedStems] = useState<Record<StemId, boolean>>({
     vocals: true,
@@ -339,6 +273,15 @@ function App() {
           // Ignored.
         }
       });
+      // Close audio context if it exists to release resources
+      if (audioContextRef.current) {
+        try {
+          audioContextRef.current.close();
+        } catch {
+          // ignore close errors
+        }
+        audioContextRef.current = null;
+      }
     };
   }, []);
 
@@ -594,24 +537,27 @@ function App() {
     isPlayingMixRef.current = true;
     
     // Track playhead position
-    const firstStem = stemsToPlay[0];
-    const buffer = stemBuffers[firstStem.id];
-    if (buffer) {
-      const trim = trimMap[firstStem.id] ?? defaultTrim;
-      const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
-      mixDurationRef.current = trimEnd - trimStart;
-      playStartTimeRef.current = context.currentTime;
-      
-      const updatePlayhead = () => {
-        const elapsed = context.currentTime - playStartTimeRef.current;
-        const progress = Math.min(100, (elapsed / mixDurationRef.current) * 100);
-        _setPlayheadPosition(progress);
-        if (progress < 100 && isPlayingMixRef.current) {
-          playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-        }
-      };
-      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-    }
+      const firstStem = stemsToPlay[0];
+      const buffer = stemBuffers[firstStem.id];
+      if (buffer) {
+        const trim = trimMap[firstStem.id] ?? defaultTrim;
+        const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
+        mixDurationRef.current = trimEnd - trimStart;
+        playStartTimeRef.current = context.currentTime;
+
+        // Capture duration at start to avoid race conditions if it changes mid-play
+        const duration = mixDurationRef.current;
+        const updatePlayhead = () => {
+          if (duration <= 0) return;
+          const elapsed = context.currentTime - playStartTimeRef.current;
+          const progress = Math.min(100, (elapsed / duration) * 100);
+          _setPlayheadPosition(progress);
+          if (progress < 100 && isPlayingMixRef.current) {
+            playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+          }
+        };
+        playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+      }
   }, [
     isPlayingMix,
     soloStems,

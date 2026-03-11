@@ -33,8 +33,8 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
           ? (newState as (prev: T) => T)(prev.present)
           : newState;
 
-      // Don't add to history if state hasn't changed
-      if (JSON.stringify(resolvedState) === JSON.stringify(prev.present)) {
+      // If state unchanged (by reference), skip
+      if (resolvedState === prev.present) {
         return prev;
       }
 
