@@ -19,6 +19,7 @@ interface BatchQueueProps {
   onToggleExpand: () => void;
   onRemoveItem: (id: string) => void;
   onClearCompleted: () => void;
+  onProcessQueue?: () => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -46,12 +47,14 @@ export function BatchQueue({
   onToggleExpand,
   onRemoveItem,
   onClearCompleted,
+  onProcessQueue,
 }: BatchQueueProps) {
   if (items.length === 0) return null;
 
   const processingCount = items.filter((i) => i.status === "processing").length;
   const queuedCount = items.filter((i) => i.status === "queued").length;
   const completedCount = items.filter((i) => i.status === "complete").length;
+  const canProcess = queuedCount > 0 && processingCount === 0;
 
   return (
     <motion.div
@@ -74,7 +77,7 @@ export function BatchQueue({
             <span className="block text-sm font-medium text-white">
               Batch Queue
             </span>
-            <span className="text-xs text-white/50">
+            <span className="text-xs text-white/65">
               {processingCount > 0
                 ? `Processing ${processingCount} of ${items.length}`
                 : queuedCount > 0
@@ -122,7 +125,10 @@ export function BatchQueue({
                       </p>
                     </div>
                     <button
+                      type="button"
                       onClick={() => onRemoveItem(item.id)}
+                      title="Remove from queue"
+                      aria-label={`Remove ${item.fileName} from queue`}
                       className="flex h-6 w-6 items-center justify-center rounded text-white/30 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
                     >
                       <X className="h-3 w-3" />
@@ -144,8 +150,20 @@ export function BatchQueue({
             </div>
 
             {/* Footer Actions */}
-            {completedCount > 0 && (
-              <div className="border-t border-white/10 px-4 py-2">
+            <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-2">
+              {onProcessQueue && (
+                <button
+                  type="button"
+                  onClick={onProcessQueue}
+                  disabled={!canProcess}
+                  title="Process next file in queue"
+                  aria-label="Process next file in queue"
+                  className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/30 disabled:opacity-50"
+                >
+                  Process next
+                </button>
+              )}
+              {completedCount > 0 && (
                 <button
                   onClick={onClearCompleted}
                   className="flex items-center gap-2 text-xs text-white/40 transition hover:text-white"
@@ -153,8 +171,8 @@ export function BatchQueue({
                   <Trash2 className="h-3 w-3" />
                   Clear completed
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

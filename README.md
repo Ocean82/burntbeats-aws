@@ -1,8 +1,8 @@
 # Burnt Beats — Stem Splitter / Mixer / Master
 
-Stem separation web app (CPU-only). Frontend: React + Vite. Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 1 vocals → phase inversion → Stage 2 Demucs on instrumental; optional Silero VAD pre-trim). Default backend: Demucs htdemucs for Stage 1 and Stage 2; ONNX vocal Stage 1 used when model present. **WSL only (Ubuntu)** — run everything inside WSL; same commands work on AWS EC2. No Windows-native commands or PowerShell.
+Stem separation web app (CPU-only). Frontend: React + Vite (keyboard shortcuts, undo/redo, export options modal, mixer presets, onboarding tour, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 1 vocals → phase inversion → Stage 2 Demucs on instrumental; optional Silero VAD pre-trim). Default backend: Demucs htdemucs for Stage 1 and Stage 2; ONNX vocal Stage 1 used when model present. **WSL only (Ubuntu)** — run everything inside WSL; same commands work on AWS EC2. No Windows-native commands or PowerShell.
 
-**Last updated:** 2025-03-09
+**Last updated:** 2025-03-11
 
 ---
 

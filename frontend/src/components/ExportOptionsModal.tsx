@@ -92,7 +92,7 @@ export function ExportOptionsModal({
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-white">Export Options</h2>
-                    <p className="text-xs text-white/50">Configure your export settings</p>
+                    <p className="text-xs text-white/65">Configure your export settings</p>
                   </div>
                 </div>
                 <button
@@ -127,7 +127,7 @@ export function ExportOptionsModal({
                           <Check className="h-3.5 w-3.5 text-amber-400" />
                         )}
                       </div>
-                      <p className="mt-0.5 text-[10px] text-white/50">{format.description}</p>
+                      <p className="mt-0.5 text-[10px] text-white/65">{format.description}</p>
                     </button>
                   ))}
                 </div>
@@ -151,7 +151,7 @@ export function ExportOptionsModal({
                       )}
                     >
                       <span className="block font-medium">{quality.label}</span>
-                      <span className="block text-[10px] text-white/50">{quality.bitrate}</span>
+                      <span className="block text-[10px] text-white/65">{quality.bitrate}</span>
                     </button>
                   ))}
                 </div>
@@ -193,7 +193,7 @@ export function ExportOptionsModal({
               <div className="mb-6 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                 <div>
                   <span className="block text-sm font-medium text-white">Normalize Audio</span>
-                  <span className="text-xs text-white/50">Optimize loudness for playback</span>
+                  <span className="text-xs text-white/65">Optimize loudness for playback</span>
                 </div>
                 <button
                   onClick={() => setOptions((o) => ({ ...o, normalize: !o.normalize }))}

@@ -297,6 +297,14 @@
     box-shadow: 0 0 16px #8b9dc3, 0 0 24px rgba(139, 157, 195, 0.34);
   }
 
+  /* Stem label text color (used in mixer/trim sections to avoid inline styles) */
+  .stem-label-color-vocals { color: #ff845c; }
+  .stem-label-color-drums { color: #ffb347; }
+  .stem-label-color-bass { color: #ff5a3d; }
+  .stem-label-color-melody,
+  .stem-label-color-other { color: #ffd36a; }
+  .stem-label-color-instrumental { color: #8b9dc3; }
+
   /* Trim handles: position from --trim-start-pct / --trim-end-pct (set on parent) */
   .trim-handle-start {
     left: calc(var(--trim-start-pct, 0) * 1% - 6px);

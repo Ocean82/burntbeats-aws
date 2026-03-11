@@ -1,19 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, Trash2, Check, Sliders } from "lucide-react";
-import { cn } from "../utils/cn";
-
-type MixerState = {
-  gain: number;
-  pan: number;
-  width: number;
-  send: number;
-};
-
-type TrimState = {
-  start: number;
-  end: number;
-};
+import type { MixerState, TrimState } from "../types";
 
 export interface MixerPreset {
   id: string;
@@ -169,7 +157,7 @@ export function MixerPresetsModal({
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-white">Mixer Presets</h2>
-                    <p className="text-xs text-white/50">Save and load your mix settings</p>
+                    <p className="text-xs text-white/65">Save and load your mix settings</p>
                   </div>
                 </div>
                 <button

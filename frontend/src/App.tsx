@@ -18,9 +18,13 @@ import {
   Redo2,
   Save,
   Repeat,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { splitStems, type SplitQuality, type StemResult } from "./api";
 import { cn } from "./utils/cn";
+import type { StemId, StemDefinition, MixerState, TrimState } from "./types";
+import { defaultTrim, defaultMixer } from "./types";
 import { getStemWaveform, setStemWaveform } from "./waveform-cache";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useHistory } from "./hooks/useHistory";
@@ -31,34 +35,12 @@ import {
   OnboardingTour,
   BatchQueue,
   ComparisonToggle,
+  PipelineStep,
+  WaveformEditor,
   type ExportOptions,
   type MixerPreset,
   type QueueItem,
 } from "./components";
-
-type StemId = "vocals" | "drums" | "bass" | "melody" | "instrumental" | "other";
-
-type StemDefinition = {
-  id: StemId;
-  label: string;
-  subtitle: string;
-  flavor: string;
-  glow: string;
-  glowSoft: string;
-  waveform: number[];
-};
-
-type MixerState = {
-  gain: number;
-  pan: number;
-  width: number;
-  send: number;
-};
-
-type TrimState = {
-  start: number;
-  end: number;
-};
 
 const presetOptions = [
   "Full 4-Stem Split",
@@ -174,12 +156,20 @@ const stemDefinitions: StemDefinition[] = [
 const stemIdToDefinition: Record<string, StemDefinition> = Object.fromEntries(
   stemDefinitions.map((d) => [d.id, d]),
 );
+
+const STEM_LABEL_COLOR_CLASS: Record<string, string> = {
+  vocals: "stem-label-color-vocals",
+  drums: "stem-label-color-drums",
+  bass: "stem-label-color-bass",
+  melody: "stem-label-color-melody",
+  instrumental: "stem-label-color-instrumental",
+  other: "stem-label-color-other",
+};
 function getStemDefinition(id: string): StemDefinition {
   const mapped = id === "other" ? "melody" : id;
   return stemIdToDefinition[mapped] ?? stemIdToDefinition.instrumental!;
 }
 
-const defaultTrim: TrimState = { start: 8, end: 92 };
 const initialTrim: Record<string, TrimState> = {
   vocals: { start: 8, end: 92 },
   drums: { start: 4, end: 96 },
@@ -189,7 +179,6 @@ const initialTrim: Record<string, TrimState> = {
   other: defaultTrim,
 };
 
-const defaultMixer: MixerState = { gain: 0, pan: 0, width: 80, send: 0 };
 const initialMixer: Record<string, MixerState> = {
   vocals: { gain: 1.8, pan: 2, width: 82, send: 46 },
   drums: { gain: 0.6, pan: 0, width: 64, send: 24 },
@@ -272,6 +261,35 @@ function audioBufferToWav(buffer: AudioBuffer): Blob {
   }
 
   return new Blob([arrayBuffer], { type: "audio/wav" });
+}
+
+const NORMALIZE_PEAK_DB = -1;
+const NORMALIZE_PEAK_LINEAR = Math.pow(10, NORMALIZE_PEAK_DB / 20);
+
+function normalizeAudioBuffer(buffer: AudioBuffer): AudioBuffer {
+  const numChannels = buffer.numberOfChannels;
+  const length = buffer.length;
+  let peak = 0;
+  for (let ch = 0; ch < numChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      const abs = Math.abs(data[i]);
+      if (abs > peak) peak = abs;
+    }
+  }
+  if (peak <= 0) return buffer;
+  const scale = NORMALIZE_PEAK_LINEAR / peak;
+  const out = new OfflineAudioContext(
+    numChannels,
+    length,
+    buffer.sampleRate
+  ).createBuffer(numChannels, length, buffer.sampleRate);
+  for (let ch = 0; ch < numChannels; ch++) {
+    const src = buffer.getChannelData(ch);
+    const dst = out.getChannelData(ch);
+    for (let i = 0; i < length; i++) dst[i] = src[i] * scale;
+  }
+  return out;
 }
 
 function createStemPreviewBuffer(context: AudioContext, stemId: StemId) {
@@ -399,6 +417,7 @@ function App() {
   const [showingOriginal, setShowingOriginal] = useState(false);
   const [batchQueue, setBatchQueue] = useState<QueueItem[]>([]);
   const [batchQueueExpanded, setBatchQueueExpanded] = useState(true);
+  const [collapsedStems, setCollapsedStems] = useState<Record<string, boolean>>({});
   const [originalAudioBuffer, setOriginalAudioBuffer] = useState<AudioBuffer | null>(null);
   const [selectedStemIndex, setSelectedStemIndex] = useState(0);
   const [playheadPosition, setPlayheadPosition] = useState(0);
@@ -415,6 +434,7 @@ function App() {
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [isPlayingMix, setIsPlayingMix] = useState(false);
   const mixSourceRefs = useRef<AudioBufferSourceNode[]>([]);
+  const queueFileRef = useRef<Map<string, File>>(new Map());
 
   const visibleStems = useMemo(() => {
     if (splitResultStems.length > 0) {
@@ -643,6 +663,36 @@ function App() {
       return;
     }
     stopPreview();
+    // A/B comparison: play original when toggled to "Original"
+    if (isComparing && showingOriginal && originalAudioBuffer) {
+      const AudioContextCtor =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
+      const context = audioContextRef.current;
+      await context.resume();
+      const source = context.createBufferSource();
+      source.buffer = originalAudioBuffer;
+      source.connect(context.destination);
+      source.onended = () => {
+        mixSourceRefs.current = mixSourceRefs.current.filter((x) => x !== source);
+        if (mixSourceRefs.current.length === 0) setIsPlayingMix(false);
+      };
+      source.start(0);
+      mixSourceRefs.current = [source];
+      setIsPlayingMix(true);
+      mixDurationRef.current = originalAudioBuffer.duration;
+      playStartTimeRef.current = context.currentTime;
+      const updatePlayhead = () => {
+        const elapsed = context.currentTime - playStartTimeRef.current;
+        const progress = Math.min(100, (elapsed / mixDurationRef.current) * 100);
+        setPlayheadPosition(progress);
+        if (progress < 100) playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+      };
+      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+      return;
+    }
     const hasSolo = splitResultStems.some((s) => soloStems[s.id]);
     const stemsToPlay = hasSolo
       ? splitResultStems.filter((s) => soloStems[s.id])
@@ -706,6 +756,9 @@ function App() {
     }
   }, [
     isPlayingMix,
+    isComparing,
+    showingOriginal,
+    originalAudioBuffer,
     soloStems,
     splitResultStems,
     mutedStems,
@@ -715,85 +768,93 @@ function App() {
     handleStopMix,
   ]);
 
-  const exportMasterWav = useCallback(async () => {
-    if (Object.keys(stemBuffers).length === 0) {
-      setSplitError("Load stems to tracks first before exporting");
-      return;
-    }
-
-    setIsExporting(true);
-    setSplitError(null);
-
-    try {
-      const hasSolo = splitResultStems.some((s) => soloStems[s.id]);
-      const stemsToMix = hasSolo
-        ? splitResultStems.filter((s) => soloStems[s.id])
-        : splitResultStems.filter((s) => !mutedStems[s.id]);
-
-      let maxDuration = 0;
-      const sources: {
-        buffer: AudioBuffer;
-        gain: number;
-        pan: number;
-        trimStart: number;
-        trimEnd: number;
-      }[] = [];
-
-      for (const stem of stemsToMix) {
-        const buffer = stemBuffers[stem.id];
-        if (!buffer) continue;
-        const trim = trimMap[stem.id] ?? defaultTrim;
-        const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
-        const trimmedDuration = trimEnd - trimStart;
-        maxDuration = Math.max(maxDuration, trimmedDuration);
-        const mixer = mixerState[stem.id] ?? defaultMixer;
-        sources.push({
-          buffer,
-          gain: Math.pow(10, mixer.gain / 20),
-          pan: mixer.pan / 20,
-          trimStart,
-          trimEnd,
-        });
+  const exportMasterWav = useCallback(
+    async (options?: { normalize?: boolean; skipBusy?: boolean }) => {
+      if (Object.keys(stemBuffers).length === 0) {
+        setSplitError("Load stems to tracks first before exporting");
+        return;
       }
 
-      if (maxDuration === 0) {
-        throw new Error("No valid stems to export");
+      if (!options?.skipBusy) {
+        setIsExporting(true);
+        setSplitError(null);
       }
 
-      const exactFrameCount = Math.ceil(maxDuration * 44100);
-      const context = new OfflineAudioContext(2, exactFrameCount, 44100);
+      try {
+        const hasSolo = splitResultStems.some((s) => soloStems[s.id]);
+        const stemsToMix = hasSolo
+          ? splitResultStems.filter((s) => soloStems[s.id])
+          : splitResultStems.filter((s) => !mutedStems[s.id]);
 
-      for (const { buffer, gain, pan, trimStart, trimEnd } of sources) {
-        const source = context.createBufferSource();
-        const gainNode = context.createGain();
-        const panNode = context.createStereoPanner();
+        let maxDuration = 0;
+        const sources: {
+          buffer: AudioBuffer;
+          gain: number;
+          pan: number;
+          trimStart: number;
+          trimEnd: number;
+        }[] = [];
 
-        source.buffer = buffer;
-        gainNode.gain.value = gain;
-        panNode.pan.value = pan;
+        for (const stem of stemsToMix) {
+          const buffer = stemBuffers[stem.id];
+          if (!buffer) continue;
+          const trim = trimMap[stem.id] ?? defaultTrim;
+          const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
+          const trimmedDuration = trimEnd - trimStart;
+          maxDuration = Math.max(maxDuration, trimmedDuration);
+          const mixer = mixerState[stem.id] ?? defaultMixer;
+          sources.push({
+            buffer,
+            gain: Math.pow(10, mixer.gain / 20),
+            pan: mixer.pan / 20,
+            trimStart,
+            trimEnd,
+          });
+        }
 
-        source.connect(gainNode);
-        gainNode.connect(panNode);
-        panNode.connect(context.destination);
+        if (maxDuration === 0) {
+          throw new Error("No valid stems to export");
+        }
 
-        const playDuration = trimEnd - trimStart;
-        source.start(0, trimStart, trimStart + playDuration);
+        const exactFrameCount = Math.ceil(maxDuration * 44100);
+        const context = new OfflineAudioContext(2, exactFrameCount, 44100);
+
+        for (const { buffer, gain, pan, trimStart, trimEnd } of sources) {
+          const source = context.createBufferSource();
+          const gainNode = context.createGain();
+          const panNode = context.createStereoPanner();
+
+          source.buffer = buffer;
+          gainNode.gain.value = gain;
+          panNode.pan.value = pan;
+
+          source.connect(gainNode);
+          gainNode.connect(panNode);
+          panNode.connect(context.destination);
+
+          const playDuration = trimEnd - trimStart;
+          source.start(0, trimStart, trimStart + playDuration);
+        }
+
+        let rendered = await context.startRendering();
+        if (options?.normalize) {
+          rendered = normalizeAudioBuffer(rendered);
+        }
+        const wavBlob = audioBufferToWav(rendered);
+        const url = URL.createObjectURL(wavBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${uploadName.replace(/\.[^/.]+$/, "")}_master.wav`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        setSplitError(e instanceof Error ? e.message : "Export failed");
+      } finally {
+        if (!options?.skipBusy) setIsExporting(false);
       }
-
-      const rendered = await context.startRendering();
-      const wavBlob = audioBufferToWav(rendered);
-      const url = URL.createObjectURL(wavBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${uploadName.replace(/\.[^/.]+$/, "")}_master.wav`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setSplitError(e instanceof Error ? e.message : "Export failed");
-    } finally {
-      setIsExporting(false);
-    }
-  }, [stemBuffers, splitResultStems, mixerState, mutedStems, soloStems, trimMap, uploadName]);
+    },
+    [stemBuffers, splitResultStems, mixerState, mutedStems, soloStems, trimMap, uploadName]
+  );
 
   const handleStemToggle = (stemId: StemId) => {
     setSelectedStems((current) => ({
@@ -803,7 +864,11 @@ function App() {
   };
 
   const handleFile = useCallback((file: File | null) => {
-    if (!file) return;
+    if (!file) {
+      setUploadedFile(null);
+      setOriginalAudioBuffer(null);
+      return;
+    }
     setUploadName(file.name);
     setUploadedFile(file);
     setSplitProgress(0);
@@ -811,6 +876,31 @@ function App() {
     setSplitError(null);
     setSplitResultStems([]);
   }, []);
+
+  // Decode uploaded file for A/B comparison (original vs mix)
+  useEffect(() => {
+    if (!uploadedFile) {
+      setOriginalAudioBuffer(null);
+      return;
+    }
+    let cancelled = false;
+    const AudioContextCtor =
+      window.AudioContext ||
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+    const ctx = new AudioContextCtor();
+    uploadedFile.arrayBuffer().then((buf) => {
+      if (cancelled) return;
+      return ctx.decodeAudioData(buf);
+    }).then((buffer) => {
+      if (!cancelled && buffer) setOriginalAudioBuffer(buffer);
+    }).catch(() => {
+      if (!cancelled) setOriginalAudioBuffer(null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [uploadedFile]);
 
   const triggerSplit = useCallback(async () => {
     stopPreview();
@@ -869,13 +959,53 @@ function App() {
     }
   }, [mixerHistory, trimHistory]);
 
-  // Export with options
-  const handleExportWithOptions = useCallback(async (options: ExportOptions) => {
-    // For now, just use the existing export function
-    // In a full implementation, this would handle different formats and targets
-    await exportMasterWav();
-    setShowExportModal(false);
-  }, [exportMasterWav]);
+  const downloadStemByUrl = useCallback(
+    async (stem: StemResult, baseName: string): Promise<void> => {
+      const res = await fetch(stem.url);
+      if (!res.ok) throw new Error(`Failed to download stem: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseName}_${stem.id}.wav`;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    []
+  );
+
+  const handleExportWithOptions = useCallback(
+    async (options: ExportOptions) => {
+      const baseName = uploadName.replace(/\.[^/.]+$/, "");
+      if (options.target === "stems" || options.target === "all") {
+        if (splitResultStems.length === 0) {
+          setSplitError("No stems to export. Split a track first.");
+          return;
+        }
+      }
+      setIsExporting(true);
+      setSplitError(null);
+      try {
+        if (options.target === "master" || options.target === "all") {
+          await exportMasterWav({
+            normalize: options.normalize,
+            skipBusy: true,
+          });
+        }
+        if (options.target === "stems" || options.target === "all") {
+          for (const stem of splitResultStems) {
+            await downloadStemByUrl(stem, baseName);
+          }
+        }
+        setShowExportModal(false);
+      } catch (e) {
+        setSplitError(e instanceof Error ? e.message : "Export failed");
+      } finally {
+        setIsExporting(false);
+      }
+    },
+    [exportMasterWav, splitResultStems, uploadName, downloadStemByUrl]
+  );
 
   // Comparison toggle
   const toggleComparison = useCallback(() => {
@@ -889,12 +1019,64 @@ function App() {
 
   // Batch queue handlers
   const removeFromBatchQueue = useCallback((id: string) => {
+    queueFileRef.current.delete(id);
     setBatchQueue((q) => q.filter((item) => item.id !== id));
   }, []);
 
   const clearCompletedFromQueue = useCallback(() => {
     setBatchQueue((q) => q.filter((item) => item.status !== "complete"));
   }, []);
+
+  const addToBatchQueue = useCallback(() => {
+    if (!uploadedFile) return;
+    const id = crypto.randomUUID();
+    setBatchQueue((q) => [
+      ...q,
+      { id, fileName: uploadedFile.name, fileSize: uploadedFile.size, status: "queued" as const, progress: 0 },
+    ]);
+    queueFileRef.current.set(id, uploadedFile);
+  }, [uploadedFile]);
+
+  const processNextInQueue = useCallback(async () => {
+    const queued = batchQueue.find((i) => i.status === "queued");
+    if (!queued) return;
+    const file = queueFileRef.current.get(queued.id);
+    if (!file) {
+      setBatchQueue((q) => q.filter((i) => i.id !== queued.id));
+      return;
+    }
+    setBatchQueue((q) =>
+      q.map((i) => (i.id === queued.id ? { ...i, status: "processing" as const, progress: 0 } : i))
+    );
+    try {
+      const res = await splitStems(
+        file,
+        String(stemCount) as "2" | "4",
+        splitQuality,
+        (status) => {
+          setBatchQueue((q) =>
+            q.map((i) => (i.id === queued.id ? { ...i, progress: status.progress } : i))
+          );
+        }
+      );
+      setBatchQueue((q) =>
+        q.map((i) => (i.id === queued.id ? { ...i, status: "complete" as const, progress: 100 } : i))
+      );
+      setSplitResultStems(res.stems);
+      setSplitError(null);
+    } catch (err) {
+      setBatchQueue((q) =>
+        q.map((i) =>
+          i.id === queued.id
+            ? { ...i, status: "error" as const, error: err instanceof Error ? err.message : "Split failed" }
+            : i
+        )
+      );
+      setSplitError(err instanceof Error ? err.message : "Split failed");
+    } finally {
+      queueFileRef.current.delete(queued.id);
+    }
+  }, [batchQueue, stemCount, splitQuality]);
 
   // Keyboard shortcut handlers
   const shortcutHandlers: ShortcutHandlers = useMemo(() => ({
@@ -990,6 +1172,7 @@ function App() {
           onToggleExpand={() => setBatchQueueExpanded((e) => !e)}
           onRemoveItem={removeFromBatchQueue}
           onClearCompleted={clearCompletedFromQueue}
+          onProcessQueue={() => void processNextInQueue()}
         />
       )}
       
@@ -1024,7 +1207,7 @@ function App() {
                 "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
                 !uploadedFile 
                   ? "border-amber-400/40 bg-amber-500/15 text-amber-200" 
-                  : "border-white/10 bg-white/5 text-white/50"
+                  : "border-white/10 bg-white/5 text-white/65"
               )}>
                 <span className={cn("h-1.5 w-1.5 rounded-full", !uploadedFile ? "bg-amber-400" : "bg-white/40")} />
                 Upload
@@ -1036,7 +1219,7 @@ function App() {
                   ? "border-amber-400/40 bg-amber-500/15 text-amber-200" 
                   : uploadedFile && splitResultStems.length === 0 
                     ? "border-white/20 bg-white/5 text-white/70"
-                    : "border-white/10 bg-white/5 text-white/50"
+                    : "border-white/10 bg-white/5 text-white/65"
               )}>
                 <span className={cn("h-1.5 w-1.5 rounded-full", isSplitting ? "bg-amber-400 animate-pulse" : "bg-white/40")} />
                 Split
@@ -1046,7 +1229,7 @@ function App() {
                 "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
                 splitResultStems.length > 0 && !isExporting
                   ? "border-amber-400/40 bg-amber-500/15 text-amber-200" 
-                  : "border-white/10 bg-white/5 text-white/50"
+                  : "border-white/10 bg-white/5 text-white/65"
               )}>
                 <span className={cn("h-1.5 w-1.5 rounded-full", splitResultStems.length > 0 ? "bg-amber-400" : "bg-white/40")} />
                 Mix & Export
@@ -1066,7 +1249,7 @@ function App() {
                   type="button"
                   onClick={() => { mixerHistory.undo(); setMixerState(mixerHistory.state); }}
                   disabled={!mixerHistory.canUndo}
-                  className="flex h-8 w-8 items-center justify-center text-white/50 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/50"
+                  className="flex h-8 w-8 items-center justify-center text-white/65 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/65"
                   title="Undo (Cmd/Ctrl + Z)"
                 >
                   <Undo2 className="h-4 w-4" />
@@ -1076,7 +1259,7 @@ function App() {
                   type="button"
                   onClick={() => { mixerHistory.redo(); setMixerState(mixerHistory.state); }}
                   disabled={!mixerHistory.canRedo}
-                  className="flex h-8 w-8 items-center justify-center text-white/50 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/50"
+                  className="flex h-8 w-8 items-center justify-center text-white/65 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/65"
                   title="Redo (Cmd/Ctrl + Y)"
                 >
                   <Redo2 className="h-4 w-4" />
@@ -1098,7 +1281,7 @@ function App() {
               <button
                 type="button"
                 onClick={() => setShowHelpModal(true)}
-                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/50 transition hover:border-white/20 hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:border-white/20 hover:text-white"
                 title="Keyboard shortcuts (?)"
               >
                 <HelpCircle className="h-4 w-4" />
@@ -1400,16 +1583,26 @@ function App() {
                         </div>
                       </div>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => void triggerSplit()}
-                      disabled={isSplitting}
-                      className="fire-button w-full justify-center disabled:opacity-60"
-                    >
-                      {isSplitting
-                        ? "Splitting stems..."
-                        : "Split and Generate Stem Rack"}
-                    </button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => void triggerSplit()}
+                        disabled={isSplitting}
+                        className="fire-button flex-1 justify-center disabled:opacity-60"
+                      >
+                        {isSplitting
+                          ? "Splitting stems..."
+                          : "Split and Generate Stem Rack"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addToBatchQueue}
+                        disabled={!uploadedFile || isSplitting}
+                        className="rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Add to queue
+                      </button>
+                    </div>
                   </div>
                 </div>
                 </div>
@@ -1491,22 +1684,47 @@ function App() {
 
                 <div className="relative mt-4 rounded-2xl border border-white/10 bg-black/20 backdrop-blur-sm overflow-hidden">
                   <div className="flex flex-col gap-4 p-4">
-                    {visibleStems.map((stem) => {
+                    {isLoadingStems && visibleStems.length > 0 ? (
+                      visibleStems.map((stem) => (
+                        <div
+                          key={stem.id}
+                          className="flex flex-col gap-3 rounded-[1.8rem] border border-white/10 bg-white/5 p-4 sm:p-5"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-3 w-3 shrink-0 rounded-full skeleton" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-5 w-32 skeleton rounded" />
+                              <div className="h-3 w-24 skeleton rounded" />
+                            </div>
+                          </div>
+                          <div className="h-28 skeleton rounded-xl" />
+                          <div className="h-20 skeleton rounded-xl" />
+                        </div>
+                      ))
+                    ) : (
+                    visibleStems.map((stem) => {
                       const stemUrl =
                         "url" in stem
                           ? (stem as StemDefinition & { url?: string }).url
                           : undefined;
                       const trim = trimMap[stem.id] ?? defaultTrim;
                       const mixer = mixerState[stem.id] ?? defaultMixer;
+                      const isCollapsed = collapsedStems[stem.id] ?? true;
                       return (
                         <StemCard
                           key={stem.id}
                           stem={stem}
                           trim={trim}
-                          realWaveform={stemWaveforms[stem.id]}
-                          onTrimChange={(nextTrim) =>
-                            setTrimMap((c) => ({ ...c, [stem.id]: nextTrim }))
+                          isCollapsed={isCollapsed}
+                          onToggleCollapsed={() =>
+                            setCollapsedStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? true) }))
                           }
+                          realWaveform={stemWaveforms[stem.id]}
+                          onTrimChange={(nextTrim) => {
+                            const next = { ...trimMap, [stem.id]: nextTrim };
+                            setTrimMap(next);
+                            trimHistory.set(next);
+                          }}
                           isPlaying={playingStem === stem.id}
                           onPreview={() => void handlePreviewStem(stem.id, stemUrl)}
                           muted={mutedStems[stem.id] ?? false}
@@ -1523,12 +1741,15 @@ function App() {
                               : undefined
                           }
                           mixerValue={mixer}
-                          onMixerChange={(value) =>
-                            setMixerState((c) => ({ ...c, [stem.id]: value }))
-                          }
+                          onMixerChange={(value) => {
+                            const next = { ...mixerState, [stem.id]: value };
+                            setMixerState(next);
+                            mixerHistory.set(next);
+                          }}
                         />
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -1536,8 +1757,8 @@ function App() {
               <div className="mt-6 border-t border-white/10 pt-6">
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-12 text-center">
                   <Sliders className="h-10 w-10 text-white/25 mb-4" strokeWidth={1.5} />
-                  <p className="text-white/50 text-sm font-medium mb-1">Mixer Controls</p>
-                  <p className="text-white/35 text-xs max-w-xs">
+                  <p className="text-white/65 text-sm font-medium mb-1">Mixer Controls</p>
+                  <p className="text-white/60 text-xs max-w-xs">
                     Upload a track and split it to reveal stem controls for trimming, levels, and panning.
                   </p>
                 </div>
@@ -1703,49 +1924,6 @@ function MetricCard({
   );
 }
 
-function PipelineStep({
-  title,
-  children,
-  active,
-  done,
-}: {
-  title: string;
-  children: string;
-  active: boolean;
-  done: boolean;
-}) {
-  return (
-    <motion.div
-      className={cn(
-        "glass-card rounded-xl border px-4 py-4 transition-colors duration-300",
-        active &&
-          "border-amber-300/28 bg-[rgba(255,146,88,0.12)] shadow-[0_0_0_1px_rgba(255,157,94,0.12),0_12px_28px_rgba(255,116,56,0.1)]",
-        done && !active && "border-white/12 bg-white/5",
-        !done && !active && "border-white/8 bg-black/20",
-      )}
-      initial={false}
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.25 }}
-    >
-      <div className="flex items-center gap-3">
-        <span
-          className={cn(
-            "inline-flex h-3 w-3 rounded-full border border-white/20 bg-white/10",
-            active && "bg-[var(--accent)] shadow-[0_0_18px_var(--accent)]",
-            done && !active && "bg-white/60",
-          )}
-        />
-        <div className="font-display text-xl tracking-[-0.03em] text-white">
-          {title}
-        </div>
-      </div>
-      <div className="mt-2 pl-6 text-sm leading-6 text-white/60">
-        {children}
-      </div>
-    </motion.div>
-  );
-}
-
 function StemCard({
   stem,
   trim,
@@ -1761,6 +1939,8 @@ function StemCard({
   onLoadToTrack,
   mixerValue,
   onMixerChange,
+  isCollapsed = true,
+  onToggleCollapsed,
 }: {
   stem: StemDefinition;
   stemUrl?: string;
@@ -1779,6 +1959,8 @@ function StemCard({
   onMixerChange?: (value: MixerState) => void;
   playheadPosition?: number;
   onSeek?: (position: number) => void;
+  isCollapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }) {
   const mixer = mixerValue ?? defaultMixer;
   const stemBg = { backgroundColor: `${stem.glow}10` };
@@ -1795,7 +1977,7 @@ function StemCard({
       transition={{ type: "tween", duration: 0.3 }}
     >
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pl-4 sm:pl-5">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <span
             className={cn("h-3 w-3 shrink-0 rounded-full transition-all", muted && "opacity-40")}
             style={{
@@ -1812,6 +1994,30 @@ function StemCard({
             </h3>
             <div className="text-xs text-white/70">{stem.subtitle}</div>
           </div>
+          {onToggleCollapsed &&
+            (isCollapsed ? (
+              <button
+                type="button"
+                onClick={onToggleCollapsed}
+                className="shrink-0 rounded-lg p-1.5 text-white/65 hover:text-white hover:bg-white/10 transition"
+                title="Expand stem"
+                aria-expanded="false"
+                aria-label="Expand stem"
+              >
+                <ChevronRight className="h-5 w-5" strokeWidth={2} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onToggleCollapsed}
+                className="shrink-0 rounded-lg p-1.5 text-white/65 hover:text-white hover:bg-white/10 transition"
+                title="Collapse stem"
+                aria-expanded="true"
+                aria-label="Collapse stem"
+              >
+                <ChevronDown className="h-5 w-5" strokeWidth={2} />
+              </button>
+            ))}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -1865,6 +2071,8 @@ function StemCard({
         </div>
       </div>
 
+      {!isCollapsed && (
+        <>
       <div className="px-4 sm:px-5">
         <WaveformEditor stem={stem} trim={trim} realWaveform={realWaveform} />
       </div>
@@ -1878,7 +2086,7 @@ function StemCard({
             className="h-1.5 w-1.5 shrink-0 rounded-full"
             style={{ backgroundColor: stem.glow }}
           />
-          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: stem.glow }}>
+          <span className={cn("text-[10px] font-semibold uppercase tracking-wider", STEM_LABEL_COLOR_CLASS[stem.id] ?? "stem-label-color-other")}>
             {stem.label} · Trim
           </span>
         </div>
@@ -1935,7 +2143,7 @@ function StemCard({
               className="h-1.5 w-1.5 shrink-0 rounded-full"
               style={{ backgroundColor: stem.glow }}
             />
-            <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: stem.glow }}>
+            <span className={cn("text-[10px] font-semibold uppercase tracking-wider", STEM_LABEL_COLOR_CLASS[stem.id] ?? "stem-label-color-other")}>
               {stem.label} · Level & pan
             </span>
           </div>
@@ -1981,75 +2189,9 @@ function StemCard({
           </div>
         </div>
       )}
+        </>
+      )}
     </motion.article>
-  );
-}
-
-function WaveformEditor({
-  stem,
-  trim,
-  realWaveform,
-}: {
-  stem: StemDefinition;
-  trim: TrimState;
-  realWaveform?: number[];
-}) {
-  const waveform = realWaveform ?? stem.waveform;
-  return (
-    <div
-      className="relative overflow-hidden rounded-[1.5rem] border px-4 py-5"
-      style={{
-        borderColor: `${stem.glow}40`,
-        background: `linear-gradient(180deg, ${stem.glow}08 0%, rgba(0,0,0,0.28) 100%)`,
-      }}
-    >
-      <div className="mb-2 flex items-center gap-2">
-        <span
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: stem.glow, boxShadow: `0 0 8px ${stem.glowSoft}` }}
-        />
-        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: stem.glow }}>
-          {stem.label} · Waveform
-        </span>
-      </div>
-      <div className="pointer-events-none absolute inset-0 top-12 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.11),transparent_30%)]" />
-      <div className="pointer-events-none absolute inset-x-4 top-[4.5rem] bottom-5 h-px bg-white/8" />
-      <div className="pointer-events-none absolute inset-0 top-12 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:10%_100%]" />
-
-      <div className="relative flex h-28 items-center gap-[5px]">
-        {waveform.map((value, index) => (
-          <span
-            key={`${stem.id}-${index}`}
-            className="wave-bar flex-1 rounded-full"
-            style={{
-              height: `${Math.max(16, value * 100)}%`,
-              background: `linear-gradient(180deg, rgba(255,255,255,0.9) 0%, ${stem.glow} 65%, rgba(255,255,255,0.16) 100%)`,
-              boxShadow: `0 0 18px ${stem.glowSoft}`,
-              opacity: index % 2 === 0 ? 0.9 : 0.58,
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="pointer-events-none absolute inset-x-4 top-14 bottom-5">
-        <div
-          className="absolute inset-y-0 rounded-[1.2rem] border border-white/18 bg-white/6"
-          style={{
-            left: `${trim.start}%`,
-            right: `${100 - trim.end}%`,
-            boxShadow: `inset 0 0 20px ${stem.glowSoft}, 0 0 24px ${stem.glowSoft}`,
-          }}
-        />
-        <div
-          className="absolute top-0 bottom-0 w-px bg-white/70"
-          style={{ left: `${trim.start}%` }}
-        />
-        <div
-          className="absolute top-0 bottom-0 w-px bg-white/70"
-          style={{ left: `${trim.end}%` }}
-        />
-      </div>
-    </div>
   );
 }
 

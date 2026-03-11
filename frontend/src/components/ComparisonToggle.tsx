@@ -49,7 +49,7 @@ export function ComparisonToggle({
               "px-3 py-2 text-xs font-medium transition",
               showingOriginal
                 ? "bg-amber-500/20 text-amber-200"
-                : "text-white/50 hover:text-white"
+                : "text-white/65 hover:text-white"
             )}
           >
             Original
@@ -60,7 +60,7 @@ export function ComparisonToggle({
               "px-3 py-2 text-xs font-medium transition",
               !showingOriginal
                 ? "bg-amber-500/20 text-amber-200"
-                : "text-white/50 hover:text-white"
+                : "text-white/65 hover:text-white"
             )}
           >
             Mix

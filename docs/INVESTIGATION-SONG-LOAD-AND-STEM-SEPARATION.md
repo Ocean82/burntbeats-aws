@@ -131,8 +131,15 @@ If both leave `STEM_OUTPUT_DIR` unset, they point to the same directory. If set,
 | **Play mix** | `handlePlayMix` | Builds list from `splitResultStems` (soloed-only if any solo, else non-muted), plays each from `stemBuffers` with sample-accurate trim and mixer, synced start. |
 | **Export WAV** | `exportMasterWav` | Renders mix in `OfflineAudioContext(2, frames, 44100)` from soloed or non-muted stems (same rule as play) with sample-accurate trim and mixer → WAV blob → download `{uploadName}_master.wav`. |
 | **Load to tracks** | “Load to tracks” → `loadStemsToTracks` → `loadStemsIntoBuffers()` | Re-fetches/decodes stems into `stemBuffers` if needed (same as auto-load after split). |
+| **Export options** | `ExportOptionsModal` → `handleExportWithOptions(options)` | Format (WAV/MP3/FLAC), quality, target (master/stems/all), normalize. Currently export still produces master WAV; options reserved for future. |
+| **Mixer presets** | `MixerPresetsModal` → `onLoadPreset(preset)` | Save/load mixer state, trim, and mute per preset (e.g. Vocals Forward, Instrumental Focus); stored in localStorage. |
+| **Undo / Redo** | `useHistory` + toolbar buttons | Mixer and trim state have history (undo/redo); keyboard Cmd/Ctrl+Z, Cmd/Ctrl+Y. |
+| **Help / shortcuts** | `HelpModal` (?) → keyboard shortcuts | `useKeyboardShortcuts`: Space (play/stop), 1–4 (solo stem), M (mute), Cmd+E (export), Cmd+Z/Y (undo/redo), ? (help), Esc (close/stop). |
+| **Onboarding** | `OnboardingTour` | First-time tour; can skip or complete. |
+| **Batch queue** | `BatchQueue` | UI for multiple files in queue (state: `batchQueue`); remove item, clear completed. |
+| **Comparison** | `ComparisonToggle` | A/B original vs stem mix (e.g. `isComparing`, `showingOriginal`). |
 
-So the user can preview, solo, mute, trim, level/pan, play full mix, export master, and download individual stems; behavior is consistent with the data flow.
+So the user can preview, solo, mute, trim, level/pan, play full mix, export master, download stems, use export options modal, mixer presets, undo/redo, keyboard shortcuts, help, onboarding, batch queue, and comparison toggle; behavior is consistent with the data flow.
 
 ---
 
@@ -228,4 +235,4 @@ There is no documented or technical reason the progress bar and waveform use fak
 | Frontend display | `splitResultStems` → `visibleStems` → StemCard; `loadStemsIntoBuffers` → `stemBuffers`; real waveform from `stemWaveforms` |
 | Solo/Mute | If any stem soloed → only soloed in play/export; else per-track mute. Multiple solos supported. |
 | Trim | `trimToSeconds(buffer, trim)` → sample-boundary start/end; same for play and export. |
-| User actions | Hear, Solo, Mute, Download, Trim, Level/Pan, Play mix, Export WAV, Load to tracks |
+| User actions | Hear, Solo, Mute, Download, Trim, Level/Pan, Play mix, Export WAV, Load to tracks; Export options, Mixer presets, Undo/Redo, Keyboard shortcuts, Help, Onboarding, Batch queue, Comparison |

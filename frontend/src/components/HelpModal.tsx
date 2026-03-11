@@ -50,7 +50,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-white">Keyboard Shortcuts</h2>
-                    <p className="text-xs text-white/50">Quick actions for power users</p>
+                    <p className="text-xs text-white/65">Quick actions for power users</p>
                   </div>
                 </div>
                 <button
@@ -82,7 +82,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400/60" />
                   <div>
                     <p className="text-xs font-medium text-white/70">Pro Tips</p>
-                    <ul className="mt-1.5 space-y-1 text-xs text-white/50">
+                    <ul className="mt-1.5 space-y-1 text-xs text-white/65">
                       <li>Press number keys 1-4 to quickly solo individual stems</li>
                       <li>Use Cmd/Ctrl + Z to undo mixer changes</li>
                       <li>Press Space to play/stop the mix hands-free</li>

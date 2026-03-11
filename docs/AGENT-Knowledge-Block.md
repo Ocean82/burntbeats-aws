@@ -1,7 +1,10 @@
 # ============================================================
-# STEM SPLITTER / MIXER / MASTERING WEB APP
-# AGENT KNOWLEDGE PACK (DROP-IN CONTEXT)
-# ============================================================
+
+ STEM SPLITTER / MIXER / MASTERING WEB APP
+
+ AGENT KNOWLEDGE PACK (DROP-IN CONTEXT)
+
+============================================================
 
 version: 1.0
 goal:
@@ -12,8 +15,11 @@ goal:
     runtime constraints (web audio, compute, CORS) and mastering safety.
 
 # ------------------------------------------------------------
+
 # 1) WORKFLOW MODES (KEY ADDITION)
+
 # ------------------------------------------------------------
+
 workflow_modes:
   offline_processing:
     description: >
@@ -30,39 +36,48 @@ workflow_modes:
       (roles, permissions) to avoid destructive edits and confusion.  # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
 
 # ------------------------------------------------------------
+
 # 2) TASK TAXONOMY (ROUTER INPUT)
+
 # ------------------------------------------------------------
+
 tasks:
-  - id: isolate_vocals
+
+- id: isolate_vocals
     description: Extract lead vocals cleanly
-  - id: isolate_backing_vocals
+- id: isolate_backing_vocals
     description: Separate backing vocals and harmonies
-  - id: karaoke
+- id: karaoke
     description: Remove lead vocals while preserving music
-  - id: instrumental_fullness
+- id: instrumental_fullness
     description: Preserve instruments with minimal thinning
-  - id: instrumental_bleedless
+- id: instrumental_bleedless
     description: Minimize vocal residue in instrumental
-  - id: multi_singer
+- id: multi_singer
     description: Separate multiple singers or vocal layers
-  - id: harmonies
+- id: harmonies
     description: Preserve or isolate harmonies accurately
-  - id: speech
+- id: speech
     description: Spoken-word/dialogue separation
-  - id: dereverb
+- id: dereverb
     description: Remove room or artificial reverb
-  - id: denoise
+- id: denoise
     description: Remove broadband or model-induced noise
-  - id: crowd_removal
+- id: crowd_removal
     description: Remove audience or crowd noise
-  - id: stem_expansion
+- id: stem_expansion
     description: Go beyond 2 stems (drums, bass, other)
 
 # ------------------------------------------------------------
+
 # 3) CAPABILITY PROFILES (DECISION LAYER)
+
 # ------------------------------------------------------------
+
 capability_profiles:
-  # Separation/remix capabilities
+
+# Separation/remix capabilities
+
   high_vocal_fullness:
     excels_at: [harmonies, backing_vocals, dense_mixes]
     tradeoffs: [more_noise, possible_instrument_bleed]
@@ -76,14 +91,18 @@ capability_profiles:
     excels_at: [karaoke, vocal_removal]
     tradeoffs: [hollow_or_filtered_music]
 
-  # KEY ADDITION: Generative mixing capability (one-to-many)
+# KEY ADDITION: Generative mixing capability (one-to-many)
+
   generative_mixing:
     excels_at: [multiple_valid_mixes, style_diversity, human_like_choices]
     tradeoffs: [non_deterministic_output, harder_ab_testing]
 
 # ------------------------------------------------------------
+
 # 4) MIXING STYLE CONTROL (KEY ADDITION FOR MEGAMI-LIKE SYSTEMS)
+
 # ------------------------------------------------------------
+
 mixing_style:
   description: >
     Mixing can be one-to-many. Generative approaches model a distribution
@@ -95,8 +114,11 @@ mixing_style:
     - reference_guided: "generate mixes guided by a reference mix/track embedding"
 
 # ------------------------------------------------------------
+
 # 5) RUNTIME CONSTRAINTS (KEY ADDITION FOR WEB APP)
+
 # ------------------------------------------------------------
+
 runtime_constraints:
   web_audio_processing:
     guidance: >
@@ -128,8 +150,11 @@ runtime_constraints:
           description: "Preview in browser; final render on server"
 
 # ------------------------------------------------------------
+
 # 6) MASTERING SAFETY RULES (GUARDRAILS)
+
 # ------------------------------------------------------------
+
 mastering_rules:
   headroom_target:
     description: >
@@ -148,8 +173,11 @@ mastering_rules:
     - minimal_processing
 
 # ------------------------------------------------------------
+
 # 7) AGENT ROLES (ORCHESTRATION)
+
 # ------------------------------------------------------------
+
 agent_roles:
   router_agent:
     responsibility:
@@ -184,10 +212,15 @@ agent_roles:
       - enforce role hierarchy and prevent chaotic multi-user editing # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
 
 # ------------------------------------------------------------
+
 # 8) PIPELINES (SMART BEHAVIOR)
+
 # ------------------------------------------------------------
+
 pipelines:
-  # Real-time web remix pipeline (masking)
+
+# Real-time web remix pipeline (masking)
+
   realtime_remix_masking:
     workflow_mode: real_time_processing
     description: >
@@ -230,7 +263,8 @@ pipelines:
       - task: mastering_guard
         apply_headroom_db: -6
 
-  # KEY ADDITION: Generative mixing pipeline (MEGAMI-like)
+# KEY ADDITION: Generative mixing pipeline (MEGAMI-like)
+
   generative_auto_mix:
     workflow_mode: offline_processing
     capability: generative_mixing
@@ -247,15 +281,21 @@ pipelines:
         apply_headroom_db: -6
 
 # ------------------------------------------------------------
+
 # 9) PRINCIPLES (AGENT BEHAVIOR)
+
 # ------------------------------------------------------------
+
 principles:
-  - Choose by capability, not by model name
-  - Prefer minimal processing by default; escalate only when required # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
-  - Real-time remixing works best for small modifications; aggressive changes increase artifacts # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
-  - In collaborative mode, enforce governance/roles to prevent confusion and rework # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
-  - Always provide an explanation of tradeoffs and pipeline choice
+
+- Choose by capability, not by model name
+- Prefer minimal processing by default; escalate only when required # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
+- Real-time remixing works best for small modifications; aggressive changes increase artifacts # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
+- In collaborative mode, enforce governance/roles to prevent confusion and rework # [1](https://onedrive.live.com?cid=A190C8D0C0881F11&id=A190C8D0C0881F11!s9345f7a94f7747269b4b263fbbe4f143)
+- Always provide an explanation of tradeoffs and pipeline choice
 
 # ============================================================
+
 # END OF AGENT KNOWLEDGE PACK
+
 # ============================================================
