@@ -47,30 +47,43 @@ def run_hybrid_4stem(
 ) -> list[tuple[str, Path]]:
     """
     Stage 1: Extract vocals (Demucs 2-stem or ONNX when available).
-    Phase inversion: instrumental = original - vocals.
+    Phase inversion: instrumental = original - vocals (skip if Demucs gives instrumental).
     Stage 2: Demucs 4-stem on instrumental → drums, bass, other.
-    prefer_speed=True: VAD pre-trim when available, Stage 1 Demucs only. prefer_speed=False: full file, ONNX when available.
-    progress_callback: optional callable(percent) called with 40, 80, 100 at stage boundaries.
+    prefer_speed=True: VAD pre-trim when available, Stage 1 Demucs only.
+    prefer_speed=False: full file, ONNX when available.
+    progress_callback: optional callable(percent) called at stage boundaries.
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    use_vad = prefer_speed
-    effective_input = _effective_input_path(input_path, output_dir, use_vad_trim=use_vad)
+
+    # Use VAD for both speed AND quality (quality improvement + speed)
+    use_vad = True  # VAD helps both modes
+    effective_input = _effective_input_path(
+        input_path, output_dir, use_vad_trim=use_vad
+    )
 
     stage1_out = output_dir / "stage1"
-    vocals_path, stage1_instrumental = extract_vocals_stage1(effective_input, stage1_out, prefer_speed=prefer_speed)
+    vocals_path, stage1_instrumental = extract_vocals_stage1(
+        effective_input, stage1_out, prefer_speed=prefer_speed
+    )
     if progress_callback:
-        progress_callback(40)
+        progress_callback(35)
 
+    # Skip phase inversion if Demucs already gave us instrumental (faster!)
     instrumental_path = output_dir / "instrumental.wav"
     if stage1_instrumental is not None:
         shutil.copy2(stage1_instrumental, instrumental_path)
     else:
         create_perfect_instrumental(effective_input, vocals_path, instrumental_path)
 
+    if progress_callback:
+        progress_callback(40)
+
     stage2_out = output_dir / "stage2"
-    stem_files = run_demucs(instrumental_path, stage2_out, stems=4, prefer_speed=prefer_speed)
+    stem_files = run_demucs(
+        instrumental_path, stage2_out, stems=4, prefer_speed=prefer_speed
+    )
     if progress_callback:
         progress_callback(80)
 
@@ -100,19 +113,30 @@ def run_hybrid_2stem(
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
 ) -> list[tuple[str, Path]]:
-    """Vocals + instrumental only (Stage 1 + phase inversion, no Stage 2). prefer_speed: VAD trim + Demucs-only Stage 1. progress_callback: optional callable(percent) with 50, 100."""
+    """Vocals + instrumental only (Stage 1 + inversion, no Stage 2).
+    prefer_speed: VAD trim + Demucs-only Stage 1.
+    progress_callback: optional callable(percent) with 50, 100."""
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    use_vad = prefer_speed
-    effective_input = _effective_input_path(input_path, output_dir, use_vad_trim=use_vad)
+
+    # Use VAD for both speed AND quality
+    use_vad = True
+    effective_input = _effective_input_path(
+        input_path, output_dir, use_vad_trim=use_vad
+    )
 
     stage1_out = output_dir / "stage1"
-    vocals_path, stage1_instrumental = extract_vocals_stage1(effective_input, stage1_out, prefer_speed=prefer_speed)
+    vocals_path, stage1_instrumental = extract_vocals_stage1(
+        effective_input, stage1_out, prefer_speed=prefer_speed
+    )
+
+    # Skip phase inversion if Demucs already gave instrumental
     instrumental_path = output_dir / "instrumental.wav"
     if stage1_instrumental is not None:
         shutil.copy2(stage1_instrumental, instrumental_path)
     else:
         create_perfect_instrumental(effective_input, vocals_path, instrumental_path)
+
     if progress_callback:
         progress_callback(50)
 
@@ -156,18 +180,26 @@ def _stage2_only(instrumental_path: Path, output_dir: Path) -> list[tuple[str, P
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Hybrid stem separation (Stage 1 + inversion + Stage 2)")
+    parser = argparse.ArgumentParser(
+        description="Hybrid stem separation (Stage 1 + inversion + Stage 2)"
+    )
     subparsers = parser.add_subparsers(dest="command", help="stage1 | stage2 | full")
     # stage1: input -> vocals.wav (for Rust: then Rust does inversion)
-    p1 = subparsers.add_parser("stage1", help="Extract vocals only; write output_dir/vocals.wav")
+    p1 = subparsers.add_parser(
+        "stage1", help="Extract vocals only; write output_dir/vocals.wav"
+    )
     p1.add_argument("input", type=Path)
     p1.add_argument("--out-dir", type=Path, required=True)
     # stage2: instrumental.wav -> drums, bass, other in output_dir/stems/
-    p2 = subparsers.add_parser("stage2", help="Demucs 4-stem on instrumental; write output_dir/stems/")
+    p2 = subparsers.add_parser(
+        "stage2", help="Demucs 4-stem on instrumental; write output_dir/stems/"
+    )
     p2.add_argument("instrumental", type=Path)
     p2.add_argument("--out-dir", type=Path, required=True)
     # full: one-shot (Python does inversion)
-    p3 = subparsers.add_parser("full", help="Full hybrid: input -> stems (vocals, drums, bass, other)")
+    p3 = subparsers.add_parser(
+        "full", help="Full hybrid: input -> stems (vocals, drums, bass, other)"
+    )
     p3.add_argument("input", type=Path)
     p3.add_argument("--out-dir", type=Path, required=True)
     p3.add_argument("--stems", type=int, default=4, choices=(2, 4))
@@ -176,7 +208,9 @@ def main() -> int:
 
     if args.command == "stage1":
         if not args.input.exists():
-            print(json.dumps({"error": f"Input not found: {args.input}"}), file=sys.stderr)
+            print(
+                json.dumps({"error": f"Input not found: {args.input}"}), file=sys.stderr
+            )
             return 1
         try:
             p = _stage1_only(args.input, args.out_dir)
@@ -188,14 +222,24 @@ def main() -> int:
 
     if args.command == "stage2":
         if not args.instrumental.exists():
-            print(json.dumps({"error": f"Instrumental not found: {args.instrumental}"}), file=sys.stderr)
+            print(
+                json.dumps({"error": f"Instrumental not found: {args.instrumental}"}),
+                file=sys.stderr,
+            )
             return 1
         try:
             stems = _stage2_only(args.instrumental, args.out_dir)
             out_base = args.out_dir.resolve()
-            print(json.dumps({
-                "stems": [{"id": sid, "path": str(p.relative_to(out_base))} for sid, p in stems],
-            }))
+            print(
+                json.dumps(
+                    {
+                        "stems": [
+                            {"id": sid, "path": str(p.relative_to(out_base))}
+                            for sid, p in stems
+                        ],
+                    }
+                )
+            )
             return 0
         except Exception as e:
             print(json.dumps({"error": str(e)}), file=sys.stderr)
@@ -203,7 +247,9 @@ def main() -> int:
 
     if args.command == "full":
         if not args.input.exists():
-            print(json.dumps({"error": f"Input not found: {args.input}"}), file=sys.stderr)
+            print(
+                json.dumps({"error": f"Input not found: {args.input}"}), file=sys.stderr
+            )
             return 1
         try:
             if args.stems == 2:

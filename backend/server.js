@@ -21,6 +21,13 @@ import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 
+const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:3000").split(",");
+const API_KEY = process.env.API_KEY || "";
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 10;
+
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
@@ -42,8 +49,37 @@ function validateStemFileParams(jobId, stemIdParam) {
   return { ok: true, stemId: `${raw}.wav` };
 }
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+  origin: FRONTEND_ORIGINS,
+  credentials: true,
+}));
 app.use(express.json());
+app.use(rateLimitMiddleware);
+
+function rateLimitMiddleware(req, res, next) {
+  if (!API_KEY) return next();
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const record = rateLimitStore.get(ip);
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return res.status(429).json({ error: "Too many requests. Please slow down." });
+  }
+  record.count++;
+  next();
+}
+
+function authMiddleware(req, res, next) {
+  if (!API_KEY) return next();
+  const providedKey = req.headers["x-api-key"];
+  if (!providedKey || providedKey !== API_KEY) {
+    return res.status(401).json({ error: "Unauthorized. Invalid or missing API key." });
+  }
+  next();
+}
 
 // Stream uploads to disk so we never hold a full large file in memory; proxy then streams from file to Python.
 const upload = multer({
@@ -60,7 +96,7 @@ const upload = multer({
 // Short timeout for POST: we only wait for 202 + job_id; separation runs in background
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 30_000;
 
-app.post("/api/stems/split", upload.single("file"), async (req, res) => {
+app.post("/api/stems/split", authMiddleware, upload.single("file"), async (req, res) => {
   if (!req.file) {
     console.warn("[POST /api/stems/split] 400: no file in request (field name must be 'file')");
     return res.status(400).json({ error: "Missing file. Upload an audio file and use form field 'file'." });
@@ -141,6 +177,23 @@ app.get("/api/stems/status/:job_id", (req, res) => {
   res.json(data);
 });
 
+app.delete("/api/stems/:job_id", async (req, res) => {
+  const { job_id } = req.params;
+  if (!job_id || !UUID_REGEX.test(job_id)) {
+    return res.status(400).json({ error: "Invalid job_id" });
+  }
+  try {
+    const r = await fetch(`${STEM_SERVICE_URL}/split/${job_id}`, {
+      method: "DELETE",
+    });
+    const data = await r.json();
+    return res.status(r.status).json(data);
+  } catch (e) {
+    console.error("[DELETE /api/stems/:job_id] proxy error:", e);
+    res.status(502).json({ error: "Stem service unavailable" });
+  }
+});
+
 app.get("/api/stems/file/:job_id/:stemId", (req, res) => {
   const { job_id, stemId } = req.params;
   const validated = validateStemFileParams(job_id, stemId);
@@ -198,18 +251,42 @@ app.get("/api/stems/cleanup", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", stem_output_dir: STEM_OUTPUT_DIR });
+  res.json({ 
+    status: "ok", 
+    stem_output_dir: STEM_OUTPUT_DIR,
+    rate_limited: !!API_KEY,
+  });
 });
 
 const PORT = Number(process.env.PORT) || 3001;
+let server;
+
 async function main() {
   await mkdir(STEM_OUTPUT_DIR, { recursive: true });
   await mkdir(UPLOAD_TMP_DIR, { recursive: true });
-  app.listen(PORT, () => {
+  server = app.listen(PORT, () => {
     console.log(`Backend listening on http://localhost:${PORT}`);
     console.log(`STEM_SERVICE_URL=${STEM_SERVICE_URL} STEM_OUTPUT_DIR=${STEM_OUTPUT_DIR}`);
+    console.log(`CORS allowed origins: ${FRONTEND_ORIGINS.join(", ")}`);
+    if (API_KEY) console.log("API key authentication: ENABLED");
   });
 }
+
+function gracefulShutdown(signal) {
+  console.log(`\n${signal} received. Starting graceful shutdown...`);
+  if (server) {
+    server.close(() => {
+      console.log("HTTP server closed.");
+      process.exit(0);
+    });
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
 main().catch((e) => {
   console.error(e);
   process.exit(1);

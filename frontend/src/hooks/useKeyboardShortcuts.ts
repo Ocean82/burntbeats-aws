@@ -11,7 +11,11 @@ export type ShortcutAction =
   | "undo"
   | "redo"
   | "help"
-  | "escape";
+  | "escape"
+  | "trimStartLeft"
+  | "trimStartRight"
+  | "trimEndLeft"
+  | "trimEndRight";
 
 export type ShortcutHandlers = Partial<Record<ShortcutAction, () => void>>;
 
@@ -28,6 +32,10 @@ export const KEYBOARD_SHORTCUTS: { key: string; modifier?: string; action: Short
   { key: "z", modifier: "ctrl", action: "undo", label: "Cmd/Ctrl + Z", description: "Undo last change" },
   { key: "y", modifier: "meta", action: "redo", label: "Cmd/Ctrl + Y", description: "Redo last change" },
   { key: "y", modifier: "ctrl", action: "redo", label: "Cmd/Ctrl + Y", description: "Redo last change" },
+  { key: "[", action: "trimStartLeft", label: "[", description: "Move trim start left (expand)" },
+  { key: "]", action: "trimStartRight", label: "]", description: "Move trim start right (contract)" },
+  { key: "Shift+[", action: "trimEndLeft", label: "Shift + [", description: "Move trim end left (contract)" },
+  { key: "Shift+]", action: "trimEndRight", label: "Shift + ]", description: "Move trim end right (expand)" },
   { key: "?", action: "help", label: "?", description: "Show keyboard shortcuts" },
   { key: "Escape", action: "escape", label: "Esc", description: "Close modal / Stop playback" },
 ];
@@ -45,17 +53,30 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers, enabled = true)
 
       const key = event.key.toLowerCase();
       const hasModifier = event.metaKey || event.ctrlKey;
+      const hasShift = event.shiftKey;
 
       for (const shortcut of KEYBOARD_SHORTCUTS) {
+        const action = shortcut.action as ShortcutAction;
+        // Handle Shift-modified shortcuts
+        if (shortcut.key.includes("shift+")) {
+          const baseKey = shortcut.key.replace("shift+", "").toLowerCase();
+          if (key === baseKey && hasShift && !hasModifier && handlers[action]) {
+            event.preventDefault();
+            handlers[action]!();
+            return;
+          }
+          continue;
+        }
+        
         const keyMatches = shortcut.key.toLowerCase() === key || shortcut.key === event.key;
         const modifierMatches =
           (!shortcut.modifier && !hasModifier) ||
           (shortcut.modifier === "meta" && event.metaKey) ||
           (shortcut.modifier === "ctrl" && event.ctrlKey);
 
-        if (keyMatches && modifierMatches && handlers[shortcut.action]) {
+        if (keyMatches && modifierMatches && handlers[action]) {
           event.preventDefault();
-          handlers[shortcut.action]!();
+          handlers[action]!();
           return;
         }
       }

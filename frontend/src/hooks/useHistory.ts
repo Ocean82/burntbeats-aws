@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 
 interface HistoryState<T> {
   past: T[];
@@ -26,10 +26,6 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
     future: [],
   });
 
-  // Use ref to batch rapid changes (e.g., slider dragging)
-  const batchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingStateRef = useRef<T | null>(null);
-
   const set = useCallback((newState: T | ((prev: T) => T)) => {
     setHistory((prev) => {
       const resolvedState =
@@ -49,36 +45,6 @@ export function useHistory<T>(initialState: T): UseHistoryReturn<T> {
         future: [], // Clear future on new change
       };
     });
-  }, []);
-
-  // Batched set for rapid updates (sliders)
-  const setBatched = useCallback((newState: T | ((prev: T) => T)) => {
-    // Store pending state
-    setHistory((prev) => {
-      const resolvedState =
-        typeof newState === "function"
-          ? (newState as (prev: T) => T)(prev.present)
-          : newState;
-      pendingStateRef.current = resolvedState;
-      return { ...prev, present: resolvedState };
-    });
-
-    // Clear existing timeout
-    if (batchTimeoutRef.current) {
-      clearTimeout(batchTimeoutRef.current);
-    }
-
-    // Commit to history after 300ms of inactivity
-    batchTimeoutRef.current = setTimeout(() => {
-      if (pendingStateRef.current !== null) {
-        setHistory((prev) => ({
-          past: [...prev.past, prev.present].slice(-MAX_HISTORY_LENGTH),
-          present: prev.present,
-          future: [],
-        }));
-        pendingStateRef.current = null;
-      }
-    }, 300);
   }, []);
 
   const undo = useCallback(() => {

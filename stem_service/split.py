@@ -1,6 +1,7 @@
 """
-Stem separation using Demucs (htdemucs), CPU-only.
+Stem separation using Demucs (htdemucs or demucs.extra bag), CPU-only.
 Per AGENT-GUIDE: --shifts 0 (speed), --overlap 0.25, --segment for long-file stability.
+Quality mode uses demucs.extra bag of models for better separation.
 """
 
 from __future__ import annotations
@@ -10,17 +11,33 @@ import subprocess
 import sys
 from pathlib import Path
 
-from stem_service.config import MODELS_DIR, REPO_ROOT, ensure_htdemucs_th, htdemucs_available
+from stem_service.config import (
+    DEMUCS_EXTRA_Q_YAML,
+    DEMUCS_EXTRA_YAML,
+    MODELS_DIR,
+    REPO_ROOT,
+    demucs_extra_available,
+    ensure_htdemucs_th,
+    htdemucs_available,
+    DEMUCS_DEVICE,
+)
 
 # Demucs output layout: <out_dir>/htdemucs/<track_name>/{vocals,drums,bass,other}.wav
 # With --two-stems=vocals: <out_dir>/htdemucs/<track_name>/{vocals,no_vocals}.wav
+# With demucs.extra: <out_dir>/demucs.extra/<track_name>/{vocals,drums,bass,other}.wav
 
-# CPU speed/quality: shifts=0 fastest; segment (seconds) avoids OOM on long files
+# CPU speed/quality: shifts=0 fastest; shifts=3-5 for best quality; segment (seconds) avoids OOM on long files
 # Official htdemucs max segment is 7.8s; use 7 (int) to stay under.
+# Larger segments = faster processing (less windowing overhead)
 DEMUCS_SHIFTS_SPEED = 0
-DEMUCS_SHIFTS_QUALITY = 1
+DEMUCS_SHIFTS_QUALITY = 3  # 3 shifts gives significant quality improvement over 1
 DEMUCS_OVERLAP = 0.25
-DEMUCS_SEGMENT_SEC = 7
+DEMUCS_SEGMENT_SEC_SPEED = 10  # Larger segment = faster for speed mode
+DEMUCS_SEGMENT_SEC_QUALITY = 7  # Smaller segment = better quality for quality mode
+DEMUCS_SEGMENT_SEC = 7  # Default
+
+# demucs.extra settings
+DEMUCS_EXTRA_SEGMENT = 44  # From mdx_extra_q.yaml
 
 
 def run_demucs(
@@ -32,48 +49,59 @@ def run_demucs(
     """
     Run demucs separation. Returns list of (stem_id, wav_path).
     stems: 2 -> vocals, instrumental; 4 -> vocals, drums, bass, other.
-    prefer_speed=True: shifts=0 (fastest). prefer_speed=False: shifts=1 (slightly better quality).
+    prefer_speed=True: shifts=0 (fastest), uses htdemucs.
+    prefer_speed=False: uses demucs.extra bag (if available) for best quality, else htdemucs with 3 shifts.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if not htdemucs_available():
-        raise FileNotFoundError(
-            "Demucs model not found: put htdemucs.pth or htdemucs.th in models/. "
-            "See README or scripts/copy-models.sh."
+    # Determine which model to use
+    use_extra = not prefer_speed and demucs_extra_available() and stems == 4
+
+    if use_extra:
+        # Use demucs.extra bag for quality (only for 4-stem)
+        cmd = _build_demucs_cmd(
+            input_path=input_path,
+            output_dir=output_dir,
+            model_name="demucs.extra",
+            shifts=0,  # Bag already averages multiple models
+            segment=DEMUCS_EXTRA_SEGMENT,
+            repo=MODELS_DIR,
+            two_stems=False,
         )
-    ensure_htdemucs_th()
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+        if result.returncode != 0:
+            raise RuntimeError(f"demucs.extra failed: {result.stderr or result.stdout}")
+        track_name = input_path.stem
+        base = output_dir / "demucs.extra" / track_name
+    else:
+        # Use htdemucs
+        if not htdemucs_available():
+            raise FileNotFoundError(
+                "Demucs model not found: put htdemucs.pth or htdemucs.th in models/. "
+                "See README or scripts/copy-models.sh."
+            )
+        ensure_htdemucs_th()
+        shifts = DEMUCS_SHIFTS_SPEED if prefer_speed else DEMUCS_SHIFTS_QUALITY
+        # Use larger segments for speed mode (faster), smaller for quality (better)
+        segment = (
+            DEMUCS_SEGMENT_SEC_SPEED if prefer_speed else DEMUCS_SEGMENT_SEC_QUALITY
+        )
+        cmd = _build_demucs_cmd(
+            input_path=input_path,
+            output_dir=output_dir,
+            model_name="htdemucs",
+            shifts=shifts,
+            segment=segment,
+            repo=MODELS_DIR,
+            two_stems=(stems == 2),
+        )
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+        if result.returncode != 0:
+            raise RuntimeError(f"demucs failed: {result.stderr or result.stdout}")
+        track_name = input_path.stem
+        base = output_dir / "htdemucs" / track_name
 
-    shifts = DEMUCS_SHIFTS_SPEED if prefer_speed else DEMUCS_SHIFTS_QUALITY
-    cmd: list[str] = [
-        sys.executable,
-        "-m",
-        "demucs",
-        "-n",
-        "htdemucs",
-        "-o",
-        str(output_dir),
-        "-d",
-        "cpu",
-        "--shifts",
-        str(shifts),
-        "--overlap",
-        str(DEMUCS_OVERLAP),
-        "--segment",
-        str(DEMUCS_SEGMENT_SEC),
-    ]
-    cmd.extend(["--repo", str(MODELS_DIR)])
-    if stems == 2:
-        cmd.extend(["--two-stems", "vocals"])
-    cmd.append(str(input_path))
-
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
-    if result.returncode != 0:
-        raise RuntimeError(f"demucs failed: {result.stderr or result.stdout}")
-
-    # Demucs writes to output_dir/htdemucs/<track_name>/
-    track_name = input_path.stem
-    base = output_dir / "htdemucs" / track_name
     if not base.exists():
         raise RuntimeError(f"demucs did not create output under {base}")
 
@@ -91,6 +119,40 @@ def run_demucs(
                 stem_files.append((name, wav))
 
     return stem_files
+
+
+def _build_demucs_cmd(
+    input_path: Path,
+    output_dir: Path,
+    model_name: str,
+    shifts: int,
+    segment: int,
+    repo: Path,
+    two_stems: bool = False,
+) -> list[str]:
+    """Build demucs command arguments."""
+    cmd: list[str] = [
+        sys.executable,
+        "-m",
+        "demucs",
+        "-n",
+        model_name,
+        "-o",
+        str(output_dir),
+        "-d",
+        DEMUCS_DEVICE,
+        "--shifts",
+        str(shifts),
+        "--overlap",
+        str(DEMUCS_OVERLAP),
+        "--segment",
+        str(segment),
+    ]
+    cmd.extend(["--repo", str(repo)])
+    if two_stems:
+        cmd.extend(["--two-stems", "vocals"])
+    cmd.append(str(input_path))
+    return cmd
 
 
 def copy_stems_to_flat_dir(

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{CorsLayer, Any};
 use tower_http::services::ServeDir;
 use uuid::Uuid;
 
@@ -184,11 +184,29 @@ async fn split(
 
     if stems_param == 2 {
         let stems_dir = job_dir.join("stems");
-        let _ = std::fs::create_dir_all(&stems_dir);
+        std::fs::create_dir_all(&stems_dir).map_err(|e| {
+            return (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": format!("failed to create stems dir: {}", e) })),
+            )
+                .into_response();
+        })?;
         let dest_vocals = stems_dir.join("vocals.wav");
         let dest_inst = stems_dir.join("instrumental.wav");
-        let _ = std::fs::copy(&vocals_path, &dest_vocals);
-        let _ = std::fs::copy(&instrumental_path, &dest_inst);
+        std::fs::copy(&vocals_path, &dest_vocals).map_err(|e| {
+            return (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": format!("failed to copy vocals: {}", e) })),
+            )
+                .into_response();
+        })?;
+        std::fs::copy(&instrumental_path, &dest_inst).map_err(|e| {
+            return (
+                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": format!("failed to copy instrumental: {}", e) })),
+            )
+                .into_response();
+        })?;
         let stems = vec![
             StemRef {
                 id: "vocals".to_string(),
@@ -256,9 +274,21 @@ async fn split(
 
     // Copy Stage 1 vocals into stems dir so we have all four
     let stems_dir = job_dir.join("stems");
-    let _ = std::fs::create_dir_all(&stems_dir);
+    std::fs::create_dir_all(&stems_dir).map_err(|e| {
+        return (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": format!("failed to create stems dir: {}", e) })),
+        )
+            .into_response();
+    })?;
     let dest_vocals = stems_dir.join("vocals.wav");
-    let _ = std::fs::copy(&vocals_path, &dest_vocals);
+    std::fs::copy(&vocals_path, &dest_vocals).map_err(|e| {
+        return (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": format!("failed to copy vocals: {}", e) })),
+        )
+            .into_response();
+    })?;
 
     let mut stems = vec![StemRef {
         id: "vocals".to_string(),
@@ -307,11 +337,22 @@ async fn main() {
     });
 
     let serve_stems = ServeDir::new(&output_base);
+    let frontend_origins: Vec<&str> = std::env::var("FRONTEND_ORIGINS")
+        .unwrap_or_else(|_| "http://localhost:5173,http://localhost:3000".to_string())
+        .split(',')
+        .collect();
+    
+    let cors = CorsLayer::new()
+        .allow_origin(frontend_origins.iter().map(|s| s.parse().unwrap()).collect::<Vec<_>>())
+        .allow_credentials(true)
+        .allow_methods(Any)
+        .allow_headers(Any);
+    
     let app = Router::new()
         .route("/health", get(health))
         .route("/split", post(split))
         .nest_service("/files", serve_stems)
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .with_state(state);
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], 5000));

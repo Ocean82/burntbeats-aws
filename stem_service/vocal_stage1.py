@@ -12,17 +12,31 @@ import subprocess
 import sys
 from pathlib import Path
 
-from stem_service.config import MODELS_DIR, REPO_ROOT, ensure_htdemucs_th, htdemucs_available
+from stem_service.config import (
+    MODELS_DIR,
+    REPO_ROOT,
+    ensure_htdemucs_th,
+    htdemucs_available,
+    DEMUCS_DEVICE,
+)
 from stem_service.mdx_onnx import run_vocal_onnx
 
 # CPU speed: same as split.py (AGENT-GUIDE: shifts 0, overlap 0.25, segment for stability)
 # Official htdemucs max segment is 7.8s; use 7 (int) to stay under.
+# Quality mode uses 3 shifts for better results
+# Larger segments for speed mode = faster processing
 DEMUCS_SHIFTS = 0
+DEMUCS_SHIFTS_QUALITY = 3
 DEMUCS_OVERLAP = 0.25
-DEMUCS_SEGMENT_SEC = 7
+DEMUCS_SEGMENT_SEC_SPEED = 10
+DEMUCS_SEGMENT_SEC_QUALITY = 7
 
 
-def _run_demucs_two_stem(input_path: Path, output_dir: Path) -> tuple[Path, Path]:
+def _run_demucs_two_stem(
+    input_path: Path,
+    output_dir: Path,
+    prefer_speed: bool = False,
+) -> tuple[Path, Path]:
     """
     Run Demucs 2-stem (vocals + no_vocals). Returns (vocals_path, no_vocals_path).
     Both stems are from the same model run, so they are phase-aligned and same length.
@@ -35,6 +49,7 @@ def _run_demucs_two_stem(input_path: Path, output_dir: Path) -> tuple[Path, Path
             "See README or scripts/copy-models.sh."
         )
     ensure_htdemucs_th()
+    shifts = DEMUCS_SHIFTS if prefer_speed else DEMUCS_SHIFTS_QUALITY
     cmd: list[str] = [
         sys.executable,
         "-m",
@@ -44,13 +59,13 @@ def _run_demucs_two_stem(input_path: Path, output_dir: Path) -> tuple[Path, Path
         "-o",
         str(output_dir),
         "-d",
-        "cpu",
+        DEMUCS_DEVICE,
         "--shifts",
-        str(DEMUCS_SHIFTS),
+        str(shifts),
         "--overlap",
         str(DEMUCS_OVERLAP),
         "--segment",
-        str(DEMUCS_SEGMENT_SEC),
+        str(DEMUCS_SEGMENT_SEC_SPEED if prefer_speed else DEMUCS_SEGMENT_SEC_QUALITY),
         "--two-stems",
         "vocals",
     ]
@@ -85,7 +100,12 @@ def extract_vocals_stage1(
     output_dir.mkdir(parents=True, exist_ok=True)
     if not prefer_speed:
         onnx_vocals = output_dir / "onnx_vocals.wav"
-        if run_vocal_onnx(input_path, onnx_vocals, segment_size=256, overlap=2) is not None:
+        if (
+            run_vocal_onnx(input_path, onnx_vocals, segment_size=256, overlap=2)
+            is not None
+        ):
             return (onnx_vocals, None)
-    vocals_path, no_vocals_path = _run_demucs_two_stem(input_path, output_dir)
+    vocals_path, no_vocals_path = _run_demucs_two_stem(
+        input_path, output_dir, prefer_speed=prefer_speed
+    )
     return (vocals_path, no_vocals_path)

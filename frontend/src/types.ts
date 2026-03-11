@@ -1,5 +1,11 @@
 export type StemId = "vocals" | "drums" | "bass" | "melody" | "instrumental" | "other";
 
+export type StemResult = {
+  id: string;
+  url: string;
+  path?: string;
+};
+
 export type StemDefinition = {
   id: StemId;
   label: string;

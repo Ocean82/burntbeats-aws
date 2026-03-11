@@ -1,13 +1,66 @@
+import { useState, useMemo } from "react";
+import { ZoomIn, ZoomOut, Loader2 } from "lucide-react";
 import type { StemDefinition, TrimState } from "../types";
 
 type WaveformEditorProps = {
   stem: StemDefinition;
   trim: TrimState;
   realWaveform?: number[];
+  duration?: number;
+  isPlaying?: boolean;
+  currentPosition?: number;
+  isLoading?: boolean;
 };
 
-export function WaveformEditor({ stem, trim, realWaveform }: WaveformEditorProps) {
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+export function WaveformEditor({
+  stem,
+  trim,
+  realWaveform,
+  duration = 0,
+  isPlaying = false,
+  currentPosition = 0,
+  isLoading = false,
+}: WaveformEditorProps) {
   const waveform = realWaveform ?? stem.waveform;
+  const [zoom, setZoom] = useState(1);
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  const visibleWidth = 100 * zoom;
+  const scrollPos = (scrollOffset / 100) * waveform.length;
+  const visibleBins = Math.floor(waveform.length / zoom);
+
+  const startTime = duration * (trim.start / 100);
+  const endTime = duration * (trim.end / 100);
+  const trimmedDuration = endTime - startTime;
+
+  const playheadPercent = duration > 0 ? (currentPosition / duration) * 100 : 0;
+  const isPlayheadVisible = isPlaying || currentPosition > 0;
+
+  const zoomIn = () => setZoom((z) => Math.min(z * 1.5, 8));
+  const zoomOut = () => {
+    setZoom((z) => {
+      const newZoom = z / 1.5;
+      if (newZoom < 1) {
+        setScrollOffset(0);
+        return 1;
+      }
+      return newZoom;
+    });
+  };
+
+  const waveformSlice = useMemo(() => {
+    if (zoom === 1) return waveform;
+    const start = Math.floor(scrollPos);
+    const end = Math.min(waveform.length, start + visibleBins);
+    return waveform.slice(start, end);
+  }, [waveform, zoom, scrollPos, visibleBins]);
+
   return (
     <div
       className="relative overflow-hidden rounded-[1.5rem] border px-4 py-5"
@@ -16,33 +69,77 @@ export function WaveformEditor({ stem, trim, realWaveform }: WaveformEditorProps
         background: `linear-gradient(180deg, ${stem.glow}08 0%, rgba(0,0,0,0.28) 100%)`,
       }}
     >
-      <div className="mb-2 flex items-center gap-2">
-        <span
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: stem.glow, boxShadow: `0 0 8px ${stem.glowSoft}` }}
-        />
-        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: stem.glow }}>
-          {stem.label} · Waveform
-        </span>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span
+            className="h-1.5 w-1.5 shrink-0 rounded-full"
+            style={{ backgroundColor: stem.glow, boxShadow: `0 0 8px ${stem.glowSoft}` }}
+          />
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: stem.glow }}>
+            {stem.label} · Waveform
+          </span>
+        </div>
+        {realWaveform && (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={zoomOut}
+              className="rounded p-1 text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30"
+              disabled={zoom <= 1}
+              title="Zoom out"
+            >
+              <ZoomOut className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-[10px] text-white/50">{zoom > 1 ? `${Math.round(zoom * 100)}%` : "100%"}</span>
+            <button
+              type="button"
+              onClick={zoomIn}
+              className="rounded p-1 text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30"
+              disabled={zoom >= 8}
+              title="Zoom in"
+            >
+              <ZoomIn className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
       </div>
+
       <div className="pointer-events-none absolute inset-0 top-12 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.11),transparent_30%)]" />
       <div className="pointer-events-none absolute inset-x-4 top-[4.5rem] bottom-5 h-px bg-white/8" />
       <div className="pointer-events-none absolute inset-0 top-12 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:10%_100%]" />
 
-      <div className="relative flex h-28 items-center gap-[5px]">
-        {waveform.map((value, index) => (
-          <span
-            key={`${stem.id}-${index}`}
-            className="wave-bar flex-1 rounded-full"
-            style={{
-              height: `${Math.max(16, value * 100)}%`,
-              background: `linear-gradient(180deg, rgba(255,255,255,0.9) 0%, ${stem.glow} 65%, rgba(255,255,255,0.16) 100%)`,
-              boxShadow: `0 0 18px ${stem.glowSoft}`,
-              opacity: index % 2 === 0 ? 0.9 : 0.58,
-            }}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="relative flex h-28 items-center gap-[2px]">
+          {Array.from({ length: 64 }).map((_, i) => (
+            <span
+              key={i}
+              className="flex-1 animate-pulse rounded-full bg-white/20"
+              style={{ height: `${20 + Math.random() * 60}%` }}
+            />
+          ))}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <Loader2 className="h-6 w-6 animate-spin text-white/70" />
+          </div>
+        </div>
+      ) : (
+        <div
+          className="relative flex h-28 items-center gap-[2px] overflow-hidden"
+          style={{ width: `${visibleWidth}%`, marginLeft: zoom > 1 ? `-${scrollOffset}%` : 0 }}
+        >
+          {waveformSlice.map((value, index) => (
+            <span
+              key={`${stem.id}-${index}`}
+              className="wave-bar flex-1 rounded-full transition-opacity"
+              style={{
+                height: `${Math.max(16, value * 100)}%`,
+                background: `linear-gradient(180deg, rgba(255,255,255,0.9) 0%, ${stem.glow} 65%, rgba(255,255,255,0.16) 100%)`,
+                boxShadow: `0 0 18px ${stem.glowSoft}`,
+                opacity: index % 2 === 0 ? 0.9 : 0.58,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="pointer-events-none absolute inset-x-4 top-14 bottom-5">
         <div
@@ -61,7 +158,24 @@ export function WaveformEditor({ stem, trim, realWaveform }: WaveformEditorProps
           className="absolute top-0 bottom-0 w-px bg-white/70"
           style={{ left: `${trim.end}%` }}
         />
+        {isPlayheadVisible && (
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
+            style={{
+              left: `${playheadPercent}%`,
+              boxShadow: "0 0 8px rgba(255,255,255,0.8)",
+            }}
+          />
+        )}
       </div>
+
+      {duration > 0 && (
+        <div className="mt-2 flex justify-between text-[10px] text-white/50">
+          <span>{formatTime(startTime)}</span>
+          <span className="text-white/30">({formatTime(trimmedDuration)})</span>
+          <span>{formatTime(endTime)}</span>
+        </div>
+      )}
     </div>
   );
 }

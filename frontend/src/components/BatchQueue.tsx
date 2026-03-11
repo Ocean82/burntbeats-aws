@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Music2, Loader2, Check, AlertCircle, Trash2, ChevronUp, ChevronDown } from "lucide-react";
-import { cn } from "../utils/cn";
 
 export type QueueItemStatus = "queued" | "processing" | "complete" | "error";
 

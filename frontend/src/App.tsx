@@ -7,7 +7,6 @@ import {
   Download,
   Play,
   Square,
-  Sparkles,
   Sliders,
   RotateCcw,
   Volume2,
@@ -17,17 +16,18 @@ import {
   Undo2,
   Redo2,
   Save,
-  Repeat,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
 import { splitStems, type SplitQuality, type StemResult } from "./api";
 import { cn } from "./utils/cn";
+import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, computeWaveformFromBuffer, NORMALIZE_PEAK_DB } from "./utils/audio";
 import type { StemId, StemDefinition, MixerState, TrimState } from "./types";
 import { defaultTrim, defaultMixer } from "./types";
 import { getStemWaveform, setStemWaveform } from "./waveform-cache";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useHistory } from "./hooks/useHistory";
+import { type MixerPreset, type ExportOptions, PipelineStep, WaveformEditor, HelpModal, ExportOptionsModal, MixerPresetsModal, OnboardingTour, BatchQueue, ComparisonToggle, type QueueItemStatus } from "./components";
 
 const presetOptions = [
   "Full 4-Stem Split",
@@ -57,32 +57,6 @@ function generateWaveform(seed: number, length = WAVEFORM_BINS, bias = 0.58) {
   });
 }
 
-/** Peak envelope from decoded AudioBuffer (max per bin across channels), normalized. Used so trim UI matches audible content. */
-function computeWaveformFromBuffer(buffer: AudioBuffer, bins: number): number[] {
-  const numChannels = buffer.numberOfChannels;
-  const length = buffer.length;
-  if (length === 0) return Array(bins).fill(0.12);
-  const binSize = length / bins;
-  const values: number[] = [];
-  let peak = 0;
-  for (let i = 0; i < bins; i++) {
-    const start = Math.floor(i * binSize);
-    const end = Math.min(length, Math.floor((i + 1) * binSize));
-    let max = 0;
-    for (let j = start; j < end; j++) {
-      for (let c = 0; c < numChannels; c++) {
-        const v = Math.abs(buffer.getChannelData(c)[j] ?? 0);
-        if (v > max) max = v;
-      }
-    }
-    values.push(max);
-    if (max > peak) peak = max;
-  }
-  const scale = peak > 0 ? 1 / peak : 1;
-  const minBar = 0.12;
-  return values.map((v) => Math.max(minBar, Math.min(1, v * scale * 0.95 + minBar * 0.2)));
-}
-
 const stemDefinitions: StemDefinition[] = [
   {
     id: "vocals",
@@ -91,7 +65,7 @@ const stemDefinitions: StemDefinition[] = [
     flavor: "Air, presence, top-end sheen",
     glow: "#ff845c",
     glowSoft: "rgba(255, 132, 92, 0.36)",
-    waveform: generateWaveform(2.7, 72, 0.54),
+    waveform: generateWaveform(2.7, WAVEFORM_BINS, 0.54),
   },
   {
     id: "drums",
@@ -100,7 +74,7 @@ const stemDefinitions: StemDefinition[] = [
     flavor: "Transient punch and impact",
     glow: "#ffb347",
     glowSoft: "rgba(255, 179, 71, 0.34)",
-    waveform: generateWaveform(4.4, 72, 0.62),
+    waveform: generateWaveform(4.4, WAVEFORM_BINS, 0.62),
   },
   {
     id: "bass",
@@ -109,7 +83,7 @@ const stemDefinitions: StemDefinition[] = [
     flavor: "Warmth, depth, sub control",
     glow: "#ff5a3d",
     glowSoft: "rgba(255, 90, 61, 0.34)",
-    waveform: generateWaveform(6.2, 72, 0.68),
+    waveform: generateWaveform(6.2, WAVEFORM_BINS, 0.68),
   },
   {
     id: "melody",
@@ -118,7 +92,7 @@ const stemDefinitions: StemDefinition[] = [
     flavor: "Movement, width, sparkle",
     glow: "#ffd36a",
     glowSoft: "rgba(255, 211, 106, 0.32)",
-    waveform: generateWaveform(8.1, 72, 0.56),
+    waveform: generateWaveform(8.1, WAVEFORM_BINS, 0.56),
   },
   {
     id: "instrumental",
@@ -127,7 +101,7 @@ const stemDefinitions: StemDefinition[] = [
     flavor: "Drums, bass, melody combined",
     glow: "#8b9dc3",
     glowSoft: "rgba(139, 157, 195, 0.34)",
-    waveform: generateWaveform(5.2, 72, 0.55),
+    waveform: generateWaveform(5.2, WAVEFORM_BINS, 0.55),
   },
   {
     id: "other",
@@ -136,7 +110,7 @@ const stemDefinitions: StemDefinition[] = [
     flavor: "Melodic elements",
     glow: "#ffd36a",
     glowSoft: "rgba(255, 211, 106, 0.32)",
-    waveform: generateWaveform(8.1, 72, 0.56),
+    waveform: generateWaveform(8.1, WAVEFORM_BINS, 0.56),
   },
 ];
 
@@ -177,106 +151,6 @@ const initialMixer: Record<string, MixerState> = {
 
 function formatDb(value: number) {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)} dB`;
-}
-
-/** Trim window in seconds, aligned to sample boundaries so export matches waveform/playback. */
-function trimToSeconds(
-  buffer: AudioBuffer,
-  trim: TrimState
-): { trimStart: number; trimEnd: number } {
-  const length = buffer.length;
-  const sr = buffer.sampleRate;
-  const startSample = Math.floor((trim.start / 100) * length);
-  const endSample = Math.min(Math.ceil((trim.end / 100) * length), length);
-  const trimStart = Math.max(0, startSample / sr);
-  const trimEnd = Math.min(buffer.duration, endSample / sr);
-  return {
-    trimStart,
-    trimEnd: trimEnd > trimStart ? trimEnd : trimStart,
-  };
-}
-
-function audioBufferToWav(buffer: AudioBuffer): Blob {
-  const numChannels = buffer.numberOfChannels;
-  const sampleRate = buffer.sampleRate;
-  const format = 1;
-  const bitDepth = 16;
-
-  const bytesPerSample = bitDepth / 8;
-  const blockAlign = numChannels * bytesPerSample;
-
-  const dataLength = buffer.length * blockAlign;
-  const bufferLength = 44 + dataLength;
-
-  const arrayBuffer = new ArrayBuffer(bufferLength);
-  const view = new DataView(arrayBuffer);
-
-  const writeString = (offset: number, str: string) => {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
-  };
-
-  writeString(0, "RIFF");
-  view.setUint32(4, bufferLength - 8, true);
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, format, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitDepth, true);
-  writeString(36, "data");
-  view.setUint32(40, dataLength, true);
-
-  const offset = 44;
-  const channels: Float32Array[] = [];
-  for (let i = 0; i < numChannels; i++) {
-    channels.push(buffer.getChannelData(i));
-  }
-
-  let pos = offset;
-  for (let i = 0; i < buffer.length; i++) {
-    for (let ch = 0; ch < numChannels; ch++) {
-      const sample = Math.max(-1, Math.min(1, channels[ch][i]));
-      const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-      view.setInt16(pos, int16, true);
-      pos += 2;
-    }
-  }
-
-  return new Blob([arrayBuffer], { type: "audio/wav" });
-}
-
-const NORMALIZE_PEAK_DB = -1;
-const NORMALIZE_PEAK_LINEAR = Math.pow(10, NORMALIZE_PEAK_DB / 20);
-
-function normalizeAudioBuffer(buffer: AudioBuffer): AudioBuffer {
-  const numChannels = buffer.numberOfChannels;
-  const length = buffer.length;
-  let peak = 0;
-  for (let ch = 0; ch < numChannels; ch++) {
-    const data = buffer.getChannelData(ch);
-    for (let i = 0; i < length; i++) {
-      const abs = Math.abs(data[i]);
-      if (abs > peak) peak = abs;
-    }
-  }
-  if (peak <= 0) return buffer;
-  const scale = NORMALIZE_PEAK_LINEAR / peak;
-  const out = new OfflineAudioContext(
-    numChannels,
-    length,
-    buffer.sampleRate
-  ).createBuffer(numChannels, length, buffer.sampleRate);
-  for (let ch = 0; ch < numChannels; ch++) {
-    const src = buffer.getChannelData(ch);
-    const dst = out.getChannelData(ch);
-    for (let i = 0; i < length; i++) dst[i] = src[i] * scale;
-  }
-  return out;
 }
 
 function createStemPreviewBuffer(context: AudioContext, stemId: StemId) {
@@ -390,16 +264,29 @@ function App() {
   const [loadedTracks, setLoadedTracks] = useState<Record<string, boolean>>({});
   const [isLoadingStems, setIsLoadingStems] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showPresetsModal, setShowPresetsModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [isComparing, setIsComparing] = useState(false);
+  const [showingOriginal, setShowingOriginal] = useState(false);
+  const [batchQueue, setBatchQueue] = useState<
+    Array<{ id: string; fileName: string; fileSize: number; status: QueueItemStatus; progress: number }>
+  >([]);
+  const [batchQueueExpanded, setBatchQueueExpanded] = useState(false);
   const [masterChain] = useState({
     compression: 2.4,
     limiter: -0.8,
     loudness: -9,
   });
 
-  // UI state
-
-  const [selectedStemIndex, setSelectedStemIndex] = useState(0);
-  const [playheadPosition, setPlayheadPosition] = useState(0);
+  // UI state - kept for future use (selectedStemIndex, playheadPosition, originalAudioBuffer)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_selectedStemIndex, _setSelectedStemIndex] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_playheadPosition, _setPlayheadPosition] = useState(0);
+  const [collapsedStems, setCollapsedStems] = useState<Record<string, boolean>>({});
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_originalAudioBuffer, _setOriginalAudioBuffer] = useState<AudioBuffer | null>(null);
   const playheadIntervalRef = useRef<number | null>(null);
   const playStartTimeRef = useRef<number>(0);
   const mixDurationRef = useRef<number>(0);
@@ -412,6 +299,7 @@ function App() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const [isPlayingMix, setIsPlayingMix] = useState(false);
+  const isPlayingMixRef = useRef(false);
   const mixSourceRefs = useRef<AudioBufferSourceNode[]>([]);
   const queueFileRef = useRef<Map<string, File>>(new Map());
 
@@ -472,21 +360,33 @@ function App() {
     await context.resume();
     const newLoaded: Record<string, boolean> = {};
     const newBuffers: Record<string, AudioBuffer> = {};
+
+    const stemsToLoad = splitResultStems.filter((stem) => !stemBuffers[stem.id]);
+    
+    if (stemsToLoad.length > 0) {
+      try {
+        const results = await Promise.all(
+          stemsToLoad.map(async (stem) => {
+            const res = await fetch(stem.url);
+            if (!res.ok) throw new Error(`HTTP ${res.status} when loading stem ${stem.id}`);
+            const arr = await res.arrayBuffer();
+            const buffer = await context.decodeAudioData(arr);
+            return { id: stem.id, buffer };
+          })
+        );
+        for (const result of results) {
+          newBuffers[result.id] = result.buffer;
+          newLoaded[result.id] = true;
+        }
+      } catch (e) {
+        console.error("Failed to load stems:", e);
+      }
+    }
+
     for (const stem of splitResultStems) {
       if (stemBuffers[stem.id]) {
         newBuffers[stem.id] = stemBuffers[stem.id];
         newLoaded[stem.id] = true;
-        continue;
-      }
-      try {
-        const res = await fetch(stem.url);
-        if (!res.ok) throw new Error(`HTTP ${res.status} when loading stem ${stem.id}`);
-        const arr = await res.arrayBuffer();
-        const buffer = await context.decodeAudioData(arr);
-        newBuffers[stem.id] = buffer;
-        newLoaded[stem.id] = true;
-      } catch (e) {
-        console.error(`Failed to load stem ${stem.id}:`, e);
       }
     }
     setStemBuffers((prev) => ({ ...prev, ...newBuffers }));
@@ -621,10 +521,6 @@ function App() {
     [playingStem, stemBuffers],
   );
 
-  const loadStemsToTracks = useCallback(() => {
-    void loadStemsIntoBuffers();
-  }, [loadStemsIntoBuffers]);
-
   const handleStopMix = useCallback(() => {
     mixSourceRefs.current.forEach((s) => {
       try {
@@ -636,12 +532,13 @@ function App() {
     });
     mixSourceRefs.current = [];
     setIsPlayingMix(false);
+    isPlayingMixRef.current = false;
     // Reset playhead
     if (playheadIntervalRef.current) {
       cancelAnimationFrame(playheadIntervalRef.current);
       playheadIntervalRef.current = null;
     }
-    setPlayheadPosition(0);
+    _setPlayheadPosition(0);
   }, []);
 
   const handlePlayMix = useCallback(async () => {
@@ -685,12 +582,16 @@ function App() {
       source.start(0, trimStart, trimStart + playDuration);
       source.onended = () => {
         mixSourceRefs.current = mixSourceRefs.current.filter((x) => x !== source);
-        if (mixSourceRefs.current.length === 0) setIsPlayingMix(false);
+        if (mixSourceRefs.current.length === 0) {
+          setIsPlayingMix(false);
+          isPlayingMixRef.current = false;
+        }
       };
       sources.push(source);
     }
     mixSourceRefs.current = sources;
     setIsPlayingMix(true);
+    isPlayingMixRef.current = true;
     
     // Track playhead position
     const firstStem = stemsToPlay[0];
@@ -704,8 +605,8 @@ function App() {
       const updatePlayhead = () => {
         const elapsed = context.currentTime - playStartTimeRef.current;
         const progress = Math.min(100, (elapsed / mixDurationRef.current) * 100);
-        setPlayheadPosition(progress);
-        if (progress < 100 && isPlayingMix) {
+        _setPlayheadPosition(progress);
+        if (progress < 100 && isPlayingMixRef.current) {
           playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
         }
       };
@@ -820,7 +721,6 @@ function App() {
   const handleFile = useCallback((file: File | null) => {
     if (!file) {
       setUploadedFile(null);
-      setOriginalAudioBuffer(null);
       return;
     }
     setUploadName(file.name);
@@ -1031,7 +931,7 @@ function App() {
       if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
     },
     muteToggle: () => {
-      const stemId = visibleStems[selectedStemIndex]?.id;
+      const stemId = visibleStems[_selectedStemIndex]?.id;
       if (stemId) setMutedStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
     },
     export: () => {
@@ -1042,10 +942,14 @@ function App() {
     undo: () => {
       mixerHistory.undo();
       setMixerState(mixerHistory.state);
+      trimHistory.undo();
+      setTrimMap(trimHistory.state);
     },
     redo: () => {
       mixerHistory.redo();
       setMixerState(mixerHistory.state);
+      trimHistory.redo();
+      setTrimMap(trimHistory.state);
     },
     help: () => setShowHelpModal(true),
     escape: () => {
@@ -1058,7 +962,7 @@ function App() {
     splitResultStems,
     handlePlayMix,
     visibleStems,
-    selectedStemIndex,
+    _selectedStemIndex,
     mixerHistory,
     showHelpModal,
     showExportModal,
@@ -1390,20 +1294,10 @@ function App() {
                       </div>
                     </div>
                     <div>
-<p className="text-xs uppercase tracking-[0.3em] text-white/65">
-                Quality vs speed
+                      <p className="text-xs uppercase tracking-[0.3em] text-white/65">
+                        Quality vs speed
                       </p>
                       <div className="mt-3 flex gap-3">
-                        <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
-                          <input
-                            type="radio"
-                            name="splitQuality"
-                            checked={splitQuality === "quality"}
-                            onChange={() => setSplitQuality("quality")}
-                            className="text-amber-300 focus:ring-amber-300"
-                          />
-                          Quality (better separation)
-                        </label>
                         <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
                           <input
                             type="radio"
@@ -1412,9 +1306,34 @@ function App() {
                             onChange={() => setSplitQuality("speed")}
                             className="text-amber-300 focus:ring-amber-300"
                           />
-                          Speed (faster)
+                          Speed (fastest)
+                        </label>
+                        <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
+                          <input
+                            type="radio"
+                            name="splitQuality"
+                            checked={splitQuality === "quality"}
+                            onChange={() => setSplitQuality("quality")}
+                            className="text-amber-300 focus:ring-amber-300"
+                          />
+                          Quality (best)
+                        </label>
+                        <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/80 transition hover:bg-amber-500/20">
+                          <input
+                            type="radio"
+                            name="splitQuality"
+                            checked={splitQuality === "ultra"}
+                            onChange={() => setSplitQuality("ultra")}
+                            className="text-amber-300 focus:ring-amber-300"
+                          />
+                          Ultra (premium)
                         </label>
                       </div>
+                      {splitQuality === "ultra" && (
+                        <p className="mt-2 text-xs text-amber-300/70">
+                          Ultra quality uses Roformer models for the best separation. Processing takes longer.
+                        </p>
+                      )}
                     </div>
                     <div>
 <p className="text-xs uppercase tracking-[0.3em] text-white/65">
@@ -1597,7 +1516,7 @@ function App() {
                       showingOriginal={showingOriginal}
                       onToggle={toggleComparison}
                       onSwitch={switchComparisonSource}
-                      disabled={!originalAudioBuffer}
+                      disabled={!_originalAudioBuffer}
                     />
                     <button
                       type="button"
@@ -1639,12 +1558,14 @@ function App() {
                       const trim = trimMap[stem.id] ?? defaultTrim;
                       const mixer = mixerState[stem.id] ?? defaultMixer;
                       const isCollapsed = collapsedStems[stem.id] ?? true;
+                      const buffer = stemBuffers[stem.id];
                       return (
                         <StemCard
                           key={stem.id}
                           stem={stem}
                           trim={trim}
                           isCollapsed={isCollapsed}
+                          duration={buffer?.duration}
                           onToggleCollapsed={() =>
                             setCollapsedStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? true) }))
                           }
@@ -1814,45 +1735,6 @@ function App() {
   );
 }
 
-const metricIcons: Record<string, React.ReactNode> = {
-  Separation: <Music2 className="h-4 w-4" strokeWidth={2} />,
-  Preview: <Play className="h-4 w-4" strokeWidth={2} />,
-  Mix: <Sliders className="h-4 w-4" strokeWidth={2} />,
-  Download: <Download className="h-4 w-4" strokeWidth={2} />,
-};
-
-function MetricCard({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <motion.div
-      className="glass-card rounded-2xl px-4 py-4"
-      initial={false}
-      whileHover={{ y: -4, transition: { duration: 0.3 } }}
-      transition={{ type: "tween", duration: 0.3 }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.26em] text-white/65">
-            {label}
-          </div>
-          <div className="mt-2 text-base font-semibold text-white">{value}</div>
-          <div className="mt-1 text-xs leading-5 text-white/60">{detail}</div>
-        </div>
-        <div className="icon-pulse-hover rounded-lg p-1.5 text-white/60 ring-1 ring-white/10">
-          {metricIcons[label] ?? <Sparkles className="h-4 w-4" strokeWidth={2} />}
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
 function StemCard({
   stem,
   trim,
@@ -1870,6 +1752,7 @@ function StemCard({
   onMixerChange,
   isCollapsed = true,
   onToggleCollapsed,
+  duration,
 }: {
   stem: StemDefinition;
   stemUrl?: string;
@@ -1890,6 +1773,7 @@ function StemCard({
   onSeek?: (position: number) => void;
   isCollapsed?: boolean;
   onToggleCollapsed?: () => void;
+  duration?: number;
 }) {
   const mixer = mixerValue ?? defaultMixer;
   const stemBg = { backgroundColor: `${stem.glow}10` };
@@ -2003,7 +1887,13 @@ function StemCard({
       {!isCollapsed && (
         <>
       <div className="px-4 sm:px-5">
-        <WaveformEditor stem={stem} trim={trim} realWaveform={realWaveform} />
+        <WaveformEditor 
+          stem={stem} 
+          trim={trim} 
+          realWaveform={realWaveform}
+          duration={duration}
+          isPlaying={isPlaying}
+        />
       </div>
 
       <div

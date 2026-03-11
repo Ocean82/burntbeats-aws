@@ -2,6 +2,8 @@
 ONNX Stage 1 vocal separation (AGENT-GUIDE: segment_size 256, overlap 2).
 When an ONNX vocal model is present and inference succeeds, use it for Stage 1; else vocal_stage1 falls back to Demucs.
 Model config from models/mdxnet_models/model_data.json or MDX_Net_Models/model_data/.
+
+Session caching: ONNX sessions are cached as singletons for performance.
 """
 
 from __future__ import annotations
@@ -9,18 +11,27 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import threading
 from pathlib import Path
+from typing import Any
 
 from stem_service.config import MDXNET_MODELS_DIR, MODELS_DIR
 
 logger = logging.getLogger(__name__)
 
+# ONNX session cache for performance (singleton pattern)
+_onx_session_cache: dict[str, Any] = {}
+_cache_lock = threading.Lock()
+
 # Vocal ONNX model paths to check (first existing wins). Per AGENT-models-and-implementation.
 # Only vocal models (Voc) belong here; do not add instrumental (Inst) models for Stage 1 vocal extraction.
+# Ordered by quality (best first): Kim_Vocal_2 > UVR-MDX-NET-Voc_FT > others
 VOCAL_MODEL_PATHS: list[Path] = [
     MDXNET_MODELS_DIR / "Kim_Vocal_2.onnx",
-    MDXNET_MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
     MODELS_DIR / "Kim_Vocal_2.onnx",
+    MDXNET_MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
+    MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
+    MDXNET_MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
     MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
 ]
 # Also check MDX_Net_Models for vocal ONNX (some layouts use that dir)
@@ -28,6 +39,19 @@ for name in ("Kim_Vocal_2.onnx", "UVR-MDX-NET-Voc_FT.onnx"):
     p = MODELS_DIR / "MDX_Net_Models" / name
     if p not in VOCAL_MODEL_PATHS:
         VOCAL_MODEL_PATHS.append(p)
+
+# Instrumental ONNX models - used for better instrumental extraction than phase inversion
+INST_MODEL_PATHS: list[Path] = [
+    MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
+    MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
+    MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
+    MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
+    MODELS_DIR / "MDX_Net_Models" / "UVR-MDX-NET-Inst_HQ_5.onnx",
+]
+for name in ("UVR-MDX-NET-Inst_HQ_5.onnx", "UVR-MDX-NET-Inst_HQ_4.onnx"):
+    p = MODELS_DIR / "MDX_Net_Models" / name
+    if p not in INST_MODEL_PATHS:
+        INST_MODEL_PATHS.append(p)
 
 # model_data.json locations (first existing wins)
 MODEL_DATA_PATHS: list[Path] = [
@@ -49,7 +73,9 @@ def _load_model_data() -> dict[str, dict] | None:
     return None
 
 
-def _model_config_for_path(model_path: Path, model_data: dict[str, dict] | None) -> dict | None:
+def _model_config_for_path(
+    model_path: Path, model_data: dict[str, dict] | None
+) -> dict | None:
     """Get model_data entry for this ONNX file (by MD5 hash) or first Vocal config."""
     if model_data is None:
         return None
@@ -64,7 +90,11 @@ def _model_config_for_path(model_path: Path, model_data: dict[str, dict] | None)
         pass
     # Fallback: first config with primary_stem Vocals
     for entry in model_data.values():
-        if isinstance(entry, dict) and entry.get("primary_stem") == "Vocals" and "mdx_n_fft_scale_set" in entry:
+        if (
+            isinstance(entry, dict)
+            and entry.get("primary_stem") == "Vocals"
+            and "mdx_n_fft_scale_set" in entry
+        ):
             return entry
     return None
 
@@ -75,6 +105,30 @@ def get_available_vocal_onnx() -> Path | None:
         if path.resolve().exists():
             return path
     return None
+
+
+def _get_cached_onnx_session(model_path: Path) -> Any | None:
+    """Get or create cached ONNX InferenceSession for the given model path."""
+    cache_key = str(model_path.resolve())
+    with _cache_lock:
+        if cache_key in _onx_session_cache:
+            return _onx_session_cache[cache_key]
+    try:
+        import onnxruntime as ort
+    except ImportError:
+        return None
+    try:
+        session = ort.InferenceSession(
+            str(model_path),
+            providers=["CPUExecutionProvider"],
+        )
+        with _cache_lock:
+            _onx_session_cache[cache_key] = session
+        logger.info("ONNX session cached: %s", model_path.name)
+        return session
+    except Exception as e:
+        logger.warning("Failed to create ONNX session for %s: %s", model_path, e)
+        return None
 
 
 def run_vocal_onnx(
@@ -103,7 +157,9 @@ def run_vocal_onnx(
         return None
 
     n_fft = int(config["mdx_n_fft_scale_set"])
-    _ = int(config["mdx_dim_f_set"])  # config schema; freq dim not used in this inference path
+    _ = int(
+        config["mdx_dim_f_set"]
+    )  # config schema; freq dim not used in this inference path
     dim_t = int(config["mdx_dim_t_set"])
     compensate = float(config.get("compensate", 1.0))
     # hop_length typical for MDX: n_fft // 2
@@ -127,6 +183,7 @@ def run_vocal_onnx(
         mix = np.stack([mix[:, 0], mix[:, 0]], axis=1)
     if sr != 44100:
         import torchaudio
+
         mix_t = torch.from_numpy(mix.T).unsqueeze(0)
         mix_t = torchaudio.functional.resample(mix_t, sr, 44100)
         mix = mix_t.squeeze(0).numpy().T
@@ -134,10 +191,11 @@ def run_vocal_onnx(
     # mix: (samples, 2) -> (2, samples)
     mix = mix.T.astype(np.float32)
 
-    session = ort.InferenceSession(
-        str(model_path),
-        providers=["CPUExecutionProvider"],
-    )
+    # Use cached session for performance
+    session = _get_cached_onnx_session(model_path)
+    if session is None:
+        logger.warning("mdx_onnx: failed to get ONNX session for %s", model_path)
+        return None
     input_name = session.get_inputs()[0].name
     # Expected: (batch, channels, freq, time); try 4-ch (real/imag) then 2-ch (magnitude)
     chunk_samples = hop_length * (dim_t - 1)
@@ -147,7 +205,11 @@ def run_vocal_onnx(
     if pad_end > 0:
         pad_end += step_samples
     mixture = np.concatenate(
-        (np.zeros((2, trim), dtype=np.float32), mix, np.zeros((2, pad_end), dtype=np.float32)),
+        (
+            np.zeros((2, trim), dtype=np.float32),
+            mix,
+            np.zeros((2, pad_end), dtype=np.float32),
+        ),
         axis=1,
     )
     total_samples = mixture.shape[1]
@@ -186,7 +248,9 @@ def run_vocal_onnx(
         n_frames = stft_out.shape[-1]
         if n_frames < dim_t:
             pad_frames = dim_t - n_frames
-            stft_out = torch.nn.functional.pad(stft_out, (0, pad_frames), mode="constant", value=0)
+            stft_out = torch.nn.functional.pad(
+                stft_out, (0, pad_frames), mode="constant", value=0
+            )
         stft_slice = stft_out[:, :, :, :dim_t]
         # ONNX: real/imag stacked -> (1, 4, n_bins, dim_t) or magnitude (1, 2, n_bins, dim_t)
         real_imag = torch.view_as_real(stft_slice)
@@ -205,14 +269,18 @@ def run_vocal_onnx(
             return None
         # out: (1, 2, n_bins, dim_t) or (1, 4, n_bins, dim_t); convert to complex
         if out.shape[1] == 4:
-            out_complex = out[:, :2].astype(np.complex64) + 1j * out[:, 2:4].astype(np.complex64)
+            out_complex = out[:, :2].astype(np.complex64) + 1j * out[:, 2:4].astype(
+                np.complex64
+            )
         else:
             out_complex = out.astype(np.complex64)
         out_t = torch.from_numpy(out_complex).squeeze(0)
         if not torch.is_complex(out_t):
             n_frames_out = min(out_t.shape[-1], stft_slice.shape[-1])
             phase = torch.angle(stft_slice[:, :, :, :n_frames_out])
-            out_t = (out_t[:, :, :, :n_frames_out].float() * torch.exp(1j * phase)).squeeze(0)
+            out_t = (
+                out_t[:, :, :, :n_frames_out].float() * torch.exp(1j * phase)
+            ).squeeze(0)
         n_frames_out = out_t.shape[-1]
         wav_len = min(chunk_samples, n_frames_out * hop_length)
         waves_list = []

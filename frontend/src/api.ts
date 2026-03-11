@@ -26,7 +26,7 @@ export interface StemJobStatus {
   error?: string;
 }
 
-export type SplitQuality = "quality" | "speed";
+export type SplitQuality = "quality" | "speed" | "ultra";
 
 const SPLIT_ACCEPT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minute timeout for large files
 const STATUS_POLL_INTERVAL_MS = 1500;
