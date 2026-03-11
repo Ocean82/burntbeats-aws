@@ -10,10 +10,31 @@ import {
   Sparkles,
   Sliders,
   RotateCcw,
+  Volume2,
+  VolumeX,
+  Headphones,
+  HelpCircle,
+  Undo2,
+  Redo2,
+  Save,
+  Repeat,
 } from "lucide-react";
 import { splitStems, type SplitQuality, type StemResult } from "./api";
 import { cn } from "./utils/cn";
 import { getStemWaveform, setStemWaveform } from "./waveform-cache";
+import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
+import { useHistory } from "./hooks/useHistory";
+import {
+  HelpModal,
+  ExportOptionsModal,
+  MixerPresetsModal,
+  OnboardingTour,
+  BatchQueue,
+  ComparisonToggle,
+  type ExportOptions,
+  type MixerPreset,
+  type QueueItem,
+} from "./components";
 
 type StemId = "vocals" | "drums" | "bass" | "melody" | "instrumental" | "other";
 
@@ -370,6 +391,25 @@ function App() {
     loudness: -9,
   });
 
+  // New UI state for enhanced features
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showPresetsModal, setShowPresetsModal] = useState(false);
+  const [isComparing, setIsComparing] = useState(false);
+  const [showingOriginal, setShowingOriginal] = useState(false);
+  const [batchQueue, setBatchQueue] = useState<QueueItem[]>([]);
+  const [batchQueueExpanded, setBatchQueueExpanded] = useState(true);
+  const [originalAudioBuffer, setOriginalAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [selectedStemIndex, setSelectedStemIndex] = useState(0);
+  const [playheadPosition, setPlayheadPosition] = useState(0);
+  const playheadIntervalRef = useRef<number | null>(null);
+  const playStartTimeRef = useRef<number>(0);
+  const mixDurationRef = useRef<number>(0);
+
+  // History for undo/redo
+  const mixerHistory = useHistory<Record<string, MixerState>>(initialMixer);
+  const trimHistory = useHistory<Record<string, TrimState>>(initialTrim);
+
   const inputRef = useRef<HTMLInputElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
@@ -589,6 +629,12 @@ function App() {
     });
     mixSourceRefs.current = [];
     setIsPlayingMix(false);
+    // Reset playhead
+    if (playheadIntervalRef.current) {
+      cancelAnimationFrame(playheadIntervalRef.current);
+      playheadIntervalRef.current = null;
+    }
+    setPlayheadPosition(0);
   }, []);
 
   const handlePlayMix = useCallback(async () => {
@@ -638,6 +684,26 @@ function App() {
     }
     mixSourceRefs.current = sources;
     setIsPlayingMix(true);
+    
+    // Track playhead position
+    const firstStem = stemsToPlay[0];
+    const buffer = stemBuffers[firstStem.id];
+    if (buffer) {
+      const trim = trimMap[firstStem.id] ?? defaultTrim;
+      const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
+      mixDurationRef.current = trimEnd - trimStart;
+      playStartTimeRef.current = context.currentTime;
+      
+      const updatePlayhead = () => {
+        const elapsed = context.currentTime - playStartTimeRef.current;
+        const progress = Math.min(100, (elapsed / mixDurationRef.current) * 100);
+        setPlayheadPosition(progress);
+        if (progress < 100 && isPlayingMix) {
+          playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+        }
+      };
+      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+    }
   }, [
     isPlayingMix,
     soloStems,
@@ -784,10 +850,149 @@ function App() {
   const resetTrackAdjustments = useCallback(() => {
     setTrimMap({ ...initialTrim });
     setMixerState({ ...initialMixer });
+    trimHistory.reset({ ...initialTrim });
+    mixerHistory.reset({ ...initialMixer });
+  }, [trimHistory, mixerHistory]);
+
+  // Load a mixer preset
+  const handleLoadPreset = useCallback((preset: MixerPreset) => {
+    if (Object.keys(preset.mixerState).length > 0) {
+      setMixerState(preset.mixerState);
+      mixerHistory.set(preset.mixerState);
+    }
+    if (Object.keys(preset.trimMap).length > 0) {
+      setTrimMap(preset.trimMap);
+      trimHistory.set(preset.trimMap);
+    }
+    if (Object.keys(preset.mutedStems).length > 0) {
+      setMutedStems(preset.mutedStems);
+    }
+  }, [mixerHistory, trimHistory]);
+
+  // Export with options
+  const handleExportWithOptions = useCallback(async (options: ExportOptions) => {
+    // For now, just use the existing export function
+    // In a full implementation, this would handle different formats and targets
+    await exportMasterWav();
+    setShowExportModal(false);
+  }, [exportMasterWav]);
+
+  // Comparison toggle
+  const toggleComparison = useCallback(() => {
+    setIsComparing((c) => !c);
+    setShowingOriginal(false);
   }, []);
+
+  const switchComparisonSource = useCallback(() => {
+    setShowingOriginal((s) => !s);
+  }, []);
+
+  // Batch queue handlers
+  const removeFromBatchQueue = useCallback((id: string) => {
+    setBatchQueue((q) => q.filter((item) => item.id !== id));
+  }, []);
+
+  const clearCompletedFromQueue = useCallback(() => {
+    setBatchQueue((q) => q.filter((item) => item.status !== "complete"));
+  }, []);
+
+  // Keyboard shortcut handlers
+  const shortcutHandlers: ShortcutHandlers = useMemo(() => ({
+    playStop: () => {
+      if (splitResultStems.length > 0) {
+        void handlePlayMix();
+      }
+    },
+    solo1: () => {
+      const stemId = visibleStems[0]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    solo2: () => {
+      const stemId = visibleStems[1]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    solo3: () => {
+      const stemId = visibleStems[2]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    solo4: () => {
+      const stemId = visibleStems[3]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    muteToggle: () => {
+      const stemId = visibleStems[selectedStemIndex]?.id;
+      if (stemId) setMutedStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    export: () => {
+      if (splitResultStems.length > 0) {
+        setShowExportModal(true);
+      }
+    },
+    undo: () => {
+      mixerHistory.undo();
+      setMixerState(mixerHistory.state);
+    },
+    redo: () => {
+      mixerHistory.redo();
+      setMixerState(mixerHistory.state);
+    },
+    help: () => setShowHelpModal(true),
+    escape: () => {
+      if (showHelpModal) setShowHelpModal(false);
+      else if (showExportModal) setShowExportModal(false);
+      else if (showPresetsModal) setShowPresetsModal(false);
+      else if (isPlayingMix) handleStopMix();
+    },
+  }), [
+    splitResultStems,
+    handlePlayMix,
+    visibleStems,
+    selectedStemIndex,
+    mixerHistory,
+    showHelpModal,
+    showExportModal,
+    showPresetsModal,
+    isPlayingMix,
+    handleStopMix,
+  ]);
+
+  // Activate keyboard shortcuts
+  useKeyboardShortcuts(shortcutHandlers, true);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-white">
+      {/* Onboarding Tour for new users */}
+      <OnboardingTour onComplete={() => {}} onSkip={() => {}} />
+      
+      {/* Modals */}
+      <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      <ExportOptionsModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExportWithOptions}
+        isExporting={isExporting}
+        stemCount={splitResultStems.length}
+      />
+      <MixerPresetsModal
+        isOpen={showPresetsModal}
+        onClose={() => setShowPresetsModal(false)}
+        onLoadPreset={handleLoadPreset}
+        currentMixerState={mixerState}
+        currentTrimMap={trimMap}
+        currentMutedStems={mutedStems}
+      />
+      
+      {/* Batch Queue */}
+      {batchQueue.length > 0 && (
+        <BatchQueue
+          items={batchQueue}
+          isExpanded={batchQueueExpanded}
+          onToggleExpand={() => setBatchQueueExpanded((e) => !e)}
+          onRemoveItem={removeFromBatchQueue}
+          onClearCompleted={clearCompletedFromQueue}
+        />
+      )}
+      
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="fire-orb left-[-8rem] top-[-6rem] h-80 w-80" />
         <div className="fire-orb right-[-10rem] top-20 h-[26rem] w-[26rem] opacity-75" />
@@ -807,32 +1012,98 @@ function App() {
                 Burnt Beats
               </span>
             </div>
-            <p className="max-w-xl text-sm leading-6 text-white/56 sm:text-base">
+            <p className="max-w-xl text-sm leading-6 text-white/70 sm:text-base">
               Split vocals, drums, bass, and melody → trim, level, pan → play mix, export.
             </p>
           </div>
 
-          <div className="grid w-full max-w-xl grid-cols-2 gap-3 md:grid-cols-4">
-            <MetricCard
-              label="Separation"
-              value="Stem split"
-              detail="Vocals, drums, bass, melody"
-            />
-            <MetricCard
-              label="Preview"
-              value="Hear each stem"
-              detail="One tap to solo listen"
-            />
-            <MetricCard
-              label="Mix"
-              value="Levels & pan"
-              detail="Trim, balance, export"
-            />
-            <MetricCard
-              label="Download"
-              value="Master WAV"
-              detail="One-click export"
-            />
+          {/* Compact pipeline progress indicator */}
+          <div className="flex flex-col gap-3 lg:items-end">
+            <div className="flex items-center gap-2 text-xs text-white/60">
+              <span className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+                !uploadedFile 
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-200" 
+                  : "border-white/10 bg-white/5 text-white/50"
+              )}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", !uploadedFile ? "bg-amber-400" : "bg-white/40")} />
+                Upload
+              </span>
+              <span className="text-white/20">→</span>
+              <span className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+                isSplitting 
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-200" 
+                  : uploadedFile && splitResultStems.length === 0 
+                    ? "border-white/20 bg-white/5 text-white/70"
+                    : "border-white/10 bg-white/5 text-white/50"
+              )}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", isSplitting ? "bg-amber-400 animate-pulse" : "bg-white/40")} />
+                Split
+              </span>
+              <span className="text-white/20">→</span>
+              <span className={cn(
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+                splitResultStems.length > 0 && !isExporting
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-200" 
+                  : "border-white/10 bg-white/5 text-white/50"
+              )}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", splitResultStems.length > 0 ? "bg-amber-400" : "bg-white/40")} />
+                Mix & Export
+              </span>
+            </div>
+            {splitResultStems.length > 0 && (
+              <p className="text-xs text-green-400/80">
+                {splitResultStems.length} stems ready
+              </p>
+            )}
+            
+            {/* Quick action buttons */}
+            <div className="flex items-center gap-2">
+              {/* Undo/Redo buttons */}
+              <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
+                <button
+                  type="button"
+                  onClick={() => { mixerHistory.undo(); setMixerState(mixerHistory.state); }}
+                  disabled={!mixerHistory.canUndo}
+                  className="flex h-8 w-8 items-center justify-center text-white/50 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/50"
+                  title="Undo (Cmd/Ctrl + Z)"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <div className="h-4 w-px bg-white/10" />
+                <button
+                  type="button"
+                  onClick={() => { mixerHistory.redo(); setMixerState(mixerHistory.state); }}
+                  disabled={!mixerHistory.canRedo}
+                  className="flex h-8 w-8 items-center justify-center text-white/50 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/50"
+                  title="Redo (Cmd/Ctrl + Y)"
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
+              </div>
+              
+              {/* Presets button */}
+              <button
+                type="button"
+                onClick={() => setShowPresetsModal(true)}
+                className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:border-white/20 hover:text-white"
+                title="Mixer presets"
+              >
+                <Save className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Presets</span>
+              </button>
+              
+              {/* Help button */}
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/50 transition hover:border-white/20 hover:text-white"
+                title="Keyboard shortcuts (?)"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -842,7 +1113,7 @@ function App() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="flex w-max animate-scroll-text gap-12 py-2.5 text-xs uppercase tracking-[0.35em] text-white/40">
+          <div className="flex w-max animate-scroll-text gap-12 py-2.5 text-xs uppercase tracking-[0.35em] text-white/60">
             <span>Drop track · Split · Mix · Export</span>
             <span>Fire-polished stem control with mirrored glass precision.</span>
             <span>Drop track · Split · Mix · Export</span>
@@ -980,8 +1251,8 @@ function App() {
                   >
                   <div className="space-y-5">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-white/44">
-                        Stem count
+<p className="text-xs uppercase tracking-[0.3em] text-white/65">
+                Stem count
                       </p>
                       <div className="mt-3 flex gap-3">
                         <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
@@ -1007,8 +1278,8 @@ function App() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-white/44">
-                        Quality vs speed
+<p className="text-xs uppercase tracking-[0.3em] text-white/65">
+                Quality vs speed
                       </p>
                       <div className="mt-3 flex gap-3">
                         <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
@@ -1034,8 +1305,8 @@ function App() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-white/44">
-                        Preset
+<p className="text-xs uppercase tracking-[0.3em] text-white/65">
+                Preset
                       </p>
                       <select
                         id="stem-preset-select"
@@ -1059,9 +1330,15 @@ function App() {
                       </select>
                     </div>
 
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-white/44">
-                        Pick stems to show
+                    {/* Show stem visibility toggles only after split is complete - progressive disclosure */}
+                    {splitResultStems.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      transition={{ duration: 0.3 }}
+                    >
+<p className="text-xs uppercase tracking-[0.3em] text-white/65">
+                Pick stems to show
                       </p>
                       <div className="mt-3 grid gap-3 sm:grid-cols-2">
                         {stemDefinitions.map((stem) => {
@@ -1102,12 +1379,26 @@ function App() {
                           );
                         })}
                       </div>
-                    </div>
+                    </motion.div>
+                    )}
 
                     {splitError && (
-                      <p className="rounded-2xl border border-red-400/30 bg-red-950/30 px-4 py-2 text-sm text-red-200">
-                        {splitError}
-                      </p>
+                      <div className="rounded-2xl border border-red-400/30 bg-red-950/30 px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-red-200">Split failed</p>
+                            <p className="mt-1 text-xs text-red-300/70">{splitError}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSplitError(null)}
+                            className="text-red-300/60 hover:text-red-200 transition-colors text-xs"
+                            aria-label="Dismiss error"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
                     )}
                     <button
                       type="button"
@@ -1137,104 +1428,121 @@ function App() {
               }
             />
 
-            <div className="mt-6 border-t border-white/10 pt-6">
-              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-white/56">
-                  Trim, level & pan on each row. Play mix, then export.
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className={cn(
-                      "icon-pulse-hover flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
-                      isPlayingMix
-                        ? "border-amber-400/50 bg-amber-500/20 text-amber-100"
-                        : "ghost-button"
-                    )}
-                    onClick={() => void handlePlayMix()}
-                    disabled={Object.keys(stemBuffers).length === 0}
-                  >
-                    {isPlayingMix ? <Square className="h-4 w-4" strokeWidth={2.5} /> : <Play className="h-4 w-4" strokeWidth={2.5} />}
-                    {isPlayingMix ? "Stop mix" : "Play mix"}
-                  </button>
-                  <button
-                    type="button"
-                    className="fire-button icon-pulse-hover flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"
-                    onClick={() => void exportMasterWav()}
-                    disabled={
-                      isExporting || Object.keys(stemBuffers).length === 0
-                    }
-                  >
-                    <Download className="h-4 w-4" strokeWidth={2} />
-                    {isExporting ? "Rendering..." : "Export WAV"}
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      "ghost-button flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm",
-                      splitResultStems.length > 0 && "load-to-tracks-ready",
-                    )}
-                    onClick={() => void loadStemsToTracks()}
-                    disabled={splitResultStems.length === 0}
-                  >
-                    <Music2 className="h-4 w-4" strokeWidth={2} />
-                    Load to tracks
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:border-white/20 hover:text-white"
-                    onClick={resetTrackAdjustments}
-                    title="Reset trim, level & pan to defaults"
-                  >
-                    <RotateCcw className="h-4 w-4" strokeWidth={2} />
-                    Reset levels
-                  </button>
+            {/* Mixer section - only show after stems are generated (progressive disclosure) */}
+            {splitResultStems.length > 0 ? (
+              <motion.div 
+                className="mt-6 border-t border-white/10 pt-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+              >
+                <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.3em] text-amber-200/80 mb-1">Step 3</p>
+                    <p className="text-sm text-white/70">
+                      Trim, level & pan on each row. Play mix, then export.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      className={cn(
+                        "icon-pulse-hover flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
+                        isPlayingMix
+                          ? "border-amber-400/50 bg-amber-500/20 text-amber-100"
+                          : "ghost-button"
+                      )}
+                      onClick={() => void handlePlayMix()}
+                      disabled={Object.keys(stemBuffers).length === 0}
+                    >
+                      {isPlayingMix ? <Square className="h-4 w-4" strokeWidth={2.5} /> : <Play className="h-4 w-4" strokeWidth={2.5} />}
+                      {isPlayingMix ? "Stop mix" : "Play mix"}
+                    </button>
+                    <button
+                      type="button"
+                      className="fire-button icon-pulse-hover flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"
+                      onClick={() => setShowExportModal(true)}
+                      disabled={
+                        isExporting || Object.keys(stemBuffers).length === 0
+                      }
+                    >
+                      <Download className="h-4 w-4" strokeWidth={2} />
+                      {isExporting ? "Rendering..." : "Export"}
+                    </button>
+                    {/* A/B Comparison toggle */}
+                    <ComparisonToggle
+                      isComparing={isComparing}
+                      showingOriginal={showingOriginal}
+                      onToggle={toggleComparison}
+                      onSwitch={switchComparisonSource}
+                      disabled={!originalAudioBuffer}
+                    />
+                    <button
+                      type="button"
+                      className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:border-white/20 hover:text-white"
+                      onClick={resetTrackAdjustments}
+                      title="Reset trim, level & pan to defaults"
+                    >
+                      <RotateCcw className="h-4 w-4" strokeWidth={2} />
+                      Reset levels
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="relative mt-4 rounded-2xl border border-white/10 bg-black/20 backdrop-blur-sm overflow-hidden">
-                <div className="flex flex-col gap-4 p-4">
-                  {visibleStems.map((stem) => {
-                    const stemUrl =
-                      "url" in stem
-                        ? (stem as StemDefinition & { url?: string }).url
-                        : undefined;
-                    const trim = trimMap[stem.id] ?? defaultTrim;
-                    const mixer = mixerState[stem.id] ?? defaultMixer;
-                    return (
-                      <StemCard
-                        key={stem.id}
-                        stem={stem}
-                        trim={trim}
-                        realWaveform={stemWaveforms[stem.id]}
-                        onTrimChange={(nextTrim) =>
-                          setTrimMap((c) => ({ ...c, [stem.id]: nextTrim }))
-                        }
-                        isPlaying={playingStem === stem.id}
-                        onPreview={() => void handlePreviewStem(stem.id, stemUrl)}
-                        muted={mutedStems[stem.id] ?? false}
-                        onMute={() =>
-                          setMutedStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? false) }))
-                        }
-                        soloed={soloStems[stem.id] ?? false}
-                        onSolo={() =>
-                          setSoloStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? false) }))
-                        }
-                        onDownload={
-                          stemUrl
-                            ? () => window.open(stemUrl, "_blank", "noopener")
-                            : undefined
-                        }
-                        mixerValue={mixer}
-                        onMixerChange={(value) =>
-                          setMixerState((c) => ({ ...c, [stem.id]: value }))
-                        }
-                      />
-                    );
-                  })}
+                <div className="relative mt-4 rounded-2xl border border-white/10 bg-black/20 backdrop-blur-sm overflow-hidden">
+                  <div className="flex flex-col gap-4 p-4">
+                    {visibleStems.map((stem) => {
+                      const stemUrl =
+                        "url" in stem
+                          ? (stem as StemDefinition & { url?: string }).url
+                          : undefined;
+                      const trim = trimMap[stem.id] ?? defaultTrim;
+                      const mixer = mixerState[stem.id] ?? defaultMixer;
+                      return (
+                        <StemCard
+                          key={stem.id}
+                          stem={stem}
+                          trim={trim}
+                          realWaveform={stemWaveforms[stem.id]}
+                          onTrimChange={(nextTrim) =>
+                            setTrimMap((c) => ({ ...c, [stem.id]: nextTrim }))
+                          }
+                          isPlaying={playingStem === stem.id}
+                          onPreview={() => void handlePreviewStem(stem.id, stemUrl)}
+                          muted={mutedStems[stem.id] ?? false}
+                          onMute={() =>
+                            setMutedStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? false) }))
+                          }
+                          soloed={soloStems[stem.id] ?? false}
+                          onSolo={() =>
+                            setSoloStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? false) }))
+                          }
+                          onDownload={
+                            stemUrl
+                              ? () => window.open(stemUrl, "_blank", "noopener")
+                              : undefined
+                          }
+                          mixerValue={mixer}
+                          onMixerChange={(value) =>
+                            setMixerState((c) => ({ ...c, [stem.id]: value }))
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="mt-6 border-t border-white/10 pt-6">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-12 text-center">
+                  <Sliders className="h-10 w-10 text-white/25 mb-4" strokeWidth={1.5} />
+                  <p className="text-white/50 text-sm font-medium mb-1">Mixer Controls</p>
+                  <p className="text-white/35 text-xs max-w-xs">
+                    Upload a track and split it to reveal stem controls for trimming, levels, and panning.
+                  </p>
                 </div>
               </div>
-            </div>
+            )}
           </motion.div>
 
           <motion.div
@@ -1248,16 +1556,20 @@ function App() {
             </h2>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/25 px-4 py-3">
-                <span className="text-xs uppercase tracking-wider text-white/42">
+              <div 
+                className="flex items-center justify-between rounded-xl border border-white/10 bg-black/25 px-4 py-3"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="text-xs uppercase tracking-wider text-white/65">
                   Status
                 </span>
                 <span className="font-semibold text-white">
-                  {isSplitting ? "Splitting…" : "Ready"}
+                  {isSplitting ? "Splitting…" : splitResultStems.length > 0 ? "Stems ready" : "Ready"}
                 </span>
               </div>
               <div>
-                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-white/40 mb-2">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-white/65 mb-2">
                   <span>Split progress</span>
                   <span>{splitProgress}%</span>
                 </div>
@@ -1287,7 +1599,7 @@ function App() {
             <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FolderOpen className="h-5 w-5 text-white/70" strokeWidth={1.8} />
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/42">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/65">
                   Track status · {uploadName.replace(/\.[^/.]+$/, "")}
                 </span>
                 {isLoadingStems && (
@@ -1312,7 +1624,7 @@ function App() {
                           }}
                         />
                         <span className="text-sm text-white">{stem.label}</span>
-                        <span className="text-xs text-white/46">
+                        <span className="text-xs text-white/65">
                           {isLoaded ? "Ready" : hasBuffer ? "Buffered" : isLoadingStems ? "Loading…" : "Pending"}
                         </span>
                       </div>
@@ -1323,8 +1635,8 @@ function App() {
             </div>
 
             <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white/42 mb-3">
-                Master chain
+<div className="text-xs font-semibold uppercase tracking-wider text-white/65 mb-3">
+                  Master chain
               </div>
               <div className="space-y-2 text-sm text-white/68">
                 <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2">
@@ -1342,7 +1654,7 @@ function App() {
               </div>
             </div>
 
-            <p className="mt-5 text-xs text-white/48">
+            <p className="mt-5 text-xs text-white/65">
               Tip: Use <strong className="text-white/70">Play mix</strong> to hear everything together, then <strong className="text-white/70">Export WAV</strong> to download.
             </p>
           </motion.div>
@@ -1377,11 +1689,11 @@ function MetricCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.26em] text-white/48">
+          <div className="text-[11px] uppercase tracking-[0.26em] text-white/65">
             {label}
           </div>
           <div className="mt-2 text-base font-semibold text-white">{value}</div>
-          <div className="mt-1 text-xs leading-5 text-white/50">{detail}</div>
+          <div className="mt-1 text-xs leading-5 text-white/60">{detail}</div>
         </div>
         <div className="icon-pulse-hover rounded-lg p-1.5 text-white/60 ring-1 ring-white/10">
           {metricIcons[label] ?? <Sparkles className="h-4 w-4" strokeWidth={2} />}
@@ -1465,14 +1777,19 @@ function StemCard({
   onLoadToTrack?: () => void;
   mixerValue?: MixerState;
   onMixerChange?: (value: MixerState) => void;
+  playheadPosition?: number;
+  onSeek?: (position: number) => void;
 }) {
   const mixer = mixerValue ?? defaultMixer;
   const stemBg = { backgroundColor: `${stem.glow}10` };
   return (
     <motion.article
-      className="glass-card stem-panel rounded-[1.8rem] border pl-0 pr-4 pt-4 pb-4 sm:pl-0 sm:pr-5 sm:pt-5 sm:pb-5"
-      style={{ borderLeft: `4px solid ${stem.glow}`, ...stemBg }}
-      aria-label={`Stem: ${stem.label}`}
+      className={cn(
+        "glass-card stem-panel rounded-[1.8rem] border pl-0 pr-4 pt-4 pb-4 sm:pl-0 sm:pr-5 sm:pt-5 sm:pb-5 transition-all duration-300",
+        muted && "opacity-50 grayscale-[30%]"
+      )}
+      style={{ borderLeft: `4px solid ${muted ? '#666' : stem.glow}`, ...stemBg }}
+      aria-label={`Stem: ${stem.label}${muted ? ' (muted)' : ''}${soloed ? ' (soloed)' : ''}`}
       initial={false}
       whileHover={{ y: -3, transition: { duration: 0.3 } }}
       transition={{ type: "tween", duration: 0.3 }}
@@ -1480,24 +1797,20 @@ function StemCard({
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pl-4 sm:pl-5">
         <div className="flex items-center gap-3">
           <span
-            className="h-3 w-3 shrink-0 rounded-full"
+            className={cn("h-3 w-3 shrink-0 rounded-full transition-all", muted && "opacity-40")}
             style={{
               backgroundColor: stem.glow,
-              boxShadow: `0 0 16px ${stem.glowSoft}`,
+              boxShadow: muted ? 'none' : `0 0 16px ${stem.glowSoft}`,
             }}
             aria-hidden
           />
           <div>
-            <span
-              className="inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest"
-              style={{ color: stem.glow, backgroundColor: `${stem.glow}22`, border: `1px solid ${stem.glow}44` }}
-            >
+            <h3 className="font-display text-xl tracking-[-0.04em] text-white flex items-center gap-2">
               {stem.label}
-            </span>
-            <h3 className="mt-1 font-display text-xl tracking-[-0.04em] text-white">
-              {stem.label}
+              {soloed && <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-400/30">Solo</span>}
+              {muted && <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-400/30">Muted</span>}
             </h3>
-            <div className="text-xs text-white/56">{stem.subtitle}</div>
+            <div className="text-xs text-white/70">{stem.subtitle}</div>
           </div>
         </div>
 
@@ -1517,18 +1830,25 @@ function StemCard({
             type="button"
             onClick={onSolo}
             className={cn(
-              "icon-button icon-pulse-hover text-xs",
-              soloed && "border-amber-300/30 text-amber-100",
+              "icon-button icon-pulse-hover text-xs flex items-center gap-1.5",
+              soloed && "border-amber-400/50 bg-amber-500/25 text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.3)]",
             )}
+            title={soloed ? "Disable solo mode" : "Solo this stem (mute others)"}
           >
-            Solo
+            <Headphones className="h-3.5 w-3.5" strokeWidth={2} />
+            {soloed ? "Unsolo" : "Solo"}
           </button>
           <button
             type="button"
             onClick={onMute}
-            className={cn("icon-button icon-pulse-hover text-xs", muted && "border-white/20 text-white")}
+            className={cn(
+              "icon-button icon-pulse-hover text-xs flex items-center gap-1.5",
+              muted && "border-red-400/40 bg-red-500/20 text-red-200"
+            )}
+            title={muted ? "Unmute this stem" : "Mute this stem"}
           >
-            {muted ? "Mute" : "Mute"}
+            {muted ? <VolumeX className="h-3.5 w-3.5" strokeWidth={2} /> : <Volume2 className="h-3.5 w-3.5" strokeWidth={2} />}
+            {muted ? "Unmute" : "Mute"}
           </button>
           {onDownload && (
             <button type="button" onClick={onDownload} className="icon-button icon-pulse-hover flex items-center gap-1.5 text-xs">
@@ -1564,8 +1884,8 @@ function StemCard({
         </div>
         <div className="col-span-2 sm:col-span-1" />
         <div>
-          <div className="mb-1 flex justify-between text-[10px] uppercase tracking-wider text-white/42">
-            <span>Trim Start</span>
+<div className="mb-1 flex justify-between text-[10px] uppercase tracking-wider text-white/65">
+                <span>Trim Start</span>
             <span>{trim.start}%</span>
           </div>
           <input
@@ -1584,8 +1904,8 @@ function StemCard({
           />
         </div>
         <div>
-          <div className="mb-1 flex justify-between text-[10px] uppercase tracking-wider text-white/42">
-            <span>Trim End</span>
+<div className="mb-1 flex justify-between text-[10px] uppercase tracking-wider text-white/65">
+                <span>Trim End</span>
             <span>{trim.end}%</span>
           </div>
           <input
@@ -1620,8 +1940,8 @@ function StemCard({
             </span>
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:min-w-[8rem]">
-            <span className="shrink-0 text-[10px] uppercase tracking-wider text-white/48">
-              Level
+<span className="shrink-0 text-[10px] uppercase tracking-wider text-white/65">
+                  Level
             </span>
             <input
               type="range"
@@ -1640,8 +1960,8 @@ function StemCard({
             </span>
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:min-w-[8rem]">
-            <span className="shrink-0 text-[10px] uppercase tracking-wider text-white/48">
-              Pan
+<span className="shrink-0 text-[10px] uppercase tracking-wider text-white/65">
+                  Pan
             </span>
             <input
               type="range"
