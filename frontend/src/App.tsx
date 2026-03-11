@@ -28,19 +28,6 @@ import { defaultTrim, defaultMixer } from "./types";
 import { getStemWaveform, setStemWaveform } from "./waveform-cache";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useHistory } from "./hooks/useHistory";
-import {
-  HelpModal,
-  ExportOptionsModal,
-  MixerPresetsModal,
-  OnboardingTour,
-  BatchQueue,
-  ComparisonToggle,
-  PipelineStep,
-  WaveformEditor,
-  type ExportOptions,
-  type MixerPreset,
-  type QueueItem,
-} from "./components";
 
 const presetOptions = [
   "Full 4-Stem Split",
@@ -409,16 +396,8 @@ function App() {
     loudness: -9,
   });
 
-  // New UI state for enhanced features
-  const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showPresetsModal, setShowPresetsModal] = useState(false);
-  const [isComparing, setIsComparing] = useState(false);
-  const [showingOriginal, setShowingOriginal] = useState(false);
-  const [batchQueue, setBatchQueue] = useState<QueueItem[]>([]);
-  const [batchQueueExpanded, setBatchQueueExpanded] = useState(true);
-  const [collapsedStems, setCollapsedStems] = useState<Record<string, boolean>>({});
-  const [originalAudioBuffer, setOriginalAudioBuffer] = useState<AudioBuffer | null>(null);
+  // UI state
+
   const [selectedStemIndex, setSelectedStemIndex] = useState(0);
   const [playheadPosition, setPlayheadPosition] = useState(0);
   const playheadIntervalRef = useRef<number | null>(null);
@@ -501,6 +480,7 @@ function App() {
       }
       try {
         const res = await fetch(stem.url);
+        if (!res.ok) throw new Error(`HTTP ${res.status} when loading stem ${stem.id}`);
         const arr = await res.arrayBuffer();
         const buffer = await context.decodeAudioData(arr);
         newBuffers[stem.id] = buffer;
@@ -592,44 +572,51 @@ function App() {
       }
       stopPreview();
 
-      const AudioContextCtor =
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext;
-      if (!AudioContextCtor) return;
+      try {
+        const AudioContextCtor =
+          window.AudioContext ||
+          (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext;
+        if (!AudioContextCtor) return;
 
-      if (!audioContextRef.current)
-        audioContextRef.current = new AudioContextCtor();
-      const context = audioContextRef.current;
-      await context.resume();
+        if (!audioContextRef.current)
+          audioContextRef.current = new AudioContextCtor();
+        const context = audioContextRef.current;
+        await context.resume();
 
-      let buffer: AudioBuffer;
-      if (stemBuffers[stemId]) {
-        buffer = stemBuffers[stemId];
-      } else if (stemUrl) {
-        const res = await fetch(stemUrl);
-        const arr = await res.arrayBuffer();
-        buffer = await context.decodeAudioData(arr);
-        setStemBuffers((b) => ({ ...b, [stemId]: buffer }));
-      } else {
-        buffer = createStemPreviewBuffer(context, stemId as StemId);
-      }
-
-      const source = context.createBufferSource();
-      const gain = context.createGain();
-      source.buffer = buffer;
-      source.connect(gain);
-      gain.connect(context.destination);
-      gain.gain.value = 0.85;
-      source.onended = () => {
-        if (currentSourceRef.current === source) {
-          currentSourceRef.current = null;
-          setPlayingStem(null);
+        let buffer: AudioBuffer;
+        if (stemBuffers[stemId]) {
+          buffer = stemBuffers[stemId];
+        } else if (stemUrl) {
+          const res = await fetch(stemUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status} fetching preview for ${stemId}`);
+          const arr = await res.arrayBuffer();
+          buffer = await context.decodeAudioData(arr);
+          setStemBuffers((b) => ({ ...b, [stemId]: buffer }));
+        } else {
+          buffer = createStemPreviewBuffer(context, stemId as StemId);
         }
-      };
-      currentSourceRef.current = source;
-      source.start();
-      setPlayingStem(stemId);
+
+        const source = context.createBufferSource();
+        const gain = context.createGain();
+        source.buffer = buffer;
+        source.connect(gain);
+        gain.connect(context.destination);
+        gain.gain.value = 0.85;
+        source.onended = () => {
+          if (currentSourceRef.current === source) {
+            currentSourceRef.current = null;
+            setPlayingStem(null);
+          }
+        };
+        currentSourceRef.current = source;
+        source.start();
+        setPlayingStem(stemId);
+      } catch (err) {
+        console.error("Preview stem playback failed:", err);
+        setSplitError(`Preview failed: ${err instanceof Error ? err.message : String(err)}`);
+        setPlayingStem(null);
+      }
     },
     [playingStem, stemBuffers],
   );
@@ -663,36 +650,6 @@ function App() {
       return;
     }
     stopPreview();
-    // A/B comparison: play original when toggled to "Original"
-    if (isComparing && showingOriginal && originalAudioBuffer) {
-      const AudioContextCtor =
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioContextCtor) return;
-      if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
-      const context = audioContextRef.current;
-      await context.resume();
-      const source = context.createBufferSource();
-      source.buffer = originalAudioBuffer;
-      source.connect(context.destination);
-      source.onended = () => {
-        mixSourceRefs.current = mixSourceRefs.current.filter((x) => x !== source);
-        if (mixSourceRefs.current.length === 0) setIsPlayingMix(false);
-      };
-      source.start(0);
-      mixSourceRefs.current = [source];
-      setIsPlayingMix(true);
-      mixDurationRef.current = originalAudioBuffer.duration;
-      playStartTimeRef.current = context.currentTime;
-      const updatePlayhead = () => {
-        const elapsed = context.currentTime - playStartTimeRef.current;
-        const progress = Math.min(100, (elapsed / mixDurationRef.current) * 100);
-        setPlayheadPosition(progress);
-        if (progress < 100) playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-      };
-      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-      return;
-    }
     const hasSolo = splitResultStems.some((s) => soloStems[s.id]);
     const stemsToPlay = hasSolo
       ? splitResultStems.filter((s) => soloStems[s.id])
@@ -756,9 +713,6 @@ function App() {
     }
   }, [
     isPlayingMix,
-    isComparing,
-    showingOriginal,
-    originalAudioBuffer,
     soloStems,
     splitResultStems,
     mutedStems,
@@ -876,31 +830,6 @@ function App() {
     setSplitError(null);
     setSplitResultStems([]);
   }, []);
-
-  // Decode uploaded file for A/B comparison (original vs mix)
-  useEffect(() => {
-    if (!uploadedFile) {
-      setOriginalAudioBuffer(null);
-      return;
-    }
-    let cancelled = false;
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return;
-    const ctx = new AudioContextCtor();
-    uploadedFile.arrayBuffer().then((buf) => {
-      if (cancelled) return;
-      return ctx.decodeAudioData(buf);
-    }).then((buffer) => {
-      if (!cancelled && buffer) setOriginalAudioBuffer(buffer);
-    }).catch(() => {
-      if (!cancelled) setOriginalAudioBuffer(null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [uploadedFile]);
 
   const triggerSplit = useCallback(async () => {
     stopPreview();

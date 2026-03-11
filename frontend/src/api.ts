@@ -5,7 +5,7 @@
 const API_BASE =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
     ? (import.meta.env.VITE_API_BASE_URL as string).replace(/\/$/, "")
-    : "http://localhost:3001");
+    : (typeof window !== "undefined" && window.location.hostname !== "localhost" ? window.location.origin : "http://localhost:3001"));
 
 export interface StemResult {
   id: string;
@@ -28,7 +28,7 @@ export interface StemJobStatus {
 
 export type SplitQuality = "quality" | "speed";
 
-const SPLIT_ACCEPT_TIMEOUT_MS = 30 * 1000; // POST returns 202 quickly
+const SPLIT_ACCEPT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minute timeout for large files
 const STATUS_POLL_INTERVAL_MS = 1500;
 const STATUS_POLL_MAX_MS = 16 * 60 * 1000; // stop after 16 min
 

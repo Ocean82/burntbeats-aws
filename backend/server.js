@@ -171,6 +171,22 @@ app.get("/api/stems/cleanup", (req, res) => {
         deleted++;
       }
     }
+
+    // Clean up temporary upload files
+    if (existsSync(UPLOAD_TMP_DIR)) {
+      const uploadEntries = readdirSync(UPLOAD_TMP_DIR, { withFileTypes: true });
+      for (const ent of uploadEntries) {
+        if (!ent.isFile() || !ent.name.startsWith("upload-")) continue;
+        const filePath = path.join(UPLOAD_TMP_DIR, ent.name);
+        const stat = statSync(filePath);
+        if (stat.mtime.getTime() < cutoff) {
+          unlink(filePath, (err) => {
+            if (err) console.error("[cleanup] Failed to delete orphaned temp file:", err);
+          });
+          deleted++;
+        }
+      }
+    }
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "ENOENT") {
       return res.json({ deleted: 0, message: "Output dir does not exist" });
