@@ -100,6 +100,19 @@ This runs the full pipeline for **2-stem** and **4-stem** in both **quality** an
 
 ---
 
+## Troubleshooting
+
+**`Cannot find module @rollup/rollup-win32-x64-msvc` (Windows) or `@rollup/rollup-linux-x64-gnu` (WSL)**  
+npm’s optional-deps handling can leave Rollup’s platform binary missing. The repo pins both in `frontend/package.json` optionalDependencies; a clean install usually fixes it.
+
+- **Windows:** `cd frontend && npm install` (or `npm i @rollup/rollup-win32-x64-msvc --save-optional` if the main install skipped it).
+- **WSL:** Close any process using the repo, then `cd frontend && rm -rf node_modules package-lock.json && npm i`. If `rm` fails on `/mnt/d/`, use a native Linux clone or run `npm i @rollup/rollup-linux-x64-gnu --save-optional` and retry the build.
+
+**`NameError: name 'asynccontextmanager' is not defined` (stem_service)**  
+Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `contextlib`. If you still see it, ensure you’re on the latest commit and that the venv uses the repo’s `stem_service/`.
+
+---
+
 ## Env vars
 
 | Where | Variable | Description |
