@@ -130,5 +130,4 @@ On the EC2 instance (Ubuntu), use the same bash scripts.
 - Optionally point `STEM_OUTPUT_DIR` to an S3-mounted path and serve stem files via presigned URLs (you add AWS env when ready).
 - RDS: not required for stem splitting; add when you need users/jobs metadata.
 
-See `docs/` for agent knowledge and model policy.
-#
+See `docs/` for agent knowledge and model policy. **Sanity checks:** `docs/SANITY-CHECKS.md` — large upload, back-to-back splits, instrumental quality, waveform/trim/export, export WAV correctness.

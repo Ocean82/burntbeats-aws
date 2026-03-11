@@ -82,11 +82,24 @@ export async function pollStemJobUntilDone(
   onProgress: (status: StemJobStatus) => void
 ): Promise<StemJobStatus> {
   const start = Date.now();
+  let consecutive404 = 0;
+  const max404Retries = 5;
+
   while (Date.now() - start < STATUS_POLL_MAX_MS) {
-    const status = await getStemJobStatus(jobId);
-    onProgress(status);
-    if (status.status === "completed" || status.status === "failed") {
-      return status;
+    try {
+      const status = await getStemJobStatus(jobId);
+      consecutive404 = 0;
+      // Defer React state update so this handler returns quickly (avoids "message handler took Nms" violation)
+      requestAnimationFrame(() => onProgress(status));
+      if (status.status === "completed" || status.status === "failed") {
+        return status;
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message === "Job not found" && consecutive404 < max404Retries) {
+        consecutive404++;
+      } else {
+        throw err;
+      }
     }
     await new Promise((r) => setTimeout(r, STATUS_POLL_INTERVAL_MS));
   }

@@ -460,11 +460,24 @@ function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const run = async () => {
-      const next: Record<string, number[]> = {};
+    const run = () => {
+      const entries = Object.entries(stemBuffers);
       const stems = splitResultStems;
-      for (const [id, buffer] of Object.entries(stemBuffers)) {
+      if (entries.length === 0) return;
+
+      const next: Record<string, number[]> = {};
+      let index = 0;
+
+      const processOne = async () => {
         if (cancelled) return;
+        if (index >= entries.length) {
+          if (!cancelled && Object.keys(next).length > 0) {
+            setStemWaveforms((prev) => ({ ...prev, ...next }));
+          }
+          return;
+        }
+        const [id, buffer] = entries[index];
+        index++;
         const url = stems.find((s) => s.id === id)?.url;
         let data: number[] | null = url
           ? await getStemWaveform(url, WAVEFORM_BINS)
@@ -474,13 +487,25 @@ function App() {
           data = computeWaveformFromBuffer(buffer, WAVEFORM_BINS);
           if (url) void setStemWaveform(url, WAVEFORM_BINS, data);
         }
-        next[id] = data;
-      }
-      if (!cancelled && Object.keys(next).length > 0) {
-        setStemWaveforms((prev) => ({ ...prev, ...next }));
-      }
+        const waveformData: number[] = data;
+        next[id] = waveformData;
+        if (!cancelled) setStemWaveforms((prev) => ({ ...prev, [id]: waveformData }));
+        // Yield to main thread to avoid "message/click handler took Nms" violations
+        const scheduleNext =
+          typeof requestIdleCallback !== "undefined"
+            ? () => requestIdleCallback(() => void processOne())
+            : () => setTimeout(() => void processOne(), 0);
+        scheduleNext();
+      };
+
+      const scheduleFirst =
+        typeof requestIdleCallback !== "undefined"
+          ? () => requestIdleCallback(() => void processOne())
+          : () => setTimeout(() => void processOne(), 0);
+      scheduleFirst();
     };
-    void run();
+
+    run();
     return () => {
       cancelled = true;
     };

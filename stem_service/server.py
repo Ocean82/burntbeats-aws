@@ -130,8 +130,9 @@ async def split(
 
     input_path = out_dir / (file.filename or "input.wav")
     try:
-        content = await file.read()
-        input_path.write_bytes(content)
+        with open(input_path, "wb") as f:
+            while chunk := await file.read(1024 * 1024):
+                f.write(chunk)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to save upload: {e}") from e
 
