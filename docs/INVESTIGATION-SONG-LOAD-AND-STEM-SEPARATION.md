@@ -112,9 +112,9 @@ If both leave `STEM_OUTPUT_DIR` unset, they point to the same directory. If set,
 
 ### Waveform display
 
-- **WaveformEditor** (1224–1389) does **not** use the actual decoded audio. It uses `stem.waveform`, which comes from **preset** `stemDefinitions` (e.g. `generateWaveform(seed, 72, bias)`). So the bars are decorative, not derived from the stem WAV. Trim overlay is driven by `trim` state (start/end %).
+- **WaveformEditor** uses **real** waveform when available: after decode, `computeWaveformFromBuffer(buffer, 1024)` builds a peak envelope; stored in `stemWaveforms` and optionally cached in IndexedDB by stem URL. Fallback: preset `stem.waveform` (72 bars). Trim overlay is driven by `trim` state (start/end %) over the same envelope so trim matches audible content and export.
 
-**Summary:** Stems are displayed as cards with preset waveforms and real trim/mixer; playback and export use the real buffers from `stem.url`.
+**Summary:** Stems are displayed as cards with real or preset waveforms and real trim/mixer; playback and export use the real buffers from `stem.url` with sample-boundary trim.
 
 ---
 
@@ -123,13 +123,13 @@ If both leave `STEM_OUTPUT_DIR` unset, they point to the same directory. If set,
 | Action | Handler | Behavior |
 |--------|---------|----------|
 | **Hear (preview)** | `onPreview` → `handlePreviewStem(stem.id, stemUrl)` | Play/stop single stem from `stemBuffers[stemId]` or fetch `stemUrl` and decode; play via `AudioBufferSourceNode` + Gain. |
-| **Solo** | `onSolo` → `setSoloStem(...)` | When set, “Play mix” plays only that stem. |
-| **Mute** | `onMute` → `setMutedStems(...)` | Muted stems excluded from “Play mix” and from export. |
+| **Solo** | `onSolo` → `setSoloStems(...)` | If any stem is soloed, only soloed stems are in the mix (play and export); otherwise per-track mute applies. Multiple stems can be soloed. |
+| **Mute** | `onMute` → `setMutedStems(...)` | Muted stems excluded from “Play mix” and from export when no solo is active. |
 | **Download** | `onDownload` → `window.open(stemUrl, "_blank")` | Only when `stemUrl` exists (after split). Opens stem WAV in new tab. |
-| **Trim** | `onTrimChange` → `setTrimMap(...)` | Start/end % applied in Play mix and export. |
+| **Trim** | `onTrimChange` → `setTrimMap(...)` | Start/end % converted to sample-boundary times via `trimToSeconds()`; same window used for Play mix and export so waveform, playback, and exported WAV match. |
 | **Level & pan** | `onMixerChange` → `setMixerState(...)` | Gain (dB) and pan applied in Play mix and export. |
-| **Play mix** | `handlePlayMix` | Builds list from `splitResultStems` (solo or non-muted), plays each from `stemBuffers` with trim and mixer, synced start. |
-| **Export WAV** | `exportMasterWav` | Renders mix in `OfflineAudioContext` from non-muted stems with trim and mixer → WAV blob → download `{uploadName}_master.wav`. |
+| **Play mix** | `handlePlayMix` | Builds list from `splitResultStems` (soloed-only if any solo, else non-muted), plays each from `stemBuffers` with sample-accurate trim and mixer, synced start. |
+| **Export WAV** | `exportMasterWav` | Renders mix in `OfflineAudioContext(2, frames, 44100)` from soloed or non-muted stems (same rule as play) with sample-accurate trim and mixer → WAV blob → download `{uploadName}_master.wav`. |
 | **Load to tracks** | “Load to tracks” → `loadStemsToTracks` → `loadStemsIntoBuffers()` | Re-fetches/decodes stems into `stemBuffers` if needed (same as auto-load after split). |
 
 So the user can preview, solo, mute, trim, level/pan, play full mix, export master, and download individual stems; behavior is consistent with the data flow.
@@ -143,10 +143,9 @@ So the user can preview, solo, mute, trim, level/pan, play full mix, export mast
 - **Actual:** Split progress is a local timer (e.g. to 85% over ~2.8s) in `App.tsx` (useEffect with `requestAnimationFrame`). It does not reflect real separation progress.
 - **Recommendation:** If the stem service ever exposes progress (e.g. SSE or polling), wire the progress bar to it; otherwise consider labeling it as “Estimating…” or hiding the percentage.
 
-### 6.2 Waveform is not from stem audio
+### 6.2 Waveform from stem audio (addressed)
 
-- **Actual:** Waveform bars are from preset `stem.waveform` (synthetic). Trim overlay reflects trim state but not actual amplitude.
-- **Recommendation:** Optional: compute a simple waveform (e.g. RMS or peak per segment) from `stemBuffers[stem.id]` after load and use it in `WaveformEditor` for a more accurate display.
+- **Actual:** After load, `computeWaveformFromBuffer(buffer, 1024)` builds a peak envelope per stem; stored in `stemWaveforms` and passed to `WaveformEditor` as `realWaveform`. IndexedDB caches by stem URL to avoid recompute on remount. Preset waveform used only before decode.
 
 ### 6.3 STEM_OUTPUT_DIR must match
 
@@ -199,7 +198,21 @@ There is no documented or technical reason the progress bar and waveform use fak
 
 ---
 
-## 9. Quick reference
+## 9. Sample rate and stem alignment
+
+### Sample rate
+
+- **Frontend:** Export uses `OfflineAudioContext(2, frameCount, 44100)`; all stems are mixed at 44.1 kHz. Playback uses the default `AudioContext` (may be 48 kHz on some devices); Web Audio resamples decoded buffers as needed.
+- **Stem service:** `config.py` defines `TARGET_SAMPLE_RATE = 44100`. ONNX vocal path writes 44.1k; Demucs output is model-native (htdemucs typically 44.1k). Phase inversion preserves original input rate. For consistent mix alignment and to avoid drift, any new writers should resample to `TARGET_SAMPLE_RATE` when writing final stems.
+
+### Latency and alignment
+
+- Stems from the same job are produced in one pipeline; Demucs outputs same length per stem, and phase inversion is length- and channel-aligned. So stems should start at 0 with the same length in practice.
+- If you hear **flamming**, **hollow instrumental**, or **weird stereo collapse**, the usual cause is alignment: different stem lengths, different leading silence, or sample-rate mismatch. Mitigations: (1) enforce a single output sample rate (e.g. 44.1k) in the stem service; (2) keep instrumental from the same model when possible (Demucs `no_vocals`); (3) when using phase inversion, use strict length/channel/sample-rate alignment (as in `phase_inversion.py`).
+
+---
+
+## 10. Quick reference
 
 | Topic | Where |
 |-------|------|
@@ -212,5 +225,7 @@ There is no documented or technical reason the progress bar and waveform use fak
 | Stage 2 | `split.py`: `run_demucs(..., stems=4)` (htdemucs) |
 | Models | htdemucs (`.pth`/`.th`); ONNX: Kim_Vocal_2, UVR-MDX-NET-Voc_FT + model_data.json |
 | Stems save dir | `STEM_OUTPUT_DIR` (default `tmp/stems`); per job `{id}/stems/*.wav` |
-| Frontend display | `splitResultStems` → `visibleStems` → StemCard; `loadStemsIntoBuffers` → `stemBuffers` |
+| Frontend display | `splitResultStems` → `visibleStems` → StemCard; `loadStemsIntoBuffers` → `stemBuffers`; real waveform from `stemWaveforms` |
+| Solo/Mute | If any stem soloed → only soloed in play/export; else per-track mute. Multiple solos supported. |
+| Trim | `trimToSeconds(buffer, trim)` → sample-boundary start/end; same for play and export. |
 | User actions | Hear, Solo, Mute, Download, Trim, Level/Pan, Play mix, Export WAV, Load to tracks |

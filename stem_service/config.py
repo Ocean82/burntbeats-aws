@@ -35,3 +35,7 @@ def htdemucs_available() -> bool:
 STEM_BACKEND = os.environ.get("STEM_BACKEND", "hybrid")
 # Pre-trim input to vocal span with Silero VAD to speed up separation (optional)
 USE_VAD_PRETRIM = os.environ.get("USE_VAD_PRETRIM", "").strip().lower() in ("1", "true", "yes")
+
+# Target sample rate for stem output. Mix alignment and export assume consistent rate (frontend uses 44.1k).
+# ONNX vocal path already writes 44100; Demucs uses model native (often 44.1k). Resample to this when adding new writers.
+TARGET_SAMPLE_RATE = 44100

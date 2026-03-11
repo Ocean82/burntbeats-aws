@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { splitStems, type SplitQuality, type StemResult } from "./api";
 import { cn } from "./utils/cn";
+import { getStemWaveform, setStemWaveform } from "./waveform-cache";
 
 type StemId = "vocals" | "drums" | "bass" | "melody" | "instrumental" | "other";
 
@@ -52,7 +53,8 @@ const pipelineSteps = [
   { title: "Play & export", blurb: "Play the full mix, then download your master." },
 ];
 
-const WAVEFORM_BINS = 72;
+/** Waveform bar count: high resolution so trim overlay matches transients (500–2000 range). */
+const WAVEFORM_BINS = 1024;
 
 function generateWaveform(seed: number, length = WAVEFORM_BINS, bias = 0.58) {
   return Array.from({ length }, (_, index) => {
@@ -65,10 +67,10 @@ function generateWaveform(seed: number, length = WAVEFORM_BINS, bias = 0.58) {
   });
 }
 
-/** Compute waveform bars from decoded AudioBuffer (max per bin, normalized). */
+/** Peak envelope from decoded AudioBuffer (max per bin across channels), normalized. Used so trim UI matches audible content. */
 function computeWaveformFromBuffer(buffer: AudioBuffer, bins: number): number[] {
-  const channel = buffer.getChannelData(0);
-  const length = channel.length;
+  const numChannels = buffer.numberOfChannels;
+  const length = buffer.length;
   if (length === 0) return Array(bins).fill(0.12);
   const binSize = length / bins;
   const values: number[] = [];
@@ -78,8 +80,10 @@ function computeWaveformFromBuffer(buffer: AudioBuffer, bins: number): number[] 
     const end = Math.min(length, Math.floor((i + 1) * binSize));
     let max = 0;
     for (let j = start; j < end; j++) {
-      const v = Math.abs(channel[j] ?? 0);
-      if (v > max) max = v;
+      for (let c = 0; c < numChannels; c++) {
+        const v = Math.abs(buffer.getChannelData(c)[j] ?? 0);
+        if (v > max) max = v;
+      }
     }
     values.push(max);
     if (max > peak) peak = max;
@@ -176,6 +180,23 @@ const initialMixer: Record<string, MixerState> = {
 
 function formatDb(value: number) {
   return `${value > 0 ? "+" : ""}${value.toFixed(1)} dB`;
+}
+
+/** Trim window in seconds, aligned to sample boundaries so export matches waveform/playback. */
+function trimToSeconds(
+  buffer: AudioBuffer,
+  trim: TrimState
+): { trimStart: number; trimEnd: number } {
+  const length = buffer.length;
+  const sr = buffer.sampleRate;
+  const startSample = Math.floor((trim.start / 100) * length);
+  const endSample = Math.min(Math.ceil((trim.end / 100) * length), length);
+  const trimStart = Math.max(0, startSample / sr);
+  const trimEnd = Math.min(buffer.duration, endSample / sr);
+  return {
+    trimStart,
+    trimEnd: trimEnd > trimStart ? trimEnd : trimStart,
+  };
 }
 
 function audioBufferToWav(buffer: AudioBuffer): Blob {
@@ -334,7 +355,8 @@ function App() {
     instrumental: false,
     other: false,
   });
-  const [soloStem, setSoloStem] = useState<string | null>(null);
+  /** When any stem is soloed, only soloed stems are audible/exported; else per-track mute applies. */
+  const [soloStems, setSoloStems] = useState<Record<string, boolean>>({});
   const [stemBuffers, setStemBuffers] = useState<Record<string, AudioBuffer>>(
     {},
   );
@@ -437,12 +459,32 @@ function App() {
   }, [splitResultStems, loadStemsIntoBuffers]);
 
   useEffect(() => {
-    const next: Record<string, number[]> = {};
-    for (const [id, buffer] of Object.entries(stemBuffers)) {
-      next[id] = computeWaveformFromBuffer(buffer, WAVEFORM_BINS);
-    }
-    setStemWaveforms((prev) => (Object.keys(next).length === 0 ? prev : { ...prev, ...next }));
-  }, [stemBuffers]);
+    let cancelled = false;
+    const run = async () => {
+      const next: Record<string, number[]> = {};
+      const stems = splitResultStems;
+      for (const [id, buffer] of Object.entries(stemBuffers)) {
+        if (cancelled) return;
+        const url = stems.find((s) => s.id === id)?.url;
+        let data: number[] | null = url
+          ? await getStemWaveform(url, WAVEFORM_BINS)
+          : null;
+        if (cancelled) return;
+        if (!data || data.length !== WAVEFORM_BINS) {
+          data = computeWaveformFromBuffer(buffer, WAVEFORM_BINS);
+          if (url) void setStemWaveform(url, WAVEFORM_BINS, data);
+        }
+        next[id] = data;
+      }
+      if (!cancelled && Object.keys(next).length > 0) {
+        setStemWaveforms((prev) => ({ ...prev, ...next }));
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [stemBuffers, splitResultStems]);
 
   const stopPreview = () => {
     if (currentSourceRef.current) {
@@ -530,8 +572,9 @@ function App() {
       return;
     }
     stopPreview();
-    const stemsToPlay = soloStem
-      ? splitResultStems.filter((s) => s.id === soloStem)
+    const hasSolo = splitResultStems.some((s) => soloStems[s.id]);
+    const stemsToPlay = hasSolo
+      ? splitResultStems.filter((s) => soloStems[s.id])
       : splitResultStems.filter((s) => !mutedStems[s.id]);
     if (stemsToPlay.length === 0) return;
     const AudioContextCtor =
@@ -548,8 +591,7 @@ function App() {
       const buffer = stemBuffers[stem.id];
       if (!buffer) continue;
       const trim = trimMap[stem.id] ?? defaultTrim;
-      const trimStart = (buffer.duration * trim.start) / 100;
-      const trimEnd = (buffer.duration * trim.end) / 100;
+      const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
       const playDuration = trimEnd - trimStart;
       const mixer = mixerState[stem.id] ?? defaultMixer;
       const gainVal = Math.pow(10, mixer.gain / 20);
@@ -573,7 +615,7 @@ function App() {
     setIsPlayingMix(true);
   }, [
     isPlayingMix,
-    soloStem,
+    soloStems,
     splitResultStems,
     mutedStems,
     stemBuffers,
@@ -592,7 +634,10 @@ function App() {
     setSplitError(null);
 
     try {
-      const stemsToMix = splitResultStems.filter((s) => !mutedStems[s.id]);
+      const hasSolo = splitResultStems.some((s) => soloStems[s.id]);
+      const stemsToMix = hasSolo
+        ? splitResultStems.filter((s) => soloStems[s.id])
+        : splitResultStems.filter((s) => !mutedStems[s.id]);
 
       let maxDuration = 0;
       const sources: {
@@ -607,8 +652,7 @@ function App() {
         const buffer = stemBuffers[stem.id];
         if (!buffer) continue;
         const trim = trimMap[stem.id] ?? defaultTrim;
-        const trimStart = (buffer.duration * trim.start) / 100;
-        const trimEnd = (buffer.duration * trim.end) / 100;
+        const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
         const trimmedDuration = trimEnd - trimStart;
         maxDuration = Math.max(maxDuration, trimmedDuration);
         const mixer = mixerState[stem.id] ?? defaultMixer;
@@ -658,7 +702,7 @@ function App() {
     } finally {
       setIsExporting(false);
     }
-  }, [stemBuffers, splitResultStems, mixerState, mutedStems, trimMap, uploadName]);
+  }, [stemBuffers, splitResultStems, mixerState, mutedStems, soloStems, trimMap, uploadName]);
 
   const handleStemToggle = (stemId: StemId) => {
     setSelectedStems((current) => ({
@@ -1147,8 +1191,10 @@ function App() {
                         onMute={() =>
                           setMutedStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? false) }))
                         }
-                        soloed={soloStem === stem.id}
-                        onSolo={() => setSoloStem((c) => (c === stem.id ? null : stem.id))}
+                        soloed={soloStems[stem.id] ?? false}
+                        onSolo={() =>
+                          setSoloStems((c) => ({ ...c, [stem.id]: !(c[stem.id] ?? false) }))
+                        }
                         onDownload={
                           stemUrl
                             ? () => window.open(stemUrl, "_blank", "noopener")
