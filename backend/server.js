@@ -62,7 +62,8 @@ const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 3
 
 app.post("/api/stems/split", upload.single("file"), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: "Missing file" });
+    console.warn("[POST /api/stems/split] 400: no file in request (field name must be 'file')");
+    return res.status(400).json({ error: "Missing file. Upload an audio file and use form field 'file'." });
   }
   const filePath = req.file.path;
   const stems = (req.body && req.body.stems) || "4";

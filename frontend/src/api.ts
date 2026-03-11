@@ -38,6 +38,10 @@ export async function startStemSplit(
   stems: "2" | "4",
   quality?: SplitQuality
 ): Promise<{ job_id: string }> {
+  if (!file || !(file instanceof File) || file.size === 0) {
+    throw new Error("No file provided. Upload an audio file first.");
+  }
+
   const form = new FormData();
   form.append("file", file);
   form.append("stems", stems);
@@ -55,8 +59,18 @@ export async function startStemSplit(
     clearTimeout(timeoutId);
 
     if (!res.ok) {
+      const contentType = res.headers.get("content-type");
       const text = await res.text();
-      throw new Error(text || `Split failed: ${res.status}`);
+      let message = text || `Split failed: ${res.status}`;
+      if (contentType?.includes("application/json") && text) {
+        try {
+          const json = JSON.parse(text) as { error?: string };
+          if (json.error) message = json.error;
+        } catch {
+          /* use text as-is */
+        }
+      }
+      throw new Error(message);
     }
 
     const data = (await res.json()) as { job_id: string; status?: string };

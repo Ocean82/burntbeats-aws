@@ -1587,7 +1587,7 @@ function App() {
                       <button
                         type="button"
                         onClick={() => void triggerSplit()}
-                        disabled={isSplitting}
+                        disabled={!uploadedFile || isSplitting}
                         className="fire-button flex-1 justify-center disabled:opacity-60"
                       >
                         {isSplitting
