@@ -19,14 +19,16 @@ import { mkdir } from "fs/promises";
 import multer from "multer";
 import os from "os";
 import path from "path";
+import http from "http";
+import https from "https";
 import { fileURLToPath } from "url";
 
-const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:3000").split(",");
+const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000").split(",");
 const API_KEY = process.env.API_KEY || "";
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+const rateLimitStore = new Map();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -96,16 +98,28 @@ const upload = multer({
 // Short timeout for POST: we only wait for 202 + job_id; separation runs in background
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 30_000;
 
-app.post("/api/stems/split", authMiddleware, upload.single("file"), async (req, res) => {
+app.post("/api/stems/split", authMiddleware, (req, res, next) => {
+  upload.single("file")(req, res, (err) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ error: "File too large. Maximum size is 500MB." });
+      }
+      console.error("[POST /api/stems/split] multer error:", err.code || err.message);
+      return res.status(400).json({ error: err.message || "Upload failed." });
+    }
+    next();
+  });
+}, async (req, res) => {
   if (!req.file) {
-    console.warn("[POST /api/stems/split] 400: no file in request (field name must be 'file')");
+    const ct = req.get("content-type") || "";
+    console.warn("[POST /api/stems/split] 400: no file (field must be 'file'); Content-Type:", ct.slice(0, 50));
     return res.status(400).json({ error: "Missing file. Upload an audio file and use form field 'file'." });
   }
   const filePath = req.file.path;
   const stems = (req.body && req.body.stems) || "4";
   const quality = req.body && req.body.quality;
 
-  // Stream from disk to Python (no full-file buffer in memory)
+  // Stream from disk to Python using form-data pipe (fetch + form-data stream can corrupt multipart boundary)
   const form = new FormData();
   form.append("file", createReadStream(filePath), {
     filename: req.file.originalname || "audio.wav",
@@ -113,34 +127,77 @@ app.post("/api/stems/split", authMiddleware, upload.single("file"), async (req, 
   form.append("stems", stems);
   if (quality) form.append("quality", quality);
 
+  const stemUrl = new URL("/split", STEM_SERVICE_URL);
+  const isHttps = stemUrl.protocol === "https:";
+  const client = isHttps ? https : http;
+
+  const reqAbort = new AbortController();
   try {
-    const r = await fetch(`${STEM_SERVICE_URL}/split`, {
-      method: "POST",
-      body: form,
-      headers: form.getHeaders(),
-      signal: AbortSignal.timeout(SPLIT_ACCEPT_TIMEOUT_MS),
-      duplex: "half",
+    const data = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reqAbort.abort();
+        reject(new Error("TimeoutError"));
+      }, SPLIT_ACCEPT_TIMEOUT_MS);
+
+      const opts = {
+        hostname: stemUrl.hostname,
+        port: stemUrl.port || (isHttps ? 443 : 80),
+        path: stemUrl.pathname + stemUrl.search,
+        method: "POST",
+        headers: form.getHeaders(),
+        signal: reqAbort.signal,
+      };
+
+      const proxyReq = client.request(opts, (proxyRes) => {
+        clearTimeout(timeout);
+        const chunks = [];
+        proxyRes.on("data", (d) => chunks.push(d));
+        proxyRes.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf-8");
+          try {
+            const parsed = body ? JSON.parse(body) : {};
+            if (proxyRes.statusCode >= 400) {
+              let errMsg = body || proxyRes.statusMessage;
+              try {
+                const j = JSON.parse(body || "{}");
+                if (j.detail != null) errMsg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+              } catch (_) {
+                /* use body as-is */
+              }
+              reject({ statusCode: proxyRes.statusCode, error: errMsg });
+            } else {
+              resolve({ statusCode: proxyRes.statusCode, data: parsed });
+            }
+          } catch (e) {
+            reject(e);
+          }
+        });
+        proxyRes.on("error", reject);
+      });
+      proxyReq.on("error", reject);
+      form.pipe(proxyReq);
     });
-    if (!r.ok) {
-      const t = await r.text();
-      return res.status(r.status).json({ error: t || r.statusText });
-    }
-    const data = await r.json();
-    if (r.status === 202) {
-      return res.status(202).json({ job_id: data.job_id, status: data.status ?? "accepted" });
+
+    if (data.statusCode === 202) {
+      return res.status(202).json({ job_id: data.data.job_id, status: data.data.status ?? "accepted" });
     }
     const baseUrl = `${req.protocol}://${req.get("host")}`;
-    data.stems = (data.stems || []).map((s) => ({
+    const d = data.data;
+    d.stems = (d.stems || []).map((s) => ({
       id: s.id,
-      url: `${baseUrl}/api/stems/file/${data.job_id}/${s.id}.wav`,
+      url: `${baseUrl}/api/stems/file/${d.job_id}/${s.id}.wav`,
       path: s.path,
     }));
-    res.json(data);
+    res.json(d);
   } catch (e) {
+    if (e && typeof e === "object" && "statusCode" in e && "error" in e) {
+      console.warn("[POST /api/stems/split] stem service error:", e.statusCode, e.error);
+      return res.status(e.statusCode).json({ error: e.error });
+    }
     const err = e && typeof e === "object" ? e : { name: "", message: String(e) };
     console.error("[POST /api/stems/split] proxy error:", err.name, err.message, err.cause ?? "");
     const message =
-      err.name === "TimeoutError"
+      err.name === "TimeoutError" || err.message === "TimeoutError"
         ? "Stem service did not accept in time (check stem service is running)"
         : "Stem service unavailable (ensure stem service runs on port 5000; try STEM_SERVICE_URL=http://127.0.0.1:5000)";
     res.status(502).json({ error: message });
