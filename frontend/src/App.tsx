@@ -13,10 +13,28 @@ import {
   Volume2,
   VolumeX,
   Headphones,
+  HelpCircle,
+  Undo2,
+  Redo2,
+  Save,
+  Repeat,
 } from "lucide-react";
 import { splitStems, type SplitQuality, type StemResult } from "./api";
 import { cn } from "./utils/cn";
 import { getStemWaveform, setStemWaveform } from "./waveform-cache";
+import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
+import { useHistory } from "./hooks/useHistory";
+import {
+  HelpModal,
+  ExportOptionsModal,
+  MixerPresetsModal,
+  OnboardingTour,
+  BatchQueue,
+  ComparisonToggle,
+  type ExportOptions,
+  type MixerPreset,
+  type QueueItem,
+} from "./components";
 
 type StemId = "vocals" | "drums" | "bass" | "melody" | "instrumental" | "other";
 
@@ -373,6 +391,25 @@ function App() {
     loudness: -9,
   });
 
+  // New UI state for enhanced features
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showPresetsModal, setShowPresetsModal] = useState(false);
+  const [isComparing, setIsComparing] = useState(false);
+  const [showingOriginal, setShowingOriginal] = useState(false);
+  const [batchQueue, setBatchQueue] = useState<QueueItem[]>([]);
+  const [batchQueueExpanded, setBatchQueueExpanded] = useState(true);
+  const [originalAudioBuffer, setOriginalAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [selectedStemIndex, setSelectedStemIndex] = useState(0);
+  const [playheadPosition, setPlayheadPosition] = useState(0);
+  const playheadIntervalRef = useRef<number | null>(null);
+  const playStartTimeRef = useRef<number>(0);
+  const mixDurationRef = useRef<number>(0);
+
+  // History for undo/redo
+  const mixerHistory = useHistory<Record<string, MixerState>>(initialMixer);
+  const trimHistory = useHistory<Record<string, TrimState>>(initialTrim);
+
   const inputRef = useRef<HTMLInputElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
@@ -592,6 +629,12 @@ function App() {
     });
     mixSourceRefs.current = [];
     setIsPlayingMix(false);
+    // Reset playhead
+    if (playheadIntervalRef.current) {
+      cancelAnimationFrame(playheadIntervalRef.current);
+      playheadIntervalRef.current = null;
+    }
+    setPlayheadPosition(0);
   }, []);
 
   const handlePlayMix = useCallback(async () => {
@@ -641,6 +684,26 @@ function App() {
     }
     mixSourceRefs.current = sources;
     setIsPlayingMix(true);
+    
+    // Track playhead position
+    const firstStem = stemsToPlay[0];
+    const buffer = stemBuffers[firstStem.id];
+    if (buffer) {
+      const trim = trimMap[firstStem.id] ?? defaultTrim;
+      const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
+      mixDurationRef.current = trimEnd - trimStart;
+      playStartTimeRef.current = context.currentTime;
+      
+      const updatePlayhead = () => {
+        const elapsed = context.currentTime - playStartTimeRef.current;
+        const progress = Math.min(100, (elapsed / mixDurationRef.current) * 100);
+        setPlayheadPosition(progress);
+        if (progress < 100 && isPlayingMix) {
+          playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+        }
+      };
+      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+    }
   }, [
     isPlayingMix,
     soloStems,
@@ -787,10 +850,149 @@ function App() {
   const resetTrackAdjustments = useCallback(() => {
     setTrimMap({ ...initialTrim });
     setMixerState({ ...initialMixer });
+    trimHistory.reset({ ...initialTrim });
+    mixerHistory.reset({ ...initialMixer });
+  }, [trimHistory, mixerHistory]);
+
+  // Load a mixer preset
+  const handleLoadPreset = useCallback((preset: MixerPreset) => {
+    if (Object.keys(preset.mixerState).length > 0) {
+      setMixerState(preset.mixerState);
+      mixerHistory.set(preset.mixerState);
+    }
+    if (Object.keys(preset.trimMap).length > 0) {
+      setTrimMap(preset.trimMap);
+      trimHistory.set(preset.trimMap);
+    }
+    if (Object.keys(preset.mutedStems).length > 0) {
+      setMutedStems(preset.mutedStems);
+    }
+  }, [mixerHistory, trimHistory]);
+
+  // Export with options
+  const handleExportWithOptions = useCallback(async (options: ExportOptions) => {
+    // For now, just use the existing export function
+    // In a full implementation, this would handle different formats and targets
+    await exportMasterWav();
+    setShowExportModal(false);
+  }, [exportMasterWav]);
+
+  // Comparison toggle
+  const toggleComparison = useCallback(() => {
+    setIsComparing((c) => !c);
+    setShowingOriginal(false);
   }, []);
+
+  const switchComparisonSource = useCallback(() => {
+    setShowingOriginal((s) => !s);
+  }, []);
+
+  // Batch queue handlers
+  const removeFromBatchQueue = useCallback((id: string) => {
+    setBatchQueue((q) => q.filter((item) => item.id !== id));
+  }, []);
+
+  const clearCompletedFromQueue = useCallback(() => {
+    setBatchQueue((q) => q.filter((item) => item.status !== "complete"));
+  }, []);
+
+  // Keyboard shortcut handlers
+  const shortcutHandlers: ShortcutHandlers = useMemo(() => ({
+    playStop: () => {
+      if (splitResultStems.length > 0) {
+        void handlePlayMix();
+      }
+    },
+    solo1: () => {
+      const stemId = visibleStems[0]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    solo2: () => {
+      const stemId = visibleStems[1]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    solo3: () => {
+      const stemId = visibleStems[2]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    solo4: () => {
+      const stemId = visibleStems[3]?.id;
+      if (stemId) setSoloStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    muteToggle: () => {
+      const stemId = visibleStems[selectedStemIndex]?.id;
+      if (stemId) setMutedStems((c) => ({ ...c, [stemId]: !(c[stemId] ?? false) }));
+    },
+    export: () => {
+      if (splitResultStems.length > 0) {
+        setShowExportModal(true);
+      }
+    },
+    undo: () => {
+      mixerHistory.undo();
+      setMixerState(mixerHistory.state);
+    },
+    redo: () => {
+      mixerHistory.redo();
+      setMixerState(mixerHistory.state);
+    },
+    help: () => setShowHelpModal(true),
+    escape: () => {
+      if (showHelpModal) setShowHelpModal(false);
+      else if (showExportModal) setShowExportModal(false);
+      else if (showPresetsModal) setShowPresetsModal(false);
+      else if (isPlayingMix) handleStopMix();
+    },
+  }), [
+    splitResultStems,
+    handlePlayMix,
+    visibleStems,
+    selectedStemIndex,
+    mixerHistory,
+    showHelpModal,
+    showExportModal,
+    showPresetsModal,
+    isPlayingMix,
+    handleStopMix,
+  ]);
+
+  // Activate keyboard shortcuts
+  useKeyboardShortcuts(shortcutHandlers, true);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-white">
+      {/* Onboarding Tour for new users */}
+      <OnboardingTour onComplete={() => {}} onSkip={() => {}} />
+      
+      {/* Modals */}
+      <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      <ExportOptionsModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        onExport={handleExportWithOptions}
+        isExporting={isExporting}
+        stemCount={splitResultStems.length}
+      />
+      <MixerPresetsModal
+        isOpen={showPresetsModal}
+        onClose={() => setShowPresetsModal(false)}
+        onLoadPreset={handleLoadPreset}
+        currentMixerState={mixerState}
+        currentTrimMap={trimMap}
+        currentMutedStems={mutedStems}
+      />
+      
+      {/* Batch Queue */}
+      {batchQueue.length > 0 && (
+        <BatchQueue
+          items={batchQueue}
+          isExpanded={batchQueueExpanded}
+          onToggleExpand={() => setBatchQueueExpanded((e) => !e)}
+          onRemoveItem={removeFromBatchQueue}
+          onClearCompleted={clearCompletedFromQueue}
+        />
+      )}
+      
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="fire-orb left-[-8rem] top-[-6rem] h-80 w-80" />
         <div className="fire-orb right-[-10rem] top-20 h-[26rem] w-[26rem] opacity-75" />
@@ -855,6 +1057,53 @@ function App() {
                 {splitResultStems.length} stems ready
               </p>
             )}
+            
+            {/* Quick action buttons */}
+            <div className="flex items-center gap-2">
+              {/* Undo/Redo buttons */}
+              <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
+                <button
+                  type="button"
+                  onClick={() => { mixerHistory.undo(); setMixerState(mixerHistory.state); }}
+                  disabled={!mixerHistory.canUndo}
+                  className="flex h-8 w-8 items-center justify-center text-white/50 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/50"
+                  title="Undo (Cmd/Ctrl + Z)"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </button>
+                <div className="h-4 w-px bg-white/10" />
+                <button
+                  type="button"
+                  onClick={() => { mixerHistory.redo(); setMixerState(mixerHistory.state); }}
+                  disabled={!mixerHistory.canRedo}
+                  className="flex h-8 w-8 items-center justify-center text-white/50 transition hover:text-white disabled:opacity-30 disabled:hover:text-white/50"
+                  title="Redo (Cmd/Ctrl + Y)"
+                >
+                  <Redo2 className="h-4 w-4" />
+                </button>
+              </div>
+              
+              {/* Presets button */}
+              <button
+                type="button"
+                onClick={() => setShowPresetsModal(true)}
+                className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:border-white/20 hover:text-white"
+                title="Mixer presets"
+              >
+                <Save className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Presets</span>
+              </button>
+              
+              {/* Help button */}
+              <button
+                type="button"
+                onClick={() => setShowHelpModal(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/50 transition hover:border-white/20 hover:text-white"
+                title="Keyboard shortcuts (?)"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </header>
 
@@ -1212,14 +1461,22 @@ function App() {
                     <button
                       type="button"
                       className="fire-button icon-pulse-hover flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"
-                      onClick={() => void exportMasterWav()}
+                      onClick={() => setShowExportModal(true)}
                       disabled={
                         isExporting || Object.keys(stemBuffers).length === 0
                       }
                     >
                       <Download className="h-4 w-4" strokeWidth={2} />
-                      {isExporting ? "Rendering..." : "Export WAV"}
+                      {isExporting ? "Rendering..." : "Export"}
                     </button>
+                    {/* A/B Comparison toggle */}
+                    <ComparisonToggle
+                      isComparing={isComparing}
+                      showingOriginal={showingOriginal}
+                      onToggle={toggleComparison}
+                      onSwitch={switchComparisonSource}
+                      disabled={!originalAudioBuffer}
+                    />
                     <button
                       type="button"
                       className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:border-white/20 hover:text-white"
@@ -1520,6 +1777,8 @@ function StemCard({
   onLoadToTrack?: () => void;
   mixerValue?: MixerState;
   onMixerChange?: (value: MixerState) => void;
+  playheadPosition?: number;
+  onSeek?: (position: number) => void;
 }) {
   const mixer = mixerValue ?? defaultMixer;
   const stemBg = { backgroundColor: `${stem.glow}10` };
