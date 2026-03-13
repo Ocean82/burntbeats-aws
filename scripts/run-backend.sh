@@ -10,6 +10,8 @@ export STEM_SERVICE_URL="${STEM_SERVICE_URL:-http://127.0.0.1:5000}"
 mkdir -p "$STEM_OUTPUT_DIR"
 
 cd backend
+# Optional: load backend/.env so PORT and CORS match server (e.g. PORT=8001)
+if [ -f .env ]; then set -a; . ./.env; set +a; fi
 if [ ! -d node_modules ]; then
   echo "Installing backend deps..."
   npm install

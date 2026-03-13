@@ -12,12 +12,12 @@ import sys
 from pathlib import Path
 
 from stem_service.config import (
-    DEMUCS_EXTRA_Q_YAML,
-    DEMUCS_EXTRA_YAML,
     MODELS_DIR,
     REPO_ROOT,
+    USE_DEMUCS_SHIFTS_0,
     demucs_extra_available,
     ensure_htdemucs_th,
+    get_demucs_quality_bag_config,
     htdemucs_available,
     DEMUCS_DEVICE,
 )
@@ -32,8 +32,9 @@ from stem_service.config import (
 DEMUCS_SHIFTS_SPEED = 0
 DEMUCS_SHIFTS_QUALITY = 3  # 3 shifts gives significant quality improvement over 1
 DEMUCS_OVERLAP = 0.25
-DEMUCS_SEGMENT_SEC_SPEED = 10  # Larger segment = faster for speed mode
-DEMUCS_SEGMENT_SEC_QUALITY = 7  # Smaller segment = better quality for quality mode
+# htdemucs max segment is 7.8s; keep both <= 7 to stay under
+DEMUCS_SEGMENT_SEC_SPEED = 7
+DEMUCS_SEGMENT_SEC_QUALITY = 7
 DEMUCS_SEGMENT_SEC = 7  # Default
 
 # demucs.extra settings
@@ -59,21 +60,24 @@ def run_demucs(
     use_extra = not prefer_speed and demucs_extra_available() and stems == 4
 
     if use_extra:
-        # Use demucs.extra bag for quality (only for 4-stem)
+        # Use selected quality bag (mdx_extra_q or mdx_extra per DEMUCS_QUALITY_BAG)
+        model_name, repo, segment, output_subdir = get_demucs_quality_bag_config()
         cmd = _build_demucs_cmd(
             input_path=input_path,
             output_dir=output_dir,
-            model_name="demucs.extra",
+            model_name=model_name,
             shifts=0,  # Bag already averages multiple models
-            segment=DEMUCS_EXTRA_SEGMENT,
-            repo=MODELS_DIR,
+            segment=segment,
+            repo=repo,
             two_stems=False,
         )
         result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
         if result.returncode != 0:
-            raise RuntimeError(f"demucs.extra failed: {result.stderr or result.stdout}")
+            raise RuntimeError(
+                f"Demucs bag ({model_name}) failed: {result.stderr or result.stdout}"
+            )
         track_name = input_path.stem
-        base = output_dir / "demucs.extra" / track_name
+        base = output_dir / output_subdir / track_name
     else:
         # Use htdemucs
         if not htdemucs_available():
@@ -82,7 +86,7 @@ def run_demucs(
                 "See README or scripts/copy-models.sh."
             )
         ensure_htdemucs_th()
-        shifts = DEMUCS_SHIFTS_SPEED if prefer_speed else DEMUCS_SHIFTS_QUALITY
+        shifts = 0 if USE_DEMUCS_SHIFTS_0 else (DEMUCS_SHIFTS_SPEED if prefer_speed else DEMUCS_SHIFTS_QUALITY)
         # Use larger segments for speed mode (faster), smaller for quality (better)
         segment = (
             DEMUCS_SEGMENT_SEC_SPEED if prefer_speed else DEMUCS_SEGMENT_SEC_QUALITY

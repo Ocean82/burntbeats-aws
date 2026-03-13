@@ -30,13 +30,6 @@ import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboard
 import { useHistory } from "./hooks/useHistory";
 import { type MixerPreset, type ExportOptions, PipelineStep, WaveformEditor, HelpModal, ExportOptionsModal, MixerPresetsModal, OnboardingTour, BatchQueue, ComparisonToggle, type QueueItemStatus } from "./components";
 
-const presetOptions = [
-  "Full 4-Stem Split",
-  "A Cappella",
-  "Instrumental",
-  "DJ Performance Pack",
-];
-
 const pipelineSteps = [
   { title: "Upload & split", blurb: "Your track is split into separate stems." },
   { title: "Listen & tweak", blurb: "Hear each stem, adjust levels and trim." },
@@ -157,7 +150,6 @@ function formatDb(value: number) {
   
 
 function App() {
-  const [selectedPreset, setSelectedPreset] = useState(presetOptions[0]);
   const [stemCount, setStemCount] = useState<2 | 4>(DEFAULT_STEM_COUNT as 2 | 4);
   const [splitQuality, setSplitQuality] = useState<SplitQuality>("quality");
   const [selectedStems, setSelectedStems] = useState<Record<StemId, boolean>>({
@@ -1281,32 +1273,6 @@ function App() {
                         </p>
                       )}
                     </div>
-                    <div>
-<p className="text-xs uppercase tracking-[0.3em] text-white/65">
-                Preset
-                      </p>
-                      <select
-                        id="stem-preset-select"
-                        value={selectedPreset}
-                        onChange={(event) =>
-                          setSelectedPreset(event.target.value)
-                        }
-                        aria-label="Stem split preset"
-                        title="Stem split preset"
-                        className="mt-3 w-full rounded-2xl border border-white/10 bg-white/7 px-4 py-3 text-sm text-white outline-none ring-0 transition focus:border-[var(--accent)]"
-                      >
-                        {presetOptions.map((option) => (
-                          <option
-                            key={option}
-                            value={option}
-                            className="bg-zinc-950 text-white"
-                          >
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
                     {/* Show stem visibility toggles only after split is complete - progressive disclosure */}
                     {splitResultStems.length > 0 && (
                     <motion.div

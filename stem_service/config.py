@@ -9,7 +9,8 @@ STEM_SERVICE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = STEM_SERVICE_DIR.parent
 MODELS_DIR = REPO_ROOT / "models"
 
-# Pip demucs only loads .th from --repo (see demucs/repo.py LocalRepo). We support .pth and auto-copy to .th.
+# Pip demucs only loads .th from --repo. We support .pth and auto-copy to .th.
+# On CPU, prefer htdemucs.th (smaller, faster than .pth); use as optional Stage 3 refinement, not default Stage 1.
 HTDEMUCS_PTH = MODELS_DIR / "htdemucs.pth"
 HTDEMUCS_TH = MODELS_DIR / "htdemucs.th"
 MDX_NET_MODELS_DIR = MODELS_DIR / "MDX_Net_Models"
@@ -21,7 +22,15 @@ DEMUCS_EXTRA_MODELS_DIR = MODELS_DIR / "Demucs_Models"
 DEMUCS_EXTRA_Q_YAML = DEMUCS_EXTRA_MODELS_DIR / "mdx_extra_q.yaml"
 DEMUCS_EXTRA_YAML = DEMUCS_EXTRA_MODELS_DIR / "mdx_extra.yaml"
 
-# Roformer models (for ultra quality mode)
+# Which quality bag to use: mdx_extra_q (lighter, default) | mdx_extra (heavier, better quality, slower)
+DEMUCS_QUALITY_BAG = os.environ.get("DEMUCS_QUALITY_BAG", "mdx_extra_q").strip().lower()
+if DEMUCS_QUALITY_BAG not in ("mdx_extra_q", "mdx_extra"):
+    DEMUCS_QUALITY_BAG = "mdx_extra_q"
+
+# On CPU, shifts=0 is much faster; shifts>0 (random shift and average) helps mainly on GPU. Default 1 (force 0) for CPU.
+USE_DEMUCS_SHIFTS_0 = os.environ.get("USE_DEMUCS_SHIFTS_0", "1").strip().lower() in ("1", "true", "yes")
+
+# Roformer / large .ckpt models: GPU-only. Very slow on CPU; do not use in CPU pipeline.
 MDX23C_CKPT = MODELS_DIR / "MDX23C-8KFFT-InstVoc_HQ.ckpt"
 BS_ROFORMER_317_CKPT = (
     MODELS_DIR / "MDX_Net_Models" / "model_bs_roformer_ep_317_sdr_12.9755.ckpt"
@@ -46,12 +55,50 @@ def htdemucs_available() -> bool:
     return HTDEMUCS_PTH.exists() or HTDEMUCS_TH.exists()
 
 
-def demucs_extra_available() -> bool:
-    """True if demucs.extra bag model is available (mdx_extra_q.yaml + .th files)."""
-    if not DEMUCS_EXTRA_Q_YAML.exists():
+def _demucs_bag_available(yaml_path: Path, th_prefixes: tuple[str, ...]) -> bool:
+    """True if yaml exists and all listed .th files (by hash prefix) exist in same dir."""
+    if not yaml_path.exists():
         return False
-    # Check that at least one model .th file exists
-    return any(DEMUCS_EXTRA_MODELS_DIR.glob("????.th"))
+    for prefix in th_prefixes:
+        if not any(yaml_path.parent.glob(f"{prefix}*.th")):
+            return False
+    return True
+
+
+def demucs_extra_available() -> bool:
+    """True if the selected quality bag (DEMUCS_QUALITY_BAG) is available."""
+    if DEMUCS_QUALITY_BAG == "mdx_extra":
+        # Heavy bag: e51eebcc, a1d90b5c, 5d2d6c55, cfa93e08 (from mdx_extra.yaml)
+        return _demucs_bag_available(
+            DEMUCS_EXTRA_YAML,
+            ("e51eebcc", "a1d90b5c", "5d2d6c55", "cfa93e08"),
+        )
+    # mdx_extra_q: 83fc094f, 464b36d7, 14fc6a69, 7fd6ef75
+    return _demucs_bag_available(
+        DEMUCS_EXTRA_Q_YAML,
+        ("83fc094f", "464b36d7", "14fc6a69", "7fd6ef75"),
+    )
+
+
+def get_demucs_quality_bag_config() -> tuple[str, Path, int, str]:
+    """Return (model_name, repo_path, segment, output_subdir) for the selected quality bag.
+    If selected bag unavailable, falls back to the other bag when possible."""
+    want_heavy = DEMUCS_QUALITY_BAG == "mdx_extra"
+    heavy_ok = _demucs_bag_available(
+        DEMUCS_EXTRA_YAML,
+        ("e51eebcc", "a1d90b5c", "5d2d6c55", "cfa93e08"),
+    )
+    light_ok = _demucs_bag_available(
+        DEMUCS_EXTRA_Q_YAML,
+        ("83fc094f", "464b36d7", "14fc6a69", "7fd6ef75"),
+    )
+    if want_heavy and heavy_ok:
+        return ("mdx_extra", DEMUCS_EXTRA_MODELS_DIR, 44, "mdx_extra")
+    if light_ok:
+        return ("mdx_extra_q", DEMUCS_EXTRA_MODELS_DIR, 44, "mdx_extra_q")
+    if heavy_ok:
+        return ("mdx_extra", DEMUCS_EXTRA_MODELS_DIR, 44, "mdx_extra")
+    return ("mdx_extra_q", DEMUCS_EXTRA_MODELS_DIR, 44, "mdx_extra_q")  # no bag available; caller should not use
 
 
 def mdx23c_available() -> bool:
@@ -70,7 +117,7 @@ def mel_band_roformer_available() -> bool:
 
 
 def get_best_ultra_model() -> Path | None:
-    """Return the best available ultra quality model path."""
+    """Return the best available ultra quality model path (GPU-only; avoid on CPU)."""
     if MEL_BAND_ROFORMER_CKPT.exists():
         return MEL_BAND_ROFORMER_CKPT
     if BS_ROFORMER_317_CKPT.exists():
@@ -80,6 +127,14 @@ def get_best_ultra_model() -> Path | None:
     if MDX23C_CKPT.exists():
         return MDX23C_CKPT
     return None
+
+
+def ultra_available_for_device() -> bool:
+    """True if ultra (RoFormer/MDX23C) should be used: GPU present or USE_ULTRA_ON_CPU=1.
+    On CPU-only, ultra is disabled by default (2–5× slower, same quality as MDX ONNX)."""
+    if os.environ.get("USE_ULTRA_ON_CPU", "").strip().lower() in ("1", "true", "yes"):
+        return True
+    return DEMUCS_DEVICE == "cuda"
 
 
 def is_cuda_available() -> bool:
@@ -111,7 +166,7 @@ else:
 
 # Backend mode: demucs_only | hybrid (hybrid = Stage1 vocals + phase inversion + Stage2 Demucs on instrumental)
 STEM_BACKEND = os.environ.get("STEM_BACKEND", "hybrid")
-# Pre-trim input to vocal span with Silero VAD to speed up separation (default: enabled for speed)
+# Pre-trim input to vocal span with Silero VAD (Stage 0). Cheap on CPU; keeps pipeline fast. Default: enabled.
 USE_VAD_PRETRIM = os.environ.get("USE_VAD_PRETRIM", "true").strip().lower() in (
     "1",
     "true",
@@ -156,6 +211,24 @@ DEMUCS_EXTRA_SEGMENT = 44
 # =======================
 ONNX_SEGMENT_SIZE = 256
 ONNX_OVERLAP = 2
+
+
+def get_onnx_providers() -> list[str]:
+    """
+    Return ONNX Runtime execution providers in preferred order (GPU when available, else CPU).
+    Use for InferenceSession(..., providers=get_onnx_providers()).
+    Set USE_ONNX_CPU=1 to force CPU only (e.g. when GPU memory is needed elsewhere).
+    """
+    if os.environ.get("USE_ONNX_CPU", "").strip().lower() in ("1", "true", "yes"):
+        return ["CPUExecutionProvider"]
+    try:
+        import onnxruntime as ort
+        available = set(ort.get_available_providers())
+    except ImportError:
+        return ["CPUExecutionProvider"]
+    # Prefer CUDA then CPU; ORT will use the first provider that can run the model.
+    order = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+    return [p for p in order if p in available] or (list(available) if available else ["CPUExecutionProvider"])
 
 # =======================
 # VAD Settings

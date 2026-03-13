@@ -15,7 +15,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from stem_service.config import MDXNET_MODELS_DIR, MODELS_DIR
+from stem_service.config import MDXNET_MODELS_DIR, MODELS_DIR, get_onnx_providers
 
 logger = logging.getLogger(__name__)
 
@@ -23,22 +23,16 @@ logger = logging.getLogger(__name__)
 _onx_session_cache: dict[str, Any] = {}
 _cache_lock = threading.Lock()
 
-# Vocal ONNX model paths to check (first existing wins). Per AGENT-models-and-implementation.
-# Only vocal models (Voc) belong here; do not add instrumental (Inst) models for Stage 1 vocal extraction.
-# Ordered by quality (best first): Kim_Vocal_2 > UVR-MDX-NET-Voc_FT > others
+# Vocal ONNX model paths (first existing wins). CPU-optimal Stage 1: MDX ONNX only.
+# Order: Kim_Vocal_2, UVR-MDX-NET-Voc_FT (best bang-for-buck on CPU). No RoFormer/ckpt here.
 VOCAL_MODEL_PATHS: list[Path] = [
     MDXNET_MODELS_DIR / "Kim_Vocal_2.onnx",
     MODELS_DIR / "Kim_Vocal_2.onnx",
     MDXNET_MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
     MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
-    MDXNET_MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
-    MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
+    MODELS_DIR / "MDX_Net_Models" / "Kim_Vocal_2.onnx",
+    MODELS_DIR / "MDX_Net_Models" / "UVR-MDX-NET-Voc_FT.onnx",
 ]
-# Also check MDX_Net_Models for vocal ONNX (some layouts use that dir)
-for name in ("Kim_Vocal_2.onnx", "UVR-MDX-NET-Voc_FT.onnx"):
-    p = MODELS_DIR / "MDX_Net_Models" / name
-    if p not in VOCAL_MODEL_PATHS:
-        VOCAL_MODEL_PATHS.append(p)
 
 # Instrumental ONNX models - used for better instrumental extraction than phase inversion
 INST_MODEL_PATHS: list[Path] = [
@@ -99,12 +93,37 @@ def _model_config_for_path(
     return None
 
 
+def _prefer_quantized(path: Path) -> Path:
+    """Return int8 .quant.onnx path if present and USE_INT8_ONNX is enabled, else path."""
+    import os
+    if os.environ.get("USE_INT8_ONNX", "1").strip().lower() in ("0", "false", "no"):
+        return path
+    quant = path.parent / f"{path.stem}.quant.onnx"
+    return quant if quant.resolve().exists() else path
+
+
 def get_available_vocal_onnx() -> Path | None:
-    """Return first existing vocal ONNX model path, or None."""
+    """Return first existing vocal ONNX model path (prefer int8 .quant.onnx when present), or None."""
     for path in VOCAL_MODEL_PATHS:
-        if path.resolve().exists():
-            return path
+        if not path.resolve().exists():
+            continue
+        return _prefer_quantized(path)
     return None
+
+
+def _onnx_session_options() -> Any:
+    """Build SessionOptions for CPU-efficient inference (threads + graph optimization)."""
+    import os
+
+    import onnxruntime as ort
+
+    opts = ort.SessionOptions()
+    opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+    # 0 = use physical cores with affinity (default); set via ONNXRUNTIME_NUM_THREADS to tune
+    n = os.environ.get("ONNXRUNTIME_NUM_THREADS", "")
+    if n.isdigit() and int(n) >= 0:
+        opts.intra_op_num_threads = int(n)
+    return opts
 
 
 def _get_cached_onnx_session(model_path: Path) -> Any | None:
@@ -118,9 +137,11 @@ def _get_cached_onnx_session(model_path: Path) -> Any | None:
     except ImportError:
         return None
     try:
+        sess_options = _onnx_session_options()
         session = ort.InferenceSession(
             str(model_path),
-            providers=["CPUExecutionProvider"],
+            sess_options=sess_options,
+            providers=get_onnx_providers(),
         )
         with _cache_lock:
             _onx_session_cache[cache_key] = session

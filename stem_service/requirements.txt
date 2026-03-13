@@ -1,9 +1,10 @@
-# CPU-only stem splitting (no CUDA)
+# CPU-only stem splitting (no CUDA). For smaller install on CPU-only hosts: pip install torch --index-url https://download.pytorch.org/whl/cpu first, then pip install -r stem_service/requirements.txt
 torch>=2.0.0
 # Pin <2.9 so load/save work without torchcodec (WSL/CI)
 torchaudio>=2.0.0,<2.9
 soundfile>=0.12.0
 demucs>=4.0.0
+# onnxruntime (not onnxruntime-gpu) for CPU-optimized MDX inference; SessionOptions use ORT_ENABLE_ALL + configurable threads
 onnxruntime>=1.14.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0

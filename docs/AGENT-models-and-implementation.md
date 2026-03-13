@@ -71,6 +71,7 @@ find models -type l
 
 - **Current choice is appropriate for CPU-only:** Stage 1 ONNX (Kim_Vocal_2, Voc_FT, Inst_HQ_4/5) + Stage 2 Demucs (htdemucs) is the right stack for no-GPU deployment.
 - **Other files in `models/`:** Roformer (BS-Roformer-Viperx-1297, model_bs_roformer_ep_937_sdr_10.5309.ckpt), MDX23C ckpts, and silero_vad are either GPU-heavy or need different loaders. They are not wired in; keeping CPU-only means staying with ONNX + Demucs unless product direction changes.
+- **CPU-optimal pipeline:** Stage 0 Silero VAD → Stage 1 MDX ONNX vocal (Kim_Vocal_2 or Voc_FT) → Stage 2 optional Inst_HQ_4/5 → Stage 3 optional htdemucs.th. RoFormer and HP2-3090 models are not used on CPU. The Ultra quality tier is disabled on CPU (falls back to Quality); set `USE_ULTRA_ON_CPU=1` to override (slow, not recommended).
 
 ### Should any models be added for efficiency or quality?
 

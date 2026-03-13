@@ -31,8 +31,10 @@ from stem_service.config import (
     STEM_BACKEND,
     htdemucs_available,
     QUALITY_ULTRA,
+    ultra_available_for_device,
 )
-from stem_service.hybrid import run_hybrid_2stem, run_hybrid_4stem
+from stem_service.demucs_onnx import demucs_onnx_6s_available, demucs_onnx_embedded_available
+from stem_service.hybrid import run_4stem_single_pass_or_hybrid, run_hybrid_2stem, run_hybrid_4stem
 from stem_service.mdx_onnx import get_available_vocal_onnx
 from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.ultra import run_ultra_2stem, run_ultra_4stem, get_ultra_model_info
@@ -76,12 +78,20 @@ async def lifespan(app: FastAPI):
     global _jobs_lock
     _jobs_lock = asyncio.Lock()
 
-    if not htdemucs_available():
+    demucs_onnx_4 = demucs_onnx_embedded_available() or demucs_onnx_6s_available()
+    if not htdemucs_available() and not demucs_onnx_4:
         raise RuntimeError(
-            "Demucs model not found: place htdemucs.pth or htdemucs.th in models/. "
+            "No Demucs model found: place htdemucs.pth/.th in models/ or htdemucs_embedded.onnx and htdemucs_6s.onnx. "
             "See README or scripts/copy-models.sh."
         )
-    logger.info("Model check OK: htdemucs (models/htdemucs.pth or .th)")
+    if demucs_onnx_4:
+        logger.info(
+            "Demucs ONNX 4-stem: embedded=%s, 6s=%s",
+            demucs_onnx_embedded_available(),
+            demucs_onnx_6s_available(),
+        )
+    if htdemucs_available():
+        logger.info("Model check OK: htdemucs (models/htdemucs.pth or .th)")
     onnx_path = get_available_vocal_onnx()
     if onnx_path:
         logger.info("ONNX Stage 1 available: %s", onnx_path.name)
@@ -235,7 +245,7 @@ def _run_separation_sync(
                     progress_callback=on_progress,
                 )
             else:
-                stem_list = run_hybrid_4stem(
+                stem_list = run_4stem_single_pass_or_hybrid(
                     input_path,
                     out_dir,
                     prefer_speed=prefer_speed,
@@ -295,6 +305,14 @@ async def split(
     quality_lower = (quality or "").strip().lower()
     prefer_speed = quality_lower == "speed"
     is_ultra = quality_lower == QUALITY_ULTRA
+
+    # Ultra (RoFormer/MDX23C) is GPU-only on CPU we fall back to quality (MDX ONNX + htdemucs)
+    if is_ultra and not ultra_available_for_device():
+        logger.info(
+            "Ultra requested but running on CPU; using quality (MDX ONNX + Demucs) instead. "
+            "Set USE_ULTRA_ON_CPU=1 to force ultra on CPU."
+        )
+        is_ultra = False
 
     # Determine effective quality mode for pipeline
     if is_ultra:

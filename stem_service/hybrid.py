@@ -14,6 +14,11 @@ from pathlib import Path
 from typing import Callable
 
 from stem_service.config import USE_VAD_PRETRIM
+from stem_service.demucs_onnx import (
+    demucs_onnx_6s_available,
+    demucs_onnx_embedded_available,
+    run_demucs_onnx_4stem,
+)
 from stem_service.phase_inversion import create_perfect_instrumental
 from stem_service.split import run_demucs
 from stem_service.vad import is_vad_available, trim_audio_to_speech_span
@@ -39,6 +44,36 @@ def _effective_input_path(
     return input_path
 
 
+def run_4stem_single_pass_or_hybrid(
+    input_path: Path,
+    output_dir: Path,
+    prefer_speed: bool = False,
+    progress_callback: Callable[[int], None] | None = None,
+) -> list[tuple[str, Path]]:
+    """
+    Try single-pass Demucs ONNX first (embedded = speed, 6s = quality). If unavailable or fails, use hybrid pipeline.
+    Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
+    """
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    flat_dir = output_dir / "stems"
+    flat_dir.mkdir(parents=True, exist_ok=True)
+
+    use_6s = not prefer_speed
+    if (use_6s and demucs_onnx_6s_available()) or (not use_6s and demucs_onnx_embedded_available()):
+        if progress_callback:
+            progress_callback(10)
+        stem_list = run_demucs_onnx_4stem(input_path, flat_dir, use_6s=use_6s)
+        if stem_list is not None:
+            if progress_callback:
+                progress_callback(100)
+            return stem_list
+
+    return run_hybrid_4stem(
+        input_path, output_dir, prefer_speed=prefer_speed, progress_callback=progress_callback
+    )
+
+
 def run_hybrid_4stem(
     input_path: Path,
     output_dir: Path,
@@ -57,8 +92,8 @@ def run_hybrid_4stem(
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Use VAD for both speed AND quality (quality improvement + speed)
-    use_vad = True  # VAD helps both modes
+    # VAD trim: processes only first-to-last speech span → faster when there's leading/trailing silence; output stems are shorter (see docs/VAD-PRETRIM-TRADEOFF.md)
+    use_vad = True  # Set False or USE_VAD_PRETRIM=0 for full-length stems
     effective_input = _effective_input_path(
         input_path, output_dir, use_vad_trim=use_vad
     )
@@ -119,7 +154,7 @@ def run_hybrid_2stem(
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Use VAD for both speed AND quality
+    # VAD trim: same as 4-stem (shorter stems when enabled; see docs/VAD-PRETRIM-TRADEOFF.md)
     use_vad = True
     effective_input = _effective_input_path(
         input_path, output_dir, use_vad_trim=use_vad

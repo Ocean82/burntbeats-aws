@@ -95,8 +95,8 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 },
 });
 
-// Short timeout for POST: we only wait for 202 + job_id; separation runs in background
-const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 30_000;
+// Time to wait for stem service to accept (202). Separation runs in background; frontend polls for completion.
+const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 
 app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   upload.single("file")(req, res, (err) => {

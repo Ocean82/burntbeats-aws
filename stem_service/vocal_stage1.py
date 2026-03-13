@@ -15,6 +15,7 @@ from pathlib import Path
 from stem_service.config import (
     MODELS_DIR,
     REPO_ROOT,
+    USE_DEMUCS_SHIFTS_0,
     ensure_htdemucs_th,
     htdemucs_available,
     DEMUCS_DEVICE,
@@ -28,7 +29,8 @@ from stem_service.mdx_onnx import run_vocal_onnx
 DEMUCS_SHIFTS = 0
 DEMUCS_SHIFTS_QUALITY = 3
 DEMUCS_OVERLAP = 0.25
-DEMUCS_SEGMENT_SEC_SPEED = 10
+# htdemucs max segment is 7.8s; keep both <= 7
+DEMUCS_SEGMENT_SEC_SPEED = 7
 DEMUCS_SEGMENT_SEC_QUALITY = 7
 
 
@@ -49,7 +51,7 @@ def _run_demucs_two_stem(
             "See README or scripts/copy-models.sh."
         )
     ensure_htdemucs_th()
-    shifts = DEMUCS_SHIFTS if prefer_speed else DEMUCS_SHIFTS_QUALITY
+    shifts = 0 if USE_DEMUCS_SHIFTS_0 else (DEMUCS_SHIFTS if prefer_speed else DEMUCS_SHIFTS_QUALITY)
     cmd: list[str] = [
         sys.executable,
         "-m",
@@ -98,13 +100,13 @@ def extract_vocals_stage1(
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    if not prefer_speed:
-        onnx_vocals = output_dir / "onnx_vocals.wav"
-        if (
-            run_vocal_onnx(input_path, onnx_vocals, segment_size=256, overlap=2)
-            is not None
-        ):
-            return (onnx_vocals, None)
+    # Use ONNX (e.g. Kim_Vocal_2) for both Speed and Quality when available—fast on CPU (seconds vs minutes for Demucs).
+    onnx_vocals = output_dir / "onnx_vocals.wav"
+    if (
+        run_vocal_onnx(input_path, onnx_vocals, segment_size=256, overlap=2)
+        is not None
+    ):
+        return (onnx_vocals, None)
     vocals_path, no_vocals_path = _run_demucs_two_stem(
         input_path, output_dir, prefer_speed=prefer_speed
     )

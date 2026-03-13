@@ -1,6 +1,6 @@
 # Burnt Beats — Stem Splitter / Mixer / Master
 
-Stem separation web app (CPU-only). Frontend: React + Vite (keyboard shortcuts, undo/redo, export options modal, mixer presets, onboarding tour, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 1 vocals → phase inversion → Stage 2 Demucs on instrumental; optional Silero VAD pre-trim). Supports **three quality tiers**: Speed, Quality, and Ultra (Roformer models). Default backend: Demucs htdemucs for Stage 1 and Stage 2; ONNX vocal Stage 1 used when model present. **WSL only (Ubuntu)** — run everything inside WSL; same commands work on AWS EC2. No Windows-native commands or PowerShell.
+Stem separation web app (CPU-only). Frontend: React + Vite (keyboard shortcuts, undo/redo, export options modal, mixer presets, onboarding tour, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 0 Silero VAD → Stage 1 MDX ONNX vocal → phase inversion → Stage 2 Demucs on instrumental). **CPU-optimal defaults:** Stage 1 uses MDX ONNX (Kim_Vocal_2 / UVR-MDX-NET-Voc_FT); htdemucs is optional refinement. **Quality tiers:** Speed, Quality (default), and Ultra (RoFormer/MDX23C). On CPU, Ultra is disabled and falls back to Quality (RoFormer and HP2-3090 models are GPU-only). **WSL only (Ubuntu)** — run everything inside WSL; same commands work on AWS EC2. No Windows-native commands or PowerShell.
 
 **Last updated:** 2026-03-11
 
@@ -16,17 +16,19 @@ All commands below are bash. Use a WSL (Ubuntu) terminal; the app is not support
 
 | Project path | Source (WSL path to your stem-models dir) |
 |--------------|------------------------------------------|
-| `models/htdemucs.th` | **Recommended:** `python scripts/download_htdemucs_official.py` (official Facebook checkpoint). Or `stem-models/htdemucs.pth` via copy script (must be full-package format, not state_dict-only). |
+| `models/htdemucs.th` | **Recommended on CPU:** Prefer `.th` (smaller, faster). `python scripts/download_htdemucs_official.py` or copy `stem-models/htdemucs.pth` (app creates `.th` from `.pth` if needed). Used as optional Stage 2/3, not default Stage 1. |
 | `models/MDX_Net_Models/` | `stem-models/MDX_Net_Models/` (incl. `model_data/`) |
 | `models/mdxnet_models/` | `stem-models/all-uvr-models/mdxnet_models-onnx/` (Kim_Vocal_2.onnx, UVR-MDX-NET-Voc_FT.onnx, model_data.json, etc.) |
 | `models/silero_vad.jit` | Optional: for VAD pre-trim (copy from your Silero VAD model location if you use `USE_VAD_PRETRIM=1`) |
 | `models/Demucs_Models/` | Optional: for quality mode with Demucs Extra bag (mdx_extra_q.yaml + .th files) |
-| `models/model_bs_roformer_*.ckpt` | Optional: for Ultra quality mode (Band-Split Roformer, see below) |
-| `models/model_mel_band_roformer_*.ckpt` | Optional: for Ultra quality mode (best separation) |
+| `models/model_bs_roformer_*.ckpt` | Optional: Ultra mode **GPU only** (on CPU, Ultra falls back to Quality) |
+| `models/model_mel_band_roformer_*.ckpt` | Optional: Ultra mode **GPU only** (best separation) |
 
-### Ultra Quality Models (Optional)
+### Ultra Quality Models (Optional, GPU only)
 
-For the premium "Ultra" quality option, add these models to `models/`:
+On **CPU-only** hosts, the "Ultra" tier is disabled and the pipeline uses Quality (MDX ONNX + Demucs) instead. RoFormer and MDX23C `.ckpt` models are very slow on CPU with no quality gain over MDX ONNX. HP2-3090 4-band models are not used in the CPU pipeline.
+
+For the premium "Ultra" quality option **when using a GPU**, add these models to `models/`:
 
 | Model | Size | Quality |
 |-------|------|---------|
@@ -126,19 +128,34 @@ npm’s optional-deps handling can leave Rollup’s platform binary missing. The
 **`NameError: name 'asynccontextmanager' is not defined` (stem_service)**  
 Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `contextlib`. If you still see it, ensure you’re on the latest commit and that the venv uses the repo’s `stem_service/`.
 
+**Split times out or no stems rendered**  
+- **Models required:** Stem splitting needs at least `models/htdemucs.th` (or `htdemucs.pth`). Run `bash scripts/check-models.sh` from repo root; if it fails, run `python scripts/download_htdemucs_official.py` to download the official Demucs checkpoint into `models/`.
+- **Accept timeout:** The backend waits up to 5 minutes for the stem service to accept the upload (return 202). For large files or slow disk, increase `SPLIT_ACCEPT_TIMEOUT_MS` (e.g. 600000 for 10 min) in backend env or `backend/.env`.
+- **Polling:** The frontend polls for up to 16 minutes for job completion. CPU separation can take several minutes per track; use **Speed** quality for faster results.
+
 ---
 
 ## Env vars
 
 | Where | Variable | Description |
 |-------|----------|-------------|
-| Backend | `PORT` | API port (default 3001) |
-| Backend | `STEM_SERVICE_URL` | Python service URL (default http://localhost:5000) |
+| Backend | `PORT` | API port (default 3001). Set in `backend/.env` for server (e.g. 8001 to match security group). |
+| Backend | `STEM_SERVICE_URL` | Python service URL (default http://127.0.0.1:5000) |
 | Backend | `STEM_OUTPUT_DIR` | Dir for stem WAVs (default repo `tmp/stems`); must match Python |
+| Backend | `SPLIT_ACCEPT_TIMEOUT_MS` | Ms to wait for stem service to accept (default 300000 = 5 min) |
+| Backend | `FRONTEND_ORIGINS` | CORS origins, comma-separated (default includes 5173, 5174) |
 | Python | `STEM_OUTPUT_DIR` | Same as backend so backend can serve files |
-| Python | `USE_VAD_PRETRIM` | Set to `1` or `true` to pre-trim input to vocal span (Silero VAD) for faster separation; now enabled for both speed and quality modes |
+| Python | `USE_VAD_PRETRIM` | Set to `1` or `true` to pre-trim to first–last speech (faster when there’s silence; stems are **shorter**). Set to `0` for **full-length** stems. See `docs/VAD-PRETRIM-TRADEOFF.md`. |
 | Python | `USE_GPU` | Set to `auto` (default), `1`, or `0`. Auto-detects CUDA GPU; falls back to CPU. On CPU-only servers, defaults to CPU. |
+| Python | `USE_ULTRA_ON_CPU` | Set to `1` to allow Ultra (RoFormer) on CPU (slow; not recommended). Default: Ultra is disabled on CPU and falls back to Quality. |
 | Python | `STEM_BACKEND` | Set to `hybrid` (default) or `demucs_only` |
+| Python | `OMP_NUM_THREADS` | OpenMP threads for PyTorch/Demucs (default: `nproc`). Set to physical cores to avoid oversubscription. |
+| Python | `MKL_NUM_THREADS` | MKL threads when used (default: same as `OMP_NUM_THREADS`). |
+| Python | `ONNXRUNTIME_NUM_THREADS` | ONNX Runtime intra-op threads (default: 0 = physical cores with affinity). Set to a number to override. |
+| Python | `USE_ONNX_CPU` | Set to `1` to force CPU for all ONNX models (MDX + Demucs ONNX). Default: use CUDA when available (`pip install onnxruntime-gpu`). |
+| Python | `USE_INT8_ONNX` | Set to `0` to disable int8 MDX models (use float32 only). Default: use `.quant.onnx` when present (see `docs/QUANTIZATION-8BIT.md`). |
+| Python | `USE_DEMUCS_SHIFTS_0` | Default `1`: Demucs uses shifts=0 (faster on CPU). Set to `0` to use 3 shifts in Quality. See `docs/CPU-OPTIMIZATION-TIPS.md`. |
+| Python | `DEMUCS_QUALITY_BAG` | `mdx_extra_q` (default, lighter) or `mdx_extra` (heavier, slower, best quality). |
 | Frontend | `VITE_API_BASE_URL` | Backend base URL (e.g. http://localhost:3001) |
 
 ---
@@ -147,16 +164,20 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 
 | Mode | Est. Time (3-min song) | Description |
 |------|----------------------|-------------|
-| **Speed** | ~2 min | VAD pre-trim + htdemucs (shifts=0, segment=10) |
-| **Quality** | ~8 min | VAD + ONNX/Demucs Extra (shifts=3, segment=7) |
-| **Ultra** | ~20-90 min | Roformer models (best separation) |
+| **Speed** | Fast | VAD + **MDX ONNX (Kim_Vocal_2)** Stage 1 when available, else Demucs 2-stem; Stage 2 Demucs (shifts=0, segment=7). |
+| **Quality** | ~2–5× faster than before | VAD + MDX ONNX Stage 1 + Demucs Stage 2 (default; CPU-optimal). Quality bag: mdx_extra_q or mdx_extra. |
+| **Ultra** | GPU only | RoFormer/MDX23C; on CPU falls back to Quality automatically |
 
 ### Optimizations Applied
 
 - **VAD pre-trim**: Now enabled for both speed AND quality modes (reduces processing by 20-40%)
 - **Skip phase inversion**: When Demucs 2-stem is used, instrumental is already available (faster)
-- **Larger segments**: Speed mode uses segment=10, quality uses segment=7
+- **Larger segments**: Speed mode uses segment=7, quality uses segment=7
 - **GPU auto-detect**: Automatically uses CUDA if available (5-10x faster on GPU)
+- **ONNX engines**: MDX and Demucs ONNX use `get_onnx_providers()`: CUDA when available (install `onnxruntime-gpu`), else CPU. Set `USE_ONNX_CPU=1` to force CPU. Graph optimization `ORT_ENABLE_ALL` and `ONNXRUNTIME_NUM_THREADS` apply to both.
+- **CPU threading**: `run-stem-service.sh` sets `OMP_NUM_THREADS`/`MKL_NUM_THREADS` to `nproc` so ONNX and Demucs don’t oversubscribe.
+- **Shifts=0**: Demucs runs with `--shifts 0` by default on CPU (set `USE_DEMUCS_SHIFTS_0=0` to use 3 shifts for Quality). **Light ensemble**: Quality defaults to `mdx_extra_q`; set `DEMUCS_QUALITY_BAG=mdx_extra` for the heavy bag. See `docs/CPU-OPTIMIZATION-TIPS.md`.
+- **CPU-only PyTorch (optional)**: On a machine with no GPU, `pip install torch --index-url https://download.pytorch.org/whl/cpu` keeps the stem service CPU-only and can reduce install size; the default `pip install -r stem_service/requirements.txt` is fine otherwise.
 
 ---
 
