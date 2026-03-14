@@ -20,7 +20,7 @@ import { defaultTrim, defaultMixer } from "./types";
 import { DEFAULT_STEM_COUNT } from "./config";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
-import { useWaveformCompute } from "./hooks/useStemAudio";
+import { useStemAudio, useWaveformCompute } from "./hooks/useStemAudio";
 import { useExport } from "./hooks/useExport";
 import { useBatchQueue } from "./hooks/useBatchQueue";
 import { stemDefinitions, getStemDefinition, pipelineSteps } from "./data/stemDefinitions";
@@ -55,11 +55,16 @@ export function App() {
   const [pipelineIndex, setPipelineIndex] = useState(pipelineSteps.length - 1);
 
   // ── Stem data ─────────────────────────────────────────────────────────────
-  const [stemStates, setStemStates] = useState<Record<string, StemEditorState>>({});
-  const [stemBuffers, setStemBuffers] = useState<Record<string, AudioBuffer>>({});
-  const [stemWaveforms, setStemWaveforms] = useState<Record<string, number[]>>({});
-  const [loadedTracks, setLoadedTracks] = useState<Record<string, boolean>>({});
-  const [isLoadingStems, setIsLoadingStems] = useState(false);
+  const {
+    stemBuffers,
+    stemWaveforms,
+    loadedTracks,
+    isLoadingStems,
+    loadError,
+    loadStemsIntoBuffers,
+    clearStemData,
+    clearLoadError
+  } = useStemAudio();
 
   // ── Audio playback hook ───────────────────────────────────────────────────
   const {
@@ -128,54 +133,19 @@ export function App() {
   }, []);
 
   // ── Load stems into AudioBuffers after split ──────────────────────────────
-  const loadStemsIntoBuffers = useCallback(async () => {
-    if (splitResultStems.length === 0) return;
-    setIsLoadingStems(true);
-    const AudioContextCtor =
-      window.AudioContext ||
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) { setIsLoadingStems(false); return; }
-    if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
-    const context = audioContextRef.current;
-    await context.resume();
-
-    const newBuffers: Record<string, AudioBuffer> = {};
-    const newLoaded: Record<string, boolean> = {};
-    const stemsToLoad = splitResultStems.filter((s) => !stemBuffers[s.id]);
-
-    if (stemsToLoad.length > 0) {
-      try {
-        const results = await Promise.all(
-          stemsToLoad.map(async (stem) => {
-            const res = await fetch(stem.url);
-            if (!res.ok) throw new Error(`HTTP ${res.status} loading stem ${stem.id}`);
-            const buffer = await context.decodeAudioData(await res.arrayBuffer());
-            return { id: stem.id, buffer };
-          })
-        );
-        for (const { id, buffer } of results) { newBuffers[id] = buffer; newLoaded[id] = true; }
-      } catch (e) { console.error("Failed to load stems:", e); }
-    }
-
-    for (const stem of splitResultStems) {
-      if (stemBuffers[stem.id]) { newBuffers[stem.id] = stemBuffers[stem.id]; newLoaded[stem.id] = true; }
-    }
-
-    setStemBuffers((prev) => ({ ...prev, ...newBuffers }));
-    setLoadedTracks((prev) => ({ ...prev, ...newLoaded }));
-    setStemStates((prev) => {
-      const next = { ...prev };
-      for (const stem of splitResultStems) {
-        if (!next[stem.id]) next[stem.id] = defaultStemState();
-      }
-      return next;
-    });
-    setIsLoadingStems(false);
-  }, [splitResultStems, stemBuffers, audioContextRef]);
-
   useEffect(() => {
-    if (splitResultStems.length > 0) void loadStemsIntoBuffers();
-  }, [splitResultStems, loadStemsIntoBuffers]);
+    if (splitResultStems.length > 0) {
+      loadStemsIntoBuffers(splitResultStems, audioContextRef, (ids) => {
+        setStemStates((prev) => {
+          const next = { ...prev };
+          for (const id of ids) {
+            if (!next[id]) next[id] = defaultStemState();
+          }
+          return next;
+        });
+      });
+    }
+  }, [splitResultStems, loadStemsIntoBuffers, audioContextRef, setStemStates]);
 
   // ── File handling ─────────────────────────────────────────────────────────
   const handleFile = useCallback((file: File | null) => {
@@ -615,13 +585,11 @@ export function App() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white/65 mb-3">Master chain</div>
-              <div className="space-y-2 text-sm text-white/68">
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Glue compression</span><span>{masterChain.compression} dB GR</span></div>
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Limiter ceiling</span><span>{masterChain.limiter} dB</span></div>
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Loudness target</span><span>{masterChain.loudness} LUFS</span></div>
-              </div>
+             <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
+               <div className="text-xs font-semibold uppercase tracking-wider text-white/65 mb-3">Track status · {uploadName.replace(/\.[^/.]+$/, "")}</span>
+               {isLoadingStems && <span className="text-xs text-amber-200/90">Loading stems…</span>}
+               {loadError && <span className="text-xs text-red-400">Error: {loadError}</span>}
+             </div>
             </div>
 
             <p className="mt-5 text-xs text-white/65">

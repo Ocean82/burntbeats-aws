@@ -9,13 +9,14 @@ import { getStemWaveform, setStemWaveform } from "../services/waveformCache";
 import { defaultStemState, type StemEditorState } from "../components/MultiStemEditor";
 import type { StemId } from "../types";
 
-const WAVEFORM_BINS = 1024;
+const WAVEFORM_BINS = 512;
 
 interface UseStemAudioReturn {
   stemBuffers: Record<string, AudioBuffer>;
   stemWaveforms: Record<string, number[]>;
   loadedTracks: Record<string, boolean>;
   isLoadingStems: boolean;
+  loadError: string | null;
   setStemBuffers: React.Dispatch<React.SetStateAction<Record<string, AudioBuffer>>>;
   loadStemsIntoBuffers: (
     splitResultStems: StemResult[],
@@ -23,6 +24,7 @@ interface UseStemAudioReturn {
     onInitStemStates: (ids: string[]) => void
   ) => Promise<void>;
   clearStemData: () => void;
+  clearLoadError: () => void;
 }
 
 export function useStemAudio(): UseStemAudioReturn {
@@ -30,19 +32,26 @@ export function useStemAudio(): UseStemAudioReturn {
   const [stemWaveforms, setStemWaveforms] = useState<Record<string, number[]>>({});
   const [loadedTracks, setLoadedTracks] = useState<Record<string, boolean>>({});
   const [isLoadingStems, setIsLoadingStems] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadStemsIntoBuffers = useCallback(async (
     splitResultStems: StemResult[],
     audioContextRef: React.MutableRefObject<AudioContext | null>,
     onInitStemStates: (ids: string[]) => void
   ) => {
+    // Reset any previous load error
+    setLoadError(null);
     if (splitResultStems.length === 0) return;
     setIsLoadingStems(true);
 
     const AudioContextCtor =
       window.AudioContext ||
       (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) { setIsLoadingStems(false); return; }
+    if (!AudioContextCtor) { 
+      setIsLoadingStems(false); 
+      setLoadError("AudioContext not supported in this browser");
+      return; 
+    }
 
     if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
     const context = audioContextRef.current;
@@ -69,6 +78,7 @@ export function useStemAudio(): UseStemAudioReturn {
         }
       } catch (e) {
         console.error("Failed to load stems:", e);
+        setLoadError(e instanceof Error ? e.message : "Unknown error loading stems");
       }
     }
 
@@ -92,14 +102,20 @@ export function useStemAudio(): UseStemAudioReturn {
     setLoadedTracks({});
   }, []);
 
+  const clearLoadError = useCallback(() => {
+    setLoadError(null);
+  }, []);
+
   return {
     stemBuffers,
     stemWaveforms,
     loadedTracks,
     isLoadingStems,
+    loadError,
     setStemBuffers,
     loadStemsIntoBuffers,
     clearStemData,
+    clearLoadError,
   };
 }
 
