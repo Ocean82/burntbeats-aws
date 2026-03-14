@@ -28,5 +28,5 @@ export type TrimState = {
   end: number;
 };
 
-export const defaultTrim: TrimState = { start: 8, end: 92 };
+export const defaultTrim: TrimState = { start: 0, end: 100 };
 export const defaultMixer: MixerState = { gain: 0, pan: 0, width: 80, send: 0 };

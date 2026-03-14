@@ -13,7 +13,15 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-from stem_service.config import USE_VAD_PRETRIM
+import numpy as np
+import soundfile as sf
+
+from stem_service.config import (
+    USE_VAD_CHUNKS,
+    USE_VAD_PRETRIM,
+    VAD_CHUNK_LENGTH_S,
+    VAD_CHUNK_SILENCE_FLUSH_S,
+)
 from stem_service.demucs_onnx import (
     demucs_onnx_6s_available,
     demucs_onnx_embedded_available,
@@ -21,7 +29,11 @@ from stem_service.demucs_onnx import (
 )
 from stem_service.phase_inversion import create_perfect_instrumental
 from stem_service.split import run_demucs
-from stem_service.vad import is_vad_available, trim_audio_to_speech_span
+from stem_service.vad import (
+    get_chunk_boundaries,
+    is_vad_available,
+    trim_audio_to_speech_span,
+)
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
 
@@ -31,7 +43,8 @@ def _effective_input_path(
     use_vad_trim: bool | None = None,
 ) -> Path:
     """If VAD trim requested and VAD available, trim to speech span; else return input.
-    use_vad_trim: True = trim when VAD available; False = never trim; None = follow USE_VAD_PRETRIM env."""
+    use_vad_trim: True = trim when VAD available; False = never trim; None = follow USE_VAD_PRETRIM env.
+    """
     if use_vad_trim is False:
         return input_path
     if use_vad_trim is not True and not USE_VAD_PRETRIM:
@@ -44,6 +57,104 @@ def _effective_input_path(
     return input_path
 
 
+def _slice_audio(
+    input_path: Path,
+    start_s: float,
+    end_s: float,
+    out_path: Path,
+) -> Path:
+    """Write a slice of input_path [start_s, end_s) to out_path."""
+    audio, sr = sf.read(str(input_path), dtype="float32", always_2d=True)
+    start_i = int(start_s * sr)
+    end_i = min(int(end_s * sr), len(audio))
+    sf.write(str(out_path), audio[start_i:end_i], sr)
+    return out_path
+
+
+def _concat_stems(
+    chunk_stem_lists: list[list[tuple[str, Path]]],
+    output_dir: Path,
+) -> list[tuple[str, Path]]:
+    """Concatenate per-chunk stem WAVs into final stems."""
+    if not chunk_stem_lists:
+        return []
+    stem_ids = [sid for sid, _ in chunk_stem_lists[0]]
+    result: list[tuple[str, Path]] = []
+    for stem_id in stem_ids:
+        chunks_for_stem: list[np.ndarray] = []
+        sr_out = 44100
+        for chunk_stems in chunk_stem_lists:
+            for sid, path in chunk_stems:
+                if sid == stem_id:
+                    audio, sr_out = sf.read(str(path), dtype="float32", always_2d=True)
+                    chunks_for_stem.append(audio)
+                    break
+        if not chunks_for_stem:
+            continue
+        combined = np.concatenate(chunks_for_stem, axis=0)
+        out_path = output_dir / f"{stem_id}.wav"
+        sf.write(str(out_path), combined, sr_out)
+        result.append((stem_id, out_path))
+    return result
+
+
+def _run_chunked_4stem(
+    input_path: Path,
+    output_dir: Path,
+    prefer_speed: bool = False,
+    progress_callback: Callable[[int], None] | None = None,
+) -> list[tuple[str, Path]] | None:
+    """
+    VAD-chunked 4-stem separation (Option B from VADSLICE doc).
+    Slices input at silence boundaries, runs separation per chunk,
+    then concatenates stems. Returns None if VAD unavailable or
+    only one chunk found (caller falls back to full-file processing).
+    """
+    import logging as _log
+
+    logger = _log.getLogger(__name__)
+
+    if not is_vad_available():
+        return None
+
+    boundaries = get_chunk_boundaries(
+        input_path,
+        chunk_length_s=float(VAD_CHUNK_LENGTH_S),
+        silence_flush_s=VAD_CHUNK_SILENCE_FLUSH_S,
+    )
+    if boundaries is None or len(boundaries) <= 1:
+        return None
+
+    logger.info("VAD chunking: %d chunks for %s", len(boundaries), input_path.name)
+
+    chunk_stem_lists: list[list[tuple[str, Path]]] = []
+    chunks_dir = output_dir / "chunks"
+    chunks_dir.mkdir(parents=True, exist_ok=True)
+
+    for i, (start_s, end_s) in enumerate(boundaries):
+        if progress_callback:
+            progress_callback(int(10 + (i / len(boundaries)) * 80))
+
+        chunk_path = chunks_dir / f"chunk_{i:03d}.wav"
+        _slice_audio(input_path, start_s, end_s, chunk_path)
+
+        chunk_out = chunks_dir / f"chunk_{i:03d}_stems"
+        chunk_out.mkdir(parents=True, exist_ok=True)
+
+        stems = run_demucs_onnx_4stem(chunk_path, chunk_out, use_6s=not prefer_speed)
+        if stems is None:
+            stems = run_hybrid_4stem(chunk_path, chunk_out, prefer_speed=prefer_speed)
+        chunk_stem_lists.append(stems)
+
+    flat_dir = output_dir / "stems"
+    flat_dir.mkdir(parents=True, exist_ok=True)
+    result = _concat_stems(chunk_stem_lists, flat_dir)
+
+    if progress_callback:
+        progress_callback(100)
+    return result
+
+
 def run_4stem_single_pass_or_hybrid(
     input_path: Path,
     output_dir: Path,
@@ -51,16 +162,34 @@ def run_4stem_single_pass_or_hybrid(
     progress_callback: Callable[[int], None] | None = None,
 ) -> list[tuple[str, Path]]:
     """
-    Try single-pass Demucs ONNX first (embedded = speed, 6s = quality). If unavailable or fails, use hybrid pipeline.
+    Entry point for 4-stem separation.
+    - If USE_VAD_CHUNKS=1 and VAD available: slice at silence boundaries,
+      run separation per chunk, concatenate (Option B from VADSLICE doc).
+    - Otherwise: try single-pass Demucs ONNX (embedded=speed, 6s=quality),
+      then fall back to hybrid pipeline.
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+
+    # VAD chunked path
+    if USE_VAD_CHUNKS:
+        chunked = _run_chunked_4stem(
+            input_path,
+            output_dir,
+            prefer_speed=prefer_speed,
+            progress_callback=progress_callback,
+        )
+        if chunked is not None:
+            return chunked
+
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
     use_6s = not prefer_speed
-    if (use_6s and demucs_onnx_6s_available()) or (not use_6s and demucs_onnx_embedded_available()):
+    if (use_6s and demucs_onnx_6s_available()) or (
+        not use_6s and demucs_onnx_embedded_available()
+    ):
         if progress_callback:
             progress_callback(10)
         stem_list = run_demucs_onnx_4stem(input_path, flat_dir, use_6s=use_6s)
@@ -70,7 +199,10 @@ def run_4stem_single_pass_or_hybrid(
             return stem_list
 
     return run_hybrid_4stem(
-        input_path, output_dir, prefer_speed=prefer_speed, progress_callback=progress_callback
+        input_path,
+        output_dir,
+        prefer_speed=prefer_speed,
+        progress_callback=progress_callback,
     )
 
 
@@ -148,35 +280,56 @@ def run_hybrid_2stem(
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
 ) -> list[tuple[str, Path]]:
-    """Vocals + instrumental only (Stage 1 + inversion, no Stage 2).
-    prefer_speed: VAD trim + Demucs-only Stage 1.
-    progress_callback: optional callable(percent) with 50, 100."""
+    """
+    2-stem separation: vocals + instrumental.
+
+    Speed mode (prefer_speed=True):
+      Demucs 2-stem subprocess — fast, model-native, phase-aligned.
+      No ONNX overhead; htdemucs --two-stems=vocals gives vocals + no_vocals directly.
+
+    Quality mode (prefer_speed=False):
+      ONNX vocal model (Kim_Vocal_2 / Voc_FT) + ONNX instrumental model (Inst_HQ_4/5).
+      Better vocal isolation; no phase inversion when both ONNX models available.
+      Falls back to Demucs 2-stem if ONNX unavailable.
+
+    Returns [(stem_id, path), ...]: [("vocals", ...), ("instrumental", ...)].
+    """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # VAD trim: same as 4-stem (shorter stems when enabled; see docs/VAD-PRETRIM-TRADEOFF.md)
-    use_vad = True
-    effective_input = _effective_input_path(
-        input_path, output_dir, use_vad_trim=use_vad
-    )
+    flat_dir = output_dir / "stems"
+    flat_dir.mkdir(parents=True, exist_ok=True)
 
+    if prefer_speed:
+        # Speed: Demucs 2-stem subprocess — fastest path, no ONNX
+        from stem_service.split import run_demucs
+
+        stage_out = output_dir / "demucs2"
+        stem_files = run_demucs(input_path, stage_out, stems=2, prefer_speed=True)
+        result: list[tuple[str, Path]] = []
+        for stem_id, src in stem_files:
+            dest = flat_dir / f"{stem_id}.wav"
+            shutil.copy2(src, dest)
+            result.append((stem_id, dest))
+        if progress_callback:
+            progress_callback(100)
+        return result
+
+    # Quality: ONNX vocal + ONNX instrumental (best isolation)
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental = extract_vocals_stage1(
-        effective_input, stage1_out, prefer_speed=prefer_speed
+        input_path, stage1_out, prefer_speed=False
     )
 
-    # Skip phase inversion if Demucs already gave instrumental
     instrumental_path = output_dir / "instrumental.wav"
     if stage1_instrumental is not None:
         shutil.copy2(stage1_instrumental, instrumental_path)
     else:
-        create_perfect_instrumental(effective_input, vocals_path, instrumental_path)
+        create_perfect_instrumental(input_path, vocals_path, instrumental_path)
 
     if progress_callback:
         progress_callback(50)
 
-    flat_dir = output_dir / "stems"
-    flat_dir.mkdir(parents=True, exist_ok=True)
     dest_v = flat_dir / "vocals.wav"
     dest_i = flat_dir / "instrumental.wav"
     shutil.copy2(vocals_path, dest_v)

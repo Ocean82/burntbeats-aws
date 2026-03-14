@@ -153,3 +153,66 @@ def trim_audio_to_speech_span(
 
 def is_vad_available() -> bool:
     return _load_vad_model() is not None
+
+
+def get_chunk_boundaries(
+    audio_path: Path,
+    chunk_length_s: float = 30.0,
+    silence_flush_s: float = 5.0,
+) -> list[tuple[float, float]] | None:
+    """
+    Compute chunk boundaries for chunked separation (Option B from
+    VADSLICE-CHUNKED-SEPARATION-INVESTIGATION.md).
+
+    Cuts the audio at end-of-speech boundaries so each chunk is
+    approximately chunk_length_s seconds and never mid-phrase.
+    Also flushes early when a silence gap >= silence_flush_s is found.
+
+    Returns [(start_s, end_s), ...] covering the full file duration,
+    or None if VAD is unavailable (caller should process the whole file).
+    """
+    segments = get_speech_timestamps(audio_path, return_seconds=True)
+    if segments is None:
+        return None
+
+    # Get total duration
+    try:
+        import soundfile as sf
+
+        info = sf.info(str(audio_path))
+        total_s = info.duration
+    except Exception:
+        return None
+
+    if not segments:
+        # No speech detected — return single chunk covering full file
+        return [(0.0, total_s)]
+
+    merged = merge_speech_segments(segments, max_gap_sec=VAD_MAX_GAP_TO_MERGE_SEC)
+
+    # Build chunk boundaries: cut at end-of-speech when chunk >= chunk_length_s
+    # or when a silence gap >= silence_flush_s is found.
+    chunks: list[tuple[float, float]] = []
+    chunk_start = 0.0
+
+    for i, seg in enumerate(merged):
+        seg_end = seg["end"]
+        chunk_len = seg_end - chunk_start
+
+        # Check gap to next segment (silence duration)
+        if i + 1 < len(merged):
+            gap = merged[i + 1]["start"] - seg_end
+        else:
+            gap = total_s - seg_end  # trailing silence
+
+        # Flush if chunk is long enough OR silence gap is large
+        should_flush = chunk_len >= chunk_length_s or gap >= silence_flush_s
+        if should_flush:
+            chunks.append((chunk_start, seg_end))
+            chunk_start = seg_end
+
+    # Final chunk covers remainder of file
+    if chunk_start < total_s:
+        chunks.append((chunk_start, total_s))
+
+    return chunks if chunks else [(0.0, total_s)]

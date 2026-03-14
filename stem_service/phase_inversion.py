@@ -32,7 +32,7 @@ def create_perfect_instrumental(
         vocal = torchaudio.functional.resample(vocal, sr_vocal, sr_orig)
 
     orig_channels, orig_len = orig.shape[0], orig.shape[1]
-    vocal_channels, vocal_len = vocal.shape[0], vocal.shape[1]
+    vocal_channels = vocal.shape[0]
 
     # Match channels: if vocal is mono and orig stereo, broadcast
     if vocal_channels == 1 and orig_channels == 2:
@@ -44,7 +44,9 @@ def create_perfect_instrumental(
 
     # Align to original length: pad vocal with zeros if shorter, trim if longer (preserves full mix length)
     if vocal.shape[1] < orig_len:
-        vocal = torch.nn.functional.pad(vocal, (0, orig_len - vocal.shape[1]), mode="constant", value=0.0)
+        vocal = torch.nn.functional.pad(
+            vocal, (0, orig_len - vocal.shape[1]), mode="constant", value=0.0
+        )
     else:
         vocal = vocal[..., :orig_len]
     orig = orig[..., :orig_len]

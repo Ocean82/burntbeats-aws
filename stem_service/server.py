@@ -13,14 +13,11 @@ import logging
 import os
 import re
 import signal
-import sys
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from threading import Thread
 from typing import Any
 
-import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -33,8 +30,14 @@ from stem_service.config import (
     QUALITY_ULTRA,
     ultra_available_for_device,
 )
-from stem_service.demucs_onnx import demucs_onnx_6s_available, demucs_onnx_embedded_available
-from stem_service.hybrid import run_4stem_single_pass_or_hybrid, run_hybrid_2stem, run_hybrid_4stem
+from stem_service.demucs_onnx import (
+    demucs_onnx_6s_available,
+    demucs_onnx_embedded_available,
+)
+from stem_service.hybrid import (
+    run_4stem_single_pass_or_hybrid,
+    run_hybrid_2stem,
+)
 from stem_service.mdx_onnx import get_available_vocal_onnx
 from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.ultra import run_ultra_2stem, run_ultra_4stem, get_ultra_model_info
@@ -306,13 +309,13 @@ async def split(
     prefer_speed = quality_lower == "speed"
     is_ultra = quality_lower == QUALITY_ULTRA
 
-    # Ultra (RoFormer/MDX23C) is GPU-only on CPU we fall back to quality (MDX ONNX + htdemucs)
+    # Ultra on CPU: allowed but slow. ultra.py will raise a clear error if the
+    # library (audio-separator[cpu]) is not installed — no silent downgrade.
     if is_ultra and not ultra_available_for_device():
         logger.info(
-            "Ultra requested but running on CPU; using quality (MDX ONNX + Demucs) instead. "
-            "Set USE_ULTRA_ON_CPU=1 to force ultra on CPU."
+            "Ultra requested on CPU. Will attempt; expect long processing times. "
+            "Set USE_ULTRA_ON_CPU=1 to suppress this warning."
         )
-        is_ultra = False
 
     # Determine effective quality mode for pipeline
     if is_ultra:

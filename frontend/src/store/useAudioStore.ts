@@ -83,10 +83,10 @@ interface AudioState {
 }
 
 const initialTrim: Record<string, TrimState> = {
-  vocals: { start: 8, end: 92 },
-  drums: { start: 4, end: 96 },
-  bass: { start: 6, end: 89 },
-  melody: { start: 12, end: 90 },
+  vocals: defaultTrim,
+  drums: defaultTrim,
+  bass: defaultTrim,
+  melody: defaultTrim,
   instrumental: defaultTrim,
   other: defaultTrim,
 };

@@ -1,8 +1,22 @@
 """
-Single-pass 4-stem separation using htdemucs ONNX models (no subprocess, no bag).
-- htdemucs_embedded.onnx: Speed 4-stem (fast, CPU-friendly).
-- htdemucs_6s.onnx: Quality 4-stem (6 stems from model; we output drums, bass, other, vocals).
-Input: waveform (1, 2, 343980) + spectrogram (1, 4, 2048, 336). Output: waveform stems.
+Single-pass 4-stem separation using htdemucs ONNX models.
+
+Probed tensor shapes (scripts/probe_onnx.py):
+
+htdemucs_embedded.onnx:
+  inputs:  'input' (1,2,343980)  'x' (1,4,2048,336)
+  outputs: 'output' (1,4,4,2048,336)  'add_67' (1,4,2,343980)  ← use this
+
+htdemucs_6s.onnx:
+  inputs:  'input' (1,2,343980)  'onnx::ReduceMean_1' (1,4,2048,336)
+  outputs: 'output' (1,6,4,2048,336)  '5012' (1,6,2,343980)  ← use this
+
+demucsv4.onnx (single-input variant):
+  inputs:  'input' (1,2,343980)
+  outputs: 'output' (1,6,2,343980)
+
+Output waveform shape: (1, n_stems, 2, 343980)
+Stem order (both models): drums=0, bass=1, other=2, vocals=3 [, guitar=4, piano=5 for 6s]
 """
 
 from __future__ import annotations
@@ -12,45 +26,45 @@ import threading
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from stem_service.config import MODELS_DIR, TARGET_SAMPLE_RATE, get_onnx_providers
 
 logger = logging.getLogger(__name__)
 
-# Fixed segment from ONNX inspection: 343980 samples @ 44.1k ≈ 7.8s
-DEMUCS_ONNX_SEGMENT_SAMPLES = 343980
-DEMUCS_ONNX_SR = 44100
-DEMUCS_ONNX_N_FFT = 4096
-DEMUCS_ONNX_HOP = 1024
-# Spectrogram shape (batch, 4=stereo complex-as-channels, freq, time)
-DEMUCS_ONNX_SPEC_FREQ = 2048
-DEMUCS_ONNX_SPEC_TIME = 336
+# Segment length fixed by model architecture
+SEGMENT_SAMPLES = 343980  # 343980 / 44100 ≈ 7.8 s
+SR = 44100
+# Spectrogram params (from model input shape)
+N_FFT = 4096
+HOP = 1024
+SPEC_FREQ = 2048
+SPEC_TIME = 336
 
-HTDEMUCS_EMBEDDED_ONNX = MODELS_DIR / "htdemucs_embedded.onnx"
-HTDEMUCS_6S_ONNX = MODELS_DIR / "htdemucs_6s.onnx"
+# Model paths
+EMBEDDED_ONNX = MODELS_DIR / "htdemucs_embedded.onnx"
+SIX_STEM_ONNX = MODELS_DIR / "htdemucs_6s.onnx"
+V4_ONNX = MODELS_DIR / "demucsv4.onnx"
+
+# Stem order from model output (index → name)
+STEM_ORDER_4 = ("drums", "bass", "other", "vocals")
+STEM_ORDER_6 = ("drums", "bass", "other", "vocals", "guitar", "piano")
+# API return order
+RETURN_ORDER = ("vocals", "drums", "bass", "other")
 
 _session_cache: dict[str, Any] = {}
 _cache_lock = threading.Lock()
 
-# Output tensor name for waveform stems (model-specific)
-_EMBEDDED_WAV_OUT = "add_67"
-_6S_WAV_OUT = "5012"
-
-# Model output order: drums, bass, other, vocals (indices 0,1,2,3). Return order for API: vocals, drums, bass, other.
-STEM_IDS_4 = ("drums", "bass", "other", "vocals")
-RETURN_ORDER = ("vocals", "drums", "bass", "other")
-
 
 def _get_session(path: Path) -> Any | None:
-    cache_key = str(path.resolve())
+    key = str(path.resolve())
     with _cache_lock:
-        if cache_key in _session_cache:
-            return _session_cache[cache_key]
+        if key in _session_cache:
+            return _session_cache[key]
     try:
-        import os
         import onnxruntime as ort
-    except ImportError:
-        return None
-    try:
+        import os
+
         opts = ort.SessionOptions()
         opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         n = os.environ.get("ONNXRUNTIME_NUM_THREADS", "")
@@ -60,227 +74,224 @@ def _get_session(path: Path) -> Any | None:
             str(path), sess_options=opts, providers=get_onnx_providers()
         )
         with _cache_lock:
-            _session_cache[cache_key] = sess
+            _session_cache[key] = sess
         logger.info("Demucs ONNX session cached: %s", path.name)
         return sess
     except Exception as e:
-        logger.warning("Failed to load Demucs ONNX %s: %s", path, e)
+        logger.warning("Failed to load Demucs ONNX %s: %s", path.name, e)
         return None
 
 
-def _make_spec(waveform: Any) -> Any:
-    """Build (1, 4, 2048, 336) complex-as-channels spectrogram from (1, 2, 343980) waveform."""
-    import numpy as np
+def _build_spec(waveform: np.ndarray) -> np.ndarray:
+    """
+    Build spectrogram input (1, 4, SPEC_FREQ, SPEC_TIME) from waveform (1, 2, N).
+    Channels: [L_real, L_imag, R_real, R_imag].
+    """
     import torch
 
-    # waveform: (1, 2, 343980). Model expects spec (1, 4, 2048, 336). Use center=False so frame count is deterministic.
-    pad_to = DEMUCS_ONNX_SPEC_TIME * DEMUCS_ONNX_HOP  # 344064
-    if waveform.shape[-1] < pad_to:
-        waveform = torch.nn.functional.pad(
-            waveform, (0, pad_to - waveform.shape[-1]), mode="constant", value=0
-        )
+    w = torch.from_numpy(waveform[0])  # (2, N)
+    pad_to = SPEC_TIME * HOP  # 344064
+    if w.shape[-1] < pad_to:
+        w = torch.nn.functional.pad(w, (0, pad_to - w.shape[-1]))
     else:
-        waveform = waveform[..., :pad_to]
+        w = w[..., :pad_to]
 
-    stft_kw = {
-        "n_fft": DEMUCS_ONNX_N_FFT,
-        "hop_length": DEMUCS_ONNX_HOP,
-        "win_length": DEMUCS_ONNX_N_FFT,
-        "window": torch.hann_window(DEMUCS_ONNX_N_FFT, device=waveform.device),
-        "return_complex": True,
-        "center": False,
-    }
-    spec_l = torch.stft(waveform[0, 0], **stft_kw)
-    spec_r = torch.stft(waveform[0, 1], **stft_kw)
-    real_imag = torch.stack([spec_l.real, spec_l.imag, spec_r.real, spec_r.imag], dim=0)
-    real_imag = real_imag.unsqueeze(0)
-    # Slice to (1, 4, 2048, T); then pad or slice time to exactly 336
-    real_imag = real_imag[:, :, : DEMUCS_ONNX_SPEC_FREQ, :]
-    t = real_imag.shape[3]
-    if t < DEMUCS_ONNX_SPEC_TIME:
-        real_imag = torch.nn.functional.pad(
-            real_imag, (0, DEMUCS_ONNX_SPEC_TIME - t), mode="constant", value=0
-        )
-    elif t > DEMUCS_ONNX_SPEC_TIME:
-        real_imag = real_imag[:, :, :, : DEMUCS_ONNX_SPEC_TIME]
-    spec_np = real_imag.float().numpy()
-    if spec_np.shape == (1, 4, DEMUCS_ONNX_SPEC_FREQ, DEMUCS_ONNX_SPEC_TIME):
-        return spec_np
-    out = np.zeros((1, 4, DEMUCS_ONNX_SPEC_FREQ, DEMUCS_ONNX_SPEC_TIME), dtype=np.float32)
-    out[:, :, :, : spec_np.shape[3]] = spec_np
-    return out
+    kw = dict(
+        n_fft=N_FFT,
+        hop_length=HOP,
+        win_length=N_FFT,
+        window=torch.hann_window(N_FFT),
+        return_complex=True,
+        center=False,
+    )
+    sl = torch.stft(w[0], **kw)
+    sr = torch.stft(w[1], **kw)
+    spec = torch.stack([sl.real, sl.imag, sr.real, sr.imag], dim=0).unsqueeze(0)
+    # (1, 4, freq, time) — slice/pad to exact shape
+    spec = spec[:, :, :SPEC_FREQ, :]
+    t = spec.shape[3]
+    if t < SPEC_TIME:
+        spec = torch.nn.functional.pad(spec, (0, SPEC_TIME - t))
+    elif t > SPEC_TIME:
+        spec = spec[:, :, :, :SPEC_TIME]
+    return spec.float().numpy()
 
 
-def _run_one_chunk(
-    session: Any,
-    waveform_chunk: Any,
-    spec_chunk: Any,
-    input_name: str,
-    spec_input_name: str,
-    wav_output_name: str,
-    num_stems: int,
-) -> Any:
-    """Run ONNX for one chunk. waveform_chunk (1,2,N), spec_chunk (1,4,2048,336). Returns (num_stems, 2, N)."""
-    feed = {input_name: waveform_chunk, spec_input_name: spec_chunk}
-    outputs = session.run(None, feed)
-    wav_out = None
-    for i, out in enumerate(session.get_outputs()):
-        arr = outputs[i]
-        if out.name == wav_output_name:
-            wav_out = arr
-            break
-        if arr.ndim == 4 and arr.shape[1] in (4, 6) and arr.shape[2] == 2:
-            wav_out = arr
-            break
-    if wav_out is None:
-        for arr in outputs:
-            if arr.ndim == 4 and arr.shape[2] == 2:
-                wav_out = arr
-                break
-    if wav_out is None:
-        wav_out = outputs[-1]
-    return wav_out[0]
+def _overlap_add(
+    chunks: list[tuple[int, int, np.ndarray]],
+    total: int,
+) -> np.ndarray:
+    """Hann-windowed overlap-add for a single stem. chunks: [(start, end, wav)]."""
+    out = np.zeros((2, total), dtype=np.float32)
+    cnt = np.zeros((2, total), dtype=np.float32)
+    seg = SEGMENT_SAMPLES
+    win = np.hanning(seg).astype(np.float32)
+    for start, end, wav in chunks:
+        length = end - start
+        w = win[:length]
+        out[:, start:end] += wav[:, :length] * w
+        cnt[:, start:end] += w
+    return out / np.maximum(cnt, 1e-8)
 
 
 def run_demucs_onnx_4stem(
     input_path: Path,
     output_dir: Path,
-    use_6s: bool,
+    use_6s: bool = False,
 ) -> list[tuple[str, Path]] | None:
     """
-    Single-pass 4-stem separation using htdemucs_embedded (use_6s=False) or htdemucs_6s (use_6s=True).
-    Writes vocals, drums, bass, other to output_dir and returns [(stem_id, path), ...].
-    Returns None if model missing or inference fails.
+    Single-pass 4-stem separation.
+    use_6s=True  → htdemucs_6s.onnx  (quality; guitar+piano folded into other)
+    use_6s=False → htdemucs_embedded.onnx (speed)
+    Falls back to demucsv4.onnx (single-input) if the two-input models are missing.
+    Returns [(stem_id, path), ...] in RETURN_ORDER, or None on failure.
     """
-    import numpy as np
     import soundfile as sf
     import torch
 
-    if use_6s:
-        model_path = HTDEMUCS_6S_ONNX
-        wav_output_name = _6S_WAV_OUT
-        num_stems_in_model = 6
+    # Pick model
+    if use_6s and SIX_STEM_ONNX.exists():
+        model_path = SIX_STEM_ONNX
+        wav_out_name = "5012"
+        n_stems = 6
+        two_input = True
+    elif not use_6s and EMBEDDED_ONNX.exists():
+        model_path = EMBEDDED_ONNX
+        wav_out_name = "add_67"
+        n_stems = 4
+        two_input = True
+    elif V4_ONNX.exists():
+        model_path = V4_ONNX
+        wav_out_name = "output"
+        n_stems = 6
+        two_input = False
+        logger.info("Demucs ONNX: using demucsv4.onnx (single-input fallback)")
     else:
-        model_path = HTDEMUCS_EMBEDDED_ONNX
-        wav_output_name = _EMBEDDED_WAV_OUT
-        num_stems_in_model = 4
-
-    if not model_path.resolve().exists():
-        logger.debug("Demucs ONNX not found: %s", model_path)
         return None
 
     session = _get_session(model_path)
     if session is None:
         return None
 
-    inputs = session.get_inputs()
-    input_name = inputs[0].name
-    spec_input_name = inputs[1].name
+    # Discover input names from session
+    inp_names = [i.name for i in session.get_inputs()]
+    wav_input_name = inp_names[0]  # always 'input'
+    spec_input_name = inp_names[1] if two_input and len(inp_names) > 1 else None
 
+    # Load audio
     try:
         mix, sr = sf.read(str(input_path), dtype="float32", always_2d=True)
     except Exception as e:
-        logger.warning("demucs_onnx: failed to read %s: %s", input_path, e)
+        logger.warning("demucs_onnx: cannot read %s: %s", input_path, e)
         return None
 
-    if mix.shape[1] != 2:
-        mix = np.stack([mix[:, 0], mix[:, 0]], axis=1)
-    if sr != DEMUCS_ONNX_SR:
+    if mix.shape[1] == 1:
+        mix = np.concatenate([mix, mix], axis=1)
+    elif mix.shape[1] > 2:
+        mix = mix[:, :2]
+
+    if sr != SR:
+        import torchaudio
+
+        mix_t = torch.from_numpy(mix.T).unsqueeze(0).float()
+        mix_t = torchaudio.functional.resample(mix_t, sr, SR)
+        mix = mix_t.squeeze(0).numpy().T
+
+    # (samples, 2) → (1, 2, samples)
+    mix_t = torch.from_numpy(mix.T.astype(np.float32)).unsqueeze(0)
+    total = mix_t.shape[2]
+    seg = SEGMENT_SAMPLES
+    hop = seg // 2  # 50% overlap
+
+    # Per-stem chunk accumulator: list of (start, end, wav_array)
+    stem_chunks: list[list[tuple[int, int, np.ndarray]]] = [[] for _ in range(4)]
+
+    pos = 0
+    while pos < total:
+        end = min(pos + seg, total)
+        chunk_len = end - pos
+        chunk = mix_t[:, :, pos:end]
+        if chunk_len < seg:
+            chunk = torch.nn.functional.pad(chunk, (0, seg - chunk_len))
+
+        chunk_np = chunk.numpy()
+
+        if two_input:
+            spec_np = _build_spec(chunk_np)
+            feed = {wav_input_name: chunk_np, spec_input_name: spec_np}
+        else:
+            feed = {wav_input_name: chunk_np}
+
         try:
-            import torchaudio
-            mix_t = torch.from_numpy(mix.T).unsqueeze(0)
-            mix_t = torchaudio.functional.resample(mix_t, sr, DEMUCS_ONNX_SR)
-            mix = mix_t.squeeze(0).numpy().T
-            sr = DEMUCS_ONNX_SR
-        except ImportError:
-            logger.warning("demucs_onnx: resample requires torchaudio")
+            raw_outputs = session.run(None, feed)
+        except Exception as e:
+            logger.warning("demucs_onnx: inference failed: %s", e)
             return None
 
-    # (samples, 2) -> (1, 2, samples)
-    mix_t = torch.from_numpy(np.expand_dims(mix.T.astype(np.float32), axis=0))
-    total_samples = mix_t.shape[2]
-    segment = DEMUCS_ONNX_SEGMENT_SAMPLES
-    hop = segment // 2  # 50% overlap for overlap-add
+        # Find the waveform output by name, then by shape
+        wav_out = None
+        for i, out_info in enumerate(session.get_outputs()):
+            if out_info.name == wav_out_name:
+                wav_out = raw_outputs[i]
+                break
+        if wav_out is None:
+            # Fallback: find output with shape (1, n_stems, 2, N)
+            for arr in raw_outputs:
+                if arr.ndim == 4 and arr.shape[2] == 2:
+                    wav_out = arr
+                    break
+        if wav_out is None:
+            logger.warning("demucs_onnx: cannot find waveform output")
+            return None
 
-    stem_waves: list[list[tuple[int, int, np.ndarray]]] = [
-        [] for _ in range(4)
-    ]  # per stem: [(start, end, wav), ...]
+        # wav_out: (1, n_stems, 2, seg)
+        stems_raw = wav_out[0]  # (n_stems, 2, seg)
 
-    start = 0
-    while start < total_samples:
-        end = min(start + segment, total_samples)
-        chunk_len = end - start
-        pad_right = segment - chunk_len if chunk_len < segment else 0
-        chunk = mix_t[:, :, start:end]
-        if pad_right > 0:
-            chunk = torch.nn.functional.pad(
-                chunk, (0, pad_right), mode="constant", value=0
+        # Map to 4 stems: drums, bass, other, vocals
+        if n_stems == 6:
+            # guitar(4) + piano(5) averaged into other(2)
+            out4 = np.stack(
+                [
+                    stems_raw[0],
+                    stems_raw[1],
+                    (stems_raw[2] + stems_raw[4] + stems_raw[5]) / 3.0,
+                    stems_raw[3],
+                ],
+                axis=0,
             )
-        chunk_np = chunk.numpy()
-        spec_np = _make_spec(chunk)
-
-        out_wav = _run_one_chunk(
-            session,
-            chunk_np,
-            spec_np,
-            input_name,
-            spec_input_name,
-            wav_output_name,
-            num_stems_in_model,
-        )
-        # out_wav: (num_stems, 2, segment)
-        if num_stems_in_model == 6:
-            # Use first 4 stems; fold 4,5 into "other" (index 2)
-            out_4 = np.stack([
-                out_wav[0],
-                out_wav[1],
-                out_wav[2] + out_wav[4] + out_wav[5],
-                out_wav[3],
-            ], axis=0)
         else:
-            out_4 = out_wav
+            out4 = stems_raw[:4]
 
         for i in range(4):
-            w = out_4[i][:, :chunk_len]
-            stem_waves[i].append((start, start + chunk_len, w))
+            stem_chunks[i].append((pos, end, out4[i][:, :chunk_len].copy()))
 
-        start += hop
-        if chunk_len < segment:
+        pos += hop
+        if chunk_len < seg:
             break
 
-    # Overlap-add (simple: average where overlapping)
-    out_stems: list[np.ndarray] = []
-    for i in range(4):
-        combined = np.zeros((2, total_samples), dtype=np.float32)
-        count = np.zeros((2, total_samples), dtype=np.float32)
-        for s, e, w in stem_waves[i]:
-            combined[:, s:e] += w
-            count[:, s:e] += 1
-        count = np.maximum(count, 1e-8)
-        out_stems.append(combined / count)
-
+    # Overlap-add per stem
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    # Write files; then return in API order (vocals, drums, bass, other)
-    stem_to_wav = dict(zip(STEM_IDS_4, out_stems))
+
+    stem_wavs = {STEM_ORDER_4[i]: _overlap_add(stem_chunks[i], total) for i in range(4)}
+
     result: list[tuple[str, Path]] = []
     for stem_id in RETURN_ORDER:
-        wav = stem_to_wav[stem_id]
+        wav = stem_wavs[stem_id]
         out_path = output_dir / f"{stem_id}.wav"
-        sf.write(
-            str(out_path),
-            wav.T,
-            TARGET_SAMPLE_RATE,
-            subtype="PCM_16",
-        )
+        sf.write(str(out_path), wav.T, TARGET_SAMPLE_RATE, subtype="PCM_16")
         result.append((stem_id, out_path))
 
     return result
 
 
 def demucs_onnx_embedded_available() -> bool:
-    return HTDEMUCS_EMBEDDED_ONNX.resolve().exists()
+    return EMBEDDED_ONNX.exists()
 
 
 def demucs_onnx_6s_available() -> bool:
-    return HTDEMUCS_6S_ONNX.resolve().exists()
+    return SIX_STEM_ONNX.exists()
+
+
+def demucs_onnx_v4_available() -> bool:
+    return V4_ONNX.exists()

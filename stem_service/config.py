@@ -28,7 +28,11 @@ if DEMUCS_QUALITY_BAG not in ("mdx_extra_q", "mdx_extra"):
     DEMUCS_QUALITY_BAG = "mdx_extra_q"
 
 # On CPU, shifts=0 is much faster; shifts>0 (random shift and average) helps mainly on GPU. Default 1 (force 0) for CPU.
-USE_DEMUCS_SHIFTS_0 = os.environ.get("USE_DEMUCS_SHIFTS_0", "1").strip().lower() in ("1", "true", "yes")
+USE_DEMUCS_SHIFTS_0 = os.environ.get("USE_DEMUCS_SHIFTS_0", "1").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 # Roformer / large .ckpt models: GPU-only. Very slow on CPU; do not use in CPU pipeline.
 MDX23C_CKPT = MODELS_DIR / "MDX23C-8KFFT-InstVoc_HQ.ckpt"
@@ -41,7 +45,8 @@ MEL_BAND_ROFORMER_CKPT = MODELS_DIR / "model_mel_band_roformer_ep_3005_sdr_11.43
 
 def ensure_htdemucs_th() -> Path | None:
     """Ensure htdemucs.th exists in MODELS_DIR so pip demucs (--repo) can find it.
-    If only htdemucs.pth exists, copy it to htdemucs.th once. Returns path to .th or None if no model."""
+    If only htdemucs.pth exists, copy it to htdemucs.th once. Returns path to .th or None if no model.
+    """
     if HTDEMUCS_TH.exists():
         return HTDEMUCS_TH
     if HTDEMUCS_PTH.exists():
@@ -98,7 +103,12 @@ def get_demucs_quality_bag_config() -> tuple[str, Path, int, str]:
         return ("mdx_extra_q", DEMUCS_EXTRA_MODELS_DIR, 44, "mdx_extra_q")
     if heavy_ok:
         return ("mdx_extra", DEMUCS_EXTRA_MODELS_DIR, 44, "mdx_extra")
-    return ("mdx_extra_q", DEMUCS_EXTRA_MODELS_DIR, 44, "mdx_extra_q")  # no bag available; caller should not use
+    return (
+        "mdx_extra_q",
+        DEMUCS_EXTRA_MODELS_DIR,
+        44,
+        "mdx_extra_q",
+    )  # no bag available; caller should not use
 
 
 def mdx23c_available() -> bool:
@@ -130,11 +140,9 @@ def get_best_ultra_model() -> Path | None:
 
 
 def ultra_available_for_device() -> bool:
-    """True if ultra (RoFormer/MDX23C) should be used: GPU present or USE_ULTRA_ON_CPU=1.
-    On CPU-only, ultra is disabled by default (2–5× slower, same quality as MDX ONNX)."""
-    if os.environ.get("USE_ULTRA_ON_CPU", "").strip().lower() in ("1", "true", "yes"):
-        return True
-    return DEMUCS_DEVICE == "cuda"
+    """True if an ultra model file exists. Ultra runs on CPU but is slow.
+    The caller (ultra.py) raises a clear error if the inference library is missing."""
+    return get_best_ultra_model() is not None
 
 
 def is_cuda_available() -> bool:
@@ -223,15 +231,35 @@ def get_onnx_providers() -> list[str]:
         return ["CPUExecutionProvider"]
     try:
         import onnxruntime as ort
+
         available = set(ort.get_available_providers())
     except ImportError:
         return ["CPUExecutionProvider"]
     # Prefer CUDA then CPU; ORT will use the first provider that can run the model.
     order = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-    return [p for p in order if p in available] or (list(available) if available else ["CPUExecutionProvider"])
+    return [p for p in order if p in available] or (
+        list(available) if available else ["CPUExecutionProvider"]
+    )
+
 
 # =======================
 # VAD Settings
 # =======================
 VAD_PAD_SEC = 0.3
 VAD_MAX_GAP_TO_MERGE_SEC = 0.3
+
+# =======================
+# VAD Chunking (Option B from VADSLICE-CHUNKED-SEPARATION-INVESTIGATION.md)
+# =======================
+# Set USE_VAD_CHUNKS=1 to slice the input at silence boundaries before separation.
+# Each chunk is processed independently then stems are concatenated.
+# Reduces peak memory and enables future parallelization.
+USE_VAD_CHUNKS = os.environ.get("USE_VAD_CHUNKS", "0").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+# Target chunk length in seconds (cut at nearest silence boundary at or after this)
+VAD_CHUNK_LENGTH_S = int(os.environ.get("VAD_CHUNK_LENGTH_S", "30"))
+# Flush a chunk early if silence gap exceeds this (seconds)
+VAD_CHUNK_SILENCE_FLUSH_S = float(os.environ.get("VAD_CHUNK_SILENCE_FLUSH_S", "5.0"))
