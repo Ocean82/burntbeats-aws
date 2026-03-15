@@ -1,16 +1,27 @@
 {
   "name": "burntbeats-backend",
   "version": "1.0.0",
+  "description": "API proxy for stem-splitting service: uploads, job status, stem file serving, cleanup.",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "echo \"No tests yet\"",
+    "lint": "eslint server.js",
+    "format": "prettier --write server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "form-data": "^4.0.5",
     "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
   }
 }

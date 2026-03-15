@@ -68,10 +68,12 @@ else
   echo "WARNING: Missing $SOURCE/all-uvr-models/mdxnet_models-onnx"
 fi
 
-# 4. Silero VAD (optional; for USE_VAD_PRETRIM pre-trim)
-if [ -f "$SOURCE/silero_vad.jit" ]; then
-  cp -f "$SOURCE/silero_vad.jit" "$MODELS_DIR/silero_vad.jit"
-  echo "OK models/silero_vad.jit"
+# 4. Silero VAD (ONNX; for USE_VAD_PRETRIM pre-trim)
+if [ -f "$SOURCE/silero_vad.onnx" ]; then
+  cp -f "$SOURCE/silero_vad.onnx" "$MODELS_DIR/silero_vad.onnx"
+  echo "OK models/silero_vad.onnx"
+elif [ -f "$SOURCE/silero_vad.jit" ]; then
+  echo "WARNING: Only silero_vad.jit found; pipeline now uses silero_vad.onnx — convert or copy the ONNX file"
 fi
 
 # 5. Root-level ONNX (optional; app also checks mdxnet_models/ and MDX_Net_Models/)

@@ -60,7 +60,7 @@ def segment_vad() -> bool:
 
     _log("  [VAD] Checking model load...", end=" ")
     if not is_vad_available():
-        _log("SKIP (no silero_vad.jit or silero-vad)")
+        _log("SKIP (no silero_vad.onnx)")
         return True
     _log("OK")
 

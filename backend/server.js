@@ -15,7 +15,7 @@ import {
   statSync,
   unlink,
 } from "fs";
-import { mkdir } from "fs/promises";
+import { mkdir, unlink as unlinkPromise } from "fs/promises";
 import multer from "multer";
 import os from "os";
 import path from "path";
@@ -23,12 +23,21 @@ import http from "http";
 import https from "https";
 import { fileURLToPath } from "url";
 
-const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000").split(",");
+const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000").split(",").map((s) => s.trim());
 const API_KEY = process.env.API_KEY || "";
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
 
 const rateLimitStore = new Map();
+
+// Prune expired entries so the store does not grow unbounded.
+const RATE_LIMIT_PRUNE_INTERVAL_MS = 2 * RATE_LIMIT_WINDOW_MS;
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitStore.entries()) {
+    if (now > record.resetTime) rateLimitStore.delete(ip);
+  }
+}, RATE_LIMIT_PRUNE_INTERVAL_MS);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -138,6 +147,10 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
         reqAbort.abort();
         reject(new Error("TimeoutError"));
       }, SPLIT_ACCEPT_TIMEOUT_MS);
+      const clearAndReject = (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      };
 
       const opts = {
         hostname: stemUrl.hostname,
@@ -161,7 +174,7 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
               try {
                 const j = JSON.parse(body || "{}");
                 if (j.detail != null) errMsg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
-              } catch (_) {
+              } catch {
                 /* use body as-is */
               }
               reject({ statusCode: proxyRes.statusCode, error: errMsg });
@@ -172,9 +185,9 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
             reject(e);
           }
         });
-        proxyRes.on("error", reject);
+        proxyRes.on("error", (err) => clearAndReject(err));
       });
-      proxyReq.on("error", reject);
+      proxyReq.on("error", (err) => clearAndReject(err));
       form.pipe(proxyReq);
     });
 
@@ -243,11 +256,13 @@ app.delete("/api/stems/:job_id", async (req, res) => {
     const r = await fetch(`${STEM_SERVICE_URL}/split/${job_id}`, {
       method: "DELETE",
     });
-    const data = await r.json();
-    return res.status(r.status).json(data);
+    const contentType = r.headers.get("content-type") || "";
+    const hasJson = r.ok && contentType.includes("application/json");
+    const data = hasJson && r.status !== 204 ? await r.json() : {};
+    return res.status(r.status).json(Object.keys(data).length ? data : { deleted: true });
   } catch (e) {
     console.error("[DELETE /api/stems/:job_id] proxy error:", e);
-    res.status(502).json({ error: "Stem service unavailable" });
+    return res.status(502).json({ error: "Stem service unavailable" });
   }
 });
 
@@ -262,10 +277,16 @@ app.get("/api/stems/file/:job_id/:stemId", (req, res) => {
     return res.status(404).json({ error: "Stem file not found" });
   }
   res.setHeader("Content-Type", "audio/wav");
-  createReadStream(filePath).pipe(res);
+  const stream = createReadStream(filePath);
+  stream.on("error", (err) => {
+    if (!res.headersSent) res.status(500).json({ error: "Failed to read stem file" });
+    else res.destroy();
+    console.error("[GET /api/stems/file] stream error:", err.message);
+  });
+  stream.pipe(res);
 });
 
-app.get("/api/stems/cleanup", (req, res) => {
+app.get("/api/stems/cleanup", authMiddleware, async (req, res) => {
   const maxAgeHours = Math.max(0, Number(req.query.maxAgeHours) || 24);
   const cutoff = Date.now() - maxAgeHours * 60 * 60 * 1000;
   let deleted = 0;
@@ -282,7 +303,6 @@ app.get("/api/stems/cleanup", (req, res) => {
       }
     }
 
-    // Clean up temporary upload files
     if (existsSync(UPLOAD_TMP_DIR)) {
       const uploadEntries = readdirSync(UPLOAD_TMP_DIR, { withFileTypes: true });
       for (const ent of uploadEntries) {
@@ -290,10 +310,12 @@ app.get("/api/stems/cleanup", (req, res) => {
         const filePath = path.join(UPLOAD_TMP_DIR, ent.name);
         const stat = statSync(filePath);
         if (stat.mtime.getTime() < cutoff) {
-          unlink(filePath, (err) => {
-            if (err) console.error("[cleanup] Failed to delete orphaned temp file:", err);
-          });
-          deleted++;
+          try {
+            await unlinkPromise(filePath);
+            deleted++;
+          } catch (err) {
+            console.error("[cleanup] Failed to delete orphaned temp file:", err.message);
+          }
         }
       }
     }
@@ -304,15 +326,15 @@ app.get("/api/stems/cleanup", (req, res) => {
     console.error("[cleanup]", e);
     return res.status(500).json({ error: "Cleanup failed" });
   }
-  res.json({ deleted, maxAgeHours });
+  return res.json({ deleted, maxAgeHours });
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ 
-    status: "ok", 
-    stem_output_dir: STEM_OUTPUT_DIR,
-    rate_limited: !!API_KEY,
-  });
+  const payload = { status: "ok", rate_limited: !!API_KEY };
+  if (process.env.NODE_ENV !== "production") {
+    payload.stem_output_dir = STEM_OUTPUT_DIR;
+  }
+  res.json(payload);
 });
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -326,6 +348,10 @@ async function main() {
     console.log(`STEM_SERVICE_URL=${STEM_SERVICE_URL} STEM_OUTPUT_DIR=${STEM_OUTPUT_DIR}`);
     console.log(`CORS allowed origins: ${FRONTEND_ORIGINS.join(", ")}`);
     if (API_KEY) console.log("API key authentication: ENABLED");
+  });
+  server.on("error", (err) => {
+    console.error("Server error:", err);
+    process.exit(1);
   });
 }
 

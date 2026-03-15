@@ -9,5 +9,5 @@ onnxruntime>=1.14.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
 python-multipart>=0.0.6
-# Optional: pre-split with Silero VAD (models/silero_vad.jit); app runs without it
-silero-vad>=4.0.0
+# VAD pre-trim uses ONNX (models/silero_vad.onnx) via onnxruntime + PyAV; no silero-vad pip needed
+av>=16.0.0

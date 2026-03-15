@@ -15,7 +15,8 @@ HTDEMUCS_PTH = MODELS_DIR / "htdemucs.pth"
 HTDEMUCS_TH = MODELS_DIR / "htdemucs.th"
 MDX_NET_MODELS_DIR = MODELS_DIR / "MDX_Net_Models"
 MDXNET_MODELS_DIR = MODELS_DIR / "mdxnet_models"
-SILERO_VAD_JIT = MODELS_DIR / "silero_vad.jit"
+SILERO_VAD_JIT = MODELS_DIR / "silero_vad.jit"  # legacy; kept for reference
+SILERO_VAD_ONNX = MODELS_DIR / "silero_vad.onnx"
 
 # Demucs extra bag models (for quality mode)
 DEMUCS_EXTRA_MODELS_DIR = MODELS_DIR / "Demucs_Models"
