@@ -14,10 +14,11 @@ import { useAudioPlayback } from "./hooks/useAudioPlayback";
 import { useWaveformCompute } from "./hooks/useStemAudio";
 import { useExport } from "./hooks/useExport";
 import { useBatchQueue } from "./hooks/useBatchQueue";
+import { useHistory } from "./hooks/useHistory";
 import { stemDefinitions, getStemDefinition, pipelineSteps } from "./data/stemDefinitions";
 import {
   type MixerPreset, PipelineStep, HelpModal, ExportOptionsModal,
-  MixerPresetsModal, OnboardingTour, BatchQueue, ComparisonToggle,
+  MixerPresetsModal, OnboardingTour, BatchQueue,
   MultiStemEditor, defaultStemState, type StemEditorState,
 } from "./components";
 
@@ -40,7 +41,15 @@ export function App() {
   const [pipelineIndex, setPipelineIndex] = useState(pipelineSteps.length - 1);
 
   // ── Stem data state ───────────────────────────────────────────────────────
-  const [stemStates, setStemStates] = useState<Record<string, StemEditorState>>({});
+  const {
+    state: stemStates,
+    set: setStemStates,
+    undo: undoStemStates,
+    redo: redoStemStates,
+    canUndo,
+    canRedo,
+    reset: resetStemStates,
+  } = useHistory<Record<string, StemEditorState>>({});
   const [stemBuffers, setStemBuffers] = useState<Record<string, AudioBuffer>>({});
   const [stemWaveforms, setStemWaveforms] = useState<Record<string, number[]>>({});
   const [loadedTracks, setLoadedTracks] = useState<Record<string, boolean>>({});
@@ -65,8 +74,7 @@ export function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showPresetsModal, setShowPresetsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [isComparing, setIsComparing] = useState(false);
-  const [showingOriginal, setShowingOriginal] = useState(false);
+  const [activeStemId, setActiveStemId] = useState<string>("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Derived shims for modals (memoized to avoid new refs every render)
@@ -172,7 +180,7 @@ export function App() {
     setStemBuffers({});
     setStemWaveforms({});
     setLoadedTracks({});
-    setStemStates({});
+    resetStemStates({});
   }, []);
 
   // ── Split ─────────────────────────────────────────────────────────────────
@@ -224,9 +232,6 @@ export function App() {
     });
   }, []);
 
-  const toggleComparison = useCallback(() => { setIsComparing((c) => !c); setShowingOriginal(false); }, []);
-  const switchComparisonSource = useCallback(() => setShowingOriginal((s) => !s), []);
-
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   const setSoloAtIndex = useCallback((index: number) => {
     const id = visibleStems[index]?.id;
@@ -236,24 +241,42 @@ export function App() {
     const id = visibleStems[0]?.id;
     if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), muted: !c[id]?.muted } }));
   }, [visibleStems]);
-  const shortcutHandlers: ShortcutHandlers = useMemo(() => ({
-    playStop: () => { if (splitResultStems.length > 0) void handlePlayMix(splitResultStems, stemStates, stemBuffers); },
-    solo1: () => setSoloAtIndex(0),
-    solo2: () => setSoloAtIndex(1),
-    solo3: () => setSoloAtIndex(2),
-    solo4: () => setSoloAtIndex(3),
-    muteToggle: setMuteFirst,
-    export: () => { if (splitResultStems.length > 0) setShowExportModal(true); },
-    undo: () => { /* TODO */ },
-    redo: () => { /* TODO */ },
-    help: () => setShowHelpModal(true),
-    escape: () => {
-      if (showHelpModal) setShowHelpModal(false);
-      else if (showExportModal) setShowExportModal(false);
-      else if (showPresetsModal) setShowPresetsModal(false);
-      else if (isPlayingMix) handleStopMix();
-    },
-  }), [splitResultStems, stemStates, stemBuffers, visibleStems, handlePlayMix, handleStopMix, showHelpModal, showExportModal, showPresetsModal, isPlayingMix, setSoloAtIndex, setMuteFirst]);
+  const shortcutHandlers: ShortcutHandlers = useMemo(() => {
+    const TRIM_STEP = 1; // percent per keypress
+    const nudgeTrim = (which: "start" | "end", delta: number) => {
+      if (!activeStemId) return;
+      setStemStates((p) => {
+        const st = p[activeStemId] ?? defaultStemState();
+        const { start, end } = st.trim;
+        const newTrim = which === "start"
+          ? { start: Math.max(0, Math.min(start + delta, end - 1)), end }
+          : { start, end: Math.max(start + 1, Math.min(end + delta, 100)) };
+        return { ...p, [activeStemId]: { ...st, trim: newTrim } };
+      });
+    };
+    return {
+      playStop: () => { if (splitResultStems.length > 0) void handlePlayMix(splitResultStems, stemStates, stemBuffers); },
+      solo1: () => setSoloAtIndex(0),
+      solo2: () => setSoloAtIndex(1),
+      solo3: () => setSoloAtIndex(2),
+      solo4: () => setSoloAtIndex(3),
+      muteToggle: setMuteFirst,
+      export: () => { if (splitResultStems.length > 0) setShowExportModal(true); },
+      undo: () => { undoStemStates(); },
+      redo: () => { redoStemStates(); },
+      trimStartLeft:  () => nudgeTrim("start", -TRIM_STEP),
+      trimStartRight: () => nudgeTrim("start", +TRIM_STEP),
+      trimEndLeft:    () => nudgeTrim("end",   -TRIM_STEP),
+      trimEndRight:   () => nudgeTrim("end",   +TRIM_STEP),
+      help: () => setShowHelpModal(true),
+      escape: () => {
+        if (showHelpModal) setShowHelpModal(false);
+        else if (showExportModal) setShowExportModal(false);
+        else if (showPresetsModal) setShowPresetsModal(false);
+        else if (isPlayingMix) handleStopMix();
+      },
+    };
+  }, [splitResultStems, stemStates, stemBuffers, activeStemId, handlePlayMix, handleStopMix, showHelpModal, showExportModal, showPresetsModal, isPlayingMix, setSoloAtIndex, setMuteFirst, undoStemStates, redoStemStates]);
 
   useKeyboardShortcuts(shortcutHandlers, true);
 
@@ -329,9 +352,9 @@ export function App() {
             {splitResultStems.length > 0 && <p className="text-xs text-green-400/80">{splitResultStems.length} stems ready</p>}
             <div className="flex items-center gap-2">
               <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
-                <button type="button" disabled className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30" title="Undo"><Undo2 className="h-4 w-4" /></button>
+                <button type="button" onClick={undoStemStates} disabled={!canUndo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Undo (Ctrl+Z)"><Undo2 className="h-4 w-4" /></button>
                 <div className="h-4 w-px bg-white/10" />
-                <button type="button" disabled className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30" title="Redo"><Redo2 className="h-4 w-4" /></button>
+                <button type="button" onClick={redoStemStates} disabled={!canRedo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Redo (Ctrl+Y)"><Redo2 className="h-4 w-4" /></button>
               </div>
               <button type="button" onClick={() => setShowPresetsModal(true)} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white" title="Presets" aria-label="Open mixer presets">
                 <Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Presets</span>
@@ -509,7 +532,6 @@ export function App() {
                       <Download className="h-4 w-4" strokeWidth={2} />
                       {isExporting ? "Rendering..." : "Export"}
                     </button>
-                    <ComparisonToggle isComparing={isComparing} showingOriginal={showingOriginal} onToggle={toggleComparison} onSwitch={switchComparisonSource} disabled={true} />
                     <button type="button" className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white" onClick={resetTrackAdjustments}>
                       <RotateCcw className="h-4 w-4" strokeWidth={2} />Reset levels
                     </button>
@@ -523,8 +545,14 @@ export function App() {
                   isPlaying={isPlayingMix}
                   playheadPct={playheadPosition}
                   isLoadingStems={isLoadingStems}
+                  activeStemId={activeStemId || visibleStems[0]?.id}
+                  onActiveStemChange={setActiveStemId}
                   onStemStateChange={(stemId, patch) => setStemStates((p) => ({ ...p, [stemId]: { ...(p[stemId] ?? defaultStemState()), ...patch } }))}
-                  onSeek={(_pct) => { /* TODO: seek */ }}
+                  onSeek={(_pct) => {
+                    if (isPlayingMix) {
+                      handleStopMix();
+                    }
+                  }}
                   onPlayPause={() => void handlePlayMix(splitResultStems, stemStates, stemBuffers)}
                   onPreviewStem={(stemId) => {
                     const url = splitResultStems.find((s) => s.id === stemId)?.url;

@@ -5,6 +5,7 @@ import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds } from "../utils/
 export interface AudioEngineState {
   context: AudioContext | null;
   isPlaying: boolean;
+  /** @deprecated Use isPlaying and context.state instead */
   isPaused: boolean;
   currentTime: number;
   duration: number;
@@ -28,9 +29,10 @@ export class AudioEngine {
   private animationFrameId: number | null = null;
   private eventCallbacks: Set<PlaybackEventCallback> = new Set();
   
-  get isPlaying(): boolean {
-    return this.playbackNodes.size > 0;
-  }
+   get isPlaying(): boolean {
+     // Consider both having active nodes and audio context state
+     return this.playbackNodes.size > 0 && this.context?.state === 'running';
+   }
 
   get currentContext(): AudioContext | null {
     return this.context;
@@ -129,10 +131,12 @@ export class AudioEngine {
 
     const source = this.context!.createBufferSource();
     const gain = this.context!.createGain();
-    
+    const panNode = this.context!.createStereoPanner();
+
     source.buffer = buffer;
     source.connect(gain);
-    gain.connect(this.context!.destination);
+    gain.connect(panNode);
+    panNode.connect(this.context!.destination);
     gain.gain.value = volume;
 
     source.onended = () => {
@@ -142,18 +146,18 @@ export class AudioEngine {
       }
     };
 
-    this.playbackNodes.set(stemId, { source, gainNode: gain, panNode: null as unknown as StereoPannerNode });
+    this.playbackNodes.set(stemId, { source, gainNode: gain, panNode });
     source.start();
     this.emitEvent({ type: 'start' });
   }
 
-  playMix(
+  async playMix(
     stems: Array<{ id: string; buffer: AudioBuffer; trim: TrimState; mixer: MixerState }>,
     mutedStems: Record<string, boolean>,
     soloStems: Record<string, boolean>,
     trimMap: Record<string, TrimState>,
     mixerState: Record<string, MixerState>
-  ): void {
+  ): Promise<void> {
     this.stopAll();
 
     const hasSolo = Object.values(soloStems).some(v => v);
@@ -163,14 +167,14 @@ export class AudioEngine {
 
     if (stemsToPlay.length === 0) return;
 
-    if (!this.context) {
-      this.initialize();
-    }
+     if (!this.context) {
+       await this.initialize();
+     }
 
     const firstStem = stemsToPlay[0];
     const firstTrim = trimMap[firstStem.id] ?? defaultTrim;
-    const { trimEnd } = trimToSeconds(firstStem.buffer, firstTrim);
-    this.mixDuration = trimEnd;
+    const { trimStart, trimEnd } = trimToSeconds(firstStem.buffer, firstTrim);
+    this.mixDuration = trimEnd - trimStart;
     this.playStartTime = this.context!.currentTime;
 
     stemsToPlay.forEach(stem => {
@@ -181,7 +185,7 @@ export class AudioEngine {
       const playDuration = trimEnd - trimStart;
       
       const gainVal = Math.pow(10, mixer.gain / 20);
-      const panVal = mixer.pan / 20;
+      const panVal = mixer.pan / 100;
 
       const source = this.context!.createBufferSource();
       const gainNode = this.context!.createGain();
@@ -256,7 +260,7 @@ export class AudioEngine {
   updateStemPan(stemId: string, pan: number): void {
     const nodes = this.playbackNodes.get(stemId);
     if (nodes?.panNode) {
-      nodes.panNode.pan.value = pan / 20;
+      nodes.panNode.pan.value = pan / 100;
     }
   }
 
@@ -292,7 +296,7 @@ export class AudioEngine {
       sources.push({
         buffer: stem.buffer,
         gain: Math.pow(10, mixer.gain / 20),
-        pan: mixer.pan / 20,
+        pan: mixer.pan / 100,
         trimStart,
         trimEnd,
       });

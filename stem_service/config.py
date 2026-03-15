@@ -15,7 +15,6 @@ HTDEMUCS_PTH = MODELS_DIR / "htdemucs.pth"
 HTDEMUCS_TH = MODELS_DIR / "htdemucs.th"
 MDX_NET_MODELS_DIR = MODELS_DIR / "MDX_Net_Models"
 MDXNET_MODELS_DIR = MODELS_DIR / "mdxnet_models"
-SILERO_VAD_JIT = MODELS_DIR / "silero_vad.jit"  # legacy; kept for reference
 SILERO_VAD_ONNX = MODELS_DIR / "silero_vad.onnx"
 
 # Demucs extra bag models (for quality mode)
@@ -50,7 +49,7 @@ def ensure_htdemucs_th() -> Path | None:
     """
     if HTDEMUCS_TH.exists():
         return HTDEMUCS_TH
-    if HTDEMUCS_PTH.exists():
+    elif HTDEMUCS_PTH.exists():
         shutil.copy2(HTDEMUCS_PTH, HTDEMUCS_TH)
         return HTDEMUCS_TH
     return None
@@ -65,10 +64,9 @@ def _demucs_bag_available(yaml_path: Path, th_prefixes: tuple[str, ...]) -> bool
     """True if yaml exists and all listed .th files (by hash prefix) exist in same dir."""
     if not yaml_path.exists():
         return False
-    for prefix in th_prefixes:
-        if not any(yaml_path.parent.glob(f"{prefix}*.th")):
-            return False
-    return True
+    return all(
+        any(yaml_path.parent.glob(f"{prefix}*.th")) for prefix in th_prefixes
+    )
 
 
 def demucs_extra_available() -> bool:
@@ -131,11 +129,11 @@ def get_best_ultra_model() -> Path | None:
     """Return the best available ultra quality model path (GPU-only; avoid on CPU)."""
     if MEL_BAND_ROFORMER_CKPT.exists():
         return MEL_BAND_ROFORMER_CKPT
-    if BS_ROFORMER_317_CKPT.exists():
+    elif BS_ROFORMER_317_CKPT.exists():
         return BS_ROFORMER_317_CKPT
-    if BS_ROFORMER_937_CKPT.exists():
+    elif BS_ROFORMER_937_CKPT.exists():
         return BS_ROFORMER_937_CKPT
-    if MDX23C_CKPT.exists():
+    elif MDX23C_CKPT.exists():
         return MDX23C_CKPT
     return None
 
@@ -158,9 +156,7 @@ def is_cuda_available() -> bool:
 
 def get_demucs_device() -> str:
     """Get the best available device for Demucs (cuda if available, else cpu)."""
-    if is_cuda_available():
-        return "cuda"
-    return "cpu"
+    return "cuda" if is_cuda_available() else "cpu"
 
 
 # GPU acceleration setting (auto-detect unless explicitly set)
@@ -212,14 +208,10 @@ MAX_FILE_SIZE_MB = 500
 DEMUCS_SHIFTS_SPEED = 0
 DEMUCS_SHIFTS_QUALITY = 3
 DEMUCS_OVERLAP = 0.25
+# htdemucs max segment is 7.8 s; keep <= 7 to stay under the limit.
 DEMUCS_SEGMENT_SEC = 7
+# demucs.extra bag segment (from mdx_extra_q.yaml)
 DEMUCS_EXTRA_SEGMENT = 44
-
-# =======================
-# ONNX Settings
-# =======================
-ONNX_SEGMENT_SIZE = 256
-ONNX_OVERLAP = 2
 
 
 def get_onnx_providers() -> list[str]:

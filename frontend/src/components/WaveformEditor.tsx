@@ -27,21 +27,22 @@ export function WaveformEditor({
   currentPosition = 0,
   isLoading = false,
 }: WaveformEditorProps) {
-  // Fix #2: guarantee waveform is always a number[]
+// Guarantee waveform is always a number[]
   const waveform: number[] = realWaveform ?? stem.waveform ?? [];
 
   const [zoom, setZoom] = useState(1);
   const [scrollOffset, setScrollOffset] = useState(0); // 0–100 percent
+  
+  const ZOOM_FACTOR = 1.5;
+  const MAX_ZOOM = 8;
 
-  // Fix #3: removed unused visibleWidth
-
-  // Fix #4: percent-scroll model — maxStart prevents overshoot
+  // Percent-scroll model — maxStart prevents overshoot
   const visibleBins = useMemo(
     () => (waveform.length === 0 ? 0 : Math.max(1, Math.floor(waveform.length / zoom))),
     [waveform.length, zoom]
   );
 
-  // Fix #6: depend on scrollOffset/zoom/waveform only (scrollPos is derived inline)
+  // Depend on scrollOffset/zoom/waveform only (scrollPos is derived inline)
   const waveformSlice = useMemo(() => {
     if (waveform.length === 0) return [];
     if (zoom === 1) return waveform;
@@ -51,7 +52,7 @@ export function WaveformEditor({
     return waveform.slice(start, end);
   }, [waveform, zoom, scrollOffset, visibleBins]);
 
-  // Fix #9: clamp trim so start <= end before computing times
+  // Clamp trim so start <= end before computing times
   const startP = Math.min(trim.start, trim.end);
   const endP = Math.max(trim.start, trim.end);
   const startTime = duration * (startP / 100);
@@ -59,16 +60,22 @@ export function WaveformEditor({
   const trimmedDuration = endTime - startTime;
 
   const playheadPercent = duration > 0 ? (currentPosition / duration) * 100 : 0;
-  // Fix #1: && not || — only show playhead when actively playing and positioned
+  // && not || — only show playhead when actively playing and positioned
   const isPlayheadVisible = isPlaying && currentPosition > 0;
 
-  const zoomIn = () => setZoom((z) => Math.min(z * 1.5, 8));
+  const zoomIn = () => {
+    const nextZoom = Math.min(zoom * ZOOM_FACTOR, MAX_ZOOM);
+    setZoom(nextZoom);
+  };
+  
   const zoomOut = () => {
-    setZoom((z) => {
-      const next = z / 1.5;
-      if (next < 1) { setScrollOffset(0); return 1; }
-      return next;
-    });
+    const nextZoom = zoom / ZOOM_FACTOR;
+    if (nextZoom < 1) {
+      setScrollOffset(0);
+      setZoom(1);
+    } else {
+      setZoom(nextZoom);
+    }
   };
 
   return (

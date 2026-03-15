@@ -155,11 +155,11 @@ export function BatchQueue({
                   type="button"
                   onClick={onProcessQueue}
                   disabled={!canProcess}
-                  title="Process next file in queue"
-                  aria-label="Process next file in queue"
+                  title="Process all queued files"
+                  aria-label="Process all queued files"
                   className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/30 disabled:opacity-50"
                 >
-                  Process next
+                  Process queue
                 </button>
               )}
               {completedCount > 0 && (

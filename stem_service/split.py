@@ -15,6 +15,11 @@ from stem_service.config import (
     MODELS_DIR,
     REPO_ROOT,
     USE_DEMUCS_SHIFTS_0,
+    DEMUCS_SHIFTS_SPEED,
+    DEMUCS_SHIFTS_QUALITY,
+    DEMUCS_OVERLAP,
+    DEMUCS_SEGMENT_SEC,
+    DEMUCS_EXTRA_SEGMENT,
     demucs_extra_available,
     ensure_htdemucs_th,
     get_demucs_quality_bag_config,
@@ -25,20 +30,6 @@ from stem_service.config import (
 # Demucs output layout: <out_dir>/htdemucs/<track_name>/{vocals,drums,bass,other}.wav
 # With --two-stems=vocals: <out_dir>/htdemucs/<track_name>/{vocals,no_vocals}.wav
 # With demucs.extra: <out_dir>/demucs.extra/<track_name>/{vocals,drums,bass,other}.wav
-
-# CPU speed/quality: shifts=0 fastest; shifts=3-5 for best quality; segment (seconds) avoids OOM on long files
-# Official htdemucs max segment is 7.8s; use 7 (int) to stay under.
-# Larger segments = faster processing (less windowing overhead)
-DEMUCS_SHIFTS_SPEED = 0
-DEMUCS_SHIFTS_QUALITY = 3  # 3 shifts gives significant quality improvement over 1
-DEMUCS_OVERLAP = 0.25
-# htdemucs max segment is 7.8s; keep both <= 7 to stay under
-DEMUCS_SEGMENT_SEC_SPEED = 7
-DEMUCS_SEGMENT_SEC_QUALITY = 7
-DEMUCS_SEGMENT_SEC = 7  # Default
-
-# demucs.extra settings
-DEMUCS_EXTRA_SEGMENT = 44  # From mdx_extra_q.yaml
 
 
 def run_demucs(
@@ -87,10 +78,7 @@ def run_demucs(
             )
         ensure_htdemucs_th()
         shifts = 0 if USE_DEMUCS_SHIFTS_0 else (DEMUCS_SHIFTS_SPEED if prefer_speed else DEMUCS_SHIFTS_QUALITY)
-        # Use larger segments for speed mode (faster), smaller for quality (better)
-        segment = (
-            DEMUCS_SEGMENT_SEC_SPEED if prefer_speed else DEMUCS_SEGMENT_SEC_QUALITY
-        )
+        segment = DEMUCS_SEGMENT_SEC
         cmd = _build_demucs_cmd(
             input_path=input_path,
             output_dir=output_dir,

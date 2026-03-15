@@ -70,11 +70,7 @@ export function normalizeAudioBuffer(buffer: AudioBuffer): AudioBuffer {
   }
   if (peak <= 0) return buffer;
   const scale = NORMALIZE_PEAK_LINEAR / peak;
-  const out = new OfflineAudioContext(
-    numChannels,
-    length,
-    buffer.sampleRate
-  ).createBuffer(numChannels, length, buffer.sampleRate);
+  const out = new AudioBuffer({ numberOfChannels: numChannels, length, sampleRate: buffer.sampleRate });
   for (let ch = 0; ch < numChannels; ch++) {
     const src = buffer.getChannelData(ch);
     const dst = out.getChannelData(ch);

@@ -19,7 +19,7 @@ const TOUR_STEPS = [
     icon: Upload,
     title: "Upload Your Track",
     description: "Drag and drop an audio file, or click to browse. We support MP3, WAV, FLAC, and more.",
-    tip: "Files up to 50MB are supported",
+    tip: "Files up to 500MB are supported",
   },
   {
     icon: Sliders,

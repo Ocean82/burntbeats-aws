@@ -29,6 +29,10 @@ from stem_service.config import (
     htdemucs_available,
     QUALITY_ULTRA,
     ultra_available_for_device,
+    SUPPORTED_AUDIO_FORMATS,
+    MIN_SAMPLE_RATE,
+    MAX_SAMPLE_RATE,
+    MAX_FILE_SIZE_MB,
 )
 from stem_service.demucs_onnx import (
     demucs_onnx_6s_available,
@@ -160,11 +164,8 @@ OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "st
 
 PROGRESS_FILENAME = "progress.json"
 
-# Supported audio formats and sample rates
-SUPPORTED_FORMATS = {".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aiff"}
-MIN_SAMPLE_RATE = 8000
-MAX_SAMPLE_RATE = 48000
-MAX_FILE_SIZE_MB = 500
+# Use validation constants from config (single source of truth)
+SUPPORTED_FORMATS = SUPPORTED_AUDIO_FORMATS
 
 
 def _validate_audio_file(file_path: Path) -> tuple[bool, str]:

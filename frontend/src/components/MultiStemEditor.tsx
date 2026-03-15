@@ -36,6 +36,9 @@ export interface MultiStemEditorProps {
   onPlayPause: () => void;
   onPreviewStem: (stemId: string) => void;
   playingStemId: string | null;
+  /** Optional controlled active stem — if provided, parent owns selection */
+  activeStemId?: string;
+  onActiveStemChange?: (stemId: string) => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -104,6 +107,9 @@ function WaveformLane({
   const stemIdRef = useRef(stem.id);
   const onTrimChangeRef = useRef(onTrimChange);
   const onSeekRef = useRef(onSeek);
+  // Keep refs current so the stable mousemove listener always reads latest values
+  const visibleStartRef = useRef(0);
+  const visibleRangeRef = useRef(1);
   trimRef.current = trim;
   stemIdRef.current = stem.id;
   onTrimChangeRef.current = onTrimChange;
@@ -112,13 +118,8 @@ function WaveformLane({
   const visibleStart = scrollPct / 100;
   const visibleEnd = Math.min(1, visibleStart + 1 / zoom);
   const visibleRange = Math.max(visibleEnd - visibleStart, 1e-6);
-
-  const pctFromEvent = useCallback((e: MouseEvent | React.MouseEvent) => {
-    const rect = laneRef.current?.getBoundingClientRect();
-    if (!rect || rect.width <= 0) return 0;
-    const raw = clamp((e.clientX - rect.left) / rect.width, 0, 1);
-    return clamp(visibleStart + raw * visibleRange, 0, 1) * 100;
-  }, [visibleStart, visibleRange]);
+  visibleStartRef.current = visibleStart;
+  visibleRangeRef.current = visibleRange;
 
   const hitTestHandle = useCallback((e: React.MouseEvent): "start" | "end" | "seek" => {
     const rect = laneRef.current?.getBoundingClientRect();
@@ -141,12 +142,16 @@ function WaveformLane({
     dragging.current = hitTestHandle(e);
   }, [hitTestHandle]);
 
+  // Stable listeners — read live values from refs, never re-register on scroll/zoom
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!dragging.current) return;
       didDragRef.current = true;
+      const rect = laneRef.current?.getBoundingClientRect();
+      if (!rect || rect.width <= 0) return;
+      const raw = clamp((e.clientX - rect.left) / rect.width, 0, 1);
+      const pct = clamp(visibleStartRef.current + raw * visibleRangeRef.current, 0, 1) * 100;
       const t = trimRef.current;
-      const pct = pctFromEvent(e);
       if (dragging.current === "start") {
         onTrimChangeRef.current(stemIdRef.current, { start: clamp(pct, 0, t.end - MIN_TRIM_GAP_PCT), end: t.end });
       } else if (dragging.current === "end") {
@@ -162,15 +167,13 @@ function WaveformLane({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [pctFromEvent]);
+  }, []); // stable — never re-registers
 
-  const startBin = clamp(Math.floor(visibleStart * waveform.length), 0, waveform.length);
-  const endBin = clamp(Math.ceil(visibleEnd * waveform.length), startBin, waveform.length);
-
-  const slice = useMemo(
-    () => downsample(waveform.slice(startBin, endBin), BAR_BUDGET),
-    [waveform, startBin, endBin]
-  );
+  const slice = useMemo(() => {
+    const startBin = clamp(Math.floor(visibleStart * waveform.length), 0, waveform.length);
+    const endBin = clamp(Math.ceil(visibleEnd * waveform.length), startBin, waveform.length);
+    return downsample(waveform.slice(startBin, endBin), BAR_BUDGET);
+  }, [waveform, visibleStart, visibleEnd]);
 
   const toVisible = (pct: number) =>
     clamp((pct / 100 - visibleStart) / visibleRange, 0, 1) * 100;
@@ -200,11 +203,9 @@ function WaveformLane({
       <div className="absolute inset-0 flex items-center gap-px px-0.5">
         {slice.map((v, i) => (
           <span
-            // Fix #5A (TODO): stable key based on bin position, not slice index
-            key={startBin + i}
+            key={i}
             className="flex-1 rounded-full"
             style={{
-              // Fix #5B (TODO): clamp bar height to 100%
               height: `${Math.max(8, clamp(v, 0, 1) * 90)}%`,
               background: `linear-gradient(180deg, ${stem.glow}cc 0%, ${stem.glow}44 100%)`,
               opacity: isMuted ? 0.3 : isActive ? 0.9 : 0.5,
@@ -388,7 +389,6 @@ const StemControls = memo(function StemControls({
           />
         </div>
         <div>
-          {/* Fix #6 (TODO): label clarifies pitch+tempo coupling */}
           <div className="mb-1 flex justify-between text-[10px] text-white/50">
             <span title="Changes both speed and pitch together">Speed (+ pitch)</span>
             <span>{rate.toFixed(2)}×</span>
@@ -422,8 +422,15 @@ export function MultiStemEditor({
   onPlayPause,
   onPreviewStem,
   playingStemId,
+  activeStemId: controlledActiveStemId,
+  onActiveStemChange,
 }: MultiStemEditorProps) {
-  const [activeStemId, setActiveStemId] = useState<string>(stems[0]?.id ?? "");
+  const [internalActiveStemId, setInternalActiveStemId] = useState<string>(stems[0]?.id ?? "");
+  const activeStemId = controlledActiveStemId ?? internalActiveStemId;
+  const setActiveStemId = useCallback((id: string) => {
+    setInternalActiveStemId(id);
+    onActiveStemChange?.(id);
+  }, [onActiveStemChange]);
   const [zoom, setZoom] = useState(1);
   const [scrollPct, setScrollPct] = useState(0);
 
@@ -434,7 +441,7 @@ export function MultiStemEditor({
     }
   }, [stems, activeStemId]);
 
-  // Fix #3 (TODO): clamp scrollPct when zoom changes so it stays in valid range
+  // Clamp scrollPct when zoom changes so it stays in valid range
   useEffect(() => {
     const maxScroll = Math.max(0, 100 - 100 / zoom);
     setScrollPct((s) => clamp(s, 0, maxScroll));
@@ -458,7 +465,7 @@ export function MultiStemEditor({
     });
   }, [scrollPct, zoom, maxDuration]);
 
-  // Fix #1 (TODO, Option A): global playhead overlay position — computed once, not per-lane
+  // Global playhead overlay position — computed once, not per-lane
   // This prevents waveform bars from re-rendering on every playhead tick
   const visibleStartGlobal = scrollPct / 100;
   const visibleEndGlobal = Math.min(1, visibleStartGlobal + 1 / zoom);
@@ -473,7 +480,7 @@ export function MultiStemEditor({
     (stemId: string, t: TrimState) => onStemStateChange(stemId, { trim: t }),
     [onStemStateChange]
   );
-  const handleActivate = useCallback((stemId: string) => setActiveStemId(stemId), []);
+  const handleActivate = useCallback((stemId: string) => setActiveStemId(stemId), [setActiveStemId]);
 
   if (stems.length === 0) return null;
 
@@ -565,7 +572,6 @@ export function MultiStemEditor({
           ))
         ) : (
           stems.map((s) => {
-            // Fix #7C (TODO): use zero-fill instead of 0.15 flat line for missing waveform
             const wf = waveforms[s.id] ?? Array(WAVEFORM_BINS).fill(0);
             const st = stemStates[s.id] ?? defaultStemState();
             return (
@@ -586,7 +592,7 @@ export function MultiStemEditor({
           })
         )}
 
-        {/* Fix #1 (TODO, Option A): single global playhead overlay — no per-lane rerender on tick */}
+        {/* Single global playhead overlay — no per-lane rerender on tick */}
         {showPlayhead && (
           <div
             className="pointer-events-none absolute inset-y-0 w-0.5 bg-white/90"

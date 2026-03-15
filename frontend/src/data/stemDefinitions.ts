@@ -66,11 +66,11 @@ export const stemDefinitions: StemDefinition[] = [
   {
     id: "other",
     label: "Other",
-    subtitle: "Keys, synths, guitars",
-    flavor: "Melodic elements",
-    glow: "#ffd36a",
-    glowSoft: "rgba(255, 211, 106, 0.32)",
-    waveform: generateWaveform(8.1, WAVEFORM_BINS, 0.56),
+    subtitle: "Remaining elements",
+    flavor: "Ambient, effects, misc",
+    glow: "#a78bfa",
+    glowSoft: "rgba(167, 139, 250, 0.32)",
+    waveform: generateWaveform(3.5, WAVEFORM_BINS, 0.52),
   },
 ];
 
@@ -79,8 +79,7 @@ const stemIdToDefinition: Record<string, StemDefinition> = Object.fromEntries(
 );
 
 export function getStemDefinition(id: string): StemDefinition {
-  const mapped = id === "other" ? "melody" : id;
-  return stemIdToDefinition[mapped] ?? stemIdToDefinition.instrumental!;
+  return stemIdToDefinition[id] ?? stemIdToDefinition.instrumental!;
 }
 
 export const pipelineSteps = [

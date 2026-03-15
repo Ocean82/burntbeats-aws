@@ -23,6 +23,9 @@ from pathlib import Path
 
 from stem_service.config import (
     DEMUCS_DEVICE,
+    DEMUCS_OVERLAP,
+    DEMUCS_SEGMENT_SEC,
+    DEMUCS_SHIFTS_QUALITY,
     MODELS_DIR,
     REPO_ROOT,
     USE_DEMUCS_SHIFTS_0,
@@ -37,10 +40,6 @@ from stem_service.mdx_onnx import (
 )
 
 logger = logging.getLogger(__name__)
-
-DEMUCS_OVERLAP = 0.25
-DEMUCS_SEGMENT_SEC = 7  # htdemucs max is 7.8 s; keep under as integer
-DEMUCS_SHIFTS_QUALITY = 3
 
 
 def _run_demucs_two_stem(

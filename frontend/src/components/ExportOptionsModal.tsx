@@ -1,10 +1,9 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
 
 export type ExportFormat = "wav" | "mp3" | "flac";
-export type ExportQuality = "high" | "medium" | "low";
 export type ExportTarget = "master" | "stems" | "all";
 
 interface ExportOptionsModalProps {
@@ -17,27 +16,20 @@ interface ExportOptionsModalProps {
 
 export interface ExportOptions {
   format: ExportFormat;
-  quality: ExportQuality;
   target: ExportTarget;
   normalize: boolean;
 }
 
-const FORMAT_OPTIONS: { value: ExportFormat; label: string; description: string }[] = [
-  { value: "wav", label: "WAV", description: "Uncompressed, highest quality" },
-  { value: "mp3", label: "MP3", description: "Compressed, smaller file size" },
-  { value: "flac", label: "FLAC", description: "Lossless compression" },
+const FORMAT_OPTIONS: { value: ExportFormat; label: string; description: string; available: boolean }[] = [
+  { value: "wav", label: "WAV", description: "Uncompressed, highest quality", available: true },
+  { value: "mp3", label: "MP3", description: "Compressed — coming soon", available: false },
+  { value: "flac", label: "FLAC", description: "Lossless — coming soon", available: false },
 ];
 
-const QUALITY_OPTIONS: { value: ExportQuality; label: string; bitrate: string }[] = [
-  { value: "high", label: "High", bitrate: "320 kbps / 24-bit" },
-  { value: "medium", label: "Medium", bitrate: "192 kbps / 16-bit" },
-  { value: "low", label: "Low", bitrate: "128 kbps / 16-bit" },
-];
-
-const TARGET_OPTIONS: { value: ExportTarget; label: string; icon: typeof Download }[] = [
-  { value: "master", label: "Master Mix Only", icon: FileAudio },
-  { value: "stems", label: "Individual Stems", icon: Package },
-  { value: "all", label: "Master + Stems (ZIP)", icon: Package },
+const TARGET_OPTIONS: { value: ExportTarget; label: string; description: string; icon: typeof Download }[] = [
+  { value: "master", label: "Master Mix", description: "All stems mixed to one file", icon: FileAudio },
+  { value: "stems", label: "Individual Stems", description: "One file per stem", icon: Package },
+  { value: "all", label: "Master + Stems", description: "Master mix and all stems", icon: Package },
 ];
 
 export function ExportOptionsModal({
@@ -49,14 +41,9 @@ export function ExportOptionsModal({
 }: ExportOptionsModalProps) {
   const [options, setOptions] = useState<ExportOptions>({
     format: "wav",
-    quality: "high",
     target: "master",
     normalize: true,
   });
-
-  const handleExport = () => {
-    onExport(options);
-  };
 
   return (
     <AnimatePresence>
@@ -69,7 +56,6 @@ export function ExportOptionsModal({
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
-
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
@@ -97,14 +83,15 @@ export function ExportOptionsModal({
                 </div>
                 <button
                   onClick={onClose}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
                   disabled={isExporting}
+                  aria-label="Close export options"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
-              {/* Format Selection */}
+              {/* Format */}
               <div className="mb-5">
                 <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
                   Format
@@ -113,17 +100,22 @@ export function ExportOptionsModal({
                   {FORMAT_OPTIONS.map((format) => (
                     <button
                       key={format.value}
-                      onClick={() => setOptions((o) => ({ ...o, format: format.value }))}
+                      type="button"
+                      onClick={() => format.available && setOptions((o) => ({ ...o, format: format.value }))}
+                      disabled={!format.available}
                       className={cn(
                         "rounded-xl border px-3 py-2.5 text-left transition",
-                        options.format === format.value
+                        !format.available && "cursor-not-allowed opacity-40",
+                        format.available && options.format === format.value
                           ? "border-amber-400/50 bg-amber-500/15 text-white"
-                          : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"
+                          : format.available
+                          ? "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"
+                          : "border-white/10 bg-white/5 text-white/40"
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{format.label}</span>
-                        {options.format === format.value && (
+                        {format.available && options.format === format.value && (
                           <Check className="h-3.5 w-3.5 text-amber-400" />
                         )}
                       </div>
@@ -133,34 +125,10 @@ export function ExportOptionsModal({
                 </div>
               </div>
 
-              {/* Quality Selection */}
-              <div className="mb-5">
-                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
-                  Quality
-                </label>
-                <div className="flex gap-2">
-                  {QUALITY_OPTIONS.map((quality) => (
-                    <button
-                      key={quality.value}
-                      onClick={() => setOptions((o) => ({ ...o, quality: quality.value }))}
-                      className={cn(
-                        "flex-1 rounded-xl border px-3 py-2.5 text-center transition",
-                        options.quality === quality.value
-                          ? "border-amber-400/50 bg-amber-500/15 text-white"
-                          : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"
-                      )}
-                    >
-                      <span className="block font-medium">{quality.label}</span>
-                      <span className="block text-[10px] text-white/65">{quality.bitrate}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Export Target */}
               <div className="mb-5">
                 <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
-                  Export
+                  What to export
                 </label>
                 <div className="space-y-2">
                   {TARGET_OPTIONS.map((target) => {
@@ -168,6 +136,7 @@ export function ExportOptionsModal({
                     return (
                       <button
                         key={target.value}
+                        type="button"
                         onClick={() => setOptions((o) => ({ ...o, target: target.value }))}
                         className={cn(
                           "flex w-full items-center justify-between rounded-xl border px-4 py-3 transition",
@@ -178,7 +147,10 @@ export function ExportOptionsModal({
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-4 w-4" />
-                          <span className="font-medium">{target.label}</span>
+                          <div className="text-left">
+                            <span className="block font-medium">{target.label}</span>
+                            <span className="text-[10px] text-white/50">{target.description}</span>
+                          </div>
                         </div>
                         {options.target === target.value && (
                           <Check className="h-4 w-4 text-amber-400" />
@@ -193,9 +165,12 @@ export function ExportOptionsModal({
               <div className="mb-6 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                 <div>
                   <span className="block text-sm font-medium text-white">Normalize Audio</span>
-                  <span className="text-xs text-white/65">Optimize loudness for playback</span>
+                  <span className="text-xs text-white/65">Boost quiet mixes to a consistent loudness</span>
                 </div>
                 <button
+                  type="button"
+                  role="switch"
+                  aria-checked={options.normalize}
                   onClick={() => setOptions((o) => ({ ...o, normalize: !o.normalize }))}
                   className={cn(
                     "relative h-6 w-11 rounded-full transition-colors",
@@ -204,7 +179,7 @@ export function ExportOptionsModal({
                 >
                   <span
                     className={cn(
-                      "absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                      "absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all",
                       options.normalize ? "left-6" : "left-1"
                     )}
                   />
@@ -213,7 +188,8 @@ export function ExportOptionsModal({
 
               {/* Export Button */}
               <button
-                onClick={handleExport}
+                type="button"
+                onClick={() => onExport(options)}
                 disabled={isExporting}
                 className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
               >

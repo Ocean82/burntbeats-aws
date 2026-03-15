@@ -35,22 +35,33 @@ export function useBatchQueue(): UseBatchQueueReturn {
   const [batchQueue, setBatchQueue] = useState<QueueItem[]>([]);
   const [batchQueueExpanded, setBatchQueueExpanded] = useState(false);
   const queueFileRef = useRef<Map<string, File>>(new Map());
+  // Mirror of batchQueue for reading inside async loops without stale closure
+  const queueRef = useRef<QueueItem[]>([]);
+  const isProcessingRef = useRef(false);
+
+  const updateQueue = useCallback((updater: (q: QueueItem[]) => QueueItem[]) => {
+    setBatchQueue((q) => {
+      const next = updater(q);
+      queueRef.current = next;
+      return next;
+    });
+  }, []);
 
   const addToBatchQueue = useCallback((file: File | null) => {
     if (!file) return;
     const id = crypto.randomUUID();
-    setBatchQueue((q) => [...q, { id, fileName: file.name, fileSize: file.size, status: "queued" as const, progress: 0 }]);
+    updateQueue((q) => [...q, { id, fileName: file.name, fileSize: file.size, status: "queued" as const, progress: 0 }]);
     queueFileRef.current.set(id, file);
-  }, []);
+  }, [updateQueue]);
 
   const removeFromBatchQueue = useCallback((id: string) => {
     queueFileRef.current.delete(id);
-    setBatchQueue((q) => q.filter((item) => item.id !== id));
-  }, []);
+    updateQueue((q) => q.filter((item) => item.id !== id));
+  }, [updateQueue]);
 
   const clearCompletedFromQueue = useCallback(() => {
-    setBatchQueue((q) => q.filter((item) => item.status !== "complete"));
-  }, []);
+    updateQueue((q) => q.filter((item) => item.status !== "complete"));
+  }, [updateQueue]);
 
   const processNextInQueue = useCallback(async (
     stemCount: 2 | 4,
@@ -58,26 +69,40 @@ export function useBatchQueue(): UseBatchQueueReturn {
     onStemsReady: (stems: StemResult[]) => void,
     onError: (msg: string) => void
   ) => {
-    const queued = batchQueue.find((i) => i.status === "queued");
-    if (!queued) return;
-    const file = queueFileRef.current.get(queued.id);
-    if (!file) { setBatchQueue((q) => q.filter((i) => i.id !== queued.id)); return; }
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
 
-    setBatchQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "processing" as const, progress: 0 } : i));
     try {
-      const res = await splitStems(file, String(stemCount) as "2" | "4", splitQuality, (status) => {
-        setBatchQueue((q) => q.map((i) => i.id === queued.id ? { ...i, progress: status.progress } : i));
-      });
-      setBatchQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "complete" as const, progress: 100 } : i));
-      onStemsReady(res.stems);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Split failed";
-      setBatchQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "error" as const, error: msg } : i));
-      onError(msg);
+      // Auto-advance: process all queued items sequentially
+      while (true) {
+        const queued = queueRef.current.find((i) => i.status === "queued");
+        if (!queued) break;
+
+        const file = queueFileRef.current.get(queued.id);
+        if (!file) {
+          updateQueue((q) => q.filter((i) => i.id !== queued.id));
+          continue;
+        }
+
+        updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "processing" as const, progress: 0 } : i));
+        try {
+          const res = await splitStems(file, String(stemCount) as "2" | "4", splitQuality, (status) => {
+            updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, progress: status.progress } : i));
+          });
+          updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "complete" as const, progress: 100 } : i));
+          onStemsReady(res.stems);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Split failed";
+          updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "error" as const, error: msg } : i));
+          onError(msg);
+        } finally {
+          queueFileRef.current.delete(queued.id);
+        }
+      }
     } finally {
-      queueFileRef.current.delete(queued.id);
+      isProcessingRef.current = false;
     }
-  }, [batchQueue]);
+  }, [updateQueue]);
 
   return { batchQueue, batchQueueExpanded, setBatchQueueExpanded, addToBatchQueue, removeFromBatchQueue, clearCompletedFromQueue, processNextInQueue };
 }
