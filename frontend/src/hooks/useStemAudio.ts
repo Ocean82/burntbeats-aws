@@ -4,10 +4,8 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import type { StemResult } from "../types";
-import { computeWaveformFromBuffer, createStemPreviewBuffer } from "../utils/audio";
+import { computeWaveformFromBuffer } from "../utils/audio";
 import { getStemWaveform, setStemWaveform } from "../services/waveformCache";
-import { defaultStemState, type StemEditorState } from "../components/MultiStemEditor";
-import type { StemId } from "../types";
 
 const WAVEFORM_BINS = 512;
 

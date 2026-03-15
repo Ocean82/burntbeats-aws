@@ -27,39 +27,49 @@ export function WaveformEditor({
   currentPosition = 0,
   isLoading = false,
 }: WaveformEditorProps) {
-  const waveform = realWaveform ?? stem.waveform;
+  // Fix #2: guarantee waveform is always a number[]
+  const waveform: number[] = realWaveform ?? stem.waveform ?? [];
+
   const [zoom, setZoom] = useState(1);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0); // 0–100 percent
 
-  const visibleWidth = 100 * zoom;
-  const scrollPos = (scrollOffset / 100) * waveform.length;
-  const visibleBins = Math.floor(waveform.length / zoom);
+  // Fix #3: removed unused visibleWidth
 
-  const startTime = duration * (trim.start / 100);
-  const endTime = duration * (trim.end / 100);
+  // Fix #4: percent-scroll model — maxStart prevents overshoot
+  const visibleBins = useMemo(
+    () => (waveform.length === 0 ? 0 : Math.max(1, Math.floor(waveform.length / zoom))),
+    [waveform.length, zoom]
+  );
+
+  // Fix #6: depend on scrollOffset/zoom/waveform only (scrollPos is derived inline)
+  const waveformSlice = useMemo(() => {
+    if (waveform.length === 0) return [];
+    if (zoom === 1) return waveform;
+    const maxStart = Math.max(0, waveform.length - visibleBins);
+    const start = Math.floor((scrollOffset / 100) * maxStart);
+    const end = Math.min(waveform.length, start + visibleBins);
+    return waveform.slice(start, end);
+  }, [waveform, zoom, scrollOffset, visibleBins]);
+
+  // Fix #9: clamp trim so start <= end before computing times
+  const startP = Math.min(trim.start, trim.end);
+  const endP = Math.max(trim.start, trim.end);
+  const startTime = duration * (startP / 100);
+  const endTime = duration * (endP / 100);
   const trimmedDuration = endTime - startTime;
 
   const playheadPercent = duration > 0 ? (currentPosition / duration) * 100 : 0;
-  const isPlayheadVisible = isPlaying || currentPosition > 0;
+  // Fix #1: && not || — only show playhead when actively playing and positioned
+  const isPlayheadVisible = isPlaying && currentPosition > 0;
 
   const zoomIn = () => setZoom((z) => Math.min(z * 1.5, 8));
   const zoomOut = () => {
     setZoom((z) => {
-      const newZoom = z / 1.5;
-      if (newZoom < 1) {
-        setScrollOffset(0);
-        return 1;
-      }
-      return newZoom;
+      const next = z / 1.5;
+      if (next < 1) { setScrollOffset(0); return 1; }
+      return next;
     });
   };
-
-  const waveformSlice = useMemo(() => {
-    if (zoom === 1) return waveform;
-    const start = Math.floor(scrollPos);
-    const end = Math.min(waveform.length, start + visibleBins);
-    return waveform.slice(start, end);
-  }, [waveform, zoom, scrollPos, visibleBins]);
 
   return (
     <div
@@ -79,7 +89,8 @@ export function WaveformEditor({
             {stem.label} · Waveform
           </span>
         </div>
-        {realWaveform && (
+        {/* Fix #7: gate on waveform.length > 0, not realWaveform existence */}
+        {waveform.length > 0 && (
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -90,7 +101,7 @@ export function WaveformEditor({
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </button>
-            <span className="text-[10px] text-white/50">{zoom > 1 ? `${Math.round(zoom * 100)}%` : "100%"}</span>
+            <span className="text-[10px] text-white/50">{Math.round(zoom * 100)}%</span>
             <button
               type="button"
               onClick={zoomIn}
@@ -121,23 +132,34 @@ export function WaveformEditor({
             <Loader2 className="h-6 w-6 animate-spin text-white/70" />
           </div>
         </div>
+      ) : waveform.length === 0 ? (
+        // Fix #2: handle empty waveform gracefully
+        <div className="flex h-28 items-center justify-center text-xs text-white/30">
+          No waveform data
+        </div>
       ) : (
-        <div
-          className="relative flex h-28 items-center gap-[2px] overflow-hidden"
-          style={{ width: `${visibleWidth}%`, marginLeft: zoom > 1 ? `-${scrollOffset}%` : 0 }}
-        >
-          {waveformSlice.map((value, index) => (
-            <span
-              key={`${stem.id}-${index}`}
-              className="wave-bar flex-1 rounded-full transition-opacity"
-              style={{
-                height: `${Math.max(16, value * 100)}%`,
-                background: `linear-gradient(180deg, rgba(255,255,255,0.9) 0%, ${stem.glow} 65%, rgba(255,255,255,0.16) 100%)`,
-                boxShadow: `0 0 18px ${stem.glowSoft}`,
-                opacity: index % 2 === 0 ? 0.9 : 0.58,
-              }}
-            />
-          ))}
+        // Fix #4: scroll via translateX using percent of the zoomed overflow
+        <div className="relative h-28 overflow-hidden">
+          <div
+            className="flex h-full items-center gap-[2px]"
+            style={{
+              width: `${100 * zoom}%`,
+              transform: zoom > 1 ? `translateX(-${scrollOffset * (1 - 1 / zoom)}%)` : undefined,
+            }}
+          >
+            {waveformSlice.map((value, index) => (
+              <span
+                key={`${stem.id}-${index}`}
+                className="wave-bar flex-1 rounded-full"
+                style={{
+                  height: `${Math.max(16, value * 100)}%`,
+                  background: `linear-gradient(180deg, rgba(255,255,255,0.9) 0%, ${stem.glow} 65%, rgba(255,255,255,0.16) 100%)`,
+                  boxShadow: `0 0 18px ${stem.glowSoft}`,
+                  opacity: index % 2 === 0 ? 0.9 : 0.58,
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -145,29 +167,33 @@ export function WaveformEditor({
         <div
           className="absolute inset-y-0 rounded-[1.2rem] border border-white/18 bg-white/6"
           style={{
-            left: `${trim.start}%`,
-            right: `${100 - trim.end}%`,
+            left: `${startP}%`,
+            right: `${100 - endP}%`,
             boxShadow: `inset 0 0 20px ${stem.glowSoft}, 0 0 24px ${stem.glowSoft}`,
           }}
         />
-        <div
-          className="absolute top-0 bottom-0 w-px bg-white/70"
-          style={{ left: `${trim.start}%` }}
-        />
-        <div
-          className="absolute top-0 bottom-0 w-px bg-white/70"
-          style={{ left: `${trim.end}%` }}
-        />
+        <div className="absolute top-0 bottom-0 w-px bg-white/70" style={{ left: `${startP}%` }} />
+        <div className="absolute top-0 bottom-0 w-px bg-white/70" style={{ left: `${endP}%` }} />
         {isPlayheadVisible && (
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg"
-            style={{
-              left: `${playheadPercent}%`,
-              boxShadow: "0 0 8px rgba(255,255,255,0.8)",
-            }}
+            style={{ left: `${playheadPercent}%`, boxShadow: "0 0 8px rgba(255,255,255,0.8)" }}
           />
         )}
       </div>
+
+      {zoom > 1 && (
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={0.5}
+          value={scrollOffset}
+          onChange={(e) => setScrollOffset(Number(e.target.value))}
+          className="mt-2 w-full accent-white/50"
+          aria-label="Scroll waveform"
+        />
+      )}
 
       {duration > 0 && (
         <div className="mt-2 flex justify-between text-[10px] text-white/50">

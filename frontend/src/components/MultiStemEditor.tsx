@@ -1,9 +1,9 @@
 /**
  * MultiStemEditor — unified waveform editor showing all stems in one timeline.
  * Each stem gets a color-coded lane. Active stem is selected via tab strip.
- * Supports: interactive trim handles, playhead scrub, volume, pan, pitch (rate), mute/solo.
+ * Supports: interactive trim handles, playhead scrub, volume, pan, speed (rate), mute/solo.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Play, Square, Volume2, VolumeX, Headphones,
   ZoomIn, ZoomOut, RotateCcw,
@@ -40,8 +40,11 @@ export interface MultiStemEditorProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const LANE_HEIGHT = 56; // px per stem lane
+const LANE_HEIGHT = 56;       // px per stem lane
 const WAVEFORM_BINS = 512;
+const BAR_BUDGET = 300;       // max bars rendered per lane (downsampling cap)
+const HANDLE_HIT_PX = 12;     // pixel radius for trim handle hit detection
+const MIN_TRIM_GAP_PCT = 2;   // minimum gap between trim handles (percent)
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,62 +57,92 @@ function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/** Downsample an array to at most `budget` bars by averaging buckets. */
+function downsample(data: number[], budget: number): number[] {
+  if (data.length <= budget) return data;
+  const out: number[] = [];
+  const step = data.length / budget;
+  for (let i = 0; i < budget; i++) {
+    const lo = Math.floor(i * step);
+    const hi = Math.min(data.length, Math.ceil((i + 1) * step));
+    let sum = 0;
+    for (let j = lo; j < hi; j++) sum += data[j];
+    out.push(sum / (hi - lo));
+  }
+  return out;
+}
+
 // ─── WaveformLane ─────────────────────────────────────────────────────────────
 
 function WaveformLane({
   stem,
   waveform,
   trim,
-  playheadPct,
   isActive,
   isMuted,
   zoom,
   scrollPct,
   onTrimChange,
   onSeek,
+  onActivate,
 }: {
   stem: StemDefinition;
   waveform: number[];
   trim: TrimState;
-  playheadPct: number;
   isActive: boolean;
   isMuted: boolean;
   zoom: number;
   scrollPct: number;
   onTrimChange: (t: TrimState) => void;
   onSeek: (pct: number) => void;
+  onActivate: () => void;
 }) {
   const laneRef = useRef<HTMLDivElement>(null);
   const dragging = useRef<"start" | "end" | "seek" | null>(null);
 
+  // Fix #4 (TODO): clamp visibleEnd to 1 to prevent overshoot
+  const visibleStart = scrollPct / 100;
+  const visibleEnd = Math.min(1, visibleStart + 1 / zoom);
+
   const pctFromEvent = useCallback((e: MouseEvent | React.MouseEvent) => {
     const rect = laneRef.current?.getBoundingClientRect();
-    if (!rect) return 0;
-    const raw = (e.clientX - rect.left) / rect.width;
-    // Map visible area back to full timeline pct
-    const visibleStart = scrollPct / 100;
-    const visibleEnd = visibleStart + 1 / zoom;
+    // Fix #7A: guard zero-width rect
+    if (!rect || rect.width <= 0) return 0;
+    const raw = clamp((e.clientX - rect.left) / rect.width, 0, 1);
     return clamp(visibleStart + raw * (visibleEnd - visibleStart), 0, 1) * 100;
-  }, [zoom, scrollPct]);
+  }, [visibleStart, visibleEnd]);
+
+  // Fix #4 (TODO): pixel-based handle hit detection for consistent ergonomics
+  const hitTestHandle = useCallback((e: React.MouseEvent): "start" | "end" | "seek" => {
+    const rect = laneRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return "seek";
+    const toPixel = (pct: number) => {
+      const frac = clamp((pct / 100 - visibleStart) / (visibleEnd - visibleStart), 0, 1);
+      return frac * rect.width;
+    };
+    const mouseX = e.clientX - rect.left;
+    const distStart = Math.abs(mouseX - toPixel(trim.start));
+    const distEnd = Math.abs(mouseX - toPixel(trim.end));
+    if (distStart <= HANDLE_HIT_PX) return "start";
+    if (distEnd <= HANDLE_HIT_PX) return "end";
+    return "seek";
+  }, [trim, visibleStart, visibleEnd]);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
-    const pct = pctFromEvent(e);
-    const distStart = Math.abs(pct - trim.start);
-    const distEnd = Math.abs(pct - trim.end);
-    if (distStart < 4) dragging.current = "start";
-    else if (distEnd < 4) dragging.current = "end";
-    else dragging.current = "seek";
+    // Fix #4 (TODO): stop propagation so parent onClick doesn't fire during drag
+    e.stopPropagation();
     e.preventDefault();
-  }, [pctFromEvent, trim]);
+    dragging.current = hitTestHandle(e);
+  }, [hitTestHandle]);
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (!dragging.current) return;
       const pct = pctFromEvent(e);
       if (dragging.current === "start") {
-        onTrimChange({ start: clamp(pct, 0, trim.end - 2), end: trim.end });
+        onTrimChange({ start: clamp(pct, 0, trim.end - MIN_TRIM_GAP_PCT), end: trim.end });
       } else if (dragging.current === "end") {
-        onTrimChange({ start: trim.start, end: clamp(pct, trim.start + 2, 100) });
+        onTrimChange({ start: trim.start, end: clamp(pct, trim.start + MIN_TRIM_GAP_PCT, 100) });
       } else {
         onSeek(pct);
       }
@@ -123,21 +156,20 @@ function WaveformLane({
     };
   }, [pctFromEvent, trim, onTrimChange, onSeek]);
 
-  // Visible slice of waveform
-  const visibleStart = scrollPct / 100;
-  const visibleEnd = visibleStart + 1 / zoom;
-  const startBin = Math.floor(visibleStart * waveform.length);
-  const endBin = Math.ceil(visibleEnd * waveform.length);
-  const slice = waveform.slice(startBin, endBin);
+  // Fix #2 (TODO): clamp bin bounds to prevent overshoot
+  const startBin = clamp(Math.floor(visibleStart * waveform.length), 0, waveform.length);
+  const endBin = clamp(Math.ceil(visibleEnd * waveform.length), startBin, waveform.length);
+  const rawSlice = waveform.slice(startBin, endBin);
 
-  // Convert trim pcts to visible-area pcts for rendering
-  const toVisible = (pct: number) => {
-    const frac = pct / 100;
-    return clamp((frac - visibleStart) / (visibleEnd - visibleStart), 0, 1) * 100;
-  };
+  // Fix #5C (TODO): downsample to BAR_BUDGET to cap DOM nodes
+  const slice = useMemo(() => downsample(rawSlice, BAR_BUDGET), [rawSlice]);
+
+  // Convert full-timeline pct to visible-area pct for rendering
+  const toVisible = (pct: number) =>
+    clamp((pct / 100 - visibleStart) / (visibleEnd - visibleStart), 0, 1) * 100;
+
   const trimStartVis = toVisible(trim.start);
   const trimEndVis = toVisible(trim.end);
-  const playheadVis = toVisible(playheadPct);
 
   return (
     <div
@@ -149,15 +181,19 @@ function WaveformLane({
       )}
       style={{ height: LANE_HEIGHT, background: `${stem.glow}08` }}
       onMouseDown={onMouseDown}
+      // Fix #4 (TODO): activate stem on click only if not dragging
+      onClick={onActivate}
     >
       {/* Waveform bars */}
       <div className="absolute inset-0 flex items-center gap-px px-0.5">
         {slice.map((v, i) => (
           <span
-            key={i}
+            // Fix #5A (TODO): stable key based on bin position, not slice index
+            key={startBin + i}
             className="flex-1 rounded-full"
             style={{
-              height: `${Math.max(8, v * 90)}%`,
+              // Fix #5B (TODO): clamp bar height to 100%
+              height: `${Math.max(8, clamp(v, 0, 1) * 90)}%`,
               background: `linear-gradient(180deg, ${stem.glow}cc 0%, ${stem.glow}44 100%)`,
               opacity: isMuted ? 0.3 : isActive ? 0.9 : 0.5,
             }}
@@ -183,14 +219,6 @@ function WaveformLane({
         className="absolute inset-y-0 w-1.5 cursor-ew-resize rounded-r"
         style={{ left: `calc(${trimEndVis}% - 6px)`, background: stem.glow, opacity: 0.9 }}
       />
-
-      {/* Playhead */}
-      {playheadPct > 0 && (
-        <div
-          className="pointer-events-none absolute inset-y-0 w-0.5 bg-white/90"
-          style={{ left: `${playheadVis}%`, boxShadow: "0 0 6px rgba(255,255,255,0.7)" }}
-        />
-      )}
 
       {/* Stem label */}
       <span
@@ -221,9 +249,7 @@ function StemControls({
   onPreview: () => void;
 }) {
   const { mixer, trim, rate, muted, soloed } = state;
-
-  const setMixer = (patch: Partial<MixerState>) =>
-    onChange({ mixer: { ...mixer, ...patch } });
+  const setMixer = (patch: Partial<MixerState>) => onChange({ mixer: { ...mixer, ...patch } });
 
   const trimStartSec = duration * (trim.start / 100);
   const trimEndSec = duration * (trim.end / 100);
@@ -242,6 +268,7 @@ function StemControls({
           <button
             type="button"
             onClick={onPreview}
+            aria-label={isPreviewPlaying ? `Stop ${stem.label} preview` : `Preview ${stem.label}`}
             className={cn(
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               isPreviewPlaying
@@ -255,6 +282,8 @@ function StemControls({
           <button
             type="button"
             onClick={() => onChange({ soloed: !soloed })}
+            aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
+            aria-pressed={soloed}
             className={cn(
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               soloed
@@ -268,6 +297,8 @@ function StemControls({
           <button
             type="button"
             onClick={() => onChange({ muted: !muted })}
+            aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
+            aria-pressed={muted}
             className={cn(
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               muted
@@ -289,10 +320,11 @@ function StemControls({
             <span>{formatTime(trimStartSec)}</span>
           </div>
           <input
-            type="range" min={0} max={trim.end - 2} step={0.1}
+            type="range" min={0} max={trim.end - MIN_TRIM_GAP_PCT} step={0.1}
             value={trim.start}
+            aria-label={`${stem.label} trim in`}
             onChange={(e) => onChange({ trim: { ...trim, start: Number(e.target.value) } })}
-            className="w-full accent-amber-400"
+            className="w-full"
             style={{ accentColor: stem.glow }}
           />
         </div>
@@ -302,8 +334,9 @@ function StemControls({
             <span>{formatTime(trimEndSec)}</span>
           </div>
           <input
-            type="range" min={trim.start + 2} max={100} step={0.1}
+            type="range" min={trim.start + MIN_TRIM_GAP_PCT} max={100} step={0.1}
             value={trim.end}
+            aria-label={`${stem.label} trim out`}
             onChange={(e) => onChange({ trim: { ...trim, end: Number(e.target.value) } })}
             className="w-full"
             style={{ accentColor: stem.glow }}
@@ -321,6 +354,7 @@ function StemControls({
           <input
             type="range" min={-24} max={12} step={0.5}
             value={mixer.gain}
+            aria-label={`${stem.label} volume`}
             onChange={(e) => setMixer({ gain: Number(e.target.value) })}
             className="w-full"
             style={{ accentColor: stem.glow }}
@@ -334,19 +368,22 @@ function StemControls({
           <input
             type="range" min={-100} max={100} step={1}
             value={mixer.pan}
+            aria-label={`${stem.label} pan`}
             onChange={(e) => setMixer({ pan: Number(e.target.value) })}
             className="w-full"
             style={{ accentColor: stem.glow }}
           />
         </div>
         <div>
+          {/* Fix #6 (TODO): label clarifies pitch+tempo coupling */}
           <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Speed / Pitch</span>
+            <span title="Changes both speed and pitch together">Speed (+ pitch)</span>
             <span>{rate.toFixed(2)}×</span>
           </div>
           <input
             type="range" min={0.5} max={2.0} step={0.01}
             value={rate}
+            aria-label={`${stem.label} speed and pitch`}
             onChange={(e) => onChange({ rate: Number(e.target.value) })}
             className="w-full"
             style={{ accentColor: stem.glow }}
@@ -384,21 +421,39 @@ export function MultiStemEditor({
     }
   }, [stems, activeStemId]);
 
+  // Fix #3 (TODO): clamp scrollPct when zoom changes so it stays in valid range
+  useEffect(() => {
+    const maxScroll = Math.max(0, 100 - 100 / zoom);
+    setScrollPct((s) => clamp(s, 0, maxScroll));
+  }, [zoom]);
+
   const activeStem = stems.find((s) => s.id === activeStemId) ?? stems[0];
   const activeState = activeStem ? (stemStates[activeStem.id] ?? defaultStemState()) : defaultStemState();
   const activeDuration = activeStem ? (durations[activeStem.id] ?? 0) : 0;
 
   const maxDuration = Math.max(...stems.map((s) => durations[s.id] ?? 0), 0);
 
-  // Ruler ticks
-  const tickCount = 8;
-  const ticks = Array.from({ length: tickCount + 1 }, (_, i) => {
-    const pct = i / tickCount;
-    const visStart = scrollPct / 100;
-    const visEnd = visStart + 1 / zoom;
-    const timePct = visStart + pct * (visEnd - visStart);
-    return { pct: pct * 100, time: timePct * maxDuration };
-  });
+  // Ruler ticks — memoized so they don't recompute on playhead ticks
+  const ticks = useMemo(() => {
+    const tickCount = 8;
+    return Array.from({ length: tickCount + 1 }, (_, i) => {
+      const pct = i / tickCount;
+      const visStart = scrollPct / 100;
+      const visEnd = Math.min(1, visStart + 1 / zoom);
+      const timePct = visStart + pct * (visEnd - visStart);
+      return { pct: pct * 100, time: timePct * maxDuration };
+    });
+  }, [scrollPct, zoom, maxDuration]);
+
+  // Fix #1 (TODO, Option A): global playhead overlay position — computed once, not per-lane
+  // This prevents waveform bars from re-rendering on every playhead tick
+  const visibleStartGlobal = scrollPct / 100;
+  const visibleEndGlobal = Math.min(1, visibleStartGlobal + 1 / zoom);
+  const playheadVisiblePct = clamp(
+    (playheadPct / 100 - visibleStartGlobal) / (visibleEndGlobal - visibleStartGlobal),
+    0, 1
+  ) * 100;
+  const showPlayhead = isPlaying && playheadPct > 0;
 
   if (stems.length === 0) return null;
 
@@ -410,6 +465,7 @@ export function MultiStemEditor({
           type="button"
           onClick={onPlayPause}
           disabled={Object.keys(stemStates).length === 0}
+          aria-label={isPlaying ? "Stop mix" : "Play mix"}
           className={cn(
             "flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition",
             isPlaying
@@ -426,18 +482,18 @@ export function MultiStemEditor({
             type="button"
             onClick={() => setZoom((z) => Math.max(1, z / 1.5))}
             disabled={zoom <= 1}
+            aria-label="Zoom out"
             className="flex h-8 w-8 items-center justify-center text-white/60 hover:text-white disabled:opacity-30 transition"
-            title="Zoom out"
           >
             <ZoomOut className="h-4 w-4" />
           </button>
-          <span className="px-1 text-xs text-white/50">{Math.round(zoom * 100)}%</span>
+          <span className="px-1 text-xs text-white/50" aria-live="polite">{Math.round(zoom * 100)}%</span>
           <button
             type="button"
             onClick={() => setZoom((z) => Math.min(8, z * 1.5))}
             disabled={zoom >= 8}
+            aria-label="Zoom in"
             className="flex h-8 w-8 items-center justify-center text-white/60 hover:text-white disabled:opacity-30 transition"
-            title="Zoom in"
           >
             <ZoomIn className="h-4 w-4" />
           </button>
@@ -445,19 +501,22 @@ export function MultiStemEditor({
 
         {zoom > 1 && (
           <input
-            type="range" min={0} max={100 - 100 / zoom} step={0.5}
+            type="range"
+            min={0}
+            max={Math.max(0, 100 - 100 / zoom)}
+            step={0.5}
             value={scrollPct}
             onChange={(e) => setScrollPct(Number(e.target.value))}
             className="w-32"
-            title="Scroll timeline"
+            aria-label="Scroll timeline"
           />
         )}
 
         <button
           type="button"
           onClick={() => { setZoom(1); setScrollPct(0); }}
+          aria-label="Reset zoom and scroll"
           className="ml-auto flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:text-white transition"
-          title="Reset zoom"
         >
           <RotateCcw className="h-3.5 w-3.5" />
           Reset view
@@ -478,37 +537,45 @@ export function MultiStemEditor({
         ))}
       </div>
 
-      {/* ── Waveform lanes (all stems) ── */}
-      <div className="flex flex-col gap-1.5">
+      {/* ── Waveform lanes + global playhead overlay ── */}
+      <div className="relative flex flex-col gap-1.5">
         {isLoadingStems ? (
           stems.map((s) => (
             <div key={s.id} className="h-14 animate-pulse rounded-lg bg-white/10" />
           ))
         ) : (
           stems.map((s) => {
-            const wf = waveforms[s.id] ?? Array(WAVEFORM_BINS).fill(0.15);
+            // Fix #7C (TODO): use zero-fill instead of 0.15 flat line for missing waveform
+            const wf = waveforms[s.id] ?? Array(WAVEFORM_BINS).fill(0);
             const st = stemStates[s.id] ?? defaultStemState();
             return (
-              <div
+              <WaveformLane
                 key={s.id}
-                onClick={() => setActiveStemId(s.id)}
-                className="cursor-pointer"
-              >
-                <WaveformLane
-                  stem={s}
-                  waveform={wf}
-                  trim={st.trim}
-                  playheadPct={playheadPct}
-                  isActive={s.id === activeStemId}
-                  isMuted={st.muted}
-                  zoom={zoom}
-                  scrollPct={scrollPct}
-                  onTrimChange={(t) => onStemStateChange(s.id, { trim: t })}
-                  onSeek={onSeek}
-                />
-              </div>
+                stem={s}
+                waveform={wf}
+                trim={st.trim}
+                isActive={s.id === activeStemId}
+                isMuted={st.muted}
+                zoom={zoom}
+                scrollPct={scrollPct}
+                onTrimChange={(t) => onStemStateChange(s.id, { trim: t })}
+                onSeek={onSeek}
+                // Fix #4 (TODO): activate passed as separate prop, not wrapping div onClick
+                onActivate={() => setActiveStemId(s.id)}
+              />
             );
           })
+        )}
+
+        {/* Fix #1 (TODO, Option A): single global playhead overlay — no per-lane rerender on tick */}
+        {showPlayhead && (
+          <div
+            className="pointer-events-none absolute inset-y-0 w-0.5 bg-white/90"
+            style={{
+              left: `${playheadVisiblePct}%`,
+              boxShadow: "0 0 6px rgba(255,255,255,0.7)",
+            }}
+          />
         )}
       </div>
 
@@ -521,6 +588,7 @@ export function MultiStemEditor({
               key={s.id}
               type="button"
               onClick={() => setActiveStemId(s.id)}
+              aria-pressed={s.id === activeStemId}
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
                 s.id === activeStemId

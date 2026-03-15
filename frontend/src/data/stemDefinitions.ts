@@ -2,7 +2,7 @@
  * Static stem definitions: colors, labels, placeholder waveforms.
  * Shared across App, MultiStemEditor, and any future stem-related components.
  */
-import type { StemDefinition, StemId } from "../types";
+import type { StemDefinition } from "../types";
 
 const WAVEFORM_BINS = 1024;
 
