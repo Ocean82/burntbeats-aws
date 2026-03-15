@@ -449,6 +449,15 @@
       0 0 40px rgba(255, 100, 60, 0.2);
   }
 
+  .progress-fill-width {
+    width: var(--split-progress-pct, 0);
+  }
+
+  .track-status-dot {
+    background-color: var(--stem-glow);
+    box-shadow: 0 0 8px var(--stem-glow-soft);
+  }
+
   .progress-shimmer {
     position: relative;
     overflow: hidden;

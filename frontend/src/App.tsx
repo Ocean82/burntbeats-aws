@@ -21,6 +21,8 @@ import {
   MultiStemEditor, defaultStemState, type StemEditorState,
 } from "./components";
 
+const MASTER_CHAIN = { compression: 2.4, limiter: -0.8, loudness: -9 } as const;
+
 export function App() {
   // ── Upload / split state ──────────────────────────────────────────────────
   const [stemCount, setStemCount] = useState<2 | 4>(DEFAULT_STEM_COUNT as 2 | 4);
@@ -65,13 +67,21 @@ export function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [isComparing, setIsComparing] = useState(false);
   const [showingOriginal, setShowingOriginal] = useState(false);
-  const [masterChain] = useState({ compression: 2.4, limiter: -0.8, loudness: -9 });
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Derived shims for modals
-  const trimMap = Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.trim]));
-  const mixerState = Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.mixer]));
-  const mutedStems = Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.muted]));
+  // Derived shims for modals (memoized to avoid new refs every render)
+  const trimMap = useMemo(
+    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.trim])),
+    [stemStates],
+  );
+  const mixerState = useMemo(
+    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.mixer])),
+    [stemStates],
+  );
+  const mutedStems = useMemo(
+    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.muted])),
+    [stemStates],
+  );
 
   // ── Waveform computation (idle-scheduled) ─────────────────────────────────
   useWaveformCompute(stemBuffers, splitResultStems, setStemWaveforms);
@@ -218,13 +228,21 @@ export function App() {
   const switchComparisonSource = useCallback(() => setShowingOriginal((s) => !s), []);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  const setSoloAtIndex = useCallback((index: number) => {
+    const id = visibleStems[index]?.id;
+    if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), soloed: !c[id]?.soloed } }));
+  }, [visibleStems]);
+  const setMuteFirst = useCallback(() => {
+    const id = visibleStems[0]?.id;
+    if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), muted: !c[id]?.muted } }));
+  }, [visibleStems]);
   const shortcutHandlers: ShortcutHandlers = useMemo(() => ({
     playStop: () => { if (splitResultStems.length > 0) void handlePlayMix(splitResultStems, stemStates, stemBuffers); },
-    solo1: () => { const id = visibleStems[0]?.id; if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), soloed: !c[id]?.soloed } })); },
-    solo2: () => { const id = visibleStems[1]?.id; if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), soloed: !c[id]?.soloed } })); },
-    solo3: () => { const id = visibleStems[2]?.id; if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), soloed: !c[id]?.soloed } })); },
-    solo4: () => { const id = visibleStems[3]?.id; if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), soloed: !c[id]?.soloed } })); },
-    muteToggle: () => { const id = visibleStems[0]?.id; if (id) setStemStates((c) => ({ ...c, [id]: { ...(c[id] ?? defaultStemState()), muted: !c[id]?.muted } })); },
+    solo1: () => setSoloAtIndex(0),
+    solo2: () => setSoloAtIndex(1),
+    solo3: () => setSoloAtIndex(2),
+    solo4: () => setSoloAtIndex(3),
+    muteToggle: setMuteFirst,
     export: () => { if (splitResultStems.length > 0) setShowExportModal(true); },
     undo: () => { /* TODO */ },
     redo: () => { /* TODO */ },
@@ -235,7 +253,7 @@ export function App() {
       else if (showPresetsModal) setShowPresetsModal(false);
       else if (isPlayingMix) handleStopMix();
     },
-  }), [splitResultStems, stemStates, stemBuffers, visibleStems, handlePlayMix, handleStopMix, showHelpModal, showExportModal, showPresetsModal, isPlayingMix]);
+  }), [splitResultStems, stemStates, stemBuffers, visibleStems, handlePlayMix, handleStopMix, showHelpModal, showExportModal, showPresetsModal, isPlayingMix, setSoloAtIndex, setMuteFirst]);
 
   useKeyboardShortcuts(shortcutHandlers, true);
 
@@ -315,10 +333,10 @@ export function App() {
                 <div className="h-4 w-px bg-white/10" />
                 <button type="button" disabled className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30" title="Redo"><Redo2 className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={() => setShowPresetsModal(true)} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white">
+              <button type="button" onClick={() => setShowPresetsModal(true)} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white" title="Presets" aria-label="Open mixer presets">
                 <Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Presets</span>
               </button>
-              <button type="button" onClick={() => setShowHelpModal(true)} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white">
+              <button type="button" onClick={() => setShowHelpModal(true)} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white" title="Help" aria-label="Open help">
                 <HelpCircle className="h-4 w-4" />
               </button>
             </div>
@@ -540,7 +558,8 @@ export function App() {
                   <span>Split progress</span><span>{splitProgress}%</span>
                 </div>
                 <div className="progress-shimmer h-2 overflow-hidden rounded-full bg-white/10">
-                  <div className="progress-glow h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)] transition-all duration-300" style={{ width: `${splitProgress}%` }} />
+                  {/* Width driven by CSS var --split-progress-pct (dynamic from state) */}
+                  <div className="progress-glow progress-fill-width h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)] transition-all duration-300" style={{ ['--split-progress-pct']: `${splitProgress}%` } as React.CSSProperties} />
                 </div>
                 <p className="mt-2 text-sm text-white/64">{activeStage.blurb}</p>
               </div>
@@ -561,7 +580,8 @@ export function App() {
               <div className="space-y-2">
                 {visibleStems.map((stem) => (
                   <div key={stem.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: stem.glow, boxShadow: `0 0 8px ${stem.glowSoft}` }} />
+                    {/* Dot color via CSS vars --stem-glow, --stem-glow-soft (per-stem from data) */}
+                    <span className="track-status-dot h-2 w-2 rounded-full" style={{ ['--stem-glow']: stem.glow, ['--stem-glow-soft']: stem.glowSoft } as React.CSSProperties} />
                     <span className="text-sm text-white">{stem.label}</span>
                     <span className="text-xs text-white/65">
                       {loadedTracks[stem.id] ? "Ready" : stemBuffers[stem.id] ? "Buffered" : isLoadingStems ? "Loading…" : "Pending"}
@@ -573,9 +593,9 @@ export function App() {
             <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
               <div className="text-xs font-semibold uppercase tracking-wider text-white/65 mb-3">Master chain</div>
               <div className="space-y-2 text-sm text-white/68">
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Glue compression</span><span>{masterChain.compression} dB GR</span></div>
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Limiter ceiling</span><span>{masterChain.limiter} dB</span></div>
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Loudness target</span><span>{masterChain.loudness} LUFS</span></div>
+                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Glue compression</span><span>{MASTER_CHAIN.compression} dB GR</span></div>
+                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Limiter ceiling</span><span>{MASTER_CHAIN.limiter} dB</span></div>
+                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Loudness target</span><span>{MASTER_CHAIN.loudness} LUFS</span></div>
               </div>
             </div>
             <p className="mt-5 text-xs text-white/65">
