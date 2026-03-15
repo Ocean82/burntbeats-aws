@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Run segment tests so models load and run correctly. Ubuntu/WSL. Run from repo root.
+# Run segment tests so models load and run correctly.
+# Environment: WSL or Linux. Run from repo root (from Windows: wsl bash scripts/check-segments.sh).
 set -e
 cd "$(dirname "$0")/.."
 ROOT="$PWD"

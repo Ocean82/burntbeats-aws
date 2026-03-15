@@ -19,7 +19,7 @@ All commands below are bash. Use a WSL (Ubuntu) terminal; the app is not support
 | `models/htdemucs.th` | **Recommended on CPU:** Prefer `.th` (smaller, faster). `python scripts/download_htdemucs_official.py` or copy `stem-models/htdemucs.pth` (app creates `.th` from `.pth` if needed). Used as optional Stage 2/3, not default Stage 1. |
 | `models/MDX_Net_Models/` | `stem-models/MDX_Net_Models/` (incl. `model_data/`) |
 | `models/mdxnet_models/` | `stem-models/all-uvr-models/mdxnet_models-onnx/` (Kim_Vocal_2.onnx, UVR-MDX-NET-Voc_FT.onnx, model_data.json, etc.) |
-| `models/silero_vad.jit` | Optional: for VAD pre-trim (copy from your Silero VAD model location if you use `USE_VAD_PRETRIM=1`) |
+| `models/silero_vad.onnx` | Optional: for VAD pre-trim (Silero VAD ONNX; use if `USE_VAD_PRETRIM=1`. Copy from Silero/vadslice or export from .jit.) |
 | `models/Demucs_Models/` | Optional: for quality mode with Demucs Extra bag (mdx_extra_q.yaml + .th files) |
 | `models/model_bs_roformer_*.ckpt` | Optional: Ultra mode **GPU only** (on CPU, Ultra falls back to Quality) |
 | `models/model_mel_band_roformer_*.ckpt` | Optional: Ultra mode **GPU only** (best separation) |

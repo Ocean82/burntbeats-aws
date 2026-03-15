@@ -283,14 +283,10 @@ def run_hybrid_2stem(
     """
     2-stem separation: vocals + instrumental.
 
-    Speed mode (prefer_speed=True):
-      Demucs 2-stem subprocess — fast, model-native, phase-aligned.
-      No ONNX overhead; htdemucs --two-stems=vocals gives vocals + no_vocals directly.
-
-    Quality mode (prefer_speed=False):
-      ONNX vocal model (Kim_Vocal_2 / Voc_FT) + ONNX instrumental model (Inst_HQ_4/5).
-      Better vocal isolation; no phase inversion when both ONNX models available.
-      Falls back to Demucs 2-stem if ONNX unavailable.
+    ONNX-first (both Speed and Quality): use MDX vocal ONNX (+ instrumental ONNX or
+    phase inversion) when available; no subprocess. Falls back to Demucs 2-stem
+    subprocess only when no vocal ONNX is found. This keeps 2-stem efficient
+    (in-process, lower memory) when models/mdxnet_models (or equivalent) are present.
 
     Returns [(stem_id, path), ...]: [("vocals", ...), ("instrumental", ...)].
     """
@@ -300,25 +296,10 @@ def run_hybrid_2stem(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
-    if prefer_speed:
-        # Speed: Demucs 2-stem subprocess — fastest path, no ONNX
-        from stem_service.split import run_demucs
-
-        stage_out = output_dir / "demucs2"
-        stem_files = run_demucs(input_path, stage_out, stems=2, prefer_speed=True)
-        result: list[tuple[str, Path]] = []
-        for stem_id, src in stem_files:
-            dest = flat_dir / f"{stem_id}.wav"
-            shutil.copy2(src, dest)
-            result.append((stem_id, dest))
-        if progress_callback:
-            progress_callback(100)
-        return result
-
-    # Quality: ONNX vocal + ONNX instrumental (best isolation)
+    # ONNX-first: Stage 1 vocal (+ optional inst) or Demucs 2-stem fallback
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental = extract_vocals_stage1(
-        input_path, stage1_out, prefer_speed=False
+        input_path, stage1_out, prefer_speed=prefer_speed
     )
 
     instrumental_path = output_dir / "instrumental.wav"

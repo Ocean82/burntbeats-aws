@@ -13,7 +13,10 @@ import numpy as np
 import soundfile as sf
 
 from stem_service.config import SILERO_VAD_ONNX
-from stem_service.silero_onnx_vad import SileroOnnxVAD
+from stem_service.silero_onnx_vad import (
+    SileroOnnxVAD,
+    get_speech_timestamps_onnx,
+)
 
 VAD_SAMPLE_RATE = 16000
 VAD_PAD_SEC = 0.3
@@ -75,8 +78,6 @@ def get_speech_timestamps(
     wav = _load_mono_16k(audio_path)
     if wav.size == 0:
         return None
-
-    from stem_service.silero_onnx_vad import get_speech_timestamps_onnx
 
     segments = get_speech_timestamps_onnx(
         wav=wav,

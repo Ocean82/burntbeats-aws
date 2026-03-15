@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """
 Test each pipeline segment so models load and run correctly.
-Run from repo root with venv active: python scripts/check_segments.py
+
+Intended for WSL or Linux. Run from repo root with venv active:
+
+  bash scripts/check-segments.sh
+
+Or from inside WSL/Linux:
+  source .venv/bin/activate && python scripts/check_segments.py
+
+From Windows (with WSL installed): wsl bash scripts/check-segments.sh
+
 Creates a minimal test WAV in tmp/segment_test/ and runs VAD, phase inversion, Stage 1, Stage 2.
-Use: PYTHONUNBUFFERED=1 python scripts/check_segments.py  for live output.
 """
 
 from __future__ import annotations

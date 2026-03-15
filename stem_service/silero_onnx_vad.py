@@ -14,7 +14,9 @@ def _load_default_session(
     providers: list[str] | None,
 ) -> ort.InferenceSession:
     if model_path is None:
-        model_path = Path(__file__).with_name("silero_vad.onnx")
+        # Default: models/silero_vad.onnx (repo root = parent of stem_service)
+        repo_models = Path(__file__).resolve().parent.parent / "models"
+        model_path = repo_models / "silero_vad.onnx"
     if providers is None:
         providers = ["CPUExecutionProvider"]
     return ort.InferenceSession(str(model_path), providers=providers)

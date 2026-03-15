@@ -41,8 +41,9 @@ HOP = 1024
 SPEC_FREQ = 2048
 SPEC_TIME = 336
 
-# Model paths
+# Model paths (embedded and htdemucs.onnx share same I/O as 4-stem two-input)
 EMBEDDED_ONNX = MODELS_DIR / "htdemucs_embedded.onnx"
+HTDEMUCS_ONNX = MODELS_DIR / "htdemucs.onnx"  # fallback when embedded missing
 SIX_STEM_ONNX = MODELS_DIR / "htdemucs_6s.onnx"
 V4_ONNX = MODELS_DIR / "demucsv4.onnx"
 
@@ -121,7 +122,13 @@ def _overlap_add(
     chunks: list[tuple[int, int, np.ndarray]],
     total: int,
 ) -> np.ndarray:
-    """Hann-windowed overlap-add for a single stem. chunks: [(start, end, wav)]."""
+    """
+    Hann-windowed overlap-add (OLA) for a single stem.
+    Chunks are weighted by a Hann window before summing; we normalize by the
+    sum of window weights so overlap regions blend smoothly and avoid
+    amplitude modulation artifacts at chunk boundaries (~3.9 s).
+    chunks: [(start, end, wav)].
+    """
     out = np.zeros((2, total), dtype=np.float32)
     cnt = np.zeros((2, total), dtype=np.float32)
     seg = SEGMENT_SAMPLES
@@ -141,7 +148,7 @@ def run_demucs_onnx_4stem(
 ) -> list[tuple[str, Path]] | None:
     """
     Single-pass 4-stem separation.
-    use_6s=True  → htdemucs_6s.onnx  (quality; guitar+piano folded into other)
+    use_6s=True  → htdemucs_6s.onnx  (quality; "other" = model's other stem only; guitar/piano dropped)
     use_6s=False → htdemucs_embedded.onnx (speed)
     Falls back to demucsv4.onnx (single-input) if the two-input models are missing.
     Returns [(stem_id, path), ...] in RETURN_ORDER, or None on failure.
@@ -149,7 +156,7 @@ def run_demucs_onnx_4stem(
     import soundfile as sf
     import torch
 
-    # Pick model
+    # Pick model (prefer ONNX so we avoid Demucs subprocess)
     if use_6s and SIX_STEM_ONNX.exists():
         model_path = SIX_STEM_ONNX
         wav_out_name = "5012"
@@ -160,6 +167,12 @@ def run_demucs_onnx_4stem(
         wav_out_name = "add_67"
         n_stems = 4
         two_input = True
+    elif not use_6s and HTDEMUCS_ONNX.exists():
+        model_path = HTDEMUCS_ONNX
+        wav_out_name = "add_67"
+        n_stems = 4
+        two_input = True
+        logger.info("Demucs ONNX: using htdemucs.onnx (embedded fallback)")
     elif V4_ONNX.exists():
         model_path = V4_ONNX
         wav_out_name = "output"
@@ -249,12 +262,14 @@ def run_demucs_onnx_4stem(
 
         # Map to 4 stems: drums, bass, other, vocals
         if n_stems == 6:
-            # guitar(4) + piano(5) averaged into other(2)
+            # Use model's "other" (index 2) only; do not fold guitar(4)/piano(5) into it
+            # to avoid a louder, muddier "other" stem. Guitar and piano are dropped
+            # for the 4-stem API; use 4-stem embedded model if you need a single "other".
             out4 = np.stack(
                 [
                     stems_raw[0],
                     stems_raw[1],
-                    (stems_raw[2] + stems_raw[4] + stems_raw[5]) / 3.0,
+                    stems_raw[2].copy(),
                     stems_raw[3],
                 ],
                 axis=0,
@@ -286,7 +301,8 @@ def run_demucs_onnx_4stem(
 
 
 def demucs_onnx_embedded_available() -> bool:
-    return EMBEDDED_ONNX.exists()
+    """True if 4-stem speed ONNX available (embedded or htdemucs.onnx)."""
+    return EMBEDDED_ONNX.exists() or HTDEMUCS_ONNX.exists()
 
 
 def demucs_onnx_6s_available() -> bool:

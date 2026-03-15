@@ -33,6 +33,7 @@ from stem_service.config import (
 from stem_service.demucs_onnx import (
     demucs_onnx_6s_available,
     demucs_onnx_embedded_available,
+    run_demucs_onnx_4stem,
 )
 from stem_service.hybrid import (
     run_4stem_single_pass_or_hybrid,
@@ -255,13 +256,32 @@ def _run_separation_sync(
                     progress_callback=on_progress,
                 )
         else:
-            stem_files = run_demucs(
-                input_path, out_dir, stems=stem_count, prefer_speed=prefer_speed
-            )
-            on_progress(50)
-            flat_dir = out_dir / "stems"
-            stem_list = copy_stems_to_flat_dir(stem_files, flat_dir)
-            on_progress(100)
+            # demucs_only: still prefer ONNX when available (best option)
+            if stem_count == 2:
+                stem_list = run_hybrid_2stem(
+                    input_path,
+                    out_dir,
+                    prefer_speed=prefer_speed,
+                    progress_callback=on_progress,
+                )
+            else:
+                flat_dir = out_dir / "stems"
+                flat_dir.mkdir(parents=True, exist_ok=True)
+                use_6s = not prefer_speed
+                stem_list = None
+                if (use_6s and demucs_onnx_6s_available()) or (
+                    not use_6s and demucs_onnx_embedded_available()
+                ):
+                    stem_list = run_demucs_onnx_4stem(
+                        input_path, flat_dir, use_6s=use_6s
+                    )
+                if stem_list is None:
+                    stem_files = run_demucs(
+                        input_path, out_dir, stems=4, prefer_speed=prefer_speed
+                    )
+                    on_progress(50)
+                    stem_list = copy_stems_to_flat_dir(stem_files, flat_dir)
+                on_progress(100)
 
         # Check if cancelled before marking complete
         if _is_job_cancelled(job_id):

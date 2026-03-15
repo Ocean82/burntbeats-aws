@@ -407,7 +407,7 @@ export function App() {
                       <div className="mt-3 flex gap-3">
                         <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
                           <input type="radio" name="splitQuality" checked={splitQuality === "speed"} onChange={() => setSplitQuality("speed")} className="text-amber-300" />
-                          {stemCount === 2 ? "Speed — Demucs 2-stem" : "Speed — htdemucs ONNX"}
+                          {stemCount === 2 ? "Speed — MDX ONNX (vocal + inst)" : "Speed — htdemucs ONNX"}
                         </label>
                         <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
                           <input type="radio" name="splitQuality" checked={splitQuality === "quality"} onChange={() => setSplitQuality("quality")} className="text-amber-300" />
@@ -418,7 +418,7 @@ export function App() {
                           Ultra — RoFormer (extra setup)
                         </label>
                       </div>
-                      {splitQuality === "speed" && <p className="mt-2 text-xs text-white/50">{stemCount === 2 ? "Demucs htdemucs 2-stem subprocess. Fast, phase-aligned." : "Single-pass htdemucs_embedded.onnx. Fastest 4-stem on CPU."}</p>}
+                      {splitQuality === "speed" && <p className="mt-2 text-xs text-white/50">{stemCount === 2 ? "MDX ONNX vocal + instrumental (or phase inversion). Fast, low memory." : "Single-pass htdemucs_embedded.onnx. Fastest 4-stem on CPU."}</p>}
                       {splitQuality === "quality" && <p className="mt-2 text-xs text-white/50">{stemCount === 2 ? "MDX ONNX vocal model (Kim_Vocal_2) + instrumental (Inst_HQ_4)." : "Single-pass htdemucs_6s.onnx (6-stem folded to 4). Better separation."}</p>}
                       {splitQuality === "ultra" && <p className="mt-2 text-xs text-amber-300/70">Requires <code className="rounded bg-white/10 px-1">pip install audio-separator[cpu]</code>. Very slow on CPU. Returns error if not installed.</p>}
                     </div>
