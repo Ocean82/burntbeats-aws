@@ -7,6 +7,7 @@ Output: vocals, drums, bass, other (4 stems). Optional 2-stem: vocals + instrume
 from __future__ import annotations
 
 import argparse
+import logging
 import json
 import shutil
 import sys
@@ -14,6 +15,8 @@ from pathlib import Path
 from typing import Callable
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 import soundfile as sf
 
 from stem_service.config import (
@@ -21,12 +24,14 @@ from stem_service.config import (
     USE_VAD_PRETRIM,
     VAD_CHUNK_LENGTH_S,
     VAD_CHUNK_SILENCE_FLUSH_S,
+    scnet_available,
 )
 from stem_service.demucs_onnx import (
     demucs_onnx_6s_available,
     demucs_onnx_embedded_available,
     run_demucs_onnx_4stem,
 )
+from stem_service.scnet_onnx import run_scnet_onnx_4stem
 from stem_service.phase_inversion import create_perfect_instrumental
 from stem_service.split import run_demucs
 from stem_service.vad import (
@@ -103,12 +108,13 @@ def _run_chunked_4stem(
     output_dir: Path,
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
-) -> list[tuple[str, Path]] | None:
+) -> tuple[list[tuple[str, Path]], list[str]] | None:
     """
     VAD-chunked 4-stem separation (Option B from VADSLICE doc).
     Slices input at silence boundaries, runs separation per chunk,
     then concatenates stems. Returns None if VAD unavailable or
     only one chunk found (caller falls back to full-file processing).
+    Returns (stem_list, models_used) with models from first chunk.
     """
     import logging as _log
 
@@ -128,6 +134,7 @@ def _run_chunked_4stem(
     logger.info("VAD chunking: %d chunks for %s", len(boundaries), input_path.name)
 
     chunk_stem_lists: list[list[tuple[str, Path]]] = []
+    first_chunk_models: list[str] = []
     chunks_dir = output_dir / "chunks"
     chunks_dir.mkdir(parents=True, exist_ok=True)
 
@@ -141,9 +148,14 @@ def _run_chunked_4stem(
         chunk_out = chunks_dir / f"chunk_{i:03d}_stems"
         chunk_out.mkdir(parents=True, exist_ok=True)
 
-        stems = run_demucs_onnx_4stem(chunk_path, chunk_out, use_6s=not prefer_speed)
-        if stems is None:
-            stems = run_hybrid_4stem(chunk_path, chunk_out, prefer_speed=prefer_speed)
+        stems, demucs_model = run_demucs_onnx_4stem(chunk_path, chunk_out, use_6s=not prefer_speed)
+        if stems is None or demucs_model is None:
+            stems, first_chunk_models = run_hybrid_4stem(
+                chunk_path, chunk_out, prefer_speed=prefer_speed
+            )
+        else:
+            if not first_chunk_models:
+                first_chunk_models = [demucs_model]
         chunk_stem_lists.append(stems)
 
     flat_dir = output_dir / "stems"
@@ -152,7 +164,7 @@ def _run_chunked_4stem(
 
     if progress_callback:
         progress_callback(100)
-    return result
+    return result, first_chunk_models if first_chunk_models else ["chunked_4stem"]
 
 
 def run_4stem_single_pass_or_hybrid(
@@ -160,17 +172,19 @@ def run_4stem_single_pass_or_hybrid(
     output_dir: Path,
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
-) -> list[tuple[str, Path]]:
+    demucs_model_override: Path | None = None,
+    job_logger: "logging.Logger | None" = None,
+) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Entry point for 4-stem separation.
     - If USE_VAD_CHUNKS=1 and VAD available: slice at silence boundaries,
       run separation per chunk, concatenate (Option B from VADSLICE doc).
-    - Otherwise: try single-pass Demucs ONNX (embedded=speed, 6s=quality),
-      then fall back to hybrid pipeline.
+    - Otherwise: try SCNet ONNX first, then Demucs ONNX, then hybrid pipeline.
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    _log = job_logger or logger
 
     # VAD chunked path
     if USE_VAD_CHUNKS:
@@ -181,10 +195,24 @@ def run_4stem_single_pass_or_hybrid(
             progress_callback=progress_callback,
         )
         if chunked is not None:
-            return chunked
+            stem_list, models_used = chunked
+            return stem_list, models_used
 
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
+
+    # 4-stem: try SCNet first (CPU ~48% of Demucs per NEW-flow), then Demucs ONNX, then hybrid
+    if scnet_available():
+        if progress_callback:
+            progress_callback(5)
+        _log.info("4-stem: trying SCNet ONNX first")
+        scnet_list = run_scnet_onnx_4stem(input_path, flat_dir)
+        if scnet_list is not None:
+            if progress_callback:
+                progress_callback(100)
+            _log.info("4-stem: SCNet ONNX succeeded  models_used=[scnet_onnx]")
+            return scnet_list, ["scnet_onnx"]
+        _log.warning("4-stem: SCNet ONNX failed or returned None, falling back to Demucs")
 
     use_6s = not prefer_speed
     if (use_6s and demucs_onnx_6s_available()) or (
@@ -192,12 +220,17 @@ def run_4stem_single_pass_or_hybrid(
     ):
         if progress_callback:
             progress_callback(10)
-        stem_list = run_demucs_onnx_4stem(input_path, flat_dir, use_6s=use_6s)
-        if stem_list is not None:
+        _log.info("4-stem: trying Demucs ONNX  use_6s=%s", use_6s)
+        stem_list, demucs_model = run_demucs_onnx_4stem(
+            input_path, flat_dir, use_6s=use_6s, demucs_model_override=demucs_model_override
+        )
+        if stem_list is not None and demucs_model is not None:
             if progress_callback:
                 progress_callback(100)
-            return stem_list
+            _log.info("4-stem: Demucs ONNX succeeded  models_used=[%s]", demucs_model)
+            return stem_list, [demucs_model]
 
+    _log.info("4-stem: using hybrid pipeline (Stage 1 + Demucs subprocess)")
     return run_hybrid_4stem(
         input_path,
         output_dir,
@@ -211,7 +244,10 @@ def run_hybrid_4stem(
     output_dir: Path,
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
-) -> list[tuple[str, Path]]:
+    job_logger: "logging.Logger | None" = None,
+    vocal_model_override: Path | None = None,
+    inst_model_override: Path | None = None,
+) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Stage 1: Extract vocals (Demucs 2-stem or ONNX when available).
     Phase inversion: instrumental = original - vocals (skip if Demucs gives instrumental).
@@ -231,8 +267,10 @@ def run_hybrid_4stem(
     )
 
     stage1_out = output_dir / "stage1"
-    vocals_path, stage1_instrumental = extract_vocals_stage1(
-        effective_input, stage1_out, prefer_speed=prefer_speed
+    vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
+        effective_input, stage1_out, prefer_speed=prefer_speed, job_logger=job_logger,
+        vocal_model_override=vocal_model_override,
+        inst_model_override=inst_model_override,
     )
     if progress_callback:
         progress_callback(35)
@@ -271,7 +309,8 @@ def run_hybrid_4stem(
 
     if progress_callback:
         progress_callback(100)
-    return result
+    models_used = stage1_models + ["htdemucs"]
+    return result, models_used
 
 
 def run_hybrid_2stem(
@@ -279,14 +318,22 @@ def run_hybrid_2stem(
     output_dir: Path,
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
-) -> list[tuple[str, Path]]:
+    job_logger: "logging.Logger | None" = None,
+    vocal_model_override: Path | None = None,
+    inst_model_override: Path | None = None,
+) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     2-stem separation: vocals + instrumental.
 
-    ONNX-first (both Speed and Quality): use MDX vocal ONNX (+ instrumental ONNX or
-    phase inversion) when available; no subprocess. Falls back to Demucs 2-stem
-    subprocess only when no vocal ONNX is found. This keeps 2-stem efficient
-    (in-process, lower memory) when models/mdxnet_models (or equivalent) are present.
+    Speed mode (prefer_speed=True):
+      - VAD pre-trim to vocal span (same as 4-stem speed path)
+      - 50% ONNX overlap (faster processing)
+    Quality mode (prefer_speed=False):
+      - Full file, no trim
+      - 75% ONNX overlap (smoother chunk boundaries, less bleed)
+
+    ONNX-first: use MDX vocal ONNX (+ instrumental ONNX or phase inversion) when
+    available; falls back to Demucs 2-stem subprocess only when no vocal ONNX found.
 
     Returns [(stem_id, path), ...]: [("vocals", ...), ("instrumental", ...)].
     """
@@ -296,17 +343,25 @@ def run_hybrid_2stem(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
+    # Speed mode: VAD pre-trim to vocal span (skip silence at start/end)
+    # Quality mode: process full file for best boundary accuracy
+    effective_input = _effective_input_path(
+        input_path, output_dir, use_vad_trim=prefer_speed
+    )
+
     # ONNX-first: Stage 1 vocal (+ optional inst) or Demucs 2-stem fallback
     stage1_out = output_dir / "stage1"
-    vocals_path, stage1_instrumental = extract_vocals_stage1(
-        input_path, stage1_out, prefer_speed=prefer_speed
+    vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
+        effective_input, stage1_out, prefer_speed=prefer_speed, job_logger=job_logger,
+        vocal_model_override=vocal_model_override,
+        inst_model_override=inst_model_override,
     )
 
     instrumental_path = output_dir / "instrumental.wav"
     if stage1_instrumental is not None:
         shutil.copy2(stage1_instrumental, instrumental_path)
     else:
-        create_perfect_instrumental(input_path, vocals_path, instrumental_path)
+        create_perfect_instrumental(effective_input, vocals_path, instrumental_path)
 
     if progress_callback:
         progress_callback(50)
@@ -317,7 +372,7 @@ def run_hybrid_2stem(
     shutil.copy2(instrumental_path, dest_i)
     if progress_callback:
         progress_callback(100)
-    return [("vocals", dest_v), ("instrumental", dest_i)]
+    return [("vocals", dest_v), ("instrumental", dest_i)], stage1_models
 
 
 def _stage1_only(input_path: Path, output_dir: Path) -> Path:
@@ -325,17 +380,23 @@ def _stage1_only(input_path: Path, output_dir: Path) -> Path:
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     stage1_out = output_dir / "stage1"
-    vocals_path, _ = extract_vocals_stage1(input_path, stage1_out)
+    vocals_path, _, _ = extract_vocals_stage1(input_path, stage1_out)
     dest = output_dir / "vocals.wav"
     shutil.copy2(vocals_path, dest)
     return dest
 
 
-def _stage2_only(instrumental_path: Path, output_dir: Path) -> list[tuple[str, Path]]:
+def _stage2_only(
+    instrumental_path: Path,
+    output_dir: Path,
+    prefer_speed: bool = False,
+) -> list[tuple[str, Path]]:
     """Stage 2 only: Demucs 4-stem on instrumental. Returns drums, bass, other (no vocals)."""
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem_files = run_demucs(instrumental_path, output_dir / "stage2", stems=4)
+    stem_files = run_demucs(
+        instrumental_path, output_dir / "stage2", stems=4, prefer_speed=prefer_speed
+    )
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
     result: list[tuple[str, Path]] = []
@@ -346,6 +407,95 @@ def _stage2_only(instrumental_path: Path, output_dir: Path) -> list[tuple[str, P
         shutil.copy2(src, dest)
         result.append((stem_id, dest))
     return result
+
+
+def run_expand_to_4stem(
+    source_stems_dir: Path,
+    target_output_dir: Path,
+    prefer_speed: bool = False,
+    progress_callback: Callable[[int], None] | None = None,
+    job_logger: "logging.Logger | None" = None,
+) -> tuple[list[tuple[str, Path]], list[str]]:
+    """
+    Expand a 2-stem job (vocals + instrumental) to 4 stems.
+    Copies vocals from source; runs Demucs (ONNX when available) on instrumental for drums, bass, other.
+    source_stems_dir: path to job's stems/ (must contain vocals.wav and instrumental.wav).
+    Returns (stem_list, models_used) with stem_list order: vocals, drums, bass, other.
+    """
+    target_output_dir = target_output_dir.resolve()
+    flat_dir = target_output_dir / "stems"
+    flat_dir.mkdir(parents=True, exist_ok=True)
+
+    vocals_src = source_stems_dir / "vocals.wav"
+    instrumental_src = source_stems_dir / "instrumental.wav"
+    if not vocals_src.exists() or not instrumental_src.exists():
+        raise FileNotFoundError(
+            f"2-stem outputs not found: need {vocals_src} and {instrumental_src}"
+        )
+
+    if progress_callback:
+        progress_callback(5)
+    dest_vocals = flat_dir / "vocals.wav"
+    shutil.copy2(vocals_src, dest_vocals)
+
+    if progress_callback:
+        progress_callback(10)
+    use_6s = not prefer_speed
+    stage2_flat = target_output_dir / "stage2"
+    stage2_flat.mkdir(parents=True, exist_ok=True)
+    stem_list: list[tuple[str, Path]] = [("vocals", dest_vocals)]
+    models_used: list[str] = []
+
+    stem_files_rest: list[tuple[str, Path]] = []
+    _log = job_logger or logger
+    if scnet_available():
+        _log.info("expand: scnet_available=True  trying SCNet ONNX on instrumental")
+        scnet_list = run_scnet_onnx_4stem(instrumental_src, stage2_flat)
+        if scnet_list is not None:
+            for stem_id, src in scnet_list:
+                if stem_id == "vocals":
+                    continue
+                dest = flat_dir / f"{stem_id}.wav"
+                shutil.copy2(src, dest)
+                stem_list.append((stem_id, dest))
+            models_used = ["scnet_onnx"]
+            _log.info("expand: SCNet ONNX succeeded  models_used=%s", models_used)
+        else:
+            _log.warning("expand: SCNet ONNX returned None  falling back to Demucs")
+    else:
+        _log.info("expand: scnet_available=False  using Demucs path")
+
+    if len(stem_list) == 1 and (
+        (use_6s and demucs_onnx_6s_available()) or (
+            not use_6s and demucs_onnx_embedded_available()
+        )
+    ):
+        _log.info("expand: trying Demucs ONNX  use_6s=%s", use_6s)
+        onnx_list, demucs_model = run_demucs_onnx_4stem(
+            instrumental_src, stage2_flat, use_6s=use_6s
+        )
+        if onnx_list is not None and demucs_model is not None:
+            for stem_id, src in onnx_list:
+                if stem_id == "vocals":
+                    continue
+                dest = flat_dir / f"{stem_id}.wav"
+                shutil.copy2(src, dest)
+                stem_list.append((stem_id, dest))
+            models_used = [demucs_model]
+            _log.info("expand: Demucs ONNX succeeded  models_used=%s", models_used)
+
+    if len(stem_list) == 1:
+        _log.info("expand: using Demucs subprocess (htdemucs)")
+        stem_files_rest = _stage2_only(
+            instrumental_src, target_output_dir, prefer_speed=prefer_speed
+        )
+        for stem_id, dest in stem_files_rest:
+            stem_list.append((stem_id, dest))
+        models_used = ["htdemucs"]
+
+    if progress_callback:
+        progress_callback(100)
+    return stem_list, models_used
 
 
 def main() -> int:

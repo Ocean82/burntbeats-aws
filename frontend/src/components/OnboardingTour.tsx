@@ -24,7 +24,7 @@ const TOUR_STEPS = [
   {
     icon: Sliders,
     title: "Configure Your Split",
-    description: "Choose between 2-stem (vocals + instrumental) or 4-stem (vocals, drums, bass, melody) separation.",
+    description: "First split gives vocals + instrumental. Use \"Keep going\" to split the instrumental into drums, bass & other.",
     tip: "Use 'Quality' mode for best results",
   },
   {

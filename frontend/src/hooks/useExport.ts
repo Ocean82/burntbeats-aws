@@ -65,6 +65,7 @@ export function useExport(): UseExportReturn {
         : splitResultStems.filter((s) => !stemStates[s.id]?.muted);
 
       let maxDuration = 0;
+      const { getStemEffectiveRate } = await import("../components/MultiStemEditor");
       const sources: { buffer: AudioBuffer; gain: number; pan: number; rate: number; trimStart: number; trimEnd: number }[] = [];
 
       for (const stem of stemsToMix) {
@@ -72,8 +73,10 @@ export function useExport(): UseExportReturn {
         if (!buffer) continue;
         const st = stemStates[stem.id] ?? defaultStemState();
         const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-        maxDuration = Math.max(maxDuration, trimEnd - trimStart);
-        sources.push({ buffer, gain: Math.pow(10, st.mixer.gain / 20), pan: st.mixer.pan / 100, rate: st.rate, trimStart, trimEnd });
+        const rate = getStemEffectiveRate(st);
+        const wallDuration = (trimEnd - trimStart) / rate;
+        maxDuration = Math.max(maxDuration, wallDuration);
+        sources.push({ buffer, gain: Math.pow(10, st.mixer.gain / 20), pan: st.mixer.pan / 100, rate, trimStart, trimEnd });
       }
 
       if (maxDuration === 0) throw new Error("No valid stems to export");
@@ -119,7 +122,7 @@ export function useExport(): UseExportReturn {
     onClose: () => void
   ) => {
     if ((options.target === "stems" || options.target === "all") && splitResultStems.length === 0) {
-      onError("No stems to export. Split a track first.");
+      onError("No stems to export. Split a track or load stems first.");
       return;
     }
     setIsExporting(true);

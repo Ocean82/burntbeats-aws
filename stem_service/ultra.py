@@ -214,7 +214,7 @@ def run_ultra_4stem(
 
     if progress_callback:
         progress_callback(100)
-    return result
+    return result, [model_path.name, "htdemucs"]
 
 
 def run_ultra_2stem(
@@ -224,6 +224,7 @@ def run_ultra_2stem(
 ) -> list[tuple[str, Path]]:
     """
     Ultra quality 2-stem (vocals + instrumental) using RoFormer.
+    Applies de-reverb post-pass on vocals when Reverb_HQ model is available.
     Raises RuntimeError if ultra is not available or fails.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -245,6 +246,16 @@ def run_ultra_2stem(
     if progress_callback:
         progress_callback(90)
 
+    # De-reverb post-pass on vocals (ultra mode only)
+    models_used: list[str] = [model_path.name]
+    from stem_service.mdx_onnx import run_dereverb_onnx
+    dereverb_out = output_dir / "ultra_vocals_dry.wav"
+    dry_path = run_dereverb_onnx(vocals_path, dereverb_out, overlap=0.75)
+    if dry_path is not None:
+        vocals_path = dry_path
+        models_used.append("Reverb_HQ_By_FoxJoy.onnx")
+        logger.info("Ultra 2-stem: de-reverb applied to vocal stem")
+
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
     dest_v = flat_dir / "vocals.wav"
@@ -254,4 +265,4 @@ def run_ultra_2stem(
 
     if progress_callback:
         progress_callback(100)
-    return [("vocals", dest_v), ("instrumental", dest_i)]
+    return [("vocals", dest_v), ("instrumental", dest_i)], models_used

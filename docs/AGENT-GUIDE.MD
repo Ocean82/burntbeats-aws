@@ -1,4 +1,6 @@
 For a web app focused on CPU-only processing with high-quality 4-stem output, the best strategy is a Hybrid Pipeline. This plan uses high-SDR (Signal-to-Distortion Ratio) models for critical stems (vocals/instrumentals) and an efficient multi-stem model for the rest.
+The app uses **2-stem first** (vocals + instrumental); the user can then **expand** to 4 stems (Demucs on instrumental → drums, bass, other) so most users get fast 2-stem by default.
+
 The "Quality-Speed" 4-Stem CPU Plan
 This plan follows a sequential separation logic to ensure "Other" stems are clean while keeping CPU load manageable by using ONNX-optimized versions. 
 Stage 	Process	Recommended Model	Best Setting for CPU

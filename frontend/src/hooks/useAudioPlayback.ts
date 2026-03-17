@@ -5,7 +5,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { StemResult } from "../types";
 import { trimToSeconds, createStemPreviewBuffer } from "../utils/audio";
-import { defaultStemState, type StemEditorState } from "../components/MultiStemEditor";
+import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../components/MultiStemEditor";
 import type { StemId } from "../types";
 
 interface UseAudioPlaybackReturn {
@@ -105,7 +105,7 @@ export function useAudioPlayback(): UseAudioPlaybackReturn {
       const gainNode = context.createGain();
       const panNode = context.createStereoPanner();
       source.buffer = buffer;
-      source.playbackRate.value = st.rate;
+      source.playbackRate.value = getStemEffectiveRate(st);
       gainNode.gain.value = Math.pow(10, st.mixer.gain / 20);
       panNode.pan.value = st.mixer.pan / 100;
       source.connect(gainNode);

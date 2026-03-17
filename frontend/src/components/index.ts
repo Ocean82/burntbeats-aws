@@ -1,5 +1,5 @@
 export { PipelineStep } from "./PipelineStep";
-export { MultiStemEditor, defaultStemState, type StemEditorState, type MultiStemEditorProps } from "./MultiStemEditor";
+export { MultiStemEditor, defaultStemState, getStemEffectiveRate, type StemEditorState, type MultiStemEditorProps } from "./MultiStemEditor";
 export { HelpModal } from "./HelpModal";
 export { ExportOptionsModal, type ExportOptions, type ExportFormat, type ExportTarget } from "./ExportOptionsModal";
 export { MixerPresetsModal, type MixerPreset } from "./MixerPresetsModal";

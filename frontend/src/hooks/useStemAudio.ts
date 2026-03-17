@@ -123,7 +123,7 @@ export function useStemAudio(): UseStemAudioReturn {
  */
 export function useWaveformCompute(
   stemBuffers: Record<string, AudioBuffer>,
-  splitResultStems: StemResult[],
+  stemEntries: Array<{ id: string; url: string }>,
   setStemWaveforms: React.Dispatch<React.SetStateAction<Record<string, number[]>>>
 ) {
   useEffect(() => {
@@ -142,7 +142,7 @@ export function useWaveformCompute(
         return;
       }
       const [id, buffer] = entries[index++];
-      const url = splitResultStems.find((s) => s.id === id)?.url;
+      const url = stemEntries.find((s) => s.id === id)?.url;
       let data: number[] | null = url ? await getStemWaveform(url, WAVEFORM_BINS) : null;
       if (cancelled) return;
       if (!data || data.length !== WAVEFORM_BINS) {
@@ -163,5 +163,5 @@ export function useWaveformCompute(
     scheduleFirst();
 
     return () => { cancelled = true; };
-  }, [stemBuffers, splitResultStems, setStemWaveforms]);
+  }, [stemBuffers, stemEntries, setStemWaveforms]);
 }

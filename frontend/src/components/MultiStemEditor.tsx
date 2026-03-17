@@ -17,10 +17,24 @@ import { cn } from "../utils/cn";
 export interface StemEditorState {
   trim: TrimState;
   mixer: MixerState;
-  /** Playback rate: 0.5–2.0. 1.0 = normal. Affects pitch + tempo together. */
+  /** Playback rate (derived from pitch + timeStretch when both set; otherwise legacy 0.5–2.0). */
   rate: number;
+  /** Pitch shift in semitones (-12 to +12). Combined with timeStretch for effective rate. */
+  pitchSemitones: number;
+  /** Time stretch: 0.5 = half duration, 2 = double. 1 = normal. */
+  timeStretch: number;
   muted: boolean;
   soloed: boolean;
+}
+
+/** Effective playback rate from pitch and time stretch: rate = 2^(pitch/12) / timeStretch. Uses legacy rate when new fields missing. */
+export function getStemEffectiveRate(state: StemEditorState): number {
+  const hasNewFields = state.pitchSemitones != null || state.timeStretch != null;
+  if (!hasNewFields) return state.rate ?? 1;
+  const pitch = state.pitchSemitones ?? 0;
+  const stretch = state.timeStretch ?? 1;
+  if (stretch > 0) return Math.pow(2, pitch / 12) / stretch;
+  return state.rate ?? 1;
 }
 
 export interface MultiStemEditorProps {
@@ -169,10 +183,11 @@ function WaveformLane({
     };
   }, []); // stable — never re-registers
 
-  const slice = useMemo(() => {
-    const startBin = clamp(Math.floor(visibleStart * waveform.length), 0, waveform.length);
-    const endBin = clamp(Math.ceil(visibleEnd * waveform.length), startBin, waveform.length);
-    return downsample(waveform.slice(startBin, endBin), BAR_BUDGET);
+  const { slice, startBin } = useMemo(() => {
+    const startBinInner = clamp(Math.floor(visibleStart * waveform.length), 0, waveform.length);
+    const endBin = clamp(Math.ceil(visibleEnd * waveform.length), startBinInner, waveform.length);
+    const sliceData = downsample(waveform.slice(startBinInner, endBin), BAR_BUDGET);
+    return { slice: sliceData, startBin: startBinInner };
   }, [waveform, visibleStart, visibleEnd]);
 
   const toVisible = (pct: number) =>
@@ -203,7 +218,7 @@ function WaveformLane({
       <div className="absolute inset-0 flex items-center gap-px px-0.5">
         {slice.map((v, i) => (
           <span
-            key={i}
+            key={startBin + i}
             className="flex-1 rounded-full"
             style={{
               height: `${Math.max(8, clamp(v, 0, 1) * 90)}%`,
@@ -263,7 +278,7 @@ const StemControls = memo(function StemControls({
   onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
 }) {
-  const { mixer, trim, rate, muted, soloed } = state;
+  const { mixer, trim, pitchSemitones, timeStretch, muted, soloed } = state;
 
   const trimStartSec = duration * (trim.start / 100);
   const trimEndSec = duration * (trim.end / 100);
@@ -297,7 +312,7 @@ const StemControls = memo(function StemControls({
             type="button"
             onClick={() => onStemStateChange(stem.id, { soloed: !soloed })}
             aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
-            aria-pressed={soloed ? "true" : "false"}
+            aria-pressed={soloed}
             className={cn(
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               soloed
@@ -312,7 +327,7 @@ const StemControls = memo(function StemControls({
             type="button"
             onClick={() => onStemStateChange(stem.id, { muted: !muted })}
             aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
-            aria-pressed={muted ? "true" : "false"}
+            aria-pressed={muted}
             className={cn(
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               muted
@@ -358,8 +373,8 @@ const StemControls = memo(function StemControls({
         </div>
       </div>
 
-      {/* Volume / Pan / Rate row */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Volume / Pan row */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <div className="mb-1 flex justify-between text-[10px] text-white/50">
             <span>Volume</span>
@@ -388,16 +403,41 @@ const StemControls = memo(function StemControls({
             style={{ accentColor: stem.glow }}
           />
         </div>
+      </div>
+      {/* Pitch & time stretch row */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span title="Changes both speed and pitch together">Speed (+ pitch)</span>
-            <span>{rate.toFixed(2)}×</span>
+            <span title="Pitch shift in semitones">Pitch</span>
+            <span>{pitchSemitones === 0 ? "0" : pitchSemitones > 0 ? `+${pitchSemitones}` : pitchSemitones} st</span>
+          </div>
+          <input
+            type="range" min={-12} max={12} step={1}
+            value={pitchSemitones ?? 0}
+            aria-label={`${stem.label} pitch`}
+            onChange={(e) => {
+              const p = Number(e.target.value);
+              const stretch = timeStretch ?? 1;
+              onStemStateChange(stem.id, { pitchSemitones: p, rate: Math.pow(2, p / 12) / stretch });
+            }}
+            className="w-full"
+            style={{ accentColor: stem.glow }}
+          />
+        </div>
+        <div>
+          <div className="mb-1 flex justify-between text-[10px] text-white/50">
+            <span title="Time stretch: duration multiplier">Time stretch</span>
+            <span>{(timeStretch ?? 1).toFixed(2)}×</span>
           </div>
           <input
             type="range" min={0.5} max={2.0} step={0.01}
-            value={rate}
-            aria-label={`${stem.label} speed and pitch`}
-            onChange={(e) => onStemStateChange(stem.id, { rate: Number(e.target.value) })}
+            value={timeStretch ?? 1}
+            aria-label={`${stem.label} time stretch`}
+            onChange={(e) => {
+              const t = Number(e.target.value);
+              const p = pitchSemitones ?? 0;
+              onStemStateChange(stem.id, { timeStretch: t, rate: Math.pow(2, p / 12) / t });
+            }}
             className="w-full"
             style={{ accentColor: stem.glow }}
           />
@@ -613,7 +653,7 @@ export function MultiStemEditor({
               key={s.id}
               type="button"
               onClick={() => setActiveStemId(s.id)}
-              aria-pressed={s.id === activeStemId ? "true" : "false"}
+              aria-pressed={s.id === activeStemId}
               className={cn(
                 "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
                 s.id === activeStemId
@@ -657,6 +697,8 @@ export function defaultStemState(): StemEditorState {
     trim: { ...defaultTrim },
     mixer: { ...defaultMixer },
     rate: 1.0,
+    pitchSemitones: 0,
+    timeStretch: 1.0,
     muted: false,
     soloed: false,
   };

@@ -28,11 +28,11 @@ export class AudioEngine {
   private mixDuration: number = 0;
   private animationFrameId: number | null = null;
   private eventCallbacks: Set<PlaybackEventCallback> = new Set();
-  
-   get isPlaying(): boolean {
-     // Consider both having active nodes and audio context state
-     return this.playbackNodes.size > 0 && this.context?.state === 'running';
-   }
+
+  get isPlaying(): boolean {
+    // Consider both having active nodes and audio context state
+    return this.playbackNodes.size > 0 && this.context?.state === 'running';
+  }
 
   get currentContext(): AudioContext | null {
     return this.context;
@@ -167,9 +167,9 @@ export class AudioEngine {
 
     if (stemsToPlay.length === 0) return;
 
-     if (!this.context) {
-       await this.initialize();
-     }
+    if (!this.context) {
+      await this.initialize();
+    }
 
     const firstStem = stemsToPlay[0];
     const firstTrim = trimMap[firstStem.id] ?? defaultTrim;

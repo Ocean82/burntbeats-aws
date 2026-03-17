@@ -1,6 +1,6 @@
 # CPU optimization tips (quality + speed)
 
-**Last updated:** 2026-03-13
+**Last updated:** 2026-03-17
 
 ## What we do by default
 
@@ -13,20 +13,12 @@
 
 ## htdemucs_6s.onnx and htdemucs_embedded.onnx
 
-These are **Demucs-style ONNX** exports (not MDX). They live under `models/` (e.g. `htdemucs_6s.onnx`, `htdemucs_embedded.onnx`).
+These **Demucs ONNX** models are **wired** in `stem_service/demucs_onnx.py`:
 
-- **6s:** Often tuned for 6-second (or similar) chunks; can be faster than full-length Demucs.
-- **embedded:** Often a smaller/faster variant for web or edge.
+- **htdemucs_embedded.onnx** — used for 4-stem **Speed** (single-pass).
+- **htdemucs_6s.onnx** — used for 4-stem **Quality** (better separation; 6-stem output folded to 4).
 
-They use a **different graph and I/O** than our MDX ONNX path (which expects `model_data.json` and MDX config). To use them we need a **separate inference path**: load the ONNX, run with the expected input shape (e.g. stereo, fixed sample rate), and parse the 4-stem (or 2-stem) outputs. That’s not wired yet.
-
-**Next steps to try them:** Add a small module (e.g. `stem_service/demucs_onnx.py`) that:
-
-1. Discovers `htdemucs_6s.onnx` / `htdemucs_embedded.onnx` under `models/`.
-2. Runs ONNX inference with the correct input layout (check the model’s expected shape on Hugging Face or the export repo).
-3. Writes vocals, drums, bass, other (and optionally instrumental) to WAV.
-
-Then either call that for “Speed” 4-stem instead of the Demucs subprocess, or add a “Demucs ONNX” mode that prefers 6s/embedded when available.
+When available under `models/`, the pipeline uses them for 4-stem (and for **expand** from 2-stem). Fallback is the Demucs subprocess (htdemucs.th).
 
 ## Env summary
 

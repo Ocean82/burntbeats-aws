@@ -1,4 +1,4 @@
-# UPDATED 3/11/2026
+# UPDATED 2026-03-17
 "Frontend UI/UX Enhancement Report: Burnt Beats"
 
 ### Overview
@@ -189,7 +189,7 @@ Currently the waveforms are static. Adding:
 
 ---
 
-## Implementation Status (as of 2025-03-11)
+## Implementation Status (as of 2026-03-17)
 
 Items below are verified against the current app. **Done** = implemented and wired. **Partial** = UI or logic exists but not fully wired. **Not done** = not implemented.
 
@@ -221,7 +221,7 @@ Items below are verified against the current app. **Done** = implemented and wir
 | 5 | Visual feedback during processing | **Partial** | Progress from backend polling; pipeline step indicators; no spectral preview or ETA. |
 | 6 | Mobile touch (pinch, swipe, haptics) | **Not done** | Responsive layout; no pinch-to-zoom, swipe nav, or haptics. |
 | 7 | Audio comparison (A/B) | **Done** | ComparisonToggle; original decoded on upload (`originalAudioBuffer`); Play mix plays original when "Original" selected in compare mode. |
-| 8 | Batch processing queue | **Partial** | BatchQueue UI and state; remove/clear completed. **Not wired:** no "add to queue" or background run of multiple splits. |
+| 8 | Batch processing queue | **Done** | BatchQueue: add to queue, process next, progress; stems from last completed job applied to mixer. |
 | 9 | Export options (format, quality, target, zip) | **Partial** | ExportOptionsModal (WAV/MP3/FLAC, quality, master/stems/all, normalize); export still produces master WAV only; options reserved for future. |
 | 10 | Onboarding & help | **Done** | OnboardingTour; HelpModal (shortcuts, FAQ); tooltips on some controls (e.g. Mute/Unmute, Undo/Redo). No sample demo track. |
 
@@ -230,3 +230,12 @@ Items below are verified against the current app. **Done** = implemented and wir
 - All implemented features use existing API and state: split, status polling, stem URLs, stemBuffers, trimMap, mixerState, mutedStems, soloStems.
 - A/B comparison decodes the uploaded file in a `useEffect` when `uploadedFile` is set; clearing the file clears `originalAudioBuffer`.
 - Undo/redo and presets operate on the same `mixerState` / `trimMap` used by play and export; no conflicts.
+
+### New since 2026-03-17
+
+| Feature | Status | Notes |
+|---------|--------|------|
+| 2-stem first, then expand to 4 | **Done** | Default split is 2-stem; "Keep going → 4 stems" runs expand (Demucs on instrumental). |
+| Load stems (mashup) | **Done** | Source mode "Load stems (mashup)": add WAV/MP3 files as mixer tracks. |
+| Pitch + time stretch | **Done** | Per-stem pitch (semitones) and time stretch; effective rate = 2^(pitch/12) / timeStretch. |
+| Source mode (Split \| Load) | **Done** | Tab: Split a track vs Load stems. |

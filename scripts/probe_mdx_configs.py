@@ -10,6 +10,7 @@ models = {
     "UVR-MDX-NET-Inst_HQ_4.onnx": (2560, 256),
     "UVR-MDX-NET-Inst_HQ_5.onnx": (2560, 256),
     "UVR_MDXNET_1_9703.onnx": (2048, 256),
+    "Reverb_HQ_By_FoxJoy.onnx": (3072, 512),  # dim_t=512 (longer context)
 }
 
 for name, (n_bins, dim_t) in models.items():

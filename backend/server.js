@@ -247,6 +247,61 @@ app.get("/api/stems/status/:job_id", (req, res) => {
   res.json(data);
 });
 
+app.post("/api/stems/expand", async (req, res) => {
+  const jobId = (req.body && req.body.job_id) || req.query.job_id;
+  if (!jobId || !UUID_REGEX.test(jobId)) {
+    return res.status(400).json({ error: "Invalid or missing job_id. Provide the 2-stem job id to expand." });
+  }
+  const quality = (req.body && req.body.quality) || req.query.quality;
+  const stemUrl = new URL("/expand", STEM_SERVICE_URL);
+  const isHttps = stemUrl.protocol === "https:";
+  const client = isHttps ? https : http;
+  const form = new FormData();
+  form.append("job_id", jobId);
+  if (quality) form.append("quality", quality);
+  try {
+    const data = await new Promise((resolve, reject) => {
+      const opts = {
+        hostname: stemUrl.hostname,
+        port: stemUrl.port || (isHttps ? 443 : 80),
+        path: stemUrl.pathname + stemUrl.search,
+        method: "POST",
+        headers: form.getHeaders(),
+      };
+      const proxyReq = client.request(opts, (proxyRes) => {
+        const chunks = [];
+        proxyRes.on("data", (d) => chunks.push(d));
+        proxyRes.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf-8");
+          try {
+            const parsed = body ? JSON.parse(body) : {};
+            if (proxyRes.statusCode >= 400) {
+              const errMsg = parsed.detail || body || proxyRes.statusMessage;
+              reject({ statusCode: proxyRes.statusCode, error: errMsg });
+            } else {
+              resolve({ statusCode: proxyRes.statusCode, data: parsed });
+            }
+          } catch (e) {
+            reject(e);
+          }
+        });
+        proxyReq.on("error", (err) => reject(err));
+      });
+      form.pipe(proxyReq);
+    });
+    if (data.statusCode === 202) {
+      return res.status(202).json({ job_id: data.data.job_id, status: data.data.status ?? "accepted" });
+    }
+    return res.status(data.statusCode).json(data.data);
+  } catch (e) {
+    if (e && typeof e === "object" && "statusCode" in e && "error" in e) {
+      return res.status(e.statusCode).json({ error: e.error });
+    }
+    console.error("[POST /api/stems/expand] proxy error:", e);
+    return res.status(502).json({ error: "Stem service unavailable" });
+  }
+});
+
 app.delete("/api/stems/:job_id", async (req, res) => {
   const { job_id } = req.params;
   if (!job_id || !UUID_REGEX.test(job_id)) {

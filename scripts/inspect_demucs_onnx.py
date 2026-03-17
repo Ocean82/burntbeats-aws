@@ -7,7 +7,7 @@ sys.path.insert(0, str(ROOT))
 
 import onnxruntime as ort
 
-for name in ["htdemucs_6s.onnx", "htdemucs_embedded.onnx"]:
+for name in ["htdemucs_6s.onnx", "htdemucs_embedded.onnx", "htdemucs.onnx", "demucsv4.onnx"]:
     path = ROOT / "models" / name
     if not path.exists():
         print(path, "not found")

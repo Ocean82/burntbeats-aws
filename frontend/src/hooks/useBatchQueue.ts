@@ -27,7 +27,8 @@ interface UseBatchQueueReturn {
     stemCount: 2 | 4,
     splitQuality: SplitQuality,
     onStemsReady: (stems: StemResult[]) => void,
-    onError: (msg: string) => void
+    onError: (msg: string) => void,
+    onJobId?: (jobId: string) => void
   ) => Promise<void>;
 }
 
@@ -67,7 +68,8 @@ export function useBatchQueue(): UseBatchQueueReturn {
     stemCount: 2 | 4,
     splitQuality: SplitQuality,
     onStemsReady: (stems: StemResult[]) => void,
-    onError: (msg: string) => void
+    onError: (msg: string) => void,
+    onJobId?: (jobId: string) => void
   ) => {
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
@@ -91,6 +93,7 @@ export function useBatchQueue(): UseBatchQueueReturn {
           });
           updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "complete" as const, progress: 100 } : i));
           onStemsReady(res.stems);
+          if (res.job_id && onJobId) onJobId(res.job_id);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Split failed";
           updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "error" as const, error: msg } : i));

@@ -6,8 +6,10 @@ import json
 models = [
     "models/mdxnet_models/UVR-MDX-NET-Inst_HQ_4.onnx",
     "models/MDX_Net_Models/UVR-MDX-NET-Inst_HQ_5.onnx",
+    "models/MDX_Net_Models/UVR_MDXNET_1_9703.onnx",
     "models/mdxnet_models/Kim_Vocal_2.onnx",
     "models/mdxnet_models/UVR-MDX-NET-Voc_FT.onnx",
+    "models/mdxnet_models/Reverb_HQ_By_FoxJoy.onnx",
     "models/UVR-MDX-NET-Inst_HQ_5.onnx",
     "models/UVR-MDX-NET-Voc_FT.onnx",
 ]

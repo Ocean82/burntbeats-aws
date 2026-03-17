@@ -17,6 +17,10 @@ MDX_NET_MODELS_DIR = MODELS_DIR / "MDX_Net_Models"
 MDXNET_MODELS_DIR = MODELS_DIR / "mdxnet_models"
 SILERO_VAD_ONNX = MODELS_DIR / "silero_vad.onnx"
 
+# SCNet ONNX (4-stem; CPU ~48% of HT Demucs per NEW-flow.md). Used for expand when available.
+SCNET_ONNX = MODELS_DIR / "scnet.onnx" / "scnet.onnx"
+USE_SCNET = os.environ.get("USE_SCNET", "1").strip().lower() in ("1", "true", "yes")
+
 # Demucs extra bag models (for quality mode)
 DEMUCS_EXTRA_MODELS_DIR = MODELS_DIR / "Demucs_Models"
 DEMUCS_EXTRA_Q_YAML = DEMUCS_EXTRA_MODELS_DIR / "mdx_extra_q.yaml"
@@ -58,6 +62,11 @@ def ensure_htdemucs_th() -> Path | None:
 def htdemucs_available() -> bool:
     """True if we have a Demucs model (either .pth or .th) for htdemucs."""
     return HTDEMUCS_PTH.exists() or HTDEMUCS_TH.exists()
+
+
+def scnet_available() -> bool:
+    """True if USE_SCNET is on and SCNet ONNX model exists (for 4-stem / expand)."""
+    return USE_SCNET and SCNET_ONNX.exists()
 
 
 def _demucs_bag_available(yaml_path: Path, th_prefixes: tuple[str, ...]) -> bool:

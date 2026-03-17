@@ -1,8 +1,8 @@
 # Burnt Beats — Stem Splitter / Mixer / Master
 
-Stem separation web app (CPU-only). Frontend: React + Vite (keyboard shortcuts, undo/redo, export options modal, mixer presets, onboarding tour, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 0 Silero VAD → Stage 1 MDX ONNX vocal → phase inversion → Stage 2 Demucs on instrumental). **CPU-optimal defaults:** Stage 1 uses MDX ONNX (Kim_Vocal_2 / UVR-MDX-NET-Voc_FT); htdemucs is optional refinement. **Quality tiers:** Speed, Quality (default), and Ultra (RoFormer/MDX23C). On CPU, Ultra is disabled and falls back to Quality (RoFormer and HP2-3090 models are GPU-only). **WSL only (Ubuntu)** — run everything inside WSL; same commands work on AWS EC2. No Windows-native commands or PowerShell.
+Stem separation web app (CPU-only). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite (keyboard shortcuts, undo/redo, export modal, mixer presets, onboarding, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 0 Silero VAD → Stage 1 MDX ONNX vocal → phase inversion → Stage 2 Demucs on instrumental). **CPU-optimal:** Stage 1 MDX ONNX (Kim_Vocal_2 / Voc_FT); Demucs ONNX or subprocess for 4-stem. **Quality tiers:** Speed, Quality (default), Ultra (RoFormer; GPU-only in practice). **WSL only (Ubuntu)** — run inside WSL; same commands on AWS EC2.
 
-**Last updated:** 2026-03-11
+**Last updated:** 2026-03-17
 
 ---
 
@@ -46,7 +46,7 @@ STEM_MODELS_SOURCE="/mnt/d/DAW Collection/stem-models" bash scripts/copy-models.
 # Or pass the path as the first argument:
 bash scripts/copy-models.sh "/mnt/d/DAW Collection/stem-models"
 ```
-The script looks for htdemucs at source root, then in `source/flow-models/` and `source/flow-models/demucs/ckpt/` (deep stem-models layout). For a known-good test run, prefer `python scripts/download_htdemucs_official.py` so `models/htdemucs.th` is the official format. See `docs/MODELS-INVENTORY.md` and `docs/MODELS-FLOW-MODELS-INVESTIGATION.md` for details.
+The script looks for htdemucs at source root, then in `source/flow-models/` and `source/flow-models/demucs/ckpt/` (deep stem-models layout). For a known-good test run, prefer `python scripts/download_htdemucs_official.py` so `models/htdemucs.th` is the official format. See `docs/MODELS-INVENTORY.md` for details.
 
 **Python venv (from repo root):**
 ```bash
@@ -91,7 +91,7 @@ bash scripts/run-frontend.sh
 ```
 Creates `.env` from example if missing; installs Node deps on first run if needed.
 
-Open the frontend URL shown in Terminal 3. Upload an audio file → choose 2 or 4 stems → **Split and Generate Stem Rack**. With all three services running, stems appear; use **Hear Stem**, **Download**, or **Load To Track**.
+Open the frontend URL shown in Terminal 3. **Split a track:** upload → choose quality → **Split** (2-stem: vocals + instrumental). Then **Keep going → 4 stems** or use the mixer. **Load stems:** use “Load stems (mashup)” to add WAV/MP3 files as mixer tracks. Use **Hear**, **Play mix**, **Export**.
 
 If you see `ERR_CONNECTION_REFUSED` on `/api/stems/split`, start the backend (Terminal 2) and ensure `VITE_API_BASE_URL` in `frontend/.env` matches the backend port (default 3001). If you see **502 Bad Gateway** on `/api/stems/split`, the backend is up but the stem service (port 5000) is not — start Terminal 1 (`bash scripts/run-stem-service.sh`) first.
 
@@ -183,8 +183,10 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 
 ## API
 
-- **POST /api/stems/split** — `multipart/form-data`: `file`, `stems` = "2" or "4", optional `quality` = "speed", "quality" (default), or "ultra". Returns `{ job_id, status, stems: [{ id, url }] }`.
-- **GET /api/stems/file/:job_id/:stemId.wav** — Stream stem WAV (e.g. `vocals.wav`, `instrumental.wav`).
+- **POST /api/stems/split** — `multipart/form-data`: `file`, `stems` = "2" (default; vocals + instrumental), optional `quality` = "speed", "quality", or "ultra". Returns `{ job_id, status }` (202); poll status for stems.
+- **POST /api/stems/expand** — Body: `job_id` (2-stem job), optional `quality`. Expands to 4 stems (vocals + drums, bass, other). Returns new `job_id` (202); poll status for stems.
+- **GET /api/stems/status/:job_id** — Job progress and final `stems: [{ id, url }]`.
+- **GET /api/stems/file/:job_id/:stemId.wav** — Stream stem WAV.
 
 ---
 

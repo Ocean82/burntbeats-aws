@@ -97,45 +97,63 @@ def extract_vocals_stage1(
     input_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
-) -> tuple[Path, Path | None]:
+    job_logger: "logging.Logger | None" = None,
+    vocal_model_override: Path | None = None,
+    inst_model_override: Path | None = None,
+) -> tuple[Path, Path | None, list[str]]:
     """
     Extract vocals and optionally instrumental.
 
-    Returns (vocals_path, instrumental_path_or_None).
+    prefer_speed=True  → 50% overlap (faster, slightly more boundary artifacts)
+    prefer_speed=False → 75% overlap (slower, smoother — recommended for quality)
+
+    Returns (vocals_path, instrumental_path_or_None, models_used).
     When instrumental_path is None, caller must create it via phase inversion.
+    models_used: list of model names for metrics (e.g. ["Kim_Vocal_2.onnx", "UVR-MDX-NET-Inst_HQ_5.onnx"]).
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    vocal_model = get_available_vocal_onnx()
-    inst_model = get_available_inst_onnx()
+    # 75% overlap for quality, 50% for speed
+    onnx_overlap = 0.5 if prefer_speed else 0.75
 
-    if vocal_model is not None:
+    vocal_model = vocal_model_override if vocal_model_override is not None else get_available_vocal_onnx()
+    inst_model = inst_model_override if inst_model_override is not None else get_available_inst_onnx()
+
+    if vocal_model is not None and vocal_model.exists():
         vocals_out = output_dir / "onnx_vocals.wav"
-        vocals_path = run_vocal_onnx(input_path, vocals_out)
+        vocals_path = run_vocal_onnx(
+            input_path, vocals_out, overlap=onnx_overlap, job_logger=job_logger,
+            model_path_override=vocal_model,
+        )
 
         if vocals_path is not None:
             # Try to also get instrumental from dedicated ONNX model
-            if inst_model is not None:
+            if inst_model is not None and inst_model.exists():
                 inst_out = output_dir / "onnx_instrumental.wav"
-                inst_path = run_inst_onnx(input_path, inst_out)
+                inst_path = run_inst_onnx(
+                    input_path, inst_out, overlap=onnx_overlap, job_logger=job_logger,
+                    model_path_override=inst_model,
+                )
                 if inst_path is not None:
                     logger.info(
-                        "Stage 1: vocal ONNX (%s) + instrumental ONNX (%s)",
+                        "Stage 1: vocal ONNX (%s) + instrumental ONNX (%s) [overlap=%.0f%%]",
                         vocal_model.name,
                         inst_model.name,
+                        onnx_overlap * 100,
                     )
-                    return vocals_path, inst_path
+                    return vocals_path, inst_path, [vocal_model.name, inst_model.name]
 
             # Vocal ONNX succeeded but no instrumental ONNX — caller does phase inversion
             logger.info(
-                "Stage 1: vocal ONNX (%s) + phase inversion for instrumental",
+                "Stage 1: vocal ONNX (%s) + phase inversion for instrumental [overlap=%.0f%%]",
                 vocal_model.name,
+                onnx_overlap * 100,
             )
-            return vocals_path, None
+            return vocals_path, None, [vocal_model.name, "phase_inversion"]
 
     # No ONNX available — use Demucs 2-stem (model-native, phase-aligned)
     logger.info("Stage 1: Demucs 2-stem (no ONNX available)")
     vocals_path, no_vocals_path = _run_demucs_two_stem(
         input_path, output_dir, prefer_speed=prefer_speed
     )
-    return vocals_path, no_vocals_path
+    return vocals_path, no_vocals_path, ["htdemucs"]

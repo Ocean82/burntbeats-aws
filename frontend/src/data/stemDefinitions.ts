@@ -82,6 +82,23 @@ export function getStemDefinition(id: string): StemDefinition {
   return stemIdToDefinition[id] ?? stemIdToDefinition.instrumental!;
 }
 
+const LOADED_STEM_COLORS = ["#8b9dc3", "#a78bfa", "#7dd3fc", "#86efac", "#fde047", "#f97316"];
+
+/** Definition for user-loaded stems (mashup). Uses filename as label and a rotating color. */
+export function getLoadedStemDefinition(id: string, label: string): StemDefinition {
+  const index = Math.abs(id.split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % LOADED_STEM_COLORS.length;
+  const glow = LOADED_STEM_COLORS[index];
+  return {
+    id: id as StemDefinition["id"],
+    label: label.replace(/\.[^/.]+$/, "").slice(0, 28) || "Stem",
+    subtitle: "Loaded",
+    flavor: "Your stem",
+    glow,
+    glowSoft: `${glow}80`,
+    waveform: generateWaveform(index * 1.7, WAVEFORM_BINS, 0.55),
+  };
+}
+
 export const pipelineSteps = [
   { title: "Upload & split", blurb: "Your track is split into separate stems." },
   { title: "Listen & tweak", blurb: "Hear each stem, adjust levels and trim." },

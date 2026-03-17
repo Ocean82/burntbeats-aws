@@ -10,9 +10,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import logging.handlers
 import os
 import re
 import signal
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -39,12 +41,13 @@ from stem_service.demucs_onnx import (
     demucs_onnx_embedded_available,
     run_demucs_onnx_4stem,
 )
+from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.hybrid import (
     run_4stem_single_pass_or_hybrid,
+    run_expand_to_4stem,
     run_hybrid_2stem,
 )
 from stem_service.mdx_onnx import get_available_vocal_onnx
-from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.ultra import run_ultra_2stem, run_ultra_4stem, get_ultra_model_info
 
 
@@ -164,6 +167,9 @@ OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "st
 
 PROGRESS_FILENAME = "progress.json"
 
+# Per-job metrics log: one JSON object per line for comparing models and timings (mode, elapsed, RTF, etc.)
+METRICS_LOG = Path(os.environ.get("STEM_METRICS_LOG", str(REPO_ROOT / "job_metrics.jsonl")))
+
 # Use validation constants from config (single source of truth)
 SUPPORTED_FORMATS = SUPPORTED_AUDIO_FORMATS
 
@@ -202,6 +208,32 @@ def _write_progress(out_dir: Path, data: dict) -> None:
     (out_dir / PROGRESS_FILENAME).write_text(json.dumps(data), encoding="utf-8")
 
 
+def _append_metrics_log(record: dict) -> None:
+    """Append one JSON object (one line) to the metrics log for later comparison."""
+    try:
+        with open(METRICS_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as e:
+        logger.warning("Could not append to metrics log %s: %s", METRICS_LOG, e)
+
+
+def _make_job_logger(job_id: str, out_dir: Path) -> logging.Logger:
+    """Create a file logger that writes to tmp/stems/{job_id}/job.log."""
+    log_path = out_dir / "job.log"
+    job_log = logging.getLogger(f"job.{job_id}")
+    job_log.setLevel(logging.DEBUG)
+    if not job_log.handlers:
+        fh = logging.FileHandler(str(log_path), encoding="utf-8")
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
+        )
+        job_log.addHandler(fh)
+        # Also propagate to root so uvicorn stdout shows it
+        job_log.propagate = True
+    return job_log
+
+
 def _run_separation_sync(
     job_id: str,
     input_path: Path,
@@ -216,26 +248,61 @@ def _run_separation_sync(
         "cancelled": False,
         "started_at": str(Path(__file__).stat().st_mtime),
     }
+
+    job_log = _make_job_logger(job_id, out_dir)
+    t0 = time.monotonic()
+
+    # Audio duration for realtime-factor (processing_time / song_length)
+    audio_duration_seconds: float | None = None
+    try:
+        import soundfile as sf
+        info = sf.info(str(input_path))
+        audio_duration_seconds = float(info.duration)
+    except Exception as e:
+        job_log.warning("Could not get audio duration for metrics: %s", e)
+
+    try:
+        file_size_mb = input_path.stat().st_size / (1024 * 1024)
+    except OSError:
+        file_size_mb = 0.0
+
+    job_log.info(
+        "=== JOB START  job_id=%s  stems=%d  quality=%s  file=%.2fMB ===",
+        job_id, stem_count, quality_mode, file_size_mb,
+    )
     logger.info("Started job %s (quality: %s)", job_id, quality_mode)
 
     def on_progress(pct: int) -> None:
         if _is_job_cancelled(job_id):
             raise asyncio.CancelledError("Job cancelled by user")
+        elapsed = time.monotonic() - t0
+        job_log.info("progress=%d%%  elapsed=%.1fs", pct, elapsed)
         _write_progress(
             out_dir, {"status": "running", "progress": pct, "quality": quality_mode}
         )
 
+    models_used: list[str] = []
+    mode_name = (
+        "2_stem_ultra" if quality_mode == QUALITY_ULTRA and stem_count == 2
+        else "4_stem_ultra" if quality_mode == QUALITY_ULTRA and stem_count == 4
+        else "2_stem_speed" if stem_count == 2 and prefer_speed
+        else "2_stem_quality" if stem_count == 2
+        else "4_stem_speed" if prefer_speed
+        else "4_stem_quality"
+    )
+
     try:
         # Ultra quality mode
         if quality_mode == QUALITY_ULTRA:
+            job_log.info("Stage: ultra quality")
             if stem_count == 2:
-                stem_list = run_ultra_2stem(
+                stem_list, models_used = run_ultra_2stem(
                     input_path,
                     out_dir,
                     progress_callback=on_progress,
                 )
             else:
-                stem_list = run_ultra_4stem(
+                stem_list, models_used = run_ultra_4stem(
                     input_path,
                     out_dir,
                     progress_callback=on_progress,
@@ -243,27 +310,33 @@ def _run_separation_sync(
         # Standard hybrid or demucs_only mode
         elif STEM_BACKEND == "hybrid":
             if stem_count == 2:
-                stem_list = run_hybrid_2stem(
+                job_log.info("Stage: hybrid 2-stem  prefer_speed=%s", prefer_speed)
+                stem_list, models_used = run_hybrid_2stem(
                     input_path,
                     out_dir,
                     prefer_speed=prefer_speed,
                     progress_callback=on_progress,
+                    job_logger=job_log,
                 )
             else:
-                stem_list = run_4stem_single_pass_or_hybrid(
+                job_log.info("Stage: hybrid 4-stem  prefer_speed=%s", prefer_speed)
+                stem_list, models_used = run_4stem_single_pass_or_hybrid(
                     input_path,
                     out_dir,
                     prefer_speed=prefer_speed,
                     progress_callback=on_progress,
+                    job_logger=job_log,
                 )
         else:
             # demucs_only: still prefer ONNX when available (best option)
             if stem_count == 2:
-                stem_list = run_hybrid_2stem(
+                job_log.info("Stage: demucs_only 2-stem  prefer_speed=%s", prefer_speed)
+                stem_list, models_used = run_hybrid_2stem(
                     input_path,
                     out_dir,
                     prefer_speed=prefer_speed,
                     progress_callback=on_progress,
+                    job_logger=job_log,
                 )
             else:
                 flat_dir = out_dir / "stems"
@@ -273,33 +346,138 @@ def _run_separation_sync(
                 if (use_6s and demucs_onnx_6s_available()) or (
                     not use_6s and demucs_onnx_embedded_available()
                 ):
-                    stem_list = run_demucs_onnx_4stem(
+                    job_log.info("Stage: demucs ONNX 4-stem  use_6s=%s", use_6s)
+                    stem_list, demucs_model = run_demucs_onnx_4stem(
                         input_path, flat_dir, use_6s=use_6s
                     )
+                    if stem_list is not None and demucs_model is not None:
+                        models_used = [demucs_model]
+                        on_progress(100)
                 if stem_list is None:
+                    job_log.info("Stage: demucs subprocess 4-stem")
                     stem_files = run_demucs(
                         input_path, out_dir, stems=4, prefer_speed=prefer_speed
                     )
                     on_progress(50)
                     stem_list = copy_stems_to_flat_dir(stem_files, flat_dir)
+                    models_used = ["htdemucs"]
                 on_progress(100)
 
         # Check if cancelled before marking complete
         if _is_job_cancelled(job_id):
             _write_progress(out_dir, {"status": "cancelled", "progress": 0})
+            job_log.info("=== JOB CANCELLED ===")
             return
+
+        elapsed = time.monotonic() - t0
+        realtime_factor: float | None = None
+        if audio_duration_seconds and audio_duration_seconds > 0:
+            realtime_factor = round(elapsed / audio_duration_seconds, 4)
 
         stems_payload = [
             {"id": stem_id, "path": str(p.relative_to(OUTPUT_BASE))}
             for stem_id, p in stem_list
         ]
-        _write_progress(
-            out_dir, {"status": "completed", "progress": 100, "stems": stems_payload}
+        progress_data: dict[str, Any] = {
+            "status": "completed",
+            "progress": 100,
+            "stems": stems_payload,
+            "elapsed_seconds": round(elapsed, 2),
+            "audio_duration_seconds": round(audio_duration_seconds, 2) if audio_duration_seconds is not None else None,
+            "realtime_factor": realtime_factor,
+            "stem_count": stem_count,
+            "quality_mode": quality_mode,
+            "prefer_speed": prefer_speed,
+            "mode_name": mode_name,
+            "models_used": models_used,
+        }
+        _write_progress(out_dir, progress_data)
+
+        metrics_record = {
+            "job_id": job_id,
+            "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "mode_name": mode_name,
+            "stem_count": stem_count,
+            "quality_mode": quality_mode,
+            "prefer_speed": prefer_speed,
+            "elapsed_seconds": round(elapsed, 2),
+            "audio_duration_seconds": round(audio_duration_seconds, 2) if audio_duration_seconds is not None else None,
+            "realtime_factor": realtime_factor,
+            "models_used": models_used,
+        }
+        _append_metrics_log(metrics_record)
+
+        job_log.info(
+            "=== JOB COMPLETE  elapsed=%.1fs  audio=%.1fs  RTF=%s  mode=%s  models=%s ===",
+            elapsed,
+            audio_duration_seconds or 0,
+            realtime_factor,
+            mode_name,
+            models_used,
         )
-        logger.info("Completed job %s", job_id)
+        logger.info("Completed job %s in %.1fs (mode=%s, RTF=%s)", job_id, elapsed, mode_name, realtime_factor)
     except Exception as e:
+        elapsed = time.monotonic() - t0
+        job_log.exception("=== JOB FAILED  elapsed=%.1fs  error=%s ===", elapsed, e)
         logger.exception("Separation failed for job %s", job_id)
         _write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
+
+
+def _run_expand_sync(
+    expand_job_id: str,
+    source_job_id: str,
+    out_dir: Path,
+    prefer_speed: bool,
+) -> None:
+    """Blocking expand 2-stem → 4-stem; writes progress. Called from thread."""
+    _running_jobs[expand_job_id] = {
+        "cancelled": False,
+        "started_at": str(Path(__file__).stat().st_mtime),
+    }
+    job_log = _make_job_logger(expand_job_id, out_dir)
+    t0 = time.monotonic()
+    source_stems_dir = OUTPUT_BASE / source_job_id / "stems"
+    job_log.info("=== EXPAND START  expand_job=%s  source_job=%s ===", expand_job_id, source_job_id)
+
+    def on_progress(pct: int) -> None:
+        if _is_job_cancelled(expand_job_id):
+            raise asyncio.CancelledError("Job cancelled by user")
+        _write_progress(out_dir, {"status": "running", "progress": pct})
+
+    try:
+        stem_list, models_used = run_expand_to_4stem(
+            source_stems_dir,
+            out_dir,
+            prefer_speed=prefer_speed,
+            progress_callback=on_progress,
+            job_logger=job_log,
+        )
+        if _is_job_cancelled(expand_job_id):
+            _write_progress(out_dir, {"status": "cancelled", "progress": 0})
+            return
+        elapsed = time.monotonic() - t0
+        stems_payload = [
+            {"id": stem_id, "path": str(p.relative_to(OUTPUT_BASE))}
+            for stem_id, p in stem_list
+        ]
+        _write_progress(
+            out_dir,
+            {
+                "status": "completed",
+                "progress": 100,
+                "stems": stems_payload,
+                "elapsed_seconds": round(elapsed, 2),
+                "stem_count": 4,
+                "expand_from": source_job_id,
+                "models_used": models_used,
+            },
+        )
+        job_log.info("=== EXPAND COMPLETE  elapsed=%.1fs  models=%s ===", elapsed, models_used)
+    except Exception as e:
+        job_log.exception("=== EXPAND FAILED  error=%s ===", e)
+        _write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
+    finally:
+        _running_jobs.pop(expand_job_id, None)
 
 
 @app.post("/split")
@@ -389,6 +567,45 @@ async def split(
     )
 
 
+@app.post("/expand")
+async def expand(
+    job_id: str = Form(..., alias="job_id"),
+    quality: str | None = Form(None),
+) -> dict:
+    """
+    Expand a completed 2-stem job to 4 stems (vocals, drums, bass, other).
+    Uses existing vocals + instrumental; runs Demucs on instrumental only.
+    Returns 202 with new job_id. Poll GET /status/{job_id} for progress.
+    """
+    if not job_id or not UUID_REGEX.fullmatch(job_id):
+        raise HTTPException(status_code=400, detail="Invalid job_id")
+    source_stems_dir = OUTPUT_BASE / job_id / "stems"
+    if not source_stems_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Job not found")
+    if not (source_stems_dir / "vocals.wav").exists() or not (source_stems_dir / "instrumental.wav").exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Job is not a 2-stem result (need vocals.wav and instrumental.wav). Run 2-stem split first.",
+        )
+    prefer_speed = (quality or "").strip().lower() == "speed"
+    expand_job_id = str(uuid.uuid4())
+    out_dir = OUTPUT_BASE / expand_job_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    _write_progress(out_dir, {"status": "running", "progress": 0})
+    asyncio.create_task(
+        asyncio.to_thread(
+            _run_expand_sync,
+            expand_job_id,
+            job_id,
+            out_dir,
+            prefer_speed,
+        )
+    )
+    return JSONResponse(
+        content={"job_id": expand_job_id, "status": "accepted"}, status_code=202
+    )
+
+
 @app.get("/status/{job_id}")
 async def get_status(job_id: str) -> dict:
     """Return progress for a job. 404 if job_id invalid or unknown."""
@@ -401,6 +618,10 @@ async def get_status(job_id: str) -> dict:
         data = json.loads(progress_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         raise HTTPException(status_code=404, detail="Job not found")
+    # Include log path so callers can tail it for debugging
+    log_path = OUTPUT_BASE / job_id / "job.log"
+    if log_path.exists():
+        data["log"] = str(log_path)
     return data
 
 

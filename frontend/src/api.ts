@@ -145,6 +145,49 @@ export async function splitStems(
   throw new Error(final.error ?? "Stem separation failed");
 }
 
+/** Start expand (2-stem → 4-stem). Returns new job_id. Poll status until completed. */
+export async function startExpand(
+  jobId: string,
+  quality?: SplitQuality
+): Promise<{ job_id: string }> {
+  const body = JSON.stringify({ job_id: jobId, quality: quality ?? "quality" });
+  const res = await fetch(`${API_BASE}/api/stems/expand`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text || `Expand failed: ${res.status}`;
+    if (res.headers.get("content-type")?.includes("application/json") && text) {
+      try {
+        const json = JSON.parse(text) as { error?: string };
+        if (json.error) message = json.error;
+      } catch {
+        /* use text */
+      }
+    }
+    throw new Error(message);
+  }
+  const data = (await res.json()) as { job_id: string };
+  if (res.status === 202 && data.job_id) return data;
+  throw new Error("Unexpected response from expand");
+}
+
+/** Expand 2-stem job to 4 stems and poll until done. Returns final stems. */
+export async function expandStems(
+  jobId: string,
+  quality?: SplitQuality,
+  onProgress?: (status: StemJobStatus) => void
+): Promise<SplitResponse> {
+  const { job_id } = await startExpand(jobId, quality);
+  const final = await pollStemJobUntilDone(job_id, (s) => onProgress?.(s));
+  if (final.status === "completed" && final.stems) {
+    return { job_id, status: "completed", stems: final.stems };
+  }
+  throw new Error(final.error ?? "Expand failed");
+}
+
 export function getStemFileUrl(jobId: string, stemId: string): string {
   return `${API_BASE}/api/stems/file/${jobId}/${stemId}.wav`;
 }

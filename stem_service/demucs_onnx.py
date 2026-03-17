@@ -141,50 +141,72 @@ def _overlap_add(
     return out / np.maximum(cnt, 1e-8)
 
 
+def _demucs_model_config(path: Path) -> tuple[str, int, bool] | None:
+    """Infer (wav_out_name, n_stems, two_input) from model path name. Returns None if unknown."""
+    name = path.name.lower()
+    if "6s" in name or "6_s" in name:
+        return "5012", 6, True
+    if "embedded" in name or path.name == "htdemucs.onnx":
+        return "add_67", 4, True
+    if "demucsv4" in name or "v4" in name:
+        return "output", 6, False
+    # Default: assume two-input 4-stem (embedded-style)
+    return "add_67", 4, True
+
+
 def run_demucs_onnx_4stem(
     input_path: Path,
     output_dir: Path,
     use_6s: bool = False,
-) -> list[tuple[str, Path]] | None:
+    demucs_model_override: Path | None = None,
+) -> tuple[list[tuple[str, Path]], str] | tuple[None, None]:
     """
     Single-pass 4-stem separation.
     use_6s=True  → htdemucs_6s.onnx  (quality; "other" = model's other stem only; guitar/piano dropped)
     use_6s=False → htdemucs_embedded.onnx (speed)
-    Falls back to demucsv4.onnx (single-input) if the two-input models are missing.
-    Returns [(stem_id, path), ...] in RETURN_ORDER, or None on failure.
+    demucs_model_override: when set, use this path and infer I/O from filename (for benchmarking).
+    Returns (stem_list, model_name) on success, (None, None) on failure.
     """
     import soundfile as sf
     import torch
 
-    # Pick model (prefer ONNX so we avoid Demucs subprocess)
-    if use_6s and SIX_STEM_ONNX.exists():
-        model_path = SIX_STEM_ONNX
-        wav_out_name = "5012"
-        n_stems = 6
-        two_input = True
-    elif not use_6s and EMBEDDED_ONNX.exists():
-        model_path = EMBEDDED_ONNX
-        wav_out_name = "add_67"
-        n_stems = 4
-        two_input = True
-    elif not use_6s and HTDEMUCS_ONNX.exists():
-        model_path = HTDEMUCS_ONNX
-        wav_out_name = "add_67"
-        n_stems = 4
-        two_input = True
-        logger.info("Demucs ONNX: using htdemucs.onnx (embedded fallback)")
-    elif V4_ONNX.exists():
-        model_path = V4_ONNX
-        wav_out_name = "output"
-        n_stems = 6
-        two_input = False
-        logger.info("Demucs ONNX: using demucsv4.onnx (single-input fallback)")
+    # Override: use given path and infer config from filename
+    if demucs_model_override is not None and demucs_model_override.exists():
+        cfg = _demucs_model_config(demucs_model_override)
+        if cfg is None:
+            return None, None
+        wav_out_name, n_stems, two_input = cfg
+        model_path = demucs_model_override
     else:
-        return None
+        # Pick model (prefer ONNX so we avoid Demucs subprocess)
+        if use_6s and SIX_STEM_ONNX.exists():
+            model_path = SIX_STEM_ONNX
+            wav_out_name = "5012"
+            n_stems = 6
+            two_input = True
+        elif not use_6s and EMBEDDED_ONNX.exists():
+            model_path = EMBEDDED_ONNX
+            wav_out_name = "add_67"
+            n_stems = 4
+            two_input = True
+        elif not use_6s and HTDEMUCS_ONNX.exists():
+            model_path = HTDEMUCS_ONNX
+            wav_out_name = "add_67"
+            n_stems = 4
+            two_input = True
+            logger.info("Demucs ONNX: using htdemucs.onnx (embedded fallback)")
+        elif V4_ONNX.exists():
+            model_path = V4_ONNX
+            wav_out_name = "output"
+            n_stems = 6
+            two_input = False
+            logger.info("Demucs ONNX: using demucsv4.onnx (single-input fallback)")
+        else:
+            return None, None
 
     session = _get_session(model_path)
     if session is None:
-        return None
+        return None, None
 
     # Discover input names from session
     inp_names = [i.name for i in session.get_inputs()]
@@ -196,7 +218,7 @@ def run_demucs_onnx_4stem(
         mix, sr = sf.read(str(input_path), dtype="float32", always_2d=True)
     except Exception as e:
         logger.warning("demucs_onnx: cannot read %s: %s", input_path, e)
-        return None
+        return None, None
 
     if mix.shape[1] == 1:
         mix = np.concatenate([mix, mix], axis=1)
@@ -239,7 +261,7 @@ def run_demucs_onnx_4stem(
             raw_outputs = session.run(None, feed)
         except Exception as e:
             logger.warning("demucs_onnx: inference failed: %s", e)
-            return None
+            return None, None
 
         # Find the waveform output by name, then by shape
         wav_out = None
@@ -255,7 +277,7 @@ def run_demucs_onnx_4stem(
                     break
         if wav_out is None:
             logger.warning("demucs_onnx: cannot find waveform output")
-            return None
+            return None, None
 
         # wav_out: (1, n_stems, 2, seg)
         stems_raw = wav_out[0]  # (n_stems, 2, seg)
@@ -297,7 +319,7 @@ def run_demucs_onnx_4stem(
         sf.write(str(out_path), wav.T, TARGET_SAMPLE_RATE, subtype="PCM_16")
         result.append((stem_id, out_path))
 
-    return result
+    return result, model_path.name
 
 
 def demucs_onnx_embedded_available() -> bool:

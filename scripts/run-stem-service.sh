@@ -30,4 +30,7 @@ if ! python -c "import uvicorn" 2>/dev/null; then
 fi
 
 echo "Stem service at http://localhost:5000 (output: $STEM_OUTPUT_DIR)"
-exec python -m uvicorn stem_service.server:app --host 0.0.0.0 --port 5000
+mkdir -p "$ROOT/logs"
+exec python -m uvicorn stem_service.server:app \
+  --host 0.0.0.0 --port 5000 --log-level info \
+  2>&1 | tee -a "$ROOT/logs/stem-service.log"

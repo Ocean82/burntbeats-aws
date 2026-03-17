@@ -1,6 +1,6 @@
 # Deep inventory: models/ and stem-models
 
-**Date:** 2026-03-09  
+**Date:** 2026-03-09 (reviewed 2026-03-17)  
 **Purpose:** Full recursive audit of `D:\burntbeats-aws\models` and copy source `D:\DAW Collection\stem-models` (all subdirectories). So no models are missed.
 
 ---

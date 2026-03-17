@@ -1,6 +1,6 @@
 # Agent model alignment and implementation
 
-**Last updated:** 2026-03-09  
+**Last updated:** 2026-03-17  
 **Purpose:** Align [AGENT-Knowledge-Block](AGENT-Knowledge-Block.md), [AGENT-decision-knowledge-context](AGENT-decision-knowledge-context.md) with the stem splitter implementation. Ensure models live **only** under the project; no links to external paths.
 
 ---
@@ -81,11 +81,9 @@ find models -type l
 
 ### Can the project split by user preference (e.g. 2 vs 4 stems)?
 
-- **Yes.** The backend and API already support it:
-  - **2 stems:** vocals + instrumental (Demucs sum or hybrid phase inversion).
-  - **4 stems:** vocals, drums, bass, other (Demucs).
-- **API:** `POST /api/stems/split` accepts form field `stems` = `"2"` or `"4"` (default `"4"`). Optional `quality` is forwarded to the Python service.
-- **UI:** The Stem Split panel now exposes a stem-count control (2 or 4) and calls the split API; returned stems are added to the timeline (one stem per track, in order).
+- **Yes.** Default flow is **2-stem first** (vocals + instrumental). User can then **Keep going** to expand to 4 stems (drums, bass, other) via the expand API, or use the mixer as-is.
+- **API:** `POST /api/stems/split` with `stems` = `"2"` (default). `POST /api/stems/expand` with `job_id` (of a completed 2-stem job) returns a new job that produces 4 stems. Optional `quality` is forwarded to the Python service.
+- **UI:** Source panel: **Split a track** (upload → quality → split → optional “Keep going → 4 stems”) or **Load stems (mashup)** (add WAV/MP3 files as mixer tracks). Mixer supports pitch, time stretch, trim, level, pan.
 
 ---
 

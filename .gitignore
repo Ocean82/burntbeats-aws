@@ -28,8 +28,11 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+job_metrics.jsonl
 
 # Temp
 tmp/
 temp/
 *.tmp
+benchmark_out/
+benchmark_out_*/
