@@ -17,7 +17,7 @@ from typing import Any
 
 import numpy as np
 
-from stem_service.config import (
+from config import (
     MODELS_DIR,
     SCNET_ONNX,
     TARGET_SAMPLE_RATE,
@@ -195,12 +195,20 @@ def run_scnet_onnx_4stem(
         try:
             raw = session.run(None, feed)
         except Exception as e:
-            logger.warning("scnet_onnx: inference failed (chunk at pos=%d): %s", pos, e, exc_info=True)
+            logger.warning(
+                "scnet_onnx: inference failed (chunk at pos=%d): %s",
+                pos,
+                e,
+                exc_info=True,
+            )
             return None
 
         sources = raw[0]
         if sources.ndim != 5 or sources.shape[1] != 4:
-            logger.warning("scnet_onnx: unexpected sources shape %s (expected (1,4,4,2049,time))", sources.shape)
+            logger.warning(
+                "scnet_onnx: unexpected sources shape %s (expected (1,4,4,2049,time))",
+                sources.shape,
+            )
             return None
 
         for i in range(4):

@@ -28,7 +28,7 @@ from typing import Any
 
 import numpy as np
 
-from stem_service.config import MODELS_DIR, TARGET_SAMPLE_RATE, get_onnx_providers
+from config import MODELS_DIR, TARGET_SAMPLE_RATE, get_onnx_providers
 
 logger = logging.getLogger(__name__)
 

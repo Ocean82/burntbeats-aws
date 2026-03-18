@@ -25,21 +25,23 @@ const MASTER_CHAIN = { compression: 2.4, limiter: -0.8, loudness: -9 } as const;
 
 export function App() {
   // ── Upload / split state ──────────────────────────────────────────────────
-  const [splitQuality, setSplitQuality] = useState<SplitQuality>("quality");
-  const [selectedStems, setSelectedStems] = useState<Record<StemId, boolean>>({
-    vocals: true, drums: true, bass: true, melody: true, instrumental: true, other: true,
+  const [uploadState, setUploadState] = useState({
+    quality: "quality" as SplitQuality,
+    selectedStems: {
+      vocals: true, drums: true, bass: true, melody: true, instrumental: true, other: true,
+    } as Record<StemId, boolean>,
+    uploadName: "nightdrive_demo_master.wav",
+    uploadedFile: null as File | null,
+    splitResultStems: [] as StemResult[],
+    splitJobId: null as string | null,
+    loadedStems: [] as Array<{ id: string; label: string; url: string }>,
+    splitError: null as string | null,
+    isDragging: false,
+    isSplitting: false,
+    isExpanding: false,
+    splitProgress: 0,
+    pipelineIndex: 0
   });
-  const [uploadName, setUploadName] = useState("nightdrive_demo_master.wav");
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [splitResultStems, setSplitResultStems] = useState<StemResult[]>([]);
-  const [splitJobId, setSplitJobId] = useState<string | null>(null);
-  const [loadedStems, setLoadedStems] = useState<Array<{ id: string; label: string; url: string }>>([]);
-  const [splitError, setSplitError] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isSplitting, setIsSplitting] = useState(false);
-  const [isExpanding, setIsExpanding] = useState(false);
-  const [splitProgress, setSplitProgress] = useState(100);
-  const [pipelineIndex, setPipelineIndex] = useState(pipelineSteps.length - 1);
 
   // ── Stem data state ───────────────────────────────────────────────────────
   const {
@@ -97,40 +99,40 @@ export function App() {
     [stemStates],
   );
 
-  // ── All stems (split + loaded) for mixer ───────────────────────────────────
-  const allStemEntries = useMemo(
-    () => [
-      ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-      ...loadedStems.map((s) => ({ id: s.id, url: s.url })),
-    ],
-    [splitResultStems, loadedStems]
-  );
+   // ── All stems (split + loaded) for mixer ───────────────────────────────────
+   const allStemEntries = useMemo(
+     () => [
+       ...uploadState.splitResultStems.map((s) => ({ id: s.id, url: s.url })),
+       ...uploadState.loadedStems.map((s) => ({ id: s.id, url: s.url })),
+     ],
+     [uploadState.splitResultStems, uploadState.loadedStems]
+   );
 
-  /** Combined list for playback/export: split stems + loaded stems (each has id, url). */
-  const mixStems = useMemo(
-    () => [...splitResultStems, ...loadedStems] as Array<{ id: string; url: string }>,
-    [splitResultStems, loadedStems]
-  );
+   /** Combined list for playback/export: split stems + loaded stems (each has id, url). */
+   const mixStems = useMemo(
+     () => [...uploadState.splitResultStems, ...uploadState.loadedStems] as Array<{ id: string; url: string }>,
+     [uploadState.splitResultStems, uploadState.loadedStems]
+   );
 
-  // ── Waveform computation (idle-scheduled) ─────────────────────────────────
-  useWaveformCompute(stemBuffers, allStemEntries, setStemWaveforms);
+   // ── Waveform computation (idle-scheduled) ─────────────────────────────────
+   useWaveformCompute(stemBuffers, allStemEntries, setStemWaveforms);
 
-  // ── Visible stems (with definitions for display) ───────────────────────────
-  const visibleStems = useMemo(() => {
-    const fromSplit = splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));
-    const fromLoaded = loadedStems.map((s) => ({ ...getLoadedStemDefinition(s.id, s.label), id: s.id as StemId, url: s.url }));
-    if (fromSplit.length > 0 || fromLoaded.length > 0) return [...fromSplit, ...fromLoaded];
-    return stemDefinitions.filter((s) => selectedStems[s.id]);
-  }, [splitResultStems, loadedStems, selectedStems]);
+   // ── Visible stems (with definitions for display) ───────────────────────────
+   const visibleStems = useMemo(() => {
+     const fromSplit = uploadState.splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));
+     const fromLoaded = uploadState.loadedStems.map((s) => ({ ...getLoadedStemDefinition(s.id, s.label), id: s.id as StemId, url: s.url }));
+     if (fromSplit.length > 0 || fromLoaded.length > 0) return [...fromSplit, ...fromLoaded];
+     return stemDefinitions.filter((s) => uploadState.selectedStems[s.id]);
+   }, [uploadState.splitResultStems, uploadState.loadedStems, uploadState.selectedStems]);
 
-  // ── Pipeline animation ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isSplitting) return;
-    setPipelineIndex(0);
-    const t1 = setTimeout(() => setPipelineIndex(1), 400);
-    const t2 = setTimeout(() => setPipelineIndex(2), 1200);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [isSplitting]);
+   // ── Pipeline animation ────────────────────────────────────────────────────
+   useEffect(() => {
+     if (!uploadState.isSplitting) return;
+     setUploadState(prev => ({ ...prev, pipelineIndex: 0 }));
+     const t1 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 1 })), 400);
+     const t2 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 2 })), 1200);
+     return () => { clearTimeout(t1); clearTimeout(t2); };
+   }, [uploadState.isSplitting]);
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -145,151 +147,191 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Load stems into AudioBuffers (split + loaded) ───────────────────────────
-  const loadStemsIntoBuffers = useCallback(async () => {
-    if (allStemEntries.length === 0) return;
-    setIsLoadingStems(true);
-    const Ctor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) { setIsLoadingStems(false); return; }
-    if (!audioContextRef.current) audioContextRef.current = new Ctor();
-    const ctx = audioContextRef.current;
-    await ctx.resume();
+   // ── Load stems into AudioBuffers (split + loaded) ───────────────────────────
+   const loadStemsIntoBuffers = useCallback(async () => {
+     if (allStemEntries.length === 0) return;
+     setUploadState(prev => ({ ...prev, isLoadingStems: true }));
+     const Ctor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+     if (!Ctor) { 
+       setUploadState(prev => ({ ...prev, isLoadingStems: false }));
+       return; 
+     }
+     if (!audioContextRef.current) audioContextRef.current = new Ctor();
+     const ctx = audioContextRef.current;
+     await ctx.resume();
 
-    const existing = stemBuffersRef.current;
-    const newBuffers: Record<string, AudioBuffer> = {};
-    const newLoaded: Record<string, boolean> = {};
-    const toLoad = allStemEntries.filter((e) => !existing[e.id]);
+     const existing = stemBuffersRef.current;
+     const newBuffers: Record<string, AudioBuffer> = {};
+     const newLoaded: Record<string, boolean> = {};
+     const toLoad = allStemEntries.filter((e) => !existing[e.id]);
 
-    if (toLoad.length > 0) {
-      try {
-        const results = await Promise.all(toLoad.map(async (stem) => {
-          const res = await fetch(stem.url);
-          if (!res.ok) throw new Error(`HTTP ${res.status} loading ${stem.id}`);
-          const buf = await ctx.decodeAudioData(await res.arrayBuffer());
-          return { id: stem.id, buf };
-        }));
-        for (const { id, buf } of results) { newBuffers[id] = buf; newLoaded[id] = true; }
-      } catch (e) { console.error("Failed to load stems:", e); }
-    }
+     if (toLoad.length > 0) {
+       try {
+         const results = await Promise.all(toLoad.map(async (stem) => {
+           const res = await fetch(stem.url);
+           if (!res.ok) throw new Error(`HTTP ${res.status} loading ${stem.id}`);
+           const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+           return { id: stem.id, buf };
+         }));
+         for (const { id, buf } of results) { 
+           newBuffers[id] = buf; 
+           newLoaded[id] = true; 
+         }
+       } catch (e) { 
+         console.error("Failed to load stems:", e); 
+       }
+     }
 
-    for (const e of allStemEntries) {
-      if (existing[e.id]) { newBuffers[e.id] = existing[e.id]; newLoaded[e.id] = true; }
-    }
+     for (const e of allStemEntries) {
+       if (existing[e.id]) { 
+         newBuffers[e.id] = existing[e.id]; 
+         newLoaded[e.id] = true; 
+       }
+     }
 
-    setStemBuffers((p) => ({ ...p, ...newBuffers }));
-    setLoadedTracks((p) => ({ ...p, ...newLoaded }));
-    setStemStates((p) => {
-      const next = { ...p };
-      for (const e of allStemEntries) { if (!next[e.id]) next[e.id] = defaultStemState(); }
-      return next;
-    });
-    setIsLoadingStems(false);
-  }, [allStemEntries, audioContextRef]);
+     setStemBuffers((p) => ({ ...p, ...newBuffers }));
+     setLoadedTracks((p) => ({ ...p, ...newLoaded }));
+     setStemStates((p) => {
+       const next = { ...p };
+       for (const e of allStemEntries) { 
+         if (!next[e.id]) next[e.id] = defaultStemState(); 
+       }
+       return next;
+     });
+     setUploadState(prev => ({ ...prev, isLoadingStems: false }));
+   }, [allStemEntries, audioContextRef]);
 
   useEffect(() => {
     if (allStemEntries.length > 0) void loadStemsIntoBuffers();
   }, [allStemEntries, loadStemsIntoBuffers]);
 
   // ── File handling ─────────────────────────────────────────────────────────
-  const handleFile = useCallback((file: File | null) => {
-    if (!file) { setUploadedFile(null); return; }
-    setUploadName(file.name);
-    setUploadedFile(file);
-    setSplitProgress(0);
-    setPipelineIndex(0);
-    setSplitError(null);
-    setSplitResultStems([]);
-    setSplitJobId(null);
-    setStemBuffers({});
-    setStemWaveforms({});
-    setLoadedTracks({});
+    const handleFile = useCallback((file: File | null) => {
+    if (!file) { 
+      setUploadState(prev => ({ ...prev, uploadedFile: null })); 
+      return; 
+    }
+    setUploadState(prev => ({ 
+      ...prev, 
+      uploadName: file.name,
+      uploadedFile: file,
+      splitProgress: 0,
+      pipelineIndex: 0,
+      splitError: null,
+      splitResultStems: [],
+      splitJobId: null,
+      stemBuffers: {},
+      stemWaveforms: {},
+      loadedTracks: {}
+    }));
     resetStemStates({});
   }, []);
 
-  const handleLoadStems = useCallback((files: FileList | null) => {
+    const handleLoadStems = useCallback((files: FileList | null) => {
     if (!files?.length) return;
     const ts = Date.now();
     const next = Array.from(files).map((file, i) => {
       const id = `loaded_${ts}_${i}`;
       return { id, label: file.name, url: URL.createObjectURL(file) };
     });
-    setLoadedStems((p) => [...p, ...next]);
+    setUploadState(prev => ({ 
+      ...prev, 
+      loadedStems: [...prev.loadedStems, ...next] 
+    }));
     loadStemsInputRef.current = null;
   }, []);
 
-  const removeLoadedStem = useCallback((id: string) => {
-    setLoadedStems((p) => {
-      const entry = p.find((s) => s.id === id);
-      if (entry) URL.revokeObjectURL(entry.url);
-      return p.filter((s) => s.id !== id);
+    const removeLoadedStem = useCallback((id: string) => {
+    setUploadState(prev => {
+      const updatedLoadedStems = prev.loadedStems.filter(stem => stem.id !== id);
+      const removedEntry = prev.loadedStems.find(stem => stem.id === id);
+      if (removedEntry) URL.revokeObjectURL(removedEntry.url);
+      return {
+        ...prev,
+        loadedStems: updatedLoadedStems
+      };
     });
-    setStemBuffers((p) => {
-      const next = { ...p };
+    setStemBuffers(prev => {
+      const next = { ...prev };
       delete next[id];
       return next;
     });
-    setStemStates((p) => {
-      const next = { ...p };
+    setStemStates(prev => {
+      const next = { ...prev };
       delete next[id];
       return next;
     });
   }, []);
 
   // ── Split (always 2-stem first: vocals + instrumental) ─────────────────────
-  const triggerSplit = useCallback(async () => {
+    const triggerSplit = useCallback(async () => {
     stopPreview();
-    setSplitError(null);
-    if (!uploadedFile) { setSplitError("Upload an audio file first."); return; }
-    setIsSplitting(true);
-    setSplitProgress(0);
-    setPipelineIndex(0);
-    try {
-      const res = await splitStems(uploadedFile, "2", splitQuality, (s) => {
-        setSplitProgress(s.progress);
-        if (s.progress >= 100) setPipelineIndex(3);
-        else if (s.progress >= 50) setPipelineIndex(2);
-        else if (s.progress > 0) setPipelineIndex(1);
-      });
-      setSplitResultStems(res.stems);
-      setSplitJobId(res.job_id);
-      setSplitProgress(100);
-      setPipelineIndex(3);
-    } catch (err) {
-      setSplitError(err instanceof Error ? err.message : "Split failed");
-      setSplitProgress(0);
-    } finally {
-      setIsSplitting(false);
+    if (!uploadState.uploadedFile) { 
+      setUploadState(prev => ({ ...prev, splitError: "Upload an audio file first." })); 
+      return; 
     }
-  }, [uploadedFile, splitQuality, stopPreview]);
+    setUploadState(prev => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null }));
+    try {
+      const res = await splitStems(uploadState.uploadedFile, "2", uploadState.quality, (s) => {
+        setUploadState(prev => ({ ...prev, splitProgress: s.progress }));
+        if (s.progress >= 100) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
+        else if (s.progress >= 50) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
+        else if (s.progress > 0) setUploadState(prev => ({ ...prev, pipelineIndex: 1 }));
+      });
+      setUploadState(prev => ({ 
+        ...prev, 
+        splitResultStems: res.stems,
+        splitJobId: res.job_id,
+        splitProgress: 100,
+        pipelineIndex: 3
+      }));
+    } catch (err) {
+      setUploadState(prev => ({ 
+        ...prev, 
+        splitError: err instanceof Error ? err.message : "Split failed",
+        splitProgress: 0,
+        pipelineIndex: 0
+      }));
+    } finally {
+      setUploadState(prev => ({ ...prev, isSplitting: false }));
+    }
+   }, [stopPreview]);
 
   // ── Expand 2-stem → 4-stem (Keep Going) ────────────────────────────────────
-  const triggerExpand = useCallback(async () => {
-    if (!splitJobId || splitResultStems.length !== 2) return;
-    setSplitError(null);
-    setIsExpanding(true);
-    setSplitProgress(0);
-    setPipelineIndex(0);
+    const triggerExpand = useCallback(async () => {
+    if (!uploadState.splitJobId || uploadState.splitResultStems.length !== 2) return;
+    setUploadState(prev => ({ ...prev, splitError: null, isExpanding: true, splitProgress: 0, pipelineIndex: 0 }));
     try {
-      const res = await expandStems(splitJobId, splitQuality, (s) => {
-        setSplitProgress(s.progress);
-        if (s.progress >= 100) setPipelineIndex(3);
-        else if (s.progress >= 50) setPipelineIndex(2);
-        else if (s.progress > 0) setPipelineIndex(1);
+      const res = await expandStems(uploadState.splitJobId, uploadState.quality, (s) => {
+        setUploadState(prev => ({ ...prev, splitProgress: s.progress }));
+        if (s.progress >= 100) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
+        else if (s.progress >= 50) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
+        else if (s.progress > 0) setUploadState(prev => ({ ...prev, pipelineIndex: 1 }));
       });
-      setSplitResultStems(res.stems);
-      setSplitJobId(res.job_id);
-      setSplitProgress(100);
-      setPipelineIndex(3);
+      setUploadState(prev => ({ 
+        ...prev, 
+        splitResultStems: res.stems,
+        splitJobId: res.job_id,
+        splitProgress: 100,
+        pipelineIndex: 3
+      }));
     } catch (err) {
-      setSplitError(err instanceof Error ? err.message : "Expand failed");
-      setSplitProgress(0);
+      setUploadState(prev => ({ 
+        ...prev, 
+        splitError: err instanceof Error ? err.message : "Expand failed",
+        splitProgress: 0,
+        pipelineIndex: 0
+      }));
     } finally {
-      setIsExpanding(false);
+      setUploadState(prev => ({ ...prev, isExpanding: false }));
     }
-  }, [splitJobId, splitResultStems.length, splitQuality]);
+  }, []);
 
   // ── Stem helpers ──────────────────────────────────────────────────────────
-  const handleStemToggle = (stemId: StemId) => setSelectedStems((c) => ({ ...c, [stemId]: !c[stemId] }));
+    const handleStemToggle = (stemId: StemId) => setUploadState(prev => ({ 
+      ...prev, 
+      selectedStems: { ...prev.selectedStems, [stemId]: !prev.selectedStems[stemId] } 
+    }));
 
   const resetTrackAdjustments = useCallback(() => {
     setStemStates((p) => {
@@ -461,15 +503,15 @@ export function App() {
 
           {/* Upload & Split panel */}
           <motion.div className="glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }} transition={{ duration: 0.4 }}>
-            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="eyebrow">Source</p>
-                <h2 className="font-display text-2xl tracking-[-0.04em] text-white">Split a track or load stems to mix</h2>
-              </div>
-              <div className="inline-flex items-center gap-3 rounded-full border border-amber-200/10 bg-white/5 px-4 py-2 text-sm text-white/70">
-                <span className="status-light" />{sourceMode === "split" ? uploadName : `${loadedStems.length} loaded`}
-              </div>
-            </div>
+               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                 <div>
+                   <p className="eyebrow">Source</p>
+                   <h2 className="font-display text-2xl tracking-[-0.04em] text-white">Split a track or load stems to mix</h2>
+                 </div>
+                 <div className="inline-flex items-center gap-3 rounded-full border border-amber-200/10 bg-white/5 px-4 py-2 text-sm text-white/70">
+                   <span className="status-light" />{sourceMode === "split" ? uploadState.uploadName : `${uploadState.loadedStems.length} loaded`}
+                 </div>
+               </div>
 
             {/* Source mode: Split | Load stems */}
             <div className="mb-5 flex rounded-xl border border-white/10 bg-black/20 p-1">
@@ -535,19 +577,19 @@ export function App() {
                   <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-all", !uploadedFile ? "border-amber-400/30 bg-amber-500/20" : "border-white/12 bg-white/8")}>
                     <Upload className="h-5 w-5 text-white" strokeWidth={2} />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    {uploadedFile ? (
-                      <span className="font-medium text-white">{uploadName}</span>
-                    ) : (
-                      <>
-                        <span className="font-display text-lg tracking-tight text-white">Drop your track here</span>
-                        <span className="ml-2 text-xs text-white/60">or click to browse · WAV, MP3, AIFF</span>
-                      </>
-                    )}
-                  </div>
-                  {uploadedFile && (
-                    <button type="button" onClick={(e) => { e.stopPropagation(); handleFile(null); }} className="ghost-button shrink-0 rounded-lg px-3 py-1.5 text-xs">Change</button>
-                  )}
+                 <div className="min-w-0 flex-1">
+                     {uploadState.uploadedFile ? (
+                       <span className="font-medium text-white">{uploadState.uploadName}</span>
+                     ) : (
+                       <>
+                         <span className="font-display text-lg tracking-tight text-white">Drop your track here</span>
+                         <span className="ml-2 text-xs text-white/60">or click to browse · WAV, MP3, AIFF</span>
+                       </>
+                     )}
+                   </div>
+                   {uploadState.uploadedFile && (
+                     <button type="button" onClick={(e) => { e.stopPropagation(); handleFile(null); }} className="ghost-button shrink-0 rounded-lg px-3 py-1.5 text-xs">Change</button>
+                   )}
                 </div>
               </div>
 

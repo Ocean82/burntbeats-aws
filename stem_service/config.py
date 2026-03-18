@@ -73,9 +73,7 @@ def _demucs_bag_available(yaml_path: Path, th_prefixes: tuple[str, ...]) -> bool
     """True if yaml exists and all listed .th files (by hash prefix) exist in same dir."""
     if not yaml_path.exists():
         return False
-    return all(
-        any(yaml_path.parent.glob(f"{prefix}*.th")) for prefix in th_prefixes
-    )
+    return all(any(yaml_path.parent.glob(f"{prefix}*.th")) for prefix in th_prefixes)
 
 
 def demucs_extra_available() -> bool:
@@ -132,6 +130,36 @@ def bs_roformer_available() -> bool:
 def mel_band_roformer_available() -> bool:
     """True if Mel Band Roformer model is available for ultra quality (best quality)."""
     return MEL_BAND_ROFORMER_CKPT.exists()
+
+
+def mdx23c_vocal_available() -> bool:
+    """True if MDX23C vocal ONNX model is available."""
+    return (MODELS_DIR / "mdx23c_vocal.onnx").exists()
+
+
+def mdx23c_inst_available() -> bool:
+    """True if MDX23C instrumental ONNX model is available."""
+    return (MODELS_DIR / "mdx23c_instrumental.onnx").exists()
+
+
+def mel_band_roformer_vocal_available() -> bool:
+    """True if Mel-Band Roformer vocal ONNX model is available."""
+    return (MODELS_DIR / "mel_band_roformer_vocals.onnx").exists()
+
+
+def mel_band_roformer_inst_available() -> bool:
+    """True if Mel-Band Roformer instrumental ONNX model is available."""
+    return (MODELS_DIR / "mel_band_roformer_instrumental.onnx").exists()
+
+
+def bs_roformer_vocal_available() -> bool:
+    """True if BS-Roformer vocal ONNX model is available."""
+    return (MODELS_DIR / "bs_roformer_vocal.onnx").exists()
+
+
+def bs_roformer_inst_available() -> bool:
+    """True if BS-Roformer instrumental ONNX model is available."""
+    return (MODELS_DIR / "bs_roformer_instrumental.onnx").exists()
 
 
 def get_best_ultra_model() -> Path | None:

@@ -21,7 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from stem_service.config import (
+from config import (
     DEMUCS_DEVICE,
     DEMUCS_OVERLAP,
     DEMUCS_SEGMENT_SEC,
@@ -32,7 +32,7 @@ from stem_service.config import (
     ensure_htdemucs_th,
     htdemucs_available,
 )
-from stem_service.mdx_onnx import (
+from mdx_onnx import (
     get_available_inst_onnx,
     get_available_vocal_onnx,
     run_inst_onnx,
@@ -116,13 +116,69 @@ def extract_vocals_stage1(
     # 75% overlap for quality, 50% for speed
     onnx_overlap = 0.5 if prefer_speed else 0.75
 
-    vocal_model = vocal_model_override if vocal_model_override is not None else get_available_vocal_onnx()
-    inst_model = inst_model_override if inst_model_override is not None else get_available_inst_onnx()
+    # NEW-FLOW.MD RECOMMENDED PRIORITY ORDER FOR CPU-ONLY T3.LARGE:
+    # 1. MDX23C vocal ONNX + MDX23C instrumental ONNX (no phase inversion) - PRIMARY CHOICE
+    # 2. SCNet 4-stem -> collapse to 2-stem (handled in hybrid.py)
+    # 3. Mel-Band RoFormer vocal + phase inversion
+    # 4. BS-RoFormer vocal + phase inversion
+    # 5. Demucs 2-stem (fallback)
+
+    # Check if we have MDX23C models available (NEW-FLOW PRIMARY CHOICE FOR 2-STEM)
+    from .config import mdx23c_vocal_available, mdx23c_inst_available
+
+    if mdx23c_vocal_available() and mdx23c_inst_available():
+        mdx23c_vocal_path = MODELS_DIR / "mdx23c_vocal.onnx"
+        mdx23c_inst_path = MODELS_DIR / "mdx23c_instrumental.onnx"
+
+        # Use MDX23C models directly (NEW-FLOW RECOMMENDATION FOR 2-STEM)
+        vocals_out = output_dir / "mdx23c_vocals.wav"
+        vocals_path = run_vocal_onnx(
+            input_path,
+            vocals_out,
+            overlap=onnx_overlap,
+            job_logger=job_logger,
+            model_path_override=mdx23c_vocal_path,
+        )
+
+        if vocals_path is not None:
+            inst_out = output_dir / "mdx23c_instrumental.wav"
+            inst_path = run_inst_onnx(
+                input_path,
+                inst_out,
+                overlap=onnx_overlap,
+                job_logger=job_logger,
+                model_path_override=mdx23c_inst_path,
+            )
+            if inst_path is not None:
+                logger.info(
+                    "Stage 1: MDX23c vocal ONNX + MDX23c instrumental ONNX [overlap=%.0f%%]",
+                    onnx_overlap * 100,
+                )
+                return (
+                    vocals_path,
+                    inst_path,
+                    ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"],
+                )
+
+    # Fall back to existing vocal model detection
+    vocal_model = (
+        vocal_model_override
+        if vocal_model_override is not None
+        else get_available_vocal_onnx()
+    )
+    inst_model = (
+        inst_model_override
+        if inst_model_override is not None
+        else get_available_inst_onnx()
+    )
 
     if vocal_model is not None and vocal_model.exists():
         vocals_out = output_dir / "onnx_vocals.wav"
         vocals_path = run_vocal_onnx(
-            input_path, vocals_out, overlap=onnx_overlap, job_logger=job_logger,
+            input_path,
+            vocals_out,
+            overlap=onnx_overlap,
+            job_logger=job_logger,
             model_path_override=vocal_model,
         )
 
@@ -131,7 +187,10 @@ def extract_vocals_stage1(
             if inst_model is not None and inst_model.exists():
                 inst_out = output_dir / "onnx_instrumental.wav"
                 inst_path = run_inst_onnx(
-                    input_path, inst_out, overlap=onnx_overlap, job_logger=job_logger,
+                    input_path,
+                    inst_out,
+                    overlap=onnx_overlap,
+                    job_logger=job_logger,
                     model_path_override=inst_model,
                 )
                 if inst_path is not None:

@@ -19,6 +19,68 @@ import numpy as np
 logger = logging.getLogger(__name__)
 import soundfile as sf
 
+import config
+import demucs_onnx
+import scnet_onnx
+import phase_inversion
+import split
+import vad
+import vocal_stage1
+
+
+def collapse_4stem_to_2stem(
+    four_stem_list: list[tuple[str, Path]], output_dir: Path
+) -> list[tuple[str, Path]]:
+    """
+    Convert 4-stem separation (vocals, drums, bass, other) to 2-stem
+    (vocals, instrumental) by summing non-vocal stems.
+
+    Args:
+        four_stem_list: List of (stem_id, Path) tuples from 4-stem separation
+        output_dir: Directory to save the collapsed instrumental
+
+    Returns:
+        List of (stem_id, Path) tuples for 2-stem: [("vocals", path), ("instrumental", path)]
+    """
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Extract vocals and non-vocal stems
+    vocals_path = None
+    stem_arrays = []
+    sample_rate = None
+
+    for stem_id, stem_path in four_stem_list:
+        if stem_id == "vocals":
+            vocals_path = stem_path
+        elif stem_id in ["drums", "bass", "other"]:
+            # Read audio data for summing
+            audio, sr = sf.read(str(stem_path), dtype="float32", always_2d=True)
+            if stem_arrays:  # Not first stem
+                if len(audio) != len(stem_arrays[0]) or sr != sample_rate:
+                    raise ValueError(
+                        f"Stem {stem_id} has mismatched dimensions or sample rate"
+                    )
+            stem_arrays.append(audio)
+            sample_rate = sr
+
+    if vocals_path is None:
+        raise ValueError("Vocals stem not found in 4-stem output")
+
+    if not stem_arrays:
+        raise ValueError("No non-vocal stems found to create instrumental")
+
+    # Sum all non-vocal stems to create instrumental
+    instrumental_audio = np.sum(stem_arrays, axis=0)
+
+    # Save instrumental
+    instrumental_path = output_dir / "instrumental.wav"
+    sf.write(str(instrumental_path), instrumental_audio, sample_rate)
+
+    # Return 2-stem result: vocals + instrumental
+    return [("vocals", vocals_path), ("instrumental", instrumental_path)]
+
+
 from stem_service.config import (
     USE_VAD_CHUNKS,
     USE_VAD_PRETRIM,
@@ -148,7 +210,9 @@ def _run_chunked_4stem(
         chunk_out = chunks_dir / f"chunk_{i:03d}_stems"
         chunk_out.mkdir(parents=True, exist_ok=True)
 
-        stems, demucs_model = run_demucs_onnx_4stem(chunk_path, chunk_out, use_6s=not prefer_speed)
+        stems, demucs_model = run_demucs_onnx_4stem(
+            chunk_path, chunk_out, use_6s=not prefer_speed
+        )
         if stems is None or demucs_model is None:
             stems, first_chunk_models = run_hybrid_4stem(
                 chunk_path, chunk_out, prefer_speed=prefer_speed
@@ -212,7 +276,9 @@ def run_4stem_single_pass_or_hybrid(
                 progress_callback(100)
             _log.info("4-stem: SCNet ONNX succeeded  models_used=[scnet_onnx]")
             return scnet_list, ["scnet_onnx"]
-        _log.warning("4-stem: SCNet ONNX failed or returned None, falling back to Demucs")
+        _log.warning(
+            "4-stem: SCNet ONNX failed or returned None, falling back to Demucs"
+        )
 
     use_6s = not prefer_speed
     if (use_6s and demucs_onnx_6s_available()) or (
@@ -222,7 +288,10 @@ def run_4stem_single_pass_or_hybrid(
             progress_callback(10)
         _log.info("4-stem: trying Demucs ONNX  use_6s=%s", use_6s)
         stem_list, demucs_model = run_demucs_onnx_4stem(
-            input_path, flat_dir, use_6s=use_6s, demucs_model_override=demucs_model_override
+            input_path,
+            flat_dir,
+            use_6s=use_6s,
+            demucs_model_override=demucs_model_override,
         )
         if stem_list is not None and demucs_model is not None:
             if progress_callback:
@@ -268,7 +337,10 @@ def run_hybrid_4stem(
 
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
-        effective_input, stage1_out, prefer_speed=prefer_speed, job_logger=job_logger,
+        effective_input,
+        stage1_out,
+        prefer_speed=prefer_speed,
+        job_logger=job_logger,
         vocal_model_override=vocal_model_override,
         inst_model_override=inst_model_override,
     )
@@ -352,7 +424,10 @@ def run_hybrid_2stem(
     # ONNX-first: Stage 1 vocal (+ optional inst) or Demucs 2-stem fallback
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
-        effective_input, stage1_out, prefer_speed=prefer_speed, job_logger=job_logger,
+        effective_input,
+        stage1_out,
+        prefer_speed=prefer_speed,
+        job_logger=job_logger,
         vocal_model_override=vocal_model_override,
         inst_model_override=inst_model_override,
     )
@@ -466,9 +541,8 @@ def run_expand_to_4stem(
         _log.info("expand: scnet_available=False  using Demucs path")
 
     if len(stem_list) == 1 and (
-        (use_6s and demucs_onnx_6s_available()) or (
-            not use_6s and demucs_onnx_embedded_available()
-        )
+        (use_6s and demucs_onnx_6s_available())
+        or (not use_6s and demucs_onnx_embedded_available())
     ):
         _log.info("expand: trying Demucs ONNX  use_6s=%s", use_6s)
         onnx_list, demucs_model = run_demucs_onnx_4stem(
@@ -578,7 +652,7 @@ def main() -> int:
             out_base = args.out_dir.resolve()
             payload = {
                 "stems": [
-                    {"id": stem_id, "path": str(p.relative_to(out_base))}
+                    {"id": stem_id, "path": str(p[1].relative_to(out_base))}
                     for stem_id, p in stem_list
                 ],
             }

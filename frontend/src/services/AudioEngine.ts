@@ -20,6 +20,10 @@ export interface StemPlaybackNode {
 
 export type PlaybackEventCallback = (event: { type: 'start' | 'stop' | 'timeupdate'; time?: number }) => void;
 
+/**
+ * Audio engine for managing audio playback, mixing, and export functionality.
+ * Handles stem loading, playback control, and audio rendering.
+ */
 export class AudioEngine {
   private context: AudioContext | null = null;
   private stemBuffers: Map<string, AudioBuffer> = new Map();
@@ -38,6 +42,11 @@ export class AudioEngine {
     return this.context;
   }
 
+  /**
+   * Initialize the audio context if not already initialized.
+   * @returns Promise resolving to the AudioContext
+   * @throws Error if Web Audio API is not supported
+   */
   async initialize(): Promise<AudioContext> {
     if (this.context) {
       await this.context.resume();
@@ -57,6 +66,12 @@ export class AudioEngine {
     return this.context;
   }
 
+  /**
+   * Load a stem audio buffer from a URL.
+   * @param stemId - Unique identifier for the stem
+   * @param url - URL to fetch the audio file from
+   * @returns Promise resolving to the decoded AudioBuffer
+   */
   async loadStem(stemId: string, url: string): Promise<AudioBuffer> {
     if (this.stemBuffers.has(stemId)) {
       return this.stemBuffers.get(stemId)!;
@@ -77,6 +92,11 @@ export class AudioEngine {
     return audioBuffer;
   }
 
+  /**
+   * Load multiple stems in parallel.
+   * @param stems - Array of stem objects with id and url
+   * @returns Promise resolving to a map of stem IDs to AudioBuffers
+   */
   async loadStemsParallel(stems: Array<{ id: string; url: string }>): Promise<Map<string, AudioBuffer>> {
     if (!this.context) {
       await this.initialize();
@@ -93,27 +113,56 @@ export class AudioEngine {
     return bufferMap;
   }
 
+  /**
+   * Get a stem buffer by ID.
+   * @param stemId - Identifier of the stem
+   * @returns The AudioBuffer if found, undefined otherwise
+   */
   getBuffer(stemId: string): AudioBuffer | undefined {
     return this.stemBuffers.get(stemId);
   }
 
+  /**
+   * Check if a stem buffer exists.
+   * @param stemId - Identifier of the stem
+   * @returns True if the buffer exists, false otherwise
+   */
   hasBuffer(stemId: string): boolean {
     return this.stemBuffers.has(stemId);
   }
 
+  /**
+   * Set or replace a stem buffer.
+   * @param stemId - Identifier of the stem
+   * @param buffer - AudioBuffer to store
+   */
   setBuffer(stemId: string, buffer: AudioBuffer): void {
     this.stemBuffers.set(stemId, buffer);
   }
 
+  /**
+   * Subscribe to playback events.
+   * @param callback - Function to call when playback events occur
+   * @returns Unsubscribe function
+   */
   onPlaybackEvent(callback: PlaybackEventCallback): () => void {
     this.eventCallbacks.add(callback);
     return () => this.eventCallbacks.delete(callback);
   }
 
+  /**
+   * Emit a playback event to all subscribed callbacks.
+   * @param event - Event object to emit
+   */
   private emitEvent(event: { type: 'start' | 'stop' | 'timeupdate'; time?: number }): void {
     this.eventCallbacks.forEach(cb => cb(event));
   }
 
+  /**
+   * Preview a single stem.
+   * @param stemId - ID of the stem to preview
+   * @param volume - Volume level (0-1), defaults to 0.85
+   */
   async previewStem(
     stemId: string,
     volume: number = 0.85
@@ -151,6 +200,14 @@ export class AudioEngine {
     this.emitEvent({ type: 'start' });
   }
 
+  /**
+   * Play a mix of stems with specified settings.
+   * @param stems - Array of stem objects with id, buffer, trim, and mixer settings
+   * @param mutedStems - Record of stem IDs to mute status
+   * @param soloStems - Record of stem IDs to solo status
+   * @param trimMap - Record of stem IDs to trim settings
+   * @param mixerState - Record of stem IDs to mixer settings
+   */
   async playMix(
     stems: Array<{ id: string; buffer: AudioBuffer; trim: TrimState; mixer: MixerState }>,
     mutedStems: Record<string, boolean>,
@@ -184,8 +241,8 @@ export class AudioEngine {
       const { trimStart, trimEnd } = trimToSeconds(buffer, trim);
       const playDuration = trimEnd - trimStart;
       
-      const gainVal = Math.pow(10, mixer.gain / 20);
-      const panVal = mixer.pan / 100;
+      const gainVal = this.calculateGain(mixer.gain);
+      const panVal = this.calculatePan(mixer.pan);
 
       const source = this.context!.createBufferSource();
       const gainNode = this.context!.createGain();
@@ -215,6 +272,10 @@ export class AudioEngine {
     this.startPlayheadTracking();
   }
 
+  /**
+   * Start tracking playhead position for timeupdate events.
+   * @private
+   */
   private startPlayheadTracking(): void {
     const update = () => {
       if (!this.isPlaying || !this.context) return;
@@ -232,6 +293,9 @@ export class AudioEngine {
     this.animationFrameId = requestAnimationFrame(update);
   }
 
+  /**
+   * Stop all audio playback and cleanup resources.
+   */
   stopAll(): void {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
@@ -245,25 +309,47 @@ export class AudioEngine {
         // Already stopped
       }
       nodes.source.disconnect();
+      nodes.gainNode.disconnect();
+      nodes.panNode.disconnect();
     });
     this.playbackNodes.clear();
     this.emitEvent({ type: 'stop' });
   }
 
+  /**
+   * Update the gain of a specific stem during playback.
+   * @param stemId - ID of the stem to update
+   * @param gain - Gain value in dB
+   */
   updateStemGain(stemId: string, gain: number): void {
     const nodes = this.playbackNodes.get(stemId);
     if (nodes?.gainNode) {
-      nodes.gainNode.gain.value = Math.pow(10, gain / 20);
+      nodes.gainNode.gain.value = this.calculateGain(gain);
     }
   }
 
+  /**
+   * Update the pan of a specific stem during playback.
+   * @param stemId - ID of the stem to update
+   * @param pan - Pan value (-100 to 100)
+   */
   updateStemPan(stemId: string, pan: number): void {
     const nodes = this.playbackNodes.get(stemId);
     if (nodes?.panNode) {
-      nodes.panNode.pan.value = pan / 100;
+      nodes.panNode.pan.value = this.calculatePan(pan);
     }
   }
 
+  /**
+   * Export a mix as a WAV blob.
+   * @param stems - Array of stem objects with id, buffer, trim, and mixer settings
+   * @param mutedStems - Record of stem IDs to mute status
+   * @param soloStems - Record of stem IDs to solo status
+   * @param trimMap - Record of stem IDs to trim settings
+   * @param mixerState - Record of stem IDs to mixer settings
+   * @param options - Optional export settings
+   * @returns Promise resolving to a Blob containing the WAV audio
+   */
   async exportMix(
     stems: Array<{ id: string; buffer: AudioBuffer; trim: TrimState; mixer: MixerState }>,
     mutedStems: Record<string, boolean>,
@@ -295,8 +381,8 @@ export class AudioEngine {
       
       sources.push({
         buffer: stem.buffer,
-        gain: Math.pow(10, mixer.gain / 20),
-        pan: mixer.pan / 100,
+        gain: this.calculateGain(mixer.gain),
+        pan: this.calculatePan(mixer.pan),
         trimStart,
         trimEnd,
       });
@@ -333,11 +419,36 @@ export class AudioEngine {
     return audioBufferToWav(rendered);
   }
 
+  /**
+   * Clean up all resources used by the audio engine.
+   * Should be called when the engine is no longer needed.
+   */
   dispose(): void {
     this.stopAll();
     this.stemBuffers.clear();
+    this.eventCallbacks.clear();
     this.context?.close();
     this.context = null;
+  }
+
+  /**
+   * Calculate gain node value from dB.
+   * @param gainDb - Gain in decibels
+   * @returns Linear gain value
+   * @private
+   */
+  private calculateGain(gainDb: number): number {
+    return Math.pow(10, gainDb / 20);
+  }
+
+  /**
+   * Calculate pan node value from percentage.
+   * @param panPercent - Pan percentage (-100 to 100)
+   * @returns Pan value (-1 to 1)
+   * @private
+   */
+  private calculatePan(panPercent: number): number {
+    return panPercent / 100;
   }
 }
 
