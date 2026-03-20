@@ -1,6 +1,14 @@
-import { useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, type SetStateAction } from "react";
 import { ZoomIn, ZoomOut, Loader2 } from "lucide-react";
 import type { StemDefinition, TrimState } from "../types";
+import { useTimelineViewport } from "../hooks/useTimelineViewport";
+import { drawWaveformBars } from "../utils/waveformCanvas";
+import {
+  installTimelinePerformanceDebugHooks,
+  isTimelinePerformanceEnabled,
+  recordTimelinePerformanceSample,
+} from "../utils/timelinePerformance";
+import { stemThemeVariables } from "../utils/stemThemeVariables";
 
 type WaveformEditorProps = {
   stem: StemDefinition;
@@ -27,30 +35,52 @@ export function WaveformEditor({
   currentPosition = 0,
   isLoading = false,
 }: WaveformEditorProps) {
-// Guarantee waveform is always a number[]
+  // Guarantee waveform is always a number[]
   const waveform: number[] = realWaveform ?? stem.waveform ?? [];
+  const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [zoom, setZoom] = useState(1);
-  const [scrollOffset, setScrollOffset] = useState(0); // 0–100 percent
-  
   const ZOOM_FACTOR = 1.5;
   const MAX_ZOOM = 8;
+  const {
+    zoom,
+    setZoom: setZoomBase,
+    scrollPct,
+    setScrollPct: setScrollPctBase,
+    visibleStart,
+    visibleEnd,
+  } = useTimelineViewport(1, MAX_ZOOM, 1);
 
-  // Percent-scroll model — maxStart prevents overshoot
-  const visibleBins = useMemo(
-    () => (waveform.length === 0 ? 0 : Math.max(1, Math.floor(waveform.length / zoom))),
-    [waveform.length, zoom]
+  const setZoom = useCallback(
+    (value: SetStateAction<number>) => {
+      const start = performance.now();
+      setZoomBase(value);
+      recordTimelinePerformanceSample("zoom", performance.now() - start);
+    },
+    [setZoomBase]
   );
 
-  // Depend on scrollOffset/zoom/waveform only (scrollPos is derived inline)
+  const setScrollPct = useCallback(
+    (value: SetStateAction<number>) => {
+      const start = performance.now();
+      setScrollPctBase(value);
+      recordTimelinePerformanceSample("scroll", performance.now() - start);
+    },
+    [setScrollPctBase]
+  );
+
+  useEffect(() => {
+    if (!isTimelinePerformanceEnabled()) return undefined;
+    return installTimelinePerformanceDebugHooks();
+  }, []);
+
+  // Depend on viewport and waveform only.
   const waveformSlice = useMemo(() => {
     if (waveform.length === 0) return [];
     if (zoom === 1) return waveform;
-    const maxStart = Math.max(0, waveform.length - visibleBins);
-    const start = Math.floor((scrollOffset / 100) * maxStart);
-    const end = Math.min(waveform.length, start + visibleBins);
+    const start = Math.max(0, Math.floor(visibleStart * waveform.length));
+    const end = Math.min(waveform.length, Math.ceil(visibleEnd * waveform.length));
     return waveform.slice(start, end);
-  }, [waveform, zoom, scrollOffset, visibleBins]);
+  }, [waveform, zoom, visibleStart, visibleEnd]);
 
   // Clamp trim so start <= end before computing times
   const startP = Math.min(trim.start, trim.end);
@@ -71,28 +101,37 @@ export function WaveformEditor({
   const zoomOut = () => {
     const nextZoom = zoom / ZOOM_FACTOR;
     if (nextZoom < 1) {
-      setScrollOffset(0);
+      setScrollPct(0);
       setZoom(1);
     } else {
       setZoom(nextZoom);
     }
   };
 
+  useEffect(() => {
+    const canvas = waveformCanvasRef.current;
+    if (!canvas) return;
+    drawWaveformBars({
+      canvas,
+      values: waveformSlice,
+      color: stem.glow,
+      minimumBarHeightPx: 16,
+      alphaEven: 0.9,
+      alphaOdd: 0.58,
+      gapPx: 2,
+      heightScale: 1,
+    });
+  }, [waveformSlice, stem.glow]);
+
   return (
     <div
-      className="relative overflow-hidden rounded-[1.5rem] border px-4 py-5"
-      style={{
-        borderColor: `${stem.glow}40`,
-        background: `linear-gradient(180deg, ${stem.glow}08 0%, rgba(0,0,0,0.28) 100%)`,
-      }}
+      className="waveform-editor-shell relative overflow-hidden rounded-[1.5rem] border px-4 py-5"
+      style={stemThemeVariables(stem)}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span
-            className="h-1.5 w-1.5 shrink-0 rounded-full"
-            style={{ backgroundColor: stem.glow, boxShadow: `0 0 8px ${stem.glowSoft}` }}
-          />
-          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: stem.glow }}>
+          <span className="stem-header-glow-dot h-1.5 w-1.5 shrink-0 rounded-full" />
+          <span className="stem-text-accent text-[10px] font-semibold uppercase tracking-wider">
             {stem.label} · Waveform
           </span>
         </div>
@@ -145,38 +184,27 @@ export function WaveformEditor({
           No waveform data
         </div>
       ) : (
-        // Fix #4: scroll via translateX using percent of the zoomed overflow
+        // Canvas bars with same viewport behavior as the previous DOM path.
         <div className="relative h-28 overflow-hidden">
-          <div
-            className="flex h-full items-center gap-[2px]"
+          <canvas
+            ref={waveformCanvasRef}
+            className="h-full w-full"
+            aria-hidden="true"
             style={{
               width: `${100 * zoom}%`,
-              transform: zoom > 1 ? `translateX(-${scrollOffset * (1 - 1 / zoom)}%)` : undefined,
+              height: "100%",
+              transform: zoom > 1 ? `translateX(-${scrollPct * (1 - 1 / zoom)}%)` : undefined,
             }}
-          >
-            {waveformSlice.map((value, index) => (
-              <span
-                key={`${stem.id}-${index}`}
-                className="wave-bar flex-1 rounded-full"
-                style={{
-                  height: `${Math.max(16, value * 100)}%`,
-                  background: `linear-gradient(180deg, rgba(255,255,255,0.9) 0%, ${stem.glow} 65%, rgba(255,255,255,0.16) 100%)`,
-                  boxShadow: `0 0 18px ${stem.glowSoft}`,
-                  opacity: index % 2 === 0 ? 0.9 : 0.58,
-                }}
-              />
-            ))}
-          </div>
+          />
         </div>
       )}
 
       <div className="pointer-events-none absolute inset-x-4 top-14 bottom-5">
         <div
-          className="absolute inset-y-0 rounded-[1.2rem] border border-white/18 bg-white/6"
+          className="waveform-editor-trim-region absolute inset-y-0 rounded-[1.2rem] border border-white/18 bg-white/6"
           style={{
             left: `${startP}%`,
             right: `${100 - endP}%`,
-            boxShadow: `inset 0 0 20px ${stem.glowSoft}, 0 0 24px ${stem.glowSoft}`,
           }}
         />
         <div className="absolute top-0 bottom-0 w-px bg-white/70" style={{ left: `${startP}%` }} />
@@ -195,9 +223,9 @@ export function WaveformEditor({
           min={0}
           max={100}
           step={0.5}
-          value={scrollOffset}
-          onChange={(e) => setScrollOffset(Number(e.target.value))}
-          className="mt-2 w-full accent-white/50"
+          value={scrollPct}
+          onChange={(e) => setScrollPct(Number(e.target.value))}
+          className="stem-accent-slider mt-2 w-full"
           aria-label="Scroll waveform"
         />
       )}

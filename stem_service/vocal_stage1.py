@@ -21,7 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from config import (
+from stem_service.config import (
     DEMUCS_DEVICE,
     DEMUCS_OVERLAP,
     DEMUCS_SEGMENT_SEC,
@@ -32,9 +32,10 @@ from config import (
     ensure_htdemucs_th,
     htdemucs_available,
 )
-from mdx_onnx import (
+from stem_service.mdx_onnx import (
     get_available_inst_onnx,
     get_available_vocal_onnx,
+    mdx_model_configured,
     run_inst_onnx,
     run_vocal_onnx,
 )
@@ -123,13 +124,17 @@ def extract_vocals_stage1(
     # 4. BS-RoFormer vocal + phase inversion
     # 5. Demucs 2-stem (fallback)
 
-    # Check if we have MDX23C models available (NEW-FLOW PRIMARY CHOICE FOR 2-STEM)
+    # Check if we have MDX23C models available and configured (NEW-FLOW PRIMARY CHOICE FOR 2-STEM)
     from .config import mdx23c_vocal_available, mdx23c_inst_available
 
-    if mdx23c_vocal_available() and mdx23c_inst_available():
-        mdx23c_vocal_path = MODELS_DIR / "mdx23c_vocal.onnx"
-        mdx23c_inst_path = MODELS_DIR / "mdx23c_instrumental.onnx"
-
+    mdx23c_vocal_path = MODELS_DIR / "mdx23c_vocal.onnx"
+    mdx23c_inst_path = MODELS_DIR / "mdx23c_instrumental.onnx"
+    if (
+        mdx23c_vocal_available()
+        and mdx23c_inst_available()
+        and mdx_model_configured(mdx23c_vocal_path)
+        and mdx_model_configured(mdx23c_inst_path)
+    ):
         # Use MDX23C models directly (NEW-FLOW RECOMMENDATION FOR 2-STEM)
         vocals_out = output_dir / "mdx23c_vocals.wav"
         vocals_path = run_vocal_onnx(
@@ -216,3 +221,31 @@ def extract_vocals_stage1(
         input_path, output_dir, prefer_speed=prefer_speed
     )
     return vocals_path, no_vocals_path, ["htdemucs"]
+
+
+def get_2stem_stage1_preview() -> tuple[str, list[str]]:
+    """
+    Preview which Stage 1 path and models would be used for 2-stem (no inference).
+    Returns (path_kind, model_names) e.g. ("mdx23c", ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"])
+    or ("onnx", ["Kim_Vocal_2.onnx", "UVR-MDX-NET-Inst_HQ_4.onnx"]) or ("demucs", ["htdemucs"]).
+    """
+    from .config import mdx23c_vocal_available, mdx23c_inst_available
+
+    mdx23c_vocal_path = MODELS_DIR / "mdx23c_vocal.onnx"
+    mdx23c_inst_path = MODELS_DIR / "mdx23c_instrumental.onnx"
+    if (
+        mdx23c_vocal_available()
+        and mdx23c_inst_available()
+        and mdx_model_configured(mdx23c_vocal_path)
+        and mdx_model_configured(mdx23c_inst_path)
+    ):
+        return ("mdx23c", ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"])
+
+    vocal_model = get_available_vocal_onnx()
+    inst_model = get_available_inst_onnx()
+    if vocal_model is not None and vocal_model.exists():
+        if inst_model is not None and inst_model.exists():
+            return ("onnx", [vocal_model.name, inst_model.name])
+        return ("onnx", [vocal_model.name, "phase_inversion"])
+
+    return ("demucs", ["htdemucs"])

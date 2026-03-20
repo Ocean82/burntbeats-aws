@@ -239,3 +239,15 @@ Items below are verified against the current app. **Done** = implemented and wir
 | Load stems (mashup) | **Done** | Source mode "Load stems (mashup)": add WAV/MP3 files as mixer tracks. |
 | Pitch + time stretch | **Done** | Per-stem pitch (semitones) and time stretch; effective rate = 2^(pitch/12) / timeStretch. |
 | Source mode (Split \| Load) | **Done** | Tab: Split a track vs Load stems. |
+
+### New since 2026-03-18
+
+| Feature | Status | Notes |
+|---------|--------|------|
+| Kim_Vocal_2 + Inst_HQ_4 paired ONNX | **Done** | Both stems from dedicated models — no phase inversion. Speed=50% overlap, Quality=75%. |
+| SCNet ONNX first for 4-stem | **Done** | `USE_SCNET=1`; ~2× faster than Demucs on CPU. Falls back to Demucs ONNX then subprocess. |
+| De-reverb ultra-only | **Done** | Reverb_HQ_By_FoxJoy post-pass on vocals in ultra mode only; skipped in speed/quality. |
+| Per-job logging | **Done** | `tmp/stems/{job_id}/job.log` with chunk-level timing; `/status/{job_id}` returns log path. |
+| Fix bare module imports | **Done** | `hybrid.py`, `demucs_onnx.py`, `scnet_onnx.py`, `vocal_stage1.py` all use `stem_service.*` imports. |
+| uploadState destructure | **Done** | All `uploadState.X` accesses replaced with destructured names in `App.tsx`; `setSplitError` shim added. |
+| pipelineIndex fix | **Done** | Was referenced as bare variable; now correctly reads from `uploadState.pipelineIndex`. |

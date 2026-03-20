@@ -1,6 +1,8 @@
-import "@testing-library/jest-dom";
-import { afterEach } from "vitest";
+import { afterEach, expect } from "vitest";
 import { cleanup } from "@testing-library/react";
+import * as matchers from "@testing-library/jest-dom/matchers";
+
+expect.extend(matchers);
 
 afterEach(() => cleanup());
 
@@ -29,5 +31,16 @@ if (typeof window !== "undefined") {
   if (typeof HTMLMediaElement !== "undefined") {
     HTMLMediaElement.prototype.play = () => Promise.resolve();
     HTMLMediaElement.prototype.pause = noop;
+  }
+  if (typeof HTMLCanvasElement !== "undefined") {
+    HTMLCanvasElement.prototype.getContext = (() => ({
+      setTransform: noop,
+      clearRect: noop,
+      beginPath: noop,
+      roundRect: noop,
+      fill: noop,
+      globalAlpha: 1,
+      fillStyle: "#000",
+    })) as typeof HTMLCanvasElement.prototype.getContext;
   }
 }

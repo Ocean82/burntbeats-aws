@@ -1,8 +1,8 @@
 # Burnt Beats — Stem Splitter / Mixer / Master
 
-Stem separation web app (CPU-only). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite (keyboard shortcuts, undo/redo, export modal, mixer presets, onboarding, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 0 Silero VAD → Stage 1 MDX ONNX vocal → phase inversion → Stage 2 Demucs on instrumental). **CPU-optimal:** Stage 1 MDX ONNX (Kim_Vocal_2 / Voc_FT); Demucs ONNX or subprocess for 4-stem. **Quality tiers:** Speed, Quality (default), Ultra (RoFormer; GPU-only in practice). **WSL only (Ubuntu)** — run inside WSL; same commands on AWS EC2.
+Stem separation web app (CPU-only). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite (keyboard shortcuts, undo/redo, export modal, mixer presets, onboarding, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 0 Silero VAD → Stage 1 MDX ONNX vocal + instrumental → Stage 2 SCNet/Demucs ONNX on instrumental). **CPU-optimal:** Stage 1 uses Kim_Vocal_2 + Inst_HQ_4 ONNX paired models (no phase inversion needed); 4-stem uses SCNet ONNX first (faster than Demucs on CPU), then Demucs ONNX fallback. **Quality tiers:** Speed (50% overlap, VAD trim), Quality (75% overlap, full file), Ultra (RoFormer + de-reverb post-pass; CPU-only falls back to Quality). **WSL only (Ubuntu)** — run inside WSL; same commands on AWS EC2.
 
-**Last updated:** 2026-03-17
+**Last updated:** 2026-03-18
 
 ---
 
@@ -155,7 +155,7 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 | Python | `USE_ONNX_CPU` | Set to `1` to force CPU for all ONNX models (MDX + Demucs ONNX). Default: use CUDA when available (`pip install onnxruntime-gpu`). |
 | Python | `USE_INT8_ONNX` | Set to `0` to disable int8 MDX models (use float32 only). Default: use `.quant.onnx` when present (see `docs/QUANTIZATION-8BIT.md`). |
 | Python | `USE_DEMUCS_SHIFTS_0` | Default `1`: Demucs uses shifts=0 (faster on CPU). Set to `0` to use 3 shifts in Quality. See `docs/CPU-OPTIMIZATION-TIPS.md`. |
-| Python | `DEMUCS_QUALITY_BAG` | `mdx_extra_q` (default, lighter) or `mdx_extra` (heavier, slower, best quality). |
+| Python | `DEMUCS_QUALITY_BAG` | `mdx_extra_q` (default, lighter) or `mdx_extra` (heavier, slower, best quality). 4-stem quality requires the `diffq` package (included in `stem_service/requirements.txt`). |
 | Frontend | `VITE_API_BASE_URL` | Backend base URL (e.g. http://localhost:3001) |
 
 ---
@@ -164,21 +164,32 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 
 | Mode | Est. Time (3-min song) | Description |
 |------|----------------------|-------------|
-| **Speed** | Fast | VAD + **MDX ONNX (Kim_Vocal_2)** Stage 1 when available, else Demucs 2-stem; Stage 2 Demucs (shifts=0, segment=7). |
-| **Quality** | ~2–5× faster than before | VAD + MDX ONNX Stage 1 + Demucs Stage 2 (default; CPU-optimal). Quality bag: mdx_extra_q or mdx_extra. |
-| **Ultra** | GPU only | RoFormer/MDX23C; on CPU falls back to Quality automatically |
+| **Speed** | Fastest | VAD pre-trim + **Kim_Vocal_2 + Inst_HQ_4 ONNX** at 50% overlap. No phase inversion — both stems from dedicated models. |
+| **Quality** | Moderate | Same paired ONNX models at 75% overlap, full file (no VAD trim). Smoother chunk boundaries, less bleed. |
+| **Ultra** | Slow (CPU) | RoFormer ONNX Stage 1 + Reverb_HQ_By_FoxJoy de-reverb post-pass on vocals. On CPU falls back to Quality unless `USE_ULTRA_ON_CPU=1`. |
+
+### Model Pipeline (CPU-optimal, as of 2026-03-18)
+
+**2-stem (vocals + instrumental):**
+1. Kim_Vocal_2.onnx → clean vocals
+2. UVR-MDX-NET-Inst_HQ_4.onnx → clean instrumental (no phase inversion needed)
+3. Ultra only: Reverb_HQ_By_FoxJoy.onnx de-reverb post-pass on vocals
+
+**4-stem (vocals + drums + bass + other):**
+1. SCNet ONNX (`USE_SCNET=1`) — ~48% of Demucs CPU time, tried first
+2. Demucs ONNX (htdemucs_embedded / htdemucs_6s) — fallback
+3. Hybrid subprocess (htdemucs) — last resort
 
 ### Optimizations Applied
 
-- **VAD pre-trim**: Now enabled for both speed AND quality modes (reduces processing by 20-40%)
-- **Skip phase inversion**: When Demucs 2-stem is used, instrumental is already available (faster)
-- **Larger segments**: Speed mode uses segment=7, quality uses segment=7
-- **GPU auto-detect**: Automatically uses CUDA if available (5-10x faster on GPU)
-- **ONNX engines**: MDX and Demucs ONNX use `get_onnx_providers()`: CUDA when available (install `onnxruntime-gpu`), else CPU. Set `USE_ONNX_CPU=1` to force CPU. Graph optimization `ORT_ENABLE_ALL` and `ONNXRUNTIME_NUM_THREADS` apply to both.
-- **CPU threading**: `run-stem-service.sh` sets `OMP_NUM_THREADS`/`MKL_NUM_THREADS` to `nproc` so ONNX and Demucs don’t oversubscribe.
-- **Shifts=0**: Demucs runs with `--shifts 0` by default on CPU (set `USE_DEMUCS_SHIFTS_0=0` to use 3 shifts for Quality). **Light ensemble**: Quality defaults to `mdx_extra_q`; set `DEMUCS_QUALITY_BAG=mdx_extra` for the heavy bag. See `docs/CPU-OPTIMIZATION-TIPS.md`.
-- **CPU-only PyTorch (optional)**: On a machine with no GPU, `pip install torch --index-url https://download.pytorch.org/whl/cpu` keeps the stem service CPU-only and can reduce install size; the default `pip install -r stem_service/requirements.txt` is fine otherwise.
-
+- **Paired ONNX models**: Kim_Vocal_2 + Inst_HQ_4 run independently — no phase inversion subtraction artifacts
+- **SCNet first for 4-stem**: ~2× faster than Demucs on CPU per benchmark
+- **VAD pre-trim**: Speed mode only — trims leading/trailing silence before processing
+- **75% overlap quality / 50% speed**: Configurable per mode in `extract_vocals_stage1`
+- **Per-job logging**: Each job writes `tmp/stems/{job_id}/job.log` with chunk-level timing
+- **ONNX session cache**: Sessions loaded once and reused across requests
+- **CPU threading**: `ONNXRUNTIME_NUM_THREADS=2` for t3.large (2 vCPUs); `OMP_NUM_THREADS` set by run script
+- **De-reverb ultra-only**: Reverb_HQ_By_FoxJoy skipped in speed/quality (too slow for CPU default)
 ---
 
 ## API

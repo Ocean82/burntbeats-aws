@@ -1,6 +1,6 @@
 # Docs status and direction
 
-**Date:** 2026-03-17  
+**Date:** 2026-03-18  
 **Purpose:** Which docs are current vs archived; what was updated to reflect the latest app (2-stem first, expand to 4, load stems, pitch/time stretch).
 
 ---
@@ -50,8 +50,9 @@ Existing archive contents (VAD-PRETRIM-TRADEOFF, DEMUCS-MODELS-INVESTIGATION, et
 
 ## Updates applied
 
-- **README.md:** Date, 2-stem first + “Keep going” for 4-stem, load stems, pitch/time stretch, `POST /api/stems/expand`, remove reference to archived MODELS-FLOW.
+- **README.md:** Pipeline description, quality tiers, model pipeline section updated for Kim_Vocal_2 + Inst_HQ_4 paired ONNX, SCNet-first 4-stem, de-reverb ultra-only, per-job logging, correct overlap values per mode.
 - **AGENT-models-and-implementation.md:** Default 2-stem, expand API and UI, Source (Split | Load stems).
-- **new_features.md:** Batch queue wired, pitch + time stretch sliders, load stems, source mode.
+- **new_features.md:** Batch queue, pitch + time stretch, load stems, source mode, import fixes, uploadState destructure.
 - **CPU-OPTIMIZATION-TIPS.md:** Demucs ONNX (htdemucs_embedded, htdemucs_6s) is wired.
 - **docs/archive/README.md:** List archived docs and pointer to current docs.
+- **IMPLEMENTATION_SUMMARY.md:** Superseded by actual implementation; kept for historical reference.

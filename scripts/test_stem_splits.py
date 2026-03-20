@@ -96,7 +96,7 @@ def run_2stem_test(input_path: Path, prefer_speed: bool) -> bool:
 
     try:
         if STEM_BACKEND == "hybrid":
-            stem_list = run_hybrid_2stem(input_path, out_dir, prefer_speed=prefer_speed)
+            stem_list, _ = run_hybrid_2stem(input_path, out_dir, prefer_speed=prefer_speed)
         else:
             stem_files = run_demucs(input_path, out_dir, stems=2, prefer_speed=prefer_speed)
             flat_dir = out_dir / "stems"
@@ -132,7 +132,7 @@ def run_4stem_test(input_path: Path, prefer_speed: bool) -> bool:
 
     try:
         if STEM_BACKEND == "hybrid":
-            stem_list = run_hybrid_4stem(input_path, out_dir, prefer_speed=prefer_speed)
+            stem_list, _ = run_hybrid_4stem(input_path, out_dir, prefer_speed=prefer_speed)
         else:
             stem_files = run_demucs(input_path, out_dir, stems=4, prefer_speed=prefer_speed)
             flat_dir = out_dir / "stems"

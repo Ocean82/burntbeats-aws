@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { splitStems, expandStems, type SplitQuality, type StemResult } from "./api";
 import { cn } from "./utils/cn";
-import type { StemId } from "./types";
+import type { StemDefinition, StemId } from "./types";
 import { defaultTrim, defaultMixer } from "./types";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
@@ -14,14 +14,23 @@ import { useWaveformCompute } from "./hooks/useStemAudio";
 import { useExport } from "./hooks/useExport";
 import { useBatchQueue } from "./hooks/useBatchQueue";
 import { useHistory } from "./hooks/useHistory";
+import { useMixerWorkspace } from "./hooks/useMixerWorkspace";
 import { stemDefinitions, getStemDefinition, getLoadedStemDefinition, pipelineSteps } from "./data/stemDefinitions";
 import {
-  type MixerPreset, PipelineStep, HelpModal, ExportOptionsModal,
-  MixerPresetsModal, OnboardingTour, BatchQueue,
-  MultiStemEditor, defaultStemState, type StemEditorState,
+  type MixerPreset,
+  HelpModal,
+  ExportOptionsModal,
+  MixerPresetsModal,
+  OnboardingTour,
+  BatchQueue,
+  StatusPanel,
+  MixerPanel,
+  SourcePanel,
 } from "./components";
+import { defaultStemState, type StemEditorState } from "./stem-editor-state";
 
 const MASTER_CHAIN = { compression: 2.4, limiter: -0.8, loudness: -9 } as const;
+type StemWithOptionalUrl = StemDefinition & { url?: string };
 
 export function App() {
   // ── Upload / split state ──────────────────────────────────────────────────
@@ -42,6 +51,14 @@ export function App() {
     splitProgress: 0,
     pipelineIndex: 0
   });
+  const {
+    quality, selectedStems, uploadName, uploadedFile, splitResultStems, splitJobId,
+    loadedStems, splitError, isDragging, isSplitting, isExpanding, splitProgress, pipelineIndex,
+  } = uploadState;
+  const setSplitError = (msg: string | null) => setUploadState(prev => ({ ...prev, splitError: msg }));
+  useEffect(() => {
+    uploadedFileRef.current = uploadedFile;
+  }, [uploadedFile]);
 
   // ── Stem data state ───────────────────────────────────────────────────────
   const {
@@ -63,8 +80,9 @@ export function App() {
 
   // ── Audio playback hook ───────────────────────────────────────────────────
   const {
-    isPlayingMix, playingStem, playheadPosition,
-    audioContextRef, handlePlayMix, handleStopMix, handlePreviewStem, stopPreview,
+    isPlayingMix, playingStem,
+    getPlayheadPosition, subscribePlayheadPosition,
+    audioContextRef, handlePlayMix, handleSeekMix, handleStopMix, handlePreviewStem, stopPreview,
   } = useAudioPlayback();
 
   // ── Export hook ───────────────────────────────────────────────────────────
@@ -80,10 +98,10 @@ export function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showPresetsModal, setShowPresetsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [activeStemId, setActiveStemId] = useState<string>("");
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadedFileRef = useRef<File | null>(null);
 
   // Derived shims for modals (memoized to avoid new refs every render)
   const trimMap = useMemo(
@@ -102,37 +120,63 @@ export function App() {
    // ── All stems (split + loaded) for mixer ───────────────────────────────────
    const allStemEntries = useMemo(
      () => [
-       ...uploadState.splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-       ...uploadState.loadedStems.map((s) => ({ id: s.id, url: s.url })),
+       ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
+       ...loadedStems.map((s) => ({ id: s.id, url: s.url })),
      ],
-     [uploadState.splitResultStems, uploadState.loadedStems]
+     [splitResultStems, loadedStems]
    );
 
    /** Combined list for playback/export: split stems + loaded stems (each has id, url). */
    const mixStems = useMemo(
-     () => [...uploadState.splitResultStems, ...uploadState.loadedStems] as Array<{ id: string; url: string }>,
-     [uploadState.splitResultStems, uploadState.loadedStems]
+     () => [...splitResultStems, ...loadedStems] as Array<{ id: string; url: string }>,
+     [splitResultStems, loadedStems]
    );
 
+  const {
+    activeStemId,
+    setActiveStemId,
+    handleStemStateChange,
+    handlePreviewStemFromMixer,
+    resetTrackAdjustments,
+  } = useMixerWorkspace({
+    playingStem,
+    mixStems,
+    stemStates,
+    stemBuffers,
+    setStemBuffers,
+    setStemStates,
+    handlePreviewStem,
+  });
+
    // ── Waveform computation (idle-scheduled) ─────────────────────────────────
+   type GuidanceTarget = 'source' | 'status' | 'mixer' | 'none';
+  const GREEN_RING_CLASS = 'ring-2 ring-emerald-300/40 ring-offset-1 ring-offset-black/30 shadow-[0_0_16px_rgba(52,211,153,0.12)] animate-pulse';
+   const guidanceTarget: GuidanceTarget = (() => {
+     if (splitError) return 'source';
+     if (isSplitting || isExpanding) return 'status';
+     if (isLoadingStems) return 'status';
+     if (splitResultStems.length === 2) return 'source';
+     if (mixStems.length > 0) return 'mixer';
+     return 'source';
+   })();
    useWaveformCompute(stemBuffers, allStemEntries, setStemWaveforms);
 
    // ── Visible stems (with definitions for display) ───────────────────────────
    const visibleStems = useMemo(() => {
-     const fromSplit = uploadState.splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));
-     const fromLoaded = uploadState.loadedStems.map((s) => ({ ...getLoadedStemDefinition(s.id, s.label), id: s.id as StemId, url: s.url }));
+     const fromSplit = splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));
+     const fromLoaded = loadedStems.map((s) => ({ ...getLoadedStemDefinition(s.id, s.label), id: s.id as StemId, url: s.url }));
      if (fromSplit.length > 0 || fromLoaded.length > 0) return [...fromSplit, ...fromLoaded];
-     return stemDefinitions.filter((s) => uploadState.selectedStems[s.id]);
-   }, [uploadState.splitResultStems, uploadState.loadedStems, uploadState.selectedStems]);
+     return stemDefinitions.filter((s) => selectedStems[s.id]);
+   }, [splitResultStems, loadedStems, selectedStems]);
 
    // ── Pipeline animation ────────────────────────────────────────────────────
    useEffect(() => {
-     if (!uploadState.isSplitting) return;
+     if (!isSplitting) return;
      setUploadState(prev => ({ ...prev, pipelineIndex: 0 }));
      const t1 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 1 })), 400);
      const t2 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 2 })), 1200);
      return () => { clearTimeout(t1); clearTimeout(t2); };
-   }, [uploadState.isSplitting]);
+   }, [isSplitting]);
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -150,10 +194,10 @@ export function App() {
    // ── Load stems into AudioBuffers (split + loaded) ───────────────────────────
    const loadStemsIntoBuffers = useCallback(async () => {
      if (allStemEntries.length === 0) return;
-     setUploadState(prev => ({ ...prev, isLoadingStems: true }));
+     setIsLoadingStems(true);
      const Ctor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
      if (!Ctor) { 
-       setUploadState(prev => ({ ...prev, isLoadingStems: false }));
+       setIsLoadingStems(false);
        return; 
      }
      if (!audioContextRef.current) audioContextRef.current = new Ctor();
@@ -198,7 +242,7 @@ export function App() {
        }
        return next;
      });
-     setUploadState(prev => ({ ...prev, isLoadingStems: false }));
+     setIsLoadingStems(false);
    }, [allStemEntries, audioContextRef]);
 
   useEffect(() => {
@@ -211,8 +255,8 @@ export function App() {
       setUploadState(prev => ({ ...prev, uploadedFile: null })); 
       return; 
     }
-    setUploadState(prev => ({ 
-      ...prev, 
+    setUploadState(prev => ({
+      ...prev,
       uploadName: file.name,
       uploadedFile: file,
       splitProgress: 0,
@@ -220,10 +264,17 @@ export function App() {
       splitError: null,
       splitResultStems: [],
       splitJobId: null,
-      stemBuffers: {},
-      stemWaveforms: {},
-      loadedTracks: {}
+      loadedStems: prev.loadedStems.filter((stem) => {
+        if (stem.id.startsWith("loaded_")) {
+          URL.revokeObjectURL(stem.url);
+          return false;
+        }
+        return true;
+      }),
     }));
+    setStemBuffers({});
+    setStemWaveforms({});
+    setLoadedTracks({});
     resetStemStates({});
   }, []);
 
@@ -261,18 +312,24 @@ export function App() {
       delete next[id];
       return next;
     });
+    setLoadedTracks(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }, []);
 
   // ── Split (always 2-stem first: vocals + instrumental) ─────────────────────
-    const triggerSplit = useCallback(async () => {
+  const triggerSplit = useCallback(async () => {
     stopPreview();
-    if (!uploadState.uploadedFile) { 
-      setUploadState(prev => ({ ...prev, splitError: "Upload an audio file first." })); 
-      return; 
+    const file = uploadedFileRef.current;
+    if (!file || !(file instanceof File) || file.size === 0) {
+      setUploadState(prev => ({ ...prev, splitError: "Upload an audio file first." }));
+      return;
     }
     setUploadState(prev => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null }));
     try {
-      const res = await splitStems(uploadState.uploadedFile, "2", uploadState.quality, (s) => {
+      const res = await splitStems(file, "2", quality, (s) => {
         setUploadState(prev => ({ ...prev, splitProgress: s.progress }));
         if (s.progress >= 100) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
         else if (s.progress >= 50) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
@@ -295,14 +352,14 @@ export function App() {
     } finally {
       setUploadState(prev => ({ ...prev, isSplitting: false }));
     }
-   }, [stopPreview]);
+  }, [quality, stopPreview]);
 
   // ── Expand 2-stem → 4-stem (Keep Going) ────────────────────────────────────
     const triggerExpand = useCallback(async () => {
-    if (!uploadState.splitJobId || uploadState.splitResultStems.length !== 2) return;
+    if (!splitJobId || splitResultStems.length !== 2) return;
     setUploadState(prev => ({ ...prev, splitError: null, isExpanding: true, splitProgress: 0, pipelineIndex: 0 }));
     try {
-      const res = await expandStems(uploadState.splitJobId, uploadState.quality, (s) => {
+      const res = await expandStems(splitJobId, quality, (s) => {
         setUploadState(prev => ({ ...prev, splitProgress: s.progress }));
         if (s.progress >= 100) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
         else if (s.progress >= 50) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
@@ -325,23 +382,13 @@ export function App() {
     } finally {
       setUploadState(prev => ({ ...prev, isExpanding: false }));
     }
-  }, []);
+  }, [splitJobId, splitResultStems, quality]);
 
   // ── Stem helpers ──────────────────────────────────────────────────────────
     const handleStemToggle = (stemId: StemId) => setUploadState(prev => ({ 
       ...prev, 
       selectedStems: { ...prev.selectedStems, [stemId]: !prev.selectedStems[stemId] } 
     }));
-
-  const resetTrackAdjustments = useCallback(() => {
-    setStemStates((p) => {
-      const next = { ...p };
-      for (const id of Object.keys(next)) {
-        next[id] = { ...next[id], trim: { ...defaultTrim }, mixer: { ...defaultMixer }, rate: 1.0, pitchSemitones: 0, timeStretch: 1.0 };
-      }
-      return next;
-    });
-  }, []);
 
   const handleLoadPreset = useCallback((preset: MixerPreset) => {
     setStemStates((p) => {
@@ -431,7 +478,11 @@ export function App() {
           onToggleExpand={() => setBatchQueueExpanded((e) => !e)}
           onRemoveItem={removeFromBatchQueue}
           onClearCompleted={clearCompletedFromQueue}
-          onProcessQueue={() => void processNextInQueue(2, splitQuality, setSplitResultStems, setSplitError, setSplitJobId)}
+          onProcessQueue={() => void processNextInQueue(2, quality, 
+            (stems) => setUploadState(prev => ({ ...prev, splitResultStems: stems })),
+            setSplitError,
+            (id) => setUploadState(prev => ({ ...prev, splitJobId: id }))
+          )}
         />
       )}
 
@@ -499,307 +550,100 @@ export function App() {
           </div>
         </motion.div>
 
-        <motion.section className="flex flex-col gap-6" initial="hidden" animate="visible" variants={{ visible: { transition: { staggerChildren: 0.08 } }, hidden: {} }}>
+        <motion.section
+          className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start"
+          initial="hidden"
+          animate="visible"
+          variants={{ visible: { transition: { staggerChildren: 0.08 } }, hidden: {} }}
+        >
+          {/* Left column: Source / split / load */}
+          <motion.div
+            className={cn("glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 lg:col-span-5", guidanceTarget === "source" && GREEN_RING_CLASS)}
+            variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+            transition={{ duration: 0.4 }}
+          >
+            <SourcePanel
+              sourceMode={sourceMode}
+              onSourceModeChange={setSourceMode}
+              uploadName={uploadName}
+              loadedStemCount={loadedStems.length}
+              isDragging={isDragging}
+              onSetIsDragging={(next) => setUploadState((prev) => ({ ...prev, isDragging: next }))}
+              loadStemsInputRef={loadStemsInputRef}
+              onLoadStems={handleLoadStems}
+              loadedStems={loadedStems}
+              onRemoveLoadedStem={removeLoadedStem}
+              uploadedFile={uploadedFile}
+              onBrowseUpload={() => inputRef.current?.click()}
+              onClearUpload={() => handleFile(null)}
+              onDropUpload={(file) => handleFile(file)}
+              inputRef={inputRef}
+              onUploadFileInput={(file) => handleFile(file)}
+              quality={quality}
+              onQualityChange={(next) => setUploadState((prev) => ({ ...prev, quality: next }))}
+              splitResultStemsLength={splitResultStems.length}
+              isExpanding={isExpanding}
+              onExpand={() => void triggerExpand()}
+              selectedStems={selectedStems}
+              onToggleStem={handleStemToggle}
+              splitError={splitError}
+              onDismissError={() => setSplitError(null)}
+              onSplit={() => void triggerSplit()}
+              isSplitting={isSplitting}
+              onAddToQueue={() => addToBatchQueue(uploadedFile)}
+            />
+          </motion.div>
 
-          {/* Upload & Split panel */}
-          <motion.div className="glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }} transition={{ duration: 0.4 }}>
-               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                 <div>
-                   <p className="eyebrow">Source</p>
-                   <h2 className="font-display text-2xl tracking-[-0.04em] text-white">Split a track or load stems to mix</h2>
-                 </div>
-                 <div className="inline-flex items-center gap-3 rounded-full border border-amber-200/10 bg-white/5 px-4 py-2 text-sm text-white/70">
-                   <span className="status-light" />{sourceMode === "split" ? uploadState.uploadName : `${uploadState.loadedStems.length} loaded`}
-                 </div>
-               </div>
-
-            {/* Source mode: Split | Load stems */}
-            <div className="mb-5 flex rounded-xl border border-white/10 bg-black/20 p-1">
-              <button type="button" onClick={() => setSourceMode("split")} className={cn("flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition", sourceMode === "split" ? "bg-amber-500/20 text-amber-200" : "text-white/60 hover:text-white")}>
-                Split a track
-              </button>
-              <button type="button" onClick={() => setSourceMode("load")} className={cn("flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition", sourceMode === "load" ? "bg-amber-500/20 text-amber-200" : "text-white/60 hover:text-white")}>
-                Load stems (mashup)
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {sourceMode === "load" ? (
-                <>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-200/95">Load stems</p>
-                  <div
-                    onClick={() => loadStemsInputRef.current?.click()}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleLoadStems(e.dataTransfer.files); }}
-                    className={cn(
-                      "step-zone group relative flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-all",
-                      "border-white/15 bg-white/[0.02] hover:border-amber-400/30 hover:bg-amber-950/10",
-                      isDragging && "scale-[1.01] border-amber-400/50",
-                    )}
-                  >
-                    <FolderOpen className="h-10 w-10 text-white/40" strokeWidth={1.5} />
-                    <span className="font-medium text-white/80">Drop WAV/MP3 stems here or click to browse</span>
-                    <span className="text-xs text-white/50">Add stems from other projects to mix and match</span>
-                  </div>
-                  <input ref={loadStemsInputRef} type="file" accept="audio/*" multiple className="hidden" aria-label="Load stem files" onChange={(e) => { handleLoadStems(e.target.files); e.target.value = ""; }} />
-                  {loadedStems.length > 0 && (
-                    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
-                      <p className="mb-2 text-xs uppercase tracking-wider text-white/65">Loaded stems ({loadedStems.length})</p>
-                      <ul className="space-y-1.5">
-                        {loadedStems.map((s) => (
-                          <li key={s.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-                            <span className="truncate text-sm text-white">{s.label.replace(/\.[^/.]+$/, "")}</span>
-                            <button type="button" onClick={() => removeLoadedStem(s.id)} className="text-xs text-red-300/80 hover:text-red-300" aria-label={`Remove ${s.label}`}>Remove</button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-              {/* Step 1 — Split */}
-              <div className={cn("transition-all duration-300", uploadedFile && "opacity-75")}>
-                <p className={cn("mb-2 text-[10px] font-semibold uppercase tracking-[0.35em]", !uploadedFile ? "text-amber-200/95" : "text-white/60")}>Step 1</p>
-                <div
-                  onClick={() => inputRef.current?.click()}
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files?.[0] ?? null); }}
-                  className={cn(
-                    "step-zone group relative flex w-full cursor-pointer items-center gap-4 overflow-hidden rounded-xl border px-4 py-3 text-left transition-all duration-300",
-                    !uploadedFile && "step-zone-glow border-amber-400/40 bg-amber-950/30 shadow-[0_0_24px_rgba(255,140,80,0.35)]",
-                    uploadedFile && "border-white/10 bg-black/25",
-                    isDragging && "scale-[1.01] border-amber-400/60",
-                  )}
-                >
-                  <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-all", !uploadedFile ? "border-amber-400/30 bg-amber-500/20" : "border-white/12 bg-white/8")}>
-                    <Upload className="h-5 w-5 text-white" strokeWidth={2} />
-                  </div>
-                 <div className="min-w-0 flex-1">
-                     {uploadState.uploadedFile ? (
-                       <span className="font-medium text-white">{uploadState.uploadName}</span>
-                     ) : (
-                       <>
-                         <span className="font-display text-lg tracking-tight text-white">Drop your track here</span>
-                         <span className="ml-2 text-xs text-white/60">or click to browse · WAV, MP3, AIFF</span>
-                       </>
-                     )}
-                   </div>
-                   {uploadState.uploadedFile && (
-                     <button type="button" onClick={(e) => { e.stopPropagation(); handleFile(null); }} className="ghost-button shrink-0 rounded-lg px-3 py-1.5 text-xs">Change</button>
-                   )}
-                </div>
-              </div>
-
-              {/* Step 2 */}
-              <div className={cn("transition-all duration-300", !uploadedFile && "pointer-events-none opacity-50")}>
-                <p className={cn("mb-2 text-[10px] font-semibold uppercase tracking-[0.35em]", uploadedFile ? "text-amber-200/95" : "text-white/70")}>Step 2</p>
-                <div className={cn("rounded-xl border p-4 transition-all duration-300", uploadedFile ? "step-zone-glow border-amber-400/30 bg-amber-950/20" : "border-white/10 bg-black/25")}>
-                  <div className="space-y-5">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-white/65">Quality vs speed</p>
-                      <div className="mt-3 flex gap-3">
-                        <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
-                          <input type="radio" name="splitQuality" checked={splitQuality === "speed"} onChange={() => setSplitQuality("speed")} className="text-amber-300" />
-                          Speed — MDX ONNX (vocal + inst)
-                        </label>
-                        <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
-                          <input type="radio" name="splitQuality" checked={splitQuality === "quality"} onChange={() => setSplitQuality("quality")} className="text-amber-300" />
-                          Quality — MDX ONNX vocal+inst
-                        </label>
-                        <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/80 transition hover:bg-amber-500/20">
-                          <input type="radio" name="splitQuality" checked={splitQuality === "ultra"} onChange={() => setSplitQuality("ultra")} className="text-amber-300" />
-                          Ultra — RoFormer (extra setup)
-                        </label>
-                      </div>
-                      {splitQuality === "speed" && <p className="mt-2 text-xs text-white/50">MDX ONNX vocal + instrumental (or phase inversion). Fast, low memory.</p>}
-                      {splitQuality === "quality" && <p className="mt-2 text-xs text-white/50">MDX ONNX vocal model (Kim_Vocal_2) + instrumental (Inst_HQ_4).</p>}
-                      {splitQuality === "ultra" && <p className="mt-2 text-xs text-amber-300/70">Requires <code className="rounded bg-white/10 px-1">pip install audio-separator[cpu]</code>. Very slow on CPU. Returns error if not installed.</p>}
-                    </div>
-
-                    {splitResultStems.length === 2 && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="rounded-2xl border border-amber-400/20 bg-amber-950/20 p-4" transition={{ duration: 0.3 }}>
-                        <p className="text-xs uppercase tracking-[0.3em] text-amber-200/80 mb-3">Go deeper</p>
-                        <p className="text-sm text-white/70 mb-3">You have vocals + instrumental. Load to mixer or split the instrumental into drums, bass & other.</p>
-                        <div className="flex flex-wrap gap-2">
-                          <button type="button" onClick={() => void triggerExpand()} disabled={isExpanding} className="fire-button inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60">
-                            {isExpanding ? "Expanding to 4 stems…" : "Keep going → 4 stems"}
-                          </button>
-                          <span className="text-xs text-white/50 self-center">or use the mixer below to trim, level & export.</span>
-                        </div>
-                        <p className="mt-2 text-xs text-white/50">Fine-tune vocals (e.g. denoise) coming soon.</p>
-                      </motion.div>
-                    )}
-
-                    {splitResultStems.length > 0 && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.3 }}>
-                        <p className="text-xs uppercase tracking-[0.3em] text-white/65">Pick stems to show</p>
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          {stemDefinitions.map((stem) => {
-                            const on = selectedStems[stem.id] ?? false;
-                            const base = "glow-toggle flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-200";
-                            const cls = `stem-toggle-${stem.id}`;
-                            return on ? (
-                              <button key={stem.id} type="button" onClick={() => handleStemToggle(stem.id)} className={cn(base, cls, "stem-toggle-active border-current shadow-lg")} aria-pressed="true">
-                                <span className="flex items-center gap-3"><span className={cn("stem-toggle-dot h-2.5 w-2.5 rounded-full stem-toggle-dot-on scale-110", cls)} />{stem.label}</span>
-                                <span className="text-xs uppercase tracking-wider">On</span>
-                              </button>
-                            ) : (
-                              <button key={stem.id} type="button" onClick={() => handleStemToggle(stem.id)} className={cn(base, cls, "border-white/10 bg-white/5 text-white/70 hover:bg-white/10")} aria-pressed="false">
-                                <span className="flex items-center gap-3"><span className={cn("stem-toggle-dot h-2.5 w-2.5 rounded-full", cls)} />{stem.label}</span>
-                                <span className="text-xs uppercase tracking-wider opacity-50">Off</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {splitError && (
-                      <div className="rounded-2xl border border-red-400/30 bg-red-950/30 px-4 py-3">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-red-200">Split failed</p>
-                            <p className="mt-1 text-xs text-red-300/70">{splitError}</p>
-                          </div>
-                          <button type="button" onClick={() => setSplitError(null)} className="text-red-300/60 hover:text-red-200 text-xs">Dismiss</button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <button type="button" onClick={() => void triggerSplit()} disabled={!uploadedFile || isSplitting} className="fire-button flex-1 justify-center disabled:opacity-60">
-                        {isSplitting ? "Splitting stems..." : "Split and Generate Stem Rack"}
-                      </button>
-                      <button type="button" onClick={() => addToBatchQueue(uploadedFile)} disabled={!uploadedFile || isSplitting} className="rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50">
-                        Add to queue
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-                </>
-              )}
-            </div>
-
-            <input ref={inputRef} type="file" accept="audio/*" className="hidden" aria-label="Choose audio file" onChange={(e) => handleFile(e.target.files?.[0] ?? null)} />
-
-            {/* Mixer */}
-            {mixStems.length > 0 ? (
-              <motion.div className="mt-6 border-t border-white/10 pt-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-                <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-amber-200/80 mb-1">Mixer</p>
-                    <p className="text-sm text-white/70">Trim, level, pan, pitch & time stretch. Play mix, then export.</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button type="button" className={cn("icon-pulse-hover flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition", isPlayingMix ? "border-amber-400/50 bg-amber-500/20 text-amber-100" : "ghost-button")} onClick={() => void handlePlayMix(mixStems, stemStates, stemBuffers)} disabled={Object.keys(stemBuffers).length === 0}>
-                      {isPlayingMix ? <Square className="h-4 w-4" strokeWidth={2.5} /> : <Play className="h-4 w-4" strokeWidth={2.5} />}
-                      {isPlayingMix ? "Stop mix" : "Play mix"}
-                    </button>
-                    <button type="button" className="fire-button icon-pulse-hover flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm" onClick={() => setShowExportModal(true)} disabled={isExporting || Object.keys(stemBuffers).length === 0}>
-                      <Download className="h-4 w-4" strokeWidth={2} />
-                      {isExporting ? "Rendering..." : "Export"}
-                    </button>
-                    <button type="button" className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white" onClick={resetTrackAdjustments}>
-                      <RotateCcw className="h-4 w-4" strokeWidth={2} />Reset levels
-                    </button>
-                  </div>
-                </div>
-                <MultiStemEditor
-                  stems={visibleStems}
-                  waveforms={stemWaveforms}
-                  durations={Object.fromEntries(visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]))}
-                  stemStates={stemStates}
-                  isPlaying={isPlayingMix}
-                  playheadPct={playheadPosition}
-                  isLoadingStems={isLoadingStems}
-                  activeStemId={activeStemId || visibleStems[0]?.id}
-                  onActiveStemChange={setActiveStemId}
-                  onStemStateChange={(stemId, patch) => setStemStates((p) => ({ ...p, [stemId]: { ...(p[stemId] ?? defaultStemState()), ...patch } }))}
-                  onSeek={(_pct) => {
-                    if (isPlayingMix) {
-                      handleStopMix();
-                    }
-                  }}
-                  onPlayPause={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
-                  onPreviewStem={(stemId) => {
-                    const url = mixStems.find((s) => s.id === stemId)?.url;
-                    void handlePreviewStem(stemId, url, stemBuffers, setStemBuffers);
-                  }}
-                  playingStemId={playingStem}
-                />
-              </motion.div>
-            ) : (
-              <div className="mt-6 border-t border-white/10 pt-6">
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-12 text-center">
-                  <Sliders className="h-10 w-10 text-white/25 mb-4" strokeWidth={1.5} />
-                  <p className="text-white/65 text-sm font-medium mb-1">Mixer</p>
-                  <p className="text-white/60 text-xs max-w-xs">Split a track or load stems above to mix and export.</p>
-                </div>
-              </div>
-            )}
+          {/* Right column: Mixer workspace */}
+          <motion.div
+            className={cn("glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 lg:col-span-7", guidanceTarget === "mixer" && GREEN_RING_CLASS)}
+            variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+            transition={{ duration: 0.4 }}
+          >
+            <MixerPanel
+              mixStemCount={mixStems.length}
+              isPlayingMix={isPlayingMix}
+              onPlayStop={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
+              onStopMix={handleStopMix}
+              onSeekMix={handleSeekMix}
+              isExporting={isExporting}
+              onExport={() => setShowExportModal(true)}
+              onResetLevels={resetTrackAdjustments}
+              hasStemBuffers={Object.keys(stemBuffers).length > 0}
+              stems={visibleStems as StemWithOptionalUrl[]}
+              waveforms={stemWaveforms}
+              durations={Object.fromEntries(visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]))}
+              stemStates={stemStates}
+              getPlayheadPosition={getPlayheadPosition}
+              subscribePlayheadPosition={subscribePlayheadPosition}
+              isLoadingStems={isLoadingStems}
+              activeStemId={activeStemId || visibleStems[0]?.id}
+              onActiveStemChange={setActiveStemId}
+              onStemStateChange={handleStemStateChange}
+              onPreviewStem={handlePreviewStemFromMixer}
+              playingStemId={playingStem}
+            />
           </motion.div>
 
           {/* Status panel */}
-          <motion.div className="glass-panel rounded-[2rem] p-5 sm:p-6" variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }} transition={{ duration: 0.4 }}>
-            <p className="eyebrow">What&apos;s happening</p>
-            <h2 className="font-display text-2xl tracking-[-0.04em] text-white mb-5">Status · Tracks · Master</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/25 px-4 py-3" role="status" aria-live="polite">
-                <span className="text-xs uppercase tracking-wider text-white/65">Status</span>
-                <span className="font-semibold text-white">{isSplitting ? "Splitting…" : mixStems.length > 0 ? "Stems ready" : "Ready"}</span>
-              </div>
-              <div>
-                <div className="flex items-center justify-between text-xs uppercase tracking-wider text-white/65 mb-2">
-                  <span>Split progress</span><span>{splitProgress}%</span>
-                </div>
-                <div className="progress-shimmer h-2 overflow-hidden rounded-full bg-white/10">
-                  {/* Width driven by CSS var --split-progress-pct (dynamic from state) */}
-                  <div className="progress-glow progress-fill-width h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)] transition-all duration-300" style={{ ['--split-progress-pct']: `${splitProgress}%` } as React.CSSProperties} />
-                </div>
-                <p className="mt-2 text-sm text-white/64">{activeStage.blurb}</p>
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              {pipelineSteps.map((step, i) => (
-                <PipelineStep key={step.title} title={step.title} active={i === pipelineIndex} done={i < pipelineIndex}>{step.blurb}</PipelineStep>
-              ))}
-            </div>
-            <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <FolderOpen className="h-5 w-5 text-white/70" strokeWidth={1.8} />
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/65">
-                  Track status · {uploadName.replace(/\.[^/.]+$/, "")}
-                </span>
-                {isLoadingStems && <span className="text-xs text-amber-200/90">Loading stems…</span>}
-              </div>
-              <div className="space-y-2">
-                {visibleStems.map((stem) => (
-                  <div key={stem.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                    {/* Dot color via CSS vars --stem-glow, --stem-glow-soft (per-stem from data) */}
-                    <span className="track-status-dot h-2 w-2 rounded-full" style={{ ['--stem-glow']: stem.glow, ['--stem-glow-soft']: stem.glowSoft } as React.CSSProperties} />
-                    <span className="text-sm text-white">{stem.label}</span>
-                    <span className="text-xs text-white/65">
-                      {loadedTracks[stem.id] ? "Ready" : stemBuffers[stem.id] ? "Buffered" : isLoadingStems ? "Loading…" : "Pending"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-white/65 mb-3">Master chain</div>
-              <div className="space-y-2 text-sm text-white/68">
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Glue compression</span><span>{MASTER_CHAIN.compression} dB GR</span></div>
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Limiter ceiling</span><span>{MASTER_CHAIN.limiter} dB</span></div>
-                <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Loudness target</span><span>{MASTER_CHAIN.loudness} LUFS</span></div>
-              </div>
-            </div>
-            <p className="mt-5 text-xs text-white/65">
-              Tip: Use <strong className="text-white/70">Play mix</strong> to hear everything together, then <strong className="text-white/70">Export WAV</strong> to download.
-            </p>
+          <motion.div
+            className={cn("glass-panel rounded-[2rem] p-5 sm:p-6 lg:col-span-5", guidanceTarget === "status" && GREEN_RING_CLASS)}
+            variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+            transition={{ duration: 0.4 }}
+          >
+            <StatusPanel
+              isSplitting={isSplitting}
+              hasMixStems={mixStems.length > 0}
+              splitProgress={splitProgress}
+              activeStageBlurb={activeStage.blurb}
+              pipelineIndex={pipelineIndex}
+              uploadName={uploadName}
+              isLoadingStems={isLoadingStems}
+              visibleStems={visibleStems as StemWithOptionalUrl[]}
+              loadedTracks={loadedTracks}
+              stemBuffers={stemBuffers}
+              masterChain={MASTER_CHAIN}
+            />
           </motion.div>
 
         </motion.section>

@@ -7,4 +7,6 @@ export { OnboardingTour, useResetOnboarding } from "./OnboardingTour";
 export { BatchQueue, type QueueItem, type QueueItemStatus } from "./BatchQueue";
 export { ComparisonToggle } from "./ComparisonToggle";
 export { ErrorBoundary, AudioErrorBoundary, SplitErrorBoundary } from "./ErrorBoundary";
-export { WaveformEditor } from "./WaveformEditor";
+export { StatusPanel } from "./status-panel.component";
+export { MixerPanel } from "./mixer-panel.component";
+export { SourcePanel } from "./source-panel.component";

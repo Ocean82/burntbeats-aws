@@ -31,7 +31,7 @@
   - Input: `spectrogram` `(batch, 4, 2049, time)` — same layout as Demucs spec: [L_real, L_imag, R_real, R_imag], n_fft=4096 → 2049 bins.
   - Output: `sources` `(batch, 4, 4, 2049, time)` — 4 stems (drums, bass, other, vocals), each (4, 2049, time).
 - **Segment:** Use same approach as Demucs ONNX: hop=1024, 336 time frames → 344064 samples (~7.8 s), 50% overlap for chunking.
-- **Known issue:** The bundled `scnet.onnx` fails at inference with `MatMul dimension mismatch` (internal layer). Pipeline correctly falls back to Demucs. To avoid repeated failed attempts set `USE_SCNET=0`, or replace with a compatible SCNet ONNX export.
+- **Input shape:** `scnet_onnx.py` reads (freq, time) from the model’s input shape at runtime. Some ONNX exports use 2048 frequency bins (like Demucs ONNX); others use 2049. If you previously saw `MatMul dimension mismatch`, ensure the model is loaded and that the ONNX has concrete or inferred input dimensions; the code now adapts to 2048 or 2049.
 
 ---
 

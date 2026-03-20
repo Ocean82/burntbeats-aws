@@ -49,6 +49,7 @@ from stem_service.hybrid import (
 )
 from stem_service.mdx_onnx import get_available_vocal_onnx
 from stem_service.ultra import run_ultra_2stem, run_ultra_4stem, get_ultra_model_info
+from stem_service.vocal_stage1 import get_2stem_stage1_preview
 
 
 class CorrelationLoggingMiddleware(BaseHTTPMiddleware):
@@ -108,6 +109,9 @@ async def lifespan(app: FastAPI):
         logger.info("ONNX Stage 1 available: %s", onnx_path.name)
     else:
         logger.info("ONNX Stage 1 not available; Stage 1 will use Demucs 2-stem")
+
+    path_kind, stage1_models = get_2stem_stage1_preview()
+    logger.info("2-stem Stage 1 will use: path=%s models=%s", path_kind, stage1_models)
 
     # Check ultra quality models
     ultra_info = get_ultra_model_info()
@@ -310,7 +314,13 @@ def _run_separation_sync(
         # Standard hybrid or demucs_only mode
         elif STEM_BACKEND == "hybrid":
             if stem_count == 2:
-                job_log.info("Stage: hybrid 2-stem  prefer_speed=%s", prefer_speed)
+                path_kind, stage1_models = get_2stem_stage1_preview()
+                job_log.info(
+                    "Stage: hybrid 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
+                    prefer_speed,
+                    path_kind,
+                    stage1_models,
+                )
                 stem_list, models_used = run_hybrid_2stem(
                     input_path,
                     out_dir,
@@ -330,7 +340,13 @@ def _run_separation_sync(
         else:
             # demucs_only: still prefer ONNX when available (best option)
             if stem_count == 2:
-                job_log.info("Stage: demucs_only 2-stem  prefer_speed=%s", prefer_speed)
+                path_kind, stage1_models = get_2stem_stage1_preview()
+                job_log.info(
+                    "Stage: demucs_only 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
+                    prefer_speed,
+                    path_kind,
+                    stage1_models,
+                )
                 stem_list, models_used = run_hybrid_2stem(
                     input_path,
                     out_dir,

@@ -46,6 +46,9 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     "UVR-MDX-NET-Voc_FT.onnx":         (6144,  1024,  3072,  256,   1.035),
     "UVR-MDX-NET-Inst_HQ_4.onnx":      (5120,  1024,  2560,  256,   1.035),
     "UVR-MDX-NET-Inst_HQ_5.onnx":      (5120,  1024,  2560,  256,   1.035),
+    # MDX23C 2-stem (MDX23C vocal/instrumental ONNX)
+    "mdx23c_vocal.onnx":              (6144,  1024,  3072,  256,   1.035),
+    "mdx23c_instrumental.onnx":      (6144,  1024,  3072,  256,   1.035),
     # De-reverb model: same n_fft/dim_f as Kim, but dim_t=512 (longer context window)
     # primary_stem=Reverb — output is the reverb component; subtract from input for dry signal
     "Reverb_HQ_By_FoxJoy.onnx":        (6144,  1024,  3072,  512,   1.0),
@@ -86,6 +89,11 @@ _cache_lock = threading.Lock()
 def _get_config(model_path: Path) -> tuple[int, int, int, int, float] | None:
     """Return (n_fft, hop, dim_f, dim_t, compensate) for a model, or None if unknown."""
     return _MDX_CONFIGS.get(model_path.name)
+
+
+def mdx_model_configured(model_path: Path) -> bool:
+    """True if this ONNX model has MDX config (n_fft, hop, dim_f, dim_t) and can be run."""
+    return _get_config(model_path) is not None
 
 
 def _prefer_quantized(path: Path) -> Path:

@@ -19,13 +19,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 import soundfile as sf
 
-import config
-import demucs_onnx
-import scnet_onnx
-import phase_inversion
-import split
-import vad
-import vocal_stage1
+
 
 
 def collapse_4stem_to_2stem(

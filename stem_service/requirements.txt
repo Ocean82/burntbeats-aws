@@ -4,6 +4,8 @@ torch>=2.0.0
 torchaudio>=2.0.0,<2.9
 soundfile>=0.12.0
 demucs>=4.0.0
+# Required for 4-stem quality bag (mdx_extra_q / mdx_extra) — Demucs uses DiffQ for quantized models
+diffq>=0.2.0
 # onnxruntime (not onnxruntime-gpu) for CPU-optimized MDX inference; SessionOptions use ORT_ENABLE_ALL + configurable threads
 onnxruntime>=1.14.0
 fastapi>=0.100.0

@@ -125,17 +125,21 @@ def segment_phase_inversion() -> bool:
 
 
 def segment_stage1() -> bool:
-    """Test Stage 1: extract_vocals_stage1 (Demucs 2-stem or ONNX)."""
+    """Test Stage 1: extract_vocals_stage1 (ONNX or Demucs 2-stem fallback)."""
     from stem_service.vocal_stage1 import extract_vocals_stage1
 
     stage1_out = TEST_DIR / "stage1_out"
-    _log("  [Stage 1] Demucs 2-stem (may take 1–3 min on CPU)...", end=" ")
+    _log("  [Stage 1] vocal extraction (may take 1–3 min on CPU)...", end=" ")
     try:
-        vocals_path = extract_vocals_stage1(TEST_WAV, stage1_out)
+        vocals_path, inst_path, models_used = extract_vocals_stage1(TEST_WAV, stage1_out)
         if not vocals_path.exists() or vocals_path.stat().st_size < 100:
             _log("FAIL (no vocals file)")
             return False
-        _log("OK")
+        _log(f"OK  models={models_used}")
+        if inst_path is not None:
+            _log(f"    instrumental ONNX: {inst_path}")
+        else:
+            _log("    instrumental: phase inversion (no inst ONNX)")
         return True
     except Exception as e:
         _log(f"FAIL ({e})")

@@ -1,11 +1,12 @@
 /**
  * useExport — handles WAV master export and per-stem download.
- * Extracted from App.tsx.
+ * Master mix stem set matches playback via `filterStemsForAudibleMix`.
  */
 import { useCallback, useState } from "react";
 import type { StemResult } from "../types";
 import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds } from "../utils/audio";
-import { defaultStemState, type StemEditorState } from "../components/MultiStemEditor";
+import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
+import { filterStemsForAudibleMix } from "../utils/stemAudibility";
 import type { ExportOptions } from "../components";
 
 interface UseExportReturn {
@@ -59,13 +60,9 @@ export function useExport(): UseExportReturn {
     if (!options?.skipBusy) { setIsExporting(true); }
 
     try {
-      const hasSolo = splitResultStems.some((s) => stemStates[s.id]?.soloed);
-      const stemsToMix = hasSolo
-        ? splitResultStems.filter((s) => stemStates[s.id]?.soloed)
-        : splitResultStems.filter((s) => !stemStates[s.id]?.muted);
+      const stemsToMix = filterStemsForAudibleMix(splitResultStems, stemStates);
 
       let maxDuration = 0;
-      const { getStemEffectiveRate } = await import("../components/MultiStemEditor");
       const sources: { buffer: AudioBuffer; gain: number; pan: number; rate: number; trimStart: number; trimEnd: number }[] = [];
 
       for (const stem of stemsToMix) {

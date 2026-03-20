@@ -312,6 +312,68 @@
   .trim-handle-end {
     left: calc(var(--trim-end-pct, 100) * 1% - 6px);
   }
+
+  /* Multi-stem waveform lane — set --stem-* via stemThemeVariables(); trim via trimVisiblePercentsStyle() */
+  .waveform-lane-surface {
+    height: 56px;
+    background: color-mix(in srgb, var(--stem-color) 3.1%, transparent);
+  }
+
+  .waveform-lane-trim-window {
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+    border-right: 1px solid rgba(255, 255, 255, 0.3);
+    left: calc(var(--trim-start-vis) * 1%);
+    right: calc(100% - var(--trim-end-vis) * 1%);
+    background: color-mix(in srgb, var(--stem-color) 9.4%, transparent);
+  }
+
+  .waveform-lane-handle-start {
+    left: calc(var(--trim-start-vis) * 1%);
+    background-color: var(--stem-color);
+    opacity: 0.9;
+  }
+
+  .waveform-lane-handle-end {
+    left: calc(var(--trim-end-vis) * 1% - 6px);
+    background-color: var(--stem-color);
+    opacity: 0.9;
+  }
+
+  .waveform-lane-label {
+    color: var(--stem-color);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .waveform-global-playhead-line {
+    left: calc(var(--playhead-pct, 0) * 1%);
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+  }
+
+  .stem-accent-slider {
+    accent-color: var(--stem-color);
+  }
+
+  .waveform-editor-shell {
+    border-color: color-mix(in srgb, var(--stem-color) 25%, transparent);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--stem-color) 3.1%, transparent) 0%,
+      rgba(0, 0, 0, 0.28) 100%
+    );
+  }
+
+  .stem-header-glow-dot {
+    background-color: var(--stem-color);
+    box-shadow: 0 0 8px var(--stem-color-soft);
+  }
+
+  .stem-text-accent {
+    color: var(--stem-color);
+  }
+
+  .waveform-editor-trim-region {
+    box-shadow: inset 0 0 20px var(--stem-color-soft), 0 0 24px var(--stem-color-soft);
+  }
   .trim-handle-bar {
     opacity: 0.7;
   }
@@ -449,13 +511,31 @@
       0 0 40px rgba(255, 100, 60, 0.2);
   }
 
-  .progress-fill-width {
-    width: var(--split-progress-pct, 0);
+  .track-status-dot {
+    background-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.12);
   }
 
-  .track-status-dot {
-    background-color: var(--stem-glow);
-    box-shadow: 0 0 8px var(--stem-glow-soft);
+  .track-status-dot-vocals {
+    background-color: #ff845c;
+    box-shadow: 0 0 8px rgba(255, 132, 92, 0.36);
+  }
+  .track-status-dot-drums {
+    background-color: #ffb347;
+    box-shadow: 0 0 8px rgba(255, 179, 71, 0.34);
+  }
+  .track-status-dot-bass {
+    background-color: #ff5a3d;
+    box-shadow: 0 0 8px rgba(255, 90, 61, 0.34);
+  }
+  .track-status-dot-melody,
+  .track-status-dot-other {
+    background-color: #ffd36a;
+    box-shadow: 0 0 8px rgba(255, 211, 106, 0.32);
+  }
+  .track-status-dot-instrumental {
+    background-color: #8b9dc3;
+    box-shadow: 0 0 8px rgba(139, 157, 195, 0.34);
   }
 
   .progress-shimmer {
