@@ -1,4 +1,4 @@
-gitgit # Waveform Mixer/Editor Deep Findings and Fix Plan
+# Waveform Mixer/Editor Deep Findings and Fix Plan
 
 Updated: 2026-03-19  
 Owner: Frontend audio UI  
@@ -10,6 +10,7 @@ Define a high-confidence, low-regression plan to improve mixer/editor structure,
 
 ## Current Architecture Snapshot
 
+- `main.tsx` → `AppShell` (root `ErrorBoundary`) → `App`. Grid sections: `SplitErrorBoundary` (source/split), `AudioErrorBoundary` (mixer), `ErrorBoundary` (status).
 - `App.tsx` orchestrates source flow, split/expand, stem buffer loading, waveform generation, playback, export, queue, shortcuts, and panel composition; mixer-focused stem UI is partially delegated to `useMixerWorkspace`.
 - `MixerPanel` composes mix actions and hosts `MultiStemEditor`.
 - `MultiStemEditor` hosts toolbar, `TimelineRuler`, `WaveformTimeline` (lanes + playhead), optional **Mixer console**, `StemTabs`, and `StemControls`.

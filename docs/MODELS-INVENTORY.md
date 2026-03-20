@@ -1,11 +1,11 @@
 # Deep inventory: models/ and stem-models
 
 **Date:** 2026-03-09 (reviewed 2026-03-17)  
-**Purpose:** Full recursive audit of `D:\burntbeats-aws\models` and copy source `D:\DAW Collection\stem-models` (all subdirectories). So no models are missed.
+**Purpose:** Full recursive audit of `/path/to/burntbeats-aws/models` and copy source `/path/to/stem-models` (all subdirectories). So no models are missed.
 
 ---
 
-## 1. Project models dir: `D:\burntbeats-aws\models`
+## 1. Project models dir: `/path/to/burntbeats-aws/models`
 
 Recursive scan: **6 directories**, **54 files** (including configs). No flow-models here — flow-models lives under stem-models or was audited separately.
 
@@ -51,7 +51,7 @@ All are present and wired for the app (htdemucs → .th; ONNX vocal paths in mdx
 
 ---
 
-## 2. Copy source: `D:\DAW Collection\stem-models`
+## 2. Copy source: `/path/to/stem-models`
 
 Recursive scan: **51 directories**, all model/config file types below. WSL path: `/mnt/d/DAW Collection/stem-models`.
 

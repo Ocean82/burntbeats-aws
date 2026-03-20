@@ -3,8 +3,10 @@
  * Set STEM_SERVICE_URL (e.g. http://localhost:5000) and STEM_OUTPUT_DIR (shared with Python) in env.
  * Uploads are streamed to disk (no full-file buffer in memory); proxy to Python streams from disk.
  */
+// @ts-check
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import FormData from "form-data";
 import {
   createReadStream,
@@ -32,19 +34,28 @@ const rateLimitStore = new Map();
 
 // Prune expired entries so the store does not grow unbounded.
 const RATE_LIMIT_PRUNE_INTERVAL_MS = 2 * RATE_LIMIT_WINDOW_MS;
-setInterval(() => {
+const rateLimitPruneInterval = setInterval(() => {
   const now = Date.now();
   for (const [ip, record] of rateLimitStore.entries()) {
     if (now > record.resetTime) rateLimitStore.delete(ip);
   }
 }, RATE_LIMIT_PRUNE_INTERVAL_MS);
+// In test mode, avoid keeping the event loop alive just for pruning.
+if (process.env.NODE_ENV === "test" && typeof rateLimitPruneInterval.unref === "function") {
+  rateLimitPruneInterval.unref();
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app = express();
+export const app = express();
+
+// If behind a reverse proxy/load balancer, this ensures correct protocol detection.
+app.set("trust proxy", 1);
 
 const STEM_SERVICE_URL = process.env.STEM_SERVICE_URL || "http://localhost:5000";
 // Must match stem_service OUTPUT_BASE (Python STEM_OUTPUT_DIR). Same path so GET /api/stems/file can serve files Python wrote.
 const STEM_OUTPUT_DIR = path.resolve(process.env.STEM_OUTPUT_DIR || path.join(__dirname, "..", "tmp", "stems"));
+
+app.use(helmet());
 
 // Temp dir for streaming uploads (one file per request; cleaned after proxy).
 const UPLOAD_TMP_DIR = path.join(os.tmpdir(), "burntbeats-upload");
@@ -53,6 +64,11 @@ const UPLOAD_TMP_DIR = path.join(os.tmpdir(), "burntbeats-upload");
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_STEM_IDS = new Set(["vocals", "drums", "bass", "other", "instrumental"]);
 
+/**
+ * @param {string} jobId
+ * @param {string} stemIdParam
+ * @returns {{ ok: boolean, stemId: string | null }}
+ */
 function validateStemFileParams(jobId, stemIdParam) {
   if (!jobId || !UUID_REGEX.test(jobId)) return { ok: false, stemId: null };
   const raw = stemIdParam.replace(/\.wav$/i, "");
@@ -67,8 +83,12 @@ app.use(cors({
 app.use(express.json());
 app.use(rateLimitMiddleware);
 
+/**
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ */
 function rateLimitMiddleware(req, res, next) {
-  if (!API_KEY) return next();
   const ip = req.ip || req.socket.remoteAddress || "unknown";
   const now = Date.now();
   const record = rateLimitStore.get(ip);
@@ -83,6 +103,11 @@ function rateLimitMiddleware(req, res, next) {
   next();
 }
 
+/**
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ */
 function authMiddleware(req, res, next) {
   if (!API_KEY) return next();
   const providedKey = req.headers["x-api-key"];
@@ -221,7 +246,7 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   }
 });
 
-app.get("/api/stems/status/:job_id", (req, res) => {
+app.get("/api/stems/status/:job_id", authMiddleware, (req, res) => {
   const { job_id } = req.params;
   if (!job_id || !UUID_REGEX.test(job_id)) {
     return res.status(400).json({ error: "Invalid job_id" });
@@ -247,7 +272,7 @@ app.get("/api/stems/status/:job_id", (req, res) => {
   res.json(data);
 });
 
-app.post("/api/stems/expand", async (req, res) => {
+app.post("/api/stems/expand", authMiddleware, async (req, res) => {
   const jobId = (req.body && req.body.job_id) || req.query.job_id;
   if (!jobId || !UUID_REGEX.test(jobId)) {
     return res.status(400).json({ error: "Invalid or missing job_id. Provide the 2-stem job id to expand." });
@@ -302,7 +327,7 @@ app.post("/api/stems/expand", async (req, res) => {
   }
 });
 
-app.delete("/api/stems/:job_id", async (req, res) => {
+app.delete("/api/stems/:job_id", authMiddleware, async (req, res) => {
   const { job_id } = req.params;
   if (!job_id || !UUID_REGEX.test(job_id)) {
     return res.status(400).json({ error: "Invalid job_id" });
@@ -321,7 +346,7 @@ app.delete("/api/stems/:job_id", async (req, res) => {
   }
 });
 
-app.get("/api/stems/file/:job_id/:stemId", (req, res) => {
+app.get("/api/stems/file/:job_id/:stemId", authMiddleware, (req, res) => {
   const { job_id, stemId } = req.params;
   const validated = validateStemFileParams(job_id, stemId);
   if (!validated.ok) {
@@ -422,10 +447,12 @@ function gracefulShutdown(signal) {
   }
 }
 
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+if (process.env.NODE_ENV !== "test") {
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

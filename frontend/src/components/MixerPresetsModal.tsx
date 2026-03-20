@@ -143,6 +143,9 @@ export function MixerPresetsModal({
           >
             <motion.div
               className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mixer-presets-title"
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
@@ -156,12 +159,13 @@ export function MixerPresetsModal({
                     <Sliders className="h-5 w-5 text-amber-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Mixer Presets</h2>
+                    <h2 id="mixer-presets-title" className="text-lg font-semibold text-white">Mixer Presets</h2>
                     <p className="text-xs text-white/65">Save and load your mix settings</p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
+                  aria-label="Close mixer presets"
                   className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
                 >
                   <X className="h-4 w-4" />

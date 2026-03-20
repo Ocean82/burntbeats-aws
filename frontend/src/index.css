@@ -328,15 +328,41 @@
   }
 
   .waveform-lane-handle-start {
-    left: calc(var(--trim-start-vis) * 1%);
+    left: calc(var(--trim-start-vis) * 1% - 5px);
+    width: 16px;
+    background-color: transparent;
+    cursor: ew-resize;
+    z-index: 10;
+  }
+  .waveform-lane-handle-start::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    left: 5px;
+    width: 6px;
     background-color: var(--stem-color);
     opacity: 0.9;
+    border-radius: 4px 0 0 4px;
+    pointer-events: none;
   }
 
   .waveform-lane-handle-end {
-    left: calc(var(--trim-end-vis) * 1% - 6px);
+    left: calc(var(--trim-end-vis) * 1% - 11px);
+    width: 16px;
+    background-color: transparent;
+    cursor: ew-resize;
+    z-index: 10;
+  }
+  .waveform-lane-handle-end::after {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    right: 5px;
+    width: 6px;
     background-color: var(--stem-color);
     opacity: 0.9;
+    border-radius: 0 4px 4px 0;
+    pointer-events: none;
   }
 
   .waveform-lane-label {

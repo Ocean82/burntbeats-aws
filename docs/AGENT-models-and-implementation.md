@@ -20,7 +20,7 @@
 | **stem_service/config.py** | `Path(__file__).resolve().parent.parent` = repo root | `models/`, `models/htdemucs.pth` / `htdemucs.th` |
 | **stem_service/split.py** | REPO_ROOT from config | `models/htdemucs.th` (--repo; pip demucs loads only .th) |
 | **stem_service/hybrid.py** | REPO_ROOT | Stage 1: Demucs 2-stem; Stage 2: Demucs on instrumental (htdemucs) |
-| **stem_api** (Rust) | `REPO_ROOT` env | Orchestration only; phase inversion in Rust (WAV I/O) |
+| **stem_api** (Rust, legacy/unused) | `REPO_ROOT` env | Not wired in by current stack; orchestration happens in Node + Python |
 
 No hardcoded `D:\` or `stem-models` in code. All paths are relative to the repo. Optional future: **mdx_onnx** (or vocal ONNX) under `stem_service/` for Stage 1 when Kim_Vocal_2.onnx etc. are present; see [AGENT-GUIDE.MD](AGENT-GUIDE.MD).
 

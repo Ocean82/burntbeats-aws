@@ -4,5 +4,8 @@
 set -e
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
+if [ -f .venv/bin/activate ]; then
+  source .venv/bin/activate
+fi
 export PYTHONPATH="${PYTHONPATH:-$ROOT}"
 python scripts/build_models_inventory.py

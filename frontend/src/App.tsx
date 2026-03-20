@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Upload, FolderOpen, Download, Play, Square,
-  Sliders, RotateCcw, HelpCircle, Undo2, Redo2, Save,
+  HelpCircle, Undo2, Redo2, Save,
 } from "lucide-react";
-import { splitStems, expandStems, type SplitQuality, type StemResult } from "./api";
+import { splitStems, expandStems } from "./api";
 import { cn } from "./utils/cn";
 import type { StemDefinition, StemId } from "./types";
-import { defaultTrim, defaultMixer } from "./types";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
 import { useWaveformCompute } from "./hooks/useStemAudio";
@@ -24,38 +22,27 @@ import {
   OnboardingTour,
   BatchQueue,
   StatusPanel,
+  AudioErrorBoundary,
+  SplitErrorBoundary,
   MixerPanel,
   SourcePanel,
 } from "./components";
 import { defaultStemState, type StemEditorState } from "./stem-editor-state";
+import { MASTER_CHAIN, PIPELINE_ANIMATION_DELAYS_MS, PIPELINE_PROGRESS_THRESHOLDS } from "./config";
 
-const MASTER_CHAIN = { compression: 2.4, limiter: -0.8, loudness: -9 } as const;
+import { useAppStore } from "./store/appStore";
+
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 
 export function App() {
   // ── Upload / split state ──────────────────────────────────────────────────
-  const [uploadState, setUploadState] = useState({
-    quality: "quality" as SplitQuality,
-    selectedStems: {
-      vocals: true, drums: true, bass: true, melody: true, instrumental: true, other: true,
-    } as Record<StemId, boolean>,
-    uploadName: "nightdrive_demo_master.wav",
-    uploadedFile: null as File | null,
-    splitResultStems: [] as StemResult[],
-    splitJobId: null as string | null,
-    loadedStems: [] as Array<{ id: string; label: string; url: string }>,
-    splitError: null as string | null,
-    isDragging: false,
-    isSplitting: false,
-    isExpanding: false,
-    splitProgress: 0,
-    pipelineIndex: 0
-  });
+  const uploadState = useAppStore();
   const {
     quality, selectedStems, uploadName, uploadedFile, splitResultStems, splitJobId,
     loadedStems, splitError, isDragging, isSplitting, isExpanding, splitProgress, pipelineIndex,
+    setUploadState, setSplitError
   } = uploadState;
-  const setSplitError = (msg: string | null) => setUploadState(prev => ({ ...prev, splitError: msg }));
+
   useEffect(() => {
     uploadedFileRef.current = uploadedFile;
   }, [uploadedFile]);
@@ -83,7 +70,7 @@ export function App() {
     isPlayingMix, playingStem,
     getPlayheadPosition, subscribePlayheadPosition,
     audioContextRef, handlePlayMix, handleSeekMix, handleStopMix, handlePreviewStem, stopPreview,
-  } = useAudioPlayback();
+  } = useAudioPlayback({ onError: (message) => setSplitError(message) });
 
   // ── Export hook ───────────────────────────────────────────────────────────
   const { isExporting, handleExportWithOptions } = useExport();
@@ -173,8 +160,8 @@ export function App() {
    useEffect(() => {
      if (!isSplitting) return;
      setUploadState(prev => ({ ...prev, pipelineIndex: 0 }));
-     const t1 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 1 })), 400);
-     const t2 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 2 })), 1200);
+    const t1 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 1 })), PIPELINE_ANIMATION_DELAYS_MS.toStep1);
+    const t2 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 2 })), PIPELINE_ANIMATION_DELAYS_MS.toStep2);
      return () => { clearTimeout(t1); clearTimeout(t2); };
    }, [isSplitting]);
 
@@ -221,7 +208,8 @@ export function App() {
            newBuffers[id] = buf; 
            newLoaded[id] = true; 
          }
-       } catch (e) { 
+    } catch (e) { 
+         setSplitError("Failed to load stems for playback. Please try again.");
          console.error("Failed to load stems:", e); 
        }
      }
@@ -331,8 +319,8 @@ export function App() {
     try {
       const res = await splitStems(file, "2", quality, (s) => {
         setUploadState(prev => ({ ...prev, splitProgress: s.progress }));
-        if (s.progress >= 100) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
-        else if (s.progress >= 50) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
+        if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
+        else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
         else if (s.progress > 0) setUploadState(prev => ({ ...prev, pipelineIndex: 1 }));
       });
       setUploadState(prev => ({ 
@@ -361,8 +349,8 @@ export function App() {
     try {
       const res = await expandStems(splitJobId, quality, (s) => {
         setUploadState(prev => ({ ...prev, splitProgress: s.progress }));
-        if (s.progress >= 100) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
-        else if (s.progress >= 50) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
+        if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState(prev => ({ ...prev, pipelineIndex: 3 }));
+        else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState(prev => ({ ...prev, pipelineIndex: 2 }));
         else if (s.progress > 0) setUploadState(prev => ({ ...prev, pipelineIndex: 1 }));
       });
       setUploadState(prev => ({ 
@@ -562,36 +550,38 @@ export function App() {
             variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4 }}
           >
-            <SourcePanel
-              sourceMode={sourceMode}
-              onSourceModeChange={setSourceMode}
-              uploadName={uploadName}
-              loadedStemCount={loadedStems.length}
-              isDragging={isDragging}
-              onSetIsDragging={(next) => setUploadState((prev) => ({ ...prev, isDragging: next }))}
-              loadStemsInputRef={loadStemsInputRef}
-              onLoadStems={handleLoadStems}
-              loadedStems={loadedStems}
-              onRemoveLoadedStem={removeLoadedStem}
-              uploadedFile={uploadedFile}
-              onBrowseUpload={() => inputRef.current?.click()}
-              onClearUpload={() => handleFile(null)}
-              onDropUpload={(file) => handleFile(file)}
-              inputRef={inputRef}
-              onUploadFileInput={(file) => handleFile(file)}
-              quality={quality}
-              onQualityChange={(next) => setUploadState((prev) => ({ ...prev, quality: next }))}
-              splitResultStemsLength={splitResultStems.length}
-              isExpanding={isExpanding}
-              onExpand={() => void triggerExpand()}
-              selectedStems={selectedStems}
-              onToggleStem={handleStemToggle}
-              splitError={splitError}
-              onDismissError={() => setSplitError(null)}
-              onSplit={() => void triggerSplit()}
-              isSplitting={isSplitting}
-              onAddToQueue={() => addToBatchQueue(uploadedFile)}
-            />
+            <SplitErrorBoundary>
+              <SourcePanel
+                sourceMode={sourceMode}
+                onSourceModeChange={setSourceMode}
+                uploadName={uploadName}
+                loadedStemCount={loadedStems.length}
+                isDragging={isDragging}
+                onSetIsDragging={(next) => setUploadState((prev) => ({ ...prev, isDragging: next }))}
+                loadStemsInputRef={loadStemsInputRef}
+                onLoadStems={handleLoadStems}
+                loadedStems={loadedStems}
+                onRemoveLoadedStem={removeLoadedStem}
+                uploadedFile={uploadedFile}
+                onBrowseUpload={() => inputRef.current?.click()}
+                onClearUpload={() => handleFile(null)}
+                onDropUpload={(file) => handleFile(file)}
+                inputRef={inputRef}
+                onUploadFileInput={(file) => handleFile(file)}
+                quality={quality}
+                onQualityChange={(next) => setUploadState((prev) => ({ ...prev, quality: next }))}
+                splitResultStemsLength={splitResultStems.length}
+                isExpanding={isExpanding}
+                onExpand={() => void triggerExpand()}
+                selectedStems={selectedStems}
+                onToggleStem={handleStemToggle}
+                splitError={splitError}
+                onDismissError={() => setSplitError(null)}
+                onSplit={() => void triggerSplit()}
+                isSplitting={isSplitting}
+                onAddToQueue={() => addToBatchQueue(uploadedFile)}
+              />
+            </SplitErrorBoundary>
           </motion.div>
 
           {/* Right column: Mixer workspace */}
@@ -600,29 +590,31 @@ export function App() {
             variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4 }}
           >
-            <MixerPanel
-              mixStemCount={mixStems.length}
-              isPlayingMix={isPlayingMix}
-              onPlayStop={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
-              onStopMix={handleStopMix}
-              onSeekMix={handleSeekMix}
-              isExporting={isExporting}
-              onExport={() => setShowExportModal(true)}
-              onResetLevels={resetTrackAdjustments}
-              hasStemBuffers={Object.keys(stemBuffers).length > 0}
-              stems={visibleStems as StemWithOptionalUrl[]}
-              waveforms={stemWaveforms}
-              durations={Object.fromEntries(visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]))}
-              stemStates={stemStates}
-              getPlayheadPosition={getPlayheadPosition}
-              subscribePlayheadPosition={subscribePlayheadPosition}
-              isLoadingStems={isLoadingStems}
-              activeStemId={activeStemId || visibleStems[0]?.id}
-              onActiveStemChange={setActiveStemId}
-              onStemStateChange={handleStemStateChange}
-              onPreviewStem={handlePreviewStemFromMixer}
-              playingStemId={playingStem}
-            />
+            <AudioErrorBoundary>
+              <MixerPanel
+                mixStemCount={mixStems.length}
+                isPlayingMix={isPlayingMix}
+                onPlayStop={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
+                onStopMix={handleStopMix}
+                onSeekMix={handleSeekMix}
+                isExporting={isExporting}
+                onExport={() => setShowExportModal(true)}
+                onResetLevels={resetTrackAdjustments}
+                hasStemBuffers={Object.keys(stemBuffers).length > 0}
+                stems={visibleStems as StemWithOptionalUrl[]}
+                waveforms={stemWaveforms}
+                durations={Object.fromEntries(visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]))}
+                stemStates={stemStates}
+                getPlayheadPosition={getPlayheadPosition}
+                subscribePlayheadPosition={subscribePlayheadPosition}
+                isLoadingStems={isLoadingStems}
+                activeStemId={activeStemId || visibleStems[0]?.id}
+                onActiveStemChange={setActiveStemId}
+                onStemStateChange={handleStemStateChange}
+                onPreviewStem={handlePreviewStemFromMixer}
+                playingStemId={playingStem}
+              />
+            </AudioErrorBoundary>
           </motion.div>
 
           {/* Status panel */}

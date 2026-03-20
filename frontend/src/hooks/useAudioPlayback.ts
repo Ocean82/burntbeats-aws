@@ -2,7 +2,7 @@
  * useAudioPlayback — canonical real-time Web Audio mix + stem preview + playhead.
  * Master mix stem selection matches export via `filterStemsForAudibleMix` (single semantics).
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { StemResult } from "../types";
 import { trimToSeconds, createStemPreviewBuffer } from "../utils/audio";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
@@ -34,7 +34,12 @@ interface UseAudioPlaybackReturn {
   stopPreview: () => void;
 }
 
-export function useAudioPlayback(): UseAudioPlaybackReturn {
+interface UseAudioPlaybackOptions {
+  onError?: (message: string) => void;
+}
+
+export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudioPlaybackReturn {
+  const { onError } = options;
   const [isPlayingMix, setIsPlayingMix] = useState(false);
   const [playingStem, setPlayingStem] = useState<string | null>(null);
 
@@ -454,6 +459,7 @@ export function useAudioPlayback(): UseAudioPlaybackReturn {
       setPlayingStem(stemId);
     } catch (err) {
       console.error("Preview failed:", err);
+      onError?.("Preview failed. Please try again.");
       setPlayingStem(null);
     }
   }, [playingStem, stopPreview, getOrCreateContext, emitPlayheadPosition]);

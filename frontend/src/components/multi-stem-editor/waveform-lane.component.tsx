@@ -184,7 +184,7 @@ export function WaveformLane({
       style={{
         ...stemThemeVariables(stem),
         ...trimVisiblePercentsStyle(trimStartVisible, trimEndVisible),
-      }}
+      } as React.CSSProperties}
       onMouseDown={onMouseDown}
       onClick={() => {
         if (didDragRef.current) {
@@ -202,8 +202,8 @@ export function WaveformLane({
       />
 
       <div className="waveform-lane-trim-window pointer-events-none absolute inset-y-0" />
-      <div className="waveform-lane-handle-start absolute inset-y-0 w-1.5 cursor-ew-resize rounded-l" />
-      <div className="waveform-lane-handle-end absolute inset-y-0 w-1.5 cursor-ew-resize rounded-r" />
+      <div className="waveform-lane-handle-start absolute inset-y-0" />
+      <div className="waveform-lane-handle-end absolute inset-y-0" />
       <span className="waveform-lane-label pointer-events-none absolute left-2 top-1 text-[9px] font-bold uppercase tracking-wider">
         {stem.label}
       </span>

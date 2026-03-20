@@ -14,4 +14,4 @@ if [ ! -d node_modules ]; then
   npm install
 fi
 echo "Frontend dev server (Vite)..."
-exec npm run dev
+exec npm run dev -- --host

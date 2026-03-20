@@ -5,7 +5,7 @@ import { pipelineSteps } from "../data/stemDefinitions";
 import { PipelineStep } from "./PipelineStep";
 import { cn } from "../utils/cn";
 
-const MASTER_CHAIN = { compression: 2.4, limiter: -0.8, loudness: -9 } as const;
+import { MASTER_CHAIN } from "../config";
 
 export interface StatusPanelProps {
   isSplitting: boolean;

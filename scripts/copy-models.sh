@@ -7,6 +7,7 @@
 set -e
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
+if [ -f .venv/bin/activate ]; then source .venv/bin/activate; fi
 MODELS_DIR="$ROOT/models"
 
 SOURCE="${STEM_MODELS_SOURCE:-$1}"

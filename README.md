@@ -2,7 +2,7 @@
 
 Stem separation web app (CPU-only). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite (keyboard shortcuts, undo/redo, export modal, mixer presets, onboarding, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 0 Silero VAD → Stage 1 MDX ONNX vocal + instrumental → Stage 2 SCNet/Demucs ONNX on instrumental). **CPU-optimal:** Stage 1 uses Kim_Vocal_2 + Inst_HQ_4 ONNX paired models (no phase inversion needed); 4-stem uses SCNet ONNX first (faster than Demucs on CPU), then Demucs ONNX fallback. **Quality tiers:** Speed (50% overlap, VAD trim), Quality (75% overlap, full file), Ultra (RoFormer + de-reverb post-pass; CPU-only falls back to Quality). **WSL only (Ubuntu)** — run inside WSL; same commands on AWS EC2.
 
-**Last updated:** 2026-03-18
+**Last updated:** 2026-03-19
 
 ---
 
@@ -115,6 +115,39 @@ bash scripts/test-stem-splits.sh
 
 This runs the full pipeline for **2-stem** and **4-stem** in both **quality** and **speed** modes, then checks that output stems exist, are valid WAVs, have sane duration, and are non-silent. Stems are written to `tmp/stem_split_test/` so you can listen to them to confirm sound quality is acceptable.
 
+### t3.large benchmark workflow (CPU-only)
+
+To validate speed/quality on an AWS t3.large profile and generate model ranking output:
+
+```bash
+bash scripts/t3-large-benchmark.sh /path/to/your-song.wav
+```
+
+This workflow runs:
+- quality regression checks (`scripts/test_stem_splits.py`)
+- benchmark matrix (`scripts/run_model_benchmark.py`)
+- ranking report generation (`scripts/generate_model_ranking.py`)
+
+The ranking report now includes an automatic **Recommended defaults** table for:
+- `2_stem_speed`
+- `2_stem_quality`
+- `4_stem_speed`
+- `4_stem_quality`
+
+You can tune recommendation thresholds:
+
+```bash
+python scripts/generate_model_ranking.py \
+  --max-rtf-2-speed 1.4 \
+  --max-rtf-2-quality 2.8 \
+  --max-rtf-4-speed 2.2 \
+  --max-rtf-4-quality 4.5
+```
+
+Outputs:
+- benchmark artifacts: `benchmark_out_*`
+- ranking report: `tmp/model_ranking_report.md`
+
 ---
 
 ## Troubleshooting
@@ -141,6 +174,11 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 |-------|----------|-------------|
 | Backend | `PORT` | API port (default 3001). Set in `backend/.env` for server (e.g. 8001 to match security group). |
 | Backend | `STEM_SERVICE_URL` | Python service URL (default http://127.0.0.1:5000) |
+| Python | `STEM_SERVICE_HOST` | Bind host for stem service (default `127.0.0.1`). Keep localhost-only in production; do not expose port `5000` publicly. |
+| Backend/ Python | `STEM_SERVICE_INTERNAL_TOKEN` | Optional shared secret for Node→Python requests. When set, Node sends `x-internal-token`; the stem service rejects requests without the header. |
+| Backend | `JOB_TOKEN_TTL_MS` | Job token lifetime in milliseconds (default `21600000`, 6 hours). |
+| Backend | `JOB_TOKEN_SECRET` | Primary HMAC secret used to sign newly issued job tokens. |
+| Backend | `JOB_TOKEN_SECRET_PREVIOUS` | Optional previous HMAC secret accepted for validation during secret rotation windows. |
 | Backend | `STEM_OUTPUT_DIR` | Dir for stem WAVs (default repo `tmp/stems`); must match Python |
 | Backend | `SPLIT_ACCEPT_TIMEOUT_MS` | Ms to wait for stem service to accept (default 300000 = 5 min) |
 | Backend | `FRONTEND_ORIGINS` | CORS origins, comma-separated (default includes 5173, 5174) |
@@ -157,6 +195,29 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 | Python | `USE_DEMUCS_SHIFTS_0` | Default `1`: Demucs uses shifts=0 (faster on CPU). Set to `0` to use 3 shifts in Quality. See `docs/CPU-OPTIMIZATION-TIPS.md`. |
 | Python | `DEMUCS_QUALITY_BAG` | `mdx_extra_q` (default, lighter) or `mdx_extra` (heavier, slower, best quality). 4-stem quality requires the `diffq` package (included in `stem_service/requirements.txt`). |
 | Frontend | `VITE_API_BASE_URL` | Backend base URL (e.g. http://localhost:3001) |
+
+### Production env contract
+
+The app uses two layers of protection for production deployments:
+
+1. Node gateway auth (optional)
+   - Set `API_KEY` (backend) and `VITE_API_KEY` (frontend) to require `x-api-key` for `POST /api/stems/split`.
+
+2. Per-job access tokens (recommended)
+   - Set `JOB_TOKEN_SECRET` (backend) so the backend issues short-lived `access_token` values.
+   - The frontend automatically attaches `access_token` to:
+     - `GET /api/stems/status/:job_id` via header `x-job-token`
+     - stem audio URLs via query param `?token=...`
+     - `POST /api/stems/expand` and `DELETE /api/stems/:job_id` via header `x-job-token`
+   - If `JOB_TOKEN_SECRET` is unset/empty, token enforcement is disabled for local development.
+
+3. Stem-service protection (recommended)
+   - Set `STEM_SERVICE_API_TOKEN` (Node + Python) so `stem_service` rejects unauthenticated requests when port `5000` is reachable outside your trusted network.
+   - `stem_service` expects header `X-Stem-Service-Token`.
+
+Operational settings
+- Rate limiting: optionally set `RATE_LIMIT_REDIS_URL` to enable Redis-backed rate limits; otherwise the backend falls back to in-memory.
+- Expand accept timeout: optionally set `EXPAND_ACCEPT_TIMEOUT_MS` (defaults to `SPLIT_ACCEPT_TIMEOUT_MS`).
 
 ---
 
@@ -207,6 +268,7 @@ On the EC2 instance (Ubuntu), use the same bash scripts.
 
 - **Stem service:** `bash scripts/run-stem-service.sh` (e.g. under systemd or screen).
 - **Backend:** `bash scripts/run-backend.sh` (same host so `STEM_OUTPUT_DIR` is shared).
+- The stem service is intended to be reachable only from the backend host (binds to localhost by default); restrict inbound to port `5000` at the network layer.
 - **Frontend:** Build once: `cd frontend && npm install && npm run build`. Set `VITE_API_BASE_URL` to your public backend URL (e.g. `https://api.yourdomain.com`) before building. Serve `frontend/dist/` with nginx or another static server.
 - Optionally point `STEM_OUTPUT_DIR` to an S3-mounted path and serve stem files via presigned URLs (you add AWS env when ready).
 - RDS: not required for stem splitting; add when you need users/jobs metadata.

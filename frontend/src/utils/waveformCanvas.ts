@@ -52,12 +52,12 @@ export function drawWaveformBars({
     const x = index * (barWidth + gap);
     const y = (height - barHeight) / 2;
     context.globalAlpha = index % 2 === 0 ? alphaEven : alphaOdd;
-    if ("roundRect" in context) {
+    if (typeof context.roundRect === "function") {
       context.beginPath();
       context.roundRect(x, y, barWidth, barHeight, barWidth / 2);
       context.fill();
     } else {
-      context.fillRect(x, y, barWidth, barHeight);
+      (context as any).fillRect(x, y, barWidth, barHeight);
     }
   }
   context.globalAlpha = 1;

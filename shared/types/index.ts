@@ -7,7 +7,7 @@ export type StemId = "vocals" | "drums" | "bass" | "other" | "instrumental";
 
 export type JobStatus = "running" | "completed" | "failed" | "cancelled";
 
-export type SplitQuality = "quality" | "speed";
+export type SplitQuality = "quality" | "speed" | "ultra";
 
 export interface StemResult {
   id: StemId;

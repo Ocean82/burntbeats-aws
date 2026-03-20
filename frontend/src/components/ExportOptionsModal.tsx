@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -64,6 +64,9 @@ export function ExportOptionsModal({
           >
             <motion.div
               className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="export-options-title"
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
@@ -77,7 +80,7 @@ export function ExportOptionsModal({
                     <Download className="h-5 w-5 text-amber-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Export Options</h2>
+                    <h2 id="export-options-title" className="text-lg font-semibold text-white">Export Options</h2>
                     <p className="text-xs text-white/65">Configure your export settings</p>
                   </div>
                 </div>

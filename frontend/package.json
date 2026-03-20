@@ -1,11 +1,12 @@
 {
-  "name": "react-vite-tailwind",
+  "name": "burntbeats-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:singlefile": "vite build --mode singlefile",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run"
@@ -32,7 +33,7 @@
     "typescript": "5.9.3",
     "vite": "7.2.4",
     "vite-plugin-singlefile": "2.3.0",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.0"
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.59.0",

@@ -25,7 +25,7 @@ Result: vocals (Stage 1), drums, bass, other (Stage 2). Phase-perfect instrument
 
 | Layer | Role |
 |-------|------|
-| **Rust (`stem_api`)** | HTTP API (Axum), multipart upload, orchestration: call Python stage1 → phase inversion (Rust) → call Python stage2. Serves stem files at `/files/{job_id}/...`. |
+| **Rust (`stem_api`)** | Legacy/orphaned Rust API. Not used by the current stack; orchestration is handled by Node backend + Python `stem_service/`. |
 | **Python (`stem_service`)** | Stage 1: `vocal_stage1.py` (Demucs 2-stem). Stage 2: `split.run_demucs()` on instrumental. Phase inversion (Python path): `phase_inversion.py`. Pipeline: `hybrid.py` (CLI: `stage1`, `stage2`, `full`). |
 | **FastAPI (`stem_service/server.py`)** | When `STEM_BACKEND=hybrid`, uses `run_hybrid_2stem` / `run_hybrid_4stem` (Python-only path: Stage1 + inversion + Stage2 in one process). |
 
@@ -35,15 +35,9 @@ Result: vocals (Stage 1), drums, bass, other (Stage 2). Phase-perfect instrument
 
 - **WSL + .venv** (required for Python models).
 
-### Option A: Rust API (max Rust)
+### Option A: Rust `stem_api` (deprecated; not used)
 
-1. Install Rust: <https://rustup.rs>
-2. From repo root (WSL):
-   ```bash
-   source .venv/bin/activate
-   bash scripts/run-stem-api.sh
-   ```
-3. API: `POST /split` (multipart: `file`, optional `stems` = 2 or 4). Stems at `GET /files/{job_id}/stems/{stem}.wav`.
+The Rust `stem_api/` implementation is legacy/orphaned. Current frontend traffic goes through the Node backend proxy to Python `stem_service/` FastAPI endpoints.
 
 ### Option B: Python-only (FastAPI hybrid)
 

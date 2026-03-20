@@ -6,7 +6,7 @@ import { Play, RotateCcw, Square, Terminal, ZoomIn, ZoomOut } from "lucide-react
 import type { StemDefinition, TrimState } from "../types";
 import { cn } from "../utils/cn";
 import { useTimelineViewport } from "../hooks/useTimelineViewport";
-import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
+import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 import { StemControls } from "./multi-stem-editor/stem-controls.component";
 import { TimelineRuler } from "./multi-stem-editor/timeline-ruler.component";
 import { StemTabs } from "./multi-stem-editor/stem-tabs.component";
@@ -74,7 +74,6 @@ export function MultiStemEditor({
     setScrollPct: setScrollPctBase,
     maxScrollPct,
     visibleStart: visibleStartGlobal,
-    visibleEnd: visibleEndGlobal,
     visibleRange: visibleRangeGlobal,
   } = useTimelineViewport(1, 8, 1);
 

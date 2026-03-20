@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { AppShell } from "./app/app-shell.component";
 import { App } from "./App";
 
 // Avoid real fetch and ResizeObserver in tests
@@ -16,12 +17,20 @@ beforeEach(() => {
 
 describe("App flow", () => {
   it("renders and shows stem splitter UI", () => {
-    render(<App />);
+    render(
+      <AppShell>
+        <App />
+      </AppShell>
+    );
     expect(screen.getByRole("button", { name: /Split and Generate Stem Rack/i })).toBeInTheDocument();
   });
 
   it("shows upload and split pipeline copy", () => {
-    render(<App />);
+    render(
+      <AppShell>
+        <App />
+      </AppShell>
+    );
     const uploadSplit = screen.getAllByText(/Upload|Split/i);
     expect(uploadSplit.length).toBeGreaterThan(0);
   });

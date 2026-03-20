@@ -8,6 +8,7 @@ Supports job cancellation via DELETE /split/{job_id}.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import logging.handlers
@@ -59,21 +60,32 @@ class CorrelationLoggingMiddleware(BaseHTTPMiddleware):
         correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
         request.state.correlation_id = correlation_id
 
-        # Update logger context
-        old_factory = logging.getLogRecordFactory()
-
-        def record_factory(*args, **kwargs):
-            record = old_factory(*args, **kwargs)
-            record.correlation_id = correlation_id
-            return record
-
-        logging.setLogRecordFactory(record_factory)
-        response = await call_next(request)
-        response.headers["X-Correlation-ID"] = correlation_id
-        return response
+        token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
+        try:
+            response = await call_next(request)
+            response.headers["X-Correlation-ID"] = correlation_id
+            return response
+        finally:
+            CORRELATION_ID_CONTEXT_VAR.reset(token)
 
 
 logger = logging.getLogger(__name__)
+
+CORRELATION_ID_CONTEXT_VAR: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "correlation_id", default="unknown"
+)
+
+
+class CorrelationIdLoggingFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.correlation_id = CORRELATION_ID_CONTEXT_VAR.get()
+        return True
+
+
+root_logger = logging.getLogger()
+if not any(isinstance(f, CorrelationIdLoggingFilter) for f in root_logger.filters):
+    root_logger.addFilter(CorrelationIdLoggingFilter())
+
 
 UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
@@ -129,7 +141,9 @@ async def lifespan(app: FastAPI):
         logger.info("Running jobs marked for cancellation")
 
     for sig in (signal.SIGTERM, signal.SIGINT):
-        signal.signal(sig, lambda s, f: graceful_shutdown(sig.name))
+        signal.signal(
+            sig, lambda s, f, name=sig.name: graceful_shutdown(name)
+        )
 
     yield
 
@@ -169,6 +183,8 @@ app.add_middleware(
 # Output base: must match Node backend STEM_OUTPUT_DIR so GET /api/stems/file serves files we write here.
 OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "stems")))
 
+STEM_SERVICE_API_TOKEN = os.environ.get("STEM_SERVICE_API_TOKEN", "")
+
 PROGRESS_FILENAME = "progress.json"
 
 # Per-job metrics log: one JSON object per line for comparing models and timings (mode, elapsed, RTF, etc.)
@@ -176,6 +192,15 @@ METRICS_LOG = Path(os.environ.get("STEM_METRICS_LOG", str(REPO_ROOT / "job_metri
 
 # Use validation constants from config (single source of truth)
 SUPPORTED_FORMATS = SUPPORTED_AUDIO_FORMATS
+
+
+def _require_stem_service_api_token(request: Request) -> None:
+    """Protect stem_service routes when it is reachable outside the trusted network."""
+    if not STEM_SERVICE_API_TOKEN:
+        return
+    provided = request.headers.get("X-Stem-Service-Token")
+    if not provided or provided != STEM_SERVICE_API_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def _validate_audio_file(file_path: Path) -> tuple[bool, str]:
@@ -229,9 +254,20 @@ def _make_job_logger(job_id: str, out_dir: Path) -> logging.Logger:
     if not job_log.handlers:
         fh = logging.FileHandler(str(log_path), encoding="utf-8")
         fh.setLevel(logging.DEBUG)
-        fh.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
-        )
+        class JsonLogFormatter(logging.Formatter):
+            def format(self, record: logging.LogRecord) -> str:
+                payload: dict[str, Any] = {
+                    "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(record.created)),
+                    "level": record.levelname,
+                    "logger": record.name,
+                    "message": record.getMessage(),
+                    "correlation_id": getattr(record, "correlation_id", None),
+                }
+                if record.exc_info:
+                    payload["exception"] = self.formatException(record.exc_info)
+                return json.dumps(payload, ensure_ascii=False)
+
+        fh.setFormatter(JsonLogFormatter())
         job_log.addHandler(fh)
         # Also propagate to root so uvicorn stdout shows it
         job_log.propagate = True
@@ -245,8 +281,10 @@ def _run_separation_sync(
     stem_count: int,
     prefer_speed: bool,
     quality_mode: str = "quality",
+    correlation_id: str = "unknown",
 ) -> None:
     """Blocking separation; writes progress at stages. Called from thread."""
+    correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
     # Register job for tracking
     _running_jobs[job_id] = {
         "cancelled": False,
@@ -383,6 +421,7 @@ def _run_separation_sync(
         if _is_job_cancelled(job_id):
             _write_progress(out_dir, {"status": "cancelled", "progress": 0})
             job_log.info("=== JOB CANCELLED ===")
+            CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
             return
 
         elapsed = time.monotonic() - t0
@@ -437,6 +476,7 @@ def _run_separation_sync(
         job_log.exception("=== JOB FAILED  elapsed=%.1fs  error=%s ===", elapsed, e)
         logger.exception("Separation failed for job %s", job_id)
         _write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
+    CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
 
 
 def _run_expand_sync(
@@ -444,8 +484,10 @@ def _run_expand_sync(
     source_job_id: str,
     out_dir: Path,
     prefer_speed: bool,
+    correlation_id: str = "unknown",
 ) -> None:
     """Blocking expand 2-stem → 4-stem; writes progress. Called from thread."""
+    correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
     _running_jobs[expand_job_id] = {
         "cancelled": False,
         "started_at": str(Path(__file__).stat().st_mtime),
@@ -493,13 +535,15 @@ def _run_expand_sync(
         job_log.exception("=== EXPAND FAILED  error=%s ===", e)
         _write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
     finally:
+        CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
         _running_jobs.pop(expand_job_id, None)
 
 
 @app.post("/split")
 async def split(
+    request: Request,
     file: UploadFile = File(...),
-    stems: str = Form("4"),
+    stems: str = Form("2"),
     quality: str | None = Form(None),
 ) -> dict:
     """
@@ -511,13 +555,12 @@ async def split(
     - "quality" (default): Better separation with ONNX/Demucs Extra
     - "ultra": Best separation using Roformer/MDX23C models
     """
-    stem_count = 4
-    try:
-        stem_count = int(stems)
-        if stem_count not in (2, 4):
-            stem_count = 4
-    except ValueError:
-        pass
+    _require_stem_service_api_token(request)
+
+    stems_str = (stems or "").strip()
+    if stems_str not in ("2", "4"):
+        raise HTTPException(status_code=400, detail="Invalid stems value. Must be '2' or '4'.")
+    stem_count = int(stems_str)
 
     # Determine quality mode
     quality_lower = (quality or "").strip().lower()
@@ -546,7 +589,17 @@ async def split(
     out_dir = OUTPUT_BASE / job_id
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    input_path = out_dir / (file.filename or "input.wav")
+    # Never trust UploadFile.filename for filesystem paths. Attackers can supply
+    # values like "../../etc/passwd" to escape the job directory.
+    #
+    # We keep the extension (so validation works for mp3/flac/etc) but force the
+    # basename to a safe `input.<ext>` filename.
+    raw_filename = file.filename or "input.wav"
+    base_name = re.split(r"[\\/]", raw_filename)[-1].split("\x00", 1)[0]
+    suffix = Path(base_name).suffix.lower()
+    if suffix not in SUPPORTED_FORMATS:
+        suffix = ".wav"
+    input_path = out_dir / f"input{suffix}"
     try:
         with open(input_path, "wb") as f:
             while chunk := await file.read(1024 * 1024):
@@ -565,6 +618,8 @@ async def split(
         out_dir, {"status": "running", "progress": 0, "quality": quality_mode}
     )
 
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+
     async def run_in_thread() -> None:
         await asyncio.to_thread(
             _run_separation_sync,
@@ -574,6 +629,7 @@ async def split(
             stem_count,
             prefer_speed,
             quality_mode,
+            correlation_id,
         )
 
     asyncio.create_task(run_in_thread())
@@ -585,6 +641,7 @@ async def split(
 
 @app.post("/expand")
 async def expand(
+    request: Request,
     job_id: str = Form(..., alias="job_id"),
     quality: str | None = Form(None),
 ) -> dict:
@@ -593,6 +650,8 @@ async def expand(
     Uses existing vocals + instrumental; runs Demucs on instrumental only.
     Returns 202 with new job_id. Poll GET /status/{job_id} for progress.
     """
+    _require_stem_service_api_token(request)
+
     if not job_id or not UUID_REGEX.fullmatch(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
     source_stems_dir = OUTPUT_BASE / job_id / "stems"
@@ -608,6 +667,8 @@ async def expand(
     out_dir = OUTPUT_BASE / expand_job_id
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_progress(out_dir, {"status": "running", "progress": 0})
+
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
     asyncio.create_task(
         asyncio.to_thread(
             _run_expand_sync,
@@ -615,6 +676,7 @@ async def expand(
             job_id,
             out_dir,
             prefer_speed,
+            correlation_id,
         )
     )
     return JSONResponse(
@@ -623,8 +685,10 @@ async def expand(
 
 
 @app.get("/status/{job_id}")
-async def get_status(job_id: str) -> dict:
+async def get_status(job_id: str, request: Request) -> dict:
     """Return progress for a job. 404 if job_id invalid or unknown."""
+    _require_stem_service_api_token(request)
+
     if not job_id or not UUID_REGEX.fullmatch(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
     progress_path = OUTPUT_BASE / job_id / PROGRESS_FILENAME
@@ -634,16 +698,20 @@ async def get_status(job_id: str) -> dict:
         data = json.loads(progress_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         raise HTTPException(status_code=404, detail="Job not found")
-    # Include log path so callers can tail it for debugging
-    log_path = OUTPUT_BASE / job_id / "job.log"
-    if log_path.exists():
-        data["log"] = str(log_path)
+    # Do not leak internal filesystem paths in API responses.
+    # In non-production environments, we expose only the log filename.
+    if os.environ.get("NODE_ENV", "development").lower() != "production":
+        log_path = OUTPUT_BASE / job_id / "job.log"
+        if log_path.exists():
+            data["log"] = log_path.name
     return data
 
 
 @app.delete("/split/{job_id}")
-async def cancel_job(job_id: str) -> dict:
+async def cancel_job(job_id: str, request: Request) -> dict:
     """Cancel a running job. Returns 200 if cancelled, 404 if job not found or already completed."""
+    _require_stem_service_api_token(request)
+
     if not job_id or not UUID_REGEX.fullmatch(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
 
@@ -681,4 +749,11 @@ async def cancel_job(job_id: str) -> dict:
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "repo_root": str(REPO_ROOT)}
+<<<<<<< Current (Your changes)
+    return {"status": "ok"}
+=======
+    payload: dict[str, str] = {"status": "ok"}
+    if os.environ.get("NODE_ENV", "development").lower() != "production":
+        payload["repo_root"] = str(REPO_ROOT)
+    return payload
+>>>>>>> Incoming (Background Agent changes)

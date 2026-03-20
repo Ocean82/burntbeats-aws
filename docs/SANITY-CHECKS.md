@@ -1,6 +1,6 @@
 # High-value sanity checks
 
-**Date:** March 10, 2025  
+**Date:** March 10, 2026  
 Run these to validate the full flow. Manual steps; automate where noted.
 
 ---

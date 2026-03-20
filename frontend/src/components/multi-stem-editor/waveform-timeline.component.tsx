@@ -74,7 +74,7 @@ export function WaveformTimeline({
       {showPlayhead && (
         <div
           className="waveform-global-playhead-line pointer-events-none absolute inset-y-0 w-0.5 bg-white/90"
-          style={playheadPercentStyle(playheadVisiblePct)}
+          style={playheadPercentStyle(playheadVisiblePct) as React.CSSProperties}
         />
       )}
     </div>

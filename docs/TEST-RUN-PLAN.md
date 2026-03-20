@@ -1,4 +1,4 @@
-# Test run plan — Single-pass Demucs ONNX (4-stem)
+# Test run plan — Two-pass split + expand (2-stem then 4-stem)
 
 **Track:** ~4 min  
 **Date:** 2026-03-13
@@ -13,16 +13,16 @@
 
 | # | Mode | Stem count | What’s exercised | Note |
 |---|------|------------|-------------------|------|
-| 1 | **Speed** | 4 | VAD → Kim_Vocal_2 (ONNX) Stage 1 → Demucs Stage 2 (htdemucs, shifts=0) | Time _____ | First impression (vocals clean? instrumental ok?) _____ |
-| 2 | **Quality** | 4 | VAD → Kim_Vocal_2 Stage 1 → Demucs bag (mdx_extra_q) Stage 2 | Time _____ | Same track; compare separation vs Speed _____ |
+| 1 | **Speed** | 2->4 | Split 2 stems (vocals + instrumental) with speed mode → expand to 4 stems (Demucs htdemucs, shifts=0) | Time _____ | First pass complete; vocals clean? instrumental ok? _____ |
+| 2 | **Quality** | 2->4 | Split 2 stems with quality mode → expand to 4 stems (Demucs bag mdx_extra_q) | Time _____ | Same track; compare separation vs Speed _____ |
 
 Optional: same track with `DEMUCS_QUALITY_BAG=mdx_extra` (heavy bag) for Quality 4-stem to compare time/quality vs mdx_extra_q.
 
 ## Quick checklist
 
 - [ ] Upload ~4 min track in UI
-- [ ] Run 1: Quality = **Speed**, Stems = **4** → Start split → note time + first listen
-- [ ] Run 2: Quality = **Quality**, Stems = **4** → Start split → note time + compare to Speed
+- [ ] Run 1: Quality = **Speed** → split first (2 stems) → expand to 4 stems → note time + first listen
+- [ ] Run 2: Quality = **Quality** → split first (2 stems) → expand to 4 stems → note time + compare to Speed
 
 ## Stop stack
 

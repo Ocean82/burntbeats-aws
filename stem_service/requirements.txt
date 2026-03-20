@@ -8,8 +8,14 @@ demucs>=4.0.0
 diffq>=0.2.0
 # onnxruntime (not onnxruntime-gpu) for CPU-optimized MDX inference; SessionOptions use ORT_ENABLE_ALL + configurable threads
 onnxruntime>=1.14.0
+numpy>=2.0.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
 python-multipart>=0.0.6
 # VAD pre-trim uses ONNX (models/silero_vad.onnx) via onnxruntime + PyAV; no silero-vad pip needed
 av>=16.0.0
+
+# Test dependencies
+pytest
+requests
+httpx

@@ -126,7 +126,7 @@ export function WaveformEditor({
   return (
     <div
       className="waveform-editor-shell relative overflow-hidden rounded-[1.5rem] border px-4 py-5"
-      style={stemThemeVariables(stem)}
+      style={stemThemeVariables(stem) as React.CSSProperties}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">

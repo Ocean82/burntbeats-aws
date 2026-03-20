@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { StemResult } from "../types";
 import { defaultMixer, defaultTrim } from "../types";
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 

@@ -85,10 +85,31 @@ async fn split(
     while let Ok(Some(field)) = multipart.next_field().await {
         let name = field.name().unwrap_or_default().to_string();
         if name == "file" {
-            let filename = field
+            // Never trust multipart filename for filesystem paths.
+            // Attackers can supply values with path traversal components.
+            let raw_filename = field
                 .file_name()
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| "input.wav".to_string());
+
+            // Strip any path components (handle both Unix and Windows separators).
+            let mut base_name = raw_filename;
+            base_name = base_name.split('\\').last().unwrap_or(&base_name).to_string();
+            base_name = base_name.split('/').last().unwrap_or(&base_name).to_string();
+            base_name = base_name.split('\0').next().unwrap_or(&base_name).to_string();
+
+            // Preserve extension so Python validation works (mp3/flac/etc).
+            let extension = Path::new(&base_name)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("wav")
+                .to_ascii_lowercase();
+
+            // Keep only alphanumeric characters for a safe extension.
+            let filtered: String = extension.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+            let safe_extension = if filtered.is_empty() { "wav".to_string() } else { filtered };
+
+            let filename = format!("input.{}", safe_extension);
             let path = job_dir.join(&filename);
             if let Ok(data) = field.bytes().await {
                 if let Err(e) = std::fs::write(&path, &data) {

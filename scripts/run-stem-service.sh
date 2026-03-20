@@ -29,8 +29,12 @@ if ! python -c "import uvicorn" 2>/dev/null; then
   pip install -r stem_service/requirements.txt
 fi
 
-echo "Stem service at http://localhost:5000 (output: $STEM_OUTPUT_DIR)"
+echo "Stem service at http://${STEM_SERVICE_HOST:-127.0.0.1}:5000 (output: $STEM_OUTPUT_DIR)"
 mkdir -p "$ROOT/logs"
+# Production safety: bind to localhost by default so the Python service is not reachable
+# from the public internet. The backend Node proxy runs on the same host.
+STEM_SERVICE_HOST="${STEM_SERVICE_HOST:-127.0.0.1}"
+echo "Stem service bind host: ${STEM_SERVICE_HOST}"
 exec python -m uvicorn stem_service.server:app \
-  --host 0.0.0.0 --port 5000 --log-level info \
+  --host "${STEM_SERVICE_HOST}" --port 5000 --log-level info \
   2>&1 | tee -a "$ROOT/logs/stem-service.log"
