@@ -18,7 +18,7 @@ const FEATURES = [
   {
     icon: Sliders,
     title: "Pro Mixer",
-    desc: "Trim, level, pan, pitch-shift, and time-stretch each stem independently with undo/redo.",
+    desc: "Trim, level, and pan each stem independently with undo/redo.",
   },
   {
     icon: Download,

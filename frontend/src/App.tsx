@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  HelpCircle, Undo2, Redo2, Save,
+  HelpCircle, Undo2, Redo2, Save, Gamepad2,
 } from "lucide-react";
+
+const StemFall = lazy(() => import("./components/stem-fall/StemFall"));
 import { useSubscription } from "./hooks/useSubscription";
 import { PaywallBanner } from "./components/PaywallBanner";
 import { HeaderUserButton } from "./components/AuthGate";
@@ -17,7 +19,7 @@ import { useHistory } from "./hooks/useHistory";
 import { useMixerWorkspace } from "./hooks/useMixerWorkspace";
 import { useStemSplitting } from "./hooks/useStemSplitting";
 import { useStemLoading } from "./hooks/useStemLoading";
-import { stemDefinitions, getStemDefinition, getLoadedStemDefinition, pipelineSteps } from "./data/stemDefinitions";
+import { stemDefinitions, getStemDefinition, getLoadedStemDefinition } from "./data/stemDefinitions";
 import {
   type MixerPreset,
   HelpModal,
@@ -25,15 +27,13 @@ import {
   MixerPresetsModal,
   OnboardingTour,
   BatchQueue,
-  StatusPanel,
   ErrorBoundary,
   AudioErrorBoundary,
   SplitErrorBoundary,
   MixerPanel,
-  SourcePanel,
+  ProcessingSettingsPanel,
 } from "./components";
-import { defaultStemState, type StemEditorState } from "./stem-editor-state";
-import { MASTER_CHAIN, PIPELINE_ANIMATION_DELAYS_MS, isLocalDevFullApp } from "./config";
+import { PIPELINE_ANIMATION_DELAYS_MS, isLocalDevFullApp } from "./config";
 
 import { useAppStore } from "./store/appStore";
 
@@ -45,8 +45,9 @@ export function App() {
   // ── Upload / split state ──────────────────────────────────────────────────
   const uploadState = useAppStore();
   const {
-    quality, selectedStems, uploadName, uploadedFile, splitResultStems,
-    loadedStems, splitError, isDragging, isSplitting, isExpanding, splitProgress, pipelineIndex,
+    quality, uploadName, uploadedFile, splitResultStems,
+    splitJobId,
+    loadedStems, splitError, isDragging, isSplitting, isExpanding,
     setUploadState, setSplitError
   } = uploadState;
 
@@ -82,7 +83,14 @@ export function App() {
   } = useAudioPlayback({ onError: (message) => setSplitError(message) });
 
   // ── Export hook ───────────────────────────────────────────────────────────
-  const { isExporting, handleExportWithOptions } = useExport();
+  const {
+    isExporting,
+    handleExportWithOptions,
+    compareMasterExportServerAndClient,
+  } = useExport();
+
+  const [isComparingExport, setIsComparingExport] = useState(false);
+  const [exportCompareSummary, setExportCompareSummary] = useState<string | null>(null);
 
   // ── Batch queue hook ──────────────────────────────────────────────────────
   const {
@@ -91,7 +99,7 @@ export function App() {
   } = useBatchQueue();
 
   // ── Stem splitting (file handling + split + expand) ────────────────────────
-  const { handleFile, handleLoadStems, removeLoadedStem, handleStemToggle, triggerSplit, triggerExpand } = useStemSplitting({
+  const { handleFile, handleLoadStems, removeLoadedStem, triggerSplit, triggerExpand } = useStemSplitting({
     subscription,
     stopPreview,
     splitQuality,
@@ -141,6 +149,7 @@ export function App() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showPresetsModal, setShowPresetsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showGame, setShowGame] = useState(false);
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
@@ -159,17 +168,44 @@ export function App() {
     [stemStates],
   );
 
-  // ── Waveform computation ──────────────────────────────────────────────────
-  type GuidanceTarget = 'source' | 'status' | 'mixer' | 'none';
-  const GREEN_RING_CLASS = 'ring-2 ring-emerald-300/40 ring-offset-1 ring-offset-black/30 shadow-[0_0_16px_rgba(52,211,153,0.12)] animate-pulse';
+  const pitchMap = useMemo(
+    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.pitchSemitones ?? 0])),
+    [stemStates],
+  );
+  const timeStretchMap = useMemo(
+    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.timeStretch ?? 1])),
+    [stemStates],
+  );
+  type GuidanceTarget = 'source' | 'mixer' | 'none';
+  const GREEN_RING_BASE_CLASS =
+    "ring-2 ring-emerald-300/40 ring-offset-1 ring-offset-black/30 shadow-[0_0_16px_rgba(52,211,153,0.12)]";
+  const GREEN_RING_PULSE_CLASS = `${GREEN_RING_BASE_CLASS} animate-pulse`;
   const guidanceTarget: GuidanceTarget = (() => {
     if (splitError) return 'source';
-    if (isSplitting || isExpanding) return 'status';
-    if (isLoadingStems) return 'status';
+    if (isSplitting || isExpanding) return 'none';
+    if (isLoadingStems) return 'none';
     if (splitResultStems.length === 2) return 'source';
     if (mixStems.length > 0) return 'mixer';
     return 'source';
   })();
+
+  const [guidancePulseOff, setGuidancePulseOff] = useState<{ source: boolean; mixer: boolean }>({
+    source: false,
+    mixer: false,
+  });
+
+  useEffect(() => {
+    // When the guidance target changes, re-enable the pulse until the user interacts.
+    setGuidancePulseOff({ source: false, mixer: false });
+  }, [guidanceTarget]);
+
+  const handleGuidancePanelInteract = useCallback(() => {
+    if (guidanceTarget === "source") {
+      setGuidancePulseOff((p) => (p.source ? p : { ...p, source: true }));
+    } else if (guidanceTarget === "mixer") {
+      setGuidancePulseOff((p) => (p.mixer ? p : { ...p, mixer: true }));
+    }
+  }, [guidanceTarget]);
 
   const [stemWaveforms, setStemWaveformsState] = useState<Record<string, number[]>>({});
   useWaveformCompute(stemBuffers, allStemEntries, setStemWaveformsState);
@@ -178,12 +214,13 @@ export function App() {
     const fromSplit = splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));
     const fromLoaded = loadedStems.map((s) => ({ ...getLoadedStemDefinition(s.id, s.label), id: s.id as StemId, url: s.url }));
     if (fromSplit.length > 0 || fromLoaded.length > 0) return [...fromSplit, ...fromLoaded];
-    return stemDefinitions.filter((s) => selectedStems[s.id]);
-  }, [splitResultStems, loadedStems, selectedStems]);
+    // Before splitting, show the full default rack (helps solo/mute keyboard shortcuts).
+    return stemDefinitions.map((s) => ({ ...s, id: s.id as StemId }));
+  }, [splitResultStems, loadedStems]);
 
-  // ── Pipeline animation ────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSplitting) return;
+    // keep pipeline state in sync for any future status indicators
     setUploadState(prev => ({ ...prev, pipelineIndex: 0 }));
     const t1 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 1 })), PIPELINE_ANIMATION_DELAYS_MS.toStep1);
     const t2 = setTimeout(() => setUploadState(prev => ({ ...prev, pipelineIndex: 2 })), PIPELINE_ANIMATION_DELAYS_MS.toStep2);
@@ -221,6 +258,8 @@ export function App() {
         if (preset.mixerState[id]) next[id] = { ...next[id], mixer: preset.mixerState[id] };
         if (preset.trimMap[id]) next[id] = { ...next[id], trim: preset.trimMap[id] };
         if (preset.mutedStems[id] !== undefined) next[id] = { ...next[id], muted: preset.mutedStems[id] };
+        if (preset.pitchMap?.[id] !== undefined) next[id] = { ...next[id], pitchSemitones: preset.pitchMap[id] };
+        if (preset.timeStretchMap?.[id] !== undefined) next[id] = { ...next[id], timeStretch: preset.timeStretchMap[id] };
       }
       return next;
     });
@@ -272,10 +311,6 @@ export function App() {
     };
   }, [mixStems, stemStates, stemBuffers, activeStemId, handlePlayMix, handleStopMix, showHelpModal, showExportModal, showPresetsModal, isPlayingMix, setSoloAtIndex, setMuteFirst, undoStemStates, redoStemStates]);
 
-  useKeyboardShortcuts(shortcutHandlers, true);
-
-  const activeStage = pipelineSteps[pipelineIndex];
-
   return (
     <div className="min-h-screen bg-[var(--bg)] text-white">
       <ErrorBoundary fallback={null}>
@@ -288,7 +323,19 @@ export function App() {
         <ExportOptionsModal
           isOpen={showExportModal}
           onClose={() => setShowExportModal(false)}
-          onExport={(opts) => void handleExportWithOptions(opts, stemBuffers, mixStems, stemStates, uploadName, setSplitError, () => setShowExportModal(false))}
+          onExport={(opts) =>
+            void handleExportWithOptions(
+              opts,
+              stemBuffers,
+              mixStems,
+              stemStates,
+              uploadName,
+              setSplitError,
+              () => setShowExportModal(false),
+              loadedStems.length === 0 ? splitJobId : null,
+              loadedStems.length === 0 ? splitResultStems.map((s) => s.id) : []
+            )
+          }
           isExporting={isExporting}
           stemCount={mixStems.length}
         />
@@ -301,6 +348,8 @@ export function App() {
           currentMixerState={mixerState}
           currentTrimMap={trimMap}
           currentMutedStems={mutedStems}
+          currentPitchMap={pitchMap}
+          currentTimeStretchMap={timeStretchMap}
         />
       </ErrorBoundary>
       {batchQueue.length > 0 && (
@@ -403,69 +452,69 @@ export function App() {
         </motion.div>
 
         <motion.section
-          className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start"
+          className="flex flex-col gap-4"
           initial="hidden"
           animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.08 } }, hidden: {} }}
         >
-          {/* Left column: Source / split / load */}
+          {/* Top bar: Processing Settings (horizontal) */}
           <motion.div
-            className={cn("glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 lg:col-span-5", guidanceTarget === "source" && GREEN_RING_CLASS)}
+            onPointerDown={handleGuidancePanelInteract}
+            className={cn(
+              "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
+              guidanceTarget === "source" && (guidancePulseOff.source ? GREEN_RING_BASE_CLASS : GREEN_RING_PULSE_CLASS)
+            )}
             variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4 }}
           >
             <SplitErrorBoundary>
-              <div className="flex flex-col gap-6">
-                <SourcePanel
-                  sourceMode={sourceMode}
-                  onSourceModeChange={setSourceMode}
-                  uploadName={uploadName}
-                  loadedStemCount={loadedStems.length}
-                  isDragging={isDragging}
-                  onSetIsDragging={(next) => setUploadState((prev) => ({ ...prev, isDragging: next }))}
-                  loadStemsInputRef={loadStemsInputRef}
-                  onLoadStems={handleLoadStems}
-                  loadedStems={loadedStems}
-                  onRemoveLoadedStem={removeLoadedStem}
-                  uploadedFile={uploadedFile}
-                  onBrowseUpload={handleBrowseUpload}
-                  onClearUpload={handleClearUpload}
-                  onDropUpload={(file) => handleFileFromInput(file)}
-                  inputRef={inputRef}
-                  onUploadFileInput={(file) => handleFileFromInput(file)}
-                  quality={quality}
-                  onQualityChange={(next) => setUploadState((prev) => ({ ...prev, quality: next }))}
-                  stemQualityOptions={stemQualityOptions}
-                  canExpandToFourStems={canExpandToFourStems}
-                  canUseBatchQueue={canUseBatchQueue}
-                  onUpgradeToPremium={() => void subscription.startCheckout("premium")}
-                  splitResultStemsLength={splitResultStems.length}
-                  isExpanding={isExpanding}
-                  onExpand={() => void triggerExpand()}
-                  selectedStems={selectedStems}
-                  onToggleStem={handleStemToggle}
-                  splitError={splitError}
-                  onDismissError={() => setSplitError(null)}
-                  onSplit={() => void triggerSplit()}
-                  isSplitting={isSplitting}
-                  onAddToQueue={() => addToBatchQueue(uploadedFile)}
-                />
-                {subscription.status === "inactive" && (
-                  <div className="border-t border-white/10 pt-6">
-                    <p className="mb-4 text-center text-xs text-white/45">
-                      Stem splitting uses the API when you press Split — an active plan is required. You can load a track
-                      above anytime.
-                    </p>
-                    <PaywallBanner subscription={subscription} />
-                  </div>
-                )}
-              </div>
+              <ProcessingSettingsPanel
+                sourceMode={sourceMode}
+                onSourceModeChange={setSourceMode}
+                uploadName={uploadName}
+                loadedStemCount={loadedStems.length}
+                isDragging={isDragging}
+                onSetIsDragging={(next) => setUploadState((prev) => ({ ...prev, isDragging: next }))}
+                loadStemsInputRef={loadStemsInputRef}
+                onLoadStems={handleLoadStems}
+                loadedStems={loadedStems}
+                onRemoveLoadedStem={removeLoadedStem}
+                uploadedFile={uploadedFile}
+                onBrowseUpload={handleBrowseUpload}
+                onClearUpload={handleClearUpload}
+                onDropUpload={(file) => handleFileFromInput(file)}
+                inputRef={inputRef}
+                onUploadFileInput={(file) => handleFileFromInput(file)}
+                quality={quality}
+                onQualityChange={(next) => setUploadState((prev) => ({ ...prev, quality: next }))}
+                stemQualityOptions={stemQualityOptions}
+                canExpandToFourStems={canExpandToFourStems}
+                canUseBatchQueue={canUseBatchQueue}
+                onUpgradeToPremium={() => void subscription.startCheckout("premium")}
+                onSplit={() => void triggerSplit()}
+                isSplitting={isSplitting}
+                splitResultStemsLength={splitResultStems.length}
+                isExpanding={isExpanding}
+                onExpand={() => void triggerExpand()}
+                splitError={splitError}
+                onDismissError={() => setSplitError(null)}
+                onAddToQueue={() => addToBatchQueue(uploadedFile)}
+              />
+              {subscription.status === "inactive" && (
+                <div className="mt-3 border-t border-white/10 pt-3">
+                  <PaywallBanner subscription={subscription} />
+                </div>
+              )}
             </SplitErrorBoundary>
           </motion.div>
 
-          {/* Right column: Mixer workspace */}
+          {/* Full-width Mixer workspace */}
           <motion.div
-            className={cn("glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 lg:col-span-7", guidanceTarget === "mixer" && GREEN_RING_CLASS)}
+            onPointerDown={handleGuidancePanelInteract}
+            className={cn(
+              "glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6",
+              guidanceTarget === "mixer" && (guidancePulseOff.mixer ? GREEN_RING_BASE_CLASS : GREEN_RING_PULSE_CLASS)
+            )}
             variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4 }}
           >
@@ -478,6 +527,40 @@ export function App() {
                 onSeekMix={handleSeekMix}
                 isExporting={isExporting}
                 onExport={() => setShowExportModal(true)}
+                isComparingExport={isComparingExport}
+                onCompareExport={
+                  loadedStems.length === 0 && typeof splitJobId === "string" && splitJobId.length > 0 && splitResultStems.length > 0
+                    ? () => {
+                        void (async () => {
+                          setIsComparingExport(true);
+                          setExportCompareSummary(null);
+                          try {
+                            const metrics = await compareMasterExportServerAndClient({
+                              serverExportJobId: splitJobId,
+                              stemBuffers,
+                              splitResultStems,
+                              stemStates,
+                              uploadName,
+                              normalize: true,
+                              stemIds: splitResultStems.map((s) => s.id),
+                            });
+                            if (!metrics.ok) {
+                              setExportCompareSummary(`Compare failed: ${metrics.error ?? "unknown error"}`);
+                              return;
+                            }
+                            const rmsDb = metrics.rmsDiffDb != null ? `${metrics.rmsDiffDb.toFixed(1)} dB` : "n/a";
+                            setExportCompareSummary(
+                              `Server vs Client: duration diff ${metrics.durationDiffSec?.toFixed(3) ?? "n/a"}s, RMS diff ${rmsDb}, peak diff ${metrics.peakDiff?.toFixed(4) ?? "n/a"}`
+                            );
+                          } catch (e) {
+                            setExportCompareSummary(`Compare failed: ${e instanceof Error ? e.message : "unknown error"}`);
+                          } finally {
+                            setIsComparingExport(false);
+                          }
+                        })();
+                      }
+                    : undefined
+                }
                 onResetLevels={resetTrackAdjustments}
                 hasStemBuffers={Object.keys(stemBuffers).length > 0}
                 stems={visibleStems as StemWithOptionalUrl[]}
@@ -495,32 +578,72 @@ export function App() {
                 getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
                 getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
               />
+              {exportCompareSummary && (
+                <p className="mt-3 text-xs text-white/70" role="status" aria-live="polite">
+                  {exportCompareSummary}
+                </p>
+              )}
             </AudioErrorBoundary>
-          </motion.div>
-
-          {/* Status panel */}
-          <motion.div
-            className={cn("glass-panel rounded-[2rem] p-5 sm:p-6 lg:col-span-5", guidanceTarget === "status" && GREEN_RING_CLASS)}
-            variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.4 }}
-          >
-            <StatusPanel
-              isSplitting={isSplitting}
-              hasMixStems={mixStems.length > 0}
-              splitProgress={splitProgress}
-              activeStageBlurb={activeStage.blurb}
-              pipelineIndex={pipelineIndex}
-              uploadName={uploadName}
-              isLoadingStems={isLoadingStems}
-              visibleStems={visibleStems as StemWithOptionalUrl[]}
-              loadedTracks={loadedTracks}
-              stemBuffers={stemBuffers}
-              masterChain={MASTER_CHAIN}
-            />
           </motion.div>
 
         </motion.section>
       </div>
+
+      {/* ── STEM FALL game panel (slide up from bottom) ── */}
+      {/* Tab button — always visible, pulses while splitting */}
+      <button
+        type="button"
+        onClick={() => setShowGame((v) => !v)}
+        aria-label={showGame ? "Close Stem Fall game" : "Open Stem Fall game"}
+        className={cn(
+          "fixed bottom-0 right-8 z-50 flex items-center gap-2 rounded-t-xl border border-b-0 px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300",
+          showGame
+            ? "border-amber-500/40 bg-amber-500/20 text-amber-200"
+            : "border-white/15 bg-black/70 text-white/60 hover:text-white backdrop-blur-md",
+          isSplitting && !showGame && "animate-pulse border-amber-500/50 text-amber-300"
+        )}
+      >
+        <Gamepad2 className="h-3.5 w-3.5" />
+        {showGame ? "close" : "STEM FALL"}
+        {isSplitting && !showGame && (
+          <span className="ml-1 h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {showGame && (
+          <motion.div
+            key="stem-fall-panel"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 28, stiffness: 260 }}
+            className="fixed bottom-0 left-0 right-0 z-40 flex justify-center"
+          >
+            <div className="w-full max-w-2xl rounded-t-[2rem] border border-b-0 border-white/10 bg-black/90 backdrop-blur-xl shadow-[0_-20px_60px_rgba(0,0,0,0.7)] px-6 pt-5 pb-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-400">Stem Fall</span>
+                  <p className="text-[9px] text-white/40 mt-0.5" style={{ fontFamily: "'Press Start 2P', monospace" }}>
+                    {isSplitting ? "stems separating... drop some blocks!" : "play while you wait"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGame(false)}
+                  className="text-white/30 hover:text-white transition text-xs"
+                  aria-label="Close game"
+                >
+                  ✕
+                </button>
+              </div>
+              <Suspense fallback={<div className="flex h-40 items-center justify-center text-xs text-white/40">Loading game...</div>}>
+                <StemFall />
+              </Suspense>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

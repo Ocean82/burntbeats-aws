@@ -24,18 +24,20 @@ import path from "path";
 import http from "http";
 import https from "https";
 import { fileURLToPath } from "url";
+import { spawn } from "child_process";
 import { billingRouter } from "./billing.js";
 import { verifyClerkBearer } from "./clerkAuth.js";
 import {
   assertSufficientBalance,
   computeExpandCost,
+  computeServerExportCost,
   computeSplitCost,
   debitUsageTokens,
   findJobInputPath,
   getAudioDurationSeconds,
   isUsageTokensEnabled,
 } from "./usageTokens.js";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 import { presignStemGetUrl } from "./s3Presign.js";
 
 // ── Startup env validation ──────────────────────────────────────────────────
@@ -505,7 +507,7 @@ app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, re
 });
 
 // Optional server-side master export (FFmpeg / mastering). Default app behavior is client-side export.
-// When disabled: 404. When enabled but not implemented: 501 until pipeline exists.
+// When disabled: 404. When enabled: renders server-side master WAV via stem_service.
 app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
   const enabled = ["1", "true", "yes"].includes((process.env.SERVER_EXPORT_ENABLED || "").toLowerCase());
   if (!enabled) {
@@ -514,10 +516,140 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
         "Server-side export is not enabled. Use client-side master export (default) — see frontend useExport / docs/ARCHITECTURE-FLOW.md.",
     });
   }
-  return res.status(501).json({
-    error:
-      "Server export pipeline is not implemented yet. Wire FFmpeg or a worker, then debit usage tokens (usageTokens.computeServerExportCost) and return a download URL or job id.",
+
+  /** @type {{ job_id?: unknown; stem_ids?: unknown; stem_states?: unknown; upload_name?: unknown; normalize?: unknown }} */
+  const body = req.body || {};
+  const jobId = typeof body.job_id === "string" ? body.job_id : "";
+  if (!jobId || !UUID_REGEX.test(jobId)) {
+    return res.status(400).json({ error: "Invalid or missing job_id (UUID)." });
+  }
+
+  const uploadNameRaw = typeof body.upload_name === "string" && body.upload_name ? body.upload_name : "upload";
+  const uploadBaseName = uploadNameRaw.replace(/\.[^/.]+$/, "");
+
+  const normalize = body.normalize === undefined ? true : !!body.normalize;
+
+  const stemStates = (body.stem_states && typeof body.stem_states === "object" ? /** @type {any} */ (body.stem_states) : {}) || {};
+  /** @type {string[]} */
+  const stemIds = Array.isArray(body.stem_ids)
+    ? body.stem_ids.filter((x) => typeof x === "string")
+    : Object.keys(stemStates).filter((k) => typeof k === "string");
+
+  // Solos override mutes (matches frontend filterStemsForAudibleMix).
+  const anySolo = stemIds.some((id) => !!stemStates?.[id]?.soloed);
+  const stemsToMix = stemIds.filter((id) => {
+    const s = stemStates?.[id];
+    if (!s || typeof s !== "object") return false;
+    if (anySolo) return !!s.soloed;
+    return !s.muted;
   });
+
+  if (stemsToMix.length === 0) {
+    return res.status(400).json({ error: "No audible stems to export (all muted or missing stem state)." });
+  }
+
+  const stemStatesSubset = {};
+  for (const id of stemsToMix) {
+    if (stemStates?.[id]) stemStatesSubset[id] = stemStates[id];
+  }
+
+  // Charge usage tokens when enabled (same minute-basis as split/expand).
+  let usageUserId = null;
+  let usageCost = 0;
+  if (isUsageTokensEnabled()) {
+    try {
+      usageUserId = await verifyClerkBearer(req);
+      const inputPath = findJobInputPath(path.join(STEM_OUTPUT_DIR, jobId));
+      if (!inputPath) {
+        return res.status(400).json({ error: "Source input for job not found (cannot compute export cost)." });
+      }
+      const durationSec = await getAudioDurationSeconds(inputPath);
+      usageCost = computeServerExportCost(durationSec);
+      await assertSufficientBalance(usageUserId, usageCost);
+    } catch (e) {
+      const status =
+        e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
+          ? /** @type {{ status?: number }} */ (e).status
+          : 500;
+      const msg = e instanceof Error ? e.message : String(e);
+      return res.status(status).json({ error: msg });
+    }
+  }
+
+  const exportTmpDir = path.join(os.tmpdir(), "burntbeats-server-export");
+  await mkdir(exportTmpDir, { recursive: true });
+
+  const exportId = randomUUID();
+  const exportOutPath = path.join(exportTmpDir, `${exportId}.wav`);
+  const pyScriptPath = path.join(__dirname, "..", "stem_service", "server_export.py");
+
+  /** @type {{ stem_ids: string[], stem_states: Record<string, any>, normalize: boolean }} */
+  const pythonPayload = { stem_ids: stemsToMix, stem_states: stemStatesSubset, normalize };
+
+  const pyBin = process.env.PYTHON_BIN || "python";
+
+  /** @type {string} */
+  let stderrText = "";
+  try {
+    const child = spawn(
+      pyBin,
+      [
+        pyScriptPath,
+        "--job-id",
+        jobId,
+        "--output",
+        exportOutPath,
+        "--sample-rate",
+        "44100",
+      ],
+      {
+        env: { ...process.env, STEM_OUTPUT_DIR: STEM_OUTPUT_DIR },
+        stdio: ["pipe", "ignore", "pipe"],
+      },
+    );
+
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (d) => { stderrText += d; });
+
+    child.stdin.write(JSON.stringify(pythonPayload));
+    child.stdin.end();
+
+    const exitCode = await new Promise((resolve) => {
+      child.on("close", (code) => resolve(code ?? 1));
+    });
+
+    if (exitCode !== 0) {
+      return res.status(500).json({
+        error: "Server export render failed",
+        detail: stderrText ? stderrText.split("\n").slice(-30).join("\n") : undefined,
+      });
+    }
+
+    if (!existsSync(exportOutPath)) {
+      return res.status(500).json({ error: "Server export completed but output file was not produced." });
+    }
+
+    if (usageUserId && usageCost > 0) {
+      try {
+        await debitUsageTokens(usageUserId, usageCost);
+      } catch (debitErr) {
+        console.error("[POST /api/stems/server-export] usage debit failed:", debitErr);
+      }
+    }
+
+    const downloadName = `${uploadBaseName}_master.wav`;
+    res.setHeader("Content-Type", "audio/wav");
+    return res.download(exportOutPath, downloadName, (err) => {
+      // Best-effort cleanup of temp export file.
+      unlink(exportOutPath, () => {});
+      if (err) console.error("[POST /api/stems/server-export] download error:", err.message);
+    });
+  } catch (e) {
+    try { unlink(exportOutPath, () => {}); } catch { /* ignore */ }
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[POST /api/stems/server-export] render exception:", msg);
+    return res.status(500).json({ error: "Server export failed", detail: msg });
+  }
 });
 
 app.delete("/api/stems/:job_id", authMiddleware, async (req, res) => {

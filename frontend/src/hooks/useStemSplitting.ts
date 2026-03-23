@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { splitStems, expandStems, type SplitQuality } from "../api";
 import { PIPELINE_PROGRESS_THRESHOLDS } from "../config";
 import { useAppStore } from "../store/appStore";
-import type { StemId } from "../types";
 import type { UseSubscriptionResult } from "./useSubscription";
 
 interface UseStemSplittingArgs {
@@ -92,13 +91,6 @@ export function useStemSplitting({
     });
   }, []);
 
-  const handleStemToggle = useCallback((stemId: StemId) => {
-    setUploadState((prev) => ({
-      ...prev,
-      selectedStems: { ...prev.selectedStems, [stemId]: !prev.selectedStems[stemId as StemId] },
-    }));
-  }, []);
-
   const triggerSplit = useCallback(async () => {
     const { status } = subscription;
     if (status !== "active") {
@@ -172,5 +164,5 @@ export function useStemSplitting({
     }
   }, [splitQuality, isBasicPlan, setSplitError]);
 
-  return { handleFile, handleLoadStems, removeLoadedStem, handleStemToggle, triggerSplit, triggerExpand };
+  return { handleFile, handleLoadStems, removeLoadedStem, triggerSplit, triggerExpand };
 }

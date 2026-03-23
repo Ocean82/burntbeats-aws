@@ -29,7 +29,7 @@ export const StemControls = memo(function StemControls({
   onStemStateChange,
   onPreviewStem,
 }: StemControlsProps) {
-  const { mixer, trim, pitchSemitones, timeStretch, muted, soloed } = state;
+  const { mixer, trim, muted, soloed } = state;
   const trimStartSec = duration * (trim.start / 100);
   const trimEndSec = duration * (trim.end / 100);
 
@@ -158,25 +158,6 @@ export const StemControls = memo(function StemControls({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span title="Aux send level for effects routing">Send</span>
-            <span>{mixer.send > 0 ? `+${mixer.send}` : mixer.send}</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={mixer.send}
-            aria-label={`${stem.label} aux send`}
-            onChange={(event) => onStemStateChange(stem.id, { mixer: { ...mixer, send: Number(event.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
-        </div>
-      </div>
-
       <fieldset className="min-w-0 border-0 p-0">
         <legend className="sr-only">EQ, dynamics, and effects</legend>
       {/* EQ */}
@@ -283,48 +264,6 @@ export const StemControls = memo(function StemControls({
       </div>
       </fieldset>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span title="Pitch shift in semitones">Pitch</span>
-            <span>{pitchSemitones === 0 ? "0" : pitchSemitones > 0 ? `+${pitchSemitones}` : pitchSemitones} st</span>
-          </div>
-          <input
-            type="range"
-            min={-12}
-            max={12}
-            step={1}
-            value={pitchSemitones ?? 0}
-            aria-label={`${stem.label} pitch`}
-            onChange={(event) => {
-              const pitch = Number(event.target.value);
-              const stretch = timeStretch ?? 1;
-              onStemStateChange(stem.id, { pitchSemitones: pitch, rate: Math.pow(2, pitch / 12) / stretch });
-            }}
-            className="stem-accent-slider w-full"
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span title="Time stretch: duration multiplier">Time stretch</span>
-            <span>{(timeStretch ?? 1).toFixed(2)}×</span>
-          </div>
-          <input
-            type="range"
-            min={0.5}
-            max={2.0}
-            step={0.01}
-            value={timeStretch ?? 1}
-            aria-label={`${stem.label} time stretch`}
-            onChange={(event) => {
-              const stretch = Number(event.target.value);
-              const pitch = pitchSemitones ?? 0;
-              onStemStateChange(stem.id, { timeStretch: stretch, rate: Math.pow(2, pitch / 12) / stretch });
-            }}
-            className="stem-accent-slider w-full"
-          />
-        </div>
-      </div>
     </div>
   );
 });

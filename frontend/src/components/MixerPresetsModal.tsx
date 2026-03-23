@@ -10,6 +10,8 @@ export interface MixerPreset {
   mixerState: Record<string, MixerState>;
   trimMap: Record<string, TrimState>;
   mutedStems: Record<string, boolean>;
+  pitchMap: Record<string, number>;
+  timeStretchMap: Record<string, number>;
 }
 
 interface MixerPresetsModalProps {
@@ -19,6 +21,8 @@ interface MixerPresetsModalProps {
   currentMixerState: Record<string, MixerState>;
   currentTrimMap: Record<string, TrimState>;
   currentMutedStems: Record<string, boolean>;
+  currentPitchMap: Record<string, number>;
+  currentTimeStretchMap: Record<string, number>;
 }
 
 const PRESETS_STORAGE_KEY = "burnt-beats-mixer-presets";
@@ -36,6 +40,8 @@ const DEFAULT_PRESETS: MixerPreset[] = [
     },
     trimMap: {},
     mutedStems: {},
+    pitchMap: {},
+    timeStretchMap: {},
   },
   {
     id: "instrumental-focus",
@@ -49,6 +55,8 @@ const DEFAULT_PRESETS: MixerPreset[] = [
     },
     trimMap: {},
     mutedStems: {},
+    pitchMap: {},
+    timeStretchMap: {},
   },
   {
     id: "dj-performance",
@@ -62,6 +70,8 @@ const DEFAULT_PRESETS: MixerPreset[] = [
     },
     trimMap: {},
     mutedStems: {},
+    pitchMap: {},
+    timeStretchMap: {},
   },
 ];
 
@@ -72,6 +82,8 @@ export function MixerPresetsModal({
   currentMixerState,
   currentTrimMap,
   currentMutedStems,
+  currentPitchMap,
+  currentTimeStretchMap,
 }: MixerPresetsModalProps) {
   const [presets, setPresets] = useState<MixerPreset[]>([]);
   const [newPresetName, setNewPresetName] = useState("");
@@ -102,6 +114,8 @@ export function MixerPresetsModal({
       mixerState: currentMixerState,
       trimMap: currentTrimMap,
       mutedStems: currentMutedStems,
+      pitchMap: currentPitchMap,
+      timeStretchMap: currentTimeStretchMap,
     };
 
     const customPresets = presets.filter((p) => p.id.startsWith("custom-"));

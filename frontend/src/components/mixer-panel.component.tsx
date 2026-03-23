@@ -15,6 +15,8 @@ export interface MixerPanelProps {
   onSeekMix?: (pct: number) => void;
   isExporting: boolean;
   onExport: () => void;
+  onCompareExport?: () => void;
+  isComparingExport?: boolean;
   onResetLevels: () => void;
   hasStemBuffers: boolean;
   stems: StemDefinition[];
@@ -41,6 +43,8 @@ export function MixerPanel({
   onSeekMix,
   isExporting,
   onExport,
+  onCompareExport,
+  isComparingExport,
   onResetLevels,
   hasStemBuffers,
   stems,
@@ -104,7 +108,7 @@ export function MixerPanel({
 
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-white/70">Trim, level, pan, pitch & time stretch. Play mix, then export.</p>
+          <p className="text-sm text-white/70">Trim, level, pan. Play mix, then export.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -128,6 +132,16 @@ export function MixerPanel({
             <Download className="h-4 w-4" strokeWidth={2} />
             {isExporting ? "Rendering..." : "Export"}
           </button>
+          {onCompareExport && (
+            <button
+              type="button"
+              className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white"
+              onClick={onCompareExport}
+              disabled={isComparingExport || !hasStemBuffers}
+            >
+              Compare server/client
+            </button>
+          )}
           <button
             type="button"
             className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white"

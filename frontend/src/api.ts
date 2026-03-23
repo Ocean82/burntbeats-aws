@@ -5,6 +5,7 @@
  */
 import type { JobStatus, SplitQuality as SharedSplitQuality } from "../../shared/types";
 import { API_BASE } from "./config";
+import type { StemEditorState } from "./stem-editor-state";
 
 // Token provider injected at app startup by ClerkProvider — avoids importing Clerk hooks here.
 let _getToken: (() => Promise<string | null>) | null = null;
@@ -282,4 +283,37 @@ export async function expandStems(
 
 export function getStemFileUrl(jobId: string, stemId: string): string {
   return `${API_BASE}/api/stems/file/${jobId}/${stemId}.wav`;
+}
+
+export interface ServerExportMasterRequest {
+  job_id: string;
+  stem_ids: string[];
+  stem_states: Record<string, StemEditorState>;
+  upload_name: string;
+  normalize: boolean;
+}
+
+/**
+ * Server-side master export. Returns a WAV Blob.
+ * If server export is disabled, backend returns 404; callers can fall back to client export.
+ */
+export async function serverExportMasterWav(request: ServerExportMasterRequest): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/api/stems/server-export`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeaders()),
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    const err = new Error(text || `Server export failed: ${res.status}`);
+    // @ts-expect-error attach status for caller fallback logic
+    err.status = res.status;
+    throw err;
+  }
+
+  return res.blob();
 }

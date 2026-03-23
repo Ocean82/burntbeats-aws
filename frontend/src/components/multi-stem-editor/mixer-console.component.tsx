@@ -31,8 +31,6 @@ export const MixerConsole = memo(function MixerConsole({
         pan: state.mixer.pan,
         trim: state.trim,
         rate: state.rate,
-        pitchSemitones: state.pitchSemitones,
-        timeStretch: state.timeStretch,
       };
     });
     return {

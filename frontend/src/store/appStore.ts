@@ -1,10 +1,8 @@
 import { create } from "zustand";
 import type { SplitQuality, StemResult } from "../api";
-import type { StemId } from "../types";
 
 export interface AppState {
   quality: SplitQuality;
-  selectedStems: Record<StemId, boolean>;
   uploadName: string;
   uploadedFile: File | null;
   splitResultStems: StemResult[];
@@ -23,14 +21,6 @@ export interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   quality: "quality" as SplitQuality,
-  selectedStems: {
-    vocals: true,
-    drums: true,
-    bass: true,
-    melody: true,
-    instrumental: true,
-    other: true,
-  } as Record<StemId, boolean>,
   uploadName: "",
   uploadedFile: null,
   splitResultStems: [],
