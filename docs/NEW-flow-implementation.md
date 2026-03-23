@@ -41,7 +41,7 @@
 2. **Module:** `stem_service/scnet_onnx.py` — load ONNX, STFT (n_fft=4096, hop=1024, 2049 bins), chunk by time (336), run inference, iSTFT + overlap-add, write 4 WAVs. Stem order: drums, bass, other, vocals (MUSDB18).
 3. **Expand (2→4):** In `run_expand_to_4stem`, if SCNet available and enabled, run SCNet on **instrumental** → drums, bass, other; keep existing vocals. Else current Demucs ONNX / subprocess.
 4. **Optional (later):** 2-stem via SCNet: run SCNet on mix → vocals + (drums+bass+other). One model run; compare latency vs MDX vocal+inst.
-5. **Docs:** DOCS-STATUS and MODELS-INVENTORY updated to mention SCNet and NEW-flow.
+5. **Docs:** [docs/README.md](README.md) and MODELS-INVENTORY updated to mention SCNet and NEW-flow.
 
 ---
 

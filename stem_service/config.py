@@ -8,6 +8,11 @@ from pathlib import Path
 STEM_SERVICE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = STEM_SERVICE_DIR.parent
 MODELS_DIR = REPO_ROOT / "models"
+# Optional 2-stem speed: default MDX vocal ONNX (Kim_Vocal_2). Override with SPEED_2STEM_ONNX (e.g. vocals.int8.onnx last resort).
+def speed_2stem_onnx_path() -> Path:
+    raw = os.environ.get("SPEED_2STEM_ONNX", "").strip()
+    return Path(raw).expanduser() if raw else MODELS_DIR / "Kim_Vocal_2.onnx"
+
 
 # Pip demucs only loads .th from --repo. We support .pth and auto-copy to .th.
 # On CPU, prefer htdemucs.th (smaller, faster than .pth); use as optional Stage 3 refinement, not default Stage 1.
@@ -47,15 +52,30 @@ BS_ROFORMER_937_CKPT = MODELS_DIR / "model_bs_roformer_ep_937_sdr_10.5309.ckpt"
 MEL_BAND_ROFORMER_CKPT = MODELS_DIR / "model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt"
 
 
+def ensure_htdemucs_th_in_repo(repo: Path, prefer_pth: Path | None = None) -> bool:
+    """Ensure repo/htdemucs.th exists so ``demucs -n htdemucs --repo <repo>`` can load it."""
+    repo.mkdir(parents=True, exist_ok=True)
+    th = repo / "htdemucs.th"
+    if th.exists():
+        return True
+    if prefer_pth is not None and prefer_pth.exists():
+        shutil.copy2(prefer_pth, th)
+        return True
+    pth = repo / "htdemucs.pth"
+    if pth.exists():
+        shutil.copy2(pth, th)
+        return True
+    return False
+
+
 def ensure_htdemucs_th() -> Path | None:
     """Ensure htdemucs.th exists in MODELS_DIR so pip demucs (--repo) can find it.
     If only htdemucs.pth exists, copy it to htdemucs.th once. Returns path to .th or None if no model.
     """
     if HTDEMUCS_TH.exists():
         return HTDEMUCS_TH
-    elif HTDEMUCS_PTH.exists():
-        shutil.copy2(HTDEMUCS_PTH, HTDEMUCS_TH)
-        return HTDEMUCS_TH
+    if ensure_htdemucs_th_in_repo(MODELS_DIR, prefer_pth=HTDEMUCS_PTH if HTDEMUCS_PTH.exists() else None):
+        return HTDEMUCS_TH if HTDEMUCS_TH.exists() else None
     return None
 
 

@@ -1,0 +1,6 @@
+# Copy this file to benchmark_song.local.txt (gitignored) and set one line:
+# absolute path to a WAV/FLAC/MP3 file for scripts/track_pipeline_metrics.py
+# and scripts/t3-large-benchmark.sh when no argument is passed.
+#
+# Example (Windows):
+# C:\Users\you\Music\benchmark_clip.wav

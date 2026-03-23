@@ -34,6 +34,12 @@ export interface SourcePanelProps {
   onSplit: () => void;
   isSplitting: boolean;
   onAddToQueue: () => void;
+  /** Basic plan: Speed-only 2-stem. Premium+: full quality options */
+  stemQualityOptions?: "speed_only" | "full";
+  /** Basic cannot expand to 4 stems without upgrading */
+  canExpandToFourStems?: boolean;
+  canUseBatchQueue?: boolean;
+  onUpgradeToPremium?: () => void;
 }
 
 export function SourcePanel({
@@ -65,6 +71,10 @@ export function SourcePanel({
   onSplit,
   isSplitting,
   onAddToQueue,
+  stemQualityOptions = "full",
+  canExpandToFourStems = true,
+  canUseBatchQueue = true,
+  onUpgradeToPremium,
 }: SourcePanelProps) {
   const GUIDE_RING_STRONG =
     "ring-2 ring-emerald-300/55 ring-offset-2 ring-offset-black/40 shadow-[0_0_16px_rgba(52,211,153,0.18)] animate-pulse";
@@ -90,7 +100,7 @@ export function SourcePanel({
     !splitError;
 
   return (
-    <>
+    <div data-testid="source-panel">
       <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="eyebrow">Source</p>
@@ -237,36 +247,72 @@ export function SourcePanel({
               )}>
                 <div className="space-y-5">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-white/65">Quality vs speed</p>
-                    <div className="mt-3 flex gap-3">
-                      <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
-                        <input type="radio" name="splitQuality" checked={quality === "speed"} onChange={() => onQualityChange("speed")} className="text-amber-300" />
-                        Speed — MDX ONNX (vocal + inst)
-                      </label>
-                      <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
-                        <input type="radio" name="splitQuality" checked={quality === "quality"} onChange={() => onQualityChange("quality")} className="text-amber-300" />
-                        Quality — MDX ONNX vocal+inst
-                      </label>
-                      <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/80 transition hover:bg-amber-500/20">
-                        <input type="radio" name="splitQuality" checked={quality === "ultra"} onChange={() => onQualityChange("ultra")} className="text-amber-300" />
-                        Ultra — RoFormer (extra setup)
-                      </label>
-                    </div>
-                    {quality === "speed" && <p className="mt-2 text-xs text-white/50">MDX ONNX vocal + instrumental (or phase inversion). Fast, low memory.</p>}
-                    {quality === "quality" && <p className="mt-2 text-xs text-white/50">MDX ONNX vocal model (Kim_Vocal_2) + instrumental (Inst_HQ_4).</p>}
-                    {quality === "ultra" && <p className="mt-2 text-xs text-amber-300/70">Requires <code className="rounded bg-white/10 px-1">pip install audio-separator[cpu]</code>. Very slow on CPU. Returns error if not installed.</p>}
+                    <p className="text-xs uppercase tracking-[0.3em] text-white/65">
+                      {stemQualityOptions === "speed_only" ? "Separation mode (Basic)" : "Separation mode"}
+                    </p>
+                    {stemQualityOptions === "speed_only" ? (
+                      <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
+                        <p className="font-medium text-white/90">2-stem fast</p>
+                        <p className="mt-2 text-xs text-white/50">
+                          Your plan includes fast 2-stem separation (vocals + instrumental) and the waveform mixer. Upgrade to Premium for higher-quality modes and 4-stem expand.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mt-3 flex gap-3">
+                          <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
+                            <input type="radio" name="splitQuality" checked={quality === "speed"} onChange={() => onQualityChange("speed")} className="text-amber-300" />
+                            2-stem fast
+                          </label>
+                          <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80 transition hover:bg-white/10">
+                            <input type="radio" name="splitQuality" checked={quality === "quality"} onChange={() => onQualityChange("quality")} className="text-amber-300" />
+                            2-stem quality
+                          </label>
+                          <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/80 transition hover:bg-amber-500/20">
+                            <input type="radio" name="splitQuality" checked={quality === "ultra"} onChange={() => onQualityChange("ultra")} className="text-amber-300" />
+                            2-stem ultra
+                          </label>
+                        </div>
+                        {quality === "speed" && (
+                          <p className="mt-2 text-xs text-white/50">
+                            Shortest wait. Great for previews and quick drafts. When you expand to four stems, they follow the same speed-focused pass.
+                          </p>
+                        )}
+                        {quality === "quality" && (
+                          <p className="mt-2 text-xs text-white/50">
+                            Cleaner separation with more processing time. Good default for most tracks. Four-stem expand uses the same quality level.
+                          </p>
+                        )}
+                        {quality === "ultra" && (
+                          <p className="mt-2 text-xs text-amber-300/70">
+                            Highest separation quality; slowest option and may need a capable server. Use when you need the cleanest possible stems.
+                          </p>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   {splitResultStemsLength === 2 && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className={cn("rounded-2xl border border-amber-400/20 bg-amber-950/20 p-4", shouldGuideExpand && GUIDE_RING_STRONG)} transition={{ duration: 0.3 }}>
                       <p className="text-xs uppercase tracking-[0.3em] text-amber-200/80 mb-3">Go deeper</p>
                       <p className="text-sm text-white/70 mb-3">You have vocals + instrumental. Load to mixer or split the instrumental into drums, bass & other.</p>
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" onClick={onExpand} disabled={isExpanding} className={cn("fire-button inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60", shouldGuideExpand && GUIDE_RING_SOFT)}>
-                          {isExpanding ? "Expanding to 4 stems…" : "Keep going → 4 stems"}
-                        </button>
-                        <span className="text-xs text-white/50 self-center">or use the mixer to trim, level & export.</span>
-                      </div>
+                      {canExpandToFourStems ? (
+                        <div className="flex flex-wrap gap-2">
+                          <button type="button" onClick={onExpand} disabled={isExpanding} className={cn("fire-button inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60", shouldGuideExpand && GUIDE_RING_SOFT)}>
+                            {isExpanding ? "Expanding to 4 stems…" : "Keep going → 4 stems"}
+                          </button>
+                          <span className="text-xs text-white/50 self-center">or use the mixer to trim, level & export.</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-xs text-amber-200/80">4-stem separation (drums, bass, other) is included in Premium and Studio.</p>
+                          {onUpgradeToPremium && (
+                            <button type="button" onClick={onUpgradeToPremium} className="w-fit rounded-xl border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-sm font-medium text-amber-100 transition hover:bg-amber-500/25">
+                              Upgrade to Premium
+                            </button>
+                          )}
+                        </div>
+                      )}
                       <p className="mt-2 text-xs text-white/50">Fine-tune vocals (e.g. denoise) coming soon.</p>
                     </motion.div>
                   )}
@@ -308,10 +354,22 @@ export function SourcePanel({
                   )}
 
                   <div className="flex flex-col gap-2 sm:flex-row">
-                    <button type="button" onClick={onSplit} disabled={!uploadedFile || isSplitting} className={cn("fire-button flex-1 justify-center disabled:opacity-60", shouldGuideSplit && GUIDE_RING_SOFT)}>
+                    <button
+                      type="button"
+                      data-testid="split-generate-button"
+                      onClick={onSplit}
+                      disabled={!uploadedFile || isSplitting}
+                      className={cn("fire-button flex-1 justify-center disabled:opacity-60", shouldGuideSplit && GUIDE_RING_SOFT)}
+                    >
                       {isSplitting ? "Splitting stems..." : "Split and Generate Stem Rack"}
                     </button>
-                    <button type="button" onClick={onAddToQueue} disabled={!uploadedFile || isSplitting} className="rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50">
+                    <button
+                      type="button"
+                      onClick={onAddToQueue}
+                      disabled={!uploadedFile || isSplitting || !canUseBatchQueue}
+                      title={canUseBatchQueue ? "Add to batch queue" : "Batch queue is a Premium+ feature"}
+                      className="rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+                    >
                       Add to queue
                     </button>
                   </div>
@@ -330,7 +388,7 @@ export function SourcePanel({
           </>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

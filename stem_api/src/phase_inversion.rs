@@ -1,4 +1,4 @@
-//! Phase inversion: instrumental = original - vocals (per AGENT-GUIDE).
+//! Phase inversion: instrumental = original - vocals (see docs/stem-pipeline.md).
 //! Reads WAV, subtracts sample-by-sample, clips to [-1, 1], writes.
 
 use hound::{WavReader, WavSpec, WavWriter};

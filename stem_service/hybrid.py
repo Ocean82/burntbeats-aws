@@ -1,5 +1,5 @@
 """
-Hybrid pipeline (AGENT-GUIDE): Stage 1 vocals → phase inversion → Stage 2 Demucs on instrumental.
+Hybrid pipeline — see docs/stem-pipeline.md: Stage 1 vocals → phase inversion → Stage 2 Demucs on instrumental.
 Optional: Silero VAD pre-trim (USE_VAD_PRETRIM=1) to process only vocal span for speed.
 Output: vocals, drums, bass, other (4 stems). Optional 2-stem: vocals + instrumental only.
 """
@@ -83,6 +83,7 @@ from stem_service.config import (
     scnet_available,
 )
 from stem_service.demucs_onnx import (
+    HTDEMUCS_ONNX,
     demucs_onnx_6s_available,
     demucs_onnx_embedded_available,
     run_demucs_onnx_4stem,
@@ -204,8 +205,16 @@ def _run_chunked_4stem(
         chunk_out = chunks_dir / f"chunk_{i:03d}_stems"
         chunk_out.mkdir(parents=True, exist_ok=True)
 
+        chunk_override = None
+        if not prefer_speed and HTDEMUCS_ONNX.exists():
+            chunk_override = HTDEMUCS_ONNX
+        chunk_use_6s = not prefer_speed if chunk_override is None else False
         stems, demucs_model = run_demucs_onnx_4stem(
-            chunk_path, chunk_out, use_6s=not prefer_speed
+            chunk_path,
+            chunk_out,
+            use_6s=chunk_use_6s,
+            demucs_model_override=chunk_override,
+            prefer_speed=prefer_speed,
         )
         if stems is None or demucs_model is None:
             stems, first_chunk_models = run_hybrid_4stem(
@@ -264,7 +273,9 @@ def run_4stem_single_pass_or_hybrid(
         if progress_callback:
             progress_callback(5)
         _log.info("4-stem: trying SCNet ONNX first")
-        scnet_list = run_scnet_onnx_4stem(input_path, flat_dir)
+        scnet_list = run_scnet_onnx_4stem(
+            input_path, flat_dir, prefer_speed=prefer_speed
+        )
         if scnet_list is not None:
             if progress_callback:
                 progress_callback(100)
@@ -274,18 +285,35 @@ def run_4stem_single_pass_or_hybrid(
             "4-stem: SCNet ONNX failed or returned None, falling back to Demucs"
         )
 
-    use_6s = not prefer_speed
-    if (use_6s and demucs_onnx_6s_available()) or (
-        not use_6s and demucs_onnx_embedded_available()
-    ):
+    demucs_override = demucs_model_override
+    if not prefer_speed and demucs_override is None and HTDEMUCS_ONNX.exists():
+        demucs_override = HTDEMUCS_ONNX
+    if prefer_speed:
+        use_6s = False
+        can_demucs_onnx = demucs_onnx_embedded_available()
+    elif demucs_override is not None:
+        use_6s = False
+        can_demucs_onnx = True
+    else:
+        use_6s = not prefer_speed
+        can_demucs_onnx = (use_6s and demucs_onnx_6s_available()) or (
+            not use_6s and demucs_onnx_embedded_available()
+        )
+
+    if can_demucs_onnx:
         if progress_callback:
             progress_callback(10)
-        _log.info("4-stem: trying Demucs ONNX  use_6s=%s", use_6s)
+        _log.info(
+            "4-stem: trying Demucs ONNX  use_6s=%s  override=%s",
+            use_6s,
+            demucs_override.name if demucs_override else None,
+        )
         stem_list, demucs_model = run_demucs_onnx_4stem(
             input_path,
             flat_dir,
             use_6s=use_6s,
-            demucs_model_override=demucs_model_override,
+            demucs_model_override=demucs_override,
+            prefer_speed=prefer_speed,
         )
         if stem_list is not None and demucs_model is not None:
             if progress_callback:
@@ -315,18 +343,17 @@ def run_hybrid_4stem(
     Stage 1: Extract vocals (Demucs 2-stem or ONNX when available).
     Phase inversion: instrumental = original - vocals (skip if Demucs gives instrumental).
     Stage 2: Demucs 4-stem on instrumental → drums, bass, other.
-    prefer_speed=True: VAD pre-trim when available, Stage 1 Demucs only.
-    prefer_speed=False: full file, ONNX when available.
+    prefer_speed=True: VAD pre-trim when USE_VAD_PRETRIM; faster Stage 1 overlap.
+    prefer_speed=False: full-length input (same as 2-stem quality); higher Stage 1 overlap.
     progress_callback: optional callable(percent) called at stage boundaries.
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # VAD trim: processes only first-to-last speech span → faster when there's leading/trailing silence; output stems are shorter (see docs/VAD-PRETRIM-TRADEOFF.md)
-    use_vad = True  # Set False or USE_VAD_PRETRIM=0 for full-length stems
+    # Match 2-stem semantics: speed → VAD trim when enabled; quality → full file (less bleed / predictable length)
     effective_input = _effective_input_path(
-        input_path, output_dir, use_vad_trim=use_vad
+        input_path, output_dir, use_vad_trim=prefer_speed
     )
 
     stage1_out = output_dir / "stage1"
@@ -519,7 +546,9 @@ def run_expand_to_4stem(
     _log = job_logger or logger
     if scnet_available():
         _log.info("expand: scnet_available=True  trying SCNet ONNX on instrumental")
-        scnet_list = run_scnet_onnx_4stem(instrumental_src, stage2_flat)
+        scnet_list = run_scnet_onnx_4stem(
+            instrumental_src, stage2_flat, prefer_speed=prefer_speed
+        )
         if scnet_list is not None:
             for stem_id, src in scnet_list:
                 if stem_id == "vocals":
@@ -540,7 +569,10 @@ def run_expand_to_4stem(
     ):
         _log.info("expand: trying Demucs ONNX  use_6s=%s", use_6s)
         onnx_list, demucs_model = run_demucs_onnx_4stem(
-            instrumental_src, stage2_flat, use_6s=use_6s
+            instrumental_src,
+            stage2_flat,
+            use_6s=use_6s,
+            prefer_speed=prefer_speed,
         )
         if onnx_list is not None and demucs_model is not None:
             for stem_id, src in onnx_list:

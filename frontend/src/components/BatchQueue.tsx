@@ -19,6 +19,8 @@ interface BatchQueueProps {
   onRemoveItem: (id: string) => void;
   onClearCompleted: () => void;
   onProcessQueue?: () => void;
+  /** When false (e.g. Basic plan), Process queue is disabled — Premium+ feature */
+  allowProcess?: boolean;
 }
 
 function formatFileSize(bytes: number): string {
@@ -47,13 +49,14 @@ export function BatchQueue({
   onRemoveItem,
   onClearCompleted,
   onProcessQueue,
+  allowProcess = true,
 }: BatchQueueProps) {
   if (items.length === 0) return null;
 
   const processingCount = items.filter((i) => i.status === "processing").length;
   const queuedCount = items.filter((i) => i.status === "queued").length;
   const completedCount = items.filter((i) => i.status === "complete").length;
-  const canProcess = queuedCount > 0 && processingCount === 0;
+  const canProcess = queuedCount > 0 && processingCount === 0 && allowProcess;
 
   return (
     <motion.div
@@ -155,7 +158,7 @@ export function BatchQueue({
                   type="button"
                   onClick={onProcessQueue}
                   disabled={!canProcess}
-                  title="Process all queued files"
+                  title={allowProcess ? "Process all queued files" : "Batch queue requires Premium or Studio"}
                   aria-label="Process all queued files"
                   className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/30 disabled:opacity-50"
                 >

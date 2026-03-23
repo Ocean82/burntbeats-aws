@@ -5,9 +5,17 @@ set -e
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 
+# First arg, or BENCHMARK_SONG env, or repo benchmark_song.local.txt (first non-comment line)
 INPUT_FILE="${1:-}"
+if [ -z "$INPUT_FILE" ] && [ -n "${BENCHMARK_SONG:-}" ]; then
+  INPUT_FILE="$BENCHMARK_SONG"
+fi
+if [ -z "$INPUT_FILE" ] && [ -f "$ROOT/benchmark_song.local.txt" ]; then
+  INPUT_FILE="$(grep -v '^[[:space:]]*#' "$ROOT/benchmark_song.local.txt" | head -n1 | tr -d '\r')"
+fi
 if [ -z "$INPUT_FILE" ]; then
   echo "Usage: bash scripts/t3-large-benchmark.sh /path/to/song.wav"
+  echo "Or set BENCHMARK_SONG, or create benchmark_song.local.txt (see benchmark_song.local.example.txt)"
   exit 1
 fi
 

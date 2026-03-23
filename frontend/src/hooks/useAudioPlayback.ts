@@ -4,7 +4,7 @@
  */
 import { useCallback, useRef, useState } from "react";
 import type { StemResult } from "../types";
-import { trimToSeconds, createStemPreviewBuffer } from "../utils/audio";
+import { trimToSeconds, createStemPreviewBuffer, createStemDspChain } from "../utils/audio";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
 import type { StemId } from "../types";
@@ -32,6 +32,10 @@ interface UseAudioPlaybackReturn {
     stemStates?: Record<string, StemEditorState>
   ) => Promise<void>;
   stopPreview: () => void;
+  /** Time-domain bytes for VU / RMS (master bus). */
+  getMasterAnalyserTimeDomainData: () => Uint8Array | null;
+  /** Frequency bins for spectrum (master bus). */
+  getMasterAnalyserFrequencyData: () => Uint8Array | null;
 }
 
 interface UseAudioPlaybackOptions {
@@ -61,6 +65,40 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
   const previewBufferRef = useRef<AudioBuffer | null>(null);
   const playheadPositionRef = useRef<number>(0);
   const playheadListenersRef = useRef<Set<() => void>>(new Set());
+  const masterGainRef = useRef<GainNode | null>(null);
+  const masterAnalyserRef = useRef<AnalyserNode | null>(null);
+
+  const ensureMasterBus = useCallback((ctx: AudioContext): GainNode => {
+    if (masterGainRef.current && masterAnalyserRef.current) {
+      return masterGainRef.current;
+    }
+    const g = ctx.createGain();
+    g.gain.value = 1;
+    const an = ctx.createAnalyser();
+    an.fftSize = 2048;
+    an.smoothingTimeConstant = 0.85;
+    g.connect(an);
+    an.connect(ctx.destination);
+    masterGainRef.current = g;
+    masterAnalyserRef.current = an;
+    return g;
+  }, []);
+
+  const getMasterAnalyserTimeDomainData = useCallback((): Uint8Array | null => {
+    const an = masterAnalyserRef.current;
+    if (!an) return null;
+    const buf = new Uint8Array(an.fftSize);
+    an.getByteTimeDomainData(buf);
+    return buf;
+  }, []);
+
+  const getMasterAnalyserFrequencyData = useCallback((): Uint8Array | null => {
+    const an = masterAnalyserRef.current;
+    if (!an) return null;
+    const buf = new Uint8Array(an.frequencyBinCount);
+    an.getByteFrequencyData(buf);
+    return buf;
+  }, []);
 
   const emitPlayheadPosition = useCallback((next: number) => {
     const clamped = Math.max(0, Math.min(100, next));
@@ -83,10 +121,17 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       window.AudioContext ||
       (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextCtor) return null;
-    if (!audioContextRef.current) audioContextRef.current = new AudioContextCtor();
-    await audioContextRef.current.resume();
-    return audioContextRef.current;
-  }, []);
+    const existing = audioContextRef.current;
+    if (!existing || existing.state === "closed") {
+      masterGainRef.current = null;
+      masterAnalyserRef.current = null;
+      audioContextRef.current = new AudioContextCtor();
+    }
+    const ctx = audioContextRef.current!;
+    ensureMasterBus(ctx);
+    await ctx.resume();
+    return ctx;
+  }, [ensureMasterBus]);
 
   const stopPreview = useCallback(() => {
     if (currentSourceRef.current) {
@@ -156,17 +201,14 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       const playDuration = trimEnd - trimStart;
 
       const source = context.createBufferSource();
-      const gainNode = context.createGain();
-      const panNode = context.createStereoPanner();
+      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
       source.buffer = buffer;
       source.playbackRate.value = getStemEffectiveRate(st);
-      gainNode.gain.value = Math.pow(10, st.mixer.gain / 20);
-      panNode.pan.value = st.mixer.pan / 100;
-      source.connect(gainNode);
-      gainNode.connect(panNode);
-      panNode.connect(context.destination);
+      source.connect(dsp.input);
+      dsp.output.connect(ensureMasterBus(context));
       source.start(0, trimStart, playDuration);
       source.onended = () => {
+        dsp.disconnect();
         mixSourceRefs.current = mixSourceRefs.current.filter((x) => x !== source);
         if (mixSourceRefs.current.length === 0) {
           setIsPlayingMix(false);
@@ -200,7 +242,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       };
       playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
     }
-  }, [isPlayingMix, handleStopMix, stopPreview, getOrCreateContext, emitPlayheadPosition]);
+  }, [isPlayingMix, handleStopMix, stopPreview, getOrCreateContext, emitPlayheadPosition, ensureMasterBus]);
 
   const handleSeekMix = useCallback((pct: number) => {
     void (async () => {
@@ -234,17 +276,14 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         previewBufferRef.current = buffer;
 
         const source = context.createBufferSource();
-        const gainNode = context.createGain();
-        const panNode = context.createStereoPanner();
+        const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
         source.buffer = buffer;
         source.playbackRate.value = getStemEffectiveRate(st);
-        gainNode.gain.value = Math.pow(10, st.mixer.gain / 20);
-        panNode.pan.value = st.mixer.pan / 100;
-        source.connect(gainNode);
-        gainNode.connect(panNode);
-        panNode.connect(context.destination);
+        source.connect(dsp.input);
+        dsp.output.connect(ensureMasterBus(context));
 
         source.onended = () => {
+          dsp.disconnect();
           if (currentSourceRef.current === source) {
             currentSourceRef.current = null;
             isPlayingPreviewRef.current = false;
@@ -335,18 +374,15 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         if (remaining <= 0) continue;
 
         const source = context.createBufferSource();
-        const gainNode = context.createGain();
-        const panNode = context.createStereoPanner();
+        const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
         source.buffer = buffer;
         source.playbackRate.value = getStemEffectiveRate(st);
-        gainNode.gain.value = Math.pow(10, st.mixer.gain / 20);
-        panNode.pan.value = st.mixer.pan / 100;
-        source.connect(gainNode);
-        gainNode.connect(panNode);
-        panNode.connect(context.destination);
+        source.connect(dsp.input);
+        dsp.output.connect(ensureMasterBus(context));
         source.start(0, startInStem, remaining);
 
         source.onended = () => {
+          dsp.disconnect();
           mixSourceRefs.current = mixSourceRefs.current.filter((x) => x !== source);
           if (mixSourceRefs.current.length === 0) {
             setIsPlayingMix(false);
@@ -374,7 +410,15 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
 
       playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
     })();
-  }, [getOrCreateContext, handleStopMix, stopMixSourcesPreservePlayhead, emitPlayheadPosition]);
+  }, [
+    getOrCreateContext,
+    handleStopMix,
+    stopMixSourcesPreservePlayhead,
+    emitPlayheadPosition,
+    playingStem,
+    stopPreview,
+    ensureMasterBus,
+  ]);
 
   const handlePreviewStem = useCallback(async (
     stemId: string,
@@ -419,21 +463,18 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       }
 
       const source = context.createBufferSource();
-      const gain = context.createGain();
-      const panNode = context.createStereoPanner();
+      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
       source.buffer = buffer;
       source.playbackRate.value = getStemEffectiveRate(st);
-      gain.gain.value = Math.pow(10, st.mixer.gain / 20);
-      panNode.pan.value = st.mixer.pan / 100;
 
-      source.connect(gain);
-      gain.connect(panNode);
-      panNode.connect(context.destination);
+      source.connect(dsp.input);
+      dsp.output.connect(ensureMasterBus(context));
       emitPlayheadPosition(startPct);
       previewDurationRef.current = playDuration;
       playStartTimeRef.current = context.currentTime - elapsed;
 
       source.onended = () => {
+        dsp.disconnect();
         if (currentSourceRef.current === source) {
           currentSourceRef.current = null;
           isPlayingPreviewRef.current = false;
@@ -462,7 +503,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       onError?.("Preview failed. Please try again.");
       setPlayingStem(null);
     }
-  }, [playingStem, stopPreview, getOrCreateContext, emitPlayheadPosition]);
+  }, [playingStem, stopPreview, getOrCreateContext, emitPlayheadPosition, ensureMasterBus]);
 
   return {
     isPlayingMix,
@@ -477,5 +518,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
     handleStopMix,
     handlePreviewStem,
     stopPreview,
+    getMasterAnalyserTimeDomainData,
+    getMasterAnalyserFrequencyData,
   };
 }

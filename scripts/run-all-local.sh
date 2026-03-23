@@ -5,6 +5,11 @@ set -e
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 
+# Strip Windows \r line endings from env files (safe no-op if already clean)
+for _f in .env backend/.env frontend/.env; do
+  [ -f "$_f" ] && sed -i 's/\r//' "$_f" || true
+done
+
 # Ensure frontend .env points to localhost backend
 if [ ! -f frontend/.env ]; then
   cp frontend/.env.example frontend/.env
@@ -38,6 +43,10 @@ trap cleanup INT TERM
 echo "=== Burnt Beats local (localhost) ==="
 echo "Stem: http://localhost:5000  |  Backend: http://localhost:3001  |  Frontend: http://localhost:5173"
 echo ""
+
+# Force backend port to 3001 for this script (matches frontend/.env above; overrides backend/.env PORT)
+export BURNTBEATS_LOCAL_STACK=1
+export BURNTBEATS_LOCAL_STACK_PORT=3001
 
 bash scripts/run-stem-service.sh &
 STEM_PID=$!

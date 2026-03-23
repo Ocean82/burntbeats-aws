@@ -9,11 +9,16 @@ diffq>=0.2.0
 # onnxruntime (not onnxruntime-gpu) for CPU-optimized MDX inference; SessionOptions use ORT_ENABLE_ALL + configurable threads
 onnxruntime>=1.14.0
 numpy>=2.0.0
+# Spleeter int8 ONNX path: scipy STFT/iSTFT (avoids PyTorch istft RuntimeError on some builds)
+scipy>=1.9.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
 python-multipart>=0.0.6
 # VAD pre-trim uses ONNX (models/silero_vad.onnx) via onnxruntime + PyAV; no silero-vad pip needed
 av>=16.0.0
+
+# Optional: upload stems to S3 after each job (S3_ENABLED=true; see docs/ARCHITECTURE-FLOW.md)
+boto3>=1.28.0
 
 # Test dependencies
 pytest

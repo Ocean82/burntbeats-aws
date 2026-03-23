@@ -33,6 +33,8 @@ export interface MultiStemEditorProps {
   playingStemId: string | null;
   activeStemId?: string;
   onActiveStemChange?: (stemId: string) => void;
+  /** Optional: time-domain analyser getter for live waveform modulation. */
+  getAnalyserData?: () => Uint8Array | null;
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -59,6 +61,7 @@ export function MultiStemEditor({
   playingStemId,
   activeStemId: controlledActiveStemId,
   onActiveStemChange,
+  getAnalyserData,
 }: MultiStemEditorProps) {
   const [mixerConsoleOpen, setMixerConsoleOpen] = useState(false);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string>(stems[0]?.id ?? "");
@@ -133,6 +136,9 @@ export function MultiStemEditor({
   ) * 100;
   // Show playhead while paused too, so click/seek has visible feedback.
   const showPlayhead = playheadPct > 0;
+
+  /** Gate waveform analyser modulation: master mix *or* single-stem preview (matches master VU row). */
+  const isAnalyserOutputActive = isPlaying || playingStemId !== null;
 
   const handleTrimChange = useCallback(
     (stemId: string, t: TrimState) => onStemStateChange(stemId, { trim: t }),
@@ -247,6 +253,8 @@ export function MultiStemEditor({
         activeStemId={activeStemId}
         playheadVisiblePct={playheadVisiblePct}
         showPlayhead={showPlayhead}
+        isPlaying={isAnalyserOutputActive}
+        getAnalyserData={getAnalyserData}
         onTrimChange={handleTrimChange}
         onSeek={instrumentedOnSeek}
         onActivate={handleActivate}

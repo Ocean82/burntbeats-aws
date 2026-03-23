@@ -2,12 +2,13 @@
 Stage 1: Extract vocals and instrumental.
 
 Priority order (CPU-only, ONNX-first):
-  1. Vocal ONNX (Kim_Vocal_2 / Voc_FT) for vocals
-     + Instrumental ONNX (Inst_HQ_4 / Inst_HQ_5) for instrumental
-     → best quality, no phase inversion, both from dedicated models
-  2. Vocal ONNX for vocals + phase inversion for instrumental
-     → good vocals, instrumental via subtraction
-  3. Demucs 2-stem (--two-stems vocals)
+  1. Speed only: models/Kim_Vocal_2.onnx by default (MDX vocal; instrumental via phase inversion).
+     Override SPEED_2STEM_ONNX to try other ONNX; Spleeter int8 (e.g. vocals.int8.onnx) is tried only if that path
+     is a Spleeter graph — last resort before falling through to MDX23C.
+  2. MDX23C / Kim_Vocal_2 / Voc_FT vocal ONNX + instrumental ONNX when configured
+     → no phase inversion when both ONNX paths succeed
+  3. Vocal ONNX for vocals + phase inversion for instrumental
+  4. Demucs 2-stem (--two-stems vocals) with models/htdemucs.*
      → model-native vocals + no_vocals (phase-aligned, no subtraction)
 
 Returns (vocals_path, instrumental_path | None).
@@ -31,6 +32,7 @@ from stem_service.config import (
     USE_DEMUCS_SHIFTS_0,
     ensure_htdemucs_th,
     htdemucs_available,
+    speed_2stem_onnx_path,
 )
 from stem_service.mdx_onnx import (
     get_available_inst_onnx,
@@ -38,6 +40,10 @@ from stem_service.mdx_onnx import (
     mdx_model_configured,
     run_inst_onnx,
     run_vocal_onnx,
+)
+from stem_service.spleeter_int8_onnx import (
+    is_spleeter_vocals_int8_onnx,
+    run_spleeter_vocals_int8_2stem,
 )
 
 logger = logging.getLogger(__name__)
@@ -116,6 +122,39 @@ def extract_vocals_stage1(
 
     # 75% overlap for quality, 50% for speed
     onnx_overlap = 0.5 if prefer_speed else 0.75
+
+    # 2-stem speed: Spleeter int8 (vocals.int8.onnx) or MDX-style ONNX from SPEED_2STEM_ONNX before MDX23C pair.
+    speed_onnx = speed_2stem_onnx_path()
+    if prefer_speed and speed_onnx.exists():
+        if is_spleeter_vocals_int8_onnx(speed_onnx):
+            sp = run_spleeter_vocals_int8_2stem(
+                input_path,
+                output_dir,
+                model_path=speed_onnx,
+                job_logger=job_logger,
+            )
+            if sp is not None:
+                vocals_path, inst_path = sp
+                logger.info(
+                    "Stage 1: speed 2-stem Spleeter int8 (%s) — vocals + instrumental",
+                    speed_onnx.name,
+                )
+                return vocals_path, inst_path, [speed_onnx.name]
+        elif mdx_model_configured(speed_onnx):
+            vocals_out = output_dir / "speed2stem_vocals.wav"
+            vocals_path = run_vocal_onnx(
+                input_path,
+                vocals_out,
+                overlap=onnx_overlap,
+                job_logger=job_logger,
+                model_path_override=speed_onnx,
+            )
+            if vocals_path is not None:
+                logger.info(
+                    "Stage 1: speed 2-stem MDX vocal ONNX (%s) + phase inversion for instrumental",
+                    speed_onnx.name,
+                )
+                return vocals_path, None, [speed_onnx.name]
 
     # NEW-FLOW.MD RECOMMENDED PRIORITY ORDER FOR CPU-ONLY T3.LARGE:
     # 1. MDX23C vocal ONNX + MDX23C instrumental ONNX (no phase inversion) - PRIMARY CHOICE
@@ -223,13 +262,22 @@ def extract_vocals_stage1(
     return vocals_path, no_vocals_path, ["htdemucs"]
 
 
-def get_2stem_stage1_preview() -> tuple[str, list[str]]:
+def get_2stem_stage1_preview(prefer_speed: bool | None = None) -> tuple[str, list[str]]:
     """
     Preview which Stage 1 path and models would be used for 2-stem (no inference).
     Returns (path_kind, model_names) e.g. ("mdx23c", ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"])
     or ("onnx", ["Kim_Vocal_2.onnx", "UVR-MDX-NET-Inst_HQ_4.onnx"]) or ("demucs", ["htdemucs"]).
+    When prefer_speed is True and the speed ONNX exists (default models/Kim_Vocal_2.onnx), preview lists it first.
     """
     from .config import mdx23c_vocal_available, mdx23c_inst_available
+
+    if prefer_speed is True:
+        sp = speed_2stem_onnx_path()
+        if sp.exists():
+            if mdx_model_configured(sp):
+                return ("mdx_speed", [sp.name])
+            if is_spleeter_vocals_int8_onnx(sp):
+                return ("spleeter_int8", [sp.name])
 
     mdx23c_vocal_path = MODELS_DIR / "mdx23c_vocal.onnx"
     mdx23c_inst_path = MODELS_DIR / "mdx23c_instrumental.onnx"

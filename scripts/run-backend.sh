@@ -12,6 +12,10 @@ mkdir -p "$STEM_OUTPUT_DIR"
 cd backend
 # Optional: load backend/.env so PORT and CORS match server (e.g. PORT=8001)
 if [ -f .env ]; then set -a; . ./.env; set +a; fi
+# run-all-local.sh sets this so backend port matches frontend VITE_API_BASE_URL (default 3001)
+if [ "${BURNTBEATS_LOCAL_STACK:-}" = "1" ]; then
+  export PORT="${BURNTBEATS_LOCAL_STACK_PORT:-3001}"
+fi
 if [ ! -d node_modules ]; then
   echo "Installing backend deps..."
   npm install

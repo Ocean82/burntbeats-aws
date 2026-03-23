@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MixerPanel } from "../mixer-panel.component";
 import type { StemDefinition } from "../../types";
+import { defaultMixer } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 
 const STEMS: StemDefinition[] = [
@@ -19,7 +20,7 @@ const STEMS: StemDefinition[] = [
 const STEM_STATE: Record<string, StemEditorState> = {
   vocals: {
     trim: { start: 0, end: 100 },
-    mixer: { gain: 0, pan: 0, width: 80, send: 0 },
+    mixer: { ...defaultMixer },
     rate: 1,
     pitchSemitones: 0,
     timeStretch: 1,
@@ -71,6 +72,8 @@ describe("MixerPanel", () => {
       onStemStateChange,
       onPreviewStem,
       playingStemId: null,
+      getMasterAnalyserTimeDomainData: () => null,
+      getMasterAnalyserFrequencyData: () => null,
       ...overrides,
     };
 
@@ -84,6 +87,7 @@ describe("MixerPanel", () => {
     renderMixer();
 
     expect(screen.getByText(/Timeline · Mix · Export/i)).toBeInTheDocument();
+    expect(screen.getByText(/Master output/i)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Play mix/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /Export/i })).toBeInTheDocument();
   });

@@ -49,6 +49,8 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     # MDX23C 2-stem (MDX23C vocal/instrumental ONNX)
     "mdx23c_vocal.onnx":              (6144,  1024,  3072,  256,   1.035),
     "mdx23c_instrumental.onnx":      (6144,  1024,  3072,  256,   1.035),
+    # Speed 2-stem default (models/model_int8.onnx): UVR/MDX int8 export — same I/O as Kim vocal when MDX-shaped
+    "model_int8.onnx":               (6144,  1024,  3072,  256,   1.035),
     # De-reverb model: same n_fft/dim_f as Kim, but dim_t=512 (longer context window)
     # primary_stem=Reverb — output is the reverb component; subtract from input for dry signal
     "Reverb_HQ_By_FoxJoy.onnx":        (6144,  1024,  3072,  512,   1.0),
@@ -149,6 +151,7 @@ def _onnx_session(model_path: Path) -> Any | None:
         n = os.environ.get("ONNXRUNTIME_NUM_THREADS", "")
         if n.isdigit() and int(n) >= 0:
             opts.intra_op_num_threads = int(n)
+            opts.inter_op_num_threads = 1
         sess = ort.InferenceSession(
             str(model_path),
             sess_options=opts,
@@ -169,7 +172,7 @@ def _onnx_session(model_path: Path) -> Any | None:
 
 def _stft(wav: "torch.Tensor", n_fft: int, hop: int, dim_f: int) -> "torch.Tensor":
     """
-    STFT matching the UVR/audio-separator reference (center=True, return_complex=False).
+    STFT matching the UVR/audio-separator reference (center=True; complex STFT → view_as_real).
     Input:  (batch, 2, samples)
     Output: (batch, 4, dim_f, time_frames)  — [L_real, L_imag, R_real, R_imag], freq truncated to dim_f
     """
@@ -186,11 +189,12 @@ def _stft(wav: "torch.Tensor", n_fft: int, hop: int, dim_f: int) -> "torch.Tenso
         hop_length=hop,
         window=window,
         center=True,
-        return_complex=False,
-    )  # (batch*2, freq, time, 2)
+        return_complex=True,
+    )  # (batch*2, freq, time) complex
+    stft_real = torch.view_as_real(stft_out)  # (batch*2, freq, time, 2)
 
     # permute → (batch*2, 2, freq, time) then reshape → (batch, 4, freq, time)
-    perm = stft_out.permute([0, 3, 1, 2])
+    perm = stft_real.permute([0, 3, 1, 2])
     out = perm.reshape([*batch_dims, channels, 2, -1, perm.shape[-1]])
     out = out.reshape([*batch_dims, channels * 2, -1, perm.shape[-1]])
     return out[..., :dim_f, :]  # truncate to dim_f freq bins

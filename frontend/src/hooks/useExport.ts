@@ -1,10 +1,11 @@
 /**
- * useExport — handles WAV master export and per-stem download.
+ * useExport — default **client-side** master WAV (OfflineAudioContext) and per-stem download.
+ * Server-side export is optional (`POST /api/stems/server-export`); see docs/ARCHITECTURE-FLOW.md.
  * Master mix stem set matches playback via `filterStemsForAudibleMix`.
  */
 import { useCallback, useState } from "react";
 import type { StemResult } from "../types";
-import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds } from "../utils/audio";
+import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStereoWidthNode } from "../utils/audio";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
 import type { ExportOptions } from "../components";
@@ -63,7 +64,7 @@ export function useExport(): UseExportReturn {
       const stemsToMix = filterStemsForAudibleMix(splitResultStems, stemStates);
 
       let maxDuration = 0;
-      const sources: { buffer: AudioBuffer; gain: number; pan: number; rate: number; trimStart: number; trimEnd: number }[] = [];
+      const sources: { buffer: AudioBuffer; gain: number; pan: number; width: number; rate: number; trimStart: number; trimEnd: number }[] = [];
 
       for (const stem of stemsToMix) {
         const buffer = stemBuffers[stem.id];
@@ -73,23 +74,26 @@ export function useExport(): UseExportReturn {
         const rate = getStemEffectiveRate(st);
         const wallDuration = (trimEnd - trimStart) / rate;
         maxDuration = Math.max(maxDuration, wallDuration);
-        sources.push({ buffer, gain: Math.pow(10, st.mixer.gain / 20), pan: st.mixer.pan / 100, rate, trimStart, trimEnd });
+        sources.push({ buffer, gain: Math.pow(10, st.mixer.gain / 20), pan: st.mixer.pan / 100, width: st.mixer.width, rate, trimStart, trimEnd });
       }
 
       if (maxDuration === 0) throw new Error("No valid stems to export");
 
       const context = new OfflineAudioContext(2, Math.ceil(maxDuration * 44100), 44100);
-      for (const { buffer, gain, pan, rate, trimStart, trimEnd } of sources) {
+      for (const { buffer, gain, pan, width, rate, trimStart, trimEnd } of sources) {
         const source = context.createBufferSource();
         const gainNode = context.createGain();
         const panNode = context.createStereoPanner();
+        const widthNode = createStereoWidthNode(context);
         source.buffer = buffer;
         source.playbackRate.value = rate;
         gainNode.gain.value = gain;
         panNode.pan.value = pan;
+        widthNode.setWidth(width);
         source.connect(gainNode);
         gainNode.connect(panNode);
-        panNode.connect(context.destination);
+        panNode.connect(widthNode.input);
+        widthNode.output.connect(context.destination);
         source.start(0, trimStart, trimEnd - trimStart);
       }
 

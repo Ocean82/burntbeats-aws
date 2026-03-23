@@ -6,6 +6,7 @@ import supertest from "supertest";
 
 process.env.NODE_ENV = "test";
 process.env.API_KEY = "test-key";
+process.env.JOB_TOKEN_SECRET = ""; // disable job token auth for these basic tests
 
 const { app } = await import("./server.js");
 const request = supertest(app);

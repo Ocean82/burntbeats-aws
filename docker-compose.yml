@@ -7,10 +7,16 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE_URL: http://backend:3001
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
+        VITE_STRIPE_PRICING_TABLE_ID: ${VITE_STRIPE_PRICING_TABLE_ID:-}
+        VITE_STRIPE_CUSTOMER_PORTAL_URL: ${VITE_STRIPE_CUSTOMER_PORTAL_URL:-}
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
 
   backend:
     build:
@@ -22,20 +28,47 @@ services:
       PORT: 3001
       STEM_SERVICE_URL: http://stem_service:5000
       STEM_OUTPUT_DIR: /app/tmp/stems
-      FRONTEND_ORIGINS: http://localhost:5173,http://localhost
-      API_KEY: ""
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
+      REDIS_URL: ${REDIS_URL:-}
+      API_KEY: ${API_KEY:-}
+      JOB_TOKEN_SECRET: ${JOB_TOKEN_SECRET:-}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_PRICE_ID_BASIC: ${STRIPE_PRICE_ID_BASIC:-}
+      STRIPE_PRICE_ID_PREMIUM: ${STRIPE_PRICE_ID_PREMIUM:-}
+      STRIPE_PRICE_ID_STUDIO: ${STRIPE_PRICE_ID_STUDIO:-}
+      STRIPE_PRICE_ID_TOPUP: ${STRIPE_PRICE_ID_TOPUP:-}
     volumes:
       - ./tmp/stems:/app/tmp/stems
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
 
   stem_service:
     build:
       context: ./stem_service
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     environment:
       STEM_OUTPUT_DIR: /app/tmp/stems
-      FRONTEND_ORIGINS: http://localhost:5173,http://localhost
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
+      # Avoid PyTorch + ONNX Runtime + OpenMP each claiming all cores (tune per host CPU count)
+      OMP_NUM_THREADS: ${OMP_NUM_THREADS:-4}
+      MKL_NUM_THREADS: ${MKL_NUM_THREADS:-4}
+      ONNXRUNTIME_NUM_THREADS: ${ONNXRUNTIME_NUM_THREADS:-4}
     volumes:
       - ./tmp/stems:/app/tmp/stems
       - ./models:/app/models
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped

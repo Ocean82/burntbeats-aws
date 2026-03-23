@@ -12,12 +12,16 @@ const __dirname = path.dirname(__filename);
 // https://vite.dev/config/
 export default defineViteConfig(({ mode }) => {
   const isSingleFileMode = mode === "singlefile";
+  const isProduction = mode === "production";
   return {
     plugins: [react(), tailwindcss(), ...(isSingleFileMode ? [viteSingleFile()] : [])],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
       },
+    },
+    build: {
+      sourcemap: isProduction ? false : true,
     },
   };
 });

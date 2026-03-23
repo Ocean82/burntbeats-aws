@@ -36,3 +36,10 @@ temp/
 *.tmp
 benchmark_out/
 benchmark_out_*/
+# Local path to benchmark WAV (see benchmark_song.local.example.txt)
+benchmark_song.local.txt
+
+# Playwright (frontend)
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

@@ -6,6 +6,8 @@ Probed I/O (scripts/probe_onnx.py):
   Output: 'sources'     (batch, 4, 4, freq, time) — 4 stems, each (4, freq, time)
 
 Freq/time are read from the model at runtime (some exports use 2048 freq like Demucs ONNX, others 2049).
+When the graph expects freq=2049, we feed Demucs-style 2048 bins plus a zero Nyquist row — full STFT Nyquist
+often mismatches internal MatMul weights in those exports.
 Used when USE_SCNET=1 and models/scnet.onnx/scnet.onnx exists; faster than Demucs on CPU (NEW-flow).
 """
 
@@ -55,6 +57,7 @@ def _get_session(path: Path) -> Any | None:
         n = os.environ.get("ONNXRUNTIME_NUM_THREADS", "")
         if n.isdigit() and int(n) >= 0:
             opts.intra_op_num_threads = int(n)
+            opts.inter_op_num_threads = 1
         sess = ort.InferenceSession(
             str(path), sess_options=opts, providers=get_onnx_providers()
         )
@@ -122,7 +125,19 @@ def _build_spec(
     sl = torch.stft(w[0], **kw)
     sr = torch.stft(w[1], **kw)
     spec = torch.stack([sl.real, sl.imag, sr.real, sr.imag], dim=0).unsqueeze(0)
-    spec = spec[:, :, :spec_freq, :]
+    bins_full = N_FFT // 2 + 1  # 2049
+    # 2049 ONNX inputs often match Demucs-style 2048-bin features + zero Nyquist (not raw STFT Nyquist).
+    if spec_freq == 2049:
+        spec = spec[:, :, :2048, :]
+        spec = torch.nn.functional.pad(spec, (0, 0, 0, 1))  # pad freq dim (…, 2049, time)
+    elif spec_freq == 2048:
+        spec = spec[:, :, :2048, :]
+    else:
+        spec = spec[:, :, : min(spec_freq, bins_full), :]
+        if spec.shape[2] < spec_freq:
+            spec = torch.nn.functional.pad(
+                spec, (0, 0, 0, spec_freq - spec.shape[2])
+            )
     t = spec.shape[3]
     if t < spec_time:
         spec = torch.nn.functional.pad(spec, (0, spec_time - t))
@@ -205,12 +220,19 @@ def _overlap_add(
     return out / np.maximum(cnt, 1e-8)
 
 
+def _scnet_chunk_hop(seg: int, prefer_speed: bool) -> int:
+    """Sliding-window stride; smaller hop = more overlap = less stem bleed at boundaries."""
+    return seg // 2 if prefer_speed else seg // 4
+
+
 def run_scnet_onnx_4stem(
     input_path: Path,
     output_dir: Path,
+    prefer_speed: bool = True,
 ) -> list[tuple[str, Path]] | None:
     """
     Run SCNet ONNX 4-stem separation. Returns [(stem_id, path), ...] in RETURN_ORDER or None on failure.
+    prefer_speed=False uses a shorter stride (more overlap-add) for cleaner boundaries at higher CPU cost.
     """
     import soundfile as sf
 
@@ -222,7 +244,6 @@ def run_scnet_onnx_4stem(
     inp_name = session.get_inputs()[0].name
     spec_freq, spec_time = _get_spec_dims(session)
     seg = spec_time * HOP
-    hop = seg // 2
 
     try:
         mix, sr = sf.read(str(input_path), dtype="float32", always_2d=True)
@@ -269,7 +290,7 @@ def run_scnet_onnx_4stem(
 
     for try_freq in [compatible_freq]:
         seg_try = spec_time * HOP
-        hop_try = seg_try // 2
+        hop_try = _scnet_chunk_hop(seg_try, prefer_speed)
         stem_chunks = [[] for _ in range(4)]
         pos = 0
         chunk_failed = False

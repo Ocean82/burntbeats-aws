@@ -6,9 +6,9 @@ export interface AppShellProps {
 }
 
 /**
- * Root shell: catches unhandled render errors so the document is not left blank.
+ * App shell for the authenticated editor view.
+ * Token injection and auth gating are handled in Root.tsx.
  * Add cross-cutting providers here (router, query client, theme) when needed.
- * Domain-specific boundaries (split vs mixer) are composed inside `App`.
  */
 export function AppShell({ children }: AppShellProps): ReactNode {
   return <ErrorBoundary>{children}</ErrorBoundary>;

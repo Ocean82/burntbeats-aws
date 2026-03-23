@@ -108,7 +108,7 @@ describe("SourcePanel", () => {
   it("renders quality radio buttons and invokes onQualityChange", () => {
     const { handlers } = renderSourcePanel();
 
-    const speedRadio = screen.getByLabelText(/speed — mdx onnx/i);
+    const speedRadio = screen.getByLabelText(/2-stem fast/i);
     fireEvent.click(speedRadio);
     expect(handlers.onQualityChange).toHaveBeenCalledWith("speed");
   });

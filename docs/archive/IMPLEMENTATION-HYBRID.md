@@ -1,7 +1,7 @@
 # Hybrid pipeline implementation
 
 **Last updated:** 2025-03-09  
-**Ref:** [AGENT-GUIDE.MD](AGENT-GUIDE.MD) (Quality-Speed 4-Stem CPU plan)
+**Ref:** [AGENT-GUIDE-historical.md](AGENT-GUIDE-historical.md) (historical research; see [stem-pipeline.md](../stem-pipeline.md) for current behavior)
 
 ---
 
@@ -15,7 +15,7 @@ The app implements the hybrid approach from the agent guide:
 
 Result: vocals (Stage 1), drums, bass, other (Stage 2). Phase-perfect instrumental and cleaner “Other” stem.
 
-- **Speed:** Demucs uses `--shifts 0`, `--overlap 0.25`, `--segment 8` (AGENT-GUIDE).
+- **Speed:** Demucs uses `--shifts 0`, `--overlap 0.25`, `--segment` per `stem_service/split.py` / config.
 - **Optional VAD pre-trim:** `USE_VAD_PRETRIM=1` + `models/silero_vad.jit` + `silero-vad` pip → process only vocal span.
 - **Optional ONNX Stage 1:** When e.g. `Kim_Vocal_2.onnx` is in `models/mdxnet_models/`, Stage 1 uses it (segment_size 256, overlap 2); else Demucs 2-stem.
 

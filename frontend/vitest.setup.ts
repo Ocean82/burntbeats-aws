@@ -39,8 +39,14 @@ if (typeof window !== "undefined") {
       beginPath: noop,
       roundRect: noop,
       fill: noop,
+      fillRect: noop,
       globalAlpha: 1,
       fillStyle: "#000",
-    })) as typeof HTMLCanvasElement.prototype.getContext;
+      strokeStyle: "#000",
+      stroke: noop,
+      shadowBlur: 0,
+      shadowColor: "",
+      scale: noop,
+    })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   }
 }

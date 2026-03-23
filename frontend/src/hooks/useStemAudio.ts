@@ -1,13 +1,11 @@
 /**
  * useStemAudio — manages stem AudioBuffers, waveform data, and loading state.
  * Extracted from App.tsx to keep audio data management separate from UI.
+ * Note: Currently unused — App.tsx uses useStemLoading + useWaveformCompute instead.
+ * Kept for potential future use as a combined hook.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { StemResult } from "../types";
-import { computeWaveformFromBuffer } from "../utils/audio";
-import { getStemWaveform, setStemWaveform } from "../services/waveformCache";
-
-const WAVEFORM_BINS = 512;
 
 interface UseStemAudioReturn {
   stemBuffers: Record<string, AudioBuffer>;
@@ -37,7 +35,6 @@ export function useStemAudio(): UseStemAudioReturn {
     audioContextRef: React.MutableRefObject<AudioContext | null>,
     onInitStemStates: (ids: string[]) => void
   ) => {
-    // Reset any previous load error
     setLoadError(null);
     if (splitResultStems.length === 0) return;
     setIsLoadingStems(true);
@@ -80,7 +77,6 @@ export function useStemAudio(): UseStemAudioReturn {
       }
     }
 
-    // Preserve already-loaded buffers
     for (const stem of splitResultStems) {
       if (stemBuffers[stem.id]) {
         newBuffers[stem.id] = stemBuffers[stem.id];
@@ -115,53 +111,4 @@ export function useStemAudio(): UseStemAudioReturn {
     clearStemData,
     clearLoadError,
   };
-}
-
-/**
- * useWaveformCompute — computes waveforms from AudioBuffers using idle callbacks.
- * Separated so it can run without blocking the main thread.
- */
-export function useWaveformCompute(
-  stemBuffers: Record<string, AudioBuffer>,
-  stemEntries: Array<{ id: string; url: string }>,
-  setStemWaveforms: React.Dispatch<React.SetStateAction<Record<string, number[]>>>
-) {
-  useEffect(() => {
-    let cancelled = false;
-    const entries = Object.entries(stemBuffers);
-    if (entries.length === 0) return;
-
-    const next: Record<string, number[]> = {};
-    let index = 0;
-
-    const processOne = async () => {
-      if (cancelled || index >= entries.length) {
-        if (!cancelled && Object.keys(next).length > 0) {
-          setStemWaveforms((prev) => ({ ...prev, ...next }));
-        }
-        return;
-      }
-      const [id, buffer] = entries[index++];
-      const url = stemEntries.find((s) => s.id === id)?.url;
-      let data: number[] | null = url ? await getStemWaveform(url, WAVEFORM_BINS) : null;
-      if (cancelled) return;
-      if (!data || data.length !== WAVEFORM_BINS) {
-        data = computeWaveformFromBuffer(buffer, WAVEFORM_BINS);
-        if (url) void setStemWaveform(url, WAVEFORM_BINS, data);
-      }
-      next[id] = data;
-      if (!cancelled) setStemWaveforms((prev) => ({ ...prev, [id]: data! }));
-      const schedule = typeof requestIdleCallback !== "undefined"
-        ? () => requestIdleCallback(() => void processOne())
-        : () => setTimeout(() => void processOne(), 0);
-      schedule();
-    };
-
-    const scheduleFirst = typeof requestIdleCallback !== "undefined"
-      ? () => requestIdleCallback(() => void processOne())
-      : () => setTimeout(() => void processOne(), 0);
-    scheduleFirst();
-
-    return () => { cancelled = true; };
-  }, [stemBuffers, stemEntries, setStemWaveforms]);
 }

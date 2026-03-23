@@ -1,6 +1,6 @@
 """
 Stem separation using Demucs (htdemucs or demucs.extra bag), CPU-only.
-Per AGENT-GUIDE: --shifts 0 (speed), --overlap 0.25, --segment for long-file stability.
+Demucs CLI defaults: --shifts 0 (speed), --overlap 0.25, --segment for long-file stability (see stem_service/config.py).
 Quality mode uses demucs.extra bag of models for better separation.
 """
 

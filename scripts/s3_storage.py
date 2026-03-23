@@ -1,12 +1,11 @@
 """
 S3 storage helper for uploading/managing generated audio files.
-Config is read from environment variables (no backend.config dependency).
 
-Required env vars (when S3_ENABLED=true):
+Required env vars:
   S3_ENABLED    - set to "true" to enable
   S3_BUCKET     - bucket name
-  S3_REGION     - AWS region (default us-east-1)
-  S3_PREFIX     - key prefix (default "stems")
+  S3_REGION     - AWS region (default: us-east-1)
+  S3_PREFIX     - key prefix (default: stems)
   S3_ACCESS_KEY - optional; uses IAM role if not set
   S3_SECRET_KEY - optional; uses IAM role if not set
 """
@@ -30,7 +29,7 @@ except ImportError:
 
 def _cfg():
     return {
-        "enabled": os.environ.get("S3_ENABLED", "false").lower() == "true",
+        "enabled": os.environ.get("S3_ENABLED", "").lower() == "true",
         "bucket": os.environ.get("S3_BUCKET", ""),
         "region": os.environ.get("S3_REGION", "us-east-1"),
         "prefix": os.environ.get("S3_PREFIX", "stems"),
@@ -91,7 +90,7 @@ def download_from_s3(job_id: str, local_dir: Path, filename: Optional[str] = Non
         s3.download_file(cfg["bucket"], key, str(out))
     except ClientError as e:
         if e.response["Error"]["Code"] == "404":
-            raise FileNotFoundError(f"Not found in S3: {key}")
+            raise FileNotFoundError(f"s3://{cfg['bucket']}/{key} not found")
         raise
     return out
 

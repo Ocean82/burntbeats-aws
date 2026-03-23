@@ -1,23 +1,25 @@
-# Archived docs
+# Archived documentation
 
-**Archived:** 2026-03-09; updated 2026-03-17.
+These files are **historical**: investigations, old agent task lists, or research drafts. They are **not** the source of truth for current behavior.
 
-Older or superseded documentation. For current app and model policy, see:
+**Current direction:** root [README.md](../../README.md) · [docs/README.md](../README.md) · [docs/stem-pipeline.md](../stem-pipeline.md)
 
-- [README.md](../../README.md) — run, setup, API (2-stem first, expand, load stems)
-- [AGENT-models-and-implementation.md](../AGENT-models-and-implementation.md)
-- [AGENT-GUIDE.MD](../AGENT-GUIDE.MD)
-- [DOCS-STATUS.md](../DOCS-STATUS.md) — what’s current vs archived
+---
 
-## Contents of this archive
+## Contents
 
-- **VAD-PRETRIM-TRADEOFF.md** — VAD pre-trim tradeoffs
-- **DEMUCS-MODELS-INVESTIGATION.md** — Demucs models investigation
-- **MODELS-FLOW-MODELS-INVESTIGATION.md** — Flow models
-- **INVESTIGATION-SONG-LOAD-AND-STEM-SEPARATION.md** — Song load investigation
-- **IMPLEMENTATION-HYBRID.md** — Hybrid implementation notes
-- **VADSLICE-CHUNKED-SEPARATION-INVESTIGATION.md** — VAD slice investigation
-- **QUANTIZATION-8BIT.md** — 8-bit quantization
-- **AGENT-TODO.md** — Historical task/bug list (2026-03-17)
-- **AGENT-frontend-next-steps.md** — Old frontend plan (mock UAL; 2026-03-17)
-- **AGENT-models-and-implementation.yaml** — YAML duplicate of .md (2026-03-17)
+| File | Notes |
+|------|--------|
+| [VAD-PRETRIM-TRADEOFF.md](VAD-PRETRIM-TRADEOFF.md) | VAD pre-trim tradeoffs |
+| [VADSLICE-CHUNKED-SEPARATION-INVESTIGATION.md](VADSLICE-CHUNKED-SEPARATION-INVESTIGATION.md) | Chunked separation investigation |
+| [DEMUCS-MODELS-INVESTIGATION.md](DEMUCS-MODELS-INVESTIGATION.md) | Demucs models investigation |
+| [MODELS-FLOW-MODELS-INVESTIGATION.md](MODELS-FLOW-MODELS-INVESTIGATION.md) | Flow models |
+| [INVESTIGATION-SONG-LOAD-AND-STEM-SEPARATION.md](INVESTIGATION-SONG-LOAD-AND-STEM-SEPARATION.md) | Song load investigation |
+| [IMPLEMENTATION-HYBRID.md](IMPLEMENTATION-HYBRID.md) | Early hybrid implementation notes |
+| [QUANTIZATION-8BIT.md](QUANTIZATION-8BIT.md) | INT8 ONNX notes |
+| [AGENT-TODO.md](AGENT-TODO.md) | Historical task list |
+| [AGENT-frontend-next-steps.md](AGENT-frontend-next-steps.md) | Old frontend plan |
+| [AGENT-GUIDE-historical.md](AGENT-GUIDE-historical.md) | Old hybrid/UVR research draft (see `stem-pipeline.md`) |
+| [music-tools-external-links.md](music-tools-external-links.md) | External link scratchpad (not project docs) |
+
+The YAML duplicate `AGENT-models-and-implementation.yaml` that lived here is now in [../agent-context/](../agent-context/README.md).

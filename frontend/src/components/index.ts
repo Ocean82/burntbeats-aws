@@ -5,8 +5,11 @@ export { ExportOptionsModal, type ExportOptions, type ExportFormat, type ExportT
 export { MixerPresetsModal, type MixerPreset } from "./MixerPresetsModal";
 export { OnboardingTour, useResetOnboarding } from "./OnboardingTour";
 export { BatchQueue, type QueueItem, type QueueItemStatus } from "./BatchQueue";
-export { ComparisonToggle } from "./ComparisonToggle";
 export { ErrorBoundary, AudioErrorBoundary, SplitErrorBoundary } from "./ErrorBoundary";
 export { StatusPanel } from "./status-panel.component";
 export { MixerPanel } from "./mixer-panel.component";
 export { SourcePanel } from "./source-panel.component";
+export { AuthGate, HeaderUserButton } from "./AuthGate";
+export { PaywallBanner } from "./PaywallBanner";
+export { VUMeter } from "./VUMeter";
+export { SpectrumAnalyzer } from "./SpectrumAnalyzer";

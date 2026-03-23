@@ -22,7 +22,7 @@
 | **stem_service/hybrid.py** | REPO_ROOT | Stage 1: Demucs 2-stem; Stage 2: Demucs on instrumental (htdemucs) |
 | **stem_api** (Rust, legacy/unused) | `REPO_ROOT` env | Not wired in by current stack; orchestration happens in Node + Python |
 
-No hardcoded `D:\` or `stem-models` in code. All paths are relative to the repo. Optional future: **mdx_onnx** (or vocal ONNX) under `stem_service/` for Stage 1 when Kim_Vocal_2.onnx etc. are present; see [AGENT-GUIDE.MD](AGENT-GUIDE.MD).
+No hardcoded `D:\` or `stem-models` in code. All paths are relative to the repo. Stage 1 ONNX is implemented under `stem_service/mdx_onnx.py` and `stem_service/vocal_stage1.py`; see [stem-pipeline.md](stem-pipeline.md).
 
 ---
 

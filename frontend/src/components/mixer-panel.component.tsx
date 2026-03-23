@@ -3,6 +3,8 @@ import { useSyncExternalStore } from "react";
 import type { StemDefinition } from "../types";
 import type { StemEditorState } from "../stem-editor-state";
 import { MultiStemEditor } from "./MultiStemEditor";
+import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
+import { VUMeter } from "./VUMeter";
 import { cn } from "../utils/cn";
 
 export interface MixerPanelProps {
@@ -27,6 +29,8 @@ export interface MixerPanelProps {
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
   playingStemId: string | null;
+  getMasterAnalyserTimeDomainData: () => Uint8Array | null;
+  getMasterAnalyserFrequencyData: () => Uint8Array | null;
 }
 
 export function MixerPanel({
@@ -51,6 +55,8 @@ export function MixerPanel({
   onStemStateChange,
   onPreviewStem,
   playingStemId,
+  getMasterAnalyserTimeDomainData,
+  getMasterAnalyserFrequencyData,
 }: MixerPanelProps) {
   const playheadPct = useSyncExternalStore(
     subscribePlayheadPosition,
@@ -76,6 +82,25 @@ export function MixerPanel({
     <>
       <p className="eyebrow">Mixer</p>
       <h2 className="font-display text-2xl tracking-[-0.04em] text-white mb-5">Timeline · Mix · Export</h2>
+
+      <div className="mb-4 rounded-xl border border-white/10 bg-black/25 p-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">Master output</p>
+        <div className="flex flex-wrap items-end gap-4">
+          <VUMeter
+            getAnalyserData={getMasterAnalyserTimeDomainData}
+            color="var(--accent)"
+            isPlaying={isPlayingMix || playingStemId !== null}
+            height={72}
+          />
+          <div className="min-h-[48px] min-w-[min(100%,12rem)] flex-1">
+            <SpectrumAnalyzer
+              getFrequencyData={getMasterAnalyserFrequencyData}
+              isPlaying={isPlayingMix || playingStemId !== null}
+              height={48}
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -134,6 +159,7 @@ export function MixerPanel({
         onPlayPause={onPlayStop}
         onPreviewStem={onPreviewStem}
         playingStemId={playingStemId}
+        getAnalyserData={getMasterAnalyserTimeDomainData}
       />
     </>
   );

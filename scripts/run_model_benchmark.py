@@ -87,6 +87,7 @@ def run_2stem_benchmark(
     vocal_models: dict[str, Path],
     inst_models: dict[str, Path],
     first_vocal_name: str | None,
+    audio_duration_seconds: float,
 ) -> list[dict]:
     """Run 2-stem for each vocal (with phase inversion) and each inst (with first vocal). Returns list of run records."""
     records: list[dict] = []
@@ -114,7 +115,7 @@ def run_2stem_benchmark(
                 dest = flat / f"{stem_id}.wav"
                 if p.resolve() != dest.resolve():
                     shutil.copy2(p, dest)
-            duration_s = 30.0  # we use 30s clip
+            duration_s = audio_duration_seconds
             rtf = round(elapsed / duration_s, 4) if duration_s > 0 else None
             records.append({
                 "mode": "2stem",
@@ -162,7 +163,7 @@ def run_2stem_benchmark(
                     dest = flat / f"{stem_id}.wav"
                     if p.resolve() != dest.resolve():
                         shutil.copy2(p, dest)
-                duration_s = 30.0
+                duration_s = audio_duration_seconds
                 rtf = round(elapsed / duration_s, 4) if duration_s > 0 else None
                 records.append({
                     "mode": "2stem",
@@ -191,6 +192,7 @@ def run_4stem_benchmark(
     input_30s: Path,
     output_base: Path,
     demucs_paths: list[tuple[str, Path]],
+    audio_duration_seconds: float,
 ) -> list[dict]:
     """Run 4-stem for each Demucs ONNX model. Returns list of run records."""
     records: list[dict] = []
@@ -208,7 +210,7 @@ def run_4stem_benchmark(
             elapsed = time.monotonic() - t0
             if stem_list is None or model_name is None:
                 raise RuntimeError("run_demucs_onnx_4stem returned None")
-            duration_s = 30.0
+            duration_s = audio_duration_seconds
             rtf = round(elapsed / duration_s, 4) if duration_s > 0 else None
             records.append({
                 "mode": "4stem",
@@ -287,6 +289,10 @@ def main() -> int:
         return 1
     print("Saved:", clip_path)
 
+    import soundfile as sf
+
+    audio_duration_seconds = float(sf.info(str(clip_path)).duration)
+
     vocal_models = existing_models_by_name(VOCAL_MODEL_PATHS)
     inst_models = existing_models_by_name(INST_MODEL_PATHS)
     first_vocal_name = next(iter(vocal_models.keys()), None) if vocal_models else None
@@ -309,7 +315,12 @@ def main() -> int:
         print("\n--- 2-stem runs ---")
         all_records.extend(
             run_2stem_benchmark(
-                clip_path, output_base, vocal_models, inst_models, first_vocal_name
+                clip_path,
+                output_base,
+                vocal_models,
+                inst_models,
+                first_vocal_name,
+                audio_duration_seconds,
             )
         )
     elif args.skip_2stem:
@@ -317,7 +328,11 @@ def main() -> int:
 
     if not args.skip_4stem and demucs_paths:
         print("\n--- 4-stem runs ---")
-        all_records.extend(run_4stem_benchmark(clip_path, output_base, demucs_paths))
+        all_records.extend(
+            run_4stem_benchmark(
+                clip_path, output_base, demucs_paths, audio_duration_seconds
+            )
+        )
     elif args.skip_4stem:
         print("\nSkipping 4-stem (--skip-4stem).")
 
@@ -327,6 +342,7 @@ def main() -> int:
         json.dump(
             {
                 "clip_seconds": args.clip_seconds,
+                "audio_duration_seconds": audio_duration_seconds,
                 "input_file": str(input_path),
                 "runs": all_records,
             },

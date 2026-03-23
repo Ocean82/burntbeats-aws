@@ -1,14 +1,28 @@
 # Burnt Beats — Stem Splitter / Mixer / Master
 
-Stem separation web app (CPU-only). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite (keyboard shortcuts, undo/redo, export modal, mixer presets, onboarding, batch queue, A/B comparison). Backend: Node (Express). Stem engine: Python **hybrid pipeline** (Stage 0 Silero VAD → Stage 1 MDX ONNX vocal + instrumental → Stage 2 SCNet/Demucs ONNX on instrumental). **CPU-optimal:** Stage 1 uses Kim_Vocal_2 + Inst_HQ_4 ONNX paired models (no phase inversion needed); 4-stem uses SCNet ONNX first (faster than Demucs on CPU), then Demucs ONNX fallback. **Quality tiers:** Speed (50% overlap, VAD trim), Quality (75% overlap, full file), Ultra (RoFormer + de-reverb post-pass; CPU-only falls back to Quality). **WSL only (Ubuntu)** — run inside WSL; same commands on AWS EC2.
+**Documentation:** [docs/README.md](docs/README.md) (full index) · [docs/stem-pipeline.md](docs/stem-pipeline.md) (separation pipeline) · [docs/BILLING-AND-TOKENS.md](docs/BILLING-AND-TOKENS.md) (Stripe plans, tokens, Basic vs Premium)
 
-**Last updated:** 2026-03-19
+Stem separation web app (**CPU-first; no GPU required**). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite. Backend: Node (Express). Stem engine: Python (**hybrid** + ONNX + optional Demucs subprocess). **Quality tiers:** Speed, Quality (default), Ultra — see [docs/stem-pipeline.md](docs/stem-pipeline.md) for exact routing.
+
+**Last updated:** 2026-03-22
 
 ---
 
-## Run (WSL / Ubuntu only)
+## Target environment (read this first)
 
-All commands below are bash. Use a WSL (Ubuntu) terminal; the app is not supported running natively on Windows.
+| | |
+|--|--|
+| **Production server** | **AWS EC2 `t3.large`** (2 vCPU / 8 GiB) running **Ubuntu**, **CPU only** — **no GPU**. The separation stack is designed and benchmarked for this profile ([`scripts/t3-large-benchmark.sh`](scripts/t3-large-benchmark.sh)). Use `USE_GPU=0` and typically `USE_ONNX_CPU=1` so all inference stays on the CPU. |
+| **Local development** | **WSL** with an **Ubuntu** distro so Bash paths and behavior match the server. Run all `scripts/*.sh` from a WSL terminal, not from PowerShell/CMD. |
+| **Python venv** | Create once at the repo root: `python3 -m venv .venv`. **Whenever you work in that environment**, activate it with **`source .venv/bin/activate`** (WSL/Ubuntu). Then `pip install …` and `python` use the project interpreter. |
+
+Docker Compose is optional for full-stack runs; native Windows is not the primary path — prefer **WSL Ubuntu** or the Linux server.
+
+---
+
+## Run (WSL / Ubuntu)
+
+All commands below are **bash**. Use a **WSL (Ubuntu)** terminal on Windows, or a native **Ubuntu** shell on your server; the app is not documented for native Windows shells.
 
 ### 1. One-time setup
 
@@ -48,13 +62,14 @@ bash scripts/copy-models.sh "/mnt/d/DAW Collection/stem-models"
 ```
 The script looks for htdemucs at source root, then in `source/flow-models/` and `source/flow-models/demucs/ckpt/` (deep stem-models layout). For a known-good test run, prefer `python scripts/download_htdemucs_official.py` so `models/htdemucs.th` is the official format. See `docs/MODELS-INVENTORY.md` for details.
 
-**Python venv (from repo root):**
+**Python venv (from repo root, WSL/Ubuntu):**
 ```bash
 cd /path/to/burntbeats-aws   # e.g. /mnt/d/burntbeats-aws in WSL
 python3 -m venv .venv
-# Deps are installed by the run script on first start, or:
-# source .venv/bin/activate && pip install -r stem_service/requirements.txt
+source .venv/bin/activate    # use this every session before pip/python
+pip install -r stem_service/requirements.txt   # if not using run-stem-service.sh auto-install
 ```
+The stem run scripts may install deps on first start; manual work on the stem service should always use **`source .venv/bin/activate`** first.
 
 **Frontend .env:** Ensure `frontend/.env` has `VITE_API_BASE_URL=http://localhost:3001` (or your backend URL). Copy from `frontend/.env.example` if needed.
 
@@ -183,7 +198,7 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 | Backend | `SPLIT_ACCEPT_TIMEOUT_MS` | Ms to wait for stem service to accept (default 300000 = 5 min) |
 | Backend | `FRONTEND_ORIGINS` | CORS origins, comma-separated (default includes 5173, 5174) |
 | Python | `STEM_OUTPUT_DIR` | Same as backend so backend can serve files |
-| Python | `USE_VAD_PRETRIM` | Set to `1` or `true` to pre-trim to first–last speech (faster when there’s silence; stems are **shorter**). Set to `0` for **full-length** stems. See `docs/VAD-PRETRIM-TRADEOFF.md`. |
+| Python | `USE_VAD_PRETRIM` | Set to `1` or `true` to pre-trim to first–last speech (faster when there’s silence; stems are **shorter**). Set to `0` for **full-length** stems. See `docs/archive/VAD-PRETRIM-TRADEOFF.md`. |
 | Python | `USE_GPU` | Set to `auto` (default), `1`, or `0`. Auto-detects CUDA GPU; falls back to CPU. On CPU-only servers, defaults to CPU. |
 | Python | `USE_ULTRA_ON_CPU` | Set to `1` to allow Ultra (RoFormer) on CPU (slow; not recommended). Default: Ultra is disabled on CPU and falls back to Quality. |
 | Python | `STEM_BACKEND` | Set to `hybrid` (default) or `demucs_only` |
@@ -191,7 +206,7 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 | Python | `MKL_NUM_THREADS` | MKL threads when used (default: same as `OMP_NUM_THREADS`). |
 | Python | `ONNXRUNTIME_NUM_THREADS` | ONNX Runtime intra-op threads (default: 0 = physical cores with affinity). Set to a number to override. |
 | Python | `USE_ONNX_CPU` | Set to `1` to force CPU for all ONNX models (MDX + Demucs ONNX). Default: use CUDA when available (`pip install onnxruntime-gpu`). |
-| Python | `USE_INT8_ONNX` | Set to `0` to disable int8 MDX models (use float32 only). Default: use `.quant.onnx` when present (see `docs/QUANTIZATION-8BIT.md`). |
+| Python | `USE_INT8_ONNX` | Set to `0` to disable int8 MDX models (use float32 only). Default: use `.quant.onnx` when present (see `docs/archive/QUANTIZATION-8BIT.md`). |
 | Python | `USE_DEMUCS_SHIFTS_0` | Default `1`: Demucs uses shifts=0 (faster on CPU). Set to `0` to use 3 shifts in Quality. See `docs/CPU-OPTIMIZATION-TIPS.md`. |
 | Python | `DEMUCS_QUALITY_BAG` | `mdx_extra_q` (default, lighter) or `mdx_extra` (heavier, slower, best quality). 4-stem quality requires the `diffq` package (included in `stem_service/requirements.txt`). |
 | Frontend | `VITE_API_BASE_URL` | Backend base URL (e.g. http://localhost:3001) |
@@ -221,36 +236,18 @@ Operational settings
 
 ---
 
-## Quality Tiers
+## Quality tiers and pipeline
 
-| Mode | Est. Time (3-min song) | Description |
-|------|----------------------|-------------|
-| **Speed** | Fastest | VAD pre-trim + **Kim_Vocal_2 + Inst_HQ_4 ONNX** at 50% overlap. No phase inversion — both stems from dedicated models. |
-| **Quality** | Moderate | Same paired ONNX models at 75% overlap, full file (no VAD trim). Smoother chunk boundaries, less bleed. |
-| **Ultra** | Slow (CPU) | RoFormer ONNX Stage 1 + Reverb_HQ_By_FoxJoy de-reverb post-pass on vocals. On CPU falls back to Quality unless `USE_ULTRA_ON_CPU=1`. |
+Summary:
 
-### Model Pipeline (CPU-optimal, as of 2026-03-18)
+| Mode | Intent |
+|------|--------|
+| **Speed** | Fastest: optional VAD trim, lower MDX overlap, faster 4-stem ONNX strides where applicable. |
+| **Quality** | Default: full-length input, higher MDX overlap, tighter 4-stem windowing on embedded ONNX; see code. |
+| **Ultra** | Best-quality checkpoints (e.g. RoFormer) via `audio-separator`; slow on CPU unless you opt in. |
 
-**2-stem (vocals + instrumental):**
-1. Kim_Vocal_2.onnx → clean vocals
-2. UVR-MDX-NET-Inst_HQ_4.onnx → clean instrumental (no phase inversion needed)
-3. Ultra only: Reverb_HQ_By_FoxJoy.onnx de-reverb post-pass on vocals
+**Detailed routing** (2-stem → expand, model order, fallbacks): **[docs/stem-pipeline.md](docs/stem-pipeline.md)**.
 
-**4-stem (vocals + drums + bass + other):**
-1. SCNet ONNX (`USE_SCNET=1`) — ~48% of Demucs CPU time, tried first
-2. Demucs ONNX (htdemucs_embedded / htdemucs_6s) — fallback
-3. Hybrid subprocess (htdemucs) — last resort
-
-### Optimizations Applied
-
-- **Paired ONNX models**: Kim_Vocal_2 + Inst_HQ_4 run independently — no phase inversion subtraction artifacts
-- **SCNet first for 4-stem**: ~2× faster than Demucs on CPU per benchmark
-- **VAD pre-trim**: Speed mode only — trims leading/trailing silence before processing
-- **75% overlap quality / 50% speed**: Configurable per mode in `extract_vocals_stage1`
-- **Per-job logging**: Each job writes `tmp/stems/{job_id}/job.log` with chunk-level timing
-- **ONNX session cache**: Sessions loaded once and reused across requests
-- **CPU threading**: `ONNXRUNTIME_NUM_THREADS=2` for t3.large (2 vCPUs); `OMP_NUM_THREADS` set by run script
-- **De-reverb ultra-only**: Reverb_HQ_By_FoxJoy skipped in speed/quality (too slow for CPU default)
 ---
 
 ## API
@@ -262,15 +259,17 @@ Operational settings
 
 ---
 
-## Deploy (AWS Ubuntu)
+## Deploy (AWS Ubuntu, t3.large CPU-only)
 
-On the EC2 instance (Ubuntu), use the same bash scripts.
+Production is expected to match **Ubuntu** on an instance such as **`t3.large`**: **CPU only, no GPU**. Keep separation on CPU (`USE_GPU=0`, `USE_ONNX_CPU=1` as appropriate) unless you deliberately add a GPU instance later.
 
-- **Stem service:** `bash scripts/run-stem-service.sh` (e.g. under systemd or screen).
+On the EC2 instance, use the same bash scripts as in WSL.
+
+- **Stem service:** `bash scripts/run-stem-service.sh` (e.g. under systemd or screen). Activate the venv if you run Python manually: `source .venv/bin/activate`.
 - **Backend:** `bash scripts/run-backend.sh` (same host so `STEM_OUTPUT_DIR` is shared).
 - The stem service is intended to be reachable only from the backend host (binds to localhost by default); restrict inbound to port `5000` at the network layer.
 - **Frontend:** Build once: `cd frontend && npm install && npm run build`. Set `VITE_API_BASE_URL` to your public backend URL (e.g. `https://api.yourdomain.com`) before building. Serve `frontend/dist/` with nginx or another static server.
 - Optionally point `STEM_OUTPUT_DIR` to an S3-mounted path and serve stem files via presigned URLs (you add AWS env when ready).
 - RDS: not required for stem splitting; add when you need users/jobs metadata.
 
-See `docs/` for agent knowledge and model policy. **Sanity checks:** `docs/SANITY-CHECKS.md` — large upload, back-to-back splits, instrumental quality, waveform/trim/export, export WAV correctness.
+See **[docs/README.md](docs/README.md)** for the full doc map. **Sanity checks:** [docs/SANITY-CHECKS.md](docs/SANITY-CHECKS.md).

@@ -31,7 +31,7 @@ export const useAppStore = create<AppState>((set) => ({
     instrumental: true,
     other: true,
   } as Record<StemId, boolean>,
-  uploadName: "nightdrive_demo_master.wav",
+  uploadName: "",
   uploadedFile: null,
   splitResultStems: [],
   splitJobId: null,

@@ -1,13 +1,43 @@
 /**
  * Backend API client. Base URL from VITE_API_BASE_URL (e.g. http://localhost:3001).
- * Fallback to 3001 so dev works if .env is missing; use 3002 if backend runs there.
+ * Attaches Clerk JWT via Authorization header on all requests.
+ * Stores and forwards job_token (x-job-token) for per-job auth when JOB_TOKEN_SECRET is set on backend.
  */
 import type { JobStatus, SplitQuality as SharedSplitQuality } from "../../shared/types";
+import { API_BASE } from "./config";
 
-const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
-    ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
-    : (typeof window !== "undefined" && window.location.hostname !== "localhost" ? window.location.origin : "http://localhost:3001"));
+// Token provider injected at app startup by ClerkProvider — avoids importing Clerk hooks here.
+let _getToken: (() => Promise<string | null>) | null = null;
+export function setTokenProvider(fn: () => Promise<string | null>) {
+  _getToken = fn;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!_getToken) return {};
+  const token = await _getToken();
+  if (!token) return {};
+  return { Authorization: `Bearer ${token}` };
+}
+
+// Per-job token store: job_id → job_token (short-lived, issued by backend on split/expand)
+const jobTokenStore = new Map<string, string>();
+
+function getJobToken(jobId: string): string | undefined {
+  return jobTokenStore.get(jobId);
+}
+
+function setJobToken(jobId: string, token: string) {
+  jobTokenStore.set(jobId, token);
+}
+
+export function clearJobToken(jobId: string) {
+  jobTokenStore.delete(jobId);
+}
+
+function jobTokenHeader(jobId: string): Record<string, string> {
+  const t = getJobToken(jobId);
+  return t ? { "x-job-token": t } : {};
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -15,8 +45,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function tryParseJson(text: string): unknown {
   try {
-    const parsed: unknown = JSON.parse(text);
-    return parsed;
+    return JSON.parse(text);
   } catch {
     return null;
   }
@@ -27,11 +56,7 @@ function getApiErrorMessage(parsed: unknown): string | null {
   if (typeof parsed.error === "string") return parsed.error;
   if (typeof parsed.detail === "string") return parsed.detail;
   if (parsed.detail !== undefined) {
-    try {
-      return JSON.stringify(parsed.detail);
-    } catch {
-      return null;
-    }
+    try { return JSON.stringify(parsed.detail); } catch { return null; }
   }
   return null;
 }
@@ -60,7 +85,7 @@ function isStemJobStatusValue(value: unknown): value is StemJobStatus {
   return true;
 }
 
-function isAcceptedJobIdResponse(value: unknown): value is { job_id: string; status?: string } {
+function isAcceptedJobIdResponse(value: unknown): value is { job_id: string; status?: string; job_token?: string } {
   if (!isRecord(value)) return false;
   if (typeof value.job_id !== "string" || value.job_id.length === 0) return false;
   if (value.status !== undefined && typeof value.status !== "string") return false;
@@ -88,9 +113,9 @@ export interface StemJobStatus {
 
 export type SplitQuality = SharedSplitQuality;
 
-const SPLIT_ACCEPT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minute timeout for large files
-const STATUS_POLL_INTERVAL_MS = 1500;
-const STATUS_POLL_MAX_MS = 16 * 60 * 1000; // stop after 16 min
+const SPLIT_ACCEPT_TIMEOUT_MS = Number(import.meta.env.VITE_SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
+const STATUS_POLL_INTERVAL_MS = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 1500;
+const STATUS_POLL_MAX_MS = Number(import.meta.env.VITE_STATUS_POLL_MAX_MS) || 16 * 60 * 1000;
 
 /** Start stem separation; returns job_id. Separation runs in background. */
 export async function startStemSplit(
@@ -114,6 +139,7 @@ export async function startStemSplit(
     const res = await fetch(`${API_BASE}/api/stems/split`, {
       method: "POST",
       body: form,
+      headers: await authHeaders(),
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
@@ -132,15 +158,17 @@ export async function startStemSplit(
 
     const json: unknown = await res.json();
     if (res.status === 202 && isAcceptedJobIdResponse(json)) {
+      // Store job_token if backend issued one (requires JOB_TOKEN_SECRET to be set)
+      if (typeof json.job_token === "string" && json.job_token) {
+        setJobToken(json.job_id, json.job_token);
+      }
       return { job_id: json.job_id };
     }
     throw new Error("Unexpected response from split");
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error) {
-      if (err.name === "AbortError") {
-        throw new Error("Stem service did not accept in time. Try again.");
-      }
+      if (err.name === "AbortError") throw new Error("Stem service did not accept in time. Try again.");
       throw err;
     }
     throw new Error("Stem split request failed");
@@ -160,11 +188,8 @@ export async function pollStemJobUntilDone(
     try {
       const status = await getStemJobStatus(jobId);
       consecutive404 = 0;
-      // Defer React state update so this handler returns quickly (avoids "message handler took Nms" violation)
       requestAnimationFrame(() => onProgress(status));
-      if (status.status === "completed" || status.status === "failed") {
-        return status;
-      }
+      if (status.status === "completed" || status.status === "failed") return status;
     } catch (err) {
       if (err instanceof Error && err.message === "Job not found" && consecutive404 < max404Retries) {
         consecutive404++;
@@ -178,16 +203,16 @@ export async function pollStemJobUntilDone(
 }
 
 export async function getStemJobStatus(jobId: string): Promise<StemJobStatus> {
-  const res = await fetch(`${API_BASE}/api/stems/status/${jobId}`);
+  const res = await fetch(`${API_BASE}/api/stems/status/${jobId}`, {
+    headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
+  });
   if (!res.ok) {
     if (res.status === 404) throw new Error("Job not found");
     const t = await res.text();
     throw new Error(t || `Status failed: ${res.status}`);
   }
   const json: unknown = await res.json();
-  if (!isStemJobStatusValue(json)) {
-    throw new Error("Unexpected response from status");
-  }
+  if (!isStemJobStatusValue(json)) throw new Error("Unexpected response from status");
   return json;
 }
 
@@ -214,7 +239,11 @@ export async function startExpand(
   const body = JSON.stringify({ job_id: jobId, quality: quality ?? "quality" });
   const res = await fetch(`${API_BASE}/api/stems/expand`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeaders()),
+      ...jobTokenHeader(jobId),
+    },
     body,
   });
   if (!res.ok) {
@@ -228,7 +257,12 @@ export async function startExpand(
     throw new Error(message);
   }
   const json: unknown = await res.json();
-  if (res.status === 202 && isAcceptedJobIdResponse(json)) return { job_id: json.job_id };
+  if (res.status === 202 && isAcceptedJobIdResponse(json)) {
+    if (typeof json.job_token === "string" && json.job_token) {
+      setJobToken(json.job_id, json.job_token);
+    }
+    return { job_id: json.job_id };
+  }
   throw new Error("Unexpected response from expand");
 }
 

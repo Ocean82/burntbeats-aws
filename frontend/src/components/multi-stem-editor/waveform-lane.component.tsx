@@ -36,8 +36,14 @@ export interface WaveformLaneProps {
   isActive: boolean;
   isMuted: boolean;
   isSoloed: boolean;
+  /** When true, renders with a shimmer overlay to indicate loading state. */
+  isLoading?: boolean;
   zoom: number;
   scrollPct: number;
+  /** 0–1 fraction of the visible lane width considered "played". */
+  playheadFraction?: number;
+  /** Live analyser time-domain data for waveform modulation during playback. */
+  getAnalyserData?: () => Uint8Array | null;
   onTrimChange: (stemId: string, trim: TrimState) => void;
   onSeek: (pct: number) => void;
   onActivate: (stemId: string) => void;
@@ -52,8 +58,11 @@ export function WaveformLane({
   isActive,
   isMuted,
   isSoloed,
+  isLoading = false,
   zoom,
   scrollPct,
+  playheadFraction,
+  getAnalyserData,
   onTrimChange,
   onSeek,
   onActivate,
@@ -161,6 +170,31 @@ export function WaveformLane({
     const canvas = waveformCanvasRef.current;
     if (!canvas) return;
     const alpha = isMuted ? 0.3 : isActive ? 0.9 : 0.5;
+
+    // If we have a live analyser, run an rAF loop for modulation
+    if (getAnalyserData) {
+      let rafId: number;
+      const draw = () => {
+        const analyserData = getAnalyserData() ?? undefined;
+        drawWaveformBars({
+          canvas,
+          values: slice,
+          color: stem.glow,
+          minimumBarHeightPx: 8,
+          alphaEven: alpha,
+          alphaOdd: alpha,
+          gapPx: 1,
+          heightScale: 0.9,
+          playedFraction: playheadFraction,
+          analyserData,
+        });
+        rafId = requestAnimationFrame(draw);
+      };
+      rafId = requestAnimationFrame(draw);
+      return () => cancelAnimationFrame(rafId);
+    }
+
+    // Static draw (no playback)
     drawWaveformBars({
       canvas,
       values: slice,
@@ -170,8 +204,9 @@ export function WaveformLane({
       alphaOdd: alpha,
       gapPx: 1,
       heightScale: 0.9,
+      playedFraction: playheadFraction,
     });
-  }, [slice, isMuted, isActive, stem.glow]);
+  }, [slice, isMuted, isActive, stem.glow, playheadFraction, getAnalyserData]);
 
   return (
     <div
@@ -200,6 +235,11 @@ export function WaveformLane({
         aria-hidden="true"
         data-start-bin={startBin}
       />
+
+      {/* Loading shimmer overlay */}
+      {isLoading && (
+        <div className="pointer-events-none absolute inset-0 animate-pulse rounded-lg bg-white/10" />
+      )}
 
       <div className="waveform-lane-trim-window pointer-events-none absolute inset-y-0" />
       <div className="waveform-lane-handle-start absolute inset-y-0" />
@@ -260,7 +300,7 @@ export function WaveformLane({
             aria-hidden
           >
             {mixer.gain > 0 ? "+" : ""}
-            {mixer.gain.toFixed(0)}
+            {mixer.gain.toFixed(1)}
           </span>
         </label>
       </div>

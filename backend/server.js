@@ -1,7 +1,7 @@
 /**
- * Backend API: POST /api/stems/split (proxy to Python stem service), GET /api/stems/file/:job_id/:stemId (serve WAV).
- * Set STEM_SERVICE_URL (e.g. http://localhost:5000) and STEM_OUTPUT_DIR (shared with Python) in env.
- * Uploads are streamed to disk (no full-file buffer in memory); proxy to Python streams from disk.
+ * Backend API: stem split/expand proxy, stem file URLs, job status, cleanup.
+ * Python stem_service does inference; this process stores/serves under STEM_OUTPUT_DIR.
+ * Product flow: docs/ARCHITECTURE-FLOW.md
  */
 // @ts-check
 import cors from "cors";
@@ -24,11 +24,102 @@ import path from "path";
 import http from "http";
 import https from "https";
 import { fileURLToPath } from "url";
+import { billingRouter } from "./billing.js";
+import { verifyClerkBearer } from "./clerkAuth.js";
+import {
+  assertSufficientBalance,
+  computeExpandCost,
+  computeSplitCost,
+  debitUsageTokens,
+  findJobInputPath,
+  getAudioDurationSeconds,
+  isUsageTokensEnabled,
+} from "./usageTokens.js";
+import { createHmac, timingSafeEqual } from "crypto";
+import { presignStemGetUrl } from "./s3Presign.js";
+
+// ── Startup env validation ──────────────────────────────────────────────────
+const REQUIRED_ENV_WARNINGS = [];
+if (!process.env.STRIPE_SECRET_KEY) REQUIRED_ENV_WARNINGS.push("STRIPE_SECRET_KEY (billing will not work)");
+if (!process.env.CLERK_SECRET_KEY) REQUIRED_ENV_WARNINGS.push("CLERK_SECRET_KEY (auth will not work)");
+if (!process.env.JOB_TOKEN_SECRET) REQUIRED_ENV_WARNINGS.push("JOB_TOKEN_SECRET (job tokens disabled — status/file endpoints are unprotected)");
+if (REQUIRED_ENV_WARNINGS.length > 0 && process.env.NODE_ENV !== "test") {
+  console.warn(`[startup] Missing env vars: ${REQUIRED_ENV_WARNINGS.join(", ")}`);
+}
 
 const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000").split(",").map((s) => s.trim());
 const API_KEY = process.env.API_KEY || "";
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 10;
+const JOB_TOKEN_SECRET = process.env.JOB_TOKEN_SECRET || "";
+const JOB_TOKEN_TTL_MS = Number(process.env.JOB_TOKEN_TTL_MS) || 60 * 60 * 1000; // 1 hour default
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 10;
+/** Default age for GET /api/stems/cleanup when `maxAgeHours` query is omitted */
+const STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS = (() => {
+  const raw = Number(process.env.STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS);
+  if (Number.isFinite(raw) && raw >= 0) return raw;
+  return 24;
+})();
+
+// ── Job token helpers (HMAC-SHA256, no external deps) ─────────────────────────
+// Token format: "<jobId>.<expiresAt>.<hmac>" — all base64url encoded fields.
+
+/**
+ * Issue a signed job token for a given job_id.
+ * @param {string} jobId
+ * @returns {string}
+ */
+function issueJobToken(jobId) {
+  const secret = process.env.JOB_TOKEN_SECRET || "";
+  const ttl = Number(process.env.JOB_TOKEN_TTL_MS) || JOB_TOKEN_TTL_MS;
+  const expiresAt = Date.now() + ttl;
+  const payload = `${jobId}.${expiresAt}`;
+  const sig = createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${sig}`;
+}
+
+/**
+ * Verify a job token. Returns the jobId if valid, null otherwise.
+ * @param {string} token
+ * @param {string} secret
+ * @returns {string | null} jobId
+ */
+function verifyJobToken(token, secret) {
+  if (!token || !secret) return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [jobId, expiresAtStr, sig] = parts;
+  if (!UUID_REGEX.test(jobId)) return null;
+  const expiresAt = Number(expiresAtStr);
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return null;
+  const payload = `${jobId}.${expiresAtStr}`;
+  const expected = createHmac("sha256", secret).update(payload).digest("base64url");
+  try {
+    if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  } catch {
+    return null;
+  }
+  return jobId;
+}
+
+/**
+ * Middleware: when JOB_TOKEN_SECRET is set, require a valid x-job-token header
+ * (or ?token= query param) that matches the job_id.
+ * Job id is resolved from: req.params.job_id → req.body.job_id → req.query.job_id
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ */
+function jobTokenMiddleware(req, res, next) {
+  const secret = process.env.JOB_TOKEN_SECRET || "";
+  if (!secret) return next();
+  const jobId = req.params.job_id || (req.body && req.body.job_id) || req.query.job_id;
+  const token = req.headers["x-job-token"] || req.query.token;
+  const verified = verifyJobToken(/** @type {string} */ (token), secret);
+  if (!verified || verified !== jobId) {
+    return res.status(401).json({ error: "Missing or invalid job token." });
+  }
+  next();
+}
 
 const rateLimitStore = new Map();
 
@@ -57,6 +148,9 @@ const STEM_OUTPUT_DIR = path.resolve(process.env.STEM_OUTPUT_DIR || path.join(__
 
 app.use(helmet());
 
+// Stripe webhook needs raw body — mount before express.json()
+app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
+
 // Temp dir for streaming uploads (one file per request; cleaned after proxy).
 const UPLOAD_TMP_DIR = path.join(os.tmpdir(), "burntbeats-upload");
 
@@ -83,12 +177,26 @@ app.use(cors({
 app.use(express.json());
 app.use(rateLimitMiddleware);
 
+// Billing routes (Clerk auth + Stripe)
+app.use("/api/billing", billingRouter);
+
 /**
  * @param {import("express").Request} req
  * @param {import("express").Response} res
  * @param {import("express").NextFunction} next
  */
+/**
+ * High-frequency routes (e.g. job status polling ~40/min) are excluded from the global cap.
+ * Expensive endpoints remain protected; abuse is still bounded by auth / job tokens where applicable.
+ * @param {import("express").Request} req
+ */
+function shouldSkipGlobalRateLimit(req) {
+  if (req.method === "GET" && req.path.startsWith("/api/stems/status/")) return true;
+  return false;
+}
+
 function rateLimitMiddleware(req, res, next) {
+  if (shouldSkipGlobalRateLimit(req)) return next();
   const ip = req.ip || req.socket.remoteAddress || "unknown";
   const now = Date.now();
   const record = rateLimitStore.get(ip);
@@ -109,9 +217,10 @@ function rateLimitMiddleware(req, res, next) {
  * @param {import("express").NextFunction} next
  */
 function authMiddleware(req, res, next) {
-  if (!API_KEY) return next();
+  const key = process.env.API_KEY || "";
+  if (!key) return next();
   const providedKey = req.headers["x-api-key"];
-  if (!providedKey || providedKey !== API_KEY) {
+  if (!providedKey || providedKey !== key) {
     return res.status(401).json({ error: "Unauthorized. Invalid or missing API key." });
   }
   next();
@@ -126,9 +235,11 @@ const upload = multer({
       cb(null, `upload-${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`);
     },
   }),
-  limits: { fileSize: 500 * 1024 * 1024 },
+  limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES) || 500 * 1024 * 1024 },
 });
 
+// Time to wait for stem service to accept (202). Separation runs in background; frontend polls for completion.
+const MAX_UPLOAD_MB = Math.round((Number(process.env.MAX_UPLOAD_BYTES) || 500 * 1024 * 1024) / (1024 * 1024));
 // Time to wait for stem service to accept (202). Separation runs in background; frontend polls for completion.
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 
@@ -136,7 +247,7 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   upload.single("file")(req, res, (err) => {
     if (err) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return res.status(413).json({ error: "File too large. Maximum size is 500MB." });
+        return res.status(413).json({ error: `File too large. Maximum size is ${MAX_UPLOAD_MB}MB.` });
       }
       console.error("[POST /api/stems/split] multer error:", err.code || err.message);
       return res.status(400).json({ error: err.message || "Upload failed." });
@@ -152,6 +263,26 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   const filePath = req.file.path;
   const stems = (req.body && req.body.stems) || "4";
   const quality = req.body && req.body.quality;
+
+  /** @type {string | null} */
+  let usageUserId = null;
+  let usageCost = 0;
+  if (isUsageTokensEnabled()) {
+    try {
+      usageUserId = await verifyClerkBearer(req);
+      const durationSec = await getAudioDurationSeconds(filePath);
+      usageCost = computeSplitCost(durationSec, quality, stems);
+      await assertSufficientBalance(usageUserId, usageCost);
+    } catch (e) {
+      await unlinkPromise(filePath).catch(() => {});
+      const status =
+        e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
+          ? /** @type {{ status?: number }} */ (e).status
+          : 500;
+      const msg = e instanceof Error ? e.message : String(e);
+      return res.status(status).json({ error: msg });
+    }
+  }
 
   // Stream from disk to Python using form-data pipe (fetch + form-data stream can corrupt multipart boundary)
   const form = new FormData();
@@ -217,7 +348,17 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
     });
 
     if (data.statusCode === 202) {
-      return res.status(202).json({ job_id: data.data.job_id, status: data.data.status ?? "accepted" });
+      const jobId = data.data.job_id;
+      if (usageUserId && usageCost > 0) {
+        try {
+          await debitUsageTokens(usageUserId, usageCost);
+        } catch (debitErr) {
+          console.error("[POST /api/stems/split] usage debit failed:", debitErr);
+        }
+      }
+      const response = { job_id: jobId, status: data.data.status ?? "accepted" };
+      if (process.env.JOB_TOKEN_SECRET) response.job_token = issueJobToken(jobId);
+      return res.status(202).json(response);
     }
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const d = data.data;
@@ -246,7 +387,7 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   }
 });
 
-app.get("/api/stems/status/:job_id", authMiddleware, (req, res) => {
+app.get("/api/stems/status/:job_id", authMiddleware, jobTokenMiddleware, (req, res) => {
   const { job_id } = req.params;
   if (!job_id || !UUID_REGEX.test(job_id)) {
     return res.status(400).json({ error: "Invalid job_id" });
@@ -262,22 +403,48 @@ app.get("/api/stems/status/:job_id", authMiddleware, (req, res) => {
     return res.status(404).json({ error: "Job not found" });
   }
   const baseUrl = `${req.protocol}://${req.get("host")}`;
+  // When job tokens are active, embed the token in stem URLs so <audio src> works without custom headers
+  const tokenSuffix = process.env.JOB_TOKEN_SECRET ? `?token=${encodeURIComponent(req.headers["x-job-token"] || "")}` : "";
   if (data.stems && Array.isArray(data.stems)) {
     data.stems = data.stems.map((s) => ({
       id: s.id,
-      url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav`,
+      url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav${tokenSuffix}`,
       path: s.path,
     }));
   }
   res.json(data);
 });
 
-app.post("/api/stems/expand", authMiddleware, async (req, res) => {
+app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, res) => {
   const jobId = (req.body && req.body.job_id) || req.query.job_id;
   if (!jobId || !UUID_REGEX.test(jobId)) {
     return res.status(400).json({ error: "Invalid or missing job_id. Provide the 2-stem job id to expand." });
   }
   const quality = (req.body && req.body.quality) || req.query.quality;
+
+  /** @type {string | null} */
+  let usageUserId = null;
+  let usageCost = 0;
+  if (isUsageTokensEnabled()) {
+    try {
+      usageUserId = await verifyClerkBearer(req);
+      const inputPath = findJobInputPath(path.join(STEM_OUTPUT_DIR, jobId));
+      if (!inputPath) {
+        return res.status(400).json({ error: "Source job input not found for expand." });
+      }
+      const durationSec = await getAudioDurationSeconds(inputPath);
+      usageCost = computeExpandCost(durationSec, quality);
+      await assertSufficientBalance(usageUserId, usageCost);
+    } catch (e) {
+      const status =
+        e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
+          ? /** @type {{ status?: number }} */ (e).status
+          : 500;
+      const msg = e instanceof Error ? e.message : String(e);
+      return res.status(status).json({ error: msg });
+    }
+  }
+
   const stemUrl = new URL("/expand", STEM_SERVICE_URL);
   const isHttps = stemUrl.protocol === "https:";
   const client = isHttps ? https : http;
@@ -315,7 +482,17 @@ app.post("/api/stems/expand", authMiddleware, async (req, res) => {
       form.pipe(proxyReq);
     });
     if (data.statusCode === 202) {
-      return res.status(202).json({ job_id: data.data.job_id, status: data.data.status ?? "accepted" });
+      const newJobId = data.data.job_id;
+      if (usageUserId && usageCost > 0) {
+        try {
+          await debitUsageTokens(usageUserId, usageCost);
+        } catch (debitErr) {
+          console.error("[POST /api/stems/expand] usage debit failed:", debitErr);
+        }
+      }
+      const response = { job_id: newJobId, status: data.data.status ?? "accepted" };
+      if (process.env.JOB_TOKEN_SECRET) response.job_token = issueJobToken(newJobId);
+      return res.status(202).json(response);
     }
     return res.status(data.statusCode).json(data.data);
   } catch (e) {
@@ -325,6 +502,22 @@ app.post("/api/stems/expand", authMiddleware, async (req, res) => {
     console.error("[POST /api/stems/expand] proxy error:", e);
     return res.status(502).json({ error: "Stem service unavailable" });
   }
+});
+
+// Optional server-side master export (FFmpeg / mastering). Default app behavior is client-side export.
+// When disabled: 404. When enabled but not implemented: 501 until pipeline exists.
+app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
+  const enabled = ["1", "true", "yes"].includes((process.env.SERVER_EXPORT_ENABLED || "").toLowerCase());
+  if (!enabled) {
+    return res.status(404).json({
+      error:
+        "Server-side export is not enabled. Use client-side master export (default) — see frontend useExport / docs/ARCHITECTURE-FLOW.md.",
+    });
+  }
+  return res.status(501).json({
+    error:
+      "Server export pipeline is not implemented yet. Wire FFmpeg or a worker, then debit usage tokens (usageTokens.computeServerExportCost) and return a download URL or job id.",
+  });
 });
 
 app.delete("/api/stems/:job_id", authMiddleware, async (req, res) => {
@@ -346,11 +539,26 @@ app.delete("/api/stems/:job_id", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/api/stems/file/:job_id/:stemId", authMiddleware, (req, res) => {
+app.get("/api/stems/file/:job_id/:stemId", authMiddleware, jobTokenMiddleware, async (req, res) => {
   const { job_id, stemId } = req.params;
   const validated = validateStemFileParams(job_id, stemId);
   if (!validated.ok) {
     return res.status(400).json({ error: "Invalid job_id or stem id" });
+  }
+  const stemBase = stemId.replace(/\.wav$/i, "");
+  const progressPath = path.join(STEM_OUTPUT_DIR, job_id, "progress.json");
+  if (existsSync(progressPath)) {
+    try {
+      const progress = JSON.parse(readFileSync(progressPath, "utf-8"));
+      const s3 = progress.s3;
+      const key = s3 && s3.keys && typeof s3.keys === "object" ? s3.keys[stemBase] : null;
+      if (key && s3.bucket) {
+        const url = await presignStemGetUrl(s3.bucket, key, s3.region);
+        return res.redirect(302, url);
+      }
+    } catch (e) {
+      console.warn("[GET /api/stems/file] S3 presign failed, trying disk:", e instanceof Error ? e.message : e);
+    }
   }
   const filePath = path.join(STEM_OUTPUT_DIR, job_id, "stems", validated.stemId);
   if (!existsSync(filePath)) {
@@ -367,7 +575,11 @@ app.get("/api/stems/file/:job_id/:stemId", authMiddleware, (req, res) => {
 });
 
 app.get("/api/stems/cleanup", authMiddleware, async (req, res) => {
-  const maxAgeHours = Math.max(0, Number(req.query.maxAgeHours) || 24);
+  // Cleanup is a destructive operation — require API_KEY to be configured
+  if (!process.env.API_KEY) {
+    return res.status(503).json({ error: "Cleanup endpoint requires API_KEY to be configured." });
+  }
+  const maxAgeHours = Math.max(0, Number(req.query.maxAgeHours) || STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS);
   const cutoff = Date.now() - maxAgeHours * 60 * 60 * 1000;
   let deleted = 0;
   try {
@@ -410,7 +622,7 @@ app.get("/api/stems/cleanup", authMiddleware, async (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-  const payload = { status: "ok", rate_limited: !!API_KEY };
+  const payload = { status: "ok", rate_limited: !!process.env.API_KEY };
   if (process.env.NODE_ENV !== "production") {
     payload.stem_output_dir = STEM_OUTPUT_DIR;
   }
@@ -428,6 +640,7 @@ async function main() {
     console.log(`STEM_SERVICE_URL=${STEM_SERVICE_URL} STEM_OUTPUT_DIR=${STEM_OUTPUT_DIR}`);
     console.log(`CORS allowed origins: ${FRONTEND_ORIGINS.join(", ")}`);
     if (API_KEY) console.log("API key authentication: ENABLED");
+    if (JOB_TOKEN_SECRET) console.log("Job token authentication: ENABLED");
   });
   server.on("error", (err) => {
     console.error("Server error:", err);
@@ -447,7 +660,11 @@ function gracefulShutdown(signal) {
   }
 }
 
-if (process.env.NODE_ENV !== "test") {
+// Tests set NODE_ENV=test and/or BACKEND_SKIP_START=1 so importing server.js does not bind a port.
+const shouldAutoStartServer =
+  process.env.NODE_ENV !== "test" && process.env.BACKEND_SKIP_START !== "1";
+
+if (shouldAutoStartServer) {
   process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
   process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 

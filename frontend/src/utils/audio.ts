@@ -120,6 +120,60 @@ export function computeWaveformFromBuffer(buffer: AudioBuffer, bins: number): nu
   return values.map((v) => Math.max(minBar, Math.min(1, v * scale * 0.95 + minBar * 0.2)));
 }
 
+export interface StereoWidthNode {
+  input: AudioNode;
+  output: AudioNode;
+  setWidth: (width: number) => void;
+  disconnect: () => void;
+}
+
+/**
+ * Create a stereo width matrix using L/R gain nodes.
+ * width=0: stereo unchanged, width<0: narrower (toward mono), width>0: wider.
+ * Formula: L_out = L * (1+g)/2 + R * (1-g)/2, R_out = R * (1+g)/2 + L * (1-g)/2
+ * where g = width / 100, clipped to [-1, 1].
+ */
+export function createStereoWidthNode(context: BaseAudioContext): StereoWidthNode {
+  const splitter = context.createChannelSplitter(2);
+  const merger = context.createChannelMerger(2);
+  const gainLL = context.createGain();
+  const gainLR = context.createGain();
+  const gainRL = context.createGain();
+  const gainRR = context.createGain();
+
+  splitter.connect(gainLL, 0, 0);
+  splitter.connect(gainLR, 0, 0);
+  splitter.connect(gainRL, 1, 0);
+  splitter.connect(gainRR, 1, 0);
+  gainLL.connect(merger, 0, 0);
+  gainLR.connect(merger, 0, 1);
+  gainRL.connect(merger, 0, 0);
+  gainRR.connect(merger, 0, 1);
+
+  const setWidth = (width: number) => {
+    const g = Math.max(-1, Math.min(1, width / 100));
+    gainLL.gain.value = (1 + g) / 2;
+    gainLR.gain.value = (1 - g) / 2;
+    gainRL.gain.value = (1 - g) / 2;
+    gainRR.gain.value = (1 + g) / 2;
+  };
+  setWidth(0);
+
+  return {
+    input: splitter,
+    output: merger,
+    setWidth,
+    disconnect: () => {
+      splitter.disconnect();
+      gainLL.disconnect();
+      gainLR.disconnect();
+      gainRL.disconnect();
+      gainRR.disconnect();
+      merger.disconnect();
+    },
+  };
+}
+
 // Shared stem preview buffer generator (migrated from App.tsx)
 export function createStemPreviewBuffer(context: AudioContext, stemId: StemId): AudioBuffer {
   const duration = 3.8;
@@ -188,4 +242,145 @@ export function createStemPreviewBuffer(context: AudioContext, stemId: StemId): 
   renderChannel(buffer.getChannelData(1), 0.22);
 
   return buffer;
+}
+
+import type { MixerState } from "../types";
+
+export interface StemDspChain {
+  /** Connect a source node here. */
+  input: AudioNode;
+  /** Connect this to the master bus. */
+  output: AudioNode;
+  /** Update all node params from a MixerState without rebuilding the graph. */
+  update: (mixer: MixerState, gain: number) => void;
+  disconnect: () => void;
+}
+
+/**
+ * Build a per-stem DSP chain:
+ *   gainNode → lowEQ → midEQ → highEQ → compressor → panNode → widthNode → [reverb/delay sends] → output
+ *
+ * Reverb and delay are implemented as parallel wet sends summed at the output merger.
+ */
+export function createStemDspChain(
+  ctx: AudioContext,
+  mixer: MixerState,
+  gainLinear: number
+): StemDspChain {
+  // --- Core nodes ---
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = gainLinear;
+
+  const lowEQ = ctx.createBiquadFilter();
+  lowEQ.type = "lowshelf";
+  lowEQ.frequency.value = 200;
+  lowEQ.gain.value = mixer.eqLow;
+
+  const midEQ = ctx.createBiquadFilter();
+  midEQ.type = "peaking";
+  midEQ.frequency.value = 1000;
+  midEQ.Q.value = 1.0;
+  midEQ.gain.value = mixer.eqMid;
+
+  const highEQ = ctx.createBiquadFilter();
+  highEQ.type = "highshelf";
+  highEQ.frequency.value = 6000;
+  highEQ.gain.value = mixer.eqHigh;
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = mixer.compThreshold;
+  compressor.ratio.value = Math.max(1, mixer.compRatio);
+  compressor.knee.value = 6;
+  compressor.attack.value = 0.003;
+  compressor.release.value = 0.25;
+
+  const panNode = ctx.createStereoPanner();
+  panNode.pan.value = mixer.pan / 100;
+
+  const widthNode = createStereoWidthNode(ctx);
+  widthNode.setWidth(mixer.width);
+
+  // --- Reverb (convolver with synthetic IR) ---
+  const reverbConvolver = ctx.createConvolver();
+  reverbConvolver.buffer = _buildReverbIR(ctx, 1.8);
+  const reverbWetGain = ctx.createGain();
+  reverbWetGain.gain.value = mixer.reverbWet / 100;
+
+  // --- Delay ---
+  const delayNode = ctx.createDelay(1.0);
+  delayNode.delayTime.value = 0.375; // 8th note at ~80bpm
+  const delayFeedback = ctx.createGain();
+  delayFeedback.gain.value = 0.35;
+  const delayWetGain = ctx.createGain();
+  delayWetGain.gain.value = mixer.delayWet / 100;
+
+  // --- Output merger ---
+  const outputGain = ctx.createGain();
+  outputGain.gain.value = 1;
+
+  // --- Wire dry path ---
+  gainNode.connect(lowEQ);
+  lowEQ.connect(midEQ);
+  midEQ.connect(highEQ);
+  highEQ.connect(compressor);
+  compressor.connect(panNode);
+  panNode.connect(widthNode.input);
+  widthNode.output.connect(outputGain);
+
+  // --- Wire reverb send ---
+  compressor.connect(reverbConvolver);
+  reverbConvolver.connect(reverbWetGain);
+  reverbWetGain.connect(outputGain);
+
+  // --- Wire delay send ---
+  compressor.connect(delayNode);
+  delayNode.connect(delayFeedback);
+  delayFeedback.connect(delayNode); // feedback loop
+  delayNode.connect(delayWetGain);
+  delayWetGain.connect(outputGain);
+
+  const update = (m: MixerState, g: number) => {
+    gainNode.gain.value = g;
+    lowEQ.gain.value = m.eqLow;
+    midEQ.gain.value = m.eqMid;
+    highEQ.gain.value = m.eqHigh;
+    compressor.threshold.value = m.compThreshold;
+    compressor.ratio.value = Math.max(1, m.compRatio);
+    panNode.pan.value = m.pan / 100;
+    widthNode.setWidth(m.width);
+    reverbWetGain.gain.value = m.reverbWet / 100;
+    delayWetGain.gain.value = m.delayWet / 100;
+  };
+
+  const disconnect = () => {
+    gainNode.disconnect();
+    lowEQ.disconnect();
+    midEQ.disconnect();
+    highEQ.disconnect();
+    compressor.disconnect();
+    panNode.disconnect();
+    widthNode.disconnect();
+    reverbConvolver.disconnect();
+    reverbWetGain.disconnect();
+    delayNode.disconnect();
+    delayFeedback.disconnect();
+    delayWetGain.disconnect();
+    outputGain.disconnect();
+  };
+
+  return { input: gainNode, output: outputGain, update, disconnect };
+}
+
+/** Synthetic exponential-decay reverb impulse response. */
+function _buildReverbIR(ctx: AudioContext, durationSec: number): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const length = Math.floor(sr * durationSec);
+  const ir = ctx.createBuffer(2, length, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = ir.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 2);
+    }
+  }
+  return ir;
 }

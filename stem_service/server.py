@@ -30,6 +30,7 @@ from stem_service.config import (
     REPO_ROOT,
     STEM_BACKEND,
     htdemucs_available,
+    speed_2stem_onnx_path,
     QUALITY_ULTRA,
     ultra_available_for_device,
     SUPPORTED_AUDIO_FORMATS,
@@ -51,6 +52,7 @@ from stem_service.hybrid import (
 from stem_service.mdx_onnx import get_available_vocal_onnx
 from stem_service.ultra import run_ultra_2stem, run_ultra_4stem, get_ultra_model_info
 from stem_service.vocal_stage1 import get_2stem_stage1_preview
+from stem_service.s3_upload import upload_job_stems_to_s3
 
 
 class CorrelationLoggingMiddleware(BaseHTTPMiddleware):
@@ -124,6 +126,9 @@ async def lifespan(app: FastAPI):
 
     path_kind, stage1_models = get_2stem_stage1_preview()
     logger.info("2-stem Stage 1 will use: path=%s models=%s", path_kind, stage1_models)
+    _sp = speed_2stem_onnx_path()
+    if _sp.exists():
+        logger.info("2-stem speed ONNX (when quality=speed): %s", _sp)
 
     # Check ultra quality models
     ultra_info = get_ultra_model_info()
@@ -352,7 +357,9 @@ def _run_separation_sync(
         # Standard hybrid or demucs_only mode
         elif STEM_BACKEND == "hybrid":
             if stem_count == 2:
-                path_kind, stage1_models = get_2stem_stage1_preview()
+                path_kind, stage1_models = get_2stem_stage1_preview(
+                    prefer_speed=prefer_speed
+                )
                 job_log.info(
                     "Stage: hybrid 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
                     prefer_speed,
@@ -378,7 +385,9 @@ def _run_separation_sync(
         else:
             # demucs_only: still prefer ONNX when available (best option)
             if stem_count == 2:
-                path_kind, stage1_models = get_2stem_stage1_preview()
+                path_kind, stage1_models = get_2stem_stage1_preview(
+                    prefer_speed=prefer_speed
+                )
                 job_log.info(
                     "Stage: demucs_only 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
                     prefer_speed,
@@ -402,7 +411,10 @@ def _run_separation_sync(
                 ):
                     job_log.info("Stage: demucs ONNX 4-stem  use_6s=%s", use_6s)
                     stem_list, demucs_model = run_demucs_onnx_4stem(
-                        input_path, flat_dir, use_6s=use_6s
+                        input_path,
+                        flat_dir,
+                        use_6s=use_6s,
+                        prefer_speed=prefer_speed,
                     )
                     if stem_list is not None and demucs_model is not None:
                         models_used = [demucs_model]
@@ -446,6 +458,9 @@ def _run_separation_sync(
             "mode_name": mode_name,
             "models_used": models_used,
         }
+        s3_meta = upload_job_stems_to_s3(job_id, out_dir / "stems")
+        if s3_meta:
+            progress_data["s3"] = s3_meta
         _write_progress(out_dir, progress_data)
 
         metrics_record = {
@@ -518,18 +533,19 @@ def _run_expand_sync(
             {"id": stem_id, "path": str(p.relative_to(OUTPUT_BASE))}
             for stem_id, p in stem_list
         ]
-        _write_progress(
-            out_dir,
-            {
-                "status": "completed",
-                "progress": 100,
-                "stems": stems_payload,
-                "elapsed_seconds": round(elapsed, 2),
-                "stem_count": 4,
-                "expand_from": source_job_id,
-                "models_used": models_used,
-            },
-        )
+        expand_progress: dict[str, Any] = {
+            "status": "completed",
+            "progress": 100,
+            "stems": stems_payload,
+            "elapsed_seconds": round(elapsed, 2),
+            "stem_count": 4,
+            "expand_from": source_job_id,
+            "models_used": models_used,
+        }
+        s3_meta = upload_job_stems_to_s3(expand_job_id, out_dir / "stems")
+        if s3_meta:
+            expand_progress["s3"] = s3_meta
+        _write_progress(out_dir, expand_progress)
         job_log.info("=== EXPAND COMPLETE  elapsed=%.1fs  models=%s ===", elapsed, models_used)
     except Exception as e:
         job_log.exception("=== EXPAND FAILED  error=%s ===", e)
@@ -551,9 +567,9 @@ async def split(
     Poll GET /status/{job_id} for progress and stems when completed.
 
     quality options:
-    - "speed": Fast separation using VAD pre-trim + htdemucs
-    - "quality" (default): Better separation with ONNX/Demucs Extra
-    - "ultra": Best separation using Roformer/MDX23C models
+    - "speed": VAD pre-trim (when enabled), faster MDX/Demucs ONNX chunk stride, SCNet if available
+    - "quality" (default): Full-length input, higher MDX overlap + tighter Demucs ONNX stride on embedded models
+    - "ultra": Best separation via RoFormer checkpoints (audio-separator); slow on CPU
     """
     _require_stem_service_api_token(request)
 
@@ -749,11 +765,7 @@ async def cancel_job(job_id: str, request: Request) -> dict:
 
 @app.get("/health")
 async def health() -> dict:
-<<<<<<< Current (Your changes)
-    return {"status": "ok"}
-=======
     payload: dict[str, str] = {"status": "ok"}
     if os.environ.get("NODE_ENV", "development").lower() != "production":
         payload["repo_root"] = str(REPO_ROOT)
     return payload
->>>>>>> Incoming (Background Agent changes)

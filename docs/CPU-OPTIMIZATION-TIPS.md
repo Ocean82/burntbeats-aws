@@ -1,6 +1,8 @@
 # CPU optimization tips (quality + speed)
 
-**Last updated:** 2026-03-17
+**Last updated:** 2026-03-22
+
+**Deployment profile:** This project targets **AWS `t3.large` (or similar) with CPU only — no GPU**. Thread caps (`OMP_NUM_THREADS`, `MKL_NUM_THREADS`, `ONNXRUNTIME_NUM_THREADS`, often **2** on 2 vCPU) match that layout; see root [README.md](../README.md) (*Target environment*) and [`scripts/t3-large-benchmark.sh`](../scripts/t3-large-benchmark.sh).
 
 ## What we do by default
 

@@ -1,6 +1,12 @@
 """
 Single-pass 4-stem separation using htdemucs ONNX models.
 
+Quality expectations: ONNX exports are approximations of the PyTorch Demucs graph
+(quantization, graph surgery, fixed segment length). For best separation, the
+hybrid pipeline’s Demucs subprocess / mdx_extra bag often still beats ONNX; this
+path is for CPU speed and predictable latency. I/O and stride (hop) must match
+the export (two-input vs single-input, 4 vs 6 stems) — see _infer_demucs_io_from_session.
+
 Probed tensor shapes (scripts/probe_onnx.py):
 
 htdemucs_embedded.onnx:
@@ -71,6 +77,7 @@ def _get_session(path: Path) -> Any | None:
         n = os.environ.get("ONNXRUNTIME_NUM_THREADS", "")
         if n.isdigit() and int(n) >= 0:
             opts.intra_op_num_threads = int(n)
+            opts.inter_op_num_threads = 1
         sess = ort.InferenceSession(
             str(path), sess_options=opts, providers=get_onnx_providers()
         )
@@ -146,12 +153,99 @@ def _demucs_model_config(path: Path) -> tuple[str, int, bool] | None:
     name = path.name.lower()
     if "6s" in name or "6_s" in name:
         return "5012", 6, True
-    if "embedded" in name or path.name == "htdemucs.onnx":
+    if "embedded" in name:
         return "add_67", 4, True
     if "demucsv4" in name or "v4" in name:
         return "output", 6, False
-    # Default: assume two-input 4-stem (embedded-style)
+    # Default: assume two-input 4-stem (embedded-style); htdemucs.onnx may differ — use session probe
     return "add_67", 4, True
+
+
+def _is_waveform_output_shape(shape: Any) -> bool:
+    """True if this looks like (batch, stems, 2, time) — not a spectrogram (freq/time)."""
+    if shape is None or len(shape) != 4:
+        return False
+    d2 = shape[2]
+    if isinstance(d2, int) and d2 == 2:
+        return True
+    # Symbolic dims from some exporters (stereo channel axis)
+    if isinstance(d2, str) and "2" in d2.lower():
+        return True
+    return False
+
+
+def _infer_stem_count_from_filename(path: Path) -> int:
+    """When ONNX has symbolic stem dimension, infer 4 vs 6 from the file name."""
+    name = path.name.lower()
+    if "6s" in name or "6_s" in name:
+        return 6
+    if "demucsv4" in name or name == "demucsv4.onnx":
+        return 6
+    # htdemucs.onnx (HT Demucs 4-stem) and embedded-style exports
+    return 4
+
+
+def _infer_demucs_io_from_session(
+    session: Any, model_path: Path
+) -> tuple[str | None, int, bool]:
+    """
+    Infer waveform output name, stem count, and two-input layout from ONNX metadata.
+
+    Important: pick the **time-domain** output (batch, stems, 2, time), not the
+    spectrogram branch (e.g. 5D or 4D with freq bins in the last axes). A generic
+    name `output` is ambiguous — demucsv4 uses 6 stems; htdemucs.onnx is usually 4.
+    """
+    inp = session.get_inputs()
+    outs = session.get_outputs()
+    two_input = len(inp) >= 2
+    wav_out_name: str | None = None
+    n_stems = _infer_stem_count_from_filename(model_path)
+
+    # Prefer tensors that are clearly (batch, stems, stereo, samples)
+    waveform_candidates: list[tuple[int, Any]] = []
+    for idx, o in enumerate(outs):
+        if _is_waveform_output_shape(o.shape):
+            waveform_candidates.append((idx, o))
+    if waveform_candidates:
+        # Prefer known Demucs export names when multiple match
+        priority = {"add_67": 0, "5012": 1, "sources": 2}
+        waveform_candidates.sort(
+            key=lambda t: (priority.get(t[1].name, 99), t[0])
+        )
+        chosen = waveform_candidates[0][1]
+        wav_out_name = chosen.name
+        d1 = chosen.shape[1]
+        if isinstance(d1, int) and d1 in (4, 6):
+            n_stems = d1
+        elif str(d1) in ("4", "6"):
+            n_stems = int(str(d1))
+        # else: keep filename-based n_stems
+
+    if wav_out_name is None:
+        name_to_stems = {"5012": 6, "add_67": 4, "sources": 4}
+        for o in outs:
+            if o.name in name_to_stems:
+                wav_out_name = o.name
+                n_stems = name_to_stems[o.name]
+                break
+    if wav_out_name is None:
+        for o in outs:
+            if o.name == "output" and len(o.shape or []) == 4:
+                wav_out_name = o.name
+                n_stems = _infer_stem_count_from_filename(model_path)
+                break
+
+    return wav_out_name, n_stems, two_input
+
+
+def _sliding_window_hop(seg: int, prefer_speed: bool, n_stems: int) -> int:
+    """Stride between ~7.8s ONNX windows. Smaller hop = more overlap = less chunk bleed; slower."""
+    if prefer_speed:
+        return seg // 2
+    # Quality: 6-stem export is already a heavier model; keep stride to limit runtime.
+    if n_stems >= 6:
+        return seg // 2
+    return seg // 4
 
 
 def run_demucs_onnx_4stem(
@@ -159,23 +253,25 @@ def run_demucs_onnx_4stem(
     output_dir: Path,
     use_6s: bool = False,
     demucs_model_override: Path | None = None,
+    prefer_speed: bool = True,
 ) -> tuple[list[tuple[str, Path]], str] | tuple[None, None]:
     """
     Single-pass 4-stem separation.
     use_6s=True  → htdemucs_6s.onnx  (quality; "other" = model's other stem only; guitar/piano dropped)
     use_6s=False → htdemucs_embedded.onnx (speed)
-    demucs_model_override: when set, use this path and infer I/O from filename (for benchmarking).
+    prefer_speed=False tightens sliding-window stride on 4-stem models (less boundary bleed; slower).
+    demucs_model_override: when set, use this path and infer I/O from the ONNX session (fallback: filename).
     Returns (stem_list, model_name) on success, (None, None) on failure.
     """
     import soundfile as sf
     import torch
 
-    # Override: use given path and infer config from filename
+    model_path: Path | None = None
+    wav_out_name: str | None = None
+    n_stems = 4
+    two_input = True
+
     if demucs_model_override is not None and demucs_model_override.exists():
-        cfg = _demucs_model_config(demucs_model_override)
-        if cfg is None:
-            return None, None
-        wav_out_name, n_stems, two_input = cfg
         model_path = demucs_model_override
     else:
         # Pick model (prefer ONNX so we avoid Demucs subprocess)
@@ -204,13 +300,38 @@ def run_demucs_onnx_4stem(
         else:
             return None, None
 
+    assert model_path is not None
     session = _get_session(model_path)
     if session is None:
         return None, None
 
-    # Discover input names from session
+    inf_w, inf_n, inf_two = _infer_demucs_io_from_session(session, model_path)
+    if inf_w is not None:
+        wav_out_name, n_stems, two_input = inf_w, inf_n, inf_two
+    elif demucs_model_override is not None and demucs_model_override.exists():
+        cfg = _demucs_model_config(demucs_model_override)
+        if cfg is None:
+            return None, None
+        wav_out_name, n_stems, two_input = cfg
+
+    assert wav_out_name is not None
+
     inp_names = [i.name for i in session.get_inputs()]
-    wav_input_name = inp_names[0]  # always 'input'
+    if len(inp_names) < 2:
+        two_input = False
+
+    hop = _sliding_window_hop(SEGMENT_SAMPLES, prefer_speed, n_stems)
+    logger.info(
+        "Demucs ONNX I/O: model=%s  wav_out=%s  n_stems(meta)=%s  two_input=%s  hop=%s  prefer_speed=%s",
+        model_path.name,
+        wav_out_name,
+        n_stems,
+        two_input,
+        hop,
+        prefer_speed,
+    )
+
+    wav_input_name = inp_names[0]
     spec_input_name = inp_names[1] if two_input and len(inp_names) > 1 else None
 
     # Load audio
@@ -236,7 +357,6 @@ def run_demucs_onnx_4stem(
     mix_t = torch.from_numpy(mix.T.astype(np.float32)).unsqueeze(0)
     total = mix_t.shape[2]
     seg = SEGMENT_SAMPLES
-    hop = seg // 2  # 50% overlap
 
     # Per-stem chunk accumulator: list of (start, end, wav_array)
     stem_chunks: list[list[tuple[int, int, np.ndarray]]] = [[] for _ in range(4)]
@@ -281,9 +401,10 @@ def run_demucs_onnx_4stem(
 
         # wav_out: (1, n_stems, 2, seg)
         stems_raw = wav_out[0]  # (n_stems, 2, seg)
+        n_lead = stems_raw.shape[0]
 
-        # Map to 4 stems: drums, bass, other, vocals
-        if n_stems == 6:
+        # Map to 4 stems: drums, bass, other, vocals (use runtime stem count, not metadata)
+        if n_lead == 6:
             # Use model's "other" (index 2) only; do not fold guitar(4)/piano(5) into it
             # to avoid a louder, muddier "other" stem. Guitar and piano are dropped
             # for the 4-stem API; use 4-stem embedded model if you need a single "other".

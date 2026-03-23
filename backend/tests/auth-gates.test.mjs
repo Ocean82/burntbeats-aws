@@ -5,6 +5,9 @@ import path from "node:path";
 import os from "node:os";
 import express from "express";
 
+// Match server.test.js so importing server.js unrefs timers (rate limit prune) and exits cleanly.
+process.env.NODE_ENV = "test";
+
 const DUMMY_STEM_BYTES = Buffer.from("RIFF....WAVEfmt ");
 
 function uuidV4Like(id) {
