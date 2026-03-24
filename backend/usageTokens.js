@@ -149,6 +149,127 @@ export async function debitUsageTokens(userId, cost) {
   });
 }
 
+/** @type {Set<string>} */
+const memUserLocks = new Set();
+
+/**
+ * Run an operation with a short per-user lock.
+ * Uses Redis when configured, otherwise process-local memory.
+ * @template T
+ * @param {string} userId
+ * @param {() => Promise<T>} fn
+ * @returns {Promise<T>}
+ */
+async function withUserUsageLock(userId, fn) {
+  const redis = await getRedis();
+  const lockKey = `usage:lock:${userId}`;
+
+  if (redis) {
+    const started = Date.now();
+    while (Date.now() - started < 5000) {
+      const got = await redis.set(lockKey, "1", { NX: true, EX: 15 });
+      if (got === "OK") {
+        try {
+          return await fn();
+        } finally {
+          try {
+            await redis.del(lockKey);
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    throw Object.assign(new Error("Token ledger is busy, please retry."), { status: 429 });
+  }
+
+  const started = Date.now();
+  while (Date.now() - started < 5000) {
+    if (!memUserLocks.has(lockKey)) {
+      memUserLocks.add(lockKey);
+      try {
+        return await fn();
+      } finally {
+        memUserLocks.delete(lockKey);
+      }
+    }
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  throw Object.assign(new Error("Token ledger is busy, please retry."), { status: 429 });
+}
+
+/**
+ * Atomically reserve usage tokens before starting metered server work.
+ * Throws 402 if insufficient.
+ * @param {string} userId
+ * @param {number} cost
+ */
+export async function reserveUsageTokens(userId, cost) {
+  if (isUsageTokensDevUnlimited()) return;
+  const clerk = getClerkClient();
+  if (!clerk) return;
+  if (!Number.isFinite(cost) || cost <= 0) return;
+
+  await withUserUsageLock(userId, async () => {
+    const user = await clerk.users.getUser(userId);
+    const prev = user.privateMetadata?.usageTokens;
+    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const curBal = Number(rec.balance) || 0;
+    if (curBal < cost) {
+      const err = /** @type {Error & { status?: number }} */ (
+        new Error(
+          `Insufficient usage tokens (need ${cost}, have ${curBal}). Upgrade your plan or wait for renewal.`,
+        )
+      );
+      err.status = 402;
+      throw err;
+    }
+    const nextBal = curBal - cost;
+    await clerk.users.updateUserMetadata(userId, {
+      privateMetadata: {
+        .../** @type {Record<string, unknown>} */ (user.privateMetadata || {}),
+        usageTokens: {
+          ...rec,
+          balance: nextBal,
+          lastDebitAt: Date.now(),
+          lastDebitAmount: cost,
+          pendingReservation: false,
+        },
+      },
+    });
+  });
+}
+
+/**
+ * Refund previously reserved tokens (best-effort compensating action).
+ * @param {string} userId
+ * @param {number} amount
+ */
+export async function refundUsageTokens(userId, amount) {
+  if (isUsageTokensDevUnlimited()) return;
+  const clerk = getClerkClient();
+  if (!clerk) return;
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  await withUserUsageLock(userId, async () => {
+    const user = await clerk.users.getUser(userId);
+    const prev = user.privateMetadata?.usageTokens;
+    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const curBal = Number(rec.balance) || 0;
+    await clerk.users.updateUserMetadata(userId, {
+      privateMetadata: {
+        .../** @type {Record<string, unknown>} */ (user.privateMetadata || {}),
+        usageTokens: {
+          ...rec,
+          balance: curBal + amount,
+          lastRefundAt: Date.now(),
+          lastRefundAmount: amount,
+        },
+      },
+    });
+  });
+}
+
 /**
  * Prune processedStripeCreditEventIds to max ~40 entries (oldest by timestamp).
  * @param {Record<string, number>} m
@@ -267,4 +388,51 @@ export function tokensPerMonthFromPrice(price) {
   }
   const def = Number(process.env.USAGE_DEFAULT_TOKENS_PER_MONTH);
   return Number.isFinite(def) && def > 0 ? Math.floor(def) : 6000;
+}
+
+/**
+ * One-time top-up grant from Stripe Price metadata.
+ * Accepts dedicated top-up key first, then monthly key as fallback.
+ * @param {import("stripe").Stripe.Price} price
+ */
+export function tokensPerTopupFromPrice(price) {
+  const meta = price?.metadata;
+  if (meta?.tokens_per_topup != null && meta.tokens_per_topup !== "") {
+    const n = Number(meta.tokens_per_topup);
+    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  }
+  if (meta?.token_seconds_per_topup != null && meta.token_seconds_per_topup !== "") {
+    const sec = Number(meta.token_seconds_per_topup);
+    if (Number.isFinite(sec) && sec > 0) return Math.max(1, Math.ceil(sec / 60));
+  }
+  // Backwards-compatible fallback for teams using a shared metadata key.
+  return tokensPerMonthFromPrice(price);
+}
+
+/**
+ * Credit one-time purchased tokens.
+ * @param {string} clerkUserId
+ * @param {number} grant
+ */
+export async function creditTopupTokens(clerkUserId, grant) {
+  const clerk = getClerkClient();
+  if (!clerk) return;
+  if (!Number.isFinite(grant) || grant <= 0) return;
+  await withUserUsageLock(clerkUserId, async () => {
+    const user = await clerk.users.getUser(clerkUserId);
+    const prev = user.privateMetadata?.usageTokens;
+    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const curBal = Number(rec.balance) || 0;
+    await clerk.users.updateUserMetadata(clerkUserId, {
+      privateMetadata: {
+        .../** @type {Record<string, unknown>} */ (user.privateMetadata || {}),
+        usageTokens: {
+          ...rec,
+          balance: curBal + grant,
+          lastTopupAt: Date.now(),
+          lastTopupAmount: grant,
+        },
+      },
+    });
+  });
 }

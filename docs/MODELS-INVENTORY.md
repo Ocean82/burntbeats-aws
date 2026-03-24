@@ -3,6 +3,8 @@
 **Date:** 2026-03-09 (reviewed 2026-03-17)  
 **Purpose:** Full recursive audit of `/path/to/burntbeats-aws/models` and copy source `/path/to/stem-models` (all subdirectories). So no models are missed.
 
+**Automated (facts on *this* tree):** Run `python scripts/scan_models_inventory.py` → `tmp/model_inventory.csv` + `docs/MODEL-INVENTORY-AUTO.md`. Full workflow (ORT conversion + 30s matrix): [MODEL-INVENTORY-RUNBOOK.md](MODEL-INVENTORY-RUNBOOK.md).
+
 ---
 
 ## 1. Project models dir: `/path/to/burntbeats-aws/models`

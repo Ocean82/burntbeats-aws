@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Music2, Loader2, Check, AlertCircle, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { X, Music2, Loader2, Check, AlertCircle, Trash2, ChevronUp, ChevronDown, Lock } from "lucide-react";
 
 export type QueueItemStatus = "queued" | "processing" | "complete" | "error";
 
@@ -68,7 +68,9 @@ export function BatchQueue({
     >
       {/* Header */}
       <button
+        type="button"
         onClick={onToggleExpand}
+        aria-controls="batch-queue-items"
         className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-white/5"
       >
         <div className="flex items-center gap-3">
@@ -79,7 +81,7 @@ export function BatchQueue({
             <span className="block text-sm font-medium text-white">
               Batch Queue
             </span>
-            <span className="text-xs text-white/65">
+            <span className="text-xs text-white/65" role="status" aria-live="polite">
               {processingCount > 0
                 ? `Processing ${processingCount} of ${items.length}`
                 : queuedCount > 0
@@ -89,9 +91,9 @@ export function BatchQueue({
           </div>
         </div>
         {isExpanded ? (
-          <ChevronDown className="h-4 w-4 text-white/40" />
-        ) : (
           <ChevronUp className="h-4 w-4 text-white/40" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-white/40" />
         )}
       </button>
 
@@ -104,7 +106,7 @@ export function BatchQueue({
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div className="max-h-64 overflow-y-auto border-t border-white/10">
+            <div id="batch-queue-items" className="max-h-64 overflow-y-auto border-t border-white/10">
               {items.map((item) => (
                 <motion.div
                   key={item.id}
@@ -131,7 +133,7 @@ export function BatchQueue({
                       onClick={() => onRemoveItem(item.id)}
                       title="Remove from queue"
                       aria-label={`Remove ${item.fileName} from queue`}
-                      className="flex h-6 w-6 items-center justify-center rounded text-white/30 opacity-0 transition hover:bg-white/10 hover:text-white group-hover:opacity-100"
+                      className="flex h-6 w-6 items-center justify-center rounded text-white/45 opacity-80 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 group-hover:opacity-100"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -158,15 +160,19 @@ export function BatchQueue({
                   type="button"
                   onClick={onProcessQueue}
                   disabled={!canProcess}
-                  title={allowProcess ? "Process all queued files" : "Batch queue requires Premium or Studio"}
+                  title={allowProcess ? "Process all queued files" : "Requires Premium or Studio"}
                   aria-label="Process all queued files"
                   className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/30 disabled:opacity-50"
                 >
-                  Process queue
+                  <span className="inline-flex items-center gap-1">
+                    Process queue
+                    {!allowProcess && <Lock className="h-3 w-3 text-amber-200/70" aria-hidden="true" />}
+                  </span>
                 </button>
               )}
               {completedCount > 0 && (
                 <button
+                  type="button"
                   onClick={onClearCompleted}
                   className="flex items-center gap-2 text-xs text-white/40 transition hover:text-white"
                 >

@@ -38,6 +38,7 @@ from stem_service.mdx_onnx import (
     get_available_inst_onnx,
     get_available_vocal_onnx,
     mdx_model_configured,
+    resolve_mdx_model_path,
     run_inst_onnx,
     run_vocal_onnx,
 )
@@ -104,6 +105,7 @@ def extract_vocals_stage1(
     input_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
+    model_tier: str = "balanced",
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,
     inst_model_override: Path | None = None,
@@ -166,11 +168,14 @@ def extract_vocals_stage1(
     # Check if we have MDX23C models available and configured (NEW-FLOW PRIMARY CHOICE FOR 2-STEM)
     from .config import mdx23c_vocal_available, mdx23c_inst_available
 
-    mdx23c_vocal_path = MODELS_DIR / "mdx23c_vocal.onnx"
-    mdx23c_inst_path = MODELS_DIR / "mdx23c_instrumental.onnx"
+    mdx23c_vocal_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_vocal.onnx")
+    mdx23c_inst_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_instrumental.onnx")
     if (
-        mdx23c_vocal_available()
+        model_tier == "quality"
+        and mdx23c_vocal_available()
         and mdx23c_inst_available()
+        and mdx23c_vocal_path is not None
+        and mdx23c_inst_path is not None
         and mdx_model_configured(mdx23c_vocal_path)
         and mdx_model_configured(mdx23c_inst_path)
     ):
@@ -201,19 +206,19 @@ def extract_vocals_stage1(
                 return (
                     vocals_path,
                     inst_path,
-                    ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"],
+                    [mdx23c_vocal_path.name, mdx23c_inst_path.name],
                 )
 
     # Fall back to existing vocal model detection
     vocal_model = (
         vocal_model_override
         if vocal_model_override is not None
-        else get_available_vocal_onnx()
+        else get_available_vocal_onnx(tier=model_tier)
     )
     inst_model = (
         inst_model_override
         if inst_model_override is not None
-        else get_available_inst_onnx()
+        else get_available_inst_onnx(tier=model_tier)
     )
 
     if vocal_model is not None and vocal_model.exists():
@@ -262,7 +267,9 @@ def extract_vocals_stage1(
     return vocals_path, no_vocals_path, ["htdemucs"]
 
 
-def get_2stem_stage1_preview(prefer_speed: bool | None = None) -> tuple[str, list[str]]:
+def get_2stem_stage1_preview(
+    prefer_speed: bool | None = None, model_tier: str | None = None
+) -> tuple[str, list[str]]:
     """
     Preview which Stage 1 path and models would be used for 2-stem (no inference).
     Returns (path_kind, model_names) e.g. ("mdx23c", ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"])
@@ -279,18 +286,22 @@ def get_2stem_stage1_preview(prefer_speed: bool | None = None) -> tuple[str, lis
             if is_spleeter_vocals_int8_onnx(sp):
                 return ("spleeter_int8", [sp.name])
 
-    mdx23c_vocal_path = MODELS_DIR / "mdx23c_vocal.onnx"
-    mdx23c_inst_path = MODELS_DIR / "mdx23c_instrumental.onnx"
+    tier = "fast" if prefer_speed else (model_tier or "balanced")
+    mdx23c_vocal_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_vocal.onnx")
+    mdx23c_inst_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_instrumental.onnx")
     if (
-        mdx23c_vocal_available()
+        tier == "quality"
+        and mdx23c_vocal_available()
         and mdx23c_inst_available()
+        and mdx23c_vocal_path is not None
+        and mdx23c_inst_path is not None
         and mdx_model_configured(mdx23c_vocal_path)
         and mdx_model_configured(mdx23c_inst_path)
     ):
-        return ("mdx23c", ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"])
+        return ("mdx23c", [mdx23c_vocal_path.name, mdx23c_inst_path.name])
 
-    vocal_model = get_available_vocal_onnx()
-    inst_model = get_available_inst_onnx()
+    vocal_model = get_available_vocal_onnx(tier=tier)
+    inst_model = get_available_inst_onnx(tier=tier)
     if vocal_model is not None and vocal_model.exists():
         if inst_model is not None and inst_model.exists():
             return ("onnx", [vocal_model.name, inst_model.name])

@@ -164,10 +164,15 @@ test("backend stem API auth gates (job_token)", async () => {
       assert.equal(statusRes2.status, 200);
     }
 
-    // Cleanup requires API_KEY config
+    // Cleanup route semantics + API_KEY guard
     {
-      const cleanupRes = await fetch(`${backendBaseUrl}/api/stems/cleanup`);
-      assert.equal(cleanupRes.status, 503);
+      const cleanupGetRes = await fetch(`${backendBaseUrl}/api/stems/cleanup`);
+      assert.equal(cleanupGetRes.status, 405);
+
+      const cleanupPostRes = await fetch(`${backendBaseUrl}/api/stems/cleanup`, {
+        method: "POST",
+      });
+      assert.equal(cleanupPostRes.status, 503);
     }
   } finally {
     backendServer.close();

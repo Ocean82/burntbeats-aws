@@ -4,8 +4,8 @@ import { X, ChevronRight, ChevronLeft, Upload, Sliders, Music2, Download, Sparkl
 import { cn } from "../utils/cn";
 
 interface OnboardingTourProps {
-  onComplete: () => void;
-  onSkip: () => void;
+  onComplete?: () => void;
+  onSkip?: () => void;
 }
 
 const TOUR_STEPS = [
@@ -43,7 +43,10 @@ const TOUR_STEPS = [
 
 const ONBOARDING_KEY = "burnt-beats-onboarding-complete";
 
-export function OnboardingTour({ onComplete, onSkip }: OnboardingTourProps) {
+export function OnboardingTour({
+  onComplete = () => {},
+  onSkip = () => {},
+}: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -120,6 +123,8 @@ export function OnboardingTour({ onComplete, onSkip }: OnboardingTourProps) {
               {/* Skip button */}
               <button
                 onClick={handleSkip}
+                aria-label="Skip onboarding tour"
+                title="Skip onboarding tour"
                 className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/40 transition hover:bg-white/10 hover:text-white"
               >
                 <X className="h-4 w-4" />
@@ -178,6 +183,8 @@ export function OnboardingTour({ onComplete, onSkip }: OnboardingTourProps) {
                     <button
                       key={index}
                       onClick={() => setCurrentStep(index)}
+                      aria-label={`Go to onboarding step ${index + 1}`}
+                      title={`Go to onboarding step ${index + 1}`}
                       className={cn(
                         "h-2 w-2 rounded-full transition-all",
                         index === currentStep

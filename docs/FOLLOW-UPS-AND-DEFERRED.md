@@ -27,7 +27,7 @@
 | Presign (backend) | Needs IAM or keys | **`backend/s3Presign.js`** needs permission to **`s3:GetObject`** on the same objects the stem service uploaded. |
 | Local files after upload | Optional | **`S3_DELETE_LOCAL_AFTER_UPLOAD`** — if `true`, local WAVs are removed; downloads then **require** working presign + bucket policy + **CORS** for browser `fetch` / `<audio>`. |
 | Bucket CORS | Ops | Allow **GET** from your app origin for presigned URLs if the browser loads S3 directly. |
-| Lifecycle | Ops | **`GET /api/stems/cleanup`** only deletes **local** job dirs; add S3 lifecycle or jobs if you stop keeping files on disk. |
+| Lifecycle | Ops | **`POST /api/stems/cleanup`** only deletes **local** job dirs; add S3 lifecycle or jobs if you stop keeping files on disk. |
 
 ---
 

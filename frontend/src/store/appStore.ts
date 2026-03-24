@@ -20,7 +20,7 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  quality: "quality" as SplitQuality,
+  quality: "balanced" as SplitQuality,
   uploadName: "",
   uploadedFile: null,
   splitResultStems: [],

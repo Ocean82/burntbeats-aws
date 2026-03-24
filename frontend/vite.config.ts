@@ -22,6 +22,24 @@ export default defineViteConfig(({ mode }) => {
     },
     build: {
       sourcemap: isProduction ? false : true,
+      rollupOptions: {
+        output: {
+          manualChunks: (id: string) => {
+            if (!id.includes("node_modules")) return undefined;
+
+            // Animation and icon packs are sizeable and change less often.
+            if (id.includes("/framer-motion/")) return "vendor-motion";
+            if (id.includes("/lucide-react/")) return "vendor-icons";
+
+            // Auth/billing integrations are only needed in specific flows.
+            if (id.includes("/@clerk/")) return "vendor-clerk";
+            if (id.includes("/@stripe/")) return "vendor-stripe";
+
+            // Everything else from third-party dependencies.
+            return "vendor";
+          },
+        },
+      },
     },
   };
 });

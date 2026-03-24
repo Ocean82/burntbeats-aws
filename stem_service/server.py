@@ -290,10 +290,20 @@ def _run_separation_sync(
 ) -> None:
     """Blocking separation; writes progress at stages. Called from thread."""
     correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
+    # Tiered Stage-1 model lane used by vocal/instrumental ONNX selectors.
+    if quality_mode == QUALITY_ULTRA:
+        model_tier = "quality"
+    elif prefer_speed:
+        model_tier = "fast"
+    elif quality_mode == "quality":
+        model_tier = "quality"
+    else:
+        model_tier = "balanced"
+
     # Register job for tracking
     _running_jobs[job_id] = {
         "cancelled": False,
-        "started_at": str(Path(__file__).stat().st_mtime),
+        "started_at": time.time(),
     }
 
     job_log = _make_job_logger(job_id, out_dir)
@@ -314,8 +324,13 @@ def _run_separation_sync(
         file_size_mb = 0.0
 
     job_log.info(
-        "=== JOB START  job_id=%s  stems=%d  quality=%s  file=%.2fMB ===",
-        job_id, stem_count, quality_mode, file_size_mb,
+        "=== JOB START  job_id=%s  stems=%d  quality=%s  prefer_speed=%s  model_tier=%s  file=%.2fMB ===",
+        job_id,
+        stem_count,
+        quality_mode,
+        prefer_speed,
+        model_tier,
+        file_size_mb,
     )
     logger.info("Started job %s (quality: %s)", job_id, quality_mode)
 
@@ -329,6 +344,7 @@ def _run_separation_sync(
         )
 
     models_used: list[str] = []
+
     mode_name = (
         "2_stem_ultra" if quality_mode == QUALITY_ULTRA and stem_count == 2
         else "4_stem_ultra" if quality_mode == QUALITY_ULTRA and stem_count == 4
@@ -358,7 +374,8 @@ def _run_separation_sync(
         elif STEM_BACKEND == "hybrid":
             if stem_count == 2:
                 path_kind, stage1_models = get_2stem_stage1_preview(
-                    prefer_speed=prefer_speed
+                    prefer_speed=prefer_speed,
+                    model_tier=model_tier,
                 )
                 job_log.info(
                     "Stage: hybrid 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
@@ -370,6 +387,7 @@ def _run_separation_sync(
                     input_path,
                     out_dir,
                     prefer_speed=prefer_speed,
+                    model_tier=model_tier,
                     progress_callback=on_progress,
                     job_logger=job_log,
                 )
@@ -386,7 +404,8 @@ def _run_separation_sync(
             # demucs_only: still prefer ONNX when available (best option)
             if stem_count == 2:
                 path_kind, stage1_models = get_2stem_stage1_preview(
-                    prefer_speed=prefer_speed
+                    prefer_speed=prefer_speed,
+                    model_tier=model_tier,
                 )
                 job_log.info(
                     "Stage: demucs_only 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
@@ -398,6 +417,7 @@ def _run_separation_sync(
                     input_path,
                     out_dir,
                     prefer_speed=prefer_speed,
+                    model_tier=model_tier,
                     progress_callback=on_progress,
                     job_logger=job_log,
                 )
@@ -505,7 +525,7 @@ def _run_expand_sync(
     correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
     _running_jobs[expand_job_id] = {
         "cancelled": False,
-        "started_at": str(Path(__file__).stat().st_mtime),
+        "started_at": time.time(),
     }
     job_log = _make_job_logger(expand_job_id, out_dir)
     t0 = time.monotonic()
@@ -567,8 +587,9 @@ async def split(
     Poll GET /status/{job_id} for progress and stems when completed.
 
     quality options:
-    - "speed": VAD pre-trim (when enabled), faster MDX/Demucs ONNX chunk stride, SCNet if available
-    - "quality" (default): Full-length input, higher MDX overlap + tighter Demucs ONNX stride on embedded models
+    - "speed": fastest model tier + faster chunking
+    - "balanced" (default): middle model tier + quality chunking
+    - "quality": higher-quality model tier + quality chunking
     - "ultra": Best separation via RoFormer checkpoints (audio-separator); slow on CPU
     """
     _require_stem_service_api_token(request)
@@ -594,12 +615,23 @@ async def split(
     # Determine effective quality mode for pipeline
     if is_ultra:
         quality_mode = QUALITY_ULTRA
+        model_tier = "quality"
     elif prefer_speed:
         quality_mode = "speed"
-    else:
+        model_tier = "fast"
+    elif quality_lower == "quality":
         quality_mode = "quality"
+        model_tier = "quality"
+    else:
+        quality_mode = "balanced"
+        model_tier = "balanced"
 
-    logger.info(f"Split request: stems={stem_count}, quality={quality_mode}")
+    logger.info(
+        "Split request: stems=%s, quality=%s, model_tier=%s",
+        stem_count,
+        quality_mode,
+        model_tier,
+    )
 
     job_id = str(uuid.uuid4())
     out_dir = OUTPUT_BASE / job_id

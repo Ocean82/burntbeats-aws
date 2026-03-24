@@ -91,7 +91,7 @@ export function useStemSplitting({
     });
   }, []);
 
-  const triggerSplit = useCallback(async () => {
+  const triggerSplit = useCallback(async (requestedStemMode: 2 | 4 = 2) => {
     const { status } = subscription;
     if (status !== "active") {
       await subscription.startCheckout("basic");
@@ -105,6 +105,7 @@ export function useStemSplitting({
     }
     setUploadState((prev) => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null }));
     try {
+      // Split API always starts with 2-stem. 4-stem request expands immediately after.
       const res = await splitStems(file, "2", splitQuality, (s) => {
         setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
         if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
@@ -118,6 +119,18 @@ export function useStemSplitting({
         splitProgress: 100,
         pipelineIndex: 3,
       }));
+      if (requestedStemMode === 4 && !isBasicPlan) {
+        const expanded = await expandStems(res.job_id, splitQuality, (s) => {
+          setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
+        });
+        setUploadState((prev) => ({
+          ...prev,
+          splitResultStems: expanded.stems,
+          splitJobId: expanded.job_id,
+          splitProgress: 100,
+          pipelineIndex: 3,
+        }));
+      }
     } catch (err) {
       setUploadState((prev) => ({
         ...prev,
@@ -128,7 +141,7 @@ export function useStemSplitting({
     } finally {
       setUploadState((prev) => ({ ...prev, isSplitting: false }));
     }
-  }, [splitQuality, stopPreview, subscription]);
+  }, [isBasicPlan, splitQuality, stopPreview, subscription]);
 
   const triggerExpand = useCallback(async () => {
     if (isBasicPlan) {

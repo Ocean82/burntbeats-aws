@@ -63,6 +63,45 @@ _session_cache: dict[str, Any] = {}
 _cache_lock = threading.Lock()
 
 
+def _resolve_demucs_model_path(declared_path: Path) -> Path | None:
+    """
+    Resolve a model file for InferenceSession.
+
+    Canonical names in this repo are ``*.onnx``. You may also ship a sibling ``*.ort``
+    produced offline by ONNX Runtime, e.g.::
+
+        python -m onnxruntime.tools.convert_onnx_models_to_ort models/ --enable_type_reduction
+
+    ORT format can reduce load time and package size; inference must be validated
+    on a real clip after conversion. If both ``name.onnx`` and ``name.ort`` exist,
+    ``.ort`` is preferred.
+
+    Set env ``BURNTBEATS_DISALLOW_ORT=1`` to prefer ``.onnx`` when both exist (benchmarks).
+    """
+    import os
+
+    p = declared_path.resolve()
+    disallow_ort = os.environ.get("BURNTBEATS_DISALLOW_ORT", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if disallow_ort:
+        if p.suffix.lower() == ".onnx" and p.is_file():
+            return p
+        if p.suffix.lower() == ".ort" and p.is_file():
+            return p
+        return None
+    if p.suffix.lower() == ".ort" and p.is_file():
+        return p
+    ort = p.with_suffix(".ort")
+    if ort.is_file():
+        return ort
+    if p.suffix.lower() == ".onnx" and p.is_file():
+        return p
+    return None
+
+
 def _get_session(path: Path) -> Any | None:
     key = str(path.resolve())
     with _cache_lock:
@@ -271,28 +310,30 @@ def run_demucs_onnx_4stem(
     n_stems = 4
     two_input = True
 
-    if demucs_model_override is not None and demucs_model_override.exists():
-        model_path = demucs_model_override
+    if demucs_model_override is not None:
+        model_path = _resolve_demucs_model_path(demucs_model_override)
+        if model_path is None:
+            return None, None
     else:
         # Pick model (prefer ONNX so we avoid Demucs subprocess)
-        if use_6s and SIX_STEM_ONNX.exists():
-            model_path = SIX_STEM_ONNX
+        if use_6s and (p6 := _resolve_demucs_model_path(SIX_STEM_ONNX)) is not None:
+            model_path = p6
             wav_out_name = "5012"
             n_stems = 6
             two_input = True
-        elif not use_6s and EMBEDDED_ONNX.exists():
-            model_path = EMBEDDED_ONNX
+        elif not use_6s and (pe := _resolve_demucs_model_path(EMBEDDED_ONNX)) is not None:
+            model_path = pe
             wav_out_name = "add_67"
             n_stems = 4
             two_input = True
-        elif not use_6s and HTDEMUCS_ONNX.exists():
-            model_path = HTDEMUCS_ONNX
+        elif not use_6s and (ph := _resolve_demucs_model_path(HTDEMUCS_ONNX)) is not None:
+            model_path = ph
             wav_out_name = "add_67"
             n_stems = 4
             two_input = True
             logger.info("Demucs ONNX: using htdemucs.onnx (embedded fallback)")
-        elif V4_ONNX.exists():
-            model_path = V4_ONNX
+        elif (pv := _resolve_demucs_model_path(V4_ONNX)) is not None:
+            model_path = pv
             wav_out_name = "output"
             n_stems = 6
             two_input = False
@@ -308,8 +349,8 @@ def run_demucs_onnx_4stem(
     inf_w, inf_n, inf_two = _infer_demucs_io_from_session(session, model_path)
     if inf_w is not None:
         wav_out_name, n_stems, two_input = inf_w, inf_n, inf_two
-    elif demucs_model_override is not None and demucs_model_override.exists():
-        cfg = _demucs_model_config(demucs_model_override)
+    elif demucs_model_override is not None and model_path is not None:
+        cfg = _demucs_model_config(model_path)
         if cfg is None:
             return None, None
         wav_out_name, n_stems, two_input = cfg
@@ -445,12 +486,15 @@ def run_demucs_onnx_4stem(
 
 def demucs_onnx_embedded_available() -> bool:
     """True if 4-stem speed ONNX available (embedded or htdemucs.onnx)."""
-    return EMBEDDED_ONNX.exists() or HTDEMUCS_ONNX.exists()
+    return (
+        _resolve_demucs_model_path(EMBEDDED_ONNX) is not None
+        or _resolve_demucs_model_path(HTDEMUCS_ONNX) is not None
+    )
 
 
 def demucs_onnx_6s_available() -> bool:
-    return SIX_STEM_ONNX.exists()
+    return _resolve_demucs_model_path(SIX_STEM_ONNX) is not None
 
 
 def demucs_onnx_v4_available() -> bool:
-    return V4_ONNX.exists()
+    return _resolve_demucs_model_path(V4_ONNX) is not None

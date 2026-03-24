@@ -318,7 +318,7 @@ export function MultiStemEditor({
             <div className="flex flex-col gap-5 p-4">
               {/* Target stem label */}
               <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: activeStem.color }} />
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "var(--stem-color)" }} />
                 <span className="text-xs font-semibold text-white/80">{activeStem.label}</span>
               </div>
 
@@ -413,15 +413,15 @@ export function MultiStemEditor({
                   <div>
                     <div className="mb-2 flex justify-between text-[10px] font-semibold uppercase tracking-wider text-white/50">
                       <span>Volume</span>
-                      <span className="text-amber-300 font-mono">{activeState.mixer.volume > 0 ? `+${activeState.mixer.volume}` : activeState.mixer.volume} dB</span>
+                      <span className="text-amber-300 font-mono">{activeState.mixer.gain > 0 ? `+${activeState.mixer.gain}` : activeState.mixer.gain} dB</span>
                     </div>
                     <input
                       type="range"
                       min={-20}
                       max={6}
                       step={0.5}
-                      value={activeState.mixer.volume}
-                      onChange={(e) => onStemStateChange(activeStem.id, { mixer: { ...activeState.mixer, volume: Number(e.target.value) } })}
+                      value={activeState.mixer.gain}
+                      onChange={(e) => onStemStateChange(activeStem.id, { mixer: { ...activeState.mixer, gain: Number(e.target.value) } })}
                       className="stem-accent-slider w-full"
                       aria-label={`${activeStem.label} volume`}
                     />
@@ -432,14 +432,14 @@ export function MultiStemEditor({
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => onStemStateChange(activeStem.id, { mixer: { ...activeState.mixer, volume: 0 } })}
+                      onClick={() => onStemStateChange(activeStem.id, { mixer: { ...activeState.mixer, gain: 0 } })}
                       className="ghost-button rounded-lg border border-white/10 py-1.5 text-xs text-white/70 hover:text-white"
                     >
                       Reset
                     </button>
                     <button
                       type="button"
-                      onClick={() => onStemStateChange(activeStem.id, { mixer: { ...activeState.mixer, volume: 6 } })}
+                      onClick={() => onStemStateChange(activeStem.id, { mixer: { ...activeState.mixer, gain: 6 } })}
                       className="ghost-button rounded-lg border border-white/10 py-1.5 text-xs text-white/70 hover:text-white"
                     >
                       Boost +6
@@ -486,7 +486,7 @@ export function MultiStemEditor({
 
       <StemTabs stems={stems} activeStemId={activeStemId} stemStates={stemStates} onSelectStem={setActiveStemId} />
 
-      {mixerConsoleOpen && (
+      {!import.meta.env.PROD && mixerConsoleOpen && (
         <div id="mixer-console-panel">
           <MixerConsole
             stems={stems}

@@ -881,3 +881,24 @@
   50% { transform: scale(0.97); }
   100% { transform: scale(1); }
 }
+
+/* Respect reduced-motion preferences for accessibility and comfort */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-scroll-text,
+  .fire-orb,
+  .swipe-hint,
+  .wave-bar,
+  .load-to-tracks-ready,
+  .progress-shimmer::after {
+    animation: none !important;
+  }
+}

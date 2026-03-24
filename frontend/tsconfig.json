@@ -28,5 +28,9 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "vite.config.ts", "../shared/**/*.ts"]
+  "include": ["src", "vite.config.ts", "../shared/**/*.ts"],
+  "exclude": [
+    "src/components/ui/**/*",
+    "src/components/VectorQuantization.tsx"
+  ]
 }

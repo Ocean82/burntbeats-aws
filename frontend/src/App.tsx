@@ -4,7 +4,21 @@ import {
   HelpCircle, Undo2, Redo2, Save, Gamepad2,
 } from "lucide-react";
 
-const StemFall = lazy(() => import("./components/stem-fall/StemFall"));
+const importStemFall = () => import("./components/stem-fall/StemFall");
+const importHelpModal = () => import("./components/HelpModal");
+const importExportOptionsModal = () => import("./components/ExportOptionsModal");
+const importMixerPresetsModal = () => import("./components/MixerPresetsModal");
+const importOnboardingTour = () => import("./components/OnboardingTour");
+const importBatchQueue = () => import("./components/BatchQueue");
+const importMixerPanel = () => import("./components/mixer-panel.component");
+
+const StemFall = lazy(() => importStemFall());
+const HelpModal = lazy(() => importHelpModal().then((m) => ({ default: m.HelpModal })));
+const ExportOptionsModal = lazy(() => importExportOptionsModal().then((m) => ({ default: m.ExportOptionsModal })));
+const MixerPresetsModal = lazy(() => importMixerPresetsModal().then((m) => ({ default: m.MixerPresetsModal })));
+const OnboardingTour = lazy(() => importOnboardingTour().then((m) => ({ default: m.OnboardingTour })));
+const BatchQueue = lazy(() => importBatchQueue().then((m) => ({ default: m.BatchQueue })));
+const MixerPanel = lazy(() => importMixerPanel().then((m) => ({ default: m.MixerPanel })));
 import { useSubscription } from "./hooks/useSubscription";
 import { PaywallBanner } from "./components/PaywallBanner";
 import { HeaderUserButton } from "./components/AuthGate";
@@ -20,24 +34,85 @@ import { useMixerWorkspace } from "./hooks/useMixerWorkspace";
 import { useStemSplitting } from "./hooks/useStemSplitting";
 import { useStemLoading } from "./hooks/useStemLoading";
 import { stemDefinitions, getStemDefinition, getLoadedStemDefinition } from "./data/stemDefinitions";
-import {
-  type MixerPreset,
-  HelpModal,
-  ExportOptionsModal,
-  MixerPresetsModal,
-  OnboardingTour,
-  BatchQueue,
-  ErrorBoundary,
-  AudioErrorBoundary,
-  SplitErrorBoundary,
-  MixerPanel,
-  ProcessingSettingsPanel,
-} from "./components";
+import type { MixerPreset } from "./components/MixerPresetsModal";
+import { ErrorBoundary, AudioErrorBoundary, SplitErrorBoundary } from "./components/ErrorBoundary";
+import { ProcessingSettingsPanel } from "./components/ProcessingSettingsPanel";
 import { PIPELINE_ANIMATION_DELAYS_MS, isLocalDevFullApp } from "./config";
+import { defaultStemState, type StemEditorState } from "./stem-editor-state";
 
 import { useAppStore } from "./store/appStore";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
+type NavigatorConnection = {
+  saveData?: boolean;
+  effectiveType?: string;
+};
+type UiLatencyKey =
+  | "help-modal-open"
+  | "export-modal-open"
+  | "presets-modal-open"
+  | "mixer-ready-after-stems";
+type UiLatencyEventDetail = {
+  key: UiLatencyKey;
+  durationMs: number;
+};
+type UiLatencyStats = {
+  lastMs: number;
+  avgMs: number;
+  count: number;
+  p50Ms: number;
+  p95Ms: number;
+  samples: number[];
+};
+type UiLatencySnapshot = Partial<Record<UiLatencyKey, UiLatencyStats>>;
+const MAX_LATENCY_SAMPLES = 50;
+
+function percentile(samples: number[], p: number): number {
+  if (samples.length === 0) return 0;
+  const sorted = [...samples].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[index];
+}
+
+function canPreloadChunks(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const connection = (navigator as Navigator & { connection?: NavigatorConnection }).connection;
+  if (!connection) return true;
+  if (connection.saveData) return false;
+  return connection.effectiveType !== "2g" && connection.effectiveType !== "slow-2g";
+}
+
+function startUiLatencyMark(key: UiLatencyKey): void {
+  if (typeof performance === "undefined") return;
+  performance.mark(`${key}:start`);
+}
+
+function finishUiLatencyMark(key: UiLatencyKey): void {
+  if (typeof performance === "undefined") return;
+  const start = `${key}:start`;
+  const end = `${key}:end`;
+  const measure = `${key}:measure`;
+  performance.mark(end);
+  try {
+    performance.measure(measure, start, end);
+    const entries = performance.getEntriesByName(measure);
+    const durationMs = entries[entries.length - 1]?.duration;
+    if (import.meta.env.DEV && typeof durationMs === "number") {
+      console.debug(`[perf] ${key} ${durationMs.toFixed(1)}ms`);
+      window.dispatchEvent(
+        new CustomEvent<UiLatencyEventDetail>("ui-latency-measure", {
+          detail: { key, durationMs },
+        })
+      );
+    }
+  } catch {
+    // No-op if mark pair is incomplete.
+  } finally {
+    performance.clearMarks(start);
+    performance.clearMarks(end);
+    performance.clearMeasures(measure);
+  }
+}
 
 export function App() {
   const localDevFullApp = isLocalDevFullApp();
@@ -121,7 +196,7 @@ export function App() {
   );
 
   // ── Stem loading (fetch WAVs → AudioBuffers) ──────────────────────────────
-  const { stemBuffers, setStemBuffers, loadedTracks, isLoadingStems, clearStemLoadingState } = useStemLoading({
+  const { stemBuffers, setStemBuffers, isLoadingStems, clearStemLoadingState } = useStemLoading({
     allStemEntries,
     audioContextRef,
     setStemStates: setStemStates as unknown as (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => void,
@@ -150,6 +225,7 @@ export function App() {
   const [showPresetsModal, setShowPresetsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showGame, setShowGame] = useState(false);
+  const [latencyStats, setLatencyStats] = useState<UiLatencySnapshot>({});
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
@@ -198,6 +274,89 @@ export function App() {
     // When the guidance target changes, re-enable the pulse until the user interacts.
     setGuidancePulseOff({ source: false, mixer: false });
   }, [guidanceTarget]);
+
+  useEffect(() => {
+    if (!canPreloadChunks()) return;
+    const timer = window.setTimeout(() => {
+      // Light, likely-next interactions after initial paint.
+      void importOnboardingTour();
+      void importHelpModal();
+      void importExportOptionsModal();
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!canPreloadChunks()) return;
+    // Once users provide an upload, mixer/presets are likely next.
+    if (!uploadedFile && mixStems.length === 0) return;
+    void importMixerPanel();
+    void importMixerPresetsModal();
+  }, [uploadedFile, mixStems.length]);
+
+  useEffect(() => {
+    if (!canPreloadChunks()) return;
+    if (batchQueue.length > 0) {
+      void importBatchQueue();
+    }
+  }, [batchQueue.length]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<UiLatencyEventDetail>;
+      const payload = customEvent.detail;
+      if (!payload || typeof payload.durationMs !== "number") return;
+      setLatencyStats((prev) => {
+        const existing = prev[payload.key];
+        const nextSamplesRaw = existing ? [...existing.samples, payload.durationMs] : [payload.durationMs];
+        const nextSamples = nextSamplesRaw.length > MAX_LATENCY_SAMPLES
+          ? nextSamplesRaw.slice(nextSamplesRaw.length - MAX_LATENCY_SAMPLES)
+          : nextSamplesRaw;
+        const nextCount = (existing?.count ?? 0) + 1;
+        const nextAvg = existing
+          ? ((existing.avgMs * existing.count) + payload.durationMs) / nextCount
+          : payload.durationMs;
+        return {
+          ...prev,
+          [payload.key]: {
+            lastMs: payload.durationMs,
+            avgMs: nextAvg,
+            count: nextCount,
+            p50Ms: percentile(nextSamples, 50),
+            p95Ms: percentile(nextSamples, 95),
+            samples: nextSamples,
+          },
+        };
+      });
+    };
+    window.addEventListener("ui-latency-measure", handler as EventListener);
+    return () => window.removeEventListener("ui-latency-measure", handler as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (!showHelpModal) return;
+    const raf = window.requestAnimationFrame(() => finishUiLatencyMark("help-modal-open"));
+    return () => window.cancelAnimationFrame(raf);
+  }, [showHelpModal]);
+
+  useEffect(() => {
+    if (!showExportModal) return;
+    const raf = window.requestAnimationFrame(() => finishUiLatencyMark("export-modal-open"));
+    return () => window.cancelAnimationFrame(raf);
+  }, [showExportModal]);
+
+  useEffect(() => {
+    if (!showPresetsModal) return;
+    const raf = window.requestAnimationFrame(() => finishUiLatencyMark("presets-modal-open"));
+    return () => window.cancelAnimationFrame(raf);
+  }, [showPresetsModal]);
+
+  useEffect(() => {
+    if (mixStems.length === 0) return;
+    const raf = window.requestAnimationFrame(() => finishUiLatencyMark("mixer-ready-after-stems"));
+    return () => window.cancelAnimationFrame(raf);
+  }, [mixStems.length]);
 
   const handleGuidancePanelInteract = useCallback(() => {
     if (guidanceTarget === "source") {
@@ -294,14 +453,22 @@ export function App() {
       solo3: () => setSoloAtIndex(2),
       solo4: () => setSoloAtIndex(3),
       muteToggle: setMuteFirst,
-      export: () => { if (mixStems.length > 0) setShowExportModal(true); },
+      export: () => {
+        if (mixStems.length > 0) {
+          startUiLatencyMark("export-modal-open");
+          setShowExportModal(true);
+        }
+      },
       undo: () => { undoStemStates(); },
       redo: () => { redoStemStates(); },
       trimStartLeft:  () => nudgeTrim("start", -TRIM_STEP),
       trimStartRight: () => nudgeTrim("start", +TRIM_STEP),
       trimEndLeft:    () => nudgeTrim("end",   -TRIM_STEP),
       trimEndRight:   () => nudgeTrim("end",   +TRIM_STEP),
-      help: () => setShowHelpModal(true),
+      help: () => {
+        startUiLatencyMark("help-modal-open");
+        setShowHelpModal(true);
+      },
       escape: () => {
         if (showHelpModal) setShowHelpModal(false);
         else if (showExportModal) setShowExportModal(false);
@@ -310,63 +477,80 @@ export function App() {
       },
     };
   }, [mixStems, stemStates, stemBuffers, activeStemId, handlePlayMix, handleStopMix, showHelpModal, showExportModal, showPresetsModal, isPlayingMix, setSoloAtIndex, setMuteFirst, undoStemStates, redoStemStates]);
+  useKeyboardShortcuts(shortcutHandlers);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-white">
       <ErrorBoundary fallback={null}>
-        <OnboardingTour onComplete={() => {}} onSkip={() => {}} />
+        <Suspense fallback={null}>
+          <OnboardingTour />
+        </Suspense>
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
-        <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+        {showHelpModal ? (
+          <Suspense fallback={null}>
+            <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+          </Suspense>
+        ) : null}
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
-        <ExportOptionsModal
-          isOpen={showExportModal}
-          onClose={() => setShowExportModal(false)}
-          onExport={(opts) =>
-            void handleExportWithOptions(
-              opts,
-              stemBuffers,
-              mixStems,
-              stemStates,
-              uploadName,
-              setSplitError,
-              () => setShowExportModal(false),
-              loadedStems.length === 0 ? splitJobId : null,
-              loadedStems.length === 0 ? splitResultStems.map((s) => s.id) : []
-            )
-          }
-          isExporting={isExporting}
-          stemCount={mixStems.length}
-        />
+        {showExportModal ? (
+          <Suspense fallback={null}>
+            <ExportOptionsModal
+              isOpen={showExportModal}
+              onClose={() => setShowExportModal(false)}
+              onExport={(opts) =>
+                void handleExportWithOptions(
+                  opts,
+                  stemBuffers,
+                  mixStems,
+                  stemStates,
+                  uploadName,
+                  setSplitError,
+                  () => setShowExportModal(false),
+                  loadedStems.length === 0 ? splitJobId : null,
+                  loadedStems.length === 0 ? splitResultStems.map((s) => s.id) : []
+                )
+              }
+              isExporting={isExporting}
+              stemCount={mixStems.length}
+            />
+          </Suspense>
+        ) : null}
       </ErrorBoundary>
       <ErrorBoundary fallback={null}>
-        <MixerPresetsModal
-          isOpen={showPresetsModal}
-          onClose={() => setShowPresetsModal(false)}
-          onLoadPreset={handleLoadPreset}
-          currentMixerState={mixerState}
-          currentTrimMap={trimMap}
-          currentMutedStems={mutedStems}
-          currentPitchMap={pitchMap}
-          currentTimeStretchMap={timeStretchMap}
-        />
+        {showPresetsModal ? (
+          <Suspense fallback={null}>
+            <MixerPresetsModal
+              isOpen={showPresetsModal}
+              onClose={() => setShowPresetsModal(false)}
+              onLoadPreset={handleLoadPreset}
+              currentMixerState={mixerState}
+              currentTrimMap={trimMap}
+              currentMutedStems={mutedStems}
+              currentPitchMap={pitchMap}
+              currentTimeStretchMap={timeStretchMap}
+            />
+          </Suspense>
+        ) : null}
       </ErrorBoundary>
       {batchQueue.length > 0 && (
         <ErrorBoundary fallback={null}>
-          <BatchQueue
-            items={batchQueue}
-            isExpanded={batchQueueExpanded}
-            onToggleExpand={() => setBatchQueueExpanded((e) => !e)}
-            onRemoveItem={removeFromBatchQueue}
-            onClearCompleted={clearCompletedFromQueue}
-            allowProcess={canUseBatchQueue}
-            onProcessQueue={() => void processNextInQueue(2, splitQuality,
-              (stems) => setUploadState(prev => ({ ...prev, splitResultStems: stems })),
-              setSplitError,
-              (id) => setUploadState(prev => ({ ...prev, splitJobId: id }))
-            )}
-          />
+          <Suspense fallback={null}>
+            <BatchQueue
+              items={batchQueue}
+              isExpanded={batchQueueExpanded}
+              onToggleExpand={() => setBatchQueueExpanded((e) => !e)}
+              onRemoveItem={removeFromBatchQueue}
+              onClearCompleted={clearCompletedFromQueue}
+              allowProcess={canUseBatchQueue}
+              onProcessQueue={() => void processNextInQueue(2, splitQuality,
+                (stems) => setUploadState(prev => ({ ...prev, splitResultStems: stems })),
+                setSplitError,
+                (id) => setUploadState(prev => ({ ...prev, splitJobId: id }))
+              )}
+            />
+          </Suspense>
         </ErrorBoundary>
       )}
 
@@ -414,10 +598,10 @@ export function App() {
                 <div className="h-4 w-px bg-white/10" />
                 <button type="button" onClick={redoStemStates} disabled={!canRedo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Redo (Ctrl+Y)" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={() => setShowPresetsModal(true)} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white" title="Presets" aria-label="Open mixer presets">
+              <button type="button" onClick={() => { startUiLatencyMark("presets-modal-open"); setShowPresetsModal(true); }} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white" title="Presets" aria-label="Open mixer presets">
                 <Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Presets</span>
               </button>
-              <button type="button" onClick={() => setShowHelpModal(true)} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white" title="Help" aria-label="Open help">
+              <button type="button" onClick={() => { startUiLatencyMark("help-modal-open"); setShowHelpModal(true); }} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white" title="Help" aria-label="Open help">
                 <HelpCircle className="h-4 w-4" />
               </button>
               {localDevFullApp ? (
@@ -491,7 +675,10 @@ export function App() {
                 canExpandToFourStems={canExpandToFourStems}
                 canUseBatchQueue={canUseBatchQueue}
                 onUpgradeToPremium={() => void subscription.startCheckout("premium")}
-                onSplit={() => void triggerSplit()}
+                onSplit={(requestedStemMode) => {
+                  startUiLatencyMark("mixer-ready-after-stems");
+                  void triggerSplit(requestedStemMode);
+                }}
                 isSplitting={isSplitting}
                 splitResultStemsLength={splitResultStems.length}
                 isExpanding={isExpanding}
@@ -519,65 +706,70 @@ export function App() {
             transition={{ duration: 0.4 }}
           >
             <AudioErrorBoundary>
-              <MixerPanel
-                mixStemCount={mixStems.length}
-                isPlayingMix={isPlayingMix}
-                onPlayStop={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
-                onStopMix={handleStopMix}
-                onSeekMix={handleSeekMix}
-                isExporting={isExporting}
-                onExport={() => setShowExportModal(true)}
-                isComparingExport={isComparingExport}
-                onCompareExport={
-                  loadedStems.length === 0 && typeof splitJobId === "string" && splitJobId.length > 0 && splitResultStems.length > 0
-                    ? () => {
-                        void (async () => {
-                          setIsComparingExport(true);
-                          setExportCompareSummary(null);
-                          try {
-                            const metrics = await compareMasterExportServerAndClient({
-                              serverExportJobId: splitJobId,
-                              stemBuffers,
-                              splitResultStems,
-                              stemStates,
-                              uploadName,
-                              normalize: true,
-                              stemIds: splitResultStems.map((s) => s.id),
-                            });
-                            if (!metrics.ok) {
-                              setExportCompareSummary(`Compare failed: ${metrics.error ?? "unknown error"}`);
-                              return;
+              <Suspense fallback={<div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-white/50">Loading mixer...</div>}>
+                <MixerPanel
+                  mixStemCount={mixStems.length}
+                  isPlayingMix={isPlayingMix}
+                  onPlayStop={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
+                  onStopMix={handleStopMix}
+                  onSeekMix={handleSeekMix}
+                  isExporting={isExporting}
+                  onExport={() => {
+                    startUiLatencyMark("export-modal-open");
+                    setShowExportModal(true);
+                  }}
+                  isComparingExport={isComparingExport}
+                  onCompareExport={
+                    loadedStems.length === 0 && typeof splitJobId === "string" && splitJobId.length > 0 && splitResultStems.length > 0
+                      ? () => {
+                          void (async () => {
+                            setIsComparingExport(true);
+                            setExportCompareSummary(null);
+                            try {
+                              const metrics = await compareMasterExportServerAndClient({
+                                serverExportJobId: splitJobId,
+                                stemBuffers,
+                                splitResultStems,
+                                stemStates,
+                                uploadName,
+                                normalize: true,
+                                stemIds: splitResultStems.map((s) => s.id),
+                              });
+                              if (!metrics.ok) {
+                                setExportCompareSummary(`Compare failed: ${metrics.error ?? "unknown error"}`);
+                                return;
+                              }
+                              const rmsDb = metrics.rmsDiffDb != null ? `${metrics.rmsDiffDb.toFixed(1)} dB` : "n/a";
+                              setExportCompareSummary(
+                                `Server vs Client: duration diff ${metrics.durationDiffSec?.toFixed(3) ?? "n/a"}s, RMS diff ${rmsDb}, peak diff ${metrics.peakDiff?.toFixed(4) ?? "n/a"}`
+                              );
+                            } catch (e) {
+                              setExportCompareSummary(`Compare failed: ${e instanceof Error ? e.message : "unknown error"}`);
+                            } finally {
+                              setIsComparingExport(false);
                             }
-                            const rmsDb = metrics.rmsDiffDb != null ? `${metrics.rmsDiffDb.toFixed(1)} dB` : "n/a";
-                            setExportCompareSummary(
-                              `Server vs Client: duration diff ${metrics.durationDiffSec?.toFixed(3) ?? "n/a"}s, RMS diff ${rmsDb}, peak diff ${metrics.peakDiff?.toFixed(4) ?? "n/a"}`
-                            );
-                          } catch (e) {
-                            setExportCompareSummary(`Compare failed: ${e instanceof Error ? e.message : "unknown error"}`);
-                          } finally {
-                            setIsComparingExport(false);
-                          }
-                        })();
-                      }
-                    : undefined
-                }
-                onResetLevels={resetTrackAdjustments}
-                hasStemBuffers={Object.keys(stemBuffers).length > 0}
-                stems={visibleStems as StemWithOptionalUrl[]}
-                waveforms={stemWaveforms}
-                durations={Object.fromEntries(visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]))}
-                stemStates={stemStates}
-                getPlayheadPosition={getPlayheadPosition}
-                subscribePlayheadPosition={subscribePlayheadPosition}
-                isLoadingStems={isLoadingStems}
-                activeStemId={activeStemId || visibleStems[0]?.id}
-                onActiveStemChange={setActiveStemId}
-                onStemStateChange={handleStemStateChange}
-                onPreviewStem={handlePreviewStemFromMixer}
-                playingStemId={playingStem}
-                getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
-                getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
-              />
+                          })();
+                        }
+                      : undefined
+                  }
+                  onResetLevels={resetTrackAdjustments}
+                  hasStemBuffers={Object.keys(stemBuffers).length > 0}
+                  stems={visibleStems as StemWithOptionalUrl[]}
+                  waveforms={stemWaveforms}
+                  durations={Object.fromEntries(visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]))}
+                  stemStates={stemStates}
+                  getPlayheadPosition={getPlayheadPosition}
+                  subscribePlayheadPosition={subscribePlayheadPosition}
+                  isLoadingStems={isLoadingStems}
+                  activeStemId={activeStemId || visibleStems[0]?.id}
+                  onActiveStemChange={setActiveStemId}
+                  onStemStateChange={handleStemStateChange}
+                  onPreviewStem={handlePreviewStemFromMixer}
+                  playingStemId={playingStem}
+                  getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
+                  getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
+                />
+              </Suspense>
               {exportCompareSummary && (
                 <p className="mt-3 text-xs text-white/70" role="status" aria-live="polite">
                   {exportCompareSummary}
@@ -644,6 +836,41 @@ export function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {!import.meta.env.PROD && (
+        <div className="fixed bottom-4 left-4 z-50 w-72 rounded-xl border border-white/10 bg-black/75 p-3 text-[11px] text-white/80 backdrop-blur-md">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">UI latency (dev)</p>
+            <button
+              type="button"
+              onClick={() => setLatencyStats({})}
+              className="rounded border border-white/15 px-1.5 py-0.5 text-[10px] text-white/70 transition hover:text-white"
+              aria-label="Reset latency stats"
+            >
+              Reset
+            </button>
+          </div>
+          {(
+            [
+              ["help-modal-open", "Help modal"],
+              ["export-modal-open", "Export modal"],
+              ["presets-modal-open", "Presets modal"],
+              ["mixer-ready-after-stems", "Mixer after split"],
+            ] as const
+          ).map(([key, label]) => {
+            const stat = latencyStats[key];
+            return (
+              <div key={key} className="mb-1.5 flex items-center justify-between last:mb-0">
+                <span className="text-white/65">{label}</span>
+                <span className="font-mono text-white/90">
+                  {stat ? `${stat.lastMs.toFixed(0)} | ${stat.avgMs.toFixed(0)} | ${stat.p50Ms.toFixed(0)} | ${stat.p95Ms.toFixed(0)} (${stat.count})` : "—"}
+                </span>
+              </div>
+            );
+          })}
+          <p className="mt-2 text-[10px] text-white/45">last | avg | p50 | p95 (count)</p>
+        </div>
+      )}
     </div>
   );
 }

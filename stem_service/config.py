@@ -11,7 +11,7 @@ MODELS_DIR = REPO_ROOT / "models"
 # Optional 2-stem speed: default MDX vocal ONNX (Kim_Vocal_2). Override with SPEED_2STEM_ONNX (e.g. vocals.int8.onnx last resort).
 def speed_2stem_onnx_path() -> Path:
     raw = os.environ.get("SPEED_2STEM_ONNX", "").strip()
-    return Path(raw).expanduser() if raw else MODELS_DIR / "Kim_Vocal_2.onnx"
+    return Path(raw).expanduser() if raw else MODELS_DIR / "UVR_MDXNET_3_9662.onnx"
 
 
 # Pip demucs only loads .th from --repo. We support .pth and auto-copy to .th.
@@ -153,13 +153,15 @@ def mel_band_roformer_available() -> bool:
 
 
 def mdx23c_vocal_available() -> bool:
-    """True if MDX23C vocal ONNX model is available."""
-    return (MODELS_DIR / "mdx23c_vocal.onnx").exists()
+    """True if MDX23C vocal ONNX model is available (or sibling ``.ort``)."""
+    p = MODELS_DIR / "mdx23c_vocal.onnx"
+    return p.exists() or p.with_suffix(".ort").exists()
 
 
 def mdx23c_inst_available() -> bool:
-    """True if MDX23C instrumental ONNX model is available."""
-    return (MODELS_DIR / "mdx23c_instrumental.onnx").exists()
+    """True if MDX23C instrumental ONNX model is available (or sibling ``.ort``)."""
+    p = MODELS_DIR / "mdx23c_instrumental.onnx"
+    return p.exists() or p.with_suffix(".ort").exists()
 
 
 def mel_band_roformer_vocal_available() -> bool:

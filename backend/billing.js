@@ -20,7 +20,12 @@
 import express from "express";
 import Stripe from "stripe";
 import { getClerkClient, verifyClerkBearer } from "./clerkAuth.js";
-import { getUsageBalance, creditSubscriptionAllowance } from "./usageTokens.js";
+import {
+  getUsageBalance,
+  creditSubscriptionAllowance,
+  creditTopupTokens,
+  tokensPerTopupFromPrice,
+} from "./usageTokens.js";
 import { resolveStripeReturnUrl } from "./returnUrl.js";
 import { tryClaimWebhookEvent, releaseWebhookEventClaim } from "./stripeRedis.js";
 
@@ -274,6 +279,29 @@ router.post("/webhook", async (req, res) => {
       case "checkout.session.completed": {
         const session = /** @type {import("stripe").Stripe.Checkout.Session} */ (event.data.object);
         console.log(`[billing/webhook] checkout.session.completed customer=${session.customer} mode=${session.mode}`);
+        if (session.mode === "payment" && stripe) {
+          const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+          if (customerId) {
+            const customer = await stripe.customers.retrieve(customerId);
+            const clerkUserId = customer.metadata?.clerkUserId;
+            if (clerkUserId) {
+              const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 20 });
+              let grant = 0;
+              for (const li of lineItems.data) {
+                const p = li.price;
+                if (!p?.id) continue;
+                const price = await stripe.prices.retrieve(p.id);
+                const unit = tokensPerTopupFromPrice(price);
+                const qty = Number(li.quantity) || 1;
+                grant += unit * Math.max(1, qty);
+              }
+              if (grant > 0) {
+                await creditTopupTokens(clerkUserId, grant);
+                console.log(`[billing/webhook] topup credited user=${clerkUserId} amount=${grant}`);
+              }
+            }
+          }
+        }
         break;
       }
       default:

@@ -20,7 +20,6 @@ export type MixerState = {
   gain: number;
   pan: number;
   width: number;
-  send: number;
   /** Low-shelf EQ gain in dB (-12 to +12). */
   eqLow: number;
   /** Peaking EQ gain in dB at ~1kHz (-12 to +12). */
@@ -47,7 +46,6 @@ export const defaultMixer: MixerState = {
   gain: 0,
   pan: 0,
   width: 80,
-  send: 0,
   eqLow: 0,
   eqMid: 0,
   eqHigh: 0,

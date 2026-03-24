@@ -88,7 +88,11 @@ from stem_service.demucs_onnx import (
     demucs_onnx_embedded_available,
     run_demucs_onnx_4stem,
 )
-from stem_service.scnet_onnx import run_scnet_onnx_4stem
+from stem_service.scnet_onnx import (
+    run_scnet_onnx_4stem,
+    scnet_onnx_disable_reason,
+    scnet_onnx_runtime_available,
+)
 from stem_service.phase_inversion import create_perfect_instrumental
 from stem_service.split import run_demucs
 from stem_service.vad import (
@@ -269,7 +273,7 @@ def run_4stem_single_pass_or_hybrid(
     flat_dir.mkdir(parents=True, exist_ok=True)
 
     # 4-stem: try SCNet first (CPU ~48% of Demucs per NEW-flow), then Demucs ONNX, then hybrid
-    if scnet_available():
+    if scnet_available() and scnet_onnx_runtime_available():
         if progress_callback:
             progress_callback(5)
         _log.info("4-stem: trying SCNet ONNX first")
@@ -283,6 +287,11 @@ def run_4stem_single_pass_or_hybrid(
             return scnet_list, ["scnet_onnx"]
         _log.warning(
             "4-stem: SCNet ONNX failed or returned None, falling back to Demucs"
+        )
+    elif scnet_available():
+        _log.warning(
+            "4-stem: SCNet configured but disabled by self-test (%s); using Demucs",
+            scnet_onnx_disable_reason(),
         )
 
     demucs_override = demucs_model_override
@@ -334,6 +343,7 @@ def run_hybrid_4stem(
     input_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
+    model_tier: str = "balanced",
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,
@@ -361,6 +371,7 @@ def run_hybrid_4stem(
         effective_input,
         stage1_out,
         prefer_speed=prefer_speed,
+        model_tier=model_tier,
         job_logger=job_logger,
         vocal_model_override=vocal_model_override,
         inst_model_override=inst_model_override,
@@ -410,6 +421,7 @@ def run_hybrid_2stem(
     input_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
+    model_tier: str = "balanced",
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,
@@ -448,6 +460,7 @@ def run_hybrid_2stem(
         effective_input,
         stage1_out,
         prefer_speed=prefer_speed,
+        model_tier=model_tier,
         job_logger=job_logger,
         vocal_model_override=vocal_model_override,
         inst_model_override=inst_model_override,
@@ -544,7 +557,7 @@ def run_expand_to_4stem(
 
     stem_files_rest: list[tuple[str, Path]] = []
     _log = job_logger or logger
-    if scnet_available():
+    if scnet_available() and scnet_onnx_runtime_available():
         _log.info("expand: scnet_available=True  trying SCNet ONNX on instrumental")
         scnet_list = run_scnet_onnx_4stem(
             instrumental_src, stage2_flat, prefer_speed=prefer_speed
@@ -560,6 +573,11 @@ def run_expand_to_4stem(
             _log.info("expand: SCNet ONNX succeeded  models_used=%s", models_used)
         else:
             _log.warning("expand: SCNet ONNX returned None  falling back to Demucs")
+    elif scnet_available():
+        _log.warning(
+            "expand: SCNet configured but disabled by self-test (%s); using Demucs path",
+            scnet_onnx_disable_reason(),
+        )
     else:
         _log.info("expand: scnet_available=False  using Demucs path")
 

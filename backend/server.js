@@ -28,14 +28,14 @@ import { spawn } from "child_process";
 import { billingRouter } from "./billing.js";
 import { verifyClerkBearer } from "./clerkAuth.js";
 import {
-  assertSufficientBalance,
   computeExpandCost,
   computeServerExportCost,
   computeSplitCost,
-  debitUsageTokens,
   findJobInputPath,
   getAudioDurationSeconds,
   isUsageTokensEnabled,
+  refundUsageTokens,
+  reserveUsageTokens,
 } from "./usageTokens.js";
 import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 import { presignStemGetUrl } from "./s3Presign.js";
@@ -52,10 +52,11 @@ if (REQUIRED_ENV_WARNINGS.length > 0 && process.env.NODE_ENV !== "test") {
 const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000").split(",").map((s) => s.trim());
 const API_KEY = process.env.API_KEY || "";
 const JOB_TOKEN_SECRET = process.env.JOB_TOKEN_SECRET || "";
+const STEM_SERVICE_API_TOKEN = process.env.STEM_SERVICE_API_TOKEN || "";
 const JOB_TOKEN_TTL_MS = Number(process.env.JOB_TOKEN_TTL_MS) || 60 * 60 * 1000; // 1 hour default
 const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 10;
-/** Default age for GET /api/stems/cleanup when `maxAgeHours` query is omitted */
+/** Default age for cleanup endpoint when `maxAgeHours` query is omitted */
 const STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS = (() => {
   const raw = Number(process.env.STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS);
   if (Number.isFinite(raw) && raw >= 0) return raw;
@@ -228,6 +229,118 @@ function authMiddleware(req, res, next) {
   next();
 }
 
+/**
+ * Attach stem-service auth header when token protection is enabled.
+ * @param {Record<string, string>} headers
+ * @returns {Record<string, string>}
+ */
+function withStemServiceAuthHeader(headers) {
+  if (!STEM_SERVICE_API_TOKEN) return headers;
+  return { ...headers, "X-Stem-Service-Token": STEM_SERVICE_API_TOKEN };
+}
+
+/**
+ * @param {unknown} e
+ * @returns {e is { statusCode: number, error: string }}
+ */
+function isProxyHttpError(e) {
+  return !!(
+    e
+    && typeof e === "object"
+    && "statusCode" in e
+    && "error" in e
+    && typeof /** @type {{ statusCode?: unknown }} */ (e).statusCode === "number"
+    && typeof /** @type {{ error?: unknown }} */ (e).error === "string"
+  );
+}
+
+/**
+ * @param {string} body
+ * @param {string | undefined} fallback
+ * @returns {string}
+ */
+function extractProxyErrorMessage(body, fallback) {
+  let errMsg = body || fallback || "Upstream request failed";
+  try {
+    const j = JSON.parse(body || "{}");
+    if (j.detail != null) errMsg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+  } catch {
+    /* use body/fallback as-is */
+  }
+  return errMsg;
+}
+
+/**
+ * Send multipart/form-data request to stem service and parse JSON response.
+ * @param {string} endpointPath
+ * @param {FormData} form
+ * @param {{ timeoutMs?: number }} [options]
+ * @returns {Promise<{ statusCode: number, data: any }>}
+ */
+function proxyFormRequest(endpointPath, form, options = {}) {
+  const stemUrl = new URL(endpointPath, STEM_SERVICE_URL);
+  const isHttps = stemUrl.protocol === "https:";
+  const client = isHttps ? https : http;
+  const reqAbort = new AbortController();
+
+  return new Promise((resolve, reject) => {
+    /** @type {NodeJS.Timeout | null} */
+    let timeout = null;
+    if (options.timeoutMs && options.timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        reqAbort.abort();
+        reject(new Error("TimeoutError"));
+      }, options.timeoutMs);
+    }
+
+    const clearTimeoutIfSet = () => {
+      if (timeout) clearTimeout(timeout);
+    };
+
+    const opts = {
+      hostname: stemUrl.hostname,
+      port: stemUrl.port || (isHttps ? 443 : 80),
+      path: stemUrl.pathname + stemUrl.search,
+      method: "POST",
+      headers: withStemServiceAuthHeader(form.getHeaders()),
+      signal: reqAbort.signal,
+    };
+
+    const proxyReq = client.request(opts, (proxyRes) => {
+      clearTimeoutIfSet();
+      const chunks = [];
+      proxyRes.on("data", (d) => chunks.push(d));
+      proxyRes.on("end", () => {
+        const body = Buffer.concat(chunks).toString("utf-8");
+        try {
+          const parsed = body ? JSON.parse(body) : {};
+          if ((proxyRes.statusCode || 500) >= 400) {
+            reject({
+              statusCode: proxyRes.statusCode || 500,
+              error: extractProxyErrorMessage(body, proxyRes.statusMessage),
+            });
+          } else {
+            resolve({ statusCode: proxyRes.statusCode || 200, data: parsed });
+          }
+        } catch (e) {
+          reject(e);
+        }
+      });
+      proxyRes.on("error", (err) => {
+        clearTimeoutIfSet();
+        reject(err);
+      });
+    });
+
+    proxyReq.on("error", (err) => {
+      clearTimeoutIfSet();
+      reject(err);
+    });
+
+    form.pipe(proxyReq);
+  });
+}
+
 // Stream uploads to disk so we never hold a full large file in memory; proxy then streams from file to Python.
 const upload = multer({
   storage: multer.diskStorage({
@@ -269,12 +382,14 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   /** @type {string | null} */
   let usageUserId = null;
   let usageCost = 0;
+  let usageReserved = false;
   if (isUsageTokensEnabled()) {
     try {
       usageUserId = await verifyClerkBearer(req);
       const durationSec = await getAudioDurationSeconds(filePath);
       usageCost = computeSplitCost(durationSec, quality, stems);
-      await assertSufficientBalance(usageUserId, usageCost);
+      await reserveUsageTokens(usageUserId, usageCost);
+      usageReserved = usageCost > 0;
     } catch (e) {
       await unlinkPromise(filePath).catch(() => {});
       const status =
@@ -294,70 +409,11 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   form.append("stems", stems);
   if (quality) form.append("quality", quality);
 
-  const stemUrl = new URL("/split", STEM_SERVICE_URL);
-  const isHttps = stemUrl.protocol === "https:";
-  const client = isHttps ? https : http;
-
-  const reqAbort = new AbortController();
   try {
-    const data = await new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reqAbort.abort();
-        reject(new Error("TimeoutError"));
-      }, SPLIT_ACCEPT_TIMEOUT_MS);
-      const clearAndReject = (err) => {
-        clearTimeout(timeout);
-        reject(err);
-      };
-
-      const opts = {
-        hostname: stemUrl.hostname,
-        port: stemUrl.port || (isHttps ? 443 : 80),
-        path: stemUrl.pathname + stemUrl.search,
-        method: "POST",
-        headers: form.getHeaders(),
-        signal: reqAbort.signal,
-      };
-
-      const proxyReq = client.request(opts, (proxyRes) => {
-        clearTimeout(timeout);
-        const chunks = [];
-        proxyRes.on("data", (d) => chunks.push(d));
-        proxyRes.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf-8");
-          try {
-            const parsed = body ? JSON.parse(body) : {};
-            if (proxyRes.statusCode >= 400) {
-              let errMsg = body || proxyRes.statusMessage;
-              try {
-                const j = JSON.parse(body || "{}");
-                if (j.detail != null) errMsg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
-              } catch {
-                /* use body as-is */
-              }
-              reject({ statusCode: proxyRes.statusCode, error: errMsg });
-            } else {
-              resolve({ statusCode: proxyRes.statusCode, data: parsed });
-            }
-          } catch (e) {
-            reject(e);
-          }
-        });
-        proxyRes.on("error", (err) => clearAndReject(err));
-      });
-      proxyReq.on("error", (err) => clearAndReject(err));
-      form.pipe(proxyReq);
-    });
+    const data = await proxyFormRequest("/split", form, { timeoutMs: SPLIT_ACCEPT_TIMEOUT_MS });
 
     if (data.statusCode === 202) {
       const jobId = data.data.job_id;
-      if (usageUserId && usageCost > 0) {
-        try {
-          await debitUsageTokens(usageUserId, usageCost);
-        } catch (debitErr) {
-          console.error("[POST /api/stems/split] usage debit failed:", debitErr);
-        }
-      }
       const response = { job_id: jobId, status: data.data.status ?? "accepted" };
       if (process.env.JOB_TOKEN_SECRET) response.job_token = issueJobToken(jobId);
       return res.status(202).json(response);
@@ -371,7 +427,14 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
     }));
     res.json(d);
   } catch (e) {
-    if (e && typeof e === "object" && "statusCode" in e && "error" in e) {
+    if (usageReserved && usageUserId && usageCost > 0) {
+      try {
+        await refundUsageTokens(usageUserId, usageCost);
+      } catch (refundErr) {
+        console.error("[POST /api/stems/split] usage refund failed:", refundErr);
+      }
+    }
+    if (isProxyHttpError(e)) {
       console.warn("[POST /api/stems/split] stem service error:", e.statusCode, e.error);
       return res.status(e.statusCode).json({ error: e.error });
     }
@@ -427,6 +490,7 @@ app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, re
   /** @type {string | null} */
   let usageUserId = null;
   let usageCost = 0;
+  let usageReserved = false;
   if (isUsageTokensEnabled()) {
     try {
       usageUserId = await verifyClerkBearer(req);
@@ -436,7 +500,8 @@ app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, re
       }
       const durationSec = await getAudioDurationSeconds(inputPath);
       usageCost = computeExpandCost(durationSec, quality);
-      await assertSufficientBalance(usageUserId, usageCost);
+      await reserveUsageTokens(usageUserId, usageCost);
+      usageReserved = usageCost > 0;
     } catch (e) {
       const status =
         e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
@@ -447,58 +512,27 @@ app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, re
     }
   }
 
-  const stemUrl = new URL("/expand", STEM_SERVICE_URL);
-  const isHttps = stemUrl.protocol === "https:";
-  const client = isHttps ? https : http;
   const form = new FormData();
   form.append("job_id", jobId);
   if (quality) form.append("quality", quality);
   try {
-    const data = await new Promise((resolve, reject) => {
-      const opts = {
-        hostname: stemUrl.hostname,
-        port: stemUrl.port || (isHttps ? 443 : 80),
-        path: stemUrl.pathname + stemUrl.search,
-        method: "POST",
-        headers: form.getHeaders(),
-      };
-      const proxyReq = client.request(opts, (proxyRes) => {
-        const chunks = [];
-        proxyRes.on("data", (d) => chunks.push(d));
-        proxyRes.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf-8");
-          try {
-            const parsed = body ? JSON.parse(body) : {};
-            if (proxyRes.statusCode >= 400) {
-              const errMsg = parsed.detail || body || proxyRes.statusMessage;
-              reject({ statusCode: proxyRes.statusCode, error: errMsg });
-            } else {
-              resolve({ statusCode: proxyRes.statusCode, data: parsed });
-            }
-          } catch (e) {
-            reject(e);
-          }
-        });
-        proxyReq.on("error", (err) => reject(err));
-      });
-      form.pipe(proxyReq);
-    });
+    const data = await proxyFormRequest("/expand", form);
     if (data.statusCode === 202) {
       const newJobId = data.data.job_id;
-      if (usageUserId && usageCost > 0) {
-        try {
-          await debitUsageTokens(usageUserId, usageCost);
-        } catch (debitErr) {
-          console.error("[POST /api/stems/expand] usage debit failed:", debitErr);
-        }
-      }
       const response = { job_id: newJobId, status: data.data.status ?? "accepted" };
       if (process.env.JOB_TOKEN_SECRET) response.job_token = issueJobToken(newJobId);
       return res.status(202).json(response);
     }
     return res.status(data.statusCode).json(data.data);
   } catch (e) {
-    if (e && typeof e === "object" && "statusCode" in e && "error" in e) {
+    if (usageReserved && usageUserId && usageCost > 0) {
+      try {
+        await refundUsageTokens(usageUserId, usageCost);
+      } catch (refundErr) {
+        console.error("[POST /api/stems/expand] usage refund failed:", refundErr);
+      }
+    }
+    if (isProxyHttpError(e)) {
       return res.status(e.statusCode).json({ error: e.error });
     }
     console.error("[POST /api/stems/expand] proxy error:", e);
@@ -556,6 +590,7 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
   // Charge usage tokens when enabled (same minute-basis as split/expand).
   let usageUserId = null;
   let usageCost = 0;
+  let usageReserved = false;
   if (isUsageTokensEnabled()) {
     try {
       usageUserId = await verifyClerkBearer(req);
@@ -565,7 +600,8 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
       }
       const durationSec = await getAudioDurationSeconds(inputPath);
       usageCost = computeServerExportCost(durationSec);
-      await assertSufficientBalance(usageUserId, usageCost);
+      await reserveUsageTokens(usageUserId, usageCost);
+      usageReserved = usageCost > 0;
     } catch (e) {
       const status =
         e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
@@ -629,14 +665,6 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
       return res.status(500).json({ error: "Server export completed but output file was not produced." });
     }
 
-    if (usageUserId && usageCost > 0) {
-      try {
-        await debitUsageTokens(usageUserId, usageCost);
-      } catch (debitErr) {
-        console.error("[POST /api/stems/server-export] usage debit failed:", debitErr);
-      }
-    }
-
     const downloadName = `${uploadBaseName}_master.wav`;
     res.setHeader("Content-Type", "audio/wav");
     return res.download(exportOutPath, downloadName, (err) => {
@@ -645,6 +673,13 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
       if (err) console.error("[POST /api/stems/server-export] download error:", err.message);
     });
   } catch (e) {
+    if (usageReserved && usageUserId && usageCost > 0) {
+      try {
+        await refundUsageTokens(usageUserId, usageCost);
+      } catch (refundErr) {
+        console.error("[POST /api/stems/server-export] usage refund failed:", refundErr);
+      }
+    }
     try { unlink(exportOutPath, () => {}); } catch { /* ignore */ }
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[POST /api/stems/server-export] render exception:", msg);
@@ -660,6 +695,7 @@ app.delete("/api/stems/:job_id", authMiddleware, async (req, res) => {
   try {
     const r = await fetch(`${STEM_SERVICE_URL}/split/${job_id}`, {
       method: "DELETE",
+      headers: withStemServiceAuthHeader({}),
     });
     const contentType = r.headers.get("content-type") || "";
     const hasJson = r.ok && contentType.includes("application/json");
@@ -706,7 +742,12 @@ app.get("/api/stems/file/:job_id/:stemId", authMiddleware, jobTokenMiddleware, a
   stream.pipe(res);
 });
 
-app.get("/api/stems/cleanup", authMiddleware, async (req, res) => {
+/**
+ * Shared cleanup implementation for destructive cleanup endpoints.
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ */
+async function runStemsCleanup(req, res) {
   // Cleanup is a destructive operation — require API_KEY to be configured
   if (!process.env.API_KEY) {
     return res.status(503).json({ error: "Cleanup endpoint requires API_KEY to be configured." });
@@ -751,6 +792,15 @@ app.get("/api/stems/cleanup", authMiddleware, async (req, res) => {
     return res.status(500).json({ error: "Cleanup failed" });
   }
   return res.json({ deleted, maxAgeHours });
+}
+
+app.post("/api/stems/cleanup", authMiddleware, runStemsCleanup);
+
+// Deprecated: cleanup is destructive, so GET is intentionally not allowed.
+app.get("/api/stems/cleanup", authMiddleware, (req, res) => {
+  return res.status(405).json({
+    error: "Method Not Allowed. Use POST /api/stems/cleanup for destructive cleanup.",
+  });
 });
 
 app.get("/api/health", (req, res) => {

@@ -50,7 +50,7 @@ Subscriptions and monthly credits: Stripe + Clerk webhook (`docs/BILLING-AND-TOK
 |--------|----------|
 | **Async jobs** | Stem service returns **202** with `job_id`; work runs in a background task. |
 | **Progress** | Client polls **`GET /api/stems/status/:job_id`** until `completed` / `failed`. |
-| **TTL cleanup** | **`GET /api/stems/cleanup?maxAgeHours=…`** (requires **`API_KEY`**) deletes job dirs under `STEM_OUTPUT_DIR` **older than** the threshold, plus old upload temp files. Default **`maxAgeHours`** comes from **`STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS`** (fallback **24**). Run from **cron** in production (e.g. nightly). **S3:** delete objects separately (e.g. lifecycle rule on prefix `stems/`) if you no longer keep local copies. |
+| **TTL cleanup** | **`POST /api/stems/cleanup?maxAgeHours=…`** (requires **`API_KEY`**) deletes job dirs under `STEM_OUTPUT_DIR` **older than** the threshold, plus old upload temp files. Default **`maxAgeHours`** comes from **`STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS`** (fallback **24**). Run from **cron** in production (e.g. nightly). **S3:** delete objects separately (e.g. lifecycle rule on prefix `stems/`) if you no longer keep local copies. |
 | **S3 CORS** | If the browser loads presigned URLs directly, configure the bucket **CORS** to allow **`GET`** from your app origin (or tests may fail for `<audio src>` / `fetch`). |
 | **Server FFmpeg export** | **Not implemented** — next step after S3. Reserved: **`POST /api/stems/server-export`**. |
 

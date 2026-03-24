@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, Trash2, Check, Sliders } from "lucide-react";
-import type { MixerState, TrimState } from "../types";
+import { defaultMixer, type MixerState, type TrimState } from "../types";
 
 export interface MixerPreset {
   id: string;
@@ -26,6 +26,12 @@ interface MixerPresetsModalProps {
 }
 
 const PRESETS_STORAGE_KEY = "burnt-beats-mixer-presets";
+const presetMixer = (gain: number, pan: number, width: number): MixerState => ({
+  ...defaultMixer,
+  gain,
+  pan,
+  width,
+});
 
 const DEFAULT_PRESETS: MixerPreset[] = [
   {
@@ -33,10 +39,10 @@ const DEFAULT_PRESETS: MixerPreset[] = [
     name: "Vocals Forward",
     createdAt: Date.now(),
     mixerState: {
-      vocals: { gain: 3.0, pan: 0, width: 85, send: 50 },
-      drums: { gain: -2.0, pan: 0, width: 60, send: 20 },
-      bass: { gain: -1.5, pan: 0, width: 40, send: 15 },
-      melody: { gain: -1.0, pan: 0, width: 75, send: 30 },
+      vocals: presetMixer(3.0, 0, 85),
+      drums: presetMixer(-2.0, 0, 60),
+      bass: presetMixer(-1.5, 0, 40),
+      melody: presetMixer(-1.0, 0, 75),
     },
     trimMap: {},
     mutedStems: {},
@@ -48,10 +54,10 @@ const DEFAULT_PRESETS: MixerPreset[] = [
     name: "Instrumental Focus",
     createdAt: Date.now(),
     mixerState: {
-      vocals: { gain: -6.0, pan: 0, width: 70, send: 30 },
-      drums: { gain: 1.5, pan: 0, width: 70, send: 25 },
-      bass: { gain: 1.0, pan: 0, width: 50, send: 20 },
-      melody: { gain: 2.0, pan: 0, width: 90, send: 45 },
+      vocals: presetMixer(-6.0, 0, 70),
+      drums: presetMixer(1.5, 0, 70),
+      bass: presetMixer(1.0, 0, 50),
+      melody: presetMixer(2.0, 0, 90),
     },
     trimMap: {},
     mutedStems: {},
@@ -63,10 +69,10 @@ const DEFAULT_PRESETS: MixerPreset[] = [
     name: "DJ Performance",
     createdAt: Date.now(),
     mixerState: {
-      vocals: { gain: 0, pan: 0, width: 80, send: 40 },
-      drums: { gain: 2.5, pan: 0, width: 65, send: 20 },
-      bass: { gain: 2.0, pan: 0, width: 45, send: 15 },
-      melody: { gain: -0.5, pan: 0, width: 85, send: 35 },
+      vocals: presetMixer(0, 0, 80),
+      drums: presetMixer(2.5, 0, 65),
+      bass: presetMixer(2.0, 0, 45),
+      melody: presetMixer(-0.5, 0, 85),
     },
     trimMap: {},
     mutedStems: {},
@@ -241,6 +247,8 @@ export function MixerPresetsModal({
                       {preset.id.startsWith("custom-") && (
                         <button
                           onClick={() => deletePreset(preset.id)}
+                          aria-label={`Delete preset ${preset.name}`}
+                          title={`Delete preset ${preset.name}`}
                           className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 opacity-0 transition hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4" />

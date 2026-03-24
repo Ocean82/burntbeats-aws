@@ -47,7 +47,7 @@ Run these to validate the full flow. Manual steps; automate where noted.
 
 1. Start two splits in quick succession (same or different files). Note both `job_id`s; confirm they differ.
 2. After both complete, check `tmp/stems/` (or your `STEM_OUTPUT_DIR`): two dirs, names = the two UUIDs; each contains its own `stems/*.wav`.
-3. Call `GET /api/stems/cleanup?maxAgeHours=0` (or run `node scripts/cleanup-stems.js 0`). Only UUID-named dirs should be removed; no other dirs in `STEM_OUTPUT_DIR` touched.
+3. Call `POST /api/stems/cleanup?maxAgeHours=0` (or run `node scripts/cleanup-stems.js 0`). Only UUID-named dirs should be removed; no other dirs in `STEM_OUTPUT_DIR` touched.
 
 **Code touchpoints**
 

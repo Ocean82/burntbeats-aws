@@ -41,6 +41,11 @@ RETURN_ORDER = ("vocals", "drums", "bass", "other")
 
 _session_cache: dict[str, Any] = {}
 _cache_lock = threading.Lock()
+_selftest_done = False
+_runtime_enabled = True
+_runtime_disable_reason: str | None = None
+_compatible_freq_cached: int | None = None
+_compatible_spec_time_cached: int | None = None
 
 
 def _get_session(path: Path) -> Any | None:
@@ -236,9 +241,15 @@ def run_scnet_onnx_4stem(
     """
     import soundfile as sf
 
+    if not scnet_onnx_runtime_available():
+        reason = scnet_onnx_disable_reason()
+        if reason:
+            logger.warning("scnet_onnx: runtime disabled (%s)", reason)
+        return None
+
     session = _get_session(SCNET_ONNX)
     if session is None:
-        logger.warning("scnet_onnx: no session (model load failed or path missing)")
+        logger.warning("scnet_onnx: no session after runtime self-test")
         return None
 
     inp_name = session.get_inputs()[0].name
@@ -268,19 +279,20 @@ def run_scnet_onnx_4stem(
     mix_t = np.ascontiguousarray(mix.T).astype(np.float32)
     mix_t = mix_t.reshape(1, 2, -1)
 
-    # If model reports 2049 but internal weights expect 2048 (or vice versa), retry with other freq.
-    freq_candidates = [spec_freq]
-    if spec_freq == 2049:
-        freq_candidates.append(2048)
-    elif spec_freq == 2048:
-        freq_candidates.append(2049)
-
-    compatible_freq = _select_compatible_freq(
-        session=session,
-        inp_name=inp_name,
-        spec_time=spec_time,
-        freq_candidates=freq_candidates,
-    )
+    compatible_freq = _compatible_freq_cached
+    if compatible_freq is None:
+        # Defensive fallback when self-test cache is unavailable.
+        freq_candidates = [spec_freq]
+        if spec_freq == 2049:
+            freq_candidates.append(2048)
+        elif spec_freq == 2048:
+            freq_candidates.append(2049)
+        compatible_freq = _select_compatible_freq(
+            session=session,
+            inp_name=inp_name,
+            spec_time=spec_time,
+            freq_candidates=freq_candidates,
+        )
     if compatible_freq is None:
         logger.warning("scnet_onnx: no compatible input freq found; falling back")
         return None
@@ -374,3 +386,82 @@ def run_scnet_onnx_4stem(
 def scnet_onnx_available() -> bool:
     """True if SCNet ONNX model exists (caller should also check config.scnet_available() for USE_SCNET)."""
     return SCNET_ONNX.exists()
+
+
+def scnet_onnx_disable_reason() -> str | None:
+    """Reason SCNet runtime was disabled by self-test, if any."""
+    return _runtime_disable_reason
+
+
+def scnet_onnx_runtime_available() -> bool:
+    """
+    Runtime gate with one-time self-test.
+    If preflight fails, SCNet is auto-disabled for this process to avoid repeated failures.
+    """
+    global _selftest_done, _runtime_enabled, _runtime_disable_reason
+    global _compatible_freq_cached, _compatible_spec_time_cached
+
+    with _cache_lock:
+        if _selftest_done:
+            return _runtime_enabled
+
+    if not SCNET_ONNX.exists():
+        with _cache_lock:
+            _selftest_done = True
+            _runtime_enabled = False
+            _runtime_disable_reason = f"missing model at {SCNET_ONNX}"
+        return False
+
+    session = _get_session(SCNET_ONNX)
+    if session is None:
+        with _cache_lock:
+            _selftest_done = True
+            _runtime_enabled = False
+            _runtime_disable_reason = "failed to create ONNX session"
+        return False
+
+    try:
+        inp_name = session.get_inputs()[0].name
+        spec_freq, spec_time = _get_spec_dims(session)
+        freq_candidates = [spec_freq]
+        if spec_freq == 2049:
+            freq_candidates.append(2048)
+        elif spec_freq == 2048:
+            freq_candidates.append(2049)
+
+        compatible_freq = _select_compatible_freq(
+            session=session,
+            inp_name=inp_name,
+            spec_time=spec_time,
+            freq_candidates=freq_candidates,
+        )
+        with _cache_lock:
+            _selftest_done = True
+            if compatible_freq is None:
+                _runtime_enabled = False
+                _runtime_disable_reason = "preflight failed (no compatible freq)"
+                _compatible_freq_cached = None
+                _compatible_spec_time_cached = None
+            else:
+                _runtime_enabled = True
+                _runtime_disable_reason = None
+                _compatible_freq_cached = compatible_freq
+                _compatible_spec_time_cached = spec_time
+        if compatible_freq is None:
+            logger.warning("scnet_onnx: startup self-test failed; disabling SCNet for this process")
+        else:
+            logger.info(
+                "scnet_onnx: startup self-test passed (freq=%s,time=%s)",
+                compatible_freq,
+                spec_time,
+            )
+        return compatible_freq is not None
+    except Exception as e:
+        with _cache_lock:
+            _selftest_done = True
+            _runtime_enabled = False
+            _runtime_disable_reason = f"preflight exception: {e}"
+            _compatible_freq_cached = None
+            _compatible_spec_time_cached = None
+        logger.warning("scnet_onnx: startup self-test exception; disabling SCNet: %s", e)
+        return False

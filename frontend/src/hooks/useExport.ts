@@ -4,6 +4,7 @@
  * Master mix stem set matches playback via `filterStemsForAudibleMix`.
  */
 import { useCallback, useState } from "react";
+import lamejs from "lamejs";
 import { serverExportMasterWav } from "../api";
 import type { StemResult } from "../types";
 import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStereoWidthNode } from "../utils/audio";
@@ -64,6 +65,87 @@ export type ExportCompareMetrics = {
 export function useExport(): UseExportReturn {
   const [isExporting, setIsExporting] = useState(false);
 
+  const triggerDownload = useCallback((blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const encodeWavToMp3 = useCallback((wavBuffer: ArrayBuffer, kbps = 192): Blob => {
+    const wavView = new DataView(wavBuffer);
+    const riff = String.fromCharCode(
+      wavView.getUint8(0),
+      wavView.getUint8(1),
+      wavView.getUint8(2),
+      wavView.getUint8(3)
+    );
+    if (riff !== "RIFF") throw new Error("Invalid WAV file");
+
+    const numChannels = wavView.getUint16(22, true);
+    const sampleRate = wavView.getUint32(24, true);
+    const bitsPerSample = wavView.getUint16(34, true);
+    if (bitsPerSample !== 16) throw new Error("Only 16-bit WAV is supported for MP3 export");
+    if (numChannels !== 1 && numChannels !== 2) throw new Error("Only mono/stereo WAV is supported for MP3 export");
+
+    // Find "data" chunk (do not assume fixed 44-byte PCM header).
+    let dataOffset = -1;
+    let dataLength = 0;
+    let offset = 12;
+    while (offset + 8 <= wavBuffer.byteLength) {
+      const chunkId = String.fromCharCode(
+        wavView.getUint8(offset),
+        wavView.getUint8(offset + 1),
+        wavView.getUint8(offset + 2),
+        wavView.getUint8(offset + 3)
+      );
+      const chunkSize = wavView.getUint32(offset + 4, true);
+      if (chunkId === "data") {
+        dataOffset = offset + 8;
+        dataLength = chunkSize;
+        break;
+      }
+      offset += 8 + chunkSize + (chunkSize % 2);
+    }
+    if (dataOffset < 0) throw new Error("WAV data chunk not found");
+
+    const sampleCount = dataLength / (bitsPerSample / 8) / numChannels;
+    const left = new Int16Array(sampleCount);
+    const right = new Int16Array(sampleCount);
+    let idx = dataOffset;
+    for (let i = 0; i < sampleCount; i++) {
+      left[i] = wavView.getInt16(idx, true);
+      idx += 2;
+      if (numChannels === 2) {
+        right[i] = wavView.getInt16(idx, true);
+        idx += 2;
+      } else {
+        right[i] = left[i];
+      }
+    }
+
+    const encoder = new lamejs.Mp3Encoder(numChannels, sampleRate, kbps);
+    const chunkSize = 1152;
+    const chunks: ArrayBuffer[] = [];
+    for (let i = 0; i < sampleCount; i += chunkSize) {
+      const leftChunk = left.subarray(i, i + chunkSize);
+      const rightChunk = right.subarray(i, i + chunkSize);
+      const frame = encoder.encodeBuffer(leftChunk, rightChunk);
+      if (frame.length > 0) {
+        const bytes = new Uint8Array(frame);
+        chunks.push(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+      }
+    }
+    const finalFrame = encoder.flush();
+    if (finalFrame.length > 0) {
+      const bytes = new Uint8Array(finalFrame);
+      chunks.push(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+    }
+    return new Blob(chunks, { type: "audio/mpeg" });
+  }, []);
+
   const downloadStemByUrl = useCallback(async (stem: StemResult, baseName: string) => {
     const res = await fetch(stem.url);
     if (!res.ok) throw new Error(`Failed to download stem: ${res.status}`);
@@ -99,13 +181,8 @@ export function useExport(): UseExportReturn {
       normalize,
     });
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, []);
+    triggerDownload(blob, fileName);
+  }, [triggerDownload]);
 
   const renderClientMasterWavBlob = useCallback(async (
     options: { normalize?: boolean },
@@ -266,18 +343,38 @@ export function useExport(): UseExportReturn {
 
     try {
       const wavBlob = await renderClientMasterWavBlob({ normalize: options?.normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
-      const url = URL.createObjectURL(wavBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${uploadName.replace(/\.[^/.]+$/, "")}_master.wav`;
-      a.click();
-      URL.revokeObjectURL(url);
+      triggerDownload(wavBlob, `${uploadName.replace(/\.[^/.]+$/, "")}_master.wav`);
     } catch (e) {
       onError(e instanceof Error ? e.message : "Export failed");
     } finally {
       if (!options?.skipBusy) setIsExporting(false);
     }
-  }, []);
+  }, [renderClientMasterWavBlob, triggerDownload]);
+
+  const exportMasterMp3 = useCallback(async (
+    options: { normalize?: boolean; skipBusy?: boolean } | undefined,
+    stemBuffers: Record<string, AudioBuffer>,
+    splitResultStems: StemResult[],
+    stemStates: Record<string, StemEditorState>,
+    uploadName: string,
+    onError: (msg: string) => void
+  ) => {
+    if (Object.keys(stemBuffers).length === 0) {
+      onError("Load stems to tracks first before exporting");
+      return;
+    }
+    if (!options?.skipBusy) setIsExporting(true);
+
+    try {
+      const wavBlob = await renderClientMasterWavBlob({ normalize: options?.normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
+      const mp3Blob = encodeWavToMp3(await wavBlob.arrayBuffer());
+      triggerDownload(mp3Blob, `${uploadName.replace(/\.[^/.]+$/, "")}_master.mp3`);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      if (!options?.skipBusy) setIsExporting(false);
+    }
+  }, [renderClientMasterWavBlob, encodeWavToMp3, triggerDownload]);
 
   const handleExportWithOptions = useCallback(async (
     options: ExportOptions,
@@ -298,6 +395,7 @@ export function useExport(): UseExportReturn {
     try {
       if (options.target === "master" || options.target === "all") {
         const normalize = options.normalize;
+        const format = options.format;
 
         const canTryServer =
           typeof serverExportJobId === "string" &&
@@ -305,7 +403,10 @@ export function useExport(): UseExportReturn {
           Array.isArray(serverExportStemIds) &&
           serverExportStemIds.length > 0;
 
-        if (canTryServer) {
+        if (format === "mp3") {
+          // MP3 export currently uses client-side encoding from rendered WAV.
+          await exportMasterMp3({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, onError);
+        } else if (canTryServer) {
           try {
             await exportMasterWavServer(serverExportJobId as string, serverExportStemIds as string[], stemStates, uploadName, normalize);
           } catch (e) {
@@ -331,7 +432,7 @@ export function useExport(): UseExportReturn {
     } finally {
       setIsExporting(false);
     }
-  }, [exportMasterWav, exportMasterWavServer, downloadStemByUrl]);
+  }, [exportMasterMp3, exportMasterWav, exportMasterWavServer, downloadStemByUrl]);
 
   const compareMasterExportServerAndClient = useCallback(async (params: {
     serverExportJobId: string;

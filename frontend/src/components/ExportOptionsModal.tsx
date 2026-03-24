@@ -22,7 +22,7 @@ export interface ExportOptions {
 
 const FORMAT_OPTIONS: { value: ExportFormat; label: string; description: string; available: boolean }[] = [
   { value: "wav", label: "WAV", description: "Uncompressed, highest quality", available: true },
-  { value: "mp3", label: "MP3", description: "Compressed — coming soon", available: false },
+  { value: "mp3", label: "MP3", description: "Compressed, smaller file size", available: true },
   { value: "flac", label: "FLAC", description: "Lossless — coming soon", available: false },
 ];
 
@@ -174,6 +174,8 @@ export function ExportOptionsModal({
                   type="button"
                   role="switch"
                   aria-checked={options.normalize}
+                  aria-label="Toggle audio normalization"
+                  title="Toggle audio normalization"
                   onClick={() => setOptions((o) => ({ ...o, normalize: !o.normalize }))}
                   className={cn(
                     "relative h-6 w-11 rounded-full transition-colors",

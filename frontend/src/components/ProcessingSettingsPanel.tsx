@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { FolderOpen, Upload, ChevronDown, ChevronUp } from "lucide-react";
+import { FolderOpen, Upload, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import type { SplitQuality } from "../api";
 import type React from "react";
 
@@ -37,7 +37,7 @@ export interface ProcessingSettingsPanelProps {
   stemQualityOptions?: "speed_only" | "full";
   canExpandToFourStems?: boolean;
 
-  onSplit: () => void;
+  onSplit: (requestedStemMode: 2 | 4) => void;
   isSplitting: boolean;
   splitResultStemsLength: number;
   isExpanding: boolean;
@@ -91,9 +91,25 @@ export function ProcessingSettingsPanel({
 
   const qualityOptions = useMemo(() => {
     const opts: Array<{ value: SplitQuality; label: string; enabled: boolean; hint: string }> = [
-      { value: "speed", label: "Fast", enabled: true, hint: "Quick 2-stem separation — great for drafts" },
-      { value: "quality", label: "Balanced", enabled: canChooseUltra, hint: "Cleaner separation (recommended)" },
-      { value: "ultra", label: "Ultra", enabled: canChooseUltra, hint: "Highest quality, slower processing" },
+      { value: "speed", label: "Fast", enabled: true, hint: "Quickest turnaround" },
+      {
+        value: "balanced",
+        label: "Balanced",
+        enabled: canChooseUltra,
+        hint: canChooseUltra ? "Good quality + speed balance" : "Requires Premium or Studio",
+      },
+      {
+        value: "quality",
+        label: "Quality",
+        enabled: canChooseUltra,
+        hint: canChooseUltra ? "Higher quality, slower than balanced" : "Requires Premium or Studio",
+      },
+      {
+        value: "ultra",
+        label: "Ultra",
+        enabled: canChooseUltra,
+        hint: canChooseUltra ? "Highest quality, slowest processing" : "Requires Studio",
+      },
     ];
     return opts;
   }, [canChooseUltra]);
@@ -154,7 +170,6 @@ export function ProcessingSettingsPanel({
         {/* Upload drop zone (split mode) */}
         {sourceMode === "split" && (
           <div
-            onClick={onBrowseUpload}
             onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
             onDragLeave={() => onSetIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onDropUpload(e.dataTransfer.files?.[0] ?? null); }}
@@ -168,24 +183,32 @@ export function ProcessingSettingsPanel({
           >
             <Upload className="h-4 w-4 shrink-0 text-white/70" strokeWidth={2} />
             <span className="truncate text-sm font-medium text-white">
-              {uploadedFile ? uploadName : "Drop track or click to browse"}
+              {uploadedFile ? uploadName : "Drop track or use Browse"}
             </span>
-            {uploadedFile && (
+            <div className="ml-auto flex shrink-0 items-center gap-2">
+              {uploadedFile && (
+                <button
+                  type="button"
+                  onClick={onClearUpload}
+                  className="rounded-lg border border-white/10 px-2 py-0.5 text-xs text-white/60 hover:text-white"
+                >
+                  Clear
+                </button>
+              )}
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onClearUpload(); }}
-                className="ml-auto shrink-0 rounded-lg border border-white/10 px-2 py-0.5 text-xs text-white/60 hover:text-white"
+                onClick={onBrowseUpload}
+                className="rounded-lg border border-white/10 px-2 py-0.5 text-xs text-white/60 hover:text-white"
               >
-                Change
+                {uploadedFile ? "Change" : "Browse"}
               </button>
-            )}
+            </div>
           </div>
         )}
 
         {/* Load mode drop zone */}
         {sourceMode === "load" && (
           <div
-            onClick={() => loadStemsInputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
             onDragLeave={() => onSetIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onLoadStems(e.dataTransfer.files); }}
@@ -197,18 +220,27 @@ export function ProcessingSettingsPanel({
           >
             <FolderOpen className="h-4 w-4 shrink-0 text-white/60" strokeWidth={1.5} />
             <span className="truncate text-sm text-white/80">
-              {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : "Drop stems or click to browse"}
+              {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : "Drop stems or use Browse"}
             </span>
-            {loadedStemCount > 0 && (
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); setLoadExpanded((v) => !v); }}
-                className="ml-auto shrink-0 text-white/50 hover:text-white"
-                aria-label="Toggle loaded stems list"
+                onClick={() => loadStemsInputRef.current?.click()}
+                className="rounded-lg border border-white/10 px-2 py-0.5 text-xs text-white/60 hover:text-white"
               >
-                {loadExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                Browse
               </button>
-            )}
+              {loadedStemCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setLoadExpanded((v) => !v)}
+                  className="text-white/50 hover:text-white"
+                  aria-label="Toggle loaded stems list"
+                >
+                  {loadExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -232,10 +264,18 @@ export function ProcessingSettingsPanel({
                       : "text-white/60 hover:text-white",
                 )}
               >
-                {opt.label}
+                <span className="inline-flex items-center gap-1">
+                  {opt.label}
+                  {!opt.enabled && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+                </span>
               </button>
             ))}
           </div>
+          {!canChooseUltra && (
+            <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-white/45">
+              Premium/Studio to unlock
+            </span>
+          )}
         </div>
 
         {/* Stem count slider */}
@@ -248,7 +288,7 @@ export function ProcessingSettingsPanel({
               max={4}
               step={2}
               value={requestedStemMode}
-              disabled={isSplitting || (!canExpandToFourStems && requestedStemMode === 2)}
+              disabled={isSplitting}
               onChange={(e) => {
                 const val = parseInt(e.target.value) as 2 | 4;
                 if (val === 4 && !canExpandToFourStems && onUpgradeToPremium) {
@@ -262,8 +302,16 @@ export function ProcessingSettingsPanel({
             />
             <div className="flex w-20 justify-between text-[10px] text-white/40 font-mono">
               <span>2</span>
-              <span className={cn(requestedStemMode === 4 ? "text-amber-300" : "")}>4</span>
+              <span className={cn(requestedStemMode === 4 ? "text-amber-300" : "", !canExpandToFourStems && "inline-flex items-center gap-1")}>
+                4
+                {!canExpandToFourStems && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+              </span>
             </div>
+            {!canExpandToFourStems && (
+              <span className="text-[10px] font-medium uppercase tracking-wide text-white/45">
+                4-stem requires Premium/Studio
+              </span>
+            )}
           </div>
         </div>
 
@@ -271,7 +319,7 @@ export function ProcessingSettingsPanel({
         {sourceMode === "split" && (
           <button
             type="button"
-            onClick={onSplit}
+            onClick={() => onSplit(requestedStemMode)}
             disabled={!uploadedFile || isSplitting}
             className="fire-button shrink-0 px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
           >
@@ -289,10 +337,13 @@ export function ProcessingSettingsPanel({
             type="button"
             onClick={onAddToQueue}
             disabled={!uploadedFile || isSplitting || !canUseBatchQueue}
-            title={canUseBatchQueue ? "Add to batch queue" : "Batch queue requires Premium+"}
+            title={canUseBatchQueue ? "Add to batch queue" : "Requires Premium or Studio"}
             className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60 hover:text-white disabled:opacity-40"
           >
-            + Queue
+            <span className="inline-flex items-center gap-1">
+              + Queue
+              {!canUseBatchQueue && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+            </span>
           </button>
         )}
 

@@ -31,6 +31,55 @@ def _default_models() -> list[tuple[str, Path]]:
     ]
 
 
+def _looks_like_demucs_waveform_model(model_path: Path) -> tuple[bool, str]:
+    """
+    Validate that an ONNX model matches Demucs-style waveform inference expectations.
+    Accepts:
+      - input[0] rank 3: (batch, 2, time)
+      - optional input[1] rank 4 (spectrogram branch)
+      - at least one output rank 4 with stereo channel axis at dim=2
+    """
+    try:
+        import onnxruntime as ort
+    except Exception as e:
+        return False, f"onnxruntime unavailable: {e}"
+
+    try:
+        sess = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+    except Exception as e:
+        return False, f"cannot load ONNX: {e}"
+
+    inputs = sess.get_inputs()
+    outputs = sess.get_outputs()
+    if not inputs:
+        return False, "no inputs"
+
+    in0_shape = list(inputs[0].shape or [])
+    if len(in0_shape) != 3:
+        return False, f"input[0] rank {len(in0_shape)} != 3 (expected waveform input)"
+
+    if len(inputs) > 1:
+        in1_shape = list(inputs[1].shape or [])
+        if len(in1_shape) != 4:
+            return False, f"input[1] rank {len(in1_shape)} != 4 (unexpected two-input signature)"
+
+    def _is_stereo_dim(dim: object) -> bool:
+        if isinstance(dim, int):
+            return dim == 2
+        if dim is None:
+            return False
+        s = str(dim).lower()
+        return s == "2" or "dim_2" in s or "channel" in s or "stereo" in s
+
+    for out in outputs:
+        out_shape = list(out.shape or [])
+        if len(out_shape) == 4 and _is_stereo_dim(out_shape[2]):
+            return True, "ok"
+
+    shape_desc = ", ".join(f"{o.name}:{list(o.shape or [])}" for o in outputs[:4])
+    return False, f"no waveform output candidate found (outputs={shape_desc})"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Benchmark Demucs ONNX 4-stem models")
     ap.add_argument(
@@ -63,10 +112,23 @@ def main() -> int:
         print(f"Input not found: {args.input}", file=sys.stderr)
         return 1
 
+    def _audio_duration_seconds(path: Path) -> float | None:
+        try:
+            import soundfile as sf
+        except Exception:
+            return None
+        try:
+            return float(sf.info(str(path)).duration)
+        except Exception:
+            return None
+
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
     ts_local = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
     out_root = args.out or (REPO_ROOT / "tmp" / f"demucs_onnx_benchmark_{ts}")
     out_root.mkdir(parents=True, exist_ok=True)
+
+    audio_dur = _audio_duration_seconds(args.input.resolve())
+    smoke_test_only = (audio_dur is not None) and (audio_dur <= 4.5)
 
     if args.models:
         pairs = [(p.stem.replace(" ", "_"), p.resolve()) for p in args.models]
@@ -84,6 +146,13 @@ def main() -> int:
         }
         if not onnx_path.exists():
             row["error"] = "file missing"
+            results.append(row)
+            continue
+        ok_shape, why = _looks_like_demucs_waveform_model(onnx_path)
+        if not ok_shape:
+            row["error"] = f"skipped: non-Demucs-shaped ONNX ({why})"
+            row["ok"] = False
+            row["skipped"] = True
             results.append(row)
             continue
         stem_dir = out_root / label
@@ -113,6 +182,8 @@ def main() -> int:
         "benchmark_utc": ts,
         "benchmark_local": ts_local,
         "input": str(args.input.resolve()),
+        "audio_duration_seconds": audio_dur,
+        "smoke_test_only": smoke_test_only,
         "prefer_speed": args.prefer_speed,
         "output_dir": str(out_root.resolve()),
         "runs": results,
@@ -125,10 +196,19 @@ def main() -> int:
         f"Date (local): {ts_local}",
         f"Date (UTC):  {ts}",
         f"Input: {args.input.resolve()}",
+        f"Input duration: {(f'{audio_dur:.2f}s' if isinstance(audio_dur, float) else 'unknown')}",
         f"prefer_speed: {args.prefer_speed}",
         f"Output: {out_root.resolve()}",
         "",
     ]
+    if smoke_test_only:
+        lines.extend(
+            [
+                "NOTE: input is very short (<=4.5s). Treat this run as a load/shape smoke test only.",
+                "      Do not use it to judge separation quality or rank models.",
+                "",
+            ]
+        )
     for r in results:
         lab = r["label"]
         if r.get("ok"):
