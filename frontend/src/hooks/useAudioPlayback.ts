@@ -5,9 +5,57 @@
 import { useCallback, useRef, useState } from "react";
 import type { StemResult } from "../types";
 import { trimToSeconds, createStemPreviewBuffer, createStemDspChain } from "../utils/audio";
-import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
+import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
+import { createPitchShifter, needsPitchShift, type StemPitchShifter } from "../utils/pitchShift";
 import type { StemId } from "../types";
+
+/**
+ * A playback handle that is either a native AudioBufferSourceNode (no pitch shift)
+ * or a SoundTouch StemPitchShifter (pitch shift active). Both support .disconnect().
+ */
+type StemPlaybackHandle =
+  | { kind: "native"; source: AudioBufferSourceNode; pitchShifter: null }
+  | { kind: "pitched"; source: null; pitchShifter: StemPitchShifter };
+
+/**
+ * Creates the appropriate playback handle and wires it to dsp.input.
+ * - No pitch: native AudioBufferSourceNode, playbackRate = timeStretch.
+ * - Pitch != 0: SoundTouch PitchShifter (replaces source node entirely).
+ */
+function buildStemPlayback(
+  ctx: AudioContext,
+  buffer: AudioBuffer,
+  st: StemEditorState,
+  trimStart: number,
+  trimEnd: number,
+  dspInput: AudioNode
+): StemPlaybackHandle {
+  const semitones = st.pitchSemitones ?? 0;
+  const stretch = st.timeStretch ?? 1;
+
+  if (needsPitchShift(st)) {
+    const shifter = createPitchShifter(ctx, buffer, semitones, stretch > 0 ? stretch : 1, trimStart);
+    shifter.connect(dspInput);
+    return { kind: "pitched", source: null, pitchShifter: shifter };
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.playbackRate.value = stretch > 0 ? stretch : 1;
+  source.connect(dspInput);
+  source.start(0, trimStart, trimEnd - trimStart);
+  return { kind: "native", source, pitchShifter: null };
+}
+
+function stopHandle(handle: StemPlaybackHandle) {
+  if (handle.kind === "native") {
+    try { handle.source.stop(); } catch { /* already stopped */ }
+    try { handle.source.disconnect(); } catch { /* already disconnected */ }
+  } else {
+    handle.pitchShifter.disconnect();
+  }
+}
 
 interface UseAudioPlaybackReturn {
   isPlayingMix: boolean;
@@ -48,8 +96,8 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
   const [playingStem, setPlayingStem] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
-  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const mixSourceRefs = useRef<AudioBufferSourceNode[]>([]);
+  const currentPreviewHandleRef = useRef<StemPlaybackHandle | null>(null);
+  const mixHandleRefs = useRef<StemPlaybackHandle[]>([]);
   const isPlayingMixRef = useRef(false);
   const playheadIntervalRef = useRef<number | null>(null);
   const playStartTimeRef = useRef<number>(0);
@@ -134,10 +182,9 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
   }, [ensureMasterBus]);
 
   const stopPreview = useCallback(() => {
-    if (currentSourceRef.current) {
-      try { currentSourceRef.current.stop(); } catch { /* already stopped */ }
-      currentSourceRef.current.disconnect();
-      currentSourceRef.current = null;
+    if (currentPreviewHandleRef.current) {
+      stopHandle(currentPreviewHandleRef.current);
+      currentPreviewHandleRef.current = null;
     }
     isPlayingPreviewRef.current = false;
     if (playheadIntervalRef.current) {
@@ -148,11 +195,8 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
   }, []);
 
   const handleStopMix = useCallback(() => {
-    mixSourceRefs.current.forEach((s) => {
-      try { s.stop(); } catch { /* ignored */ }
-      s.disconnect();
-    });
-    mixSourceRefs.current = [];
+    mixHandleRefs.current.forEach(stopHandle);
+    mixHandleRefs.current = [];
     setIsPlayingMix(false);
     isPlayingMixRef.current = false;
     if (playheadIntervalRef.current) {
@@ -163,11 +207,8 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
   }, [emitPlayheadPosition]);
 
   const stopMixSourcesPreservePlayhead = useCallback(() => {
-    mixSourceRefs.current.forEach((s) => {
-      try { s.stop(); } catch { /* ignored */ }
-      try { s.disconnect(); } catch { /* ignored */ }
-    });
-    mixSourceRefs.current = [];
+    mixHandleRefs.current.forEach(stopHandle);
+    mixHandleRefs.current = [];
     if (playheadIntervalRef.current) {
       cancelAnimationFrame(playheadIntervalRef.current);
       playheadIntervalRef.current = null;
@@ -192,33 +233,31 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
     const context = await getOrCreateContext();
     if (!context) return;
 
-    const sources: AudioBufferSourceNode[] = [];
+    const handles: StemPlaybackHandle[] = [];
     for (const stem of stemsToPlay) {
       const buffer = stemBuffers[stem.id];
       if (!buffer) continue;
       const st = stemStates[stem.id] ?? defaultStemState();
       const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-      const playDuration = trimEnd - trimStart;
 
-      const source = context.createBufferSource();
       const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-      source.buffer = buffer;
-      source.playbackRate.value = getStemEffectiveRate(st);
-      source.connect(dsp.input);
+      const handle = buildStemPlayback(context, buffer, st, trimStart, trimEnd, dsp.input);
       dsp.output.connect(ensureMasterBus(context));
-      source.start(0, trimStart, playDuration);
-      source.onended = () => {
-        dsp.disconnect();
-        mixSourceRefs.current = mixSourceRefs.current.filter((x) => x !== source);
-        if (mixSourceRefs.current.length === 0) {
-          setIsPlayingMix(false);
-          isPlayingMixRef.current = false;
-        }
-      };
-      sources.push(source);
+
+      if (handle.kind === "native") {
+        handle.source.onended = () => {
+          dsp.disconnect();
+          mixHandleRefs.current = mixHandleRefs.current.filter((h) => h !== handle);
+          if (mixHandleRefs.current.length === 0) {
+            setIsPlayingMix(false);
+            isPlayingMixRef.current = false;
+          }
+        };
+      }
+      handles.push(handle);
     }
 
-    mixSourceRefs.current = sources;
+    mixHandleRefs.current = handles;
     setIsPlayingMix(true);
     isPlayingMixRef.current = true;
 
@@ -275,23 +314,22 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         previewStemStateRef.current = st;
         previewBufferRef.current = buffer;
 
-        const source = context.createBufferSource();
         const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-        source.buffer = buffer;
-        source.playbackRate.value = getStemEffectiveRate(st);
-        source.connect(dsp.input);
+        const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
         dsp.output.connect(ensureMasterBus(context));
 
-        source.onended = () => {
-          dsp.disconnect();
-          if (currentSourceRef.current === source) {
-            currentSourceRef.current = null;
-            isPlayingPreviewRef.current = false;
-            setPlayingStem(null);
-          }
-        };
-
-        currentSourceRef.current = source;
+        if (handle.kind === "native") {
+          handle.source.onended = () => {
+            dsp.disconnect();
+            if (currentPreviewHandleRef.current?.kind === "native" &&
+                currentPreviewHandleRef.current.source === handle.source) {
+              currentPreviewHandleRef.current = null;
+              isPlayingPreviewRef.current = false;
+              setPlayingStem(null);
+            }
+          };
+        }
+        currentPreviewHandleRef.current = handle;
         isPlayingPreviewRef.current = true;
 
         playStartTimeRef.current = context.currentTime - elapsed;
@@ -308,7 +346,6 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         };
 
         playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-        source.start(0, trimStart + elapsed, remaining);
         return;
       }
 
@@ -361,39 +398,34 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       emitPlayheadPosition(clampedPct);
       playStartTimeRef.current = context.currentTime - elapsed;
 
-      const sources: AudioBufferSourceNode[] = [];
+      const handles: StemPlaybackHandle[] = [];
       for (const stem of stemsToPlay) {
         const buffer = stemBuffers[stem.id];
         if (!buffer) continue;
         const st = stemStates[stem.id] ?? defaultStemState();
         const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
         const playDuration = trimEnd - trimStart;
-
-        const startInStem = trimStart + elapsed;
         const remaining = playDuration - elapsed;
         if (remaining <= 0) continue;
 
-        const source = context.createBufferSource();
         const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-        source.buffer = buffer;
-        source.playbackRate.value = getStemEffectiveRate(st);
-        source.connect(dsp.input);
+        const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
         dsp.output.connect(ensureMasterBus(context));
-        source.start(0, startInStem, remaining);
 
-        source.onended = () => {
-          dsp.disconnect();
-          mixSourceRefs.current = mixSourceRefs.current.filter((x) => x !== source);
-          if (mixSourceRefs.current.length === 0) {
-            setIsPlayingMix(false);
-            isPlayingMixRef.current = false;
-          }
-        };
-
-        sources.push(source);
+        if (handle.kind === "native") {
+          handle.source.onended = () => {
+            dsp.disconnect();
+            mixHandleRefs.current = mixHandleRefs.current.filter((h) => h !== handle);
+            if (mixHandleRefs.current.length === 0) {
+              setIsPlayingMix(false);
+              isPlayingMixRef.current = false;
+            }
+          };
+        }
+        handles.push(handle);
       }
 
-      mixSourceRefs.current = sources;
+      mixHandleRefs.current = handles;
       setIsPlayingMix(true);
       isPlayingMixRef.current = true;
 
@@ -462,26 +494,26 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         return;
       }
 
-      const source = context.createBufferSource();
       const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-      source.buffer = buffer;
-      source.playbackRate.value = getStemEffectiveRate(st);
+      const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
 
-      source.connect(dsp.input);
       dsp.output.connect(ensureMasterBus(context));
       emitPlayheadPosition(startPct);
       previewDurationRef.current = playDuration;
       playStartTimeRef.current = context.currentTime - elapsed;
 
-      source.onended = () => {
-        dsp.disconnect();
-        if (currentSourceRef.current === source) {
-          currentSourceRef.current = null;
-          isPlayingPreviewRef.current = false;
-          setPlayingStem(null);
-        }
-      };
-      currentSourceRef.current = source;
+      if (handle.kind === "native") {
+        handle.source.onended = () => {
+          dsp.disconnect();
+          if (currentPreviewHandleRef.current?.kind === "native" &&
+              currentPreviewHandleRef.current.source === handle.source) {
+            currentPreviewHandleRef.current = null;
+            isPlayingPreviewRef.current = false;
+            setPlayingStem(null);
+          }
+        };
+      }
+      currentPreviewHandleRef.current = handle;
       isPlayingPreviewRef.current = true;
 
       const updatePlayhead = () => {
@@ -496,7 +528,6 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       };
       playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
 
-      source.start(0, trimStart + elapsed, remaining);
       setPlayingStem(stemId);
     } catch (err) {
       console.error("Preview failed:", err);

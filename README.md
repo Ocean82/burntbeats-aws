@@ -210,6 +210,7 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 | Python | `USE_DEMUCS_SHIFTS_0` | Default `1`: Demucs uses shifts=0 (faster on CPU). Set to `0` to use 3 shifts in Quality. See `docs/CPU-OPTIMIZATION-TIPS.md`. |
 | Python | `DEMUCS_QUALITY_BAG` | `mdx_extra_q` (default, lighter) or `mdx_extra` (heavier, slower, best quality). 4-stem quality requires the `diffq` package (included in `stem_service/requirements.txt`). |
 | Frontend | `VITE_API_BASE_URL` | Backend base URL (e.g. http://localhost:3001) |
+| Backend | `MALWARE_SCAN_ENABLED`, `CLAMSCAN_BIN`, … | Optional ClamAV scan on temp upload before split; see [docs/MALWARE-SCAN-OPS.md](docs/MALWARE-SCAN-OPS.md) |
 
 ### Production env contract
 
@@ -229,6 +230,10 @@ The app uses two layers of protection for production deployments:
 3. Stem-service protection (recommended)
    - Set `STEM_SERVICE_API_TOKEN` (Node + Python) so `stem_service` rejects unauthenticated requests when port `5000` is reachable outside your trusted network.
    - `stem_service` expects header `X-Stem-Service-Token`.
+
+4. Malware scan after upload (optional)
+   - Install ClamAV on the backend host, run `freshclam`, optionally enable `clamd` and use `clamdscan`.
+   - Set `MALWARE_SCAN_ENABLED=1` and `CLAMSCAN_BIN` in `backend/.env`. See **[docs/MALWARE-SCAN-OPS.md](docs/MALWARE-SCAN-OPS.md)** for the full checklist.
 
 Operational settings
 - Rate limiting: optionally set `RATE_LIMIT_REDIS_URL` to enable Redis-backed rate limits; otherwise the backend falls back to in-memory.
@@ -262,6 +267,8 @@ Summary:
 ## Deploy (AWS Ubuntu, t3.large CPU-only)
 
 Production is expected to match **Ubuntu** on an instance such as **`t3.large`**: **CPU only, no GPU**. Keep separation on CPU (`USE_GPU=0`, `USE_ONNX_CPU=1` as appropriate) unless you deliberately add a GPU instance later.
+
+**Packaging for upload:** To copy the app to the server **without** your full local `models/`, `node_modules/`, or `.venv/`, run **`bash scripts/package-server-bundle.sh`** (creates `tmp/deploy/burntbeats-server-*.tgz`) and follow **[docs/DEPLOY-SERVER-BUNDLE.md](docs/DEPLOY-SERVER-BUNDLE.md)** for `scp`, extracting, and syncing only the model files you need.
 
 On the EC2 instance, use the same bash scripts as in WSL.
 

@@ -30,6 +30,8 @@
 | [../README.md](../README.md) | Install, env vars, API summary, deploy, troubleshooting |
 | [BILLING-AND-TOKENS.md](BILLING-AND-TOKENS.md) | Stripe subscriptions, token model, plan tiers (Basic vs Premium), Stripe CLI |
 | [SANITY-CHECKS.md](SANITY-CHECKS.md) | Manual QA checklist |
+| [MALWARE-SCAN-OPS.md](MALWARE-SCAN-OPS.md) | ClamAV scan after upload: enable on server, env, `freshclam`, verify |
+| [DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md) | Tarball/rsync deploy without `models/`, `node_modules/`, `.venv/` — `scripts/package-server-bundle.sh` |
 | [TEST-RUN-PLAN.md](TEST-RUN-PLAN.md) | Test run plan |
 | [FOLLOW-UPS-AND-DEFERRED.md](FOLLOW-UPS-AND-DEFERRED.md) | Open items (env, S3, FFmpeg, billing) — placeholders only, no secrets |
 

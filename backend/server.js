@@ -39,6 +39,7 @@ import {
 } from "./usageTokens.js";
 import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 import { presignStemGetUrl } from "./s3Presign.js";
+import { scanUploadedFile } from "./malwareScan.js";
 
 // ── Startup env validation ──────────────────────────────────────────────────
 const REQUIRED_ENV_WARNINGS = [];
@@ -378,6 +379,21 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   const filePath = req.file.path;
   const stems = (req.body && req.body.stems) || "4";
   const quality = req.body && req.body.quality;
+
+  const scanResult = await scanUploadedFile(filePath);
+  if (!scanResult.ok) {
+    await unlinkPromise(filePath).catch(() => {});
+    if (scanResult.threat) {
+      console.warn("[POST /api/stems/split] malware scan rejected:", scanResult.detail);
+      return res.status(422).json({
+        error: "File did not pass security screening. Please use a different audio file.",
+      });
+    }
+    console.error("[POST /api/stems/split] malware scan error:", scanResult.detail);
+    return res.status(503).json({
+      error: "Security screening is temporarily unavailable. Please try again later.",
+    });
+  }
 
   /** @type {string | null} */
   let usageUserId = null;

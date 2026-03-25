@@ -20,6 +20,9 @@ av>=16.0.0
 # Optional: upload stems to S3 after each job (S3_ENABLED=true; see docs/ARCHITECTURE-FLOW.md)
 boto3>=1.28.0
 
+# Time-preserving pitch shifting via Spotify Pedalboard (phase-vocoder based)
+pedalboard>=0.9.0
+
 # Test dependencies
 pytest
 requests

@@ -12,7 +12,7 @@
     "dev": "node --watch server.js",
     "stripe:listen": "node ../scripts/stripe-local-dev.mjs",
     "test": "node --test",
-    "lint": "eslint server.js",
+    "lint": "eslint server.js malwareScan.js",
     "format": "prettier --write server.js"
   },
   "dependencies": {
