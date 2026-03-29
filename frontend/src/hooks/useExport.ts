@@ -251,17 +251,7 @@ export function useExport(): UseExportReturn {
     if (!AudioContextCtor) throw new Error("AudioContext not supported in this browser");
     const ctx = new AudioContextCtor();
     try {
-      // decodeAudioData signature varies; use a promise wrapper.
-      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const anyCtx: any = ctx;
-        if (typeof anyCtx.decodeAudioData === "function") {
-          anyCtx.decodeAudioData(arrayBuffer.slice(0), (b: AudioBuffer) => resolve(b), (err: unknown) => reject(err));
-        } else {
-          reject(new Error("decodeAudioData not available"));
-        }
-      });
-      return audioBuffer;
+      return await ctx.decodeAudioData(arrayBuffer.slice(0));
     } finally {
       try {
         await ctx.close();
@@ -410,7 +400,7 @@ export function useExport(): UseExportReturn {
           try {
             await exportMasterWavServer(serverExportJobId as string, serverExportStemIds as string[], stemStates, uploadName, normalize);
           } catch (e) {
-            const status = typeof e === "object" && e && "status" in e ? (e as any).status : undefined;
+            const status = typeof e === "object" && e !== null && "status" in e ? (e as { status: unknown }).status : undefined;
             // Server export disabled => fall back to client export.
             if (status === 404) {
               await exportMasterWav({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, onError);

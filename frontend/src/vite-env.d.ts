@@ -1,6 +1,10 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Backend API base URL. */
+  readonly VITE_API_BASE_URL?: string;
+  /** Clerk publishable key for auth. */
+  readonly VITE_CLERK_PUBLISHABLE_KEY?: string;
   /** Dev only: skip Clerk gate + subscription paywall; full app for local QA. */
   readonly VITE_LOCAL_DEV_FULL_APP?: string;
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string;

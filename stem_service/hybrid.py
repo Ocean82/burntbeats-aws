@@ -295,19 +295,11 @@ def run_4stem_single_pass_or_hybrid(
         )
 
     demucs_override = demucs_model_override
-    if not prefer_speed and demucs_override is None and HTDEMUCS_ONNX.exists():
-        demucs_override = HTDEMUCS_ONNX
-    if prefer_speed:
-        use_6s = False
-        can_demucs_onnx = demucs_onnx_embedded_available()
-    elif demucs_override is not None:
-        use_6s = False
-        can_demucs_onnx = True
-    else:
-        use_6s = not prefer_speed
-        can_demucs_onnx = (use_6s and demucs_onnx_6s_available()) or (
-            not use_6s and demucs_onnx_embedded_available()
-        )
+    # htdemucs_6s.onnx and htdemucs_embedded.onnx scored 1/10 in benchmarks —
+    # never use them as primary 4-stem path. Go straight to hybrid pipeline.
+    # Only allow a caller-supplied override (e.g. for testing).
+    can_demucs_onnx = demucs_override is not None and demucs_override.exists()
+    use_6s = False
 
     if can_demucs_onnx:
         if progress_callback:

@@ -105,6 +105,9 @@ export function OnboardingTour({
           >
             <motion.div
               className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="onboarding-title"
               initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
@@ -131,7 +134,7 @@ export function OnboardingTour({
               </button>
 
               {/* Content */}
-              <div className="p-8 pt-10">
+              <div className="p-6 pt-8 sm:p-8 sm:pt-10">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentStep}
@@ -147,7 +150,7 @@ export function OnboardingTour({
                     </div>
 
                     {/* Title */}
-                    <h2 className="mb-3 text-2xl font-bold text-white">{step.title}</h2>
+                    <h2 id="onboarding-title" className="mb-3 text-2xl font-bold text-white">{step.title}</h2>
 
                     {/* Description */}
                     <p className="mb-4 text-sm leading-relaxed text-white/70">{step.description}</p>
@@ -183,15 +186,15 @@ export function OnboardingTour({
                     <button
                       key={index}
                       onClick={() => setCurrentStep(index)}
-                      aria-label={`Go to onboarding step ${index + 1}`}
-                      title={`Go to onboarding step ${index + 1}`}
+                      aria-label={`Go to step ${index + 1} of ${TOUR_STEPS.length}`}
+                      title={`Step ${index + 1} of ${TOUR_STEPS.length}`}
                       className={cn(
-                        "h-2 w-2 rounded-full transition-all",
+                        "h-3 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                         index === currentStep
                           ? "w-6 bg-amber-400"
                           : index < currentStep
-                          ? "bg-amber-400/50"
-                          : "bg-white/20"
+                          ? "w-3 bg-amber-400/50"
+                          : "w-3 bg-white/20 hover:bg-white/40"
                       )}
                     />
                   ))}

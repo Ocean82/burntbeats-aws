@@ -2,7 +2,18 @@ import { useEffect, useState, useRef } from 'react';
 import { useStemFall } from './useStemFall';
 import { COLORS, BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, IDLE_MESSAGES } from './constants';
 
-function NextPiecePreview({ piece }: { piece: { shape: number[][]; color: number } | null }) {
+const SIDE_PANEL_W = 72; // px reserved for score/next panel
+const MIN_CELL = 16;
+const MAX_CELL = CELL_SIZE; // 26 — desktop default
+
+function getResponsiveCellSize(): number {
+  if (typeof window === 'undefined') return MAX_CELL;
+  const available = window.innerWidth - SIDE_PANEL_W - 32; // 32px padding
+  const fit = Math.floor(available / BOARD_WIDTH);
+  return Math.max(MIN_CELL, Math.min(MAX_CELL, fit));
+}
+
+function NextPiecePreview({ piece, cellSize }: { piece: { shape: number[][]; color: number } | null; cellSize: number }) {
   if (!piece) return null;
   return (
     <div className="flex flex-col items-center gap-px">
@@ -12,8 +23,8 @@ function NextPiecePreview({ piece }: { piece: { shape: number[][]; color: number
             <div
               key={x}
               style={{
-                width: 14,
-                height: 14,
+                width: cellSize,
+                height: cellSize,
                 backgroundColor: cell ? COLORS[piece.color] : 'transparent',
                 borderRadius: cell ? 2 : 0,
                 boxShadow: cell ? `0 0 6px ${COLORS[piece.color]}60` : 'none',
@@ -31,6 +42,14 @@ export default function StemFall() {
   const [idleMsg, setIdleMsg] = useState('');
   const idleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [cellSize, setCellSize] = useState(getResponsiveCellSize);
+
+  // Recalculate on resize
+  useEffect(() => {
+    const onResize = () => setCellSize(getResponsiveCellSize());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     setIdleMsg(IDLE_MESSAGES[Math.floor(Math.random() * IDLE_MESSAGES.length)]);
@@ -47,8 +66,8 @@ export default function StemFall() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const w = BOARD_WIDTH * CELL_SIZE;
-    const h = BOARD_HEIGHT * CELL_SIZE;
+    const w = BOARD_WIDTH * cellSize;
+    const h = BOARD_HEIGHT * cellSize;
     canvas.width = w;
     canvas.height = h;
 
@@ -60,10 +79,10 @@ export default function StemFall() {
     ctx.strokeStyle = 'rgba(255,255,255,0.025)';
     ctx.lineWidth = 0.5;
     for (let x = 0; x <= BOARD_WIDTH; x++) {
-      ctx.beginPath(); ctx.moveTo(x * CELL_SIZE, 0); ctx.lineTo(x * CELL_SIZE, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x * cellSize, 0); ctx.lineTo(x * cellSize, h); ctx.stroke();
     }
     for (let y = 0; y <= BOARD_HEIGHT; y++) {
-      ctx.beginPath(); ctx.moveTo(0, y * CELL_SIZE); ctx.lineTo(w, y * CELL_SIZE); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, y * cellSize); ctx.lineTo(w, y * cellSize); ctx.stroke();
     }
 
     // Draw cells
@@ -72,10 +91,10 @@ export default function StemFall() {
         const cell = game.displayBoard[y][x];
         if (cell === 0) continue;
 
-        const px = x * CELL_SIZE;
-        const py = y * CELL_SIZE;
+        const px = x * cellSize;
+        const py = y * cellSize;
         const pad = 1;
-        const size = CELL_SIZE - pad * 2;
+        const size = cellSize - pad * 2;
 
         if (cell === 8) {
           // Ghost
@@ -105,7 +124,7 @@ export default function StemFall() {
         }
       }
     }
-  }, [game.displayBoard]);
+  }, [game.displayBoard, cellSize]);
 
   // Touch controls
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -132,14 +151,15 @@ export default function StemFall() {
     touchStartRef.current = null;
   };
 
-  const boardW = BOARD_WIDTH * CELL_SIZE;
-  const boardH = BOARD_HEIGHT * CELL_SIZE;
+  const boardW = BOARD_WIDTH * cellSize;
+  const boardH = BOARD_HEIGHT * cellSize;
+  const previewCellSize = Math.max(12, Math.round(cellSize * 0.7));
 
   return (
     <div className="flex flex-col items-center gap-3 select-none py-2" style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
 
       {/* Idle message */}
-      <div className="h-4 text-center text-[9px] text-white/35 max-w-xs px-2">
+      <div className="h-4 text-center text-[11px] text-white/35 max-w-xs px-2">
         {idleMsg}
       </div>
 
@@ -157,15 +177,15 @@ export default function StemFall() {
           {/* Start overlay */}
           {!game.started && !game.gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-black/85 backdrop-blur-sm">
-              <div className="text-[11px] text-amber-400 animate-pulse tracking-widest">STEM FALL</div>
-              <div className="text-[8px] text-white/40">drop blocks while you wait</div>
+              <div className="text-[13px] text-amber-400 animate-pulse tracking-widest">STEM FALL</div>
+              <div className="text-[10px] text-white/40">drop blocks while you wait</div>
               <button
                 onClick={game.startGame}
-                className="mt-1 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-[9px] text-amber-200 transition hover:bg-amber-500/25"
+                className="mt-1 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-[11px] text-amber-200 transition hover:bg-amber-500/25"
               >
                 START / ENTER
               </button>
-              <div className="text-[7px] text-white/25 text-center leading-relaxed mt-2">
+              <div className="text-[9px] text-white/25 text-center leading-relaxed mt-2">
                 ← → move &nbsp;·&nbsp; ↑ rotate<br />
                 ↓ soft drop &nbsp;·&nbsp; SPACE hard drop<br />
                 P pause
@@ -176,13 +196,13 @@ export default function StemFall() {
           {/* Game over overlay */}
           {game.gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/90 backdrop-blur-sm">
-              <div className="text-[13px] text-red-400 tracking-widest">GAME OVER</div>
-              <div className="text-[8px] text-white/50 text-center px-4">{game.message}</div>
-              <div className="text-[9px] text-white mt-1">{game.score.toLocaleString()}</div>
-              <div className="text-[7px] text-white/40">lines {game.lines} · lvl {game.level}</div>
+              <div className="text-[15px] text-red-400 tracking-widest">GAME OVER</div>
+              <div className="text-[10px] text-white/50 text-center px-4">{game.message}</div>
+              <div className="text-[11px] text-white mt-1">{game.score.toLocaleString()}</div>
+              <div className="text-[9px] text-white/40">lines {game.lines} · lvl {game.level}</div>
               <button
                 onClick={game.startGame}
-                className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-[9px] text-amber-200 transition hover:bg-amber-500/25"
+                className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-[11px] text-amber-200 transition hover:bg-amber-500/25"
               >
                 PLAY AGAIN
               </button>
@@ -192,37 +212,37 @@ export default function StemFall() {
           {/* Paused overlay */}
           {game.paused && !game.gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/80 backdrop-blur-sm">
-              <div className="text-[12px] text-amber-300 animate-pulse">PAUSED</div>
-              <div className="text-[7px] text-white/40">press P to resume</div>
+              <div className="text-[14px] text-amber-300 animate-pulse">PAUSED</div>
+              <div className="text-[9px] text-white/40">press P to resume</div>
             </div>
           )}
 
           {/* Toast message */}
           {game.message && !game.gameOver && !game.paused && game.started && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-amber-500/30 bg-black/80 px-3 py-1.5 text-[8px] text-amber-200 animate-bounce">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-amber-500/30 bg-black/80 px-3 py-1.5 text-[10px] text-amber-200 animate-bounce">
               {game.message}
             </div>
           )}
         </div>
 
         {/* Side panel */}
-        <div className="flex flex-col gap-4" style={{ minWidth: 80 }}>
+        <div className="flex flex-col gap-3" style={{ minWidth: SIDE_PANEL_W }}>
           <div>
-            <div className="text-[7px] text-white/40 mb-1 tracking-widest">SCORE</div>
-            <div className="text-[10px] text-white tabular-nums">{game.score.toLocaleString()}</div>
+            <div className="text-[9px] text-white/40 mb-1 tracking-widest">SCORE</div>
+            <div className="text-[12px] text-white tabular-nums">{game.score.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-[7px] text-white/40 mb-1 tracking-widest">LEVEL</div>
-            <div className="text-[10px] text-amber-300">{game.level}</div>
+            <div className="text-[9px] text-white/40 mb-1 tracking-widest">LEVEL</div>
+            <div className="text-[12px] text-amber-300">{game.level}</div>
           </div>
           <div>
-            <div className="text-[7px] text-white/40 mb-1 tracking-widest">LINES</div>
-            <div className="text-[10px] text-white">{game.lines}</div>
+            <div className="text-[9px] text-white/40 mb-1 tracking-widest">LINES</div>
+            <div className="text-[12px] text-white">{game.lines}</div>
           </div>
           <div>
-            <div className="text-[7px] text-white/40 mb-2 tracking-widest">NEXT</div>
+            <div className="text-[9px] text-white/40 mb-2 tracking-widest">NEXT</div>
             <div className="flex items-center justify-center rounded-lg border border-white/10 bg-black/40 p-2" style={{ minHeight: 56 }}>
-              <NextPiecePreview piece={game.nextPiece} />
+              <NextPiecePreview piece={game.nextPiece} cellSize={previewCellSize} />
             </div>
           </div>
 
@@ -230,7 +250,7 @@ export default function StemFall() {
           {game.started && !game.gameOver && (
             <button
               onClick={game.togglePause}
-              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[7px] text-white/60 transition hover:text-white"
+              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[9px] text-white/60 transition hover:text-white"
             >
               {game.paused ? 'RESUME' : 'PAUSE'}
             </button>
@@ -246,13 +266,13 @@ export default function StemFall() {
               <button onPointerDown={game.softDrop} className="h-9 w-9 rounded bg-white/10 text-sm active:bg-white/20">↓</button>
               <button onPointerDown={game.moveRight} className="h-9 w-9 rounded bg-white/10 text-sm active:bg-white/20">→</button>
             </div>
-            <button onPointerDown={game.hardDrop} className="mt-1 h-8 w-full rounded bg-white/10 text-[8px] active:bg-white/20">DROP</button>
+            <button onPointerDown={game.hardDrop} className="mt-1 h-8 w-full rounded bg-white/10 text-[10px] active:bg-white/20">DROP</button>
           </div>
         </div>
       </div>
 
       {game.started && (
-        <div className="text-[7px] text-white/20 text-center">
+        <div className="text-[9px] text-white/20 text-center">
           👀 there might be a secret code hidden somewhere
         </div>
       )}

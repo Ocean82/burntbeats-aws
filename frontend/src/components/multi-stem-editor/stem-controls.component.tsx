@@ -36,7 +36,7 @@ export const StemControls = memo(function StemControls({
   return (
     <div
       className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-4"
-      style={stemThemeVariables(stem) as React.CSSProperties}
+      style={stemThemeVariables(stem)}
     >
       <div className="flex items-center gap-2">
         <span className="stem-header-glow-dot h-2.5 w-2.5 shrink-0 rounded-full" />

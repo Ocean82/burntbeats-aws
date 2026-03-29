@@ -274,7 +274,7 @@ export function MultiStemEditor({
       <TimelineRuler ticks={ticks} formatTime={formatTime} />
 
       {/* ── Timeline + slide-out effects panel ── */}
-      <div className="relative flex gap-0 overflow-hidden rounded-xl">
+      <div className="relative flex gap-0 overflow-x-hidden overflow-y-visible rounded-xl" style={{ minHeight: activePanel ? 320 : undefined }}>
         <div className={cn("min-w-0 flex-1 transition-all duration-300", activePanel ? "mr-72" : "")}>
           <WaveformTimeline
             stems={stems}
@@ -297,7 +297,7 @@ export function MultiStemEditor({
 
         {/* Slide-out effects panel */}
         {activePanel && activeStem && (
-          <div className="absolute right-0 top-0 bottom-0 w-72 flex flex-col rounded-xl border border-white/10 bg-black/80 backdrop-blur-md shadow-[-8px_0_24px_rgba(0,0,0,0.5)] overflow-y-auto animate-in slide-in-from-right duration-300">
+          <div className="absolute right-0 top-0 z-20 w-72 flex flex-col rounded-xl border border-white/10 bg-black/80 backdrop-blur-md shadow-[-8px_0_24px_rgba(0,0,0,0.5)] overflow-y-auto animate-in slide-in-from-right duration-300" style={{ maxHeight: 320 }}>
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-black/40">
               <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300">
                 {activePanel === 'pitch' && 'Pitch Shift'}

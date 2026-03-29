@@ -354,7 +354,6 @@ const upload = multer({
   limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES) || 500 * 1024 * 1024 },
 });
 
-// Time to wait for stem service to accept (202). Separation runs in background; frontend polls for completion.
 const MAX_UPLOAD_MB = Math.round((Number(process.env.MAX_UPLOAD_BYTES) || 500 * 1024 * 1024) / (1024 * 1024));
 // Time to wait for stem service to accept (202). Separation runs in background; frontend polls for completion.
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
@@ -485,7 +484,8 @@ app.get("/api/stems/status/:job_id", authMiddleware, jobTokenMiddleware, (req, r
   }
   const baseUrl = `${req.protocol}://${req.get("host")}`;
   // When job tokens are active, embed the token in stem URLs so <audio src> works without custom headers
-  const tokenSuffix = process.env.JOB_TOKEN_SECRET ? `?token=${encodeURIComponent(req.headers["x-job-token"] || "")}` : "";
+  const tokenVal = req.headers["x-job-token"] || req.query.token || "";
+  const tokenSuffix = process.env.JOB_TOKEN_SECRET && tokenVal ? `?token=${encodeURIComponent(tokenVal)}` : "";
   if (data.stems && Array.isArray(data.stems)) {
     data.stems = data.stems.map((s) => ({
       id: s.id,
@@ -821,9 +821,6 @@ app.get("/api/stems/cleanup", authMiddleware, (req, res) => {
 
 app.get("/api/health", (req, res) => {
   const payload = { status: "ok", rate_limited: !!process.env.API_KEY };
-  if (process.env.NODE_ENV !== "production") {
-    payload.stem_output_dir = STEM_OUTPUT_DIR;
-  }
   res.json(payload);
 });
 

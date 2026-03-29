@@ -249,7 +249,7 @@ router.post("/webhook", async (req, res) => {
         if (sub.status === "active" && stripe) {
           const custId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
           const customer = await stripe.customers.retrieve(custId);
-          const clerkUserId = customer.metadata?.clerkUserId;
+          const clerkUserId = /** @type {any} */ (customer).metadata?.clerkUserId;
           if (clerkUserId) {
             await creditSubscriptionAllowance(clerkUserId, sub, stripe, { stripeEventId: event.id });
           }
@@ -263,13 +263,14 @@ router.post("/webhook", async (req, res) => {
       }
       case "invoice.payment_succeeded": {
         const inv = /** @type {import("stripe").Stripe.Invoice} */ (event.data.object);
-        if (inv.subscription && stripe) {
+        const subId = /** @type {any} */ (inv).subscription;
+        if (subId && stripe) {
           const sub = await stripe.subscriptions.retrieve(
-            typeof inv.subscription === "string" ? inv.subscription : inv.subscription.id,
+            typeof subId === "string" ? subId : subId.id,
           );
           const custId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
           const customer = await stripe.customers.retrieve(custId);
-          const clerkUserId = customer.metadata?.clerkUserId;
+          const clerkUserId = /** @type {any} */ (customer).metadata?.clerkUserId;
           if (clerkUserId) {
             await creditSubscriptionAllowance(clerkUserId, sub, stripe, { stripeEventId: event.id });
           }
@@ -283,7 +284,7 @@ router.post("/webhook", async (req, res) => {
           const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
           if (customerId) {
             const customer = await stripe.customers.retrieve(customerId);
-            const clerkUserId = customer.metadata?.clerkUserId;
+            const clerkUserId = /** @type {any} */ (customer).metadata?.clerkUserId;
             if (clerkUserId) {
               const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 20 });
               let grant = 0;

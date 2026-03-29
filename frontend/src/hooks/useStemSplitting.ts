@@ -23,16 +23,16 @@ export function useStemSplitting({
 }: UseStemSplittingArgs) {
   const setUploadState = useAppStore((s) => s.setUploadState);
   const setSplitError = useAppStore((s) => s.setSplitError);
-  const uploadedFileRef = useRef<File | null>(null);
+  const loadedUrlsRef = useRef<string[]>([]);
 
-  // Keep uploadedFileRef in sync with store
+  // Revoke all tracked object URLs on unmount
   useEffect(() => {
-    const unsub = useAppStore.subscribe((state) => {
-      uploadedFileRef.current = state.uploadedFile;
-    });
-    // Initialize from current state
-    uploadedFileRef.current = useAppStore.getState().uploadedFile;
-    return unsub;
+    return () => {
+      for (const url of loadedUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      loadedUrlsRef.current = [];
+    };
   }, []);
 
   // Force quality to "speed" on basic plan
@@ -74,6 +74,7 @@ export function useStemSplitting({
       label: file.name,
       url: URL.createObjectURL(file),
     }));
+    loadedUrlsRef.current.push(...next.map((s) => s.url));
     setUploadState((prev) => ({
       ...prev,
       loadedStems: [...prev.loadedStems, ...next],
@@ -98,7 +99,7 @@ export function useStemSplitting({
       return;
     }
     stopPreview();
-    const file = uploadedFileRef.current;
+    const file = useAppStore.getState().uploadedFile;
     if (!file || !(file instanceof File) || file.size === 0) {
       setUploadState((prev) => ({ ...prev, splitError: "Upload an audio file first." }));
       return;

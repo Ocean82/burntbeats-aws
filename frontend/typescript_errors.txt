@@ -1,5 +1,0 @@
-src/App.tsx(336,23): error TS6133: 'setMasterChain' is declared but its value is never read.
-src/App.tsx(345,9): error TS6133: 'stemSourcesRef' is declared but its value is never read.
-src/App.tsx(1163,3): error TS6133: 'stemUrl' is declared but its value is never read.
-src/api.ts(6,54): error TS2339: Property 'env' does not exist on type 'ImportMeta'.
-src/api.ts(7,20): error TS2339: Property 'env' does not exist on type 'ImportMeta'.

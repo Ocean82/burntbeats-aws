@@ -21,14 +21,14 @@ const PLANS: { id: Plan; label: string; price: string; features: string[] }[] = 
   {
     id: "premium",
     label: "Premium",
-    price: "$19/mo",
+    price: "$15/mo",
     features: ["Higher token allowance", "2-stem then 4-stem expand", "Speed + Quality · waveform", "Batch queue"],
   },
   {
     id: "studio",
     label: "Studio",
-    price: "$39/mo",
-    features: ["Everything in Premium", "Ultra quality tier", "Priority processing"],
+    price: "$25/mo",
+    features: ["Everything in Premium", "Priority processing"],
   },
 ];
 
@@ -59,14 +59,15 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
             onClick={() => void handleSelect(plan.id)}
             disabled={loading !== null}
             className={cn(
-              "flex items-center justify-between rounded-xl border px-4 py-3 text-left transition",
+              "flex items-center justify-between rounded-xl border px-4 py-4 text-left transition",
               "border-white/10 bg-white/5 hover:border-amber-400/40 hover:bg-amber-500/10",
-              "disabled:opacity-60",
+              "disabled:cursor-not-allowed disabled:opacity-60",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
               plan.id === "premium" && "border-amber-400/30 bg-amber-500/10",
             )}
           >
-            <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-semibold text-white/90">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-white">
                 {plan.label}
                 {plan.id === "premium" && (
                   <span className="ml-2 rounded-full bg-amber-500/30 px-2 py-0.5 text-[10px] text-amber-200">
@@ -74,7 +75,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
                   </span>
                 )}
               </span>
-              <span className="text-xs text-white/50">{plan.features.join(" · ")}</span>
+              <span className="text-xs text-white/65">{plan.features.join(" · ")}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0 pl-4">
               <span className="text-sm font-semibold text-amber-300">{plan.price}</span>
@@ -92,7 +93,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
           disabled={loading !== null}
           className="text-white/50 underline hover:text-white/80 disabled:opacity-60"
         >
-          Buy credits
+          Buy credits ($5)
         </button>
       </p>
     </div>

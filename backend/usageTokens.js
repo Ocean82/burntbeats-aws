@@ -22,7 +22,7 @@ export function isUsageTokensEnabled() {
 }
 
 /** Dev bypass: debit checks always pass */
-export function isUsageTokensDevUnlimited() {
+function isUsageTokensDevUnlimited() {
   return ["1", "true", "yes"].includes((process.env.USAGE_TOKENS_DEV_UNLIMITED || "").toLowerCase());
 }
 
@@ -109,102 +109,6 @@ export async function getUsageBalance(userId) {
  * @param {string} userId
  * @param {number} cost
  */
-export async function assertSufficientBalance(userId, cost) {
-  if (isUsageTokensDevUnlimited()) return;
-  const { balance } = await getUsageBalance(userId);
-  if (balance < cost) {
-    const err = /** @type {Error & { status?: number }} */ (
-      new Error(
-        `Insufficient usage tokens (need ${cost}, have ${balance}). Upgrade your plan or wait for renewal.`,
-      )
-    );
-    err.status = 402;
-    throw err;
-  }
-}
-
-/**
- * @param {string} userId
- * @param {number} cost
- */
-export async function debitUsageTokens(userId, cost) {
-  if (isUsageTokensDevUnlimited()) return;
-  const clerk = getClerkClient();
-  if (!clerk) return;
-  const user = await clerk.users.getUser(userId);
-  const prev = user.privateMetadata?.usageTokens;
-  const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
-  const curBal = Number(rec.balance) || 0;
-  const nextBal = Math.max(0, curBal - cost);
-  await clerk.users.updateUserMetadata(userId, {
-    privateMetadata: {
-      .../** @type {Record<string, unknown>} */ (user.privateMetadata || {}),
-      usageTokens: {
-        ...rec,
-        balance: nextBal,
-        lastDebitAt: Date.now(),
-        lastDebitAmount: cost,
-      },
-    },
-  });
-}
-
-/** @type {Set<string>} */
-const memUserLocks = new Set();
-
-/**
- * Run an operation with a short per-user lock.
- * Uses Redis when configured, otherwise process-local memory.
- * @template T
- * @param {string} userId
- * @param {() => Promise<T>} fn
- * @returns {Promise<T>}
- */
-async function withUserUsageLock(userId, fn) {
-  const redis = await getRedis();
-  const lockKey = `usage:lock:${userId}`;
-
-  if (redis) {
-    const started = Date.now();
-    while (Date.now() - started < 5000) {
-      const got = await redis.set(lockKey, "1", { NX: true, EX: 15 });
-      if (got === "OK") {
-        try {
-          return await fn();
-        } finally {
-          try {
-            await redis.del(lockKey);
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    throw Object.assign(new Error("Token ledger is busy, please retry."), { status: 429 });
-  }
-
-  const started = Date.now();
-  while (Date.now() - started < 5000) {
-    if (!memUserLocks.has(lockKey)) {
-      memUserLocks.add(lockKey);
-      try {
-        return await fn();
-      } finally {
-        memUserLocks.delete(lockKey);
-      }
-    }
-    await new Promise((r) => setTimeout(r, 25));
-  }
-  throw Object.assign(new Error("Token ledger is busy, please retry."), { status: 429 });
-}
-
-/**
- * Atomically reserve usage tokens before starting metered server work.
- * Throws 402 if insufficient.
- * @param {string} userId
- * @param {number} cost
- */
 export async function reserveUsageTokens(userId, cost) {
   if (isUsageTokensDevUnlimited()) return;
   const clerk = getClerkClient();
@@ -234,7 +138,6 @@ export async function reserveUsageTokens(userId, cost) {
           balance: nextBal,
           lastDebitAt: Date.now(),
           lastDebitAmount: cost,
-          pendingReservation: false,
         },
       },
     });
@@ -298,7 +201,8 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
   const clerk = getClerkClient();
   if (!clerk) return;
 
-  const periodStart = sub.current_period_start;
+  const subAny = /** @type {any} */ (sub);
+  const periodStart = subAny.current_period_start;
   const redis = await getRedis();
   /** @type {string | null} */
   let lockKey = null;
@@ -310,8 +214,8 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
       await new Promise((r) => setTimeout(r, 200));
       const u0 = await clerk.users.getUser(clerkUserId);
       const r0 = u0.privateMetadata?.usageTokens;
-      const last0 = r0 && typeof r0 === "object" ? r0.lastCreditedPeriodStart : undefined;
-      if (last0 === periodStart) return;
+      const rec0 = r0 && typeof r0 === "object" ? /** @type {Record<string, unknown>} */ (r0) : {};
+      if (rec0.lastCreditedPeriodStart === periodStart) return;
       return;
     }
   }
@@ -325,7 +229,7 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
       const ev = /** @type {Record<string, number>} */ (rec.processedStripeCreditEventIds);
       if (ev[stripeEventId]) return;
     }
-    if (rec.lastCreditedPeriodStart === sub.current_period_start) {
+    if (rec.lastCreditedPeriodStart === subAny.current_period_start) {
       return;
     }
     const item = sub.items?.data?.[0];
@@ -333,7 +237,7 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
     if (!priceId) return;
     const price = await stripe.prices.retrieve(priceId);
     const grant = tokensPerMonthFromPrice(price);
-    const periodEndMs = sub.current_period_end ? sub.current_period_end * 1000 : null;
+    const periodEndMs = subAny.current_period_end ? subAny.current_period_end * 1000 : null;
     const curBal = Number(rec.balance) || 0;
 
     /** @type {Record<string, number>} */
@@ -353,7 +257,7 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
           ...rec,
           balance: curBal + grant,
           periodEnd: periodEndMs,
-          lastCreditedPeriodStart: sub.current_period_start,
+          lastCreditedPeriodStart: subAny.current_period_start,
           lastCreditAt: Date.now(),
           lastCreditAmount: grant,
           ...(stripeEventId ? { processedStripeCreditEventIds: nextProcessed } : {}),
@@ -380,6 +284,11 @@ export function tokensPerMonthFromPrice(price) {
   const meta = price?.metadata;
   if (meta?.tokens_per_month != null && meta.tokens_per_month !== "") {
     const n = Number(meta.tokens_per_month);
+    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  }
+  // Fallback: legacy key used before tokens_per_month was standardised
+  if (meta?.token_allowance != null && meta.token_allowance !== "") {
+    const n = Number(meta.token_allowance);
     if (Number.isFinite(n) && n > 0) return Math.floor(n);
   }
   if (meta?.token_seconds_per_month != null && meta.token_seconds_per_month !== "") {

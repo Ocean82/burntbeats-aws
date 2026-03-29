@@ -10,6 +10,41 @@ __pycache__/
 
 # Models (large files; copy from D:\DAW Collection\stem-models per docs)
 models/
+*.tgz
+*.pt
+*.pth
+*.bin
+*.onnx
+*.ort
+*.safetensors
+*.msgpack
+*.ckpt
+*.h5
+*.hdf5
+*.joblib
+*.pkl
+*.pickle
+*.csv
+*.json
+*.xml
+*.yaml
+*.yml
+*.ini
+*.toml
+*.cfg
+*.conf
+*.properties
+*.env
+*.env.*
+*.lock
+*.log
+*.tmp
+*.temp
+*.swp
+*.swm
+*.sym
+*.sys
+
 
 # Build / env
 dist/

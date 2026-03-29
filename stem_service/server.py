@@ -94,15 +94,19 @@ UUID_REGEX = re.compile(
 )
 
 # Job tracking for cancellation
+import threading as _threading
+
 _running_jobs: dict[str, dict[str, Any]] = {}
-_jobs_lock: asyncio.Lock | None = None
+_jobs_lock = _threading.Lock()
+
+
+class JobCancelledError(Exception):
+    """Raised inside progress callbacks to signal job cancellation."""
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Validate required models at startup so first request fails fast instead of hanging."""
-    global _jobs_lock
-    _jobs_lock = asyncio.Lock()
 
     demucs_onnx_4 = demucs_onnx_embedded_available() or demucs_onnx_6s_available()
     if not htdemucs_available() and not demucs_onnx_4:
@@ -146,9 +150,7 @@ async def lifespan(app: FastAPI):
         logger.info("Running jobs marked for cancellation")
 
     for sig in (signal.SIGTERM, signal.SIGINT):
-        signal.signal(
-            sig, lambda s, f, name=sig.name: graceful_shutdown(name)
-        )
+        signal.signal(sig, lambda s, f, name=sig.name: graceful_shutdown(name))
 
     yield
 
@@ -156,17 +158,19 @@ async def lifespan(app: FastAPI):
 
 
 def _is_job_cancelled(job_id: str) -> bool:
-    """Check if a job has been cancelled."""
-    job = _running_jobs.get(job_id)
-    return job is not None and job.get("cancelled", False)
+    """Check if a job has been cancelled. Thread-safe."""
+    with _jobs_lock:
+        job = _running_jobs.get(job_id)
+        return job is not None and job.get("cancelled", False)
 
 
 def _cancel_job(job_id: str) -> bool:
-    """Mark a job as cancelled. Returns True if job was found."""
-    if job_id in _running_jobs:
-        _running_jobs[job_id]["cancelled"] = True
-        logger.info("Job %s marked for cancellation", job_id)
-        return True
+    """Mark a job as cancelled. Thread-safe. Returns True if job was found."""
+    with _jobs_lock:
+        if job_id in _running_jobs:
+            _running_jobs[job_id]["cancelled"] = True
+            logger.info("Job %s marked for cancellation", job_id)
+            return True
     return False
 
 
@@ -193,7 +197,9 @@ STEM_SERVICE_API_TOKEN = os.environ.get("STEM_SERVICE_API_TOKEN", "")
 PROGRESS_FILENAME = "progress.json"
 
 # Per-job metrics log: one JSON object per line for comparing models and timings (mode, elapsed, RTF, etc.)
-METRICS_LOG = Path(os.environ.get("STEM_METRICS_LOG", str(REPO_ROOT / "job_metrics.jsonl")))
+METRICS_LOG = Path(
+    os.environ.get("STEM_METRICS_LOG", str(REPO_ROOT / "job_metrics.jsonl"))
+)
 
 # Use validation constants from config (single source of truth)
 SUPPORTED_FORMATS = SUPPORTED_AUDIO_FORMATS
@@ -259,10 +265,13 @@ def _make_job_logger(job_id: str, out_dir: Path) -> logging.Logger:
     if not job_log.handlers:
         fh = logging.FileHandler(str(log_path), encoding="utf-8")
         fh.setLevel(logging.DEBUG)
+
         class JsonLogFormatter(logging.Formatter):
             def format(self, record: logging.LogRecord) -> str:
                 payload: dict[str, Any] = {
-                    "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(record.created)),
+                    "time": time.strftime(
+                        "%Y-%m-%dT%H:%M:%SZ", time.gmtime(record.created)
+                    ),
                     "level": record.levelname,
                     "logger": record.name,
                     "message": record.getMessage(),
@@ -300,11 +309,12 @@ def _run_separation_sync(
     else:
         model_tier = "balanced"
 
-    # Register job for tracking
-    _running_jobs[job_id] = {
-        "cancelled": False,
-        "started_at": time.time(),
-    }
+    # Register job for tracking (thread-safe)
+    with _jobs_lock:
+        _running_jobs[job_id] = {
+            "cancelled": False,
+            "started_at": time.time(),
+        }
 
     job_log = _make_job_logger(job_id, out_dir)
     t0 = time.monotonic()
@@ -313,6 +323,7 @@ def _run_separation_sync(
     audio_duration_seconds: float | None = None
     try:
         import soundfile as sf
+
         info = sf.info(str(input_path))
         audio_duration_seconds = float(info.duration)
     except Exception as e:
@@ -336,7 +347,7 @@ def _run_separation_sync(
 
     def on_progress(pct: int) -> None:
         if _is_job_cancelled(job_id):
-            raise asyncio.CancelledError("Job cancelled by user")
+            raise JobCancelledError("Job cancelled by user")
         elapsed = time.monotonic() - t0
         job_log.info("progress=%d%%  elapsed=%.1fs", pct, elapsed)
         _write_progress(
@@ -346,11 +357,16 @@ def _run_separation_sync(
     models_used: list[str] = []
 
     mode_name = (
-        "2_stem_ultra" if quality_mode == QUALITY_ULTRA and stem_count == 2
-        else "4_stem_ultra" if quality_mode == QUALITY_ULTRA and stem_count == 4
-        else "2_stem_speed" if stem_count == 2 and prefer_speed
-        else "2_stem_quality" if stem_count == 2
-        else "4_stem_speed" if prefer_speed
+        "2_stem_ultra"
+        if quality_mode == QUALITY_ULTRA and stem_count == 2
+        else "4_stem_ultra"
+        if quality_mode == QUALITY_ULTRA and stem_count == 4
+        else "2_stem_speed"
+        if stem_count == 2 and prefer_speed
+        else "2_stem_quality"
+        if stem_count == 2
+        else "4_stem_speed"
+        if prefer_speed
         else "4_stem_quality"
     )
 
@@ -470,7 +486,9 @@ def _run_separation_sync(
             "progress": 100,
             "stems": stems_payload,
             "elapsed_seconds": round(elapsed, 2),
-            "audio_duration_seconds": round(audio_duration_seconds, 2) if audio_duration_seconds is not None else None,
+            "audio_duration_seconds": round(audio_duration_seconds, 2)
+            if audio_duration_seconds is not None
+            else None,
             "realtime_factor": realtime_factor,
             "stem_count": stem_count,
             "quality_mode": quality_mode,
@@ -491,7 +509,9 @@ def _run_separation_sync(
             "quality_mode": quality_mode,
             "prefer_speed": prefer_speed,
             "elapsed_seconds": round(elapsed, 2),
-            "audio_duration_seconds": round(audio_duration_seconds, 2) if audio_duration_seconds is not None else None,
+            "audio_duration_seconds": round(audio_duration_seconds, 2)
+            if audio_duration_seconds is not None
+            else None,
             "realtime_factor": realtime_factor,
             "models_used": models_used,
         }
@@ -505,12 +525,25 @@ def _run_separation_sync(
             mode_name,
             models_used,
         )
-        logger.info("Completed job %s in %.1fs (mode=%s, RTF=%s)", job_id, elapsed, mode_name, realtime_factor)
+        logger.info(
+            "Completed job %s in %.1fs (mode=%s, RTF=%s)",
+            job_id,
+            elapsed,
+            mode_name,
+            realtime_factor,
+        )
+    except JobCancelledError:
+        elapsed = time.monotonic() - t0
+        job_log.info("=== JOB CANCELLED  elapsed=%.1fs ===", elapsed)
+        _write_progress(out_dir, {"status": "cancelled", "progress": 0})
     except Exception as e:
         elapsed = time.monotonic() - t0
         job_log.exception("=== JOB FAILED  elapsed=%.1fs  error=%s ===", elapsed, e)
         logger.exception("Separation failed for job %s", job_id)
         _write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
+    finally:
+        with _jobs_lock:
+            _running_jobs.pop(job_id, None)
     CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
 
 
@@ -523,18 +556,23 @@ def _run_expand_sync(
 ) -> None:
     """Blocking expand 2-stem → 4-stem; writes progress. Called from thread."""
     correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
-    _running_jobs[expand_job_id] = {
-        "cancelled": False,
-        "started_at": time.time(),
-    }
+    with _jobs_lock:
+        _running_jobs[expand_job_id] = {
+            "cancelled": False,
+            "started_at": time.time(),
+        }
     job_log = _make_job_logger(expand_job_id, out_dir)
     t0 = time.monotonic()
     source_stems_dir = OUTPUT_BASE / source_job_id / "stems"
-    job_log.info("=== EXPAND START  expand_job=%s  source_job=%s ===", expand_job_id, source_job_id)
+    job_log.info(
+        "=== EXPAND START  expand_job=%s  source_job=%s ===",
+        expand_job_id,
+        source_job_id,
+    )
 
     def on_progress(pct: int) -> None:
         if _is_job_cancelled(expand_job_id):
-            raise asyncio.CancelledError("Job cancelled by user")
+            raise JobCancelledError("Job cancelled by user")
         _write_progress(out_dir, {"status": "running", "progress": pct})
 
     try:
@@ -566,7 +604,12 @@ def _run_expand_sync(
         if s3_meta:
             expand_progress["s3"] = s3_meta
         _write_progress(out_dir, expand_progress)
-        job_log.info("=== EXPAND COMPLETE  elapsed=%.1fs  models=%s ===", elapsed, models_used)
+        job_log.info(
+            "=== EXPAND COMPLETE  elapsed=%.1fs  models=%s ===", elapsed, models_used
+        )
+    except JobCancelledError:
+        job_log.info("=== EXPAND CANCELLED ===")
+        _write_progress(out_dir, {"status": "cancelled", "progress": 0})
     except Exception as e:
         job_log.exception("=== EXPAND FAILED  error=%s ===", e)
         _write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
@@ -596,7 +639,9 @@ async def split(
 
     stems_str = (stems or "").strip()
     if stems_str not in ("2", "4"):
-        raise HTTPException(status_code=400, detail="Invalid stems value. Must be '2' or '4'.")
+        raise HTTPException(
+            status_code=400, detail="Invalid stems value. Must be '2' or '4'."
+        )
     stem_count = int(stems_str)
 
     # Determine quality mode
@@ -705,7 +750,10 @@ async def expand(
     source_stems_dir = OUTPUT_BASE / job_id / "stems"
     if not source_stems_dir.is_dir():
         raise HTTPException(status_code=404, detail="Job not found")
-    if not (source_stems_dir / "vocals.wav").exists() or not (source_stems_dir / "instrumental.wav").exists():
+    if (
+        not (source_stems_dir / "vocals.wav").exists()
+        or not (source_stems_dir / "instrumental.wav").exists()
+    ):
         raise HTTPException(
             status_code=400,
             detail="Job is not a 2-stem result (need vocals.wav and instrumental.wav). Run 2-stem split first.",

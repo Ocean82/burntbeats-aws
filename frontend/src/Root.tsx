@@ -15,11 +15,25 @@ import { LandingPage } from "./pages/LandingPage";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
 
-export function Root() {
-  const { isSignedIn, isLoaded, getToken } = useAuth();
-  const localFullApp = isLocalDevFullApp();
+/** Local dev mode: full stem app without Clerk auth or Stripe billing. */
+function LocalDevRoot() {
+  useEffect(() => {
+    setTokenProvider(() => Promise.resolve(null));
+  }, []);
 
-  // Inject Clerk token provider into the API client as soon as auth is ready
+  return (
+    <ErrorBoundary>
+      <AppShell>
+        <App />
+      </AppShell>
+    </ErrorBoundary>
+  );
+}
+
+/** Authenticated root: Clerk sign-in gate + token injection. */
+function AuthenticatedRoot() {
+  const { isSignedIn, isLoaded, getToken } = useAuth();
+
   useEffect(() => {
     if (isLoaded) setTokenProvider(() => getToken());
   }, [isLoaded, getToken]);
@@ -33,17 +47,6 @@ export function Root() {
       window.history.replaceState({}, "", url.toString());
     }
   }, []);
-
-  // Local QA: full stem app without sign-in or Stripe (dev + VITE_LOCAL_DEV_FULL_APP only)
-  if (localFullApp) {
-    return (
-      <ErrorBoundary>
-        <AppShell>
-          <App />
-        </AppShell>
-      </ErrorBoundary>
-    );
-  }
 
   // Show nothing while Clerk is initialising (avoids flash of wrong page)
   if (!isLoaded) return null;
@@ -63,4 +66,11 @@ export function Root() {
       </AppShell>
     </ErrorBoundary>
   );
+}
+
+export function Root() {
+  if (isLocalDevFullApp()) {
+    return <LocalDevRoot />;
+  }
+  return <AuthenticatedRoot />;
 }

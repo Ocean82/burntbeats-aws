@@ -3,6 +3,12 @@ import { render, screen } from "@testing-library/react";
 import { AppShell } from "./app/app-shell.component";
 import { App } from "./App";
 
+// Mock Clerk's useAuth so App can render without ClerkProvider in tests
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: () => Promise.resolve(null) }),
+  ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 // Avoid real fetch and ResizeObserver in tests
 beforeEach(() => {
   vi.stubGlobal(
@@ -22,7 +28,7 @@ describe("App flow", () => {
         <App />
       </AppShell>
     );
-    expect(screen.getByRole("button", { name: /Split and Generate Stem Rack/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Split stems/i })).toBeInTheDocument();
   });
 
   it("shows upload and split pipeline copy", () => {

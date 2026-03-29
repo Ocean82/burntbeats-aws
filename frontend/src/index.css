@@ -11,6 +11,18 @@
   --accent: #ff845c;
   --accent-soft: rgba(255, 132, 92, 0.28);
   --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Stem colors */
+  --stem-vocals: #ff845c;
+  --stem-vocals-soft: rgba(255, 132, 92, 0.36);
+  --stem-drums: #ffb347;
+  --stem-drums-soft: rgba(255, 179, 71, 0.34);
+  --stem-bass: #ff5a3d;
+  --stem-bass-soft: rgba(255, 90, 61, 0.34);
+  --stem-melody: #ffd36a;
+  --stem-melody-soft: rgba(255, 211, 106, 0.32);
+  --stem-instrumental: #8b9dc3;
+  --stem-instrumental-soft: rgba(139, 157, 195, 0.34);
 }
 
 @theme {
@@ -233,77 +245,77 @@
 
   /* Stem toggle: active state and dot per stem (no inline styles) */
   .stem-toggle-active.stem-toggle-vocals {
-    color: #ff845c;
-    border-color: #ff845c;
-    box-shadow: 0 0 20px rgba(255, 132, 92, 0.36), 0 0 40px rgba(255, 132, 92, 0.09);
+    color: var(--stem-vocals);
+    border-color: var(--stem-vocals);
+    box-shadow: 0 0 20px var(--stem-vocals-soft), 0 0 40px rgba(255, 132, 92, 0.09);
   }
   .stem-toggle-active.stem-toggle-drums {
-    color: #ffb347;
-    border-color: #ffb347;
-    box-shadow: 0 0 20px rgba(255, 179, 71, 0.34), 0 0 40px rgba(255, 179, 71, 0.085);
+    color: var(--stem-drums);
+    border-color: var(--stem-drums);
+    box-shadow: 0 0 20px var(--stem-drums-soft), 0 0 40px rgba(255, 179, 71, 0.085);
   }
   .stem-toggle-active.stem-toggle-bass {
-    color: #ff5a3d;
-    border-color: #ff5a3d;
-    box-shadow: 0 0 20px rgba(255, 90, 61, 0.34), 0 0 40px rgba(255, 90, 61, 0.085);
+    color: var(--stem-bass);
+    border-color: var(--stem-bass);
+    box-shadow: 0 0 20px var(--stem-bass-soft), 0 0 40px rgba(255, 90, 61, 0.085);
   }
   .stem-toggle-active.stem-toggle-melody,
   .stem-toggle-active.stem-toggle-other {
-    color: #ffd36a;
-    border-color: #ffd36a;
-    box-shadow: 0 0 20px rgba(255, 211, 106, 0.32), 0 0 40px rgba(255, 211, 106, 0.08);
+    color: var(--stem-melody);
+    border-color: var(--stem-melody);
+    box-shadow: 0 0 20px var(--stem-melody-soft), 0 0 40px rgba(255, 211, 106, 0.08);
   }
   .stem-toggle-active.stem-toggle-instrumental {
-    color: #8b9dc3;
-    border-color: #8b9dc3;
-    box-shadow: 0 0 20px rgba(139, 157, 195, 0.34), 0 0 40px rgba(139, 157, 195, 0.085);
+    color: var(--stem-instrumental);
+    border-color: var(--stem-instrumental);
+    box-shadow: 0 0 20px var(--stem-instrumental-soft), 0 0 40px rgba(139, 157, 195, 0.085);
   }
 
   .stem-toggle-dot.stem-toggle-vocals {
-    background-color: #ff845c;
-    box-shadow: 0 0 10px rgba(255, 132, 92, 0.36);
+    background-color: var(--stem-vocals);
+    box-shadow: 0 0 10px var(--stem-vocals-soft);
   }
   .stem-toggle-dot.stem-toggle-vocals.stem-toggle-dot-on {
-    box-shadow: 0 0 16px #ff845c, 0 0 24px rgba(255, 132, 92, 0.36);
+    box-shadow: 0 0 16px var(--stem-vocals), 0 0 24px var(--stem-vocals-soft);
   }
   .stem-toggle-dot.stem-toggle-drums {
-    background-color: #ffb347;
-    box-shadow: 0 0 10px rgba(255, 179, 71, 0.34);
+    background-color: var(--stem-drums);
+    box-shadow: 0 0 10px var(--stem-drums-soft);
   }
   .stem-toggle-dot.stem-toggle-drums.stem-toggle-dot-on {
-    box-shadow: 0 0 16px #ffb347, 0 0 24px rgba(255, 179, 71, 0.34);
+    box-shadow: 0 0 16px var(--stem-drums), 0 0 24px var(--stem-drums-soft);
   }
   .stem-toggle-dot.stem-toggle-bass {
-    background-color: #ff5a3d;
-    box-shadow: 0 0 10px rgba(255, 90, 61, 0.34);
+    background-color: var(--stem-bass);
+    box-shadow: 0 0 10px var(--stem-bass-soft);
   }
   .stem-toggle-dot.stem-toggle-bass.stem-toggle-dot-on {
-    box-shadow: 0 0 16px #ff5a3d, 0 0 24px rgba(255, 90, 61, 0.34);
+    box-shadow: 0 0 16px var(--stem-bass), 0 0 24px var(--stem-bass-soft);
   }
   .stem-toggle-dot.stem-toggle-melody,
   .stem-toggle-dot.stem-toggle-other {
-    background-color: #ffd36a;
-    box-shadow: 0 0 10px rgba(255, 211, 106, 0.32);
+    background-color: var(--stem-melody);
+    box-shadow: 0 0 10px var(--stem-melody-soft);
   }
   .stem-toggle-dot.stem-toggle-melody.stem-toggle-dot-on,
   .stem-toggle-dot.stem-toggle-other.stem-toggle-dot-on {
-    box-shadow: 0 0 16px #ffd36a, 0 0 24px rgba(255, 211, 106, 0.32);
+    box-shadow: 0 0 16px var(--stem-melody), 0 0 24px var(--stem-melody-soft);
   }
   .stem-toggle-dot.stem-toggle-instrumental {
-    background-color: #8b9dc3;
-    box-shadow: 0 0 10px rgba(139, 157, 195, 0.34);
+    background-color: var(--stem-instrumental);
+    box-shadow: 0 0 10px var(--stem-instrumental-soft);
   }
   .stem-toggle-dot.stem-toggle-instrumental.stem-toggle-dot-on {
-    box-shadow: 0 0 16px #8b9dc3, 0 0 24px rgba(139, 157, 195, 0.34);
+    box-shadow: 0 0 16px var(--stem-instrumental), 0 0 24px var(--stem-instrumental-soft);
   }
 
   /* Stem label text color (used in mixer/trim sections to avoid inline styles) */
-  .stem-label-color-vocals { color: #ff845c; }
-  .stem-label-color-drums { color: #ffb347; }
-  .stem-label-color-bass { color: #ff5a3d; }
+  .stem-label-color-vocals { color: var(--stem-vocals); }
+  .stem-label-color-drums { color: var(--stem-drums); }
+  .stem-label-color-bass { color: var(--stem-bass); }
   .stem-label-color-melody,
-  .stem-label-color-other { color: #ffd36a; }
-  .stem-label-color-instrumental { color: #8b9dc3; }
+  .stem-label-color-other { color: var(--stem-melody); }
+  .stem-label-color-instrumental { color: var(--stem-instrumental); }
 
   /* Trim handles: position from --trim-start-pct / --trim-end-pct (set on parent) */
   .trim-handle-start {
@@ -315,7 +327,7 @@
 
   /* Multi-stem waveform lane — set --stem-* via stemThemeVariables(); trim via trimVisiblePercentsStyle() */
   .waveform-lane-surface {
-    height: 56px;
+    height: 72px;
     background: color-mix(in srgb, var(--stem-color) 3.1%, transparent);
   }
 
@@ -407,25 +419,25 @@
     opacity: 1;
   }
   .trim-handle-bar.stem-toggle-vocals {
-    background-color: #ff845c;
-    box-shadow: 0 0 8px rgba(255, 132, 92, 0.36);
+    background-color: var(--stem-vocals);
+    box-shadow: 0 0 8px var(--stem-vocals-soft);
   }
   .trim-handle-bar.stem-toggle-drums {
-    background-color: #ffb347;
-    box-shadow: 0 0 8px rgba(255, 179, 71, 0.34);
+    background-color: var(--stem-drums);
+    box-shadow: 0 0 8px var(--stem-drums-soft);
   }
   .trim-handle-bar.stem-toggle-bass {
-    background-color: #ff5a3d;
-    box-shadow: 0 0 8px rgba(255, 90, 61, 0.34);
+    background-color: var(--stem-bass);
+    box-shadow: 0 0 8px var(--stem-bass-soft);
   }
   .trim-handle-bar.stem-toggle-melody,
   .trim-handle-bar.stem-toggle-other {
-    background-color: #ffd36a;
-    box-shadow: 0 0 8px rgba(255, 211, 106, 0.32);
+    background-color: var(--stem-melody);
+    box-shadow: 0 0 8px var(--stem-melody-soft);
   }
   .trim-handle-bar.stem-toggle-instrumental {
-    background-color: #8b9dc3;
-    box-shadow: 0 0 8px rgba(139, 157, 195, 0.34);
+    background-color: var(--stem-instrumental);
+    box-shadow: 0 0 8px var(--stem-instrumental-soft);
   }
 
   .meter-slot {
@@ -543,25 +555,25 @@
   }
 
   .track-status-dot-vocals {
-    background-color: #ff845c;
-    box-shadow: 0 0 8px rgba(255, 132, 92, 0.36);
+    background-color: var(--stem-vocals);
+    box-shadow: 0 0 8px var(--stem-vocals-soft);
   }
   .track-status-dot-drums {
-    background-color: #ffb347;
-    box-shadow: 0 0 8px rgba(255, 179, 71, 0.34);
+    background-color: var(--stem-drums);
+    box-shadow: 0 0 8px var(--stem-drums-soft);
   }
   .track-status-dot-bass {
-    background-color: #ff5a3d;
-    box-shadow: 0 0 8px rgba(255, 90, 61, 0.34);
+    background-color: var(--stem-bass);
+    box-shadow: 0 0 8px var(--stem-bass-soft);
   }
   .track-status-dot-melody,
   .track-status-dot-other {
-    background-color: #ffd36a;
-    box-shadow: 0 0 8px rgba(255, 211, 106, 0.32);
+    background-color: var(--stem-melody);
+    box-shadow: 0 0 8px var(--stem-melody-soft);
   }
   .track-status-dot-instrumental {
-    background-color: #8b9dc3;
-    box-shadow: 0 0 8px rgba(139, 157, 195, 0.34);
+    background-color: var(--stem-instrumental);
+    box-shadow: 0 0 8px var(--stem-instrumental-soft);
   }
 
   .progress-shimmer {

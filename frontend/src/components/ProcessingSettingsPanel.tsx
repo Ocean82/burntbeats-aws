@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { FolderOpen, Upload, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { FolderOpen, Upload, ChevronDown, ChevronUp, Lock, Loader2 } from "lucide-react";
 import type { SplitQuality } from "../api";
 import type React from "react";
 
@@ -87,7 +87,7 @@ export function ProcessingSettingsPanel({
   const [loadExpanded, setLoadExpanded] = useState(false);
   const autoExpandedRef = useRef(false);
 
-  const canChooseUltra = stemQualityOptions !== "speed_only";
+  const canChoosePaidQuality = stemQualityOptions !== "speed_only";
 
   const qualityOptions = useMemo(() => {
     const opts: Array<{ value: SplitQuality; label: string; enabled: boolean; hint: string }> = [
@@ -95,24 +95,28 @@ export function ProcessingSettingsPanel({
       {
         value: "balanced",
         label: "Balanced",
-        enabled: canChooseUltra,
-        hint: canChooseUltra ? "Good quality + speed balance" : "Requires Premium or Studio",
+        enabled: canChoosePaidQuality,
+        hint: canChoosePaidQuality ? "Good quality + speed balance" : "Requires Premium or Studio",
       },
       {
         value: "quality",
         label: "Quality",
-        enabled: canChooseUltra,
-        hint: canChooseUltra ? "Higher quality, slower than balanced" : "Requires Premium or Studio",
+        enabled: canChoosePaidQuality,
+        hint: canChoosePaidQuality ? "Higher quality, slower than balanced" : "Requires Premium or Studio",
       },
-      {
-        value: "ultra",
-        label: "Ultra",
-        enabled: canChooseUltra,
-        hint: canChooseUltra ? "Highest quality, slowest processing" : "Requires Studio",
-      },
+      // Intentionally not offering "ultra" in UI:
+      // - Ultra is not guaranteed to be available on CPU-only EC2 deployments
+      // - This app must not offer paid features that aren't actually available
+      // If you want to experiment later, re-add:
+      // { value: "ultra", label: "Ultra", enabled: <bool>, hint: "Highest quality, slowest processing" },
     ];
     return opts;
-  }, [canChooseUltra]);
+  }, [canChoosePaidQuality]);
+
+  // Safety: if state ever holds "ultra" (old localStorage/session), clamp to a supported UI option.
+  useEffect(() => {
+    if (quality === "ultra") onQualityChange("quality");
+  }, [quality, onQualityChange]);
 
   useEffect(() => {
     if (!canExpandToFourStems && requestedStemMode !== 2) setRequestedStemMode(2);
@@ -173,32 +177,38 @@ export function ProcessingSettingsPanel({
             onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
             onDragLeave={() => onSetIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onDropUpload(e.dataTransfer.files?.[0] ?? null); }}
+            onClick={!uploadedFile ? onBrowseUpload : undefined}
             className={cn(
-              "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 transition-all",
+              "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl border px-4 py-4 transition-all",
               !uploadedFile
-                ? "border-amber-400/40 bg-amber-950/30 shadow-[0_0_18px_rgba(255,140,80,0.25)] hover:border-amber-400/60"
+                ? "border-amber-400/60 bg-amber-950/40 shadow-[0_0_24px_rgba(255,140,80,0.35)] hover:border-amber-400/90 hover:bg-amber-950/60 hover:shadow-[0_0_32px_rgba(255,140,80,0.5)] active:scale-[0.99]"
                 : "border-white/10 bg-black/20 hover:border-white/20",
-              isDragging && "scale-[1.01] border-amber-400/60",
+              isDragging && "scale-[1.02] border-amber-400/90 bg-amber-950/60 shadow-[0_0_32px_rgba(255,140,80,0.5)]",
             )}
           >
-            <Upload className="h-4 w-4 shrink-0 text-white/70" strokeWidth={2} />
-            <span className="truncate text-sm font-medium text-white">
-              {uploadedFile ? uploadName : "Drop track or use Browse"}
+            <Upload className={cn("h-5 w-5 shrink-0 transition-colors", !uploadedFile ? "text-amber-400" : "text-white/70")} strokeWidth={2} />
+            <span className="truncate text-sm font-semibold text-white">
+              {uploadedFile ? uploadName : isDragging ? "Drop it!" : "Click to upload or drag & drop"}
             </span>
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {uploadedFile && (
                 <button
                   type="button"
-                  onClick={onClearUpload}
-                  className="rounded-lg border border-white/10 px-2 py-0.5 text-xs text-white/60 hover:text-white"
+                  onClick={(e) => { e.stopPropagation(); onClearUpload(); }}
+                  className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
                 >
                   Clear
                 </button>
               )}
               <button
                 type="button"
-                onClick={onBrowseUpload}
-                className="rounded-lg border border-white/10 px-2 py-0.5 text-xs text-white/60 hover:text-white"
+                onClick={(e) => { e.stopPropagation(); onBrowseUpload(); }}
+                className={cn(
+                  "rounded-lg border px-3 py-1 text-xs font-semibold transition-all",
+                  !uploadedFile
+                    ? "border-amber-400/60 bg-amber-500/20 text-amber-200 hover:border-amber-400 hover:bg-amber-500/30"
+                    : "border-white/10 text-white/60 hover:border-white/30 hover:text-white"
+                )}
               >
                 {uploadedFile ? "Change" : "Browse"}
               </button>
@@ -212,28 +222,29 @@ export function ProcessingSettingsPanel({
             onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
             onDragLeave={() => onSetIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onLoadStems(e.dataTransfer.files); }}
+            onClick={() => loadStemsInputRef.current?.click()}
             className={cn(
-              "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 transition-all",
-              "border-white/15 bg-white/[0.02] hover:border-amber-400/30",
-              isDragging && "scale-[1.01] border-amber-400/50",
+              "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl border px-4 py-4 transition-all",
+              "border-white/20 bg-white/[0.03] hover:border-amber-400/40 hover:bg-white/[0.05] active:scale-[0.99]",
+              isDragging && "scale-[1.02] border-amber-400/60 bg-white/[0.06]",
             )}
           >
-            <FolderOpen className="h-4 w-4 shrink-0 text-white/60" strokeWidth={1.5} />
-            <span className="truncate text-sm text-white/80">
-              {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : "Drop stems or use Browse"}
+            <FolderOpen className="h-5 w-5 shrink-0 text-white/60" strokeWidth={1.5} />
+            <span className="truncate text-sm font-semibold text-white/80">
+              {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : isDragging ? "Drop it!" : "Click to load stems or drag & drop"}
             </span>
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                onClick={() => loadStemsInputRef.current?.click()}
-                className="rounded-lg border border-white/10 px-2 py-0.5 text-xs text-white/60 hover:text-white"
+                onClick={(e) => { e.stopPropagation(); loadStemsInputRef.current?.click(); }}
+                className="rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-white/60 hover:border-white/30 hover:text-white"
               >
                 Browse
               </button>
               {loadedStemCount > 0 && (
                 <button
                   type="button"
-                  onClick={() => setLoadExpanded((v) => !v)}
+                  onClick={(e) => { e.stopPropagation(); setLoadExpanded((v) => !v); }}
                   className="text-white/50 hover:text-white"
                   aria-label="Toggle loaded stems list"
                 >
@@ -271,7 +282,7 @@ export function ProcessingSettingsPanel({
               </button>
             ))}
           </div>
-          {!canChooseUltra && (
+          {!canChoosePaidQuality && (
             <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-white/45">
               Premium/Studio to unlock
             </span>
@@ -321,13 +332,14 @@ export function ProcessingSettingsPanel({
             type="button"
             onClick={() => onSplit(requestedStemMode)}
             disabled={!uploadedFile || isSplitting}
-            className="fire-button shrink-0 px-5 py-2.5 text-sm font-semibold disabled:opacity-50"
+            className="fire-button shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSplitting
-              ? "Splitting…"
-              : requestedStemMode === 4
-                ? "Split → 4 stems"
-                : "Split stems"}
+            {isSplitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Splitting…
+              </>
+            ) : requestedStemMode === 4 ? "Split → 4 stems" : "Split stems"}
           </button>
         )}
 
@@ -338,7 +350,7 @@ export function ProcessingSettingsPanel({
             onClick={onAddToQueue}
             disabled={!uploadedFile || isSplitting || !canUseBatchQueue}
             title={canUseBatchQueue ? "Add to batch queue" : "Requires Premium or Studio"}
-            className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60 hover:text-white disabled:opacity-40"
+            className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="inline-flex items-center gap-1">
               + Queue
@@ -414,7 +426,7 @@ export function ProcessingSettingsPanel({
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-medium text-red-200">Split failed</p>
-              <p className="mt-0.5 text-xs text-red-300/70">{splitError}</p>
+              <p className="mt-0.5 text-xs text-red-300/90">{splitError}</p>
             </div>
             <button type="button" onClick={onDismissError} className="text-xs text-red-300/60 hover:text-red-200">
               Dismiss

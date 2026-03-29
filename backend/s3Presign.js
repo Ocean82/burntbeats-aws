@@ -6,6 +6,22 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+/** @type {Map<string, S3Client>} */
+const clientCache = new Map();
+
+/**
+ * @param {string} region
+ * @returns {S3Client}
+ */
+function getClient(region) {
+  let client = clientCache.get(region);
+  if (!client) {
+    client = new S3Client({ region });
+    clientCache.set(region, client);
+  }
+  return client;
+}
+
 /**
  * @param {string} bucket
  * @param {string} key
@@ -14,7 +30,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  */
 export async function presignStemGetUrl(bucket, key, region) {
   const r = region || process.env.S3_REGION || process.env.AWS_REGION || "us-east-1";
-  const client = new S3Client({ region: r });
+  const client = getClient(r);
   const cmd = new GetObjectCommand({ Bucket: bucket, Key: key });
   const expires = Number(process.env.S3_PRESIGN_EXPIRES_SECONDS);
   const expiresIn = Number.isFinite(expires) && expires > 0 ? expires : 3600;

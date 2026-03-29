@@ -93,36 +93,48 @@ DEREVERB_MODEL_PATHS: list[Path] = [
     MODELS_DIR / "Reverb_HQ_By_FoxJoy.onnx",
 ]
 
-# Tiered candidate orders derived from measured score/speed rankings.
+# Tiered candidate orders derived from benchmark scores (ranked_blended_q80_s20.csv).
+# Rule: only models with quality_score >= 8 are included.
+# Speed tier = highest blended score (quality + speed balanced).
+# Quality tier = highest raw quality score first, then blended.
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
     "fast": [
+        # quality=9, blended=0.883 — fastest high-quality vocal
         "UVR_MDXNET_3_9662.onnx",
+        # quality=9, blended=0.877
         "UVR_MDXNET_KARA.onnx",
+        # quality=8.5, blended=0.846 — fallback
         "UVR_MDXNET_2_9682.onnx",
         "UVR_MDXNET_1_9703.onnx",
-        "kuielab_b_vocals.onnx",
     ],
     "balanced": [
+        # quality=9, blended=0.883 — still fast enough for balanced
+        "UVR_MDXNET_3_9662.onnx",
+        # quality=9.5, blended=0.819 — highest quality vocal overall
+        "UVR-MDX-NET-Voc_FT.onnx",
+        # quality=9, blended=0.787
         "Kim_Vocal_1.onnx",
         "Kim_Vocal_2.onnx",
-        "UVR-MDX-NET-Voc_FT.onnx",
-        "kuielab_b_vocals.onnx",
-        "kuielab_a_vocals.onnx",
     ],
     "quality": [
+        # quality=9.5 — highest quality score of all vocal models
         "UVR-MDX-NET-Voc_FT.onnx",
-        "Kim_Vocal_2.onnx",
+        # quality=9, blended=0.787/0.782
         "Kim_Vocal_1.onnx",
-        "mdx23c_vocal.onnx",
+        "Kim_Vocal_2.onnx",
+        # quality=9, slower but good (mdx23c handled separately as pair)
+        "UVR_MDXNET_3_9662.onnx",
     ],
 }
 
 _INST_TIER_NAMES: dict[str, list[str]] = {
     "fast": [
+        # quality=9, blended=0.801 — best inst model, also fastest
         "UVR-MDX-NET-Inst_HQ_5.onnx",
+        # quality=9, blended=0.788 — close second
         "UVR-MDX-NET-Inst_HQ_4.onnx",
+        # quality=9 (relabeled), blended=0.796 — inst use only
         "UVR_MDXNET_KARA_2.onnx",
-        "Kim_Inst.onnx",
     ],
     "balanced": [
         "UVR-MDX-NET-Inst_HQ_5.onnx",
@@ -130,10 +142,10 @@ _INST_TIER_NAMES: dict[str, list[str]] = {
         "UVR_MDXNET_KARA_2.onnx",
     ],
     "quality": [
+        # Both score 9.0 quality; HQ_4 slightly higher blended
         "UVR-MDX-NET-Inst_HQ_4.onnx",
         "UVR-MDX-NET-Inst_HQ_5.onnx",
         "UVR_MDXNET_KARA_2.onnx",
-        "Kim_Inst.onnx",
     ],
 }
 

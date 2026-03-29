@@ -99,15 +99,16 @@ export function ExportOptionsModal({
                 <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
                   Format
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {FORMAT_OPTIONS.map((format) => (
                     <button
                       key={format.value}
                       type="button"
                       onClick={() => format.available && setOptions((o) => ({ ...o, format: format.value }))}
                       disabled={!format.available}
+                      aria-pressed={options.format === format.value}
                       className={cn(
-                        "rounded-xl border px-3 py-2.5 text-left transition",
+                        "rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                         !format.available && "cursor-not-allowed opacity-40",
                         format.available && options.format === format.value
                           ? "border-amber-400/50 bg-amber-500/15 text-white"
@@ -141,8 +142,9 @@ export function ExportOptionsModal({
                         key={target.value}
                         type="button"
                         onClick={() => setOptions((o) => ({ ...o, target: target.value }))}
+                        aria-pressed={options.target === target.value}
                         className={cn(
-                          "flex w-full items-center justify-between rounded-xl border px-4 py-3 transition",
+                          "flex w-full items-center justify-between rounded-xl border px-4 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                           options.target === target.value
                             ? "border-amber-400/50 bg-amber-500/15 text-white"
                             : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"

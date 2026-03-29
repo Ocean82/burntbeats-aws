@@ -158,14 +158,12 @@ def extract_vocals_stage1(
                 )
                 return vocals_path, None, [speed_onnx.name]
 
-    # NEW-FLOW.MD RECOMMENDED PRIORITY ORDER FOR CPU-ONLY T3.LARGE:
-    # 1. MDX23C vocal ONNX + MDX23C instrumental ONNX (no phase inversion) - PRIMARY CHOICE
-    # 2. SCNet 4-stem -> collapse to 2-stem (handled in hybrid.py)
-    # 3. Mel-Band RoFormer vocal + phase inversion
-    # 4. BS-RoFormer vocal + phase inversion
-    # 5. Demucs 2-stem (fallback)
+    # BENCHMARK-DRIVEN PRIORITY ORDER (ranked_blended_q80_s20.csv):
+    # Quality tier: UVR-MDX-NET-Voc_FT scores 9.5 quality (highest of all) — use first.
+    # MDX23C scores 9.0 quality but takes 121s vs 74s — use as fallback only.
+    # Demucs ONNX (htdemucs_6s, htdemucs_embedded) scored 1/10 — never use.
 
-    # Check if we have MDX23C models available and configured (NEW-FLOW PRIMARY CHOICE FOR 2-STEM)
+    # Check if we have MDX23C models available (quality fallback only)
     from .config import mdx23c_vocal_available, mdx23c_inst_available
 
     mdx23c_vocal_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_vocal.onnx")

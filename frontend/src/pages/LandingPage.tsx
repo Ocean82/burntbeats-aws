@@ -28,7 +28,7 @@ const FEATURES = [
   {
     icon: Zap,
     title: "Three Quality Modes",
-    desc: "Speed for quick previews, Quality for production, Ultra for the best possible separation.",
+    desc: "Fast for quick previews, Balanced for everyday work, and Quality for the best separation.",
   },
   {
     icon: Music2,

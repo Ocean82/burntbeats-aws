@@ -39,6 +39,7 @@ export function useBatchQueue(): UseBatchQueueReturn {
   // Mirror of batchQueue for reading inside async loops without stale closure
   const queueRef = useRef<QueueItem[]>([]);
   const isProcessingRef = useRef(false);
+  const processingPromiseRef = useRef<Promise<void> | null>(null);
 
   const updateQueue = useCallback((updater: (q: QueueItem[]) => QueueItem[]) => {
     setBatchQueue((q) => {
@@ -71,10 +72,14 @@ export function useBatchQueue(): UseBatchQueueReturn {
     onError: (msg: string) => void,
     onJobId?: (jobId: string) => void
   ) => {
+    // Serialize concurrent calls: if already processing, wait for that to finish first
+    if (processingPromiseRef.current) {
+      await processingPromiseRef.current;
+    }
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
 
-    try {
+    const promise = (async () => {
       // Auto-advance: process all queued items sequentially
       while (true) {
         const queued = queueRef.current.find((i) => i.status === "queued");
@@ -102,8 +107,14 @@ export function useBatchQueue(): UseBatchQueueReturn {
           queueFileRef.current.delete(queued.id);
         }
       }
+    })();
+
+    processingPromiseRef.current = promise;
+    try {
+      await promise;
     } finally {
       isProcessingRef.current = false;
+      processingPromiseRef.current = null;
     }
   }, [updateQueue]);
 

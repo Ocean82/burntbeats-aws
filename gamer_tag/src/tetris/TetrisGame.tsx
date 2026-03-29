@@ -2,8 +2,15 @@ import { useEffect, useState, useRef } from 'react';
 import { useTetris } from './useTetris';
 import { COLORS, BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, IDLE_MESSAGES } from './constants';
 
-function NextPiecePreview({ piece }: { piece: { shape: number[][]; color: number } | null }) {
+function NextPiecePreview({
+  piece,
+  previewCellSize,
+}: {
+  piece: { shape: number[][]; color: number } | null;
+  previewCellSize: number;
+}) {
   if (!piece) return null;
+  const s = previewCellSize;
   return (
     <div className="flex flex-col items-center">
       {piece.shape.map((row, y) => (
@@ -12,11 +19,13 @@ function NextPiecePreview({ piece }: { piece: { shape: number[][]; color: number
             <div
               key={x}
               style={{
-                width: 16,
-                height: 16,
+                width: s,
+                height: s,
                 backgroundColor: cell ? COLORS[piece.color] : 'transparent',
                 border: cell ? '1px solid rgba(0,0,0,0.3)' : 'none',
-                boxShadow: cell ? `inset 1px 1px 0 rgba(255,255,255,0.3), inset -1px -1px 0 rgba(0,0,0,0.3)` : 'none',
+                boxShadow: cell
+                  ? `inset 1px 1px 0 rgba(255,255,255,0.3), inset -1px -1px 0 rgba(0,0,0,0.3)`
+                  : 'none',
               }}
             />
           ))}
@@ -31,6 +40,35 @@ export default function TetrisGame() {
   const [idleMsg, setIdleMsg] = useState('');
   const idleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Make the game feel much larger on bigger screens.
+  // We compute a "cell size" from viewport size, then clamp it so it never becomes unusably small.
+  const minCellSize = CELL_SIZE;
+  const [cellSize, setCellSize] = useState<number>(minCellSize);
+
+  useEffect(() => {
+    const computeCellSize = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+
+      // "Just under a third of the screen" — approximate based on total layout width:
+      // canvas width + side panel width + gap.
+      const targetTotalWidth = vw * 0.7 * 0.98; // just under 1/3
+      const canvasTargetWidth = targetTotalWidth - 110; // side panel + gap approximation
+      const sizeFromWidth = Math.floor(canvasTargetWidth / BOARD_WIDTH);
+
+      // Also clamp by height so the footer/toasts don't cause aggressive cropping.
+      const maxCanvasHeight = vh * 0.8;
+      const sizeFromHeight = Math.floor(maxCanvasHeight / BOARD_HEIGHT);
+
+      const next = Math.max(minCellSize, Math.min(sizeFromWidth, sizeFromHeight, 84));
+      setCellSize(next);
+    };
+
+    computeCellSize();
+    window.addEventListener('resize', computeCellSize);
+    return () => window.removeEventListener('resize', computeCellSize);
+  }, []);
 
   // Rotating idle messages
   useEffect(() => {
@@ -48,8 +86,8 @@ export default function TetrisGame() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const w = BOARD_WIDTH * CELL_SIZE;
-    const h = BOARD_HEIGHT * CELL_SIZE;
+    const w = BOARD_WIDTH * cellSize;
+    const h = BOARD_HEIGHT * cellSize;
     canvas.width = w;
     canvas.height = h;
 
@@ -62,14 +100,14 @@ export default function TetrisGame() {
     ctx.lineWidth = 0.5;
     for (let x = 0; x <= BOARD_WIDTH; x++) {
       ctx.beginPath();
-      ctx.moveTo(x * CELL_SIZE, 0);
-      ctx.lineTo(x * CELL_SIZE, h);
+      ctx.moveTo(x * cellSize, 0);
+      ctx.lineTo(x * cellSize, h);
       ctx.stroke();
     }
     for (let y = 0; y <= BOARD_HEIGHT; y++) {
       ctx.beginPath();
-      ctx.moveTo(0, y * CELL_SIZE);
-      ctx.lineTo(w, y * CELL_SIZE);
+      ctx.moveTo(0, y * cellSize);
+      ctx.lineTo(w, y * cellSize);
       ctx.stroke();
     }
 
@@ -79,32 +117,32 @@ export default function TetrisGame() {
         const cell = game.displayBoard[y][x];
         if (cell === 0) continue;
 
-        const px = x * CELL_SIZE;
-        const py = y * CELL_SIZE;
+        const px = x * cellSize;
+        const py = y * cellSize;
 
         if (cell === 8) {
           // Ghost piece
           ctx.fillStyle = 'rgba(255,255,255,0.06)';
-          ctx.fillRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+          ctx.fillRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
           ctx.strokeStyle = 'rgba(255,255,255,0.12)';
           ctx.lineWidth = 1;
-          ctx.strokeRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+          ctx.strokeRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
         } else {
           const color = COLORS[cell] || COLORS[1];
           ctx.fillStyle = color;
-          ctx.fillRect(px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+          ctx.fillRect(px + 1, py + 1, cellSize - 2, cellSize - 2);
 
           // 3D bevel effect (classic tetris style)
           ctx.fillStyle = 'rgba(255,255,255,0.25)';
-          ctx.fillRect(px + 1, py + 1, CELL_SIZE - 2, 2);
-          ctx.fillRect(px + 1, py + 1, 2, CELL_SIZE - 2);
+          ctx.fillRect(px + 1, py + 1, cellSize - 2, 2);
+          ctx.fillRect(px + 1, py + 1, 2, cellSize - 2);
           ctx.fillStyle = 'rgba(0,0,0,0.25)';
-          ctx.fillRect(px + 1, py + CELL_SIZE - 3, CELL_SIZE - 2, 2);
-          ctx.fillRect(px + CELL_SIZE - 3, py + 1, 2, CELL_SIZE - 2);
+          ctx.fillRect(px + 1, py + cellSize - 3, cellSize - 2, 2);
+          ctx.fillRect(px + cellSize - 3, py + 1, 2, cellSize - 2);
         }
       }
     }
-  }, [game.displayBoard]);
+  }, [game.displayBoard, cellSize]);
 
   // Mobile touch controls
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -151,7 +189,7 @@ export default function TetrisGame() {
           <canvas
             ref={canvasRef}
             className="border border-gray-700 rounded"
-            style={{ width: BOARD_WIDTH * CELL_SIZE, height: BOARD_HEIGHT * CELL_SIZE }}
+            style={{ width: BOARD_WIDTH * cellSize, height: BOARD_HEIGHT * cellSize }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           />
@@ -229,7 +267,10 @@ export default function TetrisGame() {
           <div>
             <div className="text-[7px] text-gray-500 mb-2">NEXT</div>
             <div className="bg-black/40 p-2 rounded border border-gray-800 flex items-center justify-center min-h-[60px]">
-              <NextPiecePreview piece={game.nextPiece} />
+              <NextPiecePreview
+                piece={game.nextPiece}
+                previewCellSize={Math.max(10, Math.floor(cellSize * 0.6))}
+              />
             </div>
           </div>
 

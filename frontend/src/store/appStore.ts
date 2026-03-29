@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import type { SplitQuality, StemResult } from "../api";
+import type { SplitQuality } from "../api";
+import type { StemResult } from "../types";
 
 export interface AppState {
   quality: SplitQuality;

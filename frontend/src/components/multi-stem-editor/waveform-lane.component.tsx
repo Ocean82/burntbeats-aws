@@ -219,7 +219,7 @@ export function WaveformLane({
       style={{
         ...stemThemeVariables(stem),
         ...trimVisiblePercentsStyle(trimStartVisible, trimEndVisible),
-      } as React.CSSProperties}
+      }}
       onMouseDown={onMouseDown}
       onClick={() => {
         if (didDragRef.current) {

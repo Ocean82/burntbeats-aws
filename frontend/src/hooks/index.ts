@@ -7,3 +7,6 @@ export { useHistory } from "./useHistory";
 export { useTimelineViewport, toAbsolutePercent, toVisiblePercent } from "./useTimelineViewport";
 export { useStemSplitting } from "./useStemSplitting";
 export { useStemLoading } from "./useStemLoading";
+export { useUiModals, type ModalKey } from "./useUiModals";
+export { useGuidanceSystem, type GuidanceTarget } from "./useGuidanceSystem";
+export { useUiLatencyMonitor, startUiLatencyMark, finishUiLatencyMark, type UiLatencyKey, type UiLatencySnapshot } from "./useUiLatencyMonitor";

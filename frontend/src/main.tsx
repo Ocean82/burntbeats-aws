@@ -5,8 +5,11 @@ import "./index.css";
 import { Root } from "./Root";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+if (!clerkPubKey && import.meta.env.PROD) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY — required for production builds");
+}
 if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
+  console.warn("[Burnt Beats] Missing VITE_CLERK_PUBLISHABLE_KEY — auth features disabled (local dev mode)");
 }
 
 const stripePubKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
@@ -18,10 +21,16 @@ if (import.meta.env.DEV) {
   console.log("[Burnt Beats] Frontend boot");
 }
 
+const appTree = clerkPubKey ? (
+  <ClerkProvider publishableKey={clerkPubKey} afterSignOutUrl="/">
+    <Root />
+  </ClerkProvider>
+) : (
+  <Root />
+);
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={clerkPubKey} afterSignOutUrl="/">
-      <Root />
-    </ClerkProvider>
+    {appTree}
   </StrictMode>
 );

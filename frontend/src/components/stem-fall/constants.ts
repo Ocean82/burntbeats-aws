@@ -1,5 +1,5 @@
-export const BOARD_WIDTH = 10;
-export const BOARD_HEIGHT = 20;
+export const BOARD_WIDTH = 16;
+export const BOARD_HEIGHT = 23;
 export const CELL_SIZE = 26;
 
 // 7 falling pieces — stem-themed names
@@ -49,12 +49,15 @@ export const SCORE_TABLE: Record<number, number> = {
 export const LINE_CLEAR_MESSAGES: Record<number, string[]> = {
   1: [
     "nice.",
+    "i thought you would be better than this.",
+    "that's one in a row for you.",
     "one at a time, champ.",
     "slow and steady wins nothing.",
     "participation trophy unlocked 🏆",
   ],
   2: [
     "double drop!",
+    "are you even trying?",
     "two-fer!",
     "look at you, overachiever.",
     "doing the bare minimum x2",
@@ -64,6 +67,7 @@ export const LINE_CLEAR_MESSAGES: Record<number, string[]> = {
     "hat trick!",
     "okay okay I see you",
     "your stems would be proud",
+    "Still not good enough to get that pony you always wanted",
   ],
   4: [
     "STEM FALL! 🎉",
@@ -78,20 +82,24 @@ export const IDLE_MESSAGES = [
   "stems are separating... drop some blocks!",
   "the hamsters are running as fast as they can 🐹",
   "reticulating audio waveforms...",
+  "Relax, this won't take long... and you won't remember a thing",
   "downloading more RAM...",
   "asking the AI to hurry up...",
+  "Follow the white rabbit... 🐇",
   "untangling the frequency cables...",
   "bribing the server with cookies 🍪",
   "have you tried turning it off and on again?",
   "loading the loading screen...",
-  "contemplating the meaning of async/await...",
+  "contemplating the meaning of life...",
   "negotiating with the stem splitter...",
-  "warming up the cloud ☁️🔥",
+  "warming up the tacos ☁️🔥",
   "teaching the AI to be patient...",
+  "you have the look of someone who accepts that they sees... because you're expecting to wake up!",
   "on hold with tech support...",
   "it's not a bug, it's a loading feature",
-  "insert coin to continue... jk it's free",
-  "the bits are stuck in traffic 🚗",
+  "insert coin to continue... jk it's working",
+  "You take the red pill, you stay in Wonderland, and I show you how deep the rabbit hole goes.",
+  "the shipment got stuck in traffic 🚗",
   "your stems are in another castle 🏰",
   "deploying carrier pigeons 🐦",
   "spinning up the flux capacitor...",
@@ -99,16 +107,38 @@ export const IDLE_MESSAGES = [
 
 export const GAME_OVER_MESSAGES = [
   "F",
+  "If you were better this wouldn't have happened",
   "gg no re",
   "that was... something.",
   "your score has been reported to the authorities",
   "the blocks won this round",
   "skill issue tbh",
-  "have you considered... not losing?",
-  "press start to try again (it won't help)",
-  "the stems outlived you",
-];
-
+  "You would never survive the Hunger Games",
+  "you're not the main character",
+  "you probably thought this was about actual stems",
+  "you can't handle the truth",
+  "you're about as useful as a screen door on a submarine",
+  "you really dropped the ball here",
+  "did you even try?",
+  "you've clearly hit rock bottom",
+  "are you even trying?",
+  "maybe try again in a few centuries",
+  "did you forget how to play?",
+  "you're the reason we can't have nice things",
+  "your parents are disappointed",
+  "your cat hates you",
+  "your browser history is a crime scene",
+  "you've peaked",
+  "you're going to need a bigger boat",
+  "i've seen toddlers with better reflexes",
+  "you're about as fast as a sloth on tranquilizers",
+  "your high score is now negative",
+  "the code has spoken, and it says 'you lose'",
+  "this is your sign to go outside",
+  "your life flashing before your eyes... it wasn't impressive",
+  
+  ];
+  // Konami code sequence
 export const KONAMI_CODE = [
   'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
   'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',

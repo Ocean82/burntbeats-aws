@@ -23,7 +23,7 @@ import { useSubscription } from "./hooks/useSubscription";
 import { PaywallBanner } from "./components/PaywallBanner";
 import { HeaderUserButton } from "./components/AuthGate";
 import { cn } from "./utils/cn";
-import type { StemDefinition, StemId } from "./types";
+import type { StemDefinition, StemId, MixerState, TrimState } from "./types";
 import { useKeyboardShortcuts, type ShortcutHandlers } from "./hooks/useKeyboardShortcuts";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
 import { useWaveformCompute } from "./hooks/useWaveformCompute";
@@ -41,38 +41,15 @@ import { PIPELINE_ANIMATION_DELAYS_MS, isLocalDevFullApp } from "./config";
 import { defaultStemState, type StemEditorState } from "./stem-editor-state";
 
 import { useAppStore } from "./store/appStore";
+import { useUiModals } from "./hooks/useUiModals";
+import { useGuidanceSystem } from "./hooks/useGuidanceSystem";
+import { useUiLatencyMonitor, startUiLatencyMark, finishUiLatencyMark } from "./hooks/useUiLatencyMonitor";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
   saveData?: boolean;
   effectiveType?: string;
 };
-type UiLatencyKey =
-  | "help-modal-open"
-  | "export-modal-open"
-  | "presets-modal-open"
-  | "mixer-ready-after-stems";
-type UiLatencyEventDetail = {
-  key: UiLatencyKey;
-  durationMs: number;
-};
-type UiLatencyStats = {
-  lastMs: number;
-  avgMs: number;
-  count: number;
-  p50Ms: number;
-  p95Ms: number;
-  samples: number[];
-};
-type UiLatencySnapshot = Partial<Record<UiLatencyKey, UiLatencyStats>>;
-const MAX_LATENCY_SAMPLES = 50;
-
-function percentile(samples: number[], p: number): number {
-  if (samples.length === 0) return 0;
-  const sorted = [...samples].sort((a, b) => a - b);
-  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
-  return sorted[index];
-}
 
 function canPreloadChunks(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -80,38 +57,6 @@ function canPreloadChunks(): boolean {
   if (!connection) return true;
   if (connection.saveData) return false;
   return connection.effectiveType !== "2g" && connection.effectiveType !== "slow-2g";
-}
-
-function startUiLatencyMark(key: UiLatencyKey): void {
-  if (typeof performance === "undefined") return;
-  performance.mark(`${key}:start`);
-}
-
-function finishUiLatencyMark(key: UiLatencyKey): void {
-  if (typeof performance === "undefined") return;
-  const start = `${key}:start`;
-  const end = `${key}:end`;
-  const measure = `${key}:measure`;
-  performance.mark(end);
-  try {
-    performance.measure(measure, start, end);
-    const entries = performance.getEntriesByName(measure);
-    const durationMs = entries[entries.length - 1]?.duration;
-    if (import.meta.env.DEV && typeof durationMs === "number") {
-      console.debug(`[perf] ${key} ${durationMs.toFixed(1)}ms`);
-      window.dispatchEvent(
-        new CustomEvent<UiLatencyEventDetail>("ui-latency-measure", {
-          detail: { key, durationMs },
-        })
-      );
-    }
-  } catch {
-    // No-op if mark pair is incomplete.
-  } finally {
-    performance.clearMarks(start);
-    performance.clearMarks(end);
-    performance.clearMeasures(measure);
-  }
 }
 
 export function App() {
@@ -221,59 +166,37 @@ export function App() {
   });
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showPresetsModal, setShowPresetsModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showGame, setShowGame] = useState(false);
-  const [latencyStats, setLatencyStats] = useState<UiLatencySnapshot>({});
+  const { showHelp: showHelpModal, showExport: showExportModal, showPresets: showPresetsModal, showGame, openModal, closeModal, toggleGame } = useUiModals();
+  const { latencyStats, resetLatencyStats } = useUiLatencyMonitor();
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Derived shims for modals
-  const trimMap = useMemo(
-    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.trim])),
-    [stemStates],
-  );
-  const mixerState = useMemo(
-    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.mixer])),
-    [stemStates],
-  );
-  const mutedStems = useMemo(
-    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.muted])),
-    [stemStates],
-  );
+  // Derived shims for modals (single pass over stemStates)
+  const { trimMap, mixerState, mutedStems, pitchMap, timeStretchMap } = useMemo(() => {
+    const trim: Record<string, TrimState> = {};
+    const mixer: Record<string, MixerState> = {};
+    const muted: Record<string, boolean> = {};
+    const pitch: Record<string, number> = {};
+    const stretch: Record<string, number> = {};
+    for (const [id, s] of Object.entries(stemStates)) {
+      trim[id] = s.trim;
+      mixer[id] = s.mixer;
+      muted[id] = s.muted;
+      pitch[id] = s.pitchSemitones ?? 0;
+      stretch[id] = s.timeStretch ?? 1;
+    }
+    return { trimMap: trim, mixerState: mixer, mutedStems: muted, pitchMap: pitch, timeStretchMap: stretch };
+  }, [stemStates]);
 
-  const pitchMap = useMemo(
-    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.pitchSemitones ?? 0])),
-    [stemStates],
-  );
-  const timeStretchMap = useMemo(
-    () => Object.fromEntries(Object.entries(stemStates).map(([id, s]) => [id, s.timeStretch ?? 1])),
-    [stemStates],
-  );
-  type GuidanceTarget = 'source' | 'mixer' | 'none';
-  const GREEN_RING_BASE_CLASS =
-    "ring-2 ring-emerald-300/40 ring-offset-1 ring-offset-black/30 shadow-[0_0_16px_rgba(52,211,153,0.12)]";
-  const GREEN_RING_PULSE_CLASS = `${GREEN_RING_BASE_CLASS} animate-pulse`;
-  const guidanceTarget: GuidanceTarget = (() => {
-    if (splitError) return 'source';
-    if (isSplitting || isExpanding) return 'none';
-    if (isLoadingStems) return 'none';
-    if (splitResultStems.length === 2) return 'source';
-    if (mixStems.length > 0) return 'mixer';
-    return 'source';
-  })();
-
-  const [guidancePulseOff, setGuidancePulseOff] = useState<{ source: boolean; mixer: boolean }>({
-    source: false,
-    mixer: false,
+  const { guidanceTarget, ringClass: guidanceRingClass, handlePanelInteract: handleGuidancePanelInteract } = useGuidanceSystem({
+    splitError,
+    isSplitting,
+    isExpanding,
+    isLoadingStems,
+    splitResultStemsLength: splitResultStems.length,
+    mixStemsLength: mixStems.length,
   });
-
-  useEffect(() => {
-    // When the guidance target changes, re-enable the pulse until the user interacts.
-    setGuidancePulseOff({ source: false, mixer: false });
-  }, [guidanceTarget]);
 
   useEffect(() => {
     if (!canPreloadChunks()) return;
@@ -302,69 +225,10 @@ export function App() {
   }, [batchQueue.length]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const handler = (event: Event) => {
-      const customEvent = event as CustomEvent<UiLatencyEventDetail>;
-      const payload = customEvent.detail;
-      if (!payload || typeof payload.durationMs !== "number") return;
-      setLatencyStats((prev) => {
-        const existing = prev[payload.key];
-        const nextSamplesRaw = existing ? [...existing.samples, payload.durationMs] : [payload.durationMs];
-        const nextSamples = nextSamplesRaw.length > MAX_LATENCY_SAMPLES
-          ? nextSamplesRaw.slice(nextSamplesRaw.length - MAX_LATENCY_SAMPLES)
-          : nextSamplesRaw;
-        const nextCount = (existing?.count ?? 0) + 1;
-        const nextAvg = existing
-          ? ((existing.avgMs * existing.count) + payload.durationMs) / nextCount
-          : payload.durationMs;
-        return {
-          ...prev,
-          [payload.key]: {
-            lastMs: payload.durationMs,
-            avgMs: nextAvg,
-            count: nextCount,
-            p50Ms: percentile(nextSamples, 50),
-            p95Ms: percentile(nextSamples, 95),
-            samples: nextSamples,
-          },
-        };
-      });
-    };
-    window.addEventListener("ui-latency-measure", handler as EventListener);
-    return () => window.removeEventListener("ui-latency-measure", handler as EventListener);
-  }, []);
-
-  useEffect(() => {
-    if (!showHelpModal) return;
-    const raf = window.requestAnimationFrame(() => finishUiLatencyMark("help-modal-open"));
-    return () => window.cancelAnimationFrame(raf);
-  }, [showHelpModal]);
-
-  useEffect(() => {
-    if (!showExportModal) return;
-    const raf = window.requestAnimationFrame(() => finishUiLatencyMark("export-modal-open"));
-    return () => window.cancelAnimationFrame(raf);
-  }, [showExportModal]);
-
-  useEffect(() => {
-    if (!showPresetsModal) return;
-    const raf = window.requestAnimationFrame(() => finishUiLatencyMark("presets-modal-open"));
-    return () => window.cancelAnimationFrame(raf);
-  }, [showPresetsModal]);
-
-  useEffect(() => {
     if (mixStems.length === 0) return;
     const raf = window.requestAnimationFrame(() => finishUiLatencyMark("mixer-ready-after-stems"));
     return () => window.cancelAnimationFrame(raf);
   }, [mixStems.length]);
-
-  const handleGuidancePanelInteract = useCallback(() => {
-    if (guidanceTarget === "source") {
-      setGuidancePulseOff((p) => (p.source ? p : { ...p, source: true }));
-    } else if (guidanceTarget === "mixer") {
-      setGuidancePulseOff((p) => (p.mixer ? p : { ...p, mixer: true }));
-    }
-  }, [guidanceTarget]);
 
   const [stemWaveforms, setStemWaveformsState] = useState<Record<string, number[]>>({});
   useWaveformCompute(stemBuffers, allStemEntries, setStemWaveformsState);
@@ -455,8 +319,7 @@ export function App() {
       muteToggle: setMuteFirst,
       export: () => {
         if (mixStems.length > 0) {
-          startUiLatencyMark("export-modal-open");
-          setShowExportModal(true);
+          openModal("export");
         }
       },
       undo: () => { undoStemStates(); },
@@ -466,13 +329,12 @@ export function App() {
       trimEndLeft:    () => nudgeTrim("end",   -TRIM_STEP),
       trimEndRight:   () => nudgeTrim("end",   +TRIM_STEP),
       help: () => {
-        startUiLatencyMark("help-modal-open");
-        setShowHelpModal(true);
+        openModal("help");
       },
       escape: () => {
-        if (showHelpModal) setShowHelpModal(false);
-        else if (showExportModal) setShowExportModal(false);
-        else if (showPresetsModal) setShowPresetsModal(false);
+        if (showHelpModal) closeModal("help");
+        else if (showExportModal) closeModal("export");
+        else if (showPresetsModal) closeModal("presets");
         else if (isPlayingMix) handleStopMix();
       },
     };
@@ -489,7 +351,7 @@ export function App() {
       <ErrorBoundary fallback={null}>
         {showHelpModal ? (
           <Suspense fallback={null}>
-            <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+            <HelpModal isOpen={showHelpModal} onClose={() => closeModal("help")} />
           </Suspense>
         ) : null}
       </ErrorBoundary>
@@ -498,7 +360,7 @@ export function App() {
           <Suspense fallback={null}>
             <ExportOptionsModal
               isOpen={showExportModal}
-              onClose={() => setShowExportModal(false)}
+              onClose={() => closeModal("export")}
               onExport={(opts) =>
                 void handleExportWithOptions(
                   opts,
@@ -507,7 +369,7 @@ export function App() {
                   stemStates,
                   uploadName,
                   setSplitError,
-                  () => setShowExportModal(false),
+                  () => closeModal("export"),
                   loadedStems.length === 0 ? splitJobId : null,
                   loadedStems.length === 0 ? splitResultStems.map((s) => s.id) : []
                 )
@@ -523,7 +385,7 @@ export function App() {
           <Suspense fallback={null}>
             <MixerPresetsModal
               isOpen={showPresetsModal}
-              onClose={() => setShowPresetsModal(false)}
+              onClose={() => closeModal("presets")}
               onLoadPreset={handleLoadPreset}
               currentMixerState={mixerState}
               currentTrimMap={trimMap}
@@ -598,10 +460,10 @@ export function App() {
                 <div className="h-4 w-px bg-white/10" />
                 <button type="button" onClick={redoStemStates} disabled={!canRedo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Redo (Ctrl+Y)" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={() => { startUiLatencyMark("presets-modal-open"); setShowPresetsModal(true); }} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white" title="Presets" aria-label="Open mixer presets">
+              <button type="button" onClick={() => openModal("presets")} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white" title="Presets" aria-label="Open mixer presets">
                 <Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Presets</span>
               </button>
-              <button type="button" onClick={() => { startUiLatencyMark("help-modal-open"); setShowHelpModal(true); }} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white" title="Help" aria-label="Open help">
+              <button type="button" onClick={() => openModal("help")} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white" title="Help" aria-label="Open help">
                 <HelpCircle className="h-4 w-4" />
               </button>
               {localDevFullApp ? (
@@ -646,7 +508,7 @@ export function App() {
             onPointerDown={handleGuidancePanelInteract}
             className={cn(
               "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
-              guidanceTarget === "source" && (guidancePulseOff.source ? GREEN_RING_BASE_CLASS : GREEN_RING_PULSE_CLASS)
+              guidanceTarget === "source" && guidanceRingClass
             )}
             variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4 }}
@@ -699,8 +561,9 @@ export function App() {
           <motion.div
             onPointerDown={handleGuidancePanelInteract}
             className={cn(
-              "glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6",
-              guidanceTarget === "mixer" && (guidancePulseOff.mixer ? GREEN_RING_BASE_CLASS : GREEN_RING_PULSE_CLASS)
+              // `glass-panel` uses `overflow: hidden`; allow the mixer waveform/panels to overflow so menus are reachable.
+              "glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 overflow-visible",
+              guidanceTarget === "mixer" && guidanceRingClass
             )}
             variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
             transition={{ duration: 0.4 }}
@@ -715,8 +578,7 @@ export function App() {
                   onSeekMix={handleSeekMix}
                   isExporting={isExporting}
                   onExport={() => {
-                    startUiLatencyMark("export-modal-open");
-                    setShowExportModal(true);
+                    openModal("export");
                   }}
                   isComparingExport={isComparingExport}
                   onCompareExport={
@@ -785,7 +647,7 @@ export function App() {
       {/* Tab button — always visible, pulses while splitting */}
       <button
         type="button"
-        onClick={() => setShowGame((v) => !v)}
+        onClick={toggleGame}
         aria-label={showGame ? "Close Stem Fall game" : "Open Stem Fall game"}
         className={cn(
           "fixed bottom-0 right-8 z-50 flex items-center gap-2 rounded-t-xl border border-b-0 px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300",
@@ -822,7 +684,7 @@ export function App() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowGame(false)}
+                  onClick={() => closeModal("game")}
                   className="text-white/30 hover:text-white transition text-xs"
                   aria-label="Close game"
                 >
@@ -843,7 +705,7 @@ export function App() {
             <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">UI latency (dev)</p>
             <button
               type="button"
-              onClick={() => setLatencyStats({})}
+              onClick={resetLatencyStats}
               className="rounded border border-white/15 px-1.5 py-0.5 text-[10px] text-white/70 transition hover:text-white"
               aria-label="Reset latency stats"
             >

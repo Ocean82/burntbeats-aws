@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Models (large)
+models/
+*.pth
+*.th
+*.onnx
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Temp
+tmp/
+temp/
+
+# Test
+tests/
+test_*.py
+*_test.py
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

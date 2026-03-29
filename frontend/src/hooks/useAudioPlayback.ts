@@ -8,6 +8,7 @@ import { trimToSeconds, createStemPreviewBuffer, createStemDspChain } from "../u
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
 import { createPitchShifter, needsPitchShift, type StemPitchShifter } from "../utils/pitchShift";
+import { createPlayheadTracker } from "../utils/playheadTracker";
 import type { StemId } from "../types";
 
 /**
@@ -269,188 +270,175 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       const { trimStart, trimEnd } = trimToSeconds(firstBuffer, st.trim);
       mixDurationRef.current = trimEnd - trimStart;
       playStartTimeRef.current = context.currentTime;
-      const duration = mixDurationRef.current;
-      const updatePlayhead = () => {
-        if (duration <= 0) return;
-        const elapsed = context.currentTime - playStartTimeRef.current;
-        const progress = Math.min(100, (elapsed / duration) * 100);
-        emitPlayheadPosition(progress);
-        if (progress < 100 && isPlayingMixRef.current) {
-          playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-        }
-      };
-      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+      const tracker = createPlayheadTracker({
+        context,
+        duration: mixDurationRef.current,
+        startTime: playStartTimeRef.current,
+        onUpdate: emitPlayheadPosition,
+        isActive: () => isPlayingMixRef.current,
+      });
+      playheadIntervalRef.current = tracker.start();
     }
   }, [isPlayingMix, handleStopMix, stopPreview, getOrCreateContext, emitPlayheadPosition, ensureMasterBus]);
 
-  const handleSeekMix = useCallback((pct: number) => {
-    void (async () => {
-      const clampedPct = Math.max(0, Math.min(100, pct));
+  /** Seek a single-stem preview to the given position. */
+  const seekToPreview = useCallback(async (pct: number) => {
+    const stemId = playingStem;
+    if (!stemId) return;
 
-      // Preview seeking: restart the single-stem "Hear" preview at pct.
-      if (playingStem) {
-        const context = await getOrCreateContext();
-        if (!context) return;
+    const context = await getOrCreateContext();
+    if (!context) return;
 
-        const buffer = previewBufferRef.current ?? lastStemBuffersRef.current[playingStem];
-        if (!buffer) return;
+    const buffer = previewBufferRef.current ?? lastStemBuffersRef.current[stemId];
+    if (!buffer) return;
 
-        const st = previewStemStateRef.current ?? lastStemStatesRef.current[playingStem] ?? defaultStemState();
-        const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-        const playDuration = trimEnd - trimStart;
-        if (playDuration <= 0) return;
+    const st = previewStemStateRef.current ?? lastStemStatesRef.current[stemId] ?? defaultStemState();
+    const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
+    const playDuration = trimEnd - trimStart;
+    if (playDuration <= 0) return;
 
-        stopPreview();
-        const elapsed = (playDuration * clampedPct) / 100;
-        const remaining = playDuration - elapsed;
-        if (remaining <= 0) {
-          emitPlayheadPosition(clampedPct);
-          return;
-        }
+    stopPreview();
+    const elapsed = (playDuration * pct) / 100;
+    const remaining = playDuration - elapsed;
+    if (remaining <= 0) {
+      emitPlayheadPosition(pct);
+      return;
+    }
 
-        previewDurationRef.current = playDuration;
-        emitPlayheadPosition(clampedPct);
-        playheadPositionRef.current = clampedPct;
-        previewStemStateRef.current = st;
-        previewBufferRef.current = buffer;
+    previewDurationRef.current = playDuration;
+    emitPlayheadPosition(pct);
+    playheadPositionRef.current = pct;
+    previewStemStateRef.current = st;
+    previewBufferRef.current = buffer;
 
-        const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-        const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
-        dsp.output.connect(ensureMasterBus(context));
+    const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
+    const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
+    dsp.output.connect(ensureMasterBus(context));
 
-        if (handle.kind === "native") {
-          handle.source.onended = () => {
-            dsp.disconnect();
-            if (currentPreviewHandleRef.current?.kind === "native" &&
-                currentPreviewHandleRef.current.source === handle.source) {
-              currentPreviewHandleRef.current = null;
-              isPlayingPreviewRef.current = false;
-              setPlayingStem(null);
-            }
-          };
-        }
-        currentPreviewHandleRef.current = handle;
-        isPlayingPreviewRef.current = true;
-
-        playStartTimeRef.current = context.currentTime - elapsed;
-
-        const updatePlayhead = () => {
-          const nextDuration = previewDurationRef.current;
-          if (nextDuration <= 0) return;
-          const currentElapsed = context.currentTime - playStartTimeRef.current;
-          const progress = Math.min(100, (currentElapsed / nextDuration) * 100);
-          emitPlayheadPosition(progress);
-          if (progress < 100 && isPlayingPreviewRef.current) {
-            playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-          }
-        };
-
-        playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-        return;
-      }
-
-      const lastSplitResultStems = lastSplitResultStemsRef.current;
-      if (lastSplitResultStems.length === 0) {
-        emitPlayheadPosition(clampedPct);
-        return;
-      }
-
-      // If not playing, just update the playhead UI.
-      if (!isPlayingMixRef.current) {
-        emitPlayheadPosition(clampedPct);
-        return;
-      }
-
-      // Throttle restarts: timeline drag can spam seeks.
-      const now = Date.now();
-      const pctDiff = Math.abs(clampedPct - lastSeekPctRef.current);
-      if (pctDiff < 0.75 && now - lastSeekRestartAtRef.current < 250) return;
-      lastSeekPctRef.current = clampedPct;
-      lastSeekRestartAtRef.current = now;
-
-      const context = await getOrCreateContext();
-      if (!context) return;
-
-      const splitResultStems = lastSplitResultStemsRef.current;
-      const stemStates = lastStemStatesRef.current;
-      const stemBuffers = lastStemBuffersRef.current;
-
-      const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
-      if (stemsToPlay.length === 0) {
-        handleStopMix();
-        return;
-      }
-
-      stopMixSourcesPreservePlayhead();
-
-      const firstStem = stemsToPlay[0];
-      const firstBuffer = stemBuffers[firstStem.id];
-      if (!firstBuffer) return;
-
-      const firstState = stemStates[firstStem.id] ?? defaultStemState();
-      const { trimStart, trimEnd } = trimToSeconds(firstBuffer, firstState.trim);
-      const duration = trimEnd - trimStart;
-      if (duration <= 0) return;
-
-      mixDurationRef.current = duration;
-      const elapsed = (duration * clampedPct) / 100;
-
-      emitPlayheadPosition(clampedPct);
-      playStartTimeRef.current = context.currentTime - elapsed;
-
-      const handles: StemPlaybackHandle[] = [];
-      for (const stem of stemsToPlay) {
-        const buffer = stemBuffers[stem.id];
-        if (!buffer) continue;
-        const st = stemStates[stem.id] ?? defaultStemState();
-        const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-        const playDuration = trimEnd - trimStart;
-        const remaining = playDuration - elapsed;
-        if (remaining <= 0) continue;
-
-        const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-        const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
-        dsp.output.connect(ensureMasterBus(context));
-
-        if (handle.kind === "native") {
-          handle.source.onended = () => {
-            dsp.disconnect();
-            mixHandleRefs.current = mixHandleRefs.current.filter((h) => h !== handle);
-            if (mixHandleRefs.current.length === 0) {
-              setIsPlayingMix(false);
-              isPlayingMixRef.current = false;
-            }
-          };
-        }
-        handles.push(handle);
-      }
-
-      mixHandleRefs.current = handles;
-      setIsPlayingMix(true);
-      isPlayingMixRef.current = true;
-
-      const updatePlayhead = () => {
-        const nextDuration = mixDurationRef.current;
-        if (nextDuration <= 0) return;
-        const currentElapsed = context.currentTime - playStartTimeRef.current;
-        const progress = Math.min(100, (currentElapsed / nextDuration) * 100);
-        emitPlayheadPosition(progress);
-        if (progress < 100 && isPlayingMixRef.current) {
-          playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+    if (handle.kind === "native") {
+      handle.source.onended = () => {
+        dsp.disconnect();
+        if (currentPreviewHandleRef.current?.kind === "native" &&
+            currentPreviewHandleRef.current.source === handle.source) {
+          currentPreviewHandleRef.current = null;
+          isPlayingPreviewRef.current = false;
+          setPlayingStem(null);
         }
       };
+    }
+    currentPreviewHandleRef.current = handle;
+    isPlayingPreviewRef.current = true;
 
-      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-    })();
-  }, [
-    getOrCreateContext,
-    handleStopMix,
-    stopMixSourcesPreservePlayhead,
-    emitPlayheadPosition,
-    playingStem,
-    stopPreview,
-    ensureMasterBus,
-  ]);
+    playStartTimeRef.current = context.currentTime - elapsed;
+
+    const tracker = createPlayheadTracker({
+      context,
+      duration: previewDurationRef.current,
+      startTime: playStartTimeRef.current,
+      onUpdate: emitPlayheadPosition,
+      isActive: () => isPlayingPreviewRef.current,
+    });
+    playheadIntervalRef.current = tracker.start();
+  }, [playingStem, getOrCreateContext, stopPreview, emitPlayheadPosition, ensureMasterBus]);
+
+  /** Seek the full mix to the given position (restarts all stems). */
+  const seekToMixPosition = useCallback(async (pct: number) => {
+    const splitResultStems = lastSplitResultStemsRef.current;
+    if (splitResultStems.length === 0) {
+      emitPlayheadPosition(pct);
+      return;
+    }
+
+    if (!isPlayingMixRef.current) {
+      emitPlayheadPosition(pct);
+      return;
+    }
+
+    // Throttle restarts: timeline drag can spam seeks.
+    const now = Date.now();
+    const pctDiff = Math.abs(pct - lastSeekPctRef.current);
+    if (pctDiff < 0.75 && now - lastSeekRestartAtRef.current < 250) return;
+    lastSeekPctRef.current = pct;
+    lastSeekRestartAtRef.current = now;
+
+    const context = await getOrCreateContext();
+    if (!context) return;
+
+    const stemStates = lastStemStatesRef.current;
+    const stemBuffers = lastStemBuffersRef.current;
+
+    const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
+    if (stemsToPlay.length === 0) {
+      handleStopMix();
+      return;
+    }
+
+    stopMixSourcesPreservePlayhead();
+
+    const firstStem = stemsToPlay[0];
+    const firstBuffer = stemBuffers[firstStem.id];
+    if (!firstBuffer) return;
+
+    const firstState = stemStates[firstStem.id] ?? defaultStemState();
+    const { trimStart, trimEnd } = trimToSeconds(firstBuffer, firstState.trim);
+    const duration = trimEnd - trimStart;
+    if (duration <= 0) return;
+
+    mixDurationRef.current = duration;
+    const elapsed = (duration * pct) / 100;
+
+    emitPlayheadPosition(pct);
+    playStartTimeRef.current = context.currentTime - elapsed;
+
+    const handles: StemPlaybackHandle[] = [];
+    for (const stem of stemsToPlay) {
+      const buffer = stemBuffers[stem.id];
+      if (!buffer) continue;
+      const st = stemStates[stem.id] ?? defaultStemState();
+      const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
+      const remaining = (trimEnd - trimStart) - elapsed;
+      if (remaining <= 0) continue;
+
+      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
+      const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
+      dsp.output.connect(ensureMasterBus(context));
+
+      if (handle.kind === "native") {
+        handle.source.onended = () => {
+          dsp.disconnect();
+          mixHandleRefs.current = mixHandleRefs.current.filter((h) => h !== handle);
+          if (mixHandleRefs.current.length === 0) {
+            setIsPlayingMix(false);
+            isPlayingMixRef.current = false;
+          }
+        };
+      }
+      handles.push(handle);
+    }
+
+    mixHandleRefs.current = handles;
+    setIsPlayingMix(true);
+    isPlayingMixRef.current = true;
+
+    const tracker = createPlayheadTracker({
+      context,
+      duration: mixDurationRef.current,
+      startTime: playStartTimeRef.current,
+      onUpdate: emitPlayheadPosition,
+      isActive: () => isPlayingMixRef.current,
+    });
+    playheadIntervalRef.current = tracker.start();
+  }, [getOrCreateContext, handleStopMix, stopMixSourcesPreservePlayhead, emitPlayheadPosition, ensureMasterBus]);
+
+  /** Seek to a position: dispatches to preview-seek or mix-seek based on playback state. */
+  const handleSeekMix = useCallback((pct: number) => {
+    const clampedPct = Math.max(0, Math.min(100, pct));
+    if (playingStem) {
+      void seekToPreview(clampedPct);
+    } else {
+      void seekToMixPosition(clampedPct);
+    }
+  }, [playingStem, seekToPreview, seekToMixPosition]);
 
   const handlePreviewStem = useCallback(async (
     stemId: string,
@@ -516,17 +504,14 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
       currentPreviewHandleRef.current = handle;
       isPlayingPreviewRef.current = true;
 
-      const updatePlayhead = () => {
-        const nextDuration = previewDurationRef.current;
-        if (nextDuration <= 0) return;
-        const currentElapsed = context.currentTime - playStartTimeRef.current;
-        const progress = Math.min(100, (currentElapsed / nextDuration) * 100);
-        emitPlayheadPosition(progress);
-        if (progress < 100 && isPlayingPreviewRef.current) {
-          playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
-        }
-      };
-      playheadIntervalRef.current = requestAnimationFrame(updatePlayhead);
+      const tracker = createPlayheadTracker({
+        context,
+        duration: previewDurationRef.current,
+        startTime: playStartTimeRef.current,
+        onUpdate: emitPlayheadPosition,
+        isActive: () => isPlayingPreviewRef.current,
+      });
+      playheadIntervalRef.current = tracker.start();
 
       setPlayingStem(stemId);
     } catch (err) {

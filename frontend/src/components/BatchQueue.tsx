@@ -60,7 +60,7 @@ export function BatchQueue({
 
   return (
     <motion.div
-      className="fixed bottom-4 right-4 z-40 w-80 overflow-hidden rounded-2xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl"
+      className="fixed bottom-4 right-4 z-40 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 100, opacity: 0 }}
@@ -71,6 +71,7 @@ export function BatchQueue({
         type="button"
         onClick={onToggleExpand}
         aria-controls="batch-queue-items"
+        aria-expanded={isExpanded}
         className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-white/5"
       >
         <div className="flex items-center gap-3">
@@ -133,15 +134,22 @@ export function BatchQueue({
                       onClick={() => onRemoveItem(item.id)}
                       title="Remove from queue"
                       aria-label={`Remove ${item.fileName} from queue`}
-                      className="flex h-6 w-6 items-center justify-center rounded text-white/45 opacity-80 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 group-hover:opacity-100"
+                      className="flex h-8 w-8 items-center justify-center rounded text-white/45 opacity-80 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 group-hover:opacity-100"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
 
                   {/* Progress bar */}
                   {item.status === "processing" && (
-                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="mt-2 h-1 overflow-hidden rounded-full bg-white/10"
+                      role="progressbar"
+                      aria-valuenow={item.progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`${item.fileName} progress`}
+                    >
                       <motion.div
                         className="h-full bg-amber-400"
                         initial={{ width: 0 }}
@@ -174,9 +182,9 @@ export function BatchQueue({
                 <button
                   type="button"
                   onClick={onClearCompleted}
-                  className="flex items-center gap-2 text-xs text-white/40 transition hover:text-white"
+                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/60 transition hover:bg-white/5 hover:text-white"
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <Trash2 className="h-4 w-4" />
                   Clear completed
                 </button>
               )}

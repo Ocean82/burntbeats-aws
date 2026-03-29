@@ -3,6 +3,7 @@ Upload stem WAVs to S3 after a job completes. Same env contract as scripts/s3_st
 
 Keys: {S3_PREFIX}/{job_id}/stems/{filename}  e.g. stems/uuid/stems/vocals.wav
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,7 +28,9 @@ def _cfg() -> dict[str, str]:
     return {
         "enabled": os.environ.get("S3_ENABLED", "").lower() == "true",
         "bucket": os.environ.get("S3_BUCKET", ""),
-        "region": os.environ.get("S3_REGION", os.environ.get("AWS_REGION", "us-east-1")),
+        "region": os.environ.get(
+            "S3_REGION", os.environ.get("AWS_REGION", "us-east-1")
+        ),
         "prefix": os.environ.get("S3_PREFIX", "stems").rstrip("/"),
         "access_key": os.environ.get("S3_ACCESS_KEY", ""),
         "secret_key": os.environ.get("S3_SECRET_KEY", ""),
@@ -73,6 +76,7 @@ def upload_job_stems_to_s3(job_id: str, stems_dir: Path) -> dict[str, Any] | Non
     prefix = cfg["prefix"]
     keys: dict[str, str] = {}
     bucket = cfg["bucket"]
+    errors: list[str] = []
 
     for wav in wavs:
         stem_id = wav.stem
@@ -91,7 +95,20 @@ def upload_job_stems_to_s3(job_id: str, stems_dir: Path) -> dict[str, Any] | Non
             logger.info("Uploaded s3://%s/%s", bucket, key)
         except ClientError as e:
             logger.exception("S3 upload failed for %s: %s", wav, e)
-            return None
+            errors.append(f"{stem_id}: {e}")
+
+    if not keys:
+        logger.error("S3 upload: all %d files failed for job %s", len(wavs), job_id)
+        return None
+
+    if errors:
+        logger.warning(
+            "S3 upload partial: %d/%d failed for job %s: %s",
+            len(errors),
+            len(wavs),
+            job_id,
+            "; ".join(errors),
+        )
 
     out: dict[str, Any] = {
         "bucket": bucket,

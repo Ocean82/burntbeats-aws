@@ -3,8 +3,9 @@
  * Attaches Clerk JWT via Authorization header on all requests.
  * Stores and forwards job_token (x-job-token) for per-job auth when JOB_TOKEN_SECRET is set on backend.
  */
-import type { JobStatus, SplitQuality as SharedSplitQuality } from "../../shared/types";
+import type { JobStatus, SplitQuality as SharedSplitQuality } from "@shared/types";
 import { API_BASE } from "./config";
+import type { StemResult } from "./types";
 import type { StemEditorState } from "./stem-editor-state";
 
 // Token provider injected at app startup by ClerkProvider — avoids importing Clerk hooks here.
@@ -91,12 +92,6 @@ function isAcceptedJobIdResponse(value: unknown): value is { job_id: string; sta
   if (typeof value.job_id !== "string" || value.job_id.length === 0) return false;
   if (value.status !== undefined && typeof value.status !== "string") return false;
   return true;
-}
-
-export interface StemResult {
-  id: string;
-  url: string;
-  path?: string;
 }
 
 export interface SplitResponse {
