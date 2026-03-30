@@ -26,6 +26,7 @@ import https from "https";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 import { billingRouter } from "./billing.js";
+import { emailRouter } from "./email-routes.js";
 import { verifyClerkBearer } from "./clerkAuth.js";
 import {
   computeExpandCost,
@@ -182,6 +183,7 @@ app.use(express.json());
 app.use(rateLimitMiddleware);
 
 // Billing routes (Clerk auth + Stripe)
+app.use("/api/email", emailRouter);
 app.use("/api/billing", billingRouter);
 
 /**
