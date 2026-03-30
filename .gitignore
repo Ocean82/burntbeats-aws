@@ -45,6 +45,16 @@ models/
 *.sym
 *.sys
 
+# Exceptions for deploy/build configuration (non-secret)
+# These are required for fresh clones / server rebuilds.
+!docker-compose.yml
+!frontend/nginx.conf
+!nginx-burntbeats.conf
+!backend/package.json
+!backend/package-lock.json
+!frontend/package.json
+!frontend/package-lock.json
+
 
 # Build / env
 dist/
