@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import { Mic2, Layers, Sliders, Download, Zap, Music2, ShieldCheck, Users, Clock, Headphones, Waveform, Guitar } from "lucide-react";
 import { StripePricingTableEmbed } from "../components/StripePricingTableEmbed";
 
-const LANDING_PRIMARY_CTA_VARIANT: "classic" | "roi" = "classic";
-
 const FEATURES = [
   {
     icon: Mic2,
@@ -95,7 +93,7 @@ export function LandingPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-100/80">
+          <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-100/90">
             Stem Splitter · Mixer · Master
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
           </div>
@@ -104,20 +102,18 @@ export function LandingPage() {
             <span className="logo-burnt-fire">Burnt Beats</span>
           </h1>
 
-          <p className="max-w-xl text-base leading-7 text-white/65 sm:text-lg">
+          <p className="max-w-xl text-base leading-7 text-white/85 sm:text-lg">
             Turn full songs into usable stems in minutes — then level, trim, and export radio-ready mixes without plugins or installs.
           </p>
 
           <div className="flex flex-col items-center gap-3 sm:flex-row">
             <SignUpButton mode="modal">
-              <button type="button" className="fire-button text-base px-8 py-4">
-                {LANDING_PRIMARY_CTA_VARIANT === "roi"
-                  ? "Start free, upgrade when it pays for itself"
-                  : "Start splitting free"}
+              <button type="button" className="fire-button tap-feedback text-base px-8 py-4">
+                Get started
               </button>
             </SignUpButton>
             <SignInButton mode="modal">
-              <button type="button" className="ghost-button text-sm px-6 py-3.5">
+              <button type="button" className="ghost-button tap-feedback text-sm px-6 py-3.5">
                 Already have an account
               </button>
             </SignInButton>
@@ -125,7 +121,7 @@ export function LandingPage() {
 
           <button
             type="button"
-            className="mt-3 text-xs text-white/60 underline underline-offset-4 hover:text-amber-200"
+            className="mt-3 text-sm text-white/75 underline underline-offset-4 hover:text-amber-200"
             onClick={() => {
               const el = document.getElementById("pricing");
               if (el) {
@@ -137,7 +133,7 @@ export function LandingPage() {
           </button>
 
           {/* Trust + risk reversal */}
-          <div className="flex flex-col items-center gap-2 text-xs text-white/40 sm:flex-row sm:gap-4">
+          <div className="flex flex-col items-center gap-2 text-sm text-white/70 sm:flex-row sm:gap-4">
             <div className="flex items-center gap-2">
               <span className="status-light" />
               CPU-optimised · No GPU required
@@ -151,27 +147,27 @@ export function LandingPage() {
 
         {/* Social proof / outcomes */}
         <motion.section
-          className="grid gap-4 py-10 text-sm text-white/70 sm:grid-cols-3"
+          className="grid gap-4 py-10 text-base text-white/85 sm:grid-cols-3"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
               <Users className="h-3.5 w-3.5 text-amber-300" />
               Producers we&apos;ve helped
             </p>
             <p>Indie artists, mix engineers, and small studios using CPU-only machines to get stems fast.</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
               <Clock className="h-3.5 w-3.5 text-amber-300" />
               Time saved
             </p>
             <p>Drop a track, get usable stems in minutes — no waiting on freelance engineers or bouncing DAW sessions.</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
               Zero-risk trial
             </p>
@@ -181,35 +177,35 @@ export function LandingPage() {
 
         {/* Personas / use cases */}
         <motion.section
-          className="grid gap-4 py-6 text-sm text-white/70 sm:grid-cols-3"
+          className="grid gap-4 py-6 text-base text-white/85 sm:grid-cols-3"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.18 }}
         >
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
               <Headphones className="h-3.5 w-3.5 text-amber-300" />
               Vocalists & artists
             </p>
-            <p className="text-xs text-white/65">
+            <p className="text-sm text-white/80">
               Strip out your vocals or instrumentals for remixes, live sets, and content without hunting for acapellas.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
               <Waveform className="h-3.5 w-3.5 text-amber-300" />
               Mix & mastering engineers
             </p>
-            <p className="text-xs text-white/65">
+            <p className="text-sm text-white/80">
               Grab stems from reference tracks to study balances, recreate tones, or build quick mockups for clients.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
               <Guitar className="h-3.5 w-3.5 text-amber-300" />
               Creators & educators
             </p>
-            <p className="text-xs text-white/65">
+            <p className="text-sm text-white/80">
               Solo out parts for lessons, breakdowns, and YouTube content without wrestling with DAW sessions.
             </p>
           </div>
@@ -230,7 +226,7 @@ export function LandingPage() {
                   <f.icon className="h-4 w-4 text-amber-300/80" />
                 </div>
                 <p className="mb-1 text-sm font-semibold text-white/90">{f.title}</p>
-                <p className="text-xs leading-5 text-white/50">{f.desc}</p>
+                <p className="text-sm leading-6 text-white/75">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -244,9 +240,9 @@ export function LandingPage() {
           transition={{ duration: 0.5, delay: 0.22 }}
         >
           <p className="eyebrow mb-4 text-center">Who Burnt Beats is for</p>
-          <div className="grid grid-cols-1 gap-4 text-xs text-white/70 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 text-sm text-white/80 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
                 Occasional creators
               </p>
               <p className="mb-2">
@@ -257,7 +253,7 @@ export function LandingPage() {
               </p>
               <button
                 type="button"
-                className="ghost-button px-3 py-1.5 text-[11px]"
+                className="ghost-button tap-feedback px-3 py-1.5 text-[11px]"
                 onClick={() => {
                   const el = document.getElementById("pricing");
                   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -267,8 +263,8 @@ export function LandingPage() {
               </button>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
-                Active artists &amp; producers
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+                Working artists &amp; producers
               </p>
               <p className="mb-2">
                 Bounce between projects every week and want a steady flow of stems.
@@ -278,7 +274,7 @@ export function LandingPage() {
               </p>
               <button
                 type="button"
-                className="ghost-button px-3 py-1.5 text-[11px]"
+                className="ghost-button tap-feedback px-3 py-1.5 text-[11px]"
                 onClick={() => {
                   const el = document.getElementById("pricing");
                   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -288,8 +284,8 @@ export function LandingPage() {
               </button>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
-                Studios &amp; engineers
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+                Studios &amp; mix engineers
               </p>
               <p className="mb-2">
                 Live in stems all day, juggling clients, reference mixes, and exports.
@@ -299,7 +295,7 @@ export function LandingPage() {
               </p>
               <button
                 type="button"
-                className="ghost-button px-3 py-1.5 text-[11px]"
+                className="ghost-button tap-feedback px-3 py-1.5 text-[11px]"
                 onClick={() => {
                   const el = document.getElementById("pricing");
                   if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -320,10 +316,10 @@ export function LandingPage() {
           transition={{ duration: 0.5, delay: 0.25 }}
         >
           <p className="eyebrow mb-2 text-center">Pricing</p>
-          <p className="mb-10 text-center text-sm text-white/50">
+          <p className="mb-8 text-center text-base text-white/75">
             Simple plans. Cancel anytime. No hidden fees or surprise overages.
           </p>
-          <p className="mb-6 text-center text-xs font-medium text-white/60">
+          <p className="mb-6 text-center text-sm font-medium text-white/80">
             No contracts · Cancel online whenever you like · Start with a one‑time Top‑Up if you&apos;re unsure.
           </p>
 
@@ -332,9 +328,9 @@ export function LandingPage() {
           </div>
 
           {/* FAQ near pricing to remove objections */}
-          <div className="mt-10 grid gap-4 text-left text-xs text-white/65 sm:grid-cols-2">
+          <div className="mt-10 grid gap-4 text-left text-sm text-white/80 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
                 Will this work on my laptop?
               </p>
               <p>
@@ -343,7 +339,7 @@ export function LandingPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
                 How do tokens map to songs?
               </p>
               <p>
@@ -352,7 +348,7 @@ export function LandingPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
                 Can I cancel or change plans?
               </p>
               <p>
@@ -361,7 +357,7 @@ export function LandingPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
                 Do I have to subscribe?
               </p>
               <p>
@@ -380,9 +376,9 @@ export function LandingPage() {
           transition={{ duration: 0.5, delay: 0.35 }}
         >
           <p className="mb-2 text-2xl font-bold text-white/90">Ready to split?</p>
-          <p className="mb-8 text-sm text-white/50">Create an account and start separating stems in seconds.</p>
+          <p className="mb-8 text-base text-white/80">Create an account and start separating stems in seconds.</p>
           <SignUpButton mode="modal">
-            <button type="button" className="fire-button text-base px-8 py-4">
+            <button type="button" className="fire-button tap-feedback text-base px-8 py-4">
               Create free account
             </button>
           </SignUpButton>

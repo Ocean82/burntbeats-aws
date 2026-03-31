@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 
 export type GuidanceTarget = "source" | "mixer" | "none";
 
-const GREEN_RING_BASE = "ring-2 ring-emerald-300/40 ring-offset-1 ring-offset-black/30 shadow-[0_0_16px_rgba(52,211,153,0.12)]";
-const GREEN_RING_PULSE = `${GREEN_RING_BASE} animate-pulse`;
+const GUIDANCE_CUE_BASE = "guidance-cue";
+const GUIDANCE_CUE_PULSE = `${GUIDANCE_CUE_BASE} guidance-cue-pulse`;
 
 export interface UseGuidanceSystemReturn {
   guidanceTarget: GuidanceTarget;
@@ -45,6 +45,17 @@ export function useGuidanceSystem(state: GuidanceState): UseGuidanceSystemReturn
     setPulseOff({ source: false, mixer: false });
   }, [guidanceTarget]);
 
+  // Keep attention cue brief: nudge once, then settle to a subtle static state.
+  useEffect(() => {
+    if (!(guidanceTarget === "source" || guidanceTarget === "mixer")) return;
+    const key = guidanceTarget;
+    if (pulseOff[key]) return;
+    const timer = window.setTimeout(() => {
+      setPulseOff((p) => (p[key] ? p : { ...p, [key]: true }));
+    }, 2200);
+    return () => window.clearTimeout(timer);
+  }, [guidanceTarget, pulseOff]);
+
   const handlePanelInteract = useCallback(() => {
     if (guidanceTarget === "source") {
       setPulseOff((p) => (p.source ? p : { ...p, source: true }));
@@ -55,7 +66,7 @@ export function useGuidanceSystem(state: GuidanceState): UseGuidanceSystemReturn
 
   const isActive = guidanceTarget === "source" || guidanceTarget === "mixer";
   const isPulsing = isActive && !pulseOff[guidanceTarget as "source" | "mixer"];
-  const ringClass = isActive ? (isPulsing ? GREEN_RING_PULSE : GREEN_RING_BASE) : "";
+  const ringClass = isActive ? (isPulsing ? GUIDANCE_CUE_PULSE : GUIDANCE_CUE_BASE) : "";
 
   return { guidanceTarget, ringClass, handlePanelInteract };
 }

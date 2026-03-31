@@ -104,34 +104,34 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
               Choose how you burn through beats.
             </h1>
-            <p className="text-sm leading-6 text-white/70 sm:text-base">
+            <p className="text-base leading-7 text-white/85">
               Go monthly for a steady flow of tokens, or keep it simple with a{" "}
               <span className="font-semibold text-amber-200">Top‑Up Pack</span> — pay as you go with
               no subscription required.
             </p>
-            <p className="text-xs text-white/45">
+            <p className="text-sm text-white/75">
               All plans run on the same high‑quality separation engine. Upgrade or cancel any time.
             </p>
-            <p className="text-xs text-white/55">
+            <p className="text-sm text-white/80">
               Most producers start with <span className="font-semibold text-amber-200">Premium</span> for weekly sessions, then
               move up to <span className="font-semibold text-amber-200">Studio</span> when they&apos;re living in stems every day.
             </p>
             {subscription.status === "inactive" && usageContext?.hasCompletedFirstExport && (
-              <p className="text-xs text-amber-100/90">
-                You&apos;ve already finished a stem — most artists upgrade once they&apos;re splitting tracks every week.
+              <p className="text-sm text-amber-100/95">
+                You&apos;ve already finished a stem — most artists upgrade once they&apos;re splitting tracks every week or more.
               </p>
             )}
             {subscription.plan === "basic" && (usageContext?.splitsThisSession ?? 0) >= 3 && (
-              <p className="text-xs text-amber-100/85">
-                You&apos;re using Burnt Beats like our Premium users — moving up often beats repeated top‑ups.
+              <p className="text-sm text-amber-100/90">
+                You&apos;re using Burnt Beats like our Premium users — upgrading usually costs less than repeated Top‑Ups.
               </p>
             )}
           </div>
           <div className="mt-2 flex flex-col items-start gap-3 lg:items-end">
-            <button
+                <button
               type="button"
               onClick={onClose}
-              className="ghost-button px-4 py-2 text-xs"
+                  className="ghost-button tap-feedback px-4 py-2 text-xs"
             >
               Back to editor
             </button>
@@ -165,19 +165,19 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold text-white/90">{plan.name}</h2>
+                  <h2 className="text-base font-semibold text-white/95">{plan.name}</h2>
                   {plan.badge && (
                     <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100/85">
                       {plan.badge}
                     </span>
                   )}
                 </div>
-                <p className="text-xs font-medium text-amber-200/90">{plan.priceLabel}</p>
-                <p className="text-xs leading-5 text-white/60">{plan.description}</p>
-                <ul className="mt-3 space-y-1.5 text-xs text-white/60">
+                <p className="text-sm font-medium text-amber-200/95">{plan.priceLabel}</p>
+                <p className="text-sm leading-6 text-white/80">{plan.description}</p>
+                <ul className="mt-3 space-y-1.5 text-sm text-white/80">
                   {plan.details.map((d) => (
                     <li key={d} className="flex items-start gap-2">
-                      <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-300" />
+                    <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-300" />
                       <span>{d}</span>
                     </li>
                   ))}
@@ -189,15 +189,15 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
                   onClick={() => handleSelectPlan(plan.id)}
                   className={
                     plan.highlight === "primary" || plan.emphasis
-                      ? "fire-button w-full py-2 text-xs"
-                      : "ghost-button w-full py-2 text-xs"
+                      ? "fire-button tap-feedback w-full py-2 text-xs"
+                      : "ghost-button tap-feedback w-full py-2 text-xs"
                   }
                   disabled={subscription.status === "loading"}
                 >
                   {isActive ? "Current plan" : plan.cta}
                 </button>
                 {plan.id === "topup" && (
-                  <p className="text-[11px] leading-4 text-amber-100/85">
+                  <p className="text-xs leading-5 text-amber-100/90">
                     Pay only when you need more tokens. No recurring charges, ever.
                   </p>
                 )}
@@ -216,7 +216,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
       >
         <div className="mb-4 text-center">
           <p className="eyebrow mb-1 text-xs text-amber-200/90">Live pricing</p>
-          <p className="text-xs text-white/55">
+          <p className="text-sm text-white/80">
             Secure checkout powered by Stripe. You can also compare plans directly in the table
             below.
           </p>
@@ -226,13 +226,13 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
 
       {/* FAQ / objections reducer */}
       <motion.section
-        className="grid gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-xs text-white/65 sm:grid-cols-2 sm:p-6"
+        className="grid gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/80 sm:grid-cols-2 sm:p-6"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
       >
         <div>
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
             What happens if I run out of tokens?
           </p>
           <p>
@@ -241,7 +241,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </p>
         </div>
         <div>
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
             Can I switch plans later?
           </p>
           <p>
@@ -250,7 +250,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </p>
         </div>
         <div>
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
             Is there a long‑term contract?
           </p>
           <p>
@@ -258,7 +258,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </p>
         </div>
         <div>
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
             Do you offer refunds?
           </p>
           <p>

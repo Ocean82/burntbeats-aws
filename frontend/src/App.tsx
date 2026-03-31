@@ -479,12 +479,12 @@ export function App() {
             <div className="logo-burnt">
               <span className="logo-burnt-fire block text-4xl sm:text-5xl lg:text-6xl">Burnt Beats</span>
             </div>
-            <p className="max-w-xl text-sm leading-6 text-white/70 sm:text-base">
+            <p className="max-w-xl text-base leading-7 text-white/85">
               Split vocals, drums, bass, and melody → trim, level, pan → play mix, export.
             </p>
           </div>
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="flex items-center gap-2 text-xs text-white/60">
+            <div className="flex items-center gap-2 text-sm text-white/75">
               <span className={cn("flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all", !uploadedFile ? "border-amber-400/40 bg-amber-500/15 text-amber-200" : "border-white/10 bg-white/5 text-white/65")}>
                 <span className={cn("h-1.5 w-1.5 rounded-full", !uploadedFile ? "bg-amber-400" : "bg-white/40")} />Upload
               </span>
@@ -509,10 +509,10 @@ export function App() {
                 <div className="h-4 w-px bg-white/10" />
                 <button type="button" onClick={redoStemStates} disabled={!canRedo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Redo (Ctrl+Y)" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={() => openModal("presets")} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white" title="Presets" aria-label="Open mixer presets">
+              <button type="button" onClick={() => openModal("presets")} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white/75 transition hover:text-white tap-feedback" title="Presets" aria-label="Open mixer presets">
                 <Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Presets</span>
               </button>
-              <button type="button" onClick={() => openModal("help")} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white" title="Help" aria-label="Open help">
+              <button type="button" onClick={() => openModal("help")} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white tap-feedback" title="Help" aria-label="Open help">
                 <HelpCircle className="h-4 w-4" />
               </button>
               {localDevFullApp ? (
@@ -541,7 +541,7 @@ export function App() {
                     type="button"
                     onClick={() => setActiveView((v) => (v === "editor" ? "pricing" : "editor"))}
                     className={cn(
-                      "flex h-8 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition",
+                      "flex h-8 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition tap-feedback",
                       isInactive
                         ? "border border-amber-400/70 bg-amber-500/20 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.55)] hover:bg-amber-500/30 hover:text-white"
                         : "border border-white/15 bg-black/20 text-white/70 hover:text-white",
@@ -556,7 +556,7 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => void subscription.openPortal()}
-                  className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white"
+                  className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white tap-feedback"
                   title="Manage billing"
                 >
                   Billing
@@ -591,7 +591,7 @@ export function App() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <div className="flex w-max animate-scroll-text gap-12 py-2.5 text-xs uppercase tracking-[0.35em] text-white/60">
+              <div className="flex w-max animate-scroll-text gap-14 py-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
                 <span>Drop track · Split · Mix · Export</span>
                 <span>Hit your first finished stem in minutes — then batch the rest.</span>
                 <span>Drop track · Split · Mix · Export</span>
@@ -742,27 +742,27 @@ export function App() {
                   {ENABLE_ONBOARDING_QUEST &&
                     hasCompletedFirstExport &&
                     subscription.status === "inactive" && (
-                      <div className="mb-4 rounded-2xl border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-[11px] text-amber-100">
+                    <div className="mb-4 rounded-2xl border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-sm text-amber-100">
                         <p className="mb-1 font-semibold">Nice — you just finished your first stem.</p>
                         <p className="mb-2 text-amber-100/85">
-                          If you&apos;re doing this regularly, a plan will save you time and tokens.
+                          If you&apos;ll be doing this more than a couple of times a month, a plan usually pays for itself.
                         </p>
                         <button
                           type="button"
                           onClick={() => setActiveView("pricing")}
-                          className="rounded-full bg-amber-400 px-3 py-1 text-[11px] font-semibold text-black hover:bg-amber-300"
+                          className="rounded-full bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-300"
                         >
-                          See plans for regular use
+                          See which plan fits you
                         </button>
                       </div>
                     )}
 
                   {uploadedFile == null && mixStems.length === 0 && (
-                    <div className="mb-4 rounded-2xl border border-dashed border-white/15 bg-black/30 px-4 py-3 text-[11px] text-white/75">
-                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
+                    <div className="mb-4 rounded-2xl border border-dashed border-white/15 bg-black/30 px-4 py-3 text-sm text-white/85">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/80">
                         Start your first project
                       </p>
-                      <ul className="mb-2 list-disc space-y-0.5 pl-4 text-white/70">
+                      <ul className="mb-2 list-disc space-y-1 pl-4 text-white/80">
                         <li>Create DJ edits and mashups from any track.</li>
                         <li>Study reference mixes by soloing drums, bass, or vocals.</li>
                         <li>Pull parts for lessons, breakdowns, or content.</li>
@@ -770,7 +770,7 @@ export function App() {
                       <button
                         type="button"
                         onClick={handleBrowseUpload}
-                        className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white"
+                        className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-black hover:bg-white"
                       >
                         Upload a track
                       </button>
