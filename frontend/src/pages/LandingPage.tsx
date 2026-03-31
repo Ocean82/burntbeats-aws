@@ -1,8 +1,10 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Mic2, Layers, Sliders, Download, Zap, Music2 } from "lucide-react";
+import { Mic2, Layers, Sliders, Download, Zap, Music2, ShieldCheck, Users, Clock, Headphones, Waveform, Guitar } from "lucide-react";
 import { StripePricingTableEmbed } from "../components/StripePricingTableEmbed";
+
+const LANDING_PRIMARY_CTA_VARIANT: "classic" | "roi" = "classic";
 
 const FEATURES = [
   {
@@ -103,13 +105,15 @@ export function LandingPage() {
           </h1>
 
           <p className="max-w-xl text-base leading-7 text-white/65 sm:text-lg">
-            Split any track into stems, mix with pro controls, and export — all in your browser. No plugins, no installs.
+            Turn full songs into usable stems in minutes — then level, trim, and export radio-ready mixes without plugins or installs.
           </p>
 
           <div className="flex flex-col items-center gap-3 sm:flex-row">
             <SignUpButton mode="modal">
               <button type="button" className="fire-button text-base px-8 py-4">
-                Start splitting free
+                {LANDING_PRIMARY_CTA_VARIANT === "roi"
+                  ? "Start free, upgrade when it pays for itself"
+                  : "Start splitting free"}
               </button>
             </SignUpButton>
             <SignInButton mode="modal">
@@ -119,10 +123,95 @@ export function LandingPage() {
             </SignInButton>
           </div>
 
-          {/* Mini demo badge */}
-          <div className="flex items-center gap-2 text-xs text-white/40">
-            <span className="status-light" />
-            CPU-optimised · No GPU required · Cancel anytime
+          <button
+            type="button"
+            className="mt-3 text-xs text-white/60 underline underline-offset-4 hover:text-amber-200"
+            onClick={() => {
+              const el = document.getElementById("pricing");
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
+          >
+            See plans &amp; pricing
+          </button>
+
+          {/* Trust + risk reversal */}
+          <div className="flex flex-col items-center gap-2 text-xs text-white/40 sm:flex-row sm:gap-4">
+            <div className="flex items-center gap-2">
+              <span className="status-light" />
+              CPU-optimised · No GPU required
+            </div>
+            <div className="flex items-center gap-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+              <span>Secure Stripe checkout · Cancel anytime</span>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* Social proof / outcomes */}
+        <motion.section
+          className="grid gap-4 py-10 text-sm text-white/70 sm:grid-cols-3"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+              <Users className="h-3.5 w-3.5 text-amber-300" />
+              Producers we&apos;ve helped
+            </p>
+            <p>Indie artists, mix engineers, and small studios using CPU-only machines to get stems fast.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+              <Clock className="h-3.5 w-3.5 text-amber-300" />
+              Time saved
+            </p>
+            <p>Drop a track, get usable stems in minutes — no waiting on freelance engineers or bouncing DAW sessions.</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
+              Zero-risk trial
+            </p>
+            <p>Try it with a few songs, then upgrade only if it actually speeds up your workflow.</p>
+          </div>
+        </motion.section>
+
+        {/* Personas / use cases */}
+        <motion.section
+          className="grid gap-4 py-6 text-sm text-white/70 sm:grid-cols-3"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.18 }}
+        >
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+              <Headphones className="h-3.5 w-3.5 text-amber-300" />
+              Vocalists & artists
+            </p>
+            <p className="text-xs text-white/65">
+              Strip out your vocals or instrumentals for remixes, live sets, and content without hunting for acapellas.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+              <Waveform className="h-3.5 w-3.5 text-amber-300" />
+              Mix & mastering engineers
+            </p>
+            <p className="text-xs text-white/65">
+              Grab stems from reference tracks to study balances, recreate tones, or build quick mockups for clients.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-white/50">
+              <Guitar className="h-3.5 w-3.5 text-amber-300" />
+              Creators & educators
+            </p>
+            <p className="text-xs text-white/65">
+              Solo out parts for lessons, breakdowns, and YouTube content without wrestling with DAW sessions.
+            </p>
           </div>
         </motion.section>
 
@@ -147,18 +236,139 @@ export function LandingPage() {
           </div>
         </motion.section>
 
+        {/* Personas → recommended plans */}
+        <motion.section
+          className="py-10"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.22 }}
+        >
+          <p className="eyebrow mb-4 text-center">Who Burnt Beats is for</p>
+          <div className="grid grid-cols-1 gap-4 text-xs text-white/70 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
+                Occasional creators
+              </p>
+              <p className="mb-2">
+                Need stems a few times a month for edits, remixes, or content drops.
+              </p>
+              <p className="mb-2 text-[11px] font-semibold text-amber-200">
+                Recommended: Top‑Up Pack
+              </p>
+              <button
+                type="button"
+                className="ghost-button px-3 py-1.5 text-[11px]"
+                onClick={() => {
+                  const el = document.getElementById("pricing");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                View plans
+              </button>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
+                Active artists &amp; producers
+              </p>
+              <p className="mb-2">
+                Bounce between projects every week and want a steady flow of stems.
+              </p>
+              <p className="mb-2 text-[11px] font-semibold text-amber-200">
+                Recommended: Basic or Premium
+              </p>
+              <button
+                type="button"
+                className="ghost-button px-3 py-1.5 text-[11px]"
+                onClick={() => {
+                  const el = document.getElementById("pricing");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                View plans
+              </button>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">
+                Studios &amp; engineers
+              </p>
+              <p className="mb-2">
+                Live in stems all day, juggling clients, reference mixes, and exports.
+              </p>
+              <p className="mb-2 text-[11px] font-semibold text-amber-200">
+                Recommended: Studio
+              </p>
+              <button
+                type="button"
+                className="ghost-button px-3 py-1.5 text-[11px]"
+                onClick={() => {
+                  const el = document.getElementById("pricing");
+                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                View plans
+              </button>
+            </div>
+          </div>
+        </motion.section>
+
         {/* Pricing — Stripe hosted pricing table */}
         <motion.section
+          id="pricing"
           className="py-16"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.25 }}
         >
           <p className="eyebrow mb-2 text-center">Pricing</p>
-          <p className="mb-10 text-center text-sm text-white/50">Simple plans. Cancel anytime.</p>
+          <p className="mb-10 text-center text-sm text-white/50">
+            Simple plans. Cancel anytime. No hidden fees or surprise overages.
+          </p>
+          <p className="mb-6 text-center text-xs font-medium text-white/60">
+            No contracts · Cancel online whenever you like · Start with a one‑time Top‑Up if you&apos;re unsure.
+          </p>
 
           <div className="glass-panel rounded-2xl border border-white/10 p-4 sm:p-6">
             <StripePricingTableEmbed />
+          </div>
+
+          {/* FAQ near pricing to remove objections */}
+          <div className="mt-10 grid gap-4 text-left text-xs text-white/65 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+                Will this work on my laptop?
+              </p>
+              <p>
+                Yes. Burnt Beats is tuned for CPU-friendly processing — no GPU or special hardware required. If you can
+                stream music, you can split stems.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+                How do tokens map to songs?
+              </p>
+              <p>
+                Tokens are based on audio length. Short ideas cost fewer tokens than full songs, so you can sketch,
+                test, and then commit to full exports when you&apos;re happy.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+                Can I cancel or change plans?
+              </p>
+              <p>
+                Absolutely. Manage everything through Stripe — upgrade, downgrade, or cancel with a couple of clicks.
+                No emails or phone calls required.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/50">
+                Do I have to subscribe?
+              </p>
+              <p>
+                No. If you only need stems occasionally, you can use the Top‑Up pack to buy a one‑time block of tokens
+                instead of a monthly plan.
+              </p>
+            </div>
           </div>
         </motion.section>
 

@@ -71,7 +71,6 @@ export function BatchQueue({
         type="button"
         onClick={onToggleExpand}
         aria-controls="batch-queue-items"
-        aria-expanded={isExpanded}
         className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-white/5"
       >
         <div className="flex items-center gap-3">
@@ -145,9 +144,6 @@ export function BatchQueue({
                     <div
                       className="mt-2 h-1 overflow-hidden rounded-full bg-white/10"
                       role="progressbar"
-                      aria-valuenow={item.progress}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
                       aria-label={`${item.fileName} progress`}
                     >
                       <motion.div
@@ -187,6 +183,11 @@ export function BatchQueue({
                   <Trash2 className="h-4 w-4" />
                   Clear completed
                 </button>
+              )}
+              {!allowProcess && (
+                <p className="w-full text-[10px] leading-4 text-amber-100/85">
+                  Upgrade to Premium or Studio to process all queued tracks in one go.
+                </p>
               )}
             </div>
           </motion.div>

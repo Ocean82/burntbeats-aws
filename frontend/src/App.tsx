@@ -44,6 +44,11 @@ import { useAppStore } from "./store/appStore";
 import { useUiModals } from "./hooks/useUiModals";
 import { useGuidanceSystem } from "./hooks/useGuidanceSystem";
 import { useUiLatencyMonitor, startUiLatencyMark, finishUiLatencyMark } from "./hooks/useUiLatencyMonitor";
+import { PricingPage } from "./components/PricingPage";
+import { Skeleton } from "./components/ui/skeleton";
+import { ProgressWidget } from "./components/ProgressWidget";
+import { FeedbackChip } from "./components/FeedbackChip";
+import { ENABLE_ONBOARDING_QUEST, ENABLE_PROGRESS_WIDGET } from "./config/uiFlags";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
@@ -233,6 +238,10 @@ export function App() {
   const [stemWaveforms, setStemWaveformsState] = useState<Record<string, number[]>>({});
   useWaveformCompute(stemBuffers, allStemEntries, setStemWaveformsState);
 
+  // ── In-app "routing": editor vs pricing view ─────────────────────────────────
+  const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
+  const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
+
   const visibleStems = useMemo(() => {
     const fromSplit = splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));
     const fromLoaded = loadedStems.map((s) => ({ ...getLoadedStemDefinition(s.id, s.label), id: s.id as StemId, url: s.url }));
@@ -240,6 +249,38 @@ export function App() {
     // Before splitting, show the full default rack (helps solo/mute keyboard shortcuts).
     return stemDefinitions.map((s) => ({ ...s, id: s.id as StemId }));
   }, [splitResultStems, loadedStems]);
+
+  const onboardingSteps = useMemo(
+    () => {
+      const base = [
+        {
+          id: 1,
+          label: "Upload a track",
+          done: !!uploadedFile,
+        },
+        {
+          id: 2,
+          label: "Split into stems",
+          done: splitResultStems.length > 0,
+        },
+        {
+          id: 3,
+          label: "Mix & tweak",
+          done: mixStems.length > 0,
+        },
+      ];
+      if (!ENABLE_ONBOARDING_QUEST) return base;
+      return [
+        ...base,
+        {
+          id: 4,
+          label: "Export a master mix",
+          done: hasCompletedFirstExport,
+        },
+      ];
+    },
+    [uploadedFile, splitResultStems.length, mixStems.length, hasCompletedFirstExport],
+  );
 
   useEffect(() => {
     if (!isSplitting) return;
@@ -361,8 +402,8 @@ export function App() {
             <ExportOptionsModal
               isOpen={showExportModal}
               onClose={() => closeModal("export")}
-              onExport={(opts) =>
-                void handleExportWithOptions(
+              onExport={async (opts) => {
+                await handleExportWithOptions(
                   opts,
                   stemBuffers,
                   mixStems,
@@ -372,8 +413,11 @@ export function App() {
                   () => closeModal("export"),
                   loadedStems.length === 0 ? splitJobId : null,
                   loadedStems.length === 0 ? splitResultStems.map((s) => s.id) : []
-                )
-              }
+                );
+                if (!hasCompletedFirstExport) {
+                  setHasCompletedFirstExport(true);
+                }
+              }}
               isExporting={isExporting}
               stemCount={mixStems.length}
             />
@@ -454,7 +498,12 @@ export function App() {
               </span>
             </div>
             {mixStems.length > 0 && <p className="text-xs text-green-400/80">{mixStems.length} stems ready</p>}
-            <div className="flex items-center gap-2">
+            {subscription.status === "active" && subscription.plan && (
+              <p className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-emerald-200/90">
+                Plan:&nbsp;<span>{subscription.plan}</span>
+              </p>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
                 <button type="button" onClick={undoStemStates} disabled={!canUndo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Undo (Ctrl+Z)" aria-label="Undo"><Undo2 className="h-4 w-4" /></button>
                 <div className="h-4 w-px bg-white/10" />
@@ -473,6 +522,36 @@ export function App() {
               ) : (
                 <HeaderUserButton />
               )}
+              {(() => {
+                const isInactive = subscription.status === "inactive";
+                const pricingLabel =
+                  isInactive
+                    ? "Upgrade · Pricing"
+                    : subscription.plan === "basic"
+                      ? "More tokens & faster queues"
+                      : "Manage plan";
+                const title =
+                  activeView === "pricing"
+                    ? "Back to main editor"
+                    : isInactive
+                      ? "View pricing & tokens"
+                      : "View or change your plan";
+                return (
+                  <button
+                    type="button"
+                    onClick={() => setActiveView((v) => (v === "editor" ? "pricing" : "editor"))}
+                    className={cn(
+                      "flex h-8 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition",
+                      isInactive
+                        ? "border border-amber-400/70 bg-amber-500/20 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.55)] hover:bg-amber-500/30 hover:text-white"
+                        : "border border-white/15 bg-black/20 text-white/70 hover:text-white",
+                    )}
+                    title={title}
+                  >
+                    {activeView === "pricing" ? "Back to editor" : pricingLabel}
+                  </button>
+                );
+              })()}
               {subscription.status === "active" && !localDevFullApp && (
                 <button
                   type="button"
@@ -487,160 +566,338 @@ export function App() {
           </div>
         </header>
 
-        {/* Marquee */}
-        <motion.div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm" initial={{ opacity: 0.6 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-          <div className="flex w-max animate-scroll-text gap-12 py-2.5 text-xs uppercase tracking-[0.35em] text-white/60">
-            <span>Drop track · Split · Mix · Export</span>
-            <span>Fire-polished stem control with mirrored glass precision.</span>
-            <span>Drop track · Split · Mix · Export</span>
-            <span>Fire-polished stem control with mirrored glass precision.</span>
-          </div>
-        </motion.div>
-
-        <motion.section
-          className="flex flex-col gap-4"
-          initial="hidden"
-          animate="visible"
-          variants={{ visible: { transition: { staggerChildren: 0.08 } }, hidden: {} }}
-        >
-          {/* Top bar: Processing Settings (horizontal) */}
-          <motion.div
-            onPointerDown={handleGuidancePanelInteract}
-            className={cn(
-              "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
-              guidanceTarget === "source" && guidanceRingClass
-            )}
-            variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+        {/* Either show the main editor view or the dedicated pricing page */}
+        {activeView === "pricing" ? (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <SplitErrorBoundary>
-              <ProcessingSettingsPanel
-                sourceMode={sourceMode}
-                onSourceModeChange={setSourceMode}
-                uploadName={uploadName}
-                loadedStemCount={loadedStems.length}
-                isDragging={isDragging}
-                onSetIsDragging={(next) => setUploadState((prev) => ({ ...prev, isDragging: next }))}
-                loadStemsInputRef={loadStemsInputRef}
-                onLoadStems={handleLoadStems}
-                loadedStems={loadedStems}
-                onRemoveLoadedStem={removeLoadedStem}
-                uploadedFile={uploadedFile}
-                onBrowseUpload={handleBrowseUpload}
-                onClearUpload={handleClearUpload}
-                onDropUpload={(file) => handleFileFromInput(file)}
-                inputRef={inputRef}
-                onUploadFileInput={(file) => handleFileFromInput(file)}
-                quality={quality}
-                onQualityChange={(next) => setUploadState((prev) => ({ ...prev, quality: next }))}
-                stemQualityOptions={stemQualityOptions}
-                canExpandToFourStems={canExpandToFourStems}
-                canUseBatchQueue={canUseBatchQueue}
-                onUpgradeToPremium={() => void subscription.startCheckout("premium")}
-                onSplit={(requestedStemMode) => {
-                  startUiLatencyMark("mixer-ready-after-stems");
-                  void triggerSplit(requestedStemMode);
-                }}
-                isSplitting={isSplitting}
-                splitResultStemsLength={splitResultStems.length}
-                isExpanding={isExpanding}
-                onExpand={() => void triggerExpand()}
-                splitError={splitError}
-                onDismissError={() => setSplitError(null)}
-                onAddToQueue={() => addToBatchQueue(uploadedFile)}
-              />
-              {subscription.status === "inactive" && (
-                <div className="mt-3 border-t border-white/10 pt-3">
-                  <PaywallBanner subscription={subscription} />
-                </div>
-              )}
-            </SplitErrorBoundary>
-          </motion.div>
+            <PricingPage
+              subscription={subscription}
+              onClose={() => setActiveView("editor")}
+              usageContext={{
+                hasCompletedFirstExport,
+                splitsThisSession: splitResultStems.length,
+              }}
+            />
+          </motion.section>
+        ) : (
+          <>
+            {/* Marquee */}
+            <motion.div
+              className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm"
+              initial={{ opacity: 0.6 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="flex w-max animate-scroll-text gap-12 py-2.5 text-xs uppercase tracking-[0.35em] text-white/60">
+                <span>Drop track · Split · Mix · Export</span>
+                <span>Hit your first finished stem in minutes — then batch the rest.</span>
+                <span>Drop track · Split · Mix · Export</span>
+                <span>Premium & Studio plans unlock faster queues and more stems.</span>
+              </div>
+            </motion.div>
 
-          {/* Full-width Mixer workspace */}
-          <motion.div
-            onPointerDown={handleGuidancePanelInteract}
-            className={cn(
-              // `glass-panel` uses `overflow: hidden`; allow the mixer waveform/panels to overflow so menus are reachable.
-              "glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 overflow-visible",
-              guidanceTarget === "mixer" && guidanceRingClass
-            )}
-            variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.4 }}
-          >
-            <AudioErrorBoundary>
-              <Suspense fallback={<div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-8 text-center text-sm text-white/50">Loading mixer...</div>}>
-                <MixerPanel
-                  mixStemCount={mixStems.length}
-                  isPlayingMix={isPlayingMix}
-                  onPlayStop={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
-                  onStopMix={handleStopMix}
-                  onSeekMix={handleSeekMix}
-                  isExporting={isExporting}
-                  onExport={() => {
-                    openModal("export");
-                  }}
-                  isComparingExport={isComparingExport}
-                  onCompareExport={
-                    loadedStems.length === 0 && typeof splitJobId === "string" && splitJobId.length > 0 && splitResultStems.length > 0
-                      ? () => {
-                          void (async () => {
-                            setIsComparingExport(true);
-                            setExportCompareSummary(null);
-                            try {
-                              const metrics = await compareMasterExportServerAndClient({
-                                serverExportJobId: splitJobId,
-                                stemBuffers,
-                                splitResultStems,
-                                stemStates,
-                                uploadName,
-                                normalize: true,
-                                stemIds: splitResultStems.map((s) => s.id),
-                              });
-                              if (!metrics.ok) {
-                                setExportCompareSummary(`Compare failed: ${metrics.error ?? "unknown error"}`);
-                                return;
-                              }
-                              const rmsDb = metrics.rmsDiffDb != null ? `${metrics.rmsDiffDb.toFixed(1)} dB` : "n/a";
-                              setExportCompareSummary(
-                                `Server vs Client: duration diff ${metrics.durationDiffSec?.toFixed(3) ?? "n/a"}s, RMS diff ${rmsDb}, peak diff ${metrics.peakDiff?.toFixed(4) ?? "n/a"}`
-                              );
-                            } catch (e) {
-                              setExportCompareSummary(`Compare failed: ${e instanceof Error ? e.message : "unknown error"}`);
-                            } finally {
-                              setIsComparingExport(false);
-                            }
-                          })();
+            <motion.section
+              className="flex flex-col gap-4"
+              initial="hidden"
+              animate="visible"
+              variants={{ visible: { transition: { staggerChildren: 0.08 } }, hidden: {} }}
+            >
+              {/* Top bar: Processing Settings (horizontal) */}
+              <motion.div
+                onPointerDown={handleGuidancePanelInteract}
+                className={cn(
+                  "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
+                  guidanceTarget === "source" && guidanceRingClass
+                )}
+                variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+                transition={{ duration: 0.4 }}
+              >
+                <SplitErrorBoundary>
+                  <ProcessingSettingsPanel
+                    sourceMode={sourceMode}
+                    onSourceModeChange={setSourceMode}
+                    uploadName={uploadName}
+                    loadedStemCount={loadedStems.length}
+                    isDragging={isDragging}
+                    onSetIsDragging={(next) => setUploadState((prev) => ({ ...prev, isDragging: next }))}
+                    loadStemsInputRef={loadStemsInputRef}
+                    onLoadStems={handleLoadStems}
+                    loadedStems={loadedStems}
+                    onRemoveLoadedStem={removeLoadedStem}
+                    uploadedFile={uploadedFile}
+                    onBrowseUpload={handleBrowseUpload}
+                    onClearUpload={handleClearUpload}
+                    onDropUpload={(file) => handleFileFromInput(file)}
+                    inputRef={inputRef}
+                    onUploadFileInput={(file) => handleFileFromInput(file)}
+                    quality={quality}
+                    onQualityChange={(next) => setUploadState((prev) => ({ ...prev, quality: next }))}
+                    stemQualityOptions={stemQualityOptions}
+                    canExpandToFourStems={canExpandToFourStems}
+                    canUseBatchQueue={canUseBatchQueue}
+                    onUpgradeToPremium={() => void subscription.startCheckout("premium")}
+                    onSplit={(requestedStemMode) => {
+                      startUiLatencyMark("mixer-ready-after-stems");
+                      void triggerSplit(requestedStemMode);
+                    }}
+                    isSplitting={isSplitting}
+                    splitResultStemsLength={splitResultStems.length}
+                    isExpanding={isExpanding}
+                    onExpand={() => void triggerExpand()}
+                    splitError={splitError}
+                    onDismissError={() => setSplitError(null)}
+                    onAddToQueue={() => addToBatchQueue(uploadedFile)}
+                  />
+                  {subscription.status === "inactive" && (
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                      <PaywallBanner subscription={subscription} />
+                    </div>
+                  )}
+                </SplitErrorBoundary>
+              </motion.div>
+
+              {/* Full-width Mixer workspace */}
+              <motion.div
+                onPointerDown={handleGuidancePanelInteract}
+                className={cn(
+                  // `glass-panel` uses `overflow: hidden`; allow the mixer waveform/panels to overflow so menus are reachable.
+                  "glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 overflow-visible",
+                  guidanceTarget === "mixer" && guidanceRingClass
+                )}
+                variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
+                transition={{ duration: 0.4 }}
+              >
+                <AudioErrorBoundary>
+                  {/* Onboarding checklist */}
+                  <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-[11px] text-white/70">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+                          {ENABLE_ONBOARDING_QUEST ? "First project quest" : "Getting started"}
+                        </span>
+                        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-amber-400 transition-[width]"
+                            style={{
+                              width: `${
+                                (onboardingSteps.filter((s) => s.done).length / onboardingSteps.length) * 100
+                              }%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {ENABLE_ONBOARDING_QUEST && (
+                        <span className="text-[10px] text-white/45">
+                          Step {onboardingSteps.filter((s) => s.done).length} of {onboardingSteps.length}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {onboardingSteps.map((step) => (
+                        <span
+                          key={step.id}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
+                            step.done
+                              ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
+                              : "border-white/10 bg-white/5 text-white/60",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "h-1.5 w-1.5 rounded-full",
+                              step.done ? "bg-emerald-300" : "bg-white/35",
+                            )}
+                          />
+                          {step.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {ENABLE_PROGRESS_WIDGET && (
+                    <div className="mb-4">
+                      <ProgressWidget
+                        milestones={[
+                          { id: "first-split", label: "First split", done: splitResultStems.length > 0 },
+                          { id: "first-export", label: "First export", done: hasCompletedFirstExport },
+                          {
+                            id: "three-projects",
+                            label: "3 projects this week",
+                            done: mixStems.length >= 3,
+                          },
+                        ]}
+                        onViewPlans={
+                          subscription.status === "inactive"
+                            ? () => setActiveView("pricing")
+                            : undefined
                         }
-                      : undefined
-                  }
-                  onResetLevels={resetTrackAdjustments}
-                  hasStemBuffers={Object.keys(stemBuffers).length > 0}
-                  stems={visibleStems as StemWithOptionalUrl[]}
-                  waveforms={stemWaveforms}
-                  durations={Object.fromEntries(visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]))}
-                  stemStates={stemStates}
-                  getPlayheadPosition={getPlayheadPosition}
-                  subscribePlayheadPosition={subscribePlayheadPosition}
-                  isLoadingStems={isLoadingStems}
-                  activeStemId={activeStemId || visibleStems[0]?.id}
-                  onActiveStemChange={setActiveStemId}
-                  onStemStateChange={handleStemStateChange}
-                  onPreviewStem={handlePreviewStemFromMixer}
-                  playingStemId={playingStem}
-                  getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
-                  getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
-                />
-              </Suspense>
-              {exportCompareSummary && (
-                <p className="mt-3 text-xs text-white/70" role="status" aria-live="polite">
-                  {exportCompareSummary}
-                </p>
-              )}
-            </AudioErrorBoundary>
-          </motion.div>
+                      />
+                    </div>
+                  )}
 
-        </motion.section>
+                  {ENABLE_ONBOARDING_QUEST &&
+                    hasCompletedFirstExport &&
+                    subscription.status === "inactive" && (
+                      <div className="mb-4 rounded-2xl border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-[11px] text-amber-100">
+                        <p className="mb-1 font-semibold">Nice — you just finished your first stem.</p>
+                        <p className="mb-2 text-amber-100/85">
+                          If you&apos;re doing this regularly, a plan will save you time and tokens.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setActiveView("pricing")}
+                          className="rounded-full bg-amber-400 px-3 py-1 text-[11px] font-semibold text-black hover:bg-amber-300"
+                        >
+                          See plans for regular use
+                        </button>
+                      </div>
+                    )}
+
+                  {uploadedFile == null && mixStems.length === 0 && (
+                    <div className="mb-4 rounded-2xl border border-dashed border-white/15 bg-black/30 px-4 py-3 text-[11px] text-white/75">
+                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
+                        Start your first project
+                      </p>
+                      <ul className="mb-2 list-disc space-y-0.5 pl-4 text-white/70">
+                        <li>Create DJ edits and mashups from any track.</li>
+                        <li>Study reference mixes by soloing drums, bass, or vocals.</li>
+                        <li>Pull parts for lessons, breakdowns, or content.</li>
+                      </ul>
+                      <button
+                        type="button"
+                        onClick={handleBrowseUpload}
+                        className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white"
+                      >
+                        Upload a track
+                      </button>
+                    </div>
+                  )}
+
+                  <Suspense
+                    fallback={
+                      <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-6">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                          <div className="space-y-2">
+                            <Skeleton className="h-3 w-32 bg-white/10" />
+                            <Skeleton className="h-4 w-40 bg-white/10" />
+                          </div>
+                          <Skeleton className="h-9 w-24 bg-white/10" />
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                          {Array.from({ length: 4 }).map((_, idx) => (
+                            <div key={idx} className="space-y-2 rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                              <Skeleton className="h-3 w-24 bg-white/10" />
+                              <Skeleton className="h-24 w-full bg-white/5" />
+                              <Skeleton className="h-2 w-20 bg-white/10" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    }
+                  >
+                    <MixerPanel
+                      mixStemCount={mixStems.length}
+                      isPlayingMix={isPlayingMix}
+                      onPlayStop={() => void handlePlayMix(mixStems, stemStates, stemBuffers)}
+                      onStopMix={handleStopMix}
+                      onSeekMix={handleSeekMix}
+                      isExporting={isExporting}
+                      onExport={() => {
+                        openModal("export");
+                      }}
+                      isComparingExport={isComparingExport}
+                      onCompareExport={
+                        loadedStems.length === 0 &&
+                        typeof splitJobId === "string" &&
+                        splitJobId.length > 0 &&
+                        splitResultStems.length > 0
+                          ? () => {
+                              void (async () => {
+                                setIsComparingExport(true);
+                                setExportCompareSummary(null);
+                                try {
+                                  const metrics = await compareMasterExportServerAndClient({
+                                    serverExportJobId: splitJobId,
+                                    stemBuffers,
+                                    splitResultStems,
+                                    stemStates,
+                                    uploadName,
+                                    normalize: true,
+                                    stemIds: splitResultStems.map((s) => s.id),
+                                  });
+                                  if (!metrics.ok) {
+                                    setExportCompareSummary(
+                                      `Compare failed: ${metrics.error ?? "unknown error"}`
+                                    );
+                                    return;
+                                  }
+                                  const rmsDb =
+                                    metrics.rmsDiffDb != null
+                                      ? `${metrics.rmsDiffDb.toFixed(1)} dB`
+                                      : "n/a";
+                                  setExportCompareSummary(
+                                    `Server vs Client: duration diff ${
+                                      metrics.durationDiffSec?.toFixed(3) ?? "n/a"
+                                    }s, RMS diff ${rmsDb}, peak diff ${
+                                      metrics.peakDiff?.toFixed(4) ?? "n/a"
+                                    }`
+                                  );
+                                } catch (e) {
+                                  setExportCompareSummary(
+                                    `Compare failed: ${
+                                      e instanceof Error ? e.message : "unknown error"
+                                    }`
+                                  );
+                                } finally {
+                                  setIsComparingExport(false);
+                                }
+                              })();
+                            }
+                          : undefined
+                      }
+                      onResetLevels={resetTrackAdjustments}
+                      hasStemBuffers={Object.keys(stemBuffers).length > 0}
+                      stems={visibleStems as StemWithOptionalUrl[]}
+                      waveforms={stemWaveforms}
+                      durations={Object.fromEntries(
+                        visibleStems.map((s) => [
+                          s.id,
+                          stemBuffers[s.id]?.duration ?? 0,
+                        ])
+                      )}
+                      stemStates={stemStates}
+                      getPlayheadPosition={getPlayheadPosition}
+                      subscribePlayheadPosition={subscribePlayheadPosition}
+                      isLoadingStems={isLoadingStems}
+                      activeStemId={activeStemId || visibleStems[0]?.id}
+                      onActiveStemChange={setActiveStemId}
+                      onStemStateChange={handleStemStateChange}
+                      onPreviewStem={handlePreviewStemFromMixer}
+                      playingStemId={playingStem}
+                      getMasterAnalyserTimeDomainData={
+                        getMasterAnalyserTimeDomainData
+                      }
+                      getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
+                    />
+                  </Suspense>
+                  {exportCompareSummary && (
+                    <p
+                      className="mt-3 text-xs text-white/70"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {exportCompareSummary}
+                    </p>
+                  )}
+                </AudioErrorBoundary>
+              </motion.div>
+            </motion.section>
+          </>
+        )}
       </div>
 
       {/* ── STEM FALL game panel (slide up from bottom) ── */}
@@ -733,6 +990,8 @@ export function App() {
           <p className="mt-2 text-[10px] text-white/45">last | avg | p50 | p95 (count)</p>
         </div>
       )}
+
+      {activeView === "editor" && <FeedbackChip />}
     </div>
   );
 }

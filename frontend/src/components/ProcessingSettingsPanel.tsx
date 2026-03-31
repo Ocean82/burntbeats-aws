@@ -345,18 +345,25 @@ export function ProcessingSettingsPanel({
 
         {/* Queue button */}
         {sourceMode === "split" && (
-          <button
-            type="button"
-            onClick={onAddToQueue}
-            disabled={!uploadedFile || isSplitting || !canUseBatchQueue}
-            title={canUseBatchQueue ? "Add to batch queue" : "Requires Premium or Studio"}
-            className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <span className="inline-flex items-center gap-1">
-              + Queue
-              {!canUseBatchQueue && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
-            </span>
-          </button>
+          <div className="flex shrink-0 flex-col items-start gap-1">
+            <button
+              type="button"
+              onClick={onAddToQueue}
+              disabled={!uploadedFile || isSplitting || !canUseBatchQueue}
+              title={canUseBatchQueue ? "Add to batch queue" : "Requires Premium or Studio"}
+              className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span className="inline-flex items-center gap-1">
+                + Queue
+                {!canUseBatchQueue && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+              </span>
+            </button>
+            {!canUseBatchQueue && (
+              <span className="max-w-[12rem] text-[10px] text-white/45">
+                Premium &amp; Studio plans let you run whole queues automatically while you work.
+              </span>
+            )}
+          </div>
         )}
 
         {/* Expanding indicator */}
