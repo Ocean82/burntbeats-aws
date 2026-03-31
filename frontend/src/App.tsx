@@ -522,6 +522,17 @@ export function App() {
               ) : (
                 <HeaderUserButton />
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  const url = import.meta.env.VITE_FULL_PRICING_URL ?? "https://www.burntbeats.com/pricing";
+                  window.open(url, "_blank", "noopener,noreferrer");
+                }}
+                className="flex h-8 items-center gap-1.5 rounded-xl border border-white/15 bg-black/20 px-3 text-xs text-white/70 transition hover:text-white tap-feedback"
+                title="Open full pricing page in a new tab"
+              >
+                Full pricing &amp; features
+              </button>
               {(() => {
                 const isInactive = subscription.status === "inactive";
                 const pricingLabel =

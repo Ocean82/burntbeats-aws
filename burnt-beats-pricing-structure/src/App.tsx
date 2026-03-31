@@ -177,12 +177,9 @@ export default function App() {
               </div>
             </div>
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm">Features</a>
-              <a href="#" className="text-orange-400 font-medium text-sm">Pricing</a>
-              <a href="#" className="text-zinc-400 hover:text-white transition-colors text-sm">About</a>
-              <button className="px-4 py-2 rounded-lg bg-zinc-800 text-white text-sm font-medium hover:bg-zinc-700 transition-colors border border-zinc-700">
-                Sign In
-              </button>
+              <a href="#features" className="text-zinc-400 hover:text-white transition-colors text-sm">Features</a>
+              <a href="#pricing" className="text-orange-400 font-medium text-sm">Pricing</a>
+              <a href="#enterprise" className="text-zinc-400 hover:text-white transition-colors text-sm">Enterprise</a>
             </nav>
           </div>
         </div>
