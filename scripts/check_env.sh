@@ -25,7 +25,9 @@ load_env() {
     [[ "$line" =~ ^[[:space:]]*# ]] && continue
     [[ -z "${line// }" ]] && continue
     if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
-      ref["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
+      val="${BASH_REMATCH[2]}"
+      val="${val%$'\r'}"
+      ref["${BASH_REMATCH[1]}"]="$val"
     fi
   done < "$file"
 }
@@ -103,6 +105,19 @@ header "Backend optional vars"
 
 [[ -n "${BENV[STEM_SERVICE_URL]:-}" ]] && pass "STEM_SERVICE_URL is set (${BENV[STEM_SERVICE_URL]})" \
   || warn "STEM_SERVICE_URL not set — defaults to http://localhost:5000"
+
+# Metering safety defaults
+if [[ "${BENV[USAGE_TOKENS_ENABLED]:-}" =~ ^(1|true|yes)$ ]]; then
+  pass "USAGE_TOKENS_ENABLED is ON"
+else
+  warn "USAGE_TOKENS_ENABLED is OFF — this can allow unmetered use"
+fi
+
+if [[ "${BENV[ALLOW_UNMETERED_PROD]:-}" =~ ^(1|true|yes)$ ]]; then
+  warn "ALLOW_UNMETERED_PROD is ON — production startup guard is bypassed"
+else
+  pass "ALLOW_UNMETERED_PROD is OFF"
+fi
 
 # Warn if FRONTEND_ORIGINS still has localhost in production
 if [[ -n "${BENV[FRONTEND_ORIGINS]:-}" ]]; then

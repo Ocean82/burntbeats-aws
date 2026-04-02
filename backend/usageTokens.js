@@ -215,6 +215,19 @@ function pruneProcessedCreditEvents(m) {
 }
 
 /**
+ * Current billing period from a Stripe Subscription.
+ * Newer Stripe API shapes expose `current_period_*` on subscription items, not the parent object.
+ * @param {import("stripe").Stripe.Subscription} sub
+ */
+export function subscriptionBillingPeriod(sub) {
+  const s = /** @type {any} */ (sub);
+  const item0 = s.items?.data?.[0];
+  const start = s.current_period_start ?? item0?.current_period_start;
+  const end = s.current_period_end ?? item0?.current_period_end;
+  return { periodStart: start, periodEnd: end };
+}
+
+/**
  * Idempotent monthly credit from Stripe subscription (same period not credited twice).
  * Uses optional Redis lock per (user, billing period) for multi-worker safety, plus
  * Clerk metadata for period + optional Stripe event id deduplication.
@@ -229,8 +242,7 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
   const clerk = getClerkClient();
   if (!clerk) return;
 
-  const subAny = /** @type {any} */ (sub);
-  const periodStart = subAny.current_period_start;
+  const { periodStart, periodEnd } = subscriptionBillingPeriod(sub);
   const redis = await getRedis();
   /** @type {string | null} */
   let lockKey = null;
@@ -257,7 +269,7 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
       const ev = /** @type {Record<string, number>} */ (rec.processedStripeCreditEventIds);
       if (ev[stripeEventId]) return;
     }
-    if (rec.lastCreditedPeriodStart === subAny.current_period_start) {
+    if (rec.lastCreditedPeriodStart === periodStart) {
       return;
     }
     const item = sub.items?.data?.[0];
@@ -265,7 +277,7 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
     if (!priceId) return;
     const price = await stripe.prices.retrieve(priceId);
     const grant = tokensPerMonthFromPrice(price);
-    const periodEndMs = subAny.current_period_end ? subAny.current_period_end * 1000 : null;
+    const periodEndMs = periodEnd != null && typeof periodEnd === "number" ? periodEnd * 1000 : null;
     const curBal = Number(rec.balance) || 0;
 
     /** @type {Record<string, number>} */
@@ -285,14 +297,14 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
           ...rec,
           balance: curBal + grant,
           periodEnd: periodEndMs,
-          lastCreditedPeriodStart: subAny.current_period_start,
+          lastCreditedPeriodStart: periodStart,
           lastCreditAt: Date.now(),
           lastCreditAmount: grant,
           ...(stripeEventId ? { processedStripeCreditEventIds: nextProcessed } : {}),
         },
       },
     });
-    console.log(`[usageTokens] credited ${grant} tokens user=${clerkUserId} period=${sub.current_period_start}`);
+    console.log(`[usageTokens] credited ${grant} tokens user=${clerkUserId} period=${periodStart}`);
   } finally {
     if (redis && lockKey) {
       try {

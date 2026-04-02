@@ -47,6 +47,10 @@ const REQUIRED_ENV_WARNINGS = [];
 if (!process.env.STRIPE_SECRET_KEY) REQUIRED_ENV_WARNINGS.push("STRIPE_SECRET_KEY (billing will not work)");
 if (!process.env.CLERK_SECRET_KEY) REQUIRED_ENV_WARNINGS.push("CLERK_SECRET_KEY (auth will not work)");
 if (!process.env.JOB_TOKEN_SECRET) REQUIRED_ENV_WARNINGS.push("JOB_TOKEN_SECRET (job tokens disabled — status/file endpoints are unprotected)");
+const ALLOW_UNMETERED_PROD = ["1", "true", "yes"].includes((process.env.ALLOW_UNMETERED_PROD || "").toLowerCase());
+if (process.env.NODE_ENV === "production" && !ALLOW_UNMETERED_PROD && !isUsageTokensEnabled()) {
+  REQUIRED_ENV_WARNINGS.push("USAGE_TOKENS_ENABLED=1 (metered paywall enforcement)");
+}
 if (REQUIRED_ENV_WARNINGS.length > 0 && process.env.NODE_ENV !== "test") {
   if (process.env.NODE_ENV === "production") {
     console.error(`[startup] FATAL: Missing required env vars in production: ${REQUIRED_ENV_WARNINGS.join(", ")}`);
@@ -252,6 +256,29 @@ function authMiddleware(req, res, next) {
 }
 
 /**
+ * Enforce Clerk auth before upload/scanning work when metered tokens are enabled.
+ * This prevents unauthenticated clients from consuming upload/malware-scan resources.
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ */
+async function requireUsageAuthPreUpload(req, res, next) {
+  if (!isUsageTokensEnabled()) return next();
+  try {
+    const userId = await verifyClerkBearer(req);
+    /** @type {any} */ (req)._usageUserId = userId;
+    return next();
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
+        ? /** @type {{ status?: number }} */ (e).status
+        : 401;
+    const msg = e instanceof Error ? e.message : "Missing auth token";
+    return res.status(status).json({ error: msg });
+  }
+}
+
+/**
  * Attach stem-service auth header when token protection is enabled.
  * @param {Record<string, string>} headers
  * @returns {Record<string, string>}
@@ -393,7 +420,7 @@ const MAX_UPLOAD_MB = Math.round((Number(process.env.MAX_UPLOAD_BYTES) || 500 * 
 // Time to wait for stem service to accept (202). Separation runs in background; frontend polls for completion.
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(process.env.SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 
-app.post("/api/stems/split", authMiddleware, (req, res, next) => {
+app.post("/api/stems/split", authMiddleware, requireUsageAuthPreUpload, (req, res, next) => {
   upload.single("file")(req, res, (err) => {
     if (err) {
       if (err.code === "LIMIT_FILE_SIZE") {
@@ -449,7 +476,7 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   let usageReserved = false;
   if (isUsageTokensEnabled()) {
     try {
-      usageUserId = await verifyClerkBearer(req);
+      usageUserId = /** @type {any} */ (req)._usageUserId || await verifyClerkBearer(req);
       const durationSec = await getAudioDurationSeconds(filePath);
       usageCost = computeSplitCost(durationSec, quality, stems);
       await reserveUsageTokens(usageUserId, usageCost);
