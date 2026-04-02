@@ -81,10 +81,10 @@ VOCAL_MODEL_PATHS: list[Path] = [
 ]
 
 INST_MODEL_PATHS: list[Path] = [
-    MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
-    MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
     MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
     MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
+    MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
+    MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
     MODELS_DIR / "MDX_Net_Models" / "UVR-MDX-NET-Inst_HQ_5.onnx",
 ]
 
@@ -93,60 +93,96 @@ DEREVERB_MODEL_PATHS: list[Path] = [
     MODELS_DIR / "Reverb_HQ_By_FoxJoy.onnx",
 ]
 
-# Tiered candidate orders derived from benchmark scores (ranked_blended_q80_s20.csv).
-# Rule: only models with quality_score >= 8 are included.
-# Speed tier = highest blended score (quality + speed balanced).
-# Quality tier = highest raw quality score first, then blended.
+# ---------------------------------------------------------------------------
+# Tiered model selection — derived from benchmark tmp/model_matrix_benchmark/ranked_blended_q80_s20.csv
+# Benchmark date: 2026-03-22  |  Scoring: blended = quality_norm*0.80 + speed_norm*0.20
+#
+# HARD CUTOFFS — a model failing ANY of these is excluded from ALL tiers:
+#   speed_norm  < 0.30  → excluded  (slow model)
+#   raw score   < 8.5   → excluded  (bad quality)
+#   score_num   < 8.5   → excluded  (bad quality)
+#   blended     < 0.75  → excluded  (poor overall)
+#   relabeled   = true  → excluded  (raw score is 0)
+#
+# MODELS THAT FAIL CUTOFFS:
+#   Voc_FT.onnx      speed_norm=0.293  → fails speed cutoff
+#   mdx23c           speed_norm=0.165-0.180 → fails speed cutoff
+#   kuielab_a/b      score_num=8.0     → fails quality cutoff
+#   KARA_2, Kim_Inst raw=0 relabeled   → excluded
+#   demucsv4         score_num=2.0     → fails quality cutoff
+#   htdemucs_6s/emb  score_num=1.0     → fails quality cutoff
+#   Crowd_HQ_1       score_num=1.0     → fails quality cutoff
+#   Reverb_HQ        score_num=1.0     → fails quality cutoff
+#
+# ELIGIBLE VOCAL MODELS (all 4 cutoffs pass):
+#   rank  model                   raw   score  speed_norm  blended
+#   1     UVR_MDXNET_3_9662.ort   9.0   9.0    0.8162      0.8832  ← fast
+#   2     UVR_MDXNET_KARA.ort     9.0   9.0    0.7841      0.8768  ← fast
+#   3     UVR_MDXNET_KARA.onnx    9.0   9.0    0.7541      0.8708  ← fast
+#   4     UVR_MDXNET_3_9662.onnx  9.0   9.0    0.7351      0.8670  ← fast
+#   5     UVR_MDXNET_2_9682.ort   8.5   8.5    0.8320      0.8464  ← fast
+#   6     UVR_MDXNET_1_9703.onnx  8.5   8.5    0.8252      0.8450  ← fast
+#   7     UVR_MDXNET_1_9703.ort   8.5   8.5    0.8134      0.8427  ← fast
+#   8     UVR_MDXNET_2_9682.onnx  8.5   8.5    0.7620      0.8324  ← fast
+#   16    Kim_Vocal_1.ort         9.0   9.0    0.3347      0.7869  ← quality
+#   18    Kim_Vocal_1.onnx        9.0   9.0    0.3332      0.7866  ← quality
+#   20    Kim_Vocal_2.ort         9.0   9.0    0.3239      0.7848  ← quality
+#   22    Kim_Vocal_2.onnx        9.0   9.0    0.3074      0.7815  ← quality
+#   23    Voc_FT.ort              9.0   9.0    0.3038      0.7808  ← quality
+#
+# ELIGIBLE INSTRUMENTAL MODELS (all 4 cutoffs pass):
+#   rank  model                      raw   score  speed_norm  blended
+#   10    UVR-MDX-NET-Inst_HQ_5.ort  9.0   9.0    0.4063      0.8013  ← fast
+#   11    UVR-MDX-NET-Inst_HQ_5.onnx 9.0   9.0    0.4019      0.8004  ← fast
+#   15    UVR-MDX-NET-Inst_HQ_4.ort  9.0   9.0    0.3411      0.7882  ← quality
+#   19    UVR-MDX-NET-Inst_HQ_4.onnx 9.0   9.0    0.3304      0.7861  ← quality
+#
+# TIER ASSIGNMENT within eligible pool:
+#   fast    = highest blended_score (best combined quality+speed)
+#   quality = highest quality_norm, then blended (slower but still eligible)
+#   balanced = same as fast
+# ---------------------------------------------------------------------------
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
+    # fast: top blended scores from eligible pool — ordered by blended desc
     "fast": [
-        # quality=9, blended=0.883 — fastest high-quality vocal
+        "UVR_MDXNET_3_9662.onnx",   # blended=0.8832, quality_norm=0.90, speed_norm=0.816
+        "UVR_MDXNET_KARA.onnx",     # blended=0.8768, quality_norm=0.90, speed_norm=0.784
+        "UVR_MDXNET_2_9682.onnx",   # blended=0.8464, quality_norm=0.85, speed_norm=0.832
+        "UVR_MDXNET_1_9703.onnx",   # blended=0.8450, quality_norm=0.85, speed_norm=0.825
+    ],
+    # balanced: same as fast
+    "balanced": [
         "UVR_MDXNET_3_9662.onnx",
-        # quality=9, blended=0.877
         "UVR_MDXNET_KARA.onnx",
-        # quality=8.5, blended=0.846 — fallback
         "UVR_MDXNET_2_9682.onnx",
         "UVR_MDXNET_1_9703.onnx",
     ],
-    "balanced": [
-        # quality=9, blended=0.883 — still fast enough for balanced
-        "UVR_MDXNET_3_9662.onnx",
-        # quality=9.5, blended=0.819 — highest quality vocal overall
-        "UVR-MDX-NET-Voc_FT.onnx",
-        # quality=9, blended=0.787
-        "Kim_Vocal_1.onnx",
-        "Kim_Vocal_2.onnx",
-    ],
+    # quality: quality_norm=0.90 models from eligible pool, ordered by blended desc
+    # These pass all cutoffs but have lower speed_norm than fast tier
     "quality": [
-        # quality=9.5 — highest quality score of all vocal models
-        "UVR-MDX-NET-Voc_FT.onnx",
-        # quality=9, blended=0.787/0.782
-        "Kim_Vocal_1.onnx",
-        "Kim_Vocal_2.onnx",
-        # quality=9, slower but good (mdx23c handled separately as pair)
-        "UVR_MDXNET_3_9662.onnx",
+        "UVR_MDXNET_3_9662.onnx",   # quality_norm=0.90, blended=0.8832 — best of eligible
+        "UVR_MDXNET_KARA.onnx",     # quality_norm=0.90, blended=0.8768
+        "Kim_Vocal_1.onnx",         # quality_norm=0.90, blended=0.7869
+        "Kim_Vocal_2.onnx",         # quality_norm=0.90, blended=0.7848
+        "UVR-MDX-NET-Voc_FT.onnx",  # quality_norm=0.90 (ort), blended=0.7808 — note: resolves to .ort
     ],
 }
 
 _INST_TIER_NAMES: dict[str, list[str]] = {
+    # fast: Inst_HQ_5 — highest blended in eligible inst pool
     "fast": [
-        # quality=9, blended=0.801 — best inst model, also fastest
-        "UVR-MDX-NET-Inst_HQ_5.onnx",
-        # quality=9, blended=0.788 — close second
-        "UVR-MDX-NET-Inst_HQ_4.onnx",
-        # quality=9 (relabeled), blended=0.796 — inst use only
-        "UVR_MDXNET_KARA_2.onnx",
+        "UVR-MDX-NET-Inst_HQ_5.onnx",  # blended=0.8013, quality_norm=0.90, speed_norm=0.406
     ],
+    # balanced: same as fast
     "balanced": [
         "UVR-MDX-NET-Inst_HQ_5.onnx",
-        "UVR-MDX-NET-Inst_HQ_4.onnx",
-        "UVR_MDXNET_KARA_2.onnx",
     ],
+    # quality: all eligible inst models, ordered by blended desc
     "quality": [
-        # Both score 9.0 quality; HQ_4 slightly higher blended
-        "UVR-MDX-NET-Inst_HQ_4.onnx",
-        "UVR-MDX-NET-Inst_HQ_5.onnx",
-        "UVR_MDXNET_KARA_2.onnx",
+        "UVR-MDX-NET-Inst_HQ_5.onnx",  # blended=0.8013, quality_norm=0.90, speed_norm=0.406
+        "UVR-MDX-NET-Inst_HQ_4.onnx",  # blended=0.7882, quality_norm=0.90, speed_norm=0.341
     ],
+}
 }
 
 # ---------------------------------------------------------------------------

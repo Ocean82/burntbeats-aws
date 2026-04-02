@@ -209,7 +209,7 @@ export default function App() {
             <div className="inline-flex items-center gap-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 px-6 py-4 backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-gradient-to-r from-orange-500 to-amber-500" />
-                <span className="text-zinc-300 text-sm">1 Token = 1 Stem Separation</span>
+                <span className="text-zinc-300 text-sm">1 Token = 1 Minute of Audio</span>
               </div>
               <div className="w-px h-4 bg-zinc-700" />
               <span className="text-zinc-500 text-sm">Unused tokens roll over monthly</span>

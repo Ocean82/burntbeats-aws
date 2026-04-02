@@ -48,7 +48,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1 text-center">
         <p className="text-sm font-semibold text-white/90">Choose a plan to get started</p>
-        <p className="text-xs text-white/50">Subscriptions renew monthly; usage is token-based on song length — cancel anytime.</p>
+        <p className="text-xs text-white/50">Subscriptions renew monthly · 1 token = 1 minute of audio · cancel anytime.</p>
       </div>
 
       <div className="flex flex-col gap-3">

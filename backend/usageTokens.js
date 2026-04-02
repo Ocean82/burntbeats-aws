@@ -16,6 +16,34 @@ import { parseFile } from "music-metadata";
 import { getClerkClient } from "./clerkAuth.js";
 import { getRedis } from "./stripeRedis.js";
 
+/**
+ * Distributed lock for per-user token operations.
+ * Uses Redis NX lock when available; falls back to a no-op for single-instance deployments.
+ * Prevents race conditions when concurrent requests debit/credit the same user's balance.
+ * @param {string} userId
+ * @param {() => Promise<void>} fn
+ */
+async function withUserUsageLock(userId, fn) {
+  const redis = await getRedis();
+  if (!redis) {
+    // Single-instance: no distributed lock needed, run directly.
+    return fn();
+  }
+  const lockKey = `usage:lock:${userId}`;
+  const got = await redis.set(lockKey, "1", { NX: true, EX: 30 });
+  if (!got) {
+    throw Object.assign(
+      new Error("Another request is already in progress for this account. Please retry."),
+      { status: 429 },
+    );
+  }
+  try {
+    return await fn();
+  } finally {
+    await redis.del(lockKey).catch(() => { /* best-effort */ });
+  }
+}
+
 /** @returns {boolean} */
 export function isUsageTokensEnabled() {
   return ["1", "true", "yes"].includes((process.env.USAGE_TOKENS_ENABLED || "").toLowerCase());
@@ -296,7 +324,7 @@ export function tokensPerMonthFromPrice(price) {
     if (Number.isFinite(sec) && sec > 0) return Math.max(1, Math.ceil(sec / 60));
   }
   const def = Number(process.env.USAGE_DEFAULT_TOKENS_PER_MONTH);
-  return Number.isFinite(def) && def > 0 ? Math.floor(def) : 6000;
+  return Number.isFinite(def) && def > 0 ? Math.floor(def) : 0;
 }
 
 /**
@@ -306,13 +334,18 @@ export function tokensPerMonthFromPrice(price) {
  */
 export function tokensPerTopupFromPrice(price) {
   const meta = price?.metadata;
-  if (meta?.tokens_per_topup != null && meta.tokens_per_topup !== "") {
-    const n = Number(meta.tokens_per_topup);
-    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  // Accept both plural (preferred) and singular (legacy Stripe metadata key)
+  for (const key of ["tokens_per_topup", "token_per_topup"]) {
+    if (meta?.[key] != null && meta[key] !== "") {
+      const n = Number(meta[key]);
+      if (Number.isFinite(n) && n > 0) return Math.floor(n);
+    }
   }
-  if (meta?.token_seconds_per_topup != null && meta.token_seconds_per_topup !== "") {
-    const sec = Number(meta.token_seconds_per_topup);
-    if (Number.isFinite(sec) && sec > 0) return Math.max(1, Math.ceil(sec / 60));
+  for (const key of ["token_seconds_per_topup", "token_second_per_topup"]) {
+    if (meta?.[key] != null && meta[key] !== "") {
+      const sec = Number(meta[key]);
+      if (Number.isFinite(sec) && sec > 0) return Math.max(1, Math.ceil(sec / 60));
+    }
   }
   // Backwards-compatible fallback for teams using a shared metadata key.
   return tokensPerMonthFromPrice(price);

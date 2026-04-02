@@ -61,7 +61,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 20s
     restart: unless-stopped
     deploy:
       resources:
@@ -100,7 +100,7 @@ services:
       interval: 20s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 90s
     restart: unless-stopped
     deploy:
       resources:

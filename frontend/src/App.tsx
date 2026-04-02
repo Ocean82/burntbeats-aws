@@ -667,6 +667,11 @@ export function App() {
                       <PaywallBanner subscription={subscription} />
                     </div>
                   )}
+                  {subscription.billingError && (
+                    <div className="mt-3 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+                      {subscription.billingError}
+                    </div>
+                  )}
                 </SplitErrorBoundary>
               </motion.div>
 

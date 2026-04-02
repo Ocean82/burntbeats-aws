@@ -1,10 +1,34 @@
 # Burnt Beats — Stem Splitter / Mixer / Master
 
-**Documentation:** [docs/README.md](docs/README.md) (full index) · [docs/stem-pipeline.md](docs/stem-pipeline.md) (separation pipeline) · [docs/BILLING-AND-TOKENS.md](docs/BILLING-AND-TOKENS.md) (Stripe plans, tokens, Basic vs Premium)
+**Documentation:** [docs/README.md](docs/README.md) (full index) · [docs/stem-pipeline.md](docs/stem-pipeline.md) (separation pipeline) · [docs/BILLING-AND-TOKENS.md](docs/BILLING-AND-TOKENS.md) (Stripe plans, tokens, Basic vs Premium) · [docs/MODEL-SELECTION-AUTHORITY.md](docs/MODEL-SELECTION-AUTHORITY.md) (**model selection — read before changing models**)
 
 Stem separation web app (**CPU-first; no GPU required**). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite. Backend: Node (Express). Stem engine: Python (**hybrid** + ONNX + optional Demucs subprocess). **Quality tiers:** Speed, Quality (default), Ultra — see [docs/stem-pipeline.md](docs/stem-pipeline.md) for exact routing.
 
 **Last updated:** 2026-03-22
+
+---
+
+## ⚠️ Model selection — read before touching mdx_onnx.py
+
+**Full authority doc: [docs/MODEL-SELECTION-AUTHORITY.md](docs/MODEL-SELECTION-AUTHORITY.md)**
+
+Model tier assignments are derived from benchmarks run 2026-03-22. The rules are:
+
+- **Minimum quality score: 8.5.** Models below this are banned from all tiers. This includes `kuielab_a/b` (8.0), `htdemucs_6s/embedded` (1.0), `demucsv4` (2.0), `Reverb_HQ_By_FoxJoy` (1.0).
+- **ORT is preferred over ONNX** — `.ort` siblings are 5–10% faster and auto-selected at runtime by `resolve_mdx_model_path()`. Tier lists use `.onnx` names; ORT resolution is automatic.
+- **fast tier** = ranked by blended score (quality×0.8 + speed×0.2), fastest first.
+- **quality tier** = ranked by raw quality score descending.
+- **`UVR_MDXNET_KARA_2` and `Kim_Inst` are instrumental models** despite being labeled vocal in UVR — use only for inst separation.
+- **`htdemucs_6s`, `htdemucs_embedded`, `demucsv4` ONNX models scored 1–2/10** — they are never used as primary models, only as last-resort subprocess fallbacks.
+
+Current approved tiers (from `stem_service/mdx_onnx.py`):
+
+| Tier | Vocal | Instrumental |
+|------|-------|-------------|
+| fast #1 | `UVR_MDXNET_3_9662` (blended 0.883, speed 0.816) | `UVR-MDX-NET-Inst_HQ_5` (blended 0.801, speed 0.406) |
+| fast #2 | `UVR_MDXNET_KARA` (blended 0.877, speed 0.784) | — only one inst model qualifies for fast |
+| quality #1 | `UVR_MDXNET_3_9662` (highest blended eligible) | `UVR-MDX-NET-Inst_HQ_5` (blended 0.801) |
+| quality #2 | `Kim_Vocal_1` (quality 0.90, blended 0.787) | `UVR-MDX-NET-Inst_HQ_4` (blended 0.788) |
 
 ---
 

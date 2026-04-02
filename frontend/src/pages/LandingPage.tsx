@@ -1,7 +1,7 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Mic2, Layers, Sliders, Download, Zap, Music2, ShieldCheck, Users, Clock, Headphones, Waveform, Guitar } from "lucide-react";
+import { Mic2, Layers, Sliders, Download, Zap, Music2, ShieldCheck, Users, Clock, Headphones, AudioWaveform, Guitar } from "lucide-react";
 import { StripePricingTableEmbed } from "../components/StripePricingTableEmbed";
 
 const FEATURES = [
@@ -193,7 +193,7 @@ export function LandingPage() {
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
             <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
-              <Waveform className="h-3.5 w-3.5 text-amber-300" />
+              <AudioWaveform className="h-3.5 w-3.5 text-amber-300" />
               Mix & mastering engineers
             </p>
             <p className="text-sm text-white/80">
@@ -343,8 +343,7 @@ export function LandingPage() {
                 How do tokens map to songs?
               </p>
               <p>
-                Tokens are based on audio length. Short ideas cost fewer tokens than full songs, so you can sketch,
-                test, and then commit to full exports when you&apos;re happy.
+                1 token = 1 minute of audio. A 3‑minute track costs 3 tokens to split, and another 3 if you expand to 4 stems. Partial minutes round up, so you always know the cost upfront.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">

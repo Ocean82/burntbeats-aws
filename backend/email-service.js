@@ -6,6 +6,21 @@ import { readFileSync, existsSync } from "fs";
 // Uses IONOS SMTP for transactional emails
 // ============================================
 
+/**
+ * Escape user-supplied strings before embedding in HTML email templates.
+ * Prevents XSS / HTML injection in outbound emails.
+ * @param {unknown} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const EMAIL_CONFIG = {
   host: process.env.EMAIL_HOST || "smtp.ionos.com",
   port: Number(process.env.EMAIL_PORT) || 587,
@@ -61,13 +76,13 @@ const TEMPLATES = {
     <div class="card">
       <h1 style="margin: 0 0 16px 0; font-size: 28px;">Your song is ready! 🎵</h1>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6;">
-        Great news! Your track <strong>"${data.songTitle || "Untitled"}"</strong> has been processed and is ready to download.
+        Great news! Your track <strong>"${escapeHtml(data.songTitle || "Untitled")}"</strong> has been processed and is ready to download.
       </p>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6;">
         Your stems have been split and are waiting for you in your dashboard.
       </p>
       <div style="text-align: center; margin-top: 32px;">
-        <a href="${data.downloadUrl || "https://burntbeats.com"}" class="button">
+        <a href="${escapeHtml(data.downloadUrl || "https://burntbeats.com")}" class="button">
           Download Your Stems →
         </a>
       </div>
@@ -107,7 +122,7 @@ const TEMPLATES = {
     <div class="card">
       <h1 style="margin: 0 0 16px 0; font-size: 28px;">You've been invited! 🎉</h1>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6;">
-        <strong>${data.referrerName || "A friend"}</strong> thinks you'd love BurntBeats - the AI-powered stem splitter that's changing how producers work.
+        <strong>${escapeHtml(data.referrerName || "A friend")}</strong> thinks you'd love BurntBeats - the AI-powered stem splitter that's changing how producers work.
       </p>
       
       <div style="margin: 24px 0;">
@@ -130,17 +145,17 @@ const TEMPLATES = {
       </div>
 
       <div style="text-align: center; margin-top: 32px;">
-        <a href="${data.signupUrl || "https://burntbeats.com"}" class="button">
+        <a href="${escapeHtml(data.signupUrl || "https://burntbeats.com")}" class="button">
           Try BurntBeats Free →
         </a>
       </div>
       
       <p style="color: #a0a0b0; font-size: 14px; text-align: center; margin-top: 16px;">
-        Use code <strong>${data.referralCode || "FRIEND"}</strong> to get started
+        Use code <strong>${escapeHtml(data.referralCode || "FRIEND")}</strong> to get started
       </p>
     </div>
     <div class="footer">
-      <p>You're receiving this because ${data.referrerName || "someone"} invited you to try BurntBeats.</p>
+      <p>You're receiving this because ${escapeHtml(data.referrerName || "someone")} invited you to try BurntBeats.</p>
       <p>© 2024 BurntBeats. All rights reserved.</p>
     </div>
   </div>
@@ -176,11 +191,11 @@ const TEMPLATES = {
       </div>
       <h1 style="margin: 0 0 16px 0; font-size: 28px; text-align: center;">Congratulations!</h1>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6; text-align: center;">
-        You've reached <strong>${data.tier || "Bronze"}</strong> tier and earned:
+        You've reached <strong>${escapeHtml(data.tier || "Bronze")}</strong> tier and earned:
       </p>
       <div style="text-align: center; margin: 24px 0;">
         <div style="font-size: 36px; font-weight: 800; background: linear-gradient(135deg, #e94560 0%, #ff6b8a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-          ${data.reward || "7 days Pro"}
+          ${escapeHtml(data.reward || "7 days Pro")}
         </div>
       </div>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6; text-align: center;">
@@ -247,10 +262,10 @@ const TEMPLATES = {
     <div class="card">
       <h1 style="margin: 0 0 16px 0; font-size: 28px;">Oops! Something went wrong ⚠️</h1>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6;">
-        We encountered an issue while processing your track <strong>"${data.songTitle || "Untitled"}"</strong>.
+        We encountered an issue while processing your track <strong>"${escapeHtml(data.songTitle || "Untitled")}"</strong>.
       </p>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6;">
-        Error: ${data.error || "Unknown error occurred"}
+        Error: ${escapeHtml(data.error || "Unknown error occurred")}
       </p>
       <p style="color: #a0a0b0; font-size: 16px; line-height: 1.6;">
         Don't worry - you can try again. If the problem persists, please contact our support team.

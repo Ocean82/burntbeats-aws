@@ -49,7 +49,7 @@ const PLANS: PlanConfig[] = [
     badge: "Starter",
     description: "For artists who want a steady trickle of sessions every month.",
     details: [
-      "120 credits included every month.",
+      "120 tokens/month — 1 token per minute of audio.",
       "2 high‑quality stems (Vocal + Instruments).",
       "Priority processing over free/guest traffic.",
       "Mixer / editor functions included.",
@@ -64,7 +64,7 @@ const PLANS: PlanConfig[] = [
     highlight: "primary",
     description: "For active producers bouncing between projects all week.",
     details: [
-      "300 credits included every month.",
+      "300 tokens/month — 1 token per minute of audio.",
       "High‑quality multi‑stem options.",
       "Priority processing and batch tools unlocked.",
       "Full mixer / editor functions and pro mixing tools.",
@@ -78,7 +78,7 @@ const PLANS: PlanConfig[] = [
     badge: "For power users",
     description: "For studios, engineers, and heavy hitters who live in stems.",
     details: [
-      "600 credits included every month.",
+      "600 tokens/month — 1 token per minute of audio.",
       "Highest quality stem options and full multi‑stem support.",
       "Priority listing in queues.",
       "Bonus tokens awarded regularly.",
@@ -111,6 +111,10 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
             </p>
             <p className="text-sm text-white/75">
               All plans run on the same high‑quality separation engine. Upgrade or cancel any time.
+            </p>
+            <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
+              <span className="font-semibold text-amber-200">1 token = 1 minute of audio.</span>{" "}
+              Each split or expand charges tokens based on your track length — a 3‑min song costs 3 tokens. Partial minutes round up.
             </p>
             <p className="text-sm text-white/80">
               Most producers start with <span className="font-semibold text-amber-200">Premium</span> for weekly sessions, then

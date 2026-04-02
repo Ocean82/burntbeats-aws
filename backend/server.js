@@ -48,6 +48,10 @@ if (!process.env.STRIPE_SECRET_KEY) REQUIRED_ENV_WARNINGS.push("STRIPE_SECRET_KE
 if (!process.env.CLERK_SECRET_KEY) REQUIRED_ENV_WARNINGS.push("CLERK_SECRET_KEY (auth will not work)");
 if (!process.env.JOB_TOKEN_SECRET) REQUIRED_ENV_WARNINGS.push("JOB_TOKEN_SECRET (job tokens disabled — status/file endpoints are unprotected)");
 if (REQUIRED_ENV_WARNINGS.length > 0 && process.env.NODE_ENV !== "test") {
+  if (process.env.NODE_ENV === "production") {
+    console.error(`[startup] FATAL: Missing required env vars in production: ${REQUIRED_ENV_WARNINGS.join(", ")}`);
+    process.exit(1);
+  }
   console.warn(`[startup] Missing env vars: ${REQUIRED_ENV_WARNINGS.join(", ")}`);
 }
 
@@ -153,6 +157,20 @@ const STEM_OUTPUT_DIR = path.resolve(process.env.STEM_OUTPUT_DIR || path.join(__
 
 app.use(helmet());
 
+// ── Request logging ──────────────────────────────────────────────────────────
+// Minimal structured request log: method, path, status, duration, ip.
+// Skips high-frequency status polling to keep logs readable.
+app.use((req, res, next) => {
+  if (req.method === "GET" && req.path.startsWith("/api/stems/status/")) return next();
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    const ip = req.ip || req.socket?.remoteAddress || "-";
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} ${res.statusCode} ${ms}ms ip=${ip}`);
+  });
+  next();
+});
+
 // Stripe webhook needs raw body — mount before express.json()
 app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
 
@@ -211,6 +229,7 @@ function rateLimitMiddleware(req, res, next) {
     return next();
   }
   if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    res.set("Retry-After", String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)));
     return res.status(429).json({ error: "Too many requests. Please slow down." });
   }
   record.count++;
@@ -345,6 +364,13 @@ function proxyFormRequest(endpointPath, form, options = {}) {
 }
 
 // Stream uploads to disk so we never hold a full large file in memory; proxy then streams from file to Python.
+const ALLOWED_AUDIO_MIMES = new Set([
+  "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
+  "audio/flac", "audio/x-flac", "audio/ogg", "audio/mp4", "audio/x-m4a",
+  "audio/aac", "audio/x-aac", "video/mp4", // some encoders tag m4a as video/mp4
+]);
+const ALLOWED_AUDIO_EXTS = new Set([".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac"]);
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => mkdir(UPLOAD_TMP_DIR, { recursive: true }).then(() => cb(null, UPLOAD_TMP_DIR)).catch(cb),
@@ -354,6 +380,13 @@ const upload = multer({
     },
   }),
   limits: { fileSize: Number(process.env.MAX_UPLOAD_BYTES) || 500 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_AUDIO_EXTS.has(ext) || !ALLOWED_AUDIO_MIMES.has(file.mimetype)) {
+      return cb(Object.assign(new Error("Only audio files are accepted (mp3, wav, flac, ogg, m4a, aac)."), { code: "INVALID_FILE_TYPE" }));
+    }
+    cb(null, true);
+  },
 });
 
 const MAX_UPLOAD_MB = Math.round((Number(process.env.MAX_UPLOAD_BYTES) || 500 * 1024 * 1024) / (1024 * 1024));
@@ -365,6 +398,9 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
     if (err) {
       if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(413).json({ error: `File too large. Maximum size is ${MAX_UPLOAD_MB}MB.` });
+      }
+      if (err.code === "INVALID_FILE_TYPE") {
+        return res.status(415).json({ error: err.message });
       }
       console.error("[POST /api/stems/split] multer error:", err.code || err.message);
       return res.status(400).json({ error: err.message || "Upload failed." });
@@ -380,6 +416,17 @@ app.post("/api/stems/split", authMiddleware, (req, res, next) => {
   const filePath = req.file.path;
   const stems = (req.body && req.body.stems) || "4";
   const quality = req.body && req.body.quality;
+
+  // Validate stems and quality before proxying to Python service
+  if (stems !== "2" && stems !== "4") {
+    await unlinkPromise(filePath).catch(() => {});
+    return res.status(400).json({ error: "stems must be '2' or '4'" });
+  }
+  const VALID_QUALITY = new Set(["speed", "quality", "ultra"]);
+  if (quality && !VALID_QUALITY.has(quality)) {
+    await unlinkPromise(filePath).catch(() => {});
+    return res.status(400).json({ error: "quality must be 'speed', 'quality', or 'ultra'" });
+  }
 
   const scanResult = await scanUploadedFile(filePath);
   if (!scanResult.ok) {
@@ -505,6 +552,12 @@ app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, re
   }
   const quality = (req.body && req.body.quality) || req.query.quality;
 
+  // Validate quality before proxying
+  const VALID_QUALITY = new Set(["speed", "quality", "ultra"]);
+  if (quality && !VALID_QUALITY.has(quality)) {
+    return res.status(400).json({ error: "quality must be 'speed', 'quality', or 'ultra'" });
+  }
+
   /** @type {string | null} */
   let usageUserId = null;
   let usageCost = 0;
@@ -577,7 +630,11 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
   }
 
   const uploadNameRaw = typeof body.upload_name === "string" && body.upload_name ? body.upload_name : "upload";
-  const uploadBaseName = uploadNameRaw.replace(/\.[^/.]+$/, "");
+  const uploadBaseName = uploadNameRaw
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-zA-Z0-9_\- ]/g, "")
+    .trim()
+    .slice(0, 100) || "upload";
 
   const normalize = body.normalize === undefined ? true : !!body.normalize;
 
@@ -826,6 +883,16 @@ app.get("/api/health", (req, res) => {
   res.json(payload);
 });
 
+// ── Global error handler ────────────────────────────────────────────────────
+// Must be 4-param to be recognised by Express as an error handler.
+// Catches any error passed via next(err) or thrown synchronously in a route.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  console.error("[unhandled error]", err?.message || err);
+  if (res.headersSent) return;
+  res.status(err?.status || 500).json({ error: "Internal server error" });
+});
+
 const PORT = Number(process.env.PORT) || 3001;
 let server;
 
@@ -864,6 +931,17 @@ const shouldAutoStartServer =
 if (shouldAutoStartServer) {
   process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
   process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+  // Catch unhandled promise rejections (e.g. Redis reconnect, background timers).
+  process.on("unhandledRejection", (reason) => {
+    console.error("[unhandledRejection]", reason);
+  });
+
+  // Catch synchronous exceptions that escape all handlers.
+  process.on("uncaughtException", (err) => {
+    console.error("[uncaughtException]", err);
+    process.exit(1);
+  });
 
   main().catch((e) => {
     console.error(e);

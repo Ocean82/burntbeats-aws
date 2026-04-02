@@ -18,8 +18,6 @@ async function readBillingErrorBody(res: Response, fallback: string): Promise<st
 
 function notifyBillingFailure(context: string, err: unknown) {
   console.error(context, err);
-  const msg = err instanceof Error ? err.message : String(err);
-  window.alert(msg);
 }
 
 /** Base URL without query/hash (backend also strips; avoids huge hrefs). */
@@ -42,6 +40,8 @@ export interface UseSubscriptionResult {
   status: SubscriptionStatus;
   /** Active plan name, e.g. "basic" | "premium" | "studio" — null if inactive */
   plan: Plan | null;
+  /** Non-null when a checkout or portal action fails — display to the user. */
+  billingError: string | null;
   /** Redirect to Stripe Checkout for the given plan. */
   startCheckout: (plan: Plan) => Promise<void>;
   /** Redirect to Stripe Customer Portal to manage billing. */
@@ -56,6 +56,7 @@ export function useSubscription(): UseSubscriptionResult {
     localFullApp ? "active" : "loading",
   );
   const [plan, setPlan] = useState<Plan | null>(localFullApp ? "premium" : null);
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
     if (localFullApp) {
@@ -106,6 +107,7 @@ export function useSubscription(): UseSubscriptionResult {
       window.location.href = url;
     } catch (err) {
       notifyBillingFailure("Checkout failed:", err);
+      setBillingError(err instanceof Error ? err.message : "Checkout failed. Please try again.");
     }
   }, [getToken, localFullApp]);
 
@@ -132,8 +134,9 @@ export function useSubscription(): UseSubscriptionResult {
       window.location.href = url;
     } catch (err) {
       notifyBillingFailure("Portal failed:", err);
+      setBillingError(err instanceof Error ? err.message : "Billing portal failed. Please try again.");
     }
   }, [getToken, localFullApp]);
 
-  return { status, plan, startCheckout, openPortal, refetch: fetchStatus };
+  return { status, plan, billingError, startCheckout, openPortal, refetch: fetchStatus };
 }
