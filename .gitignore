@@ -24,48 +24,31 @@ models/
 *.joblib
 *.pkl
 *.pickle
-*.csv
-*.json
-*.xml
-*.yaml
-*.yml
-*.ini
-*.toml
-*.cfg
-*.conf
-*.properties
-*.env
-*.env.*
-*.lock
-*.log
-*.tmp
-*.temp
-*.swp
-*.swm
-*.sym
-*.sys
 
-# Exceptions for deploy/build configuration (non-secret)
-# These are required for fresh clones / server rebuilds.
-!docker-compose.yml
-!frontend/nginx.conf
-!nginx-burntbeats.conf
-!backend/package.json
-!backend/package-lock.json
-!frontend/package.json
-!frontend/package-lock.json
+# ML / binary weights and archives — keep ignoring by extension repo-wide.
+# Do NOT use blanket *.json / *.yaml / *.toml / *.yml here: those hid tsconfig,
+# GitHub Actions, pyproject.toml, and other source files.
 
+# Typical secret filenames (add others if your tools generate them)
+credentials.json
+*-credentials.json
+google-services.json
+
+# Local env (never commit real secrets)
+.env
+.env.*
+!.env.example
+!**/.env.example
 
 # Build / env
 dist/
 *.local
-.env
-.env.*
-!.env.example
 
 # IDE / OS
+.cursor/
 .idea/
 .vscode/
+.vs/
 *.swp
 .DS_Store
 Thumbs.db
@@ -79,6 +62,7 @@ job_metrics.jsonl
 tmp/
 temp/
 *.tmp
+*.temp
 benchmark_out/
 benchmark_out_*/
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
