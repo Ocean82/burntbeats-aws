@@ -296,6 +296,8 @@ Production is expected to match **Ubuntu** on an instance such as **`t3.large`**
 
 **Docker Compose on EC2:** If production runs **`docker compose`** (root **`docker-compose.yml`**), use **[docs/DEPLOY-DOCKER-EC2.md](docs/DEPLOY-DOCKER-EC2.md)** for **`git pull`**, **`docker compose build` / `up -d`**, per-service rebuilds, **expected build duration** (especially **`stem_service`**), **container name conflict** recovery (**`compose down` / `up`**), and how host nginx relates to the **frontend** container.
 
+**Marketing “full pricing” page** (`burnt-beats-pricing-structure/`, linked as **`VITE_FULL_PRICING_URL`** / www pricing): **not** built by Compose. Build and deploy that static site separately — **[docs/DEPLOY-MARKETING-SITE.md](docs/DEPLOY-MARKETING-SITE.md)**.
+
 On the EC2 instance, use the same bash scripts as in WSL.
 
 - **Stem service:** `bash scripts/run-stem-service.sh` (e.g. under systemd or screen). Activate the venv if you run Python manually: `source .venv/bin/activate`.

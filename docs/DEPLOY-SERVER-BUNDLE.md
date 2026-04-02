@@ -113,6 +113,7 @@ rsync -avz --delete --exclude-from=scripts/deploy-exclude.txt \
 ## Related
 
 - **[DEPLOY-DOCKER-EC2.md](DEPLOY-DOCKER-EC2.md)** — if production uses **Docker Compose** on EC2, sync code then **`docker compose build`** / **`up -d`** (host **`npm run build`** alone may not update the served UI).
+- **[DEPLOY-MARKETING-SITE.md](DEPLOY-MARKETING-SITE.md)** — standalone **`burnt-beats-pricing-structure/`** static site (full pricing URL); deploy **`dist/`** separately from the main SPA container.
 - **`scripts/copy-models.sh`** — populate `models/` from your stem-models bank  
 - Root **[README.md](../README.md)** — model list and CPU vs GPU  
 - **[MALWARE-SCAN-OPS.md](MALWARE-SCAN-OPS.md)** — optional ClamAV after upload  

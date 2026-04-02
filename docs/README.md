@@ -18,6 +18,7 @@
 | `shared/` | Shared TypeScript types for API |
 | `docker-compose.yml` | Frontend + backend + stem_service |
 | `docs/` | This index and technical notes |
+| `burnt-beats-pricing-structure/` | Standalone **marketing** pricing page (Vite); **not** in Docker Compose — see [DEPLOY-MARKETING-SITE.md](DEPLOY-MARKETING-SITE.md) |
 | `docs/agent-context/` | YAML supplements for AI workflows (non-normative) |
 | `docs/archive/` | Superseded investigations and scratchpads |
 
@@ -33,6 +34,7 @@
 | [MALWARE-SCAN-OPS.md](MALWARE-SCAN-OPS.md) | ClamAV scan after upload: enable on server, env, `freshclam`, verify |
 | [DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md) | Tarball/rsync deploy without `models/`, `node_modules/`, `.venv/` — `scripts/package-server-bundle.sh` |
 | [DEPLOY-DOCKER-EC2.md](DEPLOY-DOCKER-EC2.md) | **Docker Compose on EC2:** `git pull`, per-service `build` / `up -d`, **long `stem_service` builds**, **name conflicts** → `compose down` / `up`, host nginx → frontend container |
+| [DEPLOY-MARKETING-SITE.md](DEPLOY-MARKETING-SITE.md) | **Full pricing page** (`burnt-beats-pricing-structure/`): separate static build + upload; **not** updated by `docker compose build frontend` |
 | [TEST-RUN-PLAN.md](TEST-RUN-PLAN.md) | Test run plan |
 | [FOLLOW-UPS-AND-DEFERRED.md](FOLLOW-UPS-AND-DEFERRED.md) | Open items (env, S3, FFmpeg, billing) — placeholders only, no secrets |
 
