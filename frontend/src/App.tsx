@@ -255,6 +255,11 @@ export function App() {
     return () => window.cancelAnimationFrame(raf);
   }, [mixStems.length]);
 
+  // In-app routing; exportNotice state must exist before the auto-clear effect below.
+  const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
+  const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
   useEffect(() => {
     if (!exportNotice) return;
     const t = window.setTimeout(() => setExportNotice(null), 6000);
@@ -263,11 +268,6 @@ export function App() {
 
   const [stemWaveforms, setStemWaveformsState] = useState<Record<string, number[]>>({});
   useWaveformCompute(stemBuffers, allStemEntries, setStemWaveformsState);
-
-  // ── In-app "routing": editor vs pricing view ─────────────────────────────────
-  const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
-  const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
-  const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   const visibleStems = useMemo(() => {
     const fromSplit = splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));

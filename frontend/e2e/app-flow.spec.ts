@@ -9,13 +9,10 @@ test.describe("Burnt Beats app (local full app mode)", () => {
     });
   });
 
-  test("source panel visible; split disabled without upload", async ({ page }) => {
+  test("processing settings visible; split disabled without upload", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByTestId("source-panel")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /Split a track or load stems to mix/i })
-    ).toBeVisible();
-    await expect(page.getByTestId("split-generate-button")).toBeDisabled();
+    await expect(page.getByTestId("processing-settings-panel")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Split stems$/ })).toBeDisabled();
   });
 
   test("mixer prompts before stems exist", async ({ page }) => {
@@ -25,15 +22,28 @@ test.describe("Burnt Beats app (local full app mode)", () => {
     ).toBeVisible();
   });
 
-  test("separation mode radios are available before split", async ({ page }) => {
+  test("quality and stem controls are available before split", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("radio", { name: /2-stem fast/i })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /2-stem quality/i })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /2-stem ultra/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Fast" })).toBeVisible();
+    await expect(page.getByRole("slider", { name: "Number of stems" })).toBeVisible();
   });
 
   test("file input for upload exists", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByLabel("Choose audio file")).toBeAttached();
+  });
+
+  test("skip link moves focus to main content", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("processing-settings-panel")).toBeVisible({ timeout: 20_000 });
+
+    const skip = page.getByRole("link", { name: "Skip to main content" });
+    const main = page.locator("#main-content");
+
+    await expect(main).toHaveAttribute("tabindex", "-1");
+    await skip.focus();
+    await expect(skip).toBeFocused();
+    await skip.click();
+    await expect(main).toBeFocused();
   });
 });
