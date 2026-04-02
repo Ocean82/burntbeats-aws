@@ -135,6 +135,11 @@ test("GET /api/stems/cleanup is rejected; POST remains the supported method", as
   assert.equal(typeof postRes.body.deleted, "number");
 });
 
+test("GET /api/billing/balance route exists (compat alias)", async () => {
+  // Route should exist and require auth, not return 404.
+  await request.get("/api/billing/balance").expect(401);
+});
+
 test.after(async () => {
   await new Promise((resolve, reject) => {
     mockStemService.close((err) => (err ? reject(err) : resolve()));

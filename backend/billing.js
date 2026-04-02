@@ -159,6 +159,18 @@ router.get("/usage", async (req, res) => {
   }
 });
 
+// Backward-compatible alias used by older frontend/integration clients.
+router.get("/balance", async (req, res) => {
+  try {
+    const userId = await verifyClerkBearer(req);
+    const { balance, periodEnd } = await getUsageBalance(userId);
+    return res.json({ balance, periodEnd });
+  } catch (/** @type {any} */ err) {
+    console.error("[billing/balance] error:", err.message);
+    return res.status(err.status || 500).json({ error: err.message || "Internal error" });
+  }
+});
+
 // ── POST /api/billing/checkout ────────────────────────────────────────────────
 // Body: { plan: "basic"|"premium"|"studio"|"topup", returnUrl?: string }
 router.post("/checkout", async (req, res) => {
