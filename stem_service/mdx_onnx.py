@@ -183,7 +183,6 @@ _INST_TIER_NAMES: dict[str, list[str]] = {
         "UVR-MDX-NET-Inst_HQ_4.onnx",  # blended=0.7882, quality_norm=0.90, speed_norm=0.341
     ],
 }
-}
 
 # ---------------------------------------------------------------------------
 # Session cache
