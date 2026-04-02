@@ -32,6 +32,7 @@
 | [SANITY-CHECKS.md](SANITY-CHECKS.md) | Manual QA checklist |
 | [MALWARE-SCAN-OPS.md](MALWARE-SCAN-OPS.md) | ClamAV scan after upload: enable on server, env, `freshclam`, verify |
 | [DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md) | Tarball/rsync deploy without `models/`, `node_modules/`, `.venv/` — `scripts/package-server-bundle.sh` |
+| [DEPLOY-DOCKER-EC2.md](DEPLOY-DOCKER-EC2.md) | **Docker Compose on EC2:** `git pull`, `docker compose build` / `up -d`, host nginx → frontend container, pitfalls |
 | [TEST-RUN-PLAN.md](TEST-RUN-PLAN.md) | Test run plan |
 | [FOLLOW-UPS-AND-DEFERRED.md](FOLLOW-UPS-AND-DEFERRED.md) | Open items (env, S3, FFmpeg, billing) — placeholders only, no secrets |
 

@@ -294,6 +294,8 @@ Production is expected to match **Ubuntu** on an instance such as **`t3.large`**
 
 **Packaging for upload:** To copy the app to the server **without** your full local `models/`, `node_modules/`, or `.venv/`, run **`bash scripts/package-server-bundle.sh`** (creates `tmp/deploy/burntbeats-server-*.tgz`) and follow **[docs/DEPLOY-SERVER-BUNDLE.md](docs/DEPLOY-SERVER-BUNDLE.md)** for `scp`, extracting, and syncing only the model files you need.
 
+**Docker Compose on EC2:** If production runs **`docker compose`** (root **`docker-compose.yml`**), use **[docs/DEPLOY-DOCKER-EC2.md](docs/DEPLOY-DOCKER-EC2.md)** for **`git pull`**, **`docker compose build` / `up -d`**, and how host nginx relates to the **frontend** container.
+
 On the EC2 instance, use the same bash scripts as in WSL.
 
 - **Stem service:** `bash scripts/run-stem-service.sh` (e.g. under systemd or screen). Activate the venv if you run Python manually: `source .venv/bin/activate`.
