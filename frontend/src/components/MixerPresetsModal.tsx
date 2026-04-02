@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, Trash2, Check, Sliders } from "lucide-react";
 import { defaultMixer, type MixerState, type TrimState } from "../types";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 export interface MixerPreset {
   id: string;
@@ -91,6 +92,9 @@ export function MixerPresetsModal({
   currentPitchMap,
   currentTimeStretchMap,
 }: MixerPresetsModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalA11y(isOpen, modalRef, onClose);
+
   const [presets, setPresets] = useState<MixerPreset[]>([]);
   const [newPresetName, setNewPresetName] = useState("");
   const [showSaveForm, setShowSaveForm] = useState(false);
@@ -163,9 +167,11 @@ export function MixerPresetsModal({
           >
             <motion.div
               className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
+              ref={modalRef}
               role="dialog"
               aria-modal="true"
               aria-labelledby="mixer-presets-title"
+              tabIndex={-1}
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}

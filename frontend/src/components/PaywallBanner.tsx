@@ -48,7 +48,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1 text-center">
         <p className="text-sm font-semibold text-white/90">Choose a plan to get started</p>
-        <p className="text-xs text-white/50">Subscriptions renew monthly · 1 token = 1 minute of audio · cancel anytime.</p>
+        <p className="text-sm text-white/55">Subscriptions renew monthly · 1 token = 1 minute of audio · cancel anytime.</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -70,12 +70,12 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
               <span className="text-sm font-semibold text-white">
                 {plan.label}
                 {plan.id === "premium" && (
-                  <span className="ml-2 rounded-full bg-amber-500/30 px-2 py-0.5 text-[10px] text-amber-200">
+                  <span className="ml-2 rounded-full bg-amber-500/30 px-2 py-0.5 text-xs text-amber-200">
                     Popular
                   </span>
                 )}
               </span>
-              <span className="text-xs text-white/65">{plan.features.join(" · ")}</span>
+              <span className="text-sm text-white/65">{plan.features.join(" · ")}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0 pl-4">
               <span className="text-sm font-semibold text-amber-300">{plan.price}</span>
@@ -85,7 +85,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
         ))}
       </div>
 
-      <p className="text-center text-xs text-white/30">
+      <p className="text-center text-sm text-white/35">
         Need a one-time top-up?{" "}
         <button
           type="button"

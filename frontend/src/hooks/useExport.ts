@@ -12,6 +12,14 @@ import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "..
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
 import type { ExportOptions } from "../components";
 
+export function stripFileExtension(fileName: string): string {
+  return fileName.replace(/\.[^/.]+$/, "");
+}
+
+export function buildMasterExportFilename(uploadName: string, format: "wav" | "mp3"): string {
+  return `${stripFileExtension(uploadName)}_master.${format}`;
+}
+
 interface UseExportReturn {
   isExporting: boolean;
   exportMasterWav: (
@@ -31,7 +39,9 @@ interface UseExportReturn {
     onError: (msg: string) => void,
     onClose: () => void,
     serverExportJobId?: string | null,
-    serverExportStemIds?: string[]
+    serverExportStemIds?: string[],
+    /** Called only when export completes without any onError from export paths. */
+    onSuccess?: () => void
   ) => Promise<void>;
 
   /**
@@ -165,8 +175,7 @@ export function useExport(): UseExportReturn {
     uploadName: string,
     normalize: boolean
   ) => {
-    const uploadBaseName = uploadName.replace(/\.[^/.]+$/, "");
-    const fileName = `${uploadBaseName}_master.wav`;
+    const fileName = buildMasterExportFilename(uploadName, "wav");
 
     const stemStatesSubset: Record<string, StemEditorState> = {};
     for (const id of stemIds) {
@@ -333,7 +342,7 @@ export function useExport(): UseExportReturn {
 
     try {
       const wavBlob = await renderClientMasterWavBlob({ normalize: options?.normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
-      triggerDownload(wavBlob, `${uploadName.replace(/\.[^/.]+$/, "")}_master.wav`);
+      triggerDownload(wavBlob, buildMasterExportFilename(uploadName, "wav"));
     } catch (e) {
       onError(e instanceof Error ? e.message : "Export failed");
     } finally {
@@ -358,7 +367,7 @@ export function useExport(): UseExportReturn {
     try {
       const wavBlob = await renderClientMasterWavBlob({ normalize: options?.normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
       const mp3Blob = encodeWavToMp3(await wavBlob.arrayBuffer());
-      triggerDownload(mp3Blob, `${uploadName.replace(/\.[^/.]+$/, "")}_master.mp3`);
+      triggerDownload(mp3Blob, buildMasterExportFilename(uploadName, "mp3"));
     } catch (e) {
       onError(e instanceof Error ? e.message : "Export failed");
     } finally {
@@ -375,8 +384,15 @@ export function useExport(): UseExportReturn {
     onError: (msg: string) => void,
     onClose: () => void,
     serverExportJobId?: string | null,
-    serverExportStemIds?: string[]
+    serverExportStemIds?: string[],
+    onSuccess?: () => void
   ) => {
+    let hadError = false;
+    const wrapErr = (msg: string) => {
+      hadError = true;
+      onError(msg);
+    };
+
     if ((options.target === "stems" || options.target === "all") && splitResultStems.length === 0) {
       onError("No stems to export. Split a track or load stems first.");
       return;
@@ -395,7 +411,7 @@ export function useExport(): UseExportReturn {
 
         if (format === "mp3") {
           // MP3 export currently uses client-side encoding from rendered WAV.
-          await exportMasterMp3({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, onError);
+          await exportMasterMp3({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, wrapErr);
         } else if (canTryServer) {
           try {
             await exportMasterWavServer(serverExportJobId as string, serverExportStemIds as string[], stemStates, uploadName, normalize);
@@ -403,22 +419,23 @@ export function useExport(): UseExportReturn {
             const status = typeof e === "object" && e !== null && "status" in e ? (e as { status: unknown }).status : undefined;
             // Server export disabled => fall back to client export.
             if (status === 404) {
-              await exportMasterWav({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, onError);
+              await exportMasterWav({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, wrapErr);
             } else {
               throw e;
             }
           }
         } else {
-          await exportMasterWav({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, onError);
+          await exportMasterWav({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, wrapErr);
         }
       }
       if (options.target === "stems" || options.target === "all") {
-        const baseName = uploadName.replace(/\.[^/.]+$/, "");
+        const baseName = stripFileExtension(uploadName);
         for (const stem of splitResultStems) await downloadStemByUrl(stem, baseName);
       }
       onClose();
+      if (!hadError) onSuccess?.();
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Export failed");
+      wrapErr(e instanceof Error ? e.message : "Export failed");
     } finally {
       setIsExporting(false);
     }

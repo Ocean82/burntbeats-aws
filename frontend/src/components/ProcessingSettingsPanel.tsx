@@ -49,6 +49,16 @@ export interface ProcessingSettingsPanelProps {
   canUseBatchQueue?: boolean;
   onAddToQueue: () => void;
   onUpgradeToPremium?: () => void;
+
+  /** When true, show copy that splitting requires an active plan (checkout opens from Split). */
+  subscriptionInactive?: boolean;
+  /** Metering: remaining tokens from Clerk (null = unknown / loading). */
+  usageBalance?: number | null;
+  usageLoading?: boolean;
+  /** Estimated tokens for the current split job (~minutes, ceil). */
+  estimatedSplitTokens?: number | null;
+  /** Estimated tokens for expand 2→4 (same duration as split). */
+  estimatedExpandTokens?: number | null;
 }
 
 export function ProcessingSettingsPanel({
@@ -82,6 +92,11 @@ export function ProcessingSettingsPanel({
   canUseBatchQueue = true,
   onAddToQueue,
   onUpgradeToPremium,
+  subscriptionInactive = false,
+  usageBalance = null,
+  usageLoading = false,
+  estimatedSplitTokens = null,
+  estimatedExpandTokens = null,
 }: ProcessingSettingsPanelProps) {
   const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
   const [loadExpanded, setLoadExpanded] = useState(false);
@@ -142,8 +157,22 @@ export function ProcessingSettingsPanel({
     }
   }, [sourceMode, requestedStemMode, canExpandToFourStems, splitResultStemsLength, isSplitting, isExpanding, splitError, onExpand]);
 
+  const showUsageRow =
+    !subscriptionInactive &&
+    (usageLoading ||
+      usageBalance !== null ||
+      estimatedSplitTokens !== null ||
+      (splitResultStemsLength === 2 && estimatedExpandTokens !== null));
+
   return (
     <div data-testid="processing-settings-panel">
+      {subscriptionInactive && sourceMode === "split" && (
+        <p className="mb-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100/95">
+          <span className="font-semibold text-amber-50">Active plan required to split.</span>{" "}
+          Choosing a plan opens secure Stripe checkout. Export and mixing stay available after you load or split stems.
+        </p>
+      )}
+
       {/* ── Horizontal toolbar row ── */}
       <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
 
@@ -289,8 +318,8 @@ export function ProcessingSettingsPanel({
           )}
         </div>
 
-        {/* Stem count slider */}
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Stem count slider (full-width wrap on small screens) */}
+        <div className="flex w-full shrink-0 basis-full items-center gap-2 sm:basis-auto lg:w-auto">
           <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Stems</span>
           <div className="flex flex-col items-center gap-0.5">
             <input
@@ -332,7 +361,7 @@ export function ProcessingSettingsPanel({
             type="button"
             onClick={() => onSplit(requestedStemMode)}
             disabled={!uploadedFile || isSplitting}
-            className="fire-button shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className="fire-button min-h-[44px] shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSplitting ? (
               <>
@@ -382,6 +411,46 @@ export function ProcessingSettingsPanel({
           </button>
         )}
       </div>
+
+      {showUsageRow && sourceMode === "split" && (
+        <div
+          className={cn(
+            "mt-3 rounded-xl border px-4 py-2.5 text-sm leading-relaxed",
+            usageBalance !== null &&
+              estimatedSplitTokens !== null &&
+              estimatedSplitTokens > usageBalance
+              ? "border-amber-500/50 bg-amber-500/10 text-amber-50"
+              : "border-white/10 bg-black/25 text-white/80",
+          )}
+          role="status"
+        >
+          {usageLoading ? (
+            <span className="text-white/55">Loading token balance…</span>
+          ) : (
+            <>
+              {usageBalance !== null && (
+                <span className="font-medium text-white/90">Balance: {Math.floor(usageBalance)} tokens</span>
+              )}
+              {estimatedSplitTokens !== null && (
+                <span className={cn(usageBalance !== null && "ml-2")}>
+                  · This split: ~{estimatedSplitTokens} token{estimatedSplitTokens === 1 ? "" : "s"}
+                </span>
+              )}
+              {splitResultStemsLength === 2 &&
+                estimatedExpandTokens !== null &&
+                !isExpanding &&
+                !isSplitting && (
+                  <span className="ml-2">
+                    · Expand to 4: ~{estimatedExpandTokens} more
+                  </span>
+                )}
+              <span className="mt-1 block text-xs text-white/50">
+                1 token ≈ 1 minute of audio (rounds up). Metered when enabled on the server.
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Loaded stems list (collapsible) */}
       {sourceMode === "load" && loadExpanded && loadedStems.length > 0 && (

@@ -1,6 +1,6 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Mic2, Layers, Sliders, Download, Zap, Music2, ShieldCheck, Users, Clock, Headphones, AudioWaveform, Guitar } from "lucide-react";
 import { StripePricingTableEmbed } from "../components/StripePricingTableEmbed";
 
@@ -37,8 +37,25 @@ const FEATURES = [
   },
 ];
 
+function scrollToPricing() {
+  const el = document.getElementById("pricing");
+  if (!el) return;
+  const instant = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ behavior: instant ? "auto" : "smooth", block: "start" });
+}
+
 export function LandingPage() {
   const { isSignedIn } = useAuth();
+  const reduceMotion = useReducedMotion();
+  /** Framer entrance: skip motion when user prefers reduced motion. */
+  const fadeUp = (delay = 0, y: 16 | 20 = 16) =>
+    reduceMotion
+      ? { initial: false as const, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+      : {
+          initial: { opacity: 0, y },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.5, delay },
+        };
 
   // Clerk modal sign-in sets isSignedIn → Root re-renders and swaps to App automatically.
   // Nothing extra needed here — Root handles the switch.
@@ -89,11 +106,9 @@ export function LandingPage() {
         {/* Hero */}
         <motion.section
           className="flex flex-col items-center gap-8 py-20 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          {...fadeUp(0, 20)}
         >
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-100/90">
+          <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-amber-100/90">
             Stem Splitter · Mixer · Master
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
           </div>
@@ -122,12 +137,7 @@ export function LandingPage() {
           <button
             type="button"
             className="mt-3 text-sm text-white/75 underline underline-offset-4 hover:text-amber-200"
-            onClick={() => {
-              const el = document.getElementById("pricing");
-              if (el) {
-                el.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
-            }}
+            onClick={scrollToPricing}
           >
             See plans &amp; pricing
           </button>
@@ -147,27 +157,25 @@ export function LandingPage() {
 
         {/* Social proof / outcomes */}
         <motion.section
-          className="grid gap-4 py-10 text-base text-white/85 sm:grid-cols-3"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          className="grid gap-4 py-10 text-base leading-relaxed text-white/85 sm:grid-cols-3"
+          {...fadeUp(0.1)}
         >
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/75">
               <Users className="h-3.5 w-3.5 text-amber-300" />
               Producers we&apos;ve helped
             </p>
             <p>Indie artists, mix engineers, and small studios using CPU-only machines to get stems fast.</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/75">
               <Clock className="h-3.5 w-3.5 text-amber-300" />
               Time saved
             </p>
             <p>Drop a track, get usable stems in minutes — no waiting on freelance engineers or bouncing DAW sessions.</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/75">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" />
               Zero-risk trial
             </p>
@@ -178,46 +186,39 @@ export function LandingPage() {
         {/* Personas / use cases */}
         <motion.section
           className="grid gap-4 py-6 text-base text-white/85 sm:grid-cols-3"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.18 }}
+          {...fadeUp(0.18)}
         >
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/75">
               <Headphones className="h-3.5 w-3.5 text-amber-300" />
               Vocalists & artists
             </p>
-            <p className="text-sm text-white/80">
+            <p className="text-base leading-relaxed text-white/80">
               Strip out your vocals or instrumentals for remixes, live sets, and content without hunting for acapellas.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/75">
               <AudioWaveform className="h-3.5 w-3.5 text-amber-300" />
               Mix & mastering engineers
             </p>
-            <p className="text-sm text-white/80">
+            <p className="text-base leading-relaxed text-white/80">
               Grab stems from reference tracks to study balances, recreate tones, or build quick mockups for clients.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/75">
+            <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-[0.16em] text-white/75">
               <Guitar className="h-3.5 w-3.5 text-amber-300" />
               Creators & educators
             </p>
-            <p className="text-sm text-white/80">
+            <p className="text-base leading-relaxed text-white/80">
               Solo out parts for lessons, breakdowns, and YouTube content without wrestling with DAW sessions.
             </p>
           </div>
         </motion.section>
 
         {/* Features */}
-        <motion.section
-          className="py-16"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-        >
+        <motion.section className="py-16" {...fadeUp(0.15)}>
           <p className="eyebrow mb-10 text-center">What you get</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
@@ -225,81 +226,67 @@ export function LandingPage() {
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5">
                   <f.icon className="h-4 w-4 text-amber-300/80" />
                 </div>
-                <p className="mb-1 text-sm font-semibold text-white/90">{f.title}</p>
-                <p className="text-sm leading-6 text-white/75">{f.desc}</p>
+                <p className="mb-1 text-base font-semibold text-white/90">{f.title}</p>
+                <p className="text-base leading-relaxed text-white/75">{f.desc}</p>
               </div>
             ))}
           </div>
         </motion.section>
 
         {/* Personas → recommended plans */}
-        <motion.section
-          className="py-10"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.22 }}
-        >
+        <motion.section className="py-10" {...fadeUp(0.22)}>
           <p className="eyebrow mb-4 text-center">Who Burnt Beats is for</p>
-          <div className="grid grid-cols-1 gap-4 text-sm text-white/80 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 text-base leading-relaxed text-white/80 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 Occasional creators
               </p>
               <p className="mb-2">
                 Need stems a few times a month for edits, remixes, or content drops.
               </p>
-              <p className="mb-2 text-[11px] font-semibold text-amber-200">
+              <p className="mb-2 text-sm font-semibold text-amber-200">
                 Recommended: Top‑Up Pack
               </p>
               <button
                 type="button"
-                className="ghost-button tap-feedback px-3 py-1.5 text-[11px]"
-                onClick={() => {
-                  const el = document.getElementById("pricing");
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                className="ghost-button tap-feedback px-3 py-1.5 text-sm"
+                onClick={scrollToPricing}
               >
                 View plans
               </button>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 Working artists &amp; producers
               </p>
               <p className="mb-2">
                 Bounce between projects every week and want a steady flow of stems.
               </p>
-              <p className="mb-2 text-[11px] font-semibold text-amber-200">
+              <p className="mb-2 text-sm font-semibold text-amber-200">
                 Recommended: Basic or Premium
               </p>
               <button
                 type="button"
-                className="ghost-button tap-feedback px-3 py-1.5 text-[11px]"
-                onClick={() => {
-                  const el = document.getElementById("pricing");
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                className="ghost-button tap-feedback px-3 py-1.5 text-sm"
+                onClick={scrollToPricing}
               >
                 View plans
               </button>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 Studios &amp; mix engineers
               </p>
               <p className="mb-2">
                 Live in stems all day, juggling clients, reference mixes, and exports.
               </p>
-              <p className="mb-2 text-[11px] font-semibold text-amber-200">
+              <p className="mb-2 text-sm font-semibold text-amber-200">
                 Recommended: Studio
               </p>
               <button
                 type="button"
-                className="ghost-button tap-feedback px-3 py-1.5 text-[11px]"
-                onClick={() => {
-                  const el = document.getElementById("pricing");
-                  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                className="ghost-button tap-feedback px-3 py-1.5 text-sm"
+                onClick={scrollToPricing}
               >
                 View plans
               </button>
@@ -308,18 +295,12 @@ export function LandingPage() {
         </motion.section>
 
         {/* Pricing — Stripe hosted pricing table */}
-        <motion.section
-          id="pricing"
-          className="py-16"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.25 }}
-        >
+        <motion.section id="pricing" className="py-16" {...fadeUp(0.25)}>
           <p className="eyebrow mb-2 text-center">Pricing</p>
-          <p className="mb-8 text-center text-base text-white/75">
+          <p className="mb-8 text-center text-base leading-relaxed text-white/75">
             Simple plans. Cancel anytime. No hidden fees or surprise overages.
           </p>
-          <p className="mb-6 text-center text-sm font-medium text-white/80">
+          <p className="mb-6 text-center text-base font-medium text-white/80">
             No contracts · Cancel online whenever you like · Start with a one‑time Top‑Up if you&apos;re unsure.
           </p>
 
@@ -328,9 +309,9 @@ export function LandingPage() {
           </div>
 
           {/* FAQ near pricing to remove objections */}
-          <div className="mt-10 grid gap-4 text-left text-sm text-white/80 sm:grid-cols-2">
+          <div className="mt-10 grid gap-4 text-left text-base leading-relaxed text-white/80 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 Will this work on my laptop?
               </p>
               <p>
@@ -339,7 +320,7 @@ export function LandingPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 How do tokens map to songs?
               </p>
               <p>
@@ -347,7 +328,7 @@ export function LandingPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 Can I cancel or change plans?
               </p>
               <p>
@@ -356,7 +337,7 @@ export function LandingPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 Do I have to subscribe?
               </p>
               <p>
@@ -370,9 +351,7 @@ export function LandingPage() {
         {/* Footer CTA */}
         <motion.section
           className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-8 py-12 text-center"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35 }}
+          {...fadeUp(0.35)}
         >
           <p className="mb-2 text-2xl font-bold text-white/90">Ready to split?</p>
           <p className="mb-8 text-base text-white/80">Create an account and start separating stems in seconds.</p>
@@ -384,7 +363,7 @@ export function LandingPage() {
         </motion.section>
 
         {/* Footer */}
-        <footer className="border-t border-white/5 py-8 text-center text-xs text-white/30">
+        <footer className="border-t border-white/5 py-8 text-center text-sm text-white/30">
           <p>© {new Date().getFullYear()} Burnt Beats. All rights reserved.</p>
           {typeof import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL === "string" &&
             import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL.startsWith("http") && (

@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Keyboard, HelpCircle } from "lucide-react";
+import { useRef } from "react";
 import { KEYBOARD_SHORTCUTS } from "../hooks/useKeyboardShortcuts";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -8,6 +10,9 @@ interface HelpModalProps {
 }
 
 export function HelpModal({ isOpen, onClose }: HelpModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalA11y(isOpen, modalRef, onClose);
+
   // Deduplicate shortcuts (some have both meta and ctrl variants)
   const uniqueShortcuts = KEYBOARD_SHORTCUTS.filter(
     (shortcut, index, self) =>
@@ -36,9 +41,11 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           >
             <motion.div
               className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="help-modal-title"
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="help-modal-title"
+              tabIndex={-1}
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}

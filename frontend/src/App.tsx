@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   HelpCircle, Undo2, Redo2, Save, Gamepad2,
 } from "lucide-react";
@@ -49,6 +49,10 @@ import { Skeleton } from "./components/ui/skeleton";
 import { ProgressWidget } from "./components/ProgressWidget";
 import { FeedbackChip } from "./components/FeedbackChip";
 import { ENABLE_ONBOARDING_QUEST, ENABLE_PROGRESS_WIDGET } from "./config/uiFlags";
+import { useAudioFileDuration } from "./hooks/useAudioFileDuration";
+import { useUsageBalance } from "./hooks/useUsageBalance";
+import { computeTokensFromDurationSeconds } from "./utils/tokenCost";
+import { AppMobileMoreMenu } from "./components/AppMobileMoreMenu";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
@@ -66,6 +70,7 @@ function canPreloadChunks(): boolean {
 
 export function App() {
   const localDevFullApp = isLocalDevFullApp();
+  const reduceMotion = useReducedMotion();
 
   // ── Upload / split state ──────────────────────────────────────────────────
   const uploadState = useAppStore();
@@ -76,8 +81,23 @@ export function App() {
     setUploadState, setSplitError
   } = uploadState;
 
+  const uploadDurationSec = useAudioFileDuration(uploadedFile);
+  const estimatedSplitTokens = useMemo(
+    () => computeTokensFromDurationSeconds(uploadDurationSec),
+    [uploadDurationSec],
+  );
+
   // ── Subscription / billing ────────────────────────────────────────────────
   const subscription = useSubscription();
+  const {
+    balance: usageBalance,
+    loading: usageLoading,
+    refetch: refetchUsage,
+  } = useUsageBalance(subscription.status === "active" && !localDevFullApp);
+
+  useEffect(() => {
+    void refetchUsage();
+  }, [splitResultStems.length, refetchUsage]);
   const isBasicPlan = subscription.status === "active" && subscription.plan === "basic";
   const stemQualityOptions = isBasicPlan ? "speed_only" : "full";
   const canExpandToFourStems = subscription.status === "active" && !isBasicPlan;
@@ -235,12 +255,19 @@ export function App() {
     return () => window.cancelAnimationFrame(raf);
   }, [mixStems.length]);
 
+  useEffect(() => {
+    if (!exportNotice) return;
+    const t = window.setTimeout(() => setExportNotice(null), 6000);
+    return () => window.clearTimeout(t);
+  }, [exportNotice]);
+
   const [stemWaveforms, setStemWaveformsState] = useState<Record<string, number[]>>({});
   useWaveformCompute(stemBuffers, allStemEntries, setStemWaveformsState);
 
   // ── In-app "routing": editor vs pricing view ─────────────────────────────────
   const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
   const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
 
   const visibleStems = useMemo(() => {
     const fromSplit = splitResultStems.map((s) => ({ ...getStemDefinition(s.id), id: s.id as StemId, url: s.url }));
@@ -384,6 +411,12 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-white">
+      <a
+        href="#main-content"
+        className="fixed left-4 top-4 z-[100] -translate-y-[130%] rounded-xl border border-amber-400/50 bg-[#1a1412]/95 px-4 py-2.5 text-sm font-medium text-white shadow-lg outline-none transition-transform duration-200 focus-visible:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-400/50"
+      >
+        Skip to main content
+      </a>
       <ErrorBoundary fallback={null}>
         <Suspense fallback={null}>
           <OnboardingTour />
@@ -412,11 +445,12 @@ export function App() {
                   setSplitError,
                   () => closeModal("export"),
                   loadedStems.length === 0 ? splitJobId : null,
-                  loadedStems.length === 0 ? splitResultStems.map((s) => s.id) : []
+                  loadedStems.length === 0 ? splitResultStems.map((s) => s.id) : [],
+                  () => {
+                    setExportNotice("Download started — check your browser’s downloads folder.");
+                    setHasCompletedFirstExport(true);
+                  },
                 );
-                if (!hasCompletedFirstExport) {
-                  setHasCompletedFirstExport(true);
-                }
               }}
               isExporting={isExporting}
               stemCount={mixStems.length}
@@ -470,7 +504,10 @@ export function App() {
       <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
 
         {/* Header */}
-        <header className="glass-panel mirror-sheen flex flex-col gap-6 rounded-[2rem] px-6 py-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <header
+          className="glass-panel mirror-sheen flex flex-col gap-6 rounded-[2rem] px-6 py-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"
+          aria-label="Burnt Beats"
+        >
           <div className="flex flex-col gap-4 sm:gap-5">
             <div className="inline-flex w-fit items-center gap-3 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-100/80">
               Stem Splitter / Mixer / Master
@@ -505,16 +542,18 @@ export function App() {
             )}
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
-                <button type="button" onClick={undoStemStates} disabled={!canUndo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Undo (Ctrl+Z)" aria-label="Undo"><Undo2 className="h-4 w-4" /></button>
+                <button type="button" onClick={undoStemStates} disabled={!canUndo} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Undo (Ctrl+Z)" aria-label="Undo"><Undo2 className="h-4 w-4" /></button>
                 <div className="h-4 w-px bg-white/10" />
-                <button type="button" onClick={redoStemStates} disabled={!canRedo} className="flex h-8 w-8 items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Redo (Ctrl+Y)" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
+                <button type="button" onClick={redoStemStates} disabled={!canRedo} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white" title="Redo (Ctrl+Y)" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
               </div>
-              <button type="button" onClick={() => openModal("presets")} className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white/75 transition hover:text-white tap-feedback" title="Presets" aria-label="Open mixer presets">
-                <Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Presets</span>
-              </button>
-              <button type="button" onClick={() => openModal("help")} className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white tap-feedback" title="Help" aria-label="Open help">
-                <HelpCircle className="h-4 w-4" />
-              </button>
+              <div className="hidden flex-wrap items-center gap-2 lg:flex">
+                <button type="button" onClick={() => openModal("presets")} className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white/75 transition hover:text-white tap-feedback" title="Presets" aria-label="Open mixer presets">
+                  <Save className="h-3.5 w-3.5" /><span className="hidden sm:inline">Presets</span>
+                </button>
+                <button type="button" onClick={() => openModal("help")} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white tap-feedback" title="Help" aria-label="Open help">
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </div>
               {localDevFullApp ? (
                 <span className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200/90">
                   Local dev
@@ -522,67 +561,101 @@ export function App() {
               ) : (
                 <HeaderUserButton />
               )}
-              <button
-                type="button"
-                onClick={() => {
+              <div className="hidden flex-wrap items-center gap-2 lg:flex">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = import.meta.env.VITE_FULL_PRICING_URL ?? "https://www.burntbeats.com/pricing";
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  }}
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-white/15 bg-black/20 px-3 text-xs text-white/70 transition hover:text-white tap-feedback"
+                  title="Open full pricing page in a new tab"
+                >
+                  Full pricing &amp; features
+                </button>
+                {(() => {
+                  const isInactive = subscription.status === "inactive";
+                  const pricingLabel =
+                    isInactive
+                      ? "Upgrade · Pricing"
+                      : subscription.plan === "basic"
+                        ? "More tokens & faster queues"
+                        : "Manage plan";
+                  const title =
+                    activeView === "pricing"
+                      ? "Back to main editor"
+                      : isInactive
+                        ? "View pricing & tokens"
+                        : "View or change your plan";
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setActiveView((v) => (v === "editor" ? "pricing" : "editor"))}
+                      className={cn(
+                        "flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition tap-feedback",
+                        isInactive
+                          ? "border border-amber-400/70 bg-amber-500/20 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.55)] hover:bg-amber-500/30 hover:text-white"
+                          : "border border-white/15 bg-black/20 text-white/70 hover:text-white",
+                      )}
+                      title={title}
+                    >
+                      {activeView === "pricing" ? "Back to editor" : pricingLabel}
+                    </button>
+                  );
+                })()}
+                {subscription.status === "active" && !localDevFullApp && (
+                  <button
+                    type="button"
+                    onClick={() => void subscription.openPortal()}
+                    className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white tap-feedback"
+                    title="Manage billing"
+                  >
+                    Billing
+                  </button>
+                )}
+              </div>
+              <AppMobileMoreMenu
+                onOpenFullPricingTab={() => {
                   const url = import.meta.env.VITE_FULL_PRICING_URL ?? "https://www.burntbeats.com/pricing";
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
-                className="flex h-8 items-center gap-1.5 rounded-xl border border-white/15 bg-black/20 px-3 text-xs text-white/70 transition hover:text-white tap-feedback"
-                title="Open full pricing page in a new tab"
-              >
-                Full pricing &amp; features
-              </button>
-              {(() => {
-                const isInactive = subscription.status === "inactive";
-                const pricingLabel =
-                  isInactive
+                onOpenPricing={() => setActiveView((v) => (v === "editor" ? "pricing" : "editor"))}
+                onOpenPortal={() => void subscription.openPortal()}
+                onOpenPresets={() => openModal("presets")}
+                onOpenHelp={() => openModal("help")}
+                pricingLabel={
+                  subscription.status === "inactive"
                     ? "Upgrade · Pricing"
                     : subscription.plan === "basic"
                       ? "More tokens & faster queues"
-                      : "Manage plan";
-                const title =
+                      : "Manage plan"
+                }
+                pricingTitle={
                   activeView === "pricing"
                     ? "Back to main editor"
-                    : isInactive
+                    : subscription.status === "inactive"
                       ? "View pricing & tokens"
-                      : "View or change your plan";
-                return (
-                  <button
-                    type="button"
-                    onClick={() => setActiveView((v) => (v === "editor" ? "pricing" : "editor"))}
-                    className={cn(
-                      "flex h-8 items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition tap-feedback",
-                      isInactive
-                        ? "border border-amber-400/70 bg-amber-500/20 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.55)] hover:bg-amber-500/30 hover:text-white"
-                        : "border border-white/15 bg-black/20 text-white/70 hover:text-white",
-                    )}
-                    title={title}
-                  >
-                    {activeView === "pricing" ? "Back to editor" : pricingLabel}
-                  </button>
-                );
-              })()}
-              {subscription.status === "active" && !localDevFullApp && (
-                <button
-                  type="button"
-                  onClick={() => void subscription.openPortal()}
-                  className="flex h-8 items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white tap-feedback"
-                  title="Manage billing"
-                >
-                  Billing
-                </button>
-              )}
+                      : "View or change your plan"
+                }
+                showBilling={subscription.status === "active" && !localDevFullApp}
+                isPricingView={activeView === "pricing"}
+              />
             </div>
           </div>
         </header>
 
+        <main
+          id="main-content"
+          tabIndex={-1}
+          aria-label="Main content"
+          className="outline-none focus-visible:ring-2 focus-visible:ring-amber-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] rounded-[2rem]"
+        >
         {/* Either show the main editor view or the dedicated pricing page */}
         {activeView === "pricing" ? (
           <motion.section
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
+            {...(reduceMotion
+              ? { initial: false, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+              : { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4 } })}
           >
             <PricingPage
               subscription={subscription}
@@ -595,12 +668,17 @@ export function App() {
           </motion.section>
         ) : (
           <>
-            {/* Marquee */}
+            {/* Marquee — static text on small screens to reduce motion noise */}
+            <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm md:hidden">
+              <p className="px-4 py-3 text-center text-[11px] uppercase leading-relaxed tracking-[0.18em] text-white/45">
+                Drop track · Split · Mix · Export · Premium &amp; Studio unlock batch &amp; faster queues.
+              </p>
+            </div>
             <motion.div
-              className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm"
-              initial={{ opacity: 0.6 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
+              className="hidden overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm md:block"
+              {...(reduceMotion
+                ? { initial: false, animate: { opacity: 1 }, transition: { duration: 0 } }
+                : { initial: { opacity: 0.6 }, animate: { opacity: 1 }, transition: { duration: 0.5 } })}
             >
               <div className="flex w-max animate-scroll-text gap-14 py-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
                 <span>Drop track · Split · Mix · Export</span>
@@ -614,7 +692,10 @@ export function App() {
               className="flex flex-col gap-4"
               initial="hidden"
               animate="visible"
-              variants={{ visible: { transition: { staggerChildren: 0.08 } }, hidden: {} }}
+              variants={{
+                visible: { transition: { staggerChildren: reduceMotion ? 0 : 0.08 } },
+                hidden: {},
+              }}
             >
               {/* Top bar: Processing Settings (horizontal) */}
               <motion.div
@@ -624,7 +705,7 @@ export function App() {
                   guidanceTarget === "source" && guidanceRingClass
                 )}
                 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: reduceMotion ? 0 : 0.4 }}
               >
                 <SplitErrorBoundary>
                   <ProcessingSettingsPanel
@@ -661,6 +742,11 @@ export function App() {
                     splitError={splitError}
                     onDismissError={() => setSplitError(null)}
                     onAddToQueue={() => addToBatchQueue(uploadedFile)}
+                    subscriptionInactive={subscription.status === "inactive"}
+                    usageBalance={usageBalance}
+                    usageLoading={usageLoading}
+                    estimatedSplitTokens={estimatedSplitTokens}
+                    estimatedExpandTokens={estimatedSplitTokens}
                   />
                   {subscription.status === "inactive" && (
                     <div className="mt-3 border-t border-white/10 pt-3">
@@ -684,7 +770,7 @@ export function App() {
                   guidanceTarget === "mixer" && guidanceRingClass
                 )}
                 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: reduceMotion ? 0 : 0.4 }}
               >
                 <AudioErrorBoundary>
                   {/* Onboarding checklist */}
@@ -711,6 +797,10 @@ export function App() {
                         </span>
                       )}
                     </div>
+                    <p className="text-[10px] text-white/45">
+                      Press <kbd className="rounded border border-white/15 bg-white/10 px-1.5 py-0.5 font-mono text-white/70">?</kbd>{" "}
+                      or <span className="text-white/55">Help</span> in the header for keyboard shortcuts.
+                    </p>
                     <div className="flex flex-wrap gap-2">
                       {onboardingSteps.map((step) => (
                         <span
@@ -914,6 +1004,7 @@ export function App() {
             </motion.section>
           </>
         )}
+        </main>
       </div>
 
       {/* ── STEM FALL game panel (slide up from bottom) ── */}
@@ -941,10 +1032,10 @@ export function App() {
         {showGame && (
           <motion.div
             key="stem-fall-panel"
-            initial={{ y: "100%" }}
+            initial={{ y: reduceMotion ? 0 : "100%" }}
             animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 260 }}
+            exit={{ y: reduceMotion ? 0 : "100%" }}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", damping: 28, stiffness: 260 }}
             className="fixed bottom-0 left-0 right-0 z-40 flex justify-center"
           >
             <div className="w-full max-w-2xl rounded-t-[2rem] border border-b-0 border-white/10 bg-black/90 backdrop-blur-xl shadow-[0_-20px_60px_rgba(0,0,0,0.7)] px-6 pt-5 pb-4">
@@ -1006,6 +1097,23 @@ export function App() {
           <p className="mt-2 text-[10px] text-white/45">last | avg | p50 | p95 (count)</p>
         </div>
       )}
+
+      <AnimatePresence>
+        {exportNotice && (
+          <motion.div
+            key="export-notice"
+            role="status"
+            aria-live="polite"
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+            transition={{ duration: reduceMotion ? 0 : 0.25 }}
+            className="pointer-events-none fixed bottom-20 left-1/2 z-[60] max-w-md -translate-x-1/2 rounded-xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-sm text-emerald-50 shadow-lg backdrop-blur-md md:bottom-8"
+          >
+            {exportNotice}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {activeView === "editor" && <FeedbackChip />}
     </div>

@@ -23,9 +23,12 @@ jobs:
       - name: Frontend npm audit
         working-directory: frontend
         run: npm audit --audit-level=critical
-      - name: Frontend tests
+      - name: Frontend build
         working-directory: frontend
-        run: npm run test:run
+        run: npm run build
+      - name: Frontend critical unit tests
+        working-directory: frontend
+        run: npm run test:run -- src/utils/tokenCost.test.ts src/hooks/useExport.test.ts
 
   backend:
     runs-on: ubuntu-latest

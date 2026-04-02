@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
+import { useModalA11y } from "../hooks/useModalA11y";
 
 export type ExportFormat = "wav" | "mp3" | "flac";
 export type ExportTarget = "master" | "stems" | "all";
@@ -39,6 +40,9 @@ export function ExportOptionsModal({
   isExporting,
   stemCount,
 }: ExportOptionsModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  useModalA11y(isOpen, modalRef, onClose, { disableEscape: isExporting });
+
   const [options, setOptions] = useState<ExportOptions>({
     format: "wav",
     target: "master",
@@ -54,7 +58,9 @@ export function ExportOptionsModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={() => {
+              if (!isExporting) onClose();
+            }}
           />
           <motion.div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -64,9 +70,11 @@ export function ExportOptionsModal({
           >
             <motion.div
               className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
+              ref={modalRef}
               role="dialog"
               aria-modal="true"
               aria-labelledby="export-options-title"
+              tabIndex={-1}
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}

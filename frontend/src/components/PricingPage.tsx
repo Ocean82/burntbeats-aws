@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import { StripePricingTableEmbed } from "./StripePricingTableEmbed";
 
@@ -90,6 +90,7 @@ const PLANS: PlanConfig[] = [
 ];
 
 export function PricingPage({ subscription, onClose, usageContext }: PricingPageProps) {
+  const reduceMotion = useReducedMotion();
   const handleSelectPlan = (plan: Plan) => {
     void subscription.startCheckout(plan);
   };
@@ -151,9 +152,9 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
       {/* Plan cards */}
       <motion.section
         className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        {...(reduceMotion
+          ? { initial: false, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+          : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4 } })}
       >
         {PLANS.map((plan) => {
           const isActive = subscription.status === "active" && subscription.plan === plan.id;
@@ -214,9 +215,9 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
       {/* Stripe hosted pricing table */}
       <motion.section
         className="glass-panel rounded-2xl border border-white/10 p-4 sm:p-6"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
+        {...(reduceMotion
+          ? { initial: false, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+          : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, delay: 0.1 } })}
       >
         <div className="mb-4 text-center">
           <p className="eyebrow mb-1 text-xs text-amber-200/90">Live pricing</p>
@@ -231,9 +232,9 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
       {/* FAQ / objections reducer */}
       <motion.section
         className="grid gap-4 rounded-2xl border border-white/10 bg-black/40 p-4 text-sm text-white/80 sm:grid-cols-2 sm:p-6"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
+        {...(reduceMotion
+          ? { initial: false, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+          : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, delay: 0.2 } })}
       >
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">

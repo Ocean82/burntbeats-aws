@@ -8,12 +8,31 @@
  */
 import { useAuth } from "@clerk/react";
 import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AppShell } from "./app/app-shell.component";
 import { App } from "./App";
 import { LandingPage } from "./pages/LandingPage";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
+
+/** Shown while Clerk loads session — avoids a blank screen (perceived hang). */
+function ClerkLoadingShell() {
+  return (
+    <div
+      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--bg)] text-white"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <p className="logo-burnt">
+        <span className="logo-burnt-fire text-2xl">Burnt Beats</span>
+      </p>
+      <Loader2 className="h-8 w-8 animate-spin text-amber-400/90" aria-hidden />
+      <p className="text-sm text-white/55">Loading…</p>
+    </div>
+  );
+}
 
 /** Local dev mode: full stem app without Clerk auth or Stripe billing. */
 function LocalDevRoot() {
@@ -48,8 +67,7 @@ function AuthenticatedRoot() {
     }
   }, []);
 
-  // Show nothing while Clerk is initialising (avoids flash of wrong page)
-  if (!isLoaded) return null;
+  if (!isLoaded) return <ClerkLoadingShell />;
 
   if (!isSignedIn) {
     return (
