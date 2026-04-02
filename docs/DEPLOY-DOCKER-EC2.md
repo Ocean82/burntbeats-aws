@@ -49,15 +49,46 @@ sudo docker compose build backend
 sudo docker compose build stem_service
 ```
 
-Apply:
+Apply (recreate containers that use the images you just built):
 
 ```bash
 sudo docker compose up -d
 ```
 
+If you **only** rebuilt one service, you can recreate just that service (faster, less disruption):
+
+```bash
+sudo docker compose up -d stem_service
+# or: frontend | backend
+```
+
 Use **`sudo`** if the **`ubuntu`** user is not in the **`docker`** group (default **`docker.sock`** permissions).
 
 **Rebuild frontend** whenever **`frontend/`** sources or **`VITE_*`** values used at build time change.
+
+---
+
+## Build time and what to expect
+
+- A **full** **`sudo docker compose build`** (all services, cold cache) can take **on the order of 10+ minutes** on a typical CPU EC2 node. Most of that is usually **`stem_service`**: **`pip install`** for PyTorch and related deps inside the image, plus exporting a large image layer.
+- **`docker compose build --parallel`** can build **frontend** and **backend** alongside **`stem_service`** when you need everything; otherwise build **only the service you changed** (see commands above) so layer cache applies and deploys stay short.
+- After **`requirements.txt`** or **`stem_service/`** Python changes, you **must** rebuild **`stem_service`**; editing code on the host does not change the running container until you **build** and **recreate**.
+
+---
+
+## Docker container name conflicts
+
+If **`docker compose up`** or **`build`** fails with **“container name … is already in use”** (often after an interrupted recreate), the stack can be left with duplicate or half-removed containers.
+
+**Reliable reset** (brief downtime for the app):
+
+```bash
+cd /home/ubuntu/burntbeats-aws
+sudo docker compose down
+sudo docker compose up -d
+```
+
+Then confirm **`sudo docker compose ps`** shows all services **healthy**. Do **not** confuse this with unrelated host **`systemd`** units (e.g. an old FastAPI service under a different path); see **Pitfalls** below.
 
 ---
 
@@ -78,6 +109,7 @@ Use **[DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md)** when you are **copyin
 
 - **Wrong systemd unit:** An old **`burntbeats-api.service`** (or similar) pointing at a different path (e.g. FastAPI under **`/home/ubuntu/app`**) is **not** this stack. Restarting it will not update **`docker-compose`** services and may fail if paths/env are stale.
 - **Stale API in the browser:** If **`VITE_API_BASE_URL`** or other **`VITE_*`** values change, rebuild the **frontend** image so the new bundle is baked in.
+- **Assuming host `npm run build` updated the site:** Production usually serves the **frontend container** on the host-mapped port (e.g. **5173**). Rebuild the **image** and **recreate** the **frontend** service unless nginx is explicitly pointed at **`frontend/dist/`** on disk.
 
 ---
 

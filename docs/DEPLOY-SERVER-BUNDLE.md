@@ -83,6 +83,8 @@ Optional / GPU-only items (RoFormer `.ckpt`, etc.) are **not** required for CPU-
 
 ## 3. Install dependencies on the server
 
+**If production uses Docker Compose** (recommended for many EC2 setups): do **not** rely on host-only `npm`/`pip` for the live app — follow **[DEPLOY-DOCKER-EC2.md](DEPLOY-DOCKER-EC2.md)** (`docker compose build`, `up -d`, build times, conflict recovery). The following is the **bare-metal / multi-process** alternative (scripts or manual terminals):
+
 Rough order (same as local multi-terminal setup):
 
 1. **Python (stem service):** `python3 -m venv .venv`, `source .venv/bin/activate`, `pip install -r stem_service/requirements.txt`

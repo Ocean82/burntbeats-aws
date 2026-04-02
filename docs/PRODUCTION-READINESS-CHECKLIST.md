@@ -30,8 +30,9 @@ This checklist is intentionally short and repeatable before each deploy.
 
 ## 4) Minimal Runtime Verification
 
+- **Docker Compose deploy (typical EC2 path):** After `git pull`, rebuild and recreate as needed — see **[DEPLOY-DOCKER-EC2.md](DEPLOY-DOCKER-EC2.md)** (single-service builds, **build duration**, **container name conflicts** → `docker compose down` / `up -d`).
 - Confirm containers healthy:
-  - `backend`, `frontend`, `stem_service`
+  - `sudo docker compose ps` — `backend`, `frontend`, `stem_service` report **healthy** (or equivalent).
 - Confirm endpoint behavior:
   - `GET /api/health` -> `200`
   - anonymous `GET /api/billing/subscription` -> `401`
