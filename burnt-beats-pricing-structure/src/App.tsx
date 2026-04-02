@@ -187,8 +187,8 @@ export default function App() {
 
       {/* Main Content */}
       <main className="relative">
-        {/* Hero Section */}
-        <section className="py-20 px-6">
+        {/* Hero — anchor target for header "Features" */}
+        <section id="features" className="scroll-mt-24 py-20 px-6">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-orange-500/10 border border-orange-500/20 px-4 py-2 mb-6">
               <WaveformIcon />
@@ -209,7 +209,7 @@ export default function App() {
             <div className="inline-flex items-center gap-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 px-6 py-4 backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-gradient-to-r from-orange-500 to-amber-500" />
-                <span className="text-zinc-300 text-sm">1 Token = 1 Minute of Audio</span>
+                <span className="text-zinc-300 text-sm">1 token per minute of audio</span>
               </div>
               <div className="w-px h-4 bg-zinc-700" />
               <span className="text-zinc-500 text-sm">Unused tokens roll over monthly</span>
@@ -217,8 +217,8 @@ export default function App() {
           </div>
         </section>
 
-        {/* Pricing Grid */}
-        <section className="pb-24 px-6">
+        {/* Pricing Grid — anchor target for header "Pricing" */}
+        <section id="pricing" className="scroll-mt-24 pb-24 px-6">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
               {plans.map((plan, index) => (
@@ -228,8 +228,8 @@ export default function App() {
           </div>
         </section>
 
-        {/* Enterprise Section */}
-        <section className="pb-24 px-6">
+        {/* Enterprise Section — anchor target for header "Enterprise" */}
+        <section id="enterprise" className="scroll-mt-24 pb-24 px-6">
           <div className="max-w-5xl mx-auto">
             <div className="relative rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/20 p-10 lg:p-14 overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/10 rounded-full blur-3xl" />

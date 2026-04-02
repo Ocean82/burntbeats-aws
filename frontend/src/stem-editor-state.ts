@@ -4,7 +4,7 @@ import { defaultMixer, defaultTrim } from "./types";
 export interface StemEditorState {
   trim: TrimState;
   mixer: MixerState;
-  /** Playback rate (derived from pitch + timeStretch when both set; otherwise legacy 0.5–2.0). */
+  /** Legacy playback rate; used only when `pitchSemitones` and `timeStretch` are both missing (old saves). Prefer pitch + timeStretch. */
   rate: number;
   /** Pitch shift in semitones (-12 to +12). Combined with timeStretch for effective rate. */
   pitchSemitones: number;
@@ -14,14 +14,14 @@ export interface StemEditorState {
   soloed: boolean;
 }
 
-/** Effective playback rate from pitch and time stretch: rate = 2^(pitch/12) / timeStretch. */
+/** Effective playback rate from pitch and time stretch: rate = 2^(pitch/12) / timeStretch. Matches client + server export. */
 export function getStemEffectiveRate(state: StemEditorState): number {
   const hasNewFields = state.pitchSemitones != null || state.timeStretch != null;
-  if (!hasNewFields) return state.rate ?? 1;
+  if (!hasNewFields) return Math.max(1e-6, state.rate ?? 1);
   const pitch = state.pitchSemitones ?? 0;
   const stretch = state.timeStretch ?? 1;
-  if (stretch > 0) return Math.pow(2, pitch / 12) / stretch;
-  return state.rate ?? 1;
+  if (stretch > 0) return Math.max(1e-6, Math.pow(2, pitch / 12) / stretch);
+  return Math.max(1e-6, state.rate ?? 1);
 }
 
 export function defaultStemState(): StemEditorState {

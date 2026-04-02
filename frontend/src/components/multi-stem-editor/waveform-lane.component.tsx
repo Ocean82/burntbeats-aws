@@ -5,6 +5,7 @@ import type { StemEditorState } from "../../stem-editor-state";
 import { cn } from "../../utils/cn";
 import { drawWaveformBars } from "../../utils/waveformCanvas";
 import { stemThemeVariables, trimVisiblePercentsStyle } from "../../utils/stemThemeVariables";
+import type { SeekPhase } from "../../types/playbackSeek";
 
 const BAR_BUDGET = 300;
 const HANDLE_HIT_PX = 12;
@@ -45,7 +46,8 @@ export interface WaveformLaneProps {
   /** Live analyser time-domain data for waveform modulation during playback. */
   getAnalyserData?: () => Uint8Array | null;
   onTrimChange: (stemId: string, trim: TrimState) => void;
-  onSeek: (pct: number) => void;
+  /** `phase`: `move` during drag (throttled seek); `end` on pointer release (always applies). */
+  onSeek: (pct: number, opts?: { phase?: SeekPhase }) => void;
   onActivate: (stemId: string) => void;
   onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
 }
@@ -76,6 +78,7 @@ export function WaveformLane({
   const stemIdRef = useRef(stem.id);
   const onTrimChangeRef = useRef(onTrimChange);
   const onSeekRef = useRef(onSeek);
+  const lastSeekPctRef = useRef(0);
   const visibleStartRef = useRef(0);
   const visibleRangeRef = useRef(1);
 
@@ -117,7 +120,8 @@ export function WaveformLane({
       if (rect && rect.width > 0) {
         const raw = clamp((event.clientX - rect.left) / rect.width, 0, 1);
         const pct = clamp(visibleStart + raw * visibleRange, 0, 1) * 100;
-        onSeekRef.current(pct);
+        lastSeekPctRef.current = pct;
+        onSeekRef.current(pct, { phase: "move" });
       }
     }
   }, [hitTestHandle, visibleStart, visibleRange]);
@@ -142,11 +146,16 @@ export function WaveformLane({
           end: clamp(pct, latestTrim.start + MIN_TRIM_GAP_PCT, 100),
         });
       } else {
-        onSeekRef.current(pct);
+        lastSeekPctRef.current = pct;
+        onSeekRef.current(pct, { phase: "move" });
       }
     };
     const onUp = () => {
+      const mode = draggingRef.current;
       draggingRef.current = null;
+      if (mode === "seek") {
+        onSeekRef.current(lastSeekPctRef.current, { phase: "end" });
+      }
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
@@ -285,8 +294,8 @@ export function WaveformLane({
           <span className="sr-only">{stem.label} gain in decibels</span>
           <input
             type="range"
-            min={-24}
-            max={12}
+            min={-20}
+            max={6}
             step={0.5}
             value={mixer.gain}
             aria-valuetext={`${mixer.gain > 0 ? "+" : ""}${mixer.gain.toFixed(1)} dB`}

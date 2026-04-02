@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import { StripePricingTableEmbed } from "./StripePricingTableEmbed";
 
@@ -97,6 +98,34 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
 
   return (
     <div className="relative mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-4 sm:px-6 lg:px-8">
+      {/* Wayfinding: in-app pricing view — always offer an explicit path back without browser Back */}
+      <nav
+        aria-label="Breadcrumb"
+        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+      >
+        <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-white/70">
+          <li className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="group inline-flex min-h-[44px] min-w-0 items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-left text-amber-200/95 transition hover:border-amber-400/35 hover:bg-amber-500/10 hover:text-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400/50"
+            >
+              <ArrowLeft className="h-4 w-4 shrink-0 text-amber-300/90 transition group-hover:-translate-x-0.5" aria-hidden />
+              <span className="font-medium">Back to editor</span>
+            </button>
+          </li>
+          <li aria-hidden="true" className="text-white/30">
+            /
+          </li>
+          <li className="min-w-0 truncate text-white/55" aria-current="page">
+            Pricing &amp; plans
+          </li>
+        </ol>
+        <p className="text-[11px] leading-snug text-white/45 sm:max-w-sm sm:text-right">
+          Same as <span className="text-white/55">Back to editor</span> in the header — no need for the browser Back button.
+        </p>
+      </nav>
+
       {/* Header / hero */}
       <section className="glass-panel mirror-sheen rounded-[2rem] px-6 py-8 lg:px-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -133,13 +162,6 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
             )}
           </div>
           <div className="mt-2 flex flex-col items-start gap-3 lg:items-end">
-                <button
-              type="button"
-              onClick={onClose}
-                  className="ghost-button tap-feedback px-4 py-2 text-xs"
-            >
-              Back to editor
-            </button>
             {subscription.status === "active" && subscription.plan && (
               <p className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-[11px] font-medium text-emerald-200/90">
                 Current plan: <span className="uppercase">{subscription.plan}</span>
@@ -272,6 +294,17 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </p>
         </div>
       </motion.section>
+
+      <p className="border-t border-white/10 pt-8 text-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-amber-200/95 transition hover:border-amber-400/35 hover:bg-amber-500/10 hover:text-amber-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400/50"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+          Back to editor
+        </button>
+      </p>
     </div>
   );
 }

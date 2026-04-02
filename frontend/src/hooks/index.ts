@@ -1,5 +1,6 @@
 export { useKeyboardShortcuts, type ShortcutHandlers } from "./useKeyboardShortcuts";
 export { useAudioPlayback } from "./useAudioPlayback";
+export type { SeekPhase } from "../types/playbackSeek";
 export { useWaveformCompute } from "./useWaveformCompute";
 export { useExport } from "./useExport";
 export { useBatchQueue } from "./useBatchQueue";

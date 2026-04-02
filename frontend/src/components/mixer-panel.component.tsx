@@ -6,6 +6,7 @@ import { MultiStemEditor } from "./MultiStemEditor";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { VUMeter } from "./VUMeter";
 import { cn } from "../utils/cn";
+import type { SeekPhase } from "../types/playbackSeek";
 
 export interface MixerPanelProps {
   mixStemCount: number;
@@ -163,9 +164,9 @@ export function MixerPanel({
         activeStemId={activeStemId}
         onActiveStemChange={onActiveStemChange}
         onStemStateChange={onStemStateChange}
-        onSeek={(pct) => {
+        onSeek={(pct, opts) => {
           if (onSeekMix) {
-            onSeekMix(pct);
+            onSeekMix(pct, opts);
             return;
           }
           if (isPlayingMix) onStopMix();

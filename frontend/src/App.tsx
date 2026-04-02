@@ -125,7 +125,7 @@ export function App() {
     audioContextRef, handlePlayMix, handleSeekMix, handleStopMix, handlePreviewStem, stopPreview,
     getMasterAnalyserTimeDomainData,
     getMasterAnalyserFrequencyData,
-  } = useAudioPlayback({ onError: (message) => setSplitError(message) });
+  } = useAudioPlayback({ onError: (message) => setSplitError(message), stemStates });
 
   // ── Export hook ───────────────────────────────────────────────────────────
   const {

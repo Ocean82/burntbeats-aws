@@ -1,61 +1,64 @@
 /**
- * useAudioPlayback — canonical real-time Web Audio mix + stem preview + playhead.
- * Master mix stem selection matches export via `filterStemsForAudibleMix` (single semantics).
+ * useAudioPlayback — real-time Web Audio mix + stem preview + playhead.
+ * Playback uses `playbackRate = getStemEffectiveRate(st)` so live preview matches client + server export.
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StemResult } from "../types";
-import { trimToSeconds, createStemPreviewBuffer, createStemDspChain } from "../utils/audio";
-import { defaultStemState, type StemEditorState } from "../stem-editor-state";
+import {
+  createStemPreviewBuffer,
+  createStemDspChain,
+  getStemTrimWallDurationSeconds,
+  maxTrimWallDurationSeconds,
+  trimStartOffsetAtElapsedWall,
+  type StemDspChain,
+} from "../utils/audio";
+import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
-import { createPitchShifter, needsPitchShift, type StemPitchShifter } from "../utils/pitchShift";
 import { createPlayheadTracker } from "../utils/playheadTracker";
+import {
+  stemPreviewStructuralSignature,
+  stemRoutingSignature,
+  stemTrimSignature,
+} from "../utils/stemPlaybackUtils";
+import type { SeekPhase } from "../types/playbackSeek";
 import type { StemId } from "../types";
 
-/**
- * A playback handle that is either a native AudioBufferSourceNode (no pitch shift)
- * or a SoundTouch StemPitchShifter (pitch shift active). Both support .disconnect().
- */
-type StemPlaybackHandle =
-  | { kind: "native"; source: AudioBufferSourceNode; pitchShifter: null }
-  | { kind: "pitched"; source: null; pitchShifter: StemPitchShifter };
+export type { SeekPhase };
 
-/**
- * Creates the appropriate playback handle and wires it to dsp.input.
- * - No pitch: native AudioBufferSourceNode, playbackRate = timeStretch.
- * - Pitch != 0: SoundTouch PitchShifter (replaces source node entirely).
- */
-function buildStemPlayback(
+export type MixStemRuntime = {
+  stemId: string;
+  dsp: StemDspChain;
+  source: AudioBufferSourceNode;
+};
+
+function buildStemSource(
   ctx: AudioContext,
   buffer: AudioBuffer,
   st: StemEditorState,
   trimStart: number,
   trimEnd: number,
   dspInput: AudioNode
-): StemPlaybackHandle {
-  const semitones = st.pitchSemitones ?? 0;
-  const stretch = st.timeStretch ?? 1;
-
-  if (needsPitchShift(st)) {
-    const shifter = createPitchShifter(ctx, buffer, semitones, stretch > 0 ? stretch : 1, trimStart);
-    shifter.connect(dspInput);
-    return { kind: "pitched", source: null, pitchShifter: shifter };
-  }
-
+): AudioBufferSourceNode {
   const source = ctx.createBufferSource();
   source.buffer = buffer;
-  source.playbackRate.value = stretch > 0 ? stretch : 1;
+  source.playbackRate.value = getStemEffectiveRate(st);
   source.connect(dspInput);
   source.start(0, trimStart, trimEnd - trimStart);
-  return { kind: "native", source, pitchShifter: null };
+  return source;
 }
 
-function stopHandle(handle: StemPlaybackHandle) {
-  if (handle.kind === "native") {
-    try { handle.source.stop(); } catch { /* already stopped */ }
-    try { handle.source.disconnect(); } catch { /* already disconnected */ }
-  } else {
-    handle.pitchShifter.disconnect();
+function stopMixStemRuntime(r: MixStemRuntime) {
+  try {
+    r.source.stop();
+  } catch {
+    /* already stopped */
   }
+  try {
+    r.source.disconnect();
+  } catch {
+    /* already disconnected */
+  }
+  r.dsp.disconnect();
 }
 
 interface UseAudioPlaybackReturn {
@@ -71,7 +74,7 @@ interface UseAudioPlaybackReturn {
     stemStates: Record<string, StemEditorState>,
     stemBuffers: Record<string, AudioBuffer>
   ) => Promise<void>;
-  handleSeekMix: (pct: number) => void;
+  handleSeekMix: (pct: number, opts?: { phase?: SeekPhase }) => void;
   handleStopMix: () => void;
   handlePreviewStem: (
     stemId: string,
@@ -89,18 +92,23 @@ interface UseAudioPlaybackReturn {
 
 interface UseAudioPlaybackOptions {
   onError?: (message: string) => void;
+  /** Current stem states; when provided, live mixer node params update while the mix plays. */
+  stemStates?: Record<string, StemEditorState>;
 }
 
+const TRIM_HOT_SWAP_DEBOUNCE_MS = 80;
+
 export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudioPlaybackReturn {
-  const { onError } = options;
+  const { onError, stemStates: stemStatesProp } = options;
   const [isPlayingMix, setIsPlayingMix] = useState(false);
   const [playingStem, setPlayingStem] = useState<string | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
-  const currentPreviewHandleRef = useRef<StemPlaybackHandle | null>(null);
-  const mixHandleRefs = useRef<StemPlaybackHandle[]>([]);
+  const currentPreviewRuntimeRef = useRef<MixStemRuntime | null>(null);
+  const mixStemRuntimesRef = useRef<MixStemRuntime[]>([]);
   const isPlayingMixRef = useRef(false);
   const playheadIntervalRef = useRef<number | null>(null);
+  const playheadTrackerStopRef = useRef<(() => void) | null>(null);
   const playStartTimeRef = useRef<number>(0);
   const mixDurationRef = useRef<number>(0);
   const isPlayingPreviewRef = useRef(false);
@@ -116,6 +124,11 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
   const playheadListenersRef = useRef<Set<() => void>>(new Set());
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
+
+  const prevMixRoutingSigRef = useRef<string>("");
+  const prevMixTrimSigRef = useRef<string>("");
+  const trimDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevPreviewStructSigRef = useRef<string>("");
 
   const ensureMasterBus = useCallback((ctx: AudioContext): GainNode => {
     if (masterGainRef.current && masterAnalyserRef.current) {
@@ -182,344 +195,484 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
     return ctx;
   }, [ensureMasterBus]);
 
+  const cancelPlayheadTracker = useCallback(() => {
+    playheadTrackerStopRef.current?.();
+    playheadTrackerStopRef.current = null;
+    if (playheadIntervalRef.current !== null) {
+      cancelAnimationFrame(playheadIntervalRef.current);
+      playheadIntervalRef.current = null;
+    }
+  }, []);
+
   const stopPreview = useCallback(() => {
-    if (currentPreviewHandleRef.current) {
-      stopHandle(currentPreviewHandleRef.current);
-      currentPreviewHandleRef.current = null;
+    if (currentPreviewRuntimeRef.current) {
+      stopMixStemRuntime(currentPreviewRuntimeRef.current);
+      currentPreviewRuntimeRef.current = null;
     }
     isPlayingPreviewRef.current = false;
-    if (playheadIntervalRef.current) {
-      cancelAnimationFrame(playheadIntervalRef.current);
-      playheadIntervalRef.current = null;
-    }
+    cancelPlayheadTracker();
     setPlayingStem(null);
-  }, []);
+  }, [cancelPlayheadTracker]);
 
   const handleStopMix = useCallback(() => {
-    mixHandleRefs.current.forEach(stopHandle);
-    mixHandleRefs.current = [];
+    if (trimDebounceTimerRef.current) {
+      clearTimeout(trimDebounceTimerRef.current);
+      trimDebounceTimerRef.current = null;
+    }
+    prevMixRoutingSigRef.current = "";
+    prevMixTrimSigRef.current = "";
+    mixStemRuntimesRef.current.forEach(stopMixStemRuntime);
+    mixStemRuntimesRef.current = [];
     setIsPlayingMix(false);
     isPlayingMixRef.current = false;
-    if (playheadIntervalRef.current) {
-      cancelAnimationFrame(playheadIntervalRef.current);
-      playheadIntervalRef.current = null;
-    }
+    cancelPlayheadTracker();
     emitPlayheadPosition(0);
-  }, [emitPlayheadPosition]);
+  }, [emitPlayheadPosition, cancelPlayheadTracker]);
 
   const stopMixSourcesPreservePlayhead = useCallback(() => {
-    mixHandleRefs.current.forEach(stopHandle);
-    mixHandleRefs.current = [];
-    if (playheadIntervalRef.current) {
-      cancelAnimationFrame(playheadIntervalRef.current);
-      playheadIntervalRef.current = null;
+    mixStemRuntimesRef.current.forEach(stopMixStemRuntime);
+    mixStemRuntimesRef.current = [];
+    cancelPlayheadTracker();
+  }, [cancelPlayheadTracker]);
+
+  /** Keep seek + hot-swap in sync with latest UI state from the parent. */
+  useEffect(() => {
+    if (stemStatesProp) {
+      lastStemStatesRef.current = stemStatesProp;
     }
-  }, []);
+  }, [stemStatesProp]);
 
-  const handlePlayMix = useCallback(async (
-    splitResultStems: StemResult[],
-    stemStates: Record<string, StemEditorState>,
-    stemBuffers: Record<string, AudioBuffer>
-  ) => {
-    if (isPlayingMix) { handleStopMix(); return; }
-    stopPreview();
-
-    const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
-    if (stemsToPlay.length === 0) return;
-
-    lastSplitResultStemsRef.current = splitResultStems;
-    lastStemStatesRef.current = stemStates;
-    lastStemBuffersRef.current = stemBuffers;
-
-    const context = await getOrCreateContext();
-    if (!context) return;
-
-    const handles: StemPlaybackHandle[] = [];
-    for (const stem of stemsToPlay) {
-      const buffer = stemBuffers[stem.id];
-      if (!buffer) continue;
-      const st = stemStates[stem.id] ?? defaultStemState();
-      const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-
-      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-      const handle = buildStemPlayback(context, buffer, st, trimStart, trimEnd, dsp.input);
-      dsp.output.connect(ensureMasterBus(context));
-
-      if (handle.kind === "native") {
-        handle.source.onended = () => {
-          dsp.disconnect();
-          mixHandleRefs.current = mixHandleRefs.current.filter((h) => h !== handle);
-          if (mixHandleRefs.current.length === 0) {
-            setIsPlayingMix(false);
-            isPlayingMixRef.current = false;
-          }
-        };
+  /** Sync EQ/gain/effects on running mix and solo preview when sliders move (non-structural). */
+  useEffect(() => {
+    if (!stemStatesProp) return;
+    if (isPlayingMix) {
+      for (const r of mixStemRuntimesRef.current) {
+        const st = stemStatesProp[r.stemId];
+        if (st) {
+          r.dsp.update(st.mixer, Math.pow(10, st.mixer.gain / 20));
+        }
       }
-      handles.push(handle);
     }
+    if (playingStem) {
+      const r = currentPreviewRuntimeRef.current;
+      if (r) {
+        const st = stemStatesProp[r.stemId];
+        if (st) {
+          r.dsp.update(st.mixer, Math.pow(10, st.mixer.gain / 20));
+        }
+      }
+    }
+  }, [stemStatesProp, isPlayingMix, playingStem]);
 
-    mixHandleRefs.current = handles;
-    setIsPlayingMix(true);
-    isPlayingMixRef.current = true;
+  const attachMixSourceEnded = useCallback(
+    (source: AudioBufferSourceNode, dsp: StemDspChain, onMixFullyStopped: () => void) => {
+      source.onended = () => {
+        dsp.disconnect();
+        mixStemRuntimesRef.current = mixStemRuntimesRef.current.filter((x) => x.source !== source);
+        if (mixStemRuntimesRef.current.length === 0) {
+          cancelPlayheadTracker();
+          emitPlayheadPosition(100);
+          setIsPlayingMix(false);
+          isPlayingMixRef.current = false;
+          onMixFullyStopped();
+        }
+      };
+    },
+    [cancelPlayheadTracker, emitPlayheadPosition]
+  );
 
-    // Playhead tracking
-    const firstStem = stemsToPlay[0];
-    const firstBuffer = stemBuffers[firstStem.id];
-    if (firstBuffer) {
-      const st = stemStates[firstStem.id] ?? defaultStemState();
-      const { trimStart, trimEnd } = trimToSeconds(firstBuffer, st.trim);
-      mixDurationRef.current = trimEnd - trimStart;
-      playStartTimeRef.current = context.currentTime;
+  const startPlayheadTracker = useCallback(
+    (context: AudioContext, duration: number, startTime: number, isActive: () => boolean) => {
+      cancelPlayheadTracker();
       const tracker = createPlayheadTracker({
         context,
-        duration: mixDurationRef.current,
-        startTime: playStartTimeRef.current,
+        duration,
+        startTime,
         onUpdate: emitPlayheadPosition,
-        isActive: () => isPlayingMixRef.current,
+        isActive,
       });
+      playheadTrackerStopRef.current = tracker.stop;
       playheadIntervalRef.current = tracker.start();
-    }
-  }, [isPlayingMix, handleStopMix, stopPreview, getOrCreateContext, emitPlayheadPosition, ensureMasterBus]);
+    },
+    [cancelPlayheadTracker, emitPlayheadPosition]
+  );
 
-  /** Seek a single-stem preview to the given position. */
-  const seekToPreview = useCallback(async (pct: number) => {
-    const stemId = playingStem;
-    if (!stemId) return;
+  /**
+   * Rebuild all audible stems at `pct` (0–100) using current stem states + buffers.
+   * Used by seek and by hot-swap when mute/solo/trim/pitch/stretch change during playback.
+   */
+  const rebuildMixAtPct = useCallback(
+    async (pct: number, stemStates: Record<string, StemEditorState>) => {
+      const splitResultStems = lastSplitResultStemsRef.current;
+      if (splitResultStems.length === 0) return;
 
-    const context = await getOrCreateContext();
-    if (!context) return;
+      const context = await getOrCreateContext();
+      if (!context) return;
 
-    const buffer = previewBufferRef.current ?? lastStemBuffersRef.current[stemId];
-    if (!buffer) return;
+      const stemBuffers = lastStemBuffersRef.current;
+      const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
+      if (stemsToPlay.length === 0) {
+        handleStopMix();
+        return;
+      }
 
-    const st = previewStemStateRef.current ?? lastStemStatesRef.current[stemId] ?? defaultStemState();
-    const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-    const playDuration = trimEnd - trimStart;
-    if (playDuration <= 0) return;
+      const masterWall = maxTrimWallDurationSeconds(stemsToPlay, stemBuffers, stemStates);
+      if (masterWall <= 0) return;
 
-    stopPreview();
-    const elapsed = (playDuration * pct) / 100;
-    const remaining = playDuration - elapsed;
-    if (remaining <= 0) {
+      stopMixSourcesPreservePlayhead();
+
+      const elapsedWall = (masterWall * pct) / 100;
+      mixDurationRef.current = masterWall;
       emitPlayheadPosition(pct);
+      playStartTimeRef.current = context.currentTime - elapsedWall;
+
+      const runtimes: MixStemRuntime[] = [];
+      for (const stem of stemsToPlay) {
+        const buffer = stemBuffers[stem.id];
+        if (!buffer) continue;
+        const st = stemStates[stem.id] ?? defaultStemState();
+        const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, elapsedWall);
+        if (trimEnd - startOffset <= 0) continue;
+
+        const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
+        const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input);
+        dsp.output.connect(ensureMasterBus(context));
+
+        const runtime: MixStemRuntime = { stemId: stem.id, dsp, source };
+        attachMixSourceEnded(source, dsp, () => {
+          prevMixRoutingSigRef.current = "";
+          prevMixTrimSigRef.current = "";
+        });
+        runtimes.push(runtime);
+      }
+
+      if (runtimes.length === 0) {
+        handleStopMix();
+        return;
+      }
+
+      mixStemRuntimesRef.current = runtimes;
+      setIsPlayingMix(true);
+      isPlayingMixRef.current = true;
+
+      startPlayheadTracker(context, mixDurationRef.current, playStartTimeRef.current, () => isPlayingMixRef.current);
+    },
+    [
+      getOrCreateContext,
+      handleStopMix,
+      stopMixSourcesPreservePlayhead,
+      emitPlayheadPosition,
+      ensureMasterBus,
+      attachMixSourceEnded,
+      startPlayheadTracker,
+    ]
+  );
+
+  const rebuildMixAtPctRef = useRef(rebuildMixAtPct);
+  rebuildMixAtPctRef.current = rebuildMixAtPct;
+
+  /** Hot-swap mix when routing (mute/solo/pitch/stretch) or trim changes during playback. */
+  useEffect(() => {
+    if (!isPlayingMix || !stemStatesProp || !isPlayingMixRef.current) return;
+    const split = lastSplitResultStemsRef.current;
+    if (split.length === 0) return;
+
+    const ids = split.map((s) => s.id);
+    const routing = stemRoutingSignature(stemStatesProp, ids);
+    const trimOnly = stemTrimSignature(stemStatesProp, ids);
+
+    const routingChanged = routing !== prevMixRoutingSigRef.current;
+    const trimChanged = trimOnly !== prevMixTrimSigRef.current;
+
+    if (!routingChanged && !trimChanged) return;
+
+    if (routingChanged) {
+      if (trimDebounceTimerRef.current) {
+        clearTimeout(trimDebounceTimerRef.current);
+        trimDebounceTimerRef.current = null;
+      }
+      prevMixRoutingSigRef.current = routing;
+      prevMixTrimSigRef.current = trimOnly;
+      const pct = playheadPositionRef.current;
+      void rebuildMixAtPctRef.current(pct, stemStatesProp);
       return;
     }
 
-    previewDurationRef.current = playDuration;
-    emitPlayheadPosition(pct);
-    playheadPositionRef.current = pct;
-    previewStemStateRef.current = st;
-    previewBufferRef.current = buffer;
+    if (trimChanged) {
+      if (trimDebounceTimerRef.current) clearTimeout(trimDebounceTimerRef.current);
+      trimDebounceTimerRef.current = setTimeout(() => {
+        trimDebounceTimerRef.current = null;
+        const st = stemStatesProp;
+        if (!st) return;
+        prevMixTrimSigRef.current = stemTrimSignature(st, ids);
+        prevMixRoutingSigRef.current = stemRoutingSignature(st, ids);
+        const pct = playheadPositionRef.current;
+        void rebuildMixAtPctRef.current(pct, st);
+      }, TRIM_HOT_SWAP_DEBOUNCE_MS);
+    }
+  }, [stemStatesProp, isPlayingMix]);
 
-    const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-    const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
-    dsp.output.connect(ensureMasterBus(context));
+  const handlePlayMix = useCallback(
+    async (
+      splitResultStems: StemResult[],
+      stemStates: Record<string, StemEditorState>,
+      stemBuffers: Record<string, AudioBuffer>
+    ) => {
+      if (isPlayingMix) {
+        handleStopMix();
+        return;
+      }
+      stopPreview();
 
-    if (handle.kind === "native") {
-      handle.source.onended = () => {
+      const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
+      if (stemsToPlay.length === 0) return;
+
+      lastSplitResultStemsRef.current = splitResultStems;
+      lastStemStatesRef.current = stemStates;
+      lastStemBuffersRef.current = stemBuffers;
+
+      const ids = splitResultStems.map((s) => s.id);
+      prevMixRoutingSigRef.current = stemRoutingSignature(stemStates, ids);
+      prevMixTrimSigRef.current = stemTrimSignature(stemStates, ids);
+
+      const context = await getOrCreateContext();
+      if (!context) return;
+
+      await rebuildMixAtPct(0, stemStates);
+    },
+    [isPlayingMix, handleStopMix, stopPreview, getOrCreateContext, rebuildMixAtPct]
+  );
+
+  const seekToPreview = useCallback(
+    async (pct: number) => {
+      const stemId = playingStem;
+      if (!stemId) return;
+
+      const context = await getOrCreateContext();
+      if (!context) return;
+
+      const buffer = previewBufferRef.current ?? lastStemBuffersRef.current[stemId];
+      if (!buffer) return;
+
+      const st = previewStemStateRef.current ?? lastStemStatesRef.current[stemId] ?? defaultStemState();
+      const wallDuration = getStemTrimWallDurationSeconds(buffer, st);
+      if (wallDuration <= 0) return;
+
+      if (currentPreviewRuntimeRef.current) {
+        stopMixStemRuntime(currentPreviewRuntimeRef.current);
+        currentPreviewRuntimeRef.current = null;
+      }
+      isPlayingPreviewRef.current = false;
+      cancelPlayheadTracker();
+
+      const wallElapsed = (wallDuration * pct) / 100;
+      const wallRemaining = wallDuration - wallElapsed;
+      if (wallRemaining <= 0) {
+        emitPlayheadPosition(pct);
+        setPlayingStem(null);
+        return;
+      }
+
+      const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, wallElapsed);
+      if (trimEnd - startOffset <= 0) {
+        emitPlayheadPosition(pct);
+        setPlayingStem(null);
+        return;
+      }
+
+      previewDurationRef.current = wallRemaining;
+      emitPlayheadPosition(pct);
+      playheadPositionRef.current = pct;
+      previewStemStateRef.current = st;
+      previewBufferRef.current = buffer;
+
+      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
+      const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input);
+      dsp.output.connect(ensureMasterBus(context));
+
+      const runtime: MixStemRuntime = { stemId, dsp, source };
+      source.onended = () => {
         dsp.disconnect();
-        if (currentPreviewHandleRef.current?.kind === "native" &&
-            currentPreviewHandleRef.current.source === handle.source) {
-          currentPreviewHandleRef.current = null;
+        cancelPlayheadTracker();
+        emitPlayheadPosition(100);
+        if (currentPreviewRuntimeRef.current?.source === source) {
+          currentPreviewRuntimeRef.current = null;
           isPlayingPreviewRef.current = false;
           setPlayingStem(null);
         }
       };
-    }
-    currentPreviewHandleRef.current = handle;
-    isPlayingPreviewRef.current = true;
+      currentPreviewRuntimeRef.current = runtime;
+      isPlayingPreviewRef.current = true;
+      setPlayingStem(stemId);
 
-    playStartTimeRef.current = context.currentTime - elapsed;
+      playStartTimeRef.current = context.currentTime - wallElapsed;
 
-    const tracker = createPlayheadTracker({
-      context,
-      duration: previewDurationRef.current,
-      startTime: playStartTimeRef.current,
-      onUpdate: emitPlayheadPosition,
-      isActive: () => isPlayingPreviewRef.current,
-    });
-    playheadIntervalRef.current = tracker.start();
-  }, [playingStem, getOrCreateContext, stopPreview, emitPlayheadPosition, ensureMasterBus]);
+      startPlayheadTracker(
+        context,
+        previewDurationRef.current,
+        playStartTimeRef.current,
+        () => isPlayingPreviewRef.current
+      );
+    },
+    [playingStem, getOrCreateContext, cancelPlayheadTracker, emitPlayheadPosition, ensureMasterBus, startPlayheadTracker]
+  );
 
-  /** Seek the full mix to the given position (restarts all stems). */
-  const seekToMixPosition = useCallback(async (pct: number) => {
-    const splitResultStems = lastSplitResultStemsRef.current;
-    if (splitResultStems.length === 0) {
-      emitPlayheadPosition(pct);
-      return;
-    }
+  const seekToPreviewRef = useRef(seekToPreview);
+  seekToPreviewRef.current = seekToPreview;
 
-    if (!isPlayingMixRef.current) {
-      emitPlayheadPosition(pct);
-      return;
-    }
+  /** Hot-swap preview when pitch/stretch/trim change for the playing stem. */
+  useEffect(() => {
+    if (!playingStem || !stemStatesProp) return;
+    if (!currentPreviewRuntimeRef.current) return;
+    const st = stemStatesProp[playingStem];
+    if (!st) return;
 
-    // Throttle restarts: timeline drag can spam seeks.
-    const now = Date.now();
-    const pctDiff = Math.abs(pct - lastSeekPctRef.current);
-    if (pctDiff < 0.75 && now - lastSeekRestartAtRef.current < 250) return;
-    lastSeekPctRef.current = pct;
-    lastSeekRestartAtRef.current = now;
+    const sig = stemPreviewStructuralSignature(st);
+    if (sig === prevPreviewStructSigRef.current) return;
+    prevPreviewStructSigRef.current = sig;
 
-    const context = await getOrCreateContext();
-    if (!context) return;
+    previewStemStateRef.current = st;
+    const pct = playheadPositionRef.current;
+    void seekToPreviewRef.current(pct);
+  }, [stemStatesProp, playingStem]);
 
-    const stemStates = lastStemStatesRef.current;
-    const stemBuffers = lastStemBuffersRef.current;
-
-    const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
-    if (stemsToPlay.length === 0) {
-      handleStopMix();
-      return;
-    }
-
-    stopMixSourcesPreservePlayhead();
-
-    const firstStem = stemsToPlay[0];
-    const firstBuffer = stemBuffers[firstStem.id];
-    if (!firstBuffer) return;
-
-    const firstState = stemStates[firstStem.id] ?? defaultStemState();
-    const { trimStart, trimEnd } = trimToSeconds(firstBuffer, firstState.trim);
-    const duration = trimEnd - trimStart;
-    if (duration <= 0) return;
-
-    mixDurationRef.current = duration;
-    const elapsed = (duration * pct) / 100;
-
-    emitPlayheadPosition(pct);
-    playStartTimeRef.current = context.currentTime - elapsed;
-
-    const handles: StemPlaybackHandle[] = [];
-    for (const stem of stemsToPlay) {
-      const buffer = stemBuffers[stem.id];
-      if (!buffer) continue;
-      const st = stemStates[stem.id] ?? defaultStemState();
-      const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-      const remaining = (trimEnd - trimStart) - elapsed;
-      if (remaining <= 0) continue;
-
-      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-      const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
-      dsp.output.connect(ensureMasterBus(context));
-
-      if (handle.kind === "native") {
-        handle.source.onended = () => {
-          dsp.disconnect();
-          mixHandleRefs.current = mixHandleRefs.current.filter((h) => h !== handle);
-          if (mixHandleRefs.current.length === 0) {
-            setIsPlayingMix(false);
-            isPlayingMixRef.current = false;
-          }
-        };
-      }
-      handles.push(handle);
-    }
-
-    mixHandleRefs.current = handles;
-    setIsPlayingMix(true);
-    isPlayingMixRef.current = true;
-
-    const tracker = createPlayheadTracker({
-      context,
-      duration: mixDurationRef.current,
-      startTime: playStartTimeRef.current,
-      onUpdate: emitPlayheadPosition,
-      isActive: () => isPlayingMixRef.current,
-    });
-    playheadIntervalRef.current = tracker.start();
-  }, [getOrCreateContext, handleStopMix, stopMixSourcesPreservePlayhead, emitPlayheadPosition, ensureMasterBus]);
-
-  /** Seek to a position: dispatches to preview-seek or mix-seek based on playback state. */
-  const handleSeekMix = useCallback((pct: number) => {
-    const clampedPct = Math.max(0, Math.min(100, pct));
-    if (playingStem) {
-      void seekToPreview(clampedPct);
-    } else {
-      void seekToMixPosition(clampedPct);
-    }
-  }, [playingStem, seekToPreview, seekToMixPosition]);
-
-  const handlePreviewStem = useCallback(async (
-    stemId: string,
-    stemUrl: string | undefined,
-    stemBuffers: Record<string, AudioBuffer>,
-    setStemBuffers: React.Dispatch<React.SetStateAction<Record<string, AudioBuffer>>>,
-    stemStates?: Record<string, StemEditorState>
-  ) => {
-    if (playingStem === stemId) { stopPreview(); return; }
-    stopPreview();
-
-    const context = await getOrCreateContext();
-    if (!context) return;
-
-    try {
-      let buffer: AudioBuffer;
-      if (stemBuffers[stemId]) {
-        buffer = stemBuffers[stemId];
-      } else if (stemUrl) {
-        const res = await fetch(stemUrl);
-        if (!res.ok) throw new Error(`HTTP ${res.status} fetching preview for ${stemId}`);
-        buffer = await context.decodeAudioData(await res.arrayBuffer());
-        setStemBuffers((b) => ({ ...b, [stemId]: buffer }));
-      } else {
-        buffer = createStemPreviewBuffer(context, stemId as StemId);
-      }
-
-      const st = stemStates?.[stemId] ?? lastStemStatesRef.current[stemId] ?? defaultStemState();
-      previewStemStateRef.current = st;
-      previewBufferRef.current = buffer;
-
-      const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-      const playDuration = trimEnd - trimStart;
-      if (playDuration <= 0) return;
-
-      const startPct = Math.max(0, Math.min(100, playheadPositionRef.current));
-      const elapsed = (playDuration * startPct) / 100;
-      const remaining = playDuration - elapsed;
-      if (remaining <= 0) {
-        emitPlayheadPosition(startPct);
+  const seekToMixPosition = useCallback(
+    async (pct: number, phase: SeekPhase = "end") => {
+      const splitResultStems = lastSplitResultStemsRef.current;
+      if (splitResultStems.length === 0) {
+        emitPlayheadPosition(pct);
         return;
       }
 
-      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-      const handle = buildStemPlayback(context, buffer, st, trimStart + elapsed, trimEnd, dsp.input);
+      if (!isPlayingMixRef.current) {
+        emitPlayheadPosition(pct);
+        return;
+      }
 
-      dsp.output.connect(ensureMasterBus(context));
-      emitPlayheadPosition(startPct);
-      previewDurationRef.current = playDuration;
-      playStartTimeRef.current = context.currentTime - elapsed;
+      const skipThrottle = phase === "end";
+      if (!skipThrottle) {
+        const now = Date.now();
+        const pctDiff = Math.abs(pct - lastSeekPctRef.current);
+        if (pctDiff < 0.75 && now - lastSeekRestartAtRef.current < 250) return;
+        lastSeekPctRef.current = pct;
+        lastSeekRestartAtRef.current = now;
+      } else {
+        lastSeekPctRef.current = pct;
+        lastSeekRestartAtRef.current = Date.now();
+      }
 
-      if (handle.kind === "native") {
-        handle.source.onended = () => {
+      const stemStates = stemStatesProp ?? lastStemStatesRef.current;
+      await rebuildMixAtPct(pct, stemStates);
+    },
+    [emitPlayheadPosition, rebuildMixAtPct, stemStatesProp]
+  );
+
+  const handleSeekMix = useCallback(
+    (pct: number, opts?: { phase?: SeekPhase }) => {
+      const clampedPct = Math.max(0, Math.min(100, pct));
+      const phase = opts?.phase ?? "end";
+      if (playingStem) {
+        void seekToPreview(clampedPct);
+      } else {
+        void seekToMixPosition(clampedPct, phase);
+      }
+    },
+    [playingStem, seekToPreview, seekToMixPosition]
+  );
+
+  const handlePreviewStem = useCallback(
+    async (
+      stemId: string,
+      stemUrl: string | undefined,
+      stemBuffers: Record<string, AudioBuffer>,
+      setStemBuffers: React.Dispatch<React.SetStateAction<Record<string, AudioBuffer>>>,
+      stemStates?: Record<string, StemEditorState>
+    ) => {
+      if (playingStem === stemId) {
+        stopPreview();
+        prevPreviewStructSigRef.current = "";
+        return;
+      }
+      stopPreview();
+
+      const context = await getOrCreateContext();
+      if (!context) return;
+
+      try {
+        let buffer: AudioBuffer;
+        if (stemBuffers[stemId]) {
+          buffer = stemBuffers[stemId];
+        } else if (stemUrl) {
+          const res = await fetch(stemUrl);
+          if (!res.ok) throw new Error(`HTTP ${res.status} fetching preview for ${stemId}`);
+          buffer = await context.decodeAudioData(await res.arrayBuffer());
+          setStemBuffers((b) => ({ ...b, [stemId]: buffer }));
+        } else {
+          buffer = createStemPreviewBuffer(context, stemId as StemId);
+        }
+
+        const st = stemStates?.[stemId] ?? lastStemStatesRef.current[stemId] ?? defaultStemState();
+        previewStemStateRef.current = st;
+        previewBufferRef.current = buffer;
+        prevPreviewStructSigRef.current = stemPreviewStructuralSignature(st);
+
+        const wallDuration = getStemTrimWallDurationSeconds(buffer, st);
+        if (wallDuration <= 0) return;
+
+        const startPct = Math.max(0, Math.min(100, playheadPositionRef.current));
+        const wallElapsed = (wallDuration * startPct) / 100;
+        const wallRemaining = wallDuration - wallElapsed;
+        if (wallRemaining <= 0) {
+          emitPlayheadPosition(startPct);
+          return;
+        }
+
+        const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, wallElapsed);
+        if (trimEnd - startOffset <= 0) {
+          emitPlayheadPosition(startPct);
+          return;
+        }
+
+        const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
+        const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input);
+
+        dsp.output.connect(ensureMasterBus(context));
+        emitPlayheadPosition(startPct);
+        previewDurationRef.current = wallRemaining;
+        playStartTimeRef.current = context.currentTime - wallElapsed;
+
+        const runtime: MixStemRuntime = { stemId, dsp, source };
+        source.onended = () => {
           dsp.disconnect();
-          if (currentPreviewHandleRef.current?.kind === "native" &&
-              currentPreviewHandleRef.current.source === handle.source) {
-            currentPreviewHandleRef.current = null;
+          cancelPlayheadTracker();
+          emitPlayheadPosition(100);
+          if (currentPreviewRuntimeRef.current?.source === source) {
+            currentPreviewRuntimeRef.current = null;
             isPlayingPreviewRef.current = false;
             setPlayingStem(null);
+            prevPreviewStructSigRef.current = "";
           }
         };
+        currentPreviewRuntimeRef.current = runtime;
+        isPlayingPreviewRef.current = true;
+
+        startPlayheadTracker(
+          context,
+          previewDurationRef.current,
+          playStartTimeRef.current,
+          () => isPlayingPreviewRef.current
+        );
+
+        setPlayingStem(stemId);
+      } catch (err) {
+        console.error("Preview failed:", err);
+        onError?.("Preview failed. Please try again.");
+        setPlayingStem(null);
+        prevPreviewStructSigRef.current = "";
       }
-      currentPreviewHandleRef.current = handle;
-      isPlayingPreviewRef.current = true;
-
-      const tracker = createPlayheadTracker({
-        context,
-        duration: previewDurationRef.current,
-        startTime: playStartTimeRef.current,
-        onUpdate: emitPlayheadPosition,
-        isActive: () => isPlayingPreviewRef.current,
-      });
-      playheadIntervalRef.current = tracker.start();
-
-      setPlayingStem(stemId);
-    } catch (err) {
-      console.error("Preview failed:", err);
-      onError?.("Preview failed. Please try again.");
-      setPlayingStem(null);
-    }
-  }, [playingStem, stopPreview, getOrCreateContext, emitPlayheadPosition, ensureMasterBus]);
+    },
+    [playingStem, stopPreview, getOrCreateContext, emitPlayheadPosition, ensureMasterBus, onError, cancelPlayheadTracker, startPlayheadTracker]
+  );
 
   return {
     isPlayingMix,

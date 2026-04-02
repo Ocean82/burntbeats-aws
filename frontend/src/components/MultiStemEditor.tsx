@@ -2,7 +2,7 @@
  * MultiStemEditor — unified waveform editor showing all stems in one timeline.
  */
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
-import { Activity, Play, RotateCcw, Square, Terminal, Timer, Waves, ZoomIn, ZoomOut, X, Sliders } from "lucide-react";
+import { Activity, Info, Play, RotateCcw, Square, Terminal, Timer, Waves, ZoomIn, ZoomOut, X, Sliders } from "lucide-react";
 import type { StemDefinition, TrimState } from "../types";
 import { cn } from "../utils/cn";
 import { useTimelineViewport } from "../hooks/useTimelineViewport";
@@ -17,6 +17,7 @@ import {
   isTimelinePerformanceEnabled,
   recordTimelinePerformanceSample,
 } from "../utils/timelinePerformance";
+import type { SeekPhase } from "../types/playbackSeek";
 
 export interface MultiStemEditorProps {
   stems: StemDefinition[];
@@ -27,7 +28,7 @@ export interface MultiStemEditorProps {
   playheadPct: number;
   isLoadingStems: boolean;
   onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
-  onSeek: (pct: number) => void;
+  onSeek: (pct: number, opts?: { phase?: SeekPhase }) => void;
   onPlayPause: () => void;
   onPreviewStem: (stemId: string) => void;
   playingStemId: string | null;
@@ -148,9 +149,9 @@ export function MultiStemEditor({
   const handleActivate = useCallback((stemId: string) => setActiveStemId(stemId), [setActiveStemId]);
 
   const instrumentedOnSeek = useCallback(
-    (pct: number) => {
+    (pct: number, opts?: { phase?: SeekPhase }) => {
       const start = performance.now();
-      onSeek(pct);
+      onSeek(pct, opts);
       const category = isPlaying ? "seekDuringMix" : "seek";
       recordTimelinePerformanceSample(category, performance.now() - start);
     },
@@ -271,6 +272,19 @@ export function MultiStemEditor({
         </div>
       </div>
 
+      <p
+        className="flex items-start gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[11px] leading-snug text-white/50"
+        role="note"
+      >
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/70" aria-hidden />
+        <span>
+          <span className="text-white/65">Stem tuning panels:</span> use{" "}
+          <span className="text-white/75">Pitch</span>, <span className="text-white/75">EQ</span>,{" "}
+          <span className="text-white/75">Amplitude</span>, or <span className="text-white/75">Time</span>{" "}
+          above—each opens a side panel next to the timeline. Click the same button again to close it.
+        </span>
+      </p>
+
       <TimelineRuler ticks={ticks} formatTime={formatTime} />
 
       {/* ── Timeline + slide-out effects panel ── */}
@@ -341,6 +355,7 @@ export function MultiStemEditor({
                       onChange={(e) => onStemStateChange(activeStem.id, { pitchSemitones: Number(e.target.value) })}
                       className="stem-accent-slider w-full"
                       aria-label={`${activeStem.label} pitch shift`}
+                      title="Combined with time stretch into one playback rate (same as export)."
                     />
                     <div className="mt-1 flex justify-between text-[10px] text-white/35 font-mono">
                       <span>-12</span><span>0</span><span>+12</span>
@@ -353,6 +368,9 @@ export function MultiStemEditor({
                   >
                     Reset pitch
                   </button>
+                  <p className="text-[10px] leading-snug text-white/45">
+                    Preview and export use one playback rate: pitch and time stretch combine (resampling), matching your exported WAV — not a separate &quot;pitch-only&quot; engine.
+                  </p>
                 </div>
               )}
 
@@ -465,6 +483,7 @@ export function MultiStemEditor({
                       onChange={(e) => onStemStateChange(activeStem.id, { timeStretch: Number(e.target.value) })}
                       className="stem-accent-slider w-full"
                       aria-label={`${activeStem.label} time stretch`}
+                      title="Higher value stretches timeline duration (rate uses 2^(pitch/12) / timeStretch, same as export)."
                     />
                     <div className="mt-1 flex justify-between text-[10px] text-white/35 font-mono">
                       <span>0.5x</span><span>1x</span><span>2x</span>
@@ -477,6 +496,9 @@ export function MultiStemEditor({
                   >
                     Reset
                   </button>
+                  <p className="text-[10px] leading-snug text-white/45">
+                    Labels are duration-style (0.5x–2x). Playback rate is 2^(pitch/12) / timeStretch so preview matches export.
+                  </p>
                 </div>
               )}
             </div>
@@ -485,6 +507,18 @@ export function MultiStemEditor({
       </div>
 
       <StemTabs stems={stems} activeStemId={activeStemId} stemStates={stemStates} onSelectStem={setActiveStemId} />
+
+      <p
+        className="flex items-start gap-2 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2 text-[11px] leading-snug text-white/50"
+        role="note"
+      >
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400/70" aria-hidden />
+        <span>
+          <span className="text-white/65">Channel strip:</span> the controls below apply to the{" "}
+          <span className="text-white/75">selected stem</span> (switch with the tabs). Each waveform row still has quick{" "}
+          solo, mute, and gain; trim handles are on the waveform itself.
+        </span>
+      </p>
 
       {!import.meta.env.PROD && mixerConsoleOpen && (
         <div id="mixer-console-panel">

@@ -1,5 +1,6 @@
 import type { TrimState } from "../types";
 import type { StemId } from "../types";
+import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
 
 export function audioBufferToWav(buffer: AudioBuffer): Blob {
   const numChannels = buffer.numberOfChannels;
@@ -93,6 +94,47 @@ export function trimToSeconds(
     trimStart,
     trimEnd: trimEnd > trimStart ? trimEnd : trimStart,
   };
+}
+
+/** Wall-clock duration of the trimmed region (matches `playbackRate = getStemEffectiveRate` in Web Audio). */
+export function getStemTrimWallDurationSeconds(buffer: AudioBuffer, st: StemEditorState): number {
+  const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
+  const len = trimEnd - trimStart;
+  if (len <= 0) return 0;
+  return len / getStemEffectiveRate(st);
+}
+
+/** Longest stem trim in wall-clock seconds — master timeline length for the mix playhead. */
+export function maxTrimWallDurationSeconds(
+  stems: readonly { id: string }[],
+  stemBuffers: Record<string, AudioBuffer>,
+  stemStates: Record<string, StemEditorState>,
+): number {
+  let max = 0;
+  for (const s of stems) {
+    const buf = stemBuffers[s.id];
+    if (!buf) continue;
+    const st = stemStates[s.id] ?? defaultStemState();
+    max = Math.max(max, getStemTrimWallDurationSeconds(buf, st));
+  }
+  return max;
+}
+
+/**
+ * Where to start playback in the source buffer after `elapsedWallSeconds` on the master timeline.
+ * buffer time = wall time × effective rate (capped to the trim window).
+ */
+export function trimStartOffsetAtElapsedWall(
+  buffer: AudioBuffer,
+  st: StemEditorState,
+  elapsedWallSeconds: number,
+): { trimStart: number; trimEnd: number; startOffset: number } {
+  const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
+  const trimLen = trimEnd - trimStart;
+  if (trimLen <= 0) return { trimStart, trimEnd, startOffset: trimStart };
+  const rate = getStemEffectiveRate(st);
+  const delta = Math.min(trimLen, elapsedWallSeconds * rate);
+  return { trimStart, trimEnd, startOffset: trimStart + delta };
 }
 
 export function computeWaveformFromBuffer(buffer: AudioBuffer, bins: number): number[] {

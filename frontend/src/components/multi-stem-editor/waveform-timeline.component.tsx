@@ -5,6 +5,7 @@ import { defaultStemState } from "../../stem-editor-state";
 import { WaveformLane } from "./waveform-lane.component";
 import { playheadPercentStyle } from "../../utils/playheadCssVar";
 import { generateFakeWaveform } from "../../utils/waveformCanvas";
+import type { SeekPhase } from "../../types/playbackSeek";
 
 const WAVEFORM_BINS = 512;
 
@@ -23,7 +24,7 @@ export interface WaveformTimelineProps {
   /** Whether audio is currently playing (gates the analyser modulation). */
   isPlaying?: boolean;
   onTrimChange: (stemId: string, trim: TrimState) => void;
-  onSeek: (pct: number) => void;
+  onSeek: (pct: number, opts?: { phase?: SeekPhase }) => void;
   onActivate: (stemId: string) => void;
   onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
 }

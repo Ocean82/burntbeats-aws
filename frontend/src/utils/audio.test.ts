@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { computeWaveformFromBuffer, trimToSeconds } from "./audio";
+import {
+  computeWaveformFromBuffer,
+  getStemTrimWallDurationSeconds,
+  maxTrimWallDurationSeconds,
+  trimStartOffsetAtElapsedWall,
+  trimToSeconds,
+} from "./audio";
+import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 
 function createMockAudioBuffer(
   numberOfChannels: number,
@@ -92,5 +99,50 @@ describe("trimToSeconds", () => {
     const buffer = createMockAudioBuffer(1, 44100, 44100);
     const result = trimToSeconds(buffer, { start: 50, end: 50 });
     expect(result.trimEnd).toBeGreaterThanOrEqual(result.trimStart);
+  });
+});
+
+describe("getStemTrimWallDurationSeconds", () => {
+  it("equals buffer trim length at 1x rate", () => {
+    const buffer = createMockAudioBuffer(1, 44100, 44100);
+    const st: StemEditorState = { ...defaultStemState(), pitchSemitones: 0, timeStretch: 1 };
+    expect(getStemTrimWallDurationSeconds(buffer, st)).toBeCloseTo(1, 2);
+  });
+
+  it("matches export formula: wall = bufferTrim / (2^(pitch/12) / stretch)", () => {
+    const buffer = createMockAudioBuffer(1, 44100, 44100);
+    const st: StemEditorState = { ...defaultStemState(), pitchSemitones: 0, timeStretch: 0.5 };
+    // rate = 1/0.5 = 2 → one second of source plays in half a second wall-clock
+    expect(getStemTrimWallDurationSeconds(buffer, st)).toBeCloseTo(0.5, 2);
+  });
+});
+
+describe("maxTrimWallDurationSeconds", () => {
+  it("returns max across stems", () => {
+    const shortB = createMockAudioBuffer(1, 22050, 44100);
+    const longB = createMockAudioBuffer(1, 44100, 44100);
+    const states: Record<string, StemEditorState> = {
+      a: { ...defaultStemState(), pitchSemitones: 0, timeStretch: 1 },
+      b: { ...defaultStemState(), pitchSemitones: 0, timeStretch: 1 },
+    };
+    const max = maxTrimWallDurationSeconds([{ id: "a" }, { id: "b" }], { a: shortB, b: longB }, states);
+    expect(max).toBeCloseTo(1, 2);
+  });
+});
+
+describe("trimStartOffsetAtElapsedWall", () => {
+  it("at zero elapsed starts at trim start", () => {
+    const buffer = createMockAudioBuffer(1, 44100, 44100);
+    const st: StemEditorState = { ...defaultStemState(), pitchSemitones: 0, timeStretch: 1 };
+    const { startOffset, trimEnd } = trimStartOffsetAtElapsedWall(buffer, st, 0);
+    expect(startOffset).toBeCloseTo(0, 2);
+    expect(trimEnd).toBeCloseTo(1, 2);
+  });
+
+  it("advances buffer position by wall times rate", () => {
+    const buffer = createMockAudioBuffer(1, 44100, 44100);
+    const st: StemEditorState = { ...defaultStemState(), pitchSemitones: 0, timeStretch: 1 };
+    const { startOffset } = trimStartOffsetAtElapsedWall(buffer, st, 0.25);
+    expect(startOffset).toBeCloseTo(0.25, 2);
   });
 });
