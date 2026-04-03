@@ -33,6 +33,8 @@ services:
       dockerfile: Dockerfile
     environment:
       PORT: 3001
+      # Absolute https base for stem URLs in JSON (avoids http:// links when proxies omit X-Forwarded-Proto).
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       STEM_SERVICE_URL: http://stem_service:5000
       STEM_OUTPUT_DIR: /app/tmp/stems
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}

@@ -45,15 +45,28 @@ function jobTokenHeader(jobId: string): Record<string, string> {
 /** Match `/api/stems/file/{uuid}/` in absolute or same-origin-relative URLs. */
 const STEM_FILE_JOB_ID_RE = /\/api\/stems\/file\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i;
 
-/** When the page is HTTPS but the API returned http:// same-host URLs (proxy mis-set X-Forwarded-Proto), upgrade so fetch is not blocked as mixed content. */
+/**
+ * Stem WAV fetch URL: avoid mixed content when the API returns `http://` behind TLS termination.
+ * - Production: same hostname as the SPA → use a path-only URL so fetch uses the page origin (always HTTPS on https://).
+ * - Local dev: API is often another port (e.g. 3001 vs Vite 5173) → keep absolute URL; upgrade http→https only when same host.
+ */
 function coerceStemFileUrlForFetch(stemUrl: string): string {
   if (typeof window === "undefined") return stemUrl;
-  if (window.location.protocol !== "https:") return stemUrl;
+  const locHost = window.location.hostname;
+  const isLocal =
+    locHost === "localhost" || locHost === "127.0.0.1" || locHost === "[::1]";
   try {
     const u = new URL(stemUrl, window.location.origin);
-    if (u.hostname === window.location.hostname && u.protocol === "http:") {
-      u.protocol = "https:";
-      return u.toString();
+    if (isLocal) {
+      if (window.location.protocol === "https:" && u.protocol === "http:" && u.hostname === locHost) {
+        u.protocol = "https:";
+        return u.toString();
+      }
+      return stemUrl;
+    }
+    const stripWww = (h: string) => h.replace(/^www\./i, "");
+    if (stripWww(u.hostname) === stripWww(locHost)) {
+      return u.pathname + u.search + u.hash;
     }
   } catch {
     /* ignore */
