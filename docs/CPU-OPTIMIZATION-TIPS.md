@@ -4,8 +4,8 @@
 
 **Deployment profile:** This project targets **AWS `t3.large` (or similar) with CPU only — no GPU**. Thread caps (`OMP_NUM_THREADS`, `MKL_NUM_THREADS`, `ONNXRUNTIME_NUM_THREADS`, often **2** on 2 vCPU) match that layout; see root [README.md](../README.md) (*Target environment*) and [`scripts/t3-large-benchmark.sh`](../scripts/t3-large-benchmark.sh).
 
-## What we do by default
-
+## What we do by default (needs updating to use .ort models)
+## ***find and use test results and score sheet done for each model***
 | Tip | Our setting | Notes |
 |-----|-------------|--------|
 | **Speed = Kim_Vocal_2 (ONNX)** | ✅ | Stage 1 uses ONNX (e.g. Kim_Vocal_2) for **both** Speed and Quality when available. Kim_Vocal_2 is very fast on CPU (seconds vs minutes for Demucs). Only when ONNX is missing do we fall back to Demucs 2-stem for Stage 1. |
@@ -22,7 +22,7 @@ These **Demucs ONNX** models are **wired** in `stem_service/demucs_onnx.py`:
 
 When available under `models/`, the pipeline uses them for 4-stem (and for **expand** from 2-stem). Fallback is the Demucs subprocess (htdemucs.th).
 
-## Env summary
+## Env summary *needs updating same as above*
 
 | Variable | Default | Effect |
 |----------|--------|--------|

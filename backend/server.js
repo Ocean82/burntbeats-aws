@@ -951,7 +951,6 @@ app.get("/api/health", (req, res) => {
 // ── Global error handler ────────────────────────────────────────────────────
 // Must be 4-param to be recognised by Express as an error handler.
 // Catches any error passed via next(err) or thrown synchronously in a route.
-// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
   console.error("[unhandled error]", err?.message || err);
   if (res.headersSent) return;

@@ -20,7 +20,10 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import torch
 
 from stem_service.config import MDXNET_MODELS_DIR, MODELS_DIR, get_onnx_providers
 
@@ -343,7 +346,7 @@ def _onnx_session(model_path: Path) -> Any | None:
         return None
 
 
-def _stft(wav: "torch.Tensor", n_fft: int, hop: int, dim_f: int) -> "torch.Tensor":
+def _stft(wav: torch.Tensor, n_fft: int, hop: int, dim_f: int) -> torch.Tensor:
     """
     STFT matching the UVR/audio-separator reference (center=True; complex STFT → view_as_real).
     Input:  (batch, 2, samples)
@@ -373,7 +376,7 @@ def _stft(wav: "torch.Tensor", n_fft: int, hop: int, dim_f: int) -> "torch.Tenso
     return out[..., :dim_f, :]  # truncate to dim_f freq bins
 
 
-def _istft(spec: "torch.Tensor", n_fft: int, hop: int) -> "torch.Tensor":
+def _istft(spec: torch.Tensor, n_fft: int, hop: int) -> torch.Tensor:
     """
     iSTFT matching the UVR reference.
     Input:  (batch, 4, dim_f, time_frames)  — [L_real, L_imag, R_real, R_imag]

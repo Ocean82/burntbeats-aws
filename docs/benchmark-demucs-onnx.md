@@ -36,7 +36,7 @@ Avoid using `tmp/test_split.wav` (often **~1 s**) or other **≤4.5 s** inputs f
 
 ## Artifacts
 
-Each benchmark run writes:
+Each benchmark run writes: *find the reports that compare onnx and ort models there are scoresheets and best models to use listed*
 
 - `BENCHMARK_REPORT.json` — per-model results, `audio_duration_seconds`, `smoke_test_only` when applicable
 - `BENCHMARK_SUMMARY.txt` — human-readable copy
