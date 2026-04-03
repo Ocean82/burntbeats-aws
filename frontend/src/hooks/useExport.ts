@@ -5,7 +5,7 @@
  */
 import { useCallback, useState } from "react";
 import lamejs from "lamejs";
-import { serverExportMasterWav } from "../api";
+import { fetchStemWavAsBlob, serverExportMasterWav } from "../api";
 import type { StemResult } from "../types";
 import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStereoWidthNode } from "../utils/audio";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
@@ -157,9 +157,7 @@ export function useExport(): UseExportReturn {
   }, []);
 
   const downloadStemByUrl = useCallback(async (stem: StemResult, baseName: string) => {
-    const res = await fetch(stem.url);
-    if (!res.ok) throw new Error(`Failed to download stem: ${res.status}`);
-    const blob = await res.blob();
+    const blob = await fetchStemWavAsBlob(stem.url);
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -485,11 +483,6 @@ export function useExport(): UseExportReturn {
       ]);
 
       const metrics = computeDiffMetrics(clientBuf, serverBuf);
-      if (metrics.ok) {
-        // Helpful for development without relying on UI.
-        // eslint-disable-next-line no-console
-        console.log("[export-compare] metrics:", metrics);
-      }
       return metrics;
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : "Compare failed" };

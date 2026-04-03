@@ -28,6 +28,7 @@ import {
 } from "./usageTokens.js";
 import { resolveStripeReturnUrl } from "./returnUrl.js";
 import { tryClaimWebhookEvent, releaseWebhookEventClaim } from "./stripeRedis.js";
+import { publicErrorMessage } from "./clientSafeError.js";
 
 const router = express.Router();
 
@@ -142,7 +143,12 @@ router.get("/subscription", async (req, res) => {
     return res.json({ active: true, plan: planFromSubscription(sub) });
   } catch (/** @type {any} */ err) {
     console.error("[billing/subscription] error:", err.message);
-    return res.status(err.status || 500).json({ error: err.message || "Internal error" });
+    const msg = publicErrorMessage(
+      typeof err?.message === "string" ? err.message : "",
+      "Unable to load subscription.",
+      "[billing/subscription]",
+    );
+    return res.status(err.status || 500).json({ error: msg });
   }
 });
 
@@ -155,7 +161,12 @@ router.get("/usage", async (req, res) => {
     return res.json({ balance, periodEnd });
   } catch (/** @type {any} */ err) {
     console.error("[billing/usage] error:", err.message);
-    return res.status(err.status || 500).json({ error: err.message || "Internal error" });
+    const msg = publicErrorMessage(
+      typeof err?.message === "string" ? err.message : "",
+      "Unable to load usage.",
+      "[billing/usage]",
+    );
+    return res.status(err.status || 500).json({ error: msg });
   }
 });
 
@@ -167,7 +178,12 @@ router.get("/balance", async (req, res) => {
     return res.json({ balance, periodEnd });
   } catch (/** @type {any} */ err) {
     console.error("[billing/balance] error:", err.message);
-    return res.status(err.status || 500).json({ error: err.message || "Internal error" });
+    const msg = publicErrorMessage(
+      typeof err?.message === "string" ? err.message : "",
+      "Unable to load usage.",
+      "[billing/balance]",
+    );
+    return res.status(err.status || 500).json({ error: msg });
   }
 });
 
@@ -244,7 +260,7 @@ router.post("/webhook", async (req, res) => {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (/** @type {any} */ err) {
     console.error("[billing/webhook] signature verification failed:", err.message);
-    return res.status(400).json({ error: `Webhook error: ${err.message}` });
+    return res.status(400).json({ error: "Invalid webhook signature" });
   }
 
   const claimed = await tryClaimWebhookEvent(event.id);

@@ -66,7 +66,7 @@ export function StripePricingTableEmbed({
         el.setAttribute("publishable-key", publishableKey);
         containerRef.current.appendChild(el);
       } catch (e) {
-        console.error(e);
+        if (import.meta.env.DEV) console.error(e);
       }
     })();
 

@@ -13,7 +13,7 @@ export interface MixerPanelProps {
   isPlayingMix: boolean;
   onPlayStop: () => void;
   onStopMix: () => void;
-  onSeekMix?: (pct: number) => void;
+  onSeekMix?: (pct: number, opts?: { phase?: SeekPhase }) => void;
   isExporting: boolean;
   onExport: () => void;
   onCompareExport?: () => void;

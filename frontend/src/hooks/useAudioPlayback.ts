@@ -3,6 +3,7 @@
  * Playback uses `playbackRate = getStemEffectiveRate(st)` so live preview matches client + server export.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchStemWavAsArrayBuffer } from "../api";
 import type { StemResult } from "../types";
 import {
   createStemPreviewBuffer,
@@ -603,9 +604,8 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
         if (stemBuffers[stemId]) {
           buffer = stemBuffers[stemId];
         } else if (stemUrl) {
-          const res = await fetch(stemUrl);
-          if (!res.ok) throw new Error(`HTTP ${res.status} fetching preview for ${stemId}`);
-          buffer = await context.decodeAudioData(await res.arrayBuffer());
+          const ab = await fetchStemWavAsArrayBuffer(stemUrl);
+          buffer = await context.decodeAudioData(ab);
           setStemBuffers((b) => ({ ...b, [stemId]: buffer }));
         } else {
           buffer = createStemPreviewBuffer(context, stemId as StemId);
@@ -665,7 +665,7 @@ export function useAudioPlayback(options: UseAudioPlaybackOptions = {}): UseAudi
 
         setPlayingStem(stemId);
       } catch (err) {
-        console.error("Preview failed:", err);
+        if (import.meta.env.DEV) console.error("Preview failed:", err);
         onError?.("Preview failed. Please try again.");
         setPlayingStem(null);
         prevPreviewStructSigRef.current = "";

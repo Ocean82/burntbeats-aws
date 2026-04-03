@@ -121,7 +121,7 @@ test("backend stem API auth gates (job_token)", async () => {
       jobToken = splitJson.job_token;
     }
 
-    // Status accepts job_token and returns tokenized stem URLs
+    // Status accepts job_token; stem URLs must not embed tokens (use x-job-token on fetch)
     {
       const statusRes = await fetch(`${backendBaseUrl}/api/stems/status/${jobId1}`, {
         headers: { "x-job-token": jobToken },
@@ -130,7 +130,7 @@ test("backend stem API auth gates (job_token)", async () => {
       const statusJson = await statusRes.json();
       assert.equal(statusJson.status, "completed");
       assert.ok(Array.isArray(statusJson.stems) && statusJson.stems.length === 1);
-      assert.ok(statusJson.stems[0].url.includes("token="));
+      assert.ok(!statusJson.stems[0].url.includes("token="));
     }
 
     // File accepts job_token

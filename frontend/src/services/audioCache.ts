@@ -47,7 +47,7 @@ export async function cacheStem(id: string, url: string, arrayBuffer: ArrayBuffe
     const cached: CachedStem = { id, url, buffer: arrayBuffer, timestamp: Date.now() };
     store.put(cached);
   } catch (error) {
-    console.warn('Failed to cache stem:', error);
+    if (import.meta.env.DEV) console.warn("Failed to cache stem:", error);
   }
 }
 
@@ -66,7 +66,7 @@ export async function getCachedStem(id: string): Promise<ArrayBuffer | null> {
       };
     });
   } catch (error) {
-    console.warn('Failed to get cached stem:', error);
+    if (import.meta.env.DEV) console.warn("Failed to get cached stem:", error);
     return null;
   }
 }
@@ -88,7 +88,7 @@ export async function getCachedStemByUrl(url: string): Promise<ArrayBuffer | nul
       };
     });
   } catch (error) {
-    console.warn('Failed to get cached stem by URL:', error);
+    if (import.meta.env.DEV) console.warn("Failed to get cached stem by URL:", error);
     return null;
   }
 }
@@ -99,7 +99,7 @@ export async function clearCache(): Promise<void> {
     const transaction = database.transaction([STORE_NAME], 'readwrite');
     transaction.objectStore(STORE_NAME).clear();
   } catch (error) {
-    console.warn('Failed to clear cache:', error);
+    if (import.meta.env.DEV) console.warn("Failed to clear cache:", error);
   }
 }
 

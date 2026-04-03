@@ -5,6 +5,7 @@
  * Kept for potential future use as a combined hook.
  */
 import { useCallback, useState } from "react";
+import { fetchStemWavAsArrayBuffer } from "../api";
 import type { StemResult } from "../types";
 
 interface UseStemAudioReturn {
@@ -60,9 +61,7 @@ export function useStemAudio(): UseStemAudioReturn {
       try {
         const results = await Promise.all(
           stemsToLoad.map(async (stem) => {
-            const res = await fetch(stem.url);
-            if (!res.ok) throw new Error(`HTTP ${res.status} loading stem ${stem.id}`);
-            const arr = await res.arrayBuffer();
+            const arr = await fetchStemWavAsArrayBuffer(stem.url);
             const buffer = await context.decodeAudioData(arr);
             return { id: stem.id, buffer };
           })
@@ -72,7 +71,7 @@ export function useStemAudio(): UseStemAudioReturn {
           newLoaded[id] = true;
         }
       } catch (e) {
-        console.error("Failed to load stems:", e);
+        if (import.meta.env.DEV) console.error("Failed to load stems:", e);
         setLoadError(e instanceof Error ? e.message : "Unknown error loading stems");
       }
     }

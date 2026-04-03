@@ -42,7 +42,6 @@ export function finishUiLatencyMark(key: UiLatencyKey): void {
     const entries = performance.getEntriesByName(measure);
     const durationMs = entries[entries.length - 1]?.duration;
     if (import.meta.env.DEV && typeof durationMs === "number") {
-      console.debug(`[perf] ${key} ${durationMs.toFixed(1)}ms`);
       window.dispatchEvent(
         new CustomEvent<UiLatencyEventDetail>("ui-latency-measure", {
           detail: { key, durationMs },

@@ -4,8 +4,9 @@
  * Stores and forwards job_token (x-job-token) for per-job auth when JOB_TOKEN_SECRET is set on backend.
  */
 import type { JobStatus, SplitQuality as SharedSplitQuality } from "@shared/types";
-import { API_BASE } from "./config";
+import { API_BASE, MAX_UPLOAD_BYTES } from "./config";
 import type { StemResult } from "./types";
+import { userFacingApiError, userFacingHttpError } from "./userFacingError";
 import type { StemEditorState } from "./stem-editor-state";
 
 // Token provider injected at app startup by ClerkProvider — avoids importing Clerk hooks here.
@@ -41,6 +42,41 @@ function jobTokenHeader(jobId: string): Record<string, string> {
   return t ? { "x-job-token": t } : {};
 }
 
+/** Match `/api/stems/file/{uuid}/` in absolute or same-origin-relative URLs. */
+const STEM_FILE_JOB_ID_RE = /\/api\/stems\/file\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i;
+
+/** Extract job UUID from a stem file URL returned by the API. */
+export function parseJobIdFromStemFileUrl(stemUrl: string): string | null {
+  const m = stemUrl.match(STEM_FILE_JOB_ID_RE);
+  return m ? m[1] : null;
+}
+
+/**
+ * Fetch a stem WAV using Authorization + x-job-token headers (never relies on ?token= in the URL).
+ */
+export async function fetchStemWavAsArrayBuffer(stemUrl: string): Promise<ArrayBuffer> {
+  const jobId = parseJobIdFromStemFileUrl(stemUrl);
+  if (!jobId) throw new Error("Invalid stem file URL");
+  const pathUrl = stemUrl.split("?")[0];
+  const res = await fetch(pathUrl, {
+    headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} loading stem`);
+  return res.arrayBuffer();
+}
+
+/** Same as {@link fetchStemWavAsArrayBuffer} but returns a Blob (e.g. downloads). */
+export async function fetchStemWavAsBlob(stemUrl: string): Promise<Blob> {
+  const jobId = parseJobIdFromStemFileUrl(stemUrl);
+  if (!jobId) throw new Error("Invalid stem file URL");
+  const pathUrl = stemUrl.split("?")[0];
+  const res = await fetch(pathUrl, {
+    headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} loading stem`);
+  return res.blob();
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -57,9 +93,6 @@ function getApiErrorMessage(parsed: unknown): string | null {
   if (!isRecord(parsed)) return null;
   if (typeof parsed.error === "string") return parsed.error;
   if (typeof parsed.detail === "string") return parsed.detail;
-  if (parsed.detail !== undefined) {
-    try { return JSON.stringify(parsed.detail); } catch { return null; }
-  }
   return null;
 }
 
@@ -122,6 +155,10 @@ export async function startStemSplit(
   if (!file || !(file instanceof File) || file.size === 0) {
     throw new Error("No file provided. Upload an audio file first.");
   }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    const mb = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
+    throw new Error(`File too large. Maximum size is ${mb}MB.`);
+  }
 
   const form = new FormData();
   form.append("file", file);
@@ -141,14 +178,17 @@ export async function startStemSplit(
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const contentType = res.headers.get("content-type");
       const text = await res.text();
-      let message = text || `Split failed: ${res.status}`;
-      if (contentType?.includes("application/json") && text) {
-        const parsed = tryParseJson(text);
-        const apiError = getApiErrorMessage(parsed);
-        if (apiError) message = apiError;
+      const contentType = res.headers.get("content-type") || "";
+      let bodyError: string | null = null;
+      if (contentType.includes("application/json") && text) {
+        bodyError = getApiErrorMessage(tryParseJson(text));
       }
+      const message = userFacingHttpError(
+        res.status,
+        bodyError,
+        text.slice(0, 800) || `Split failed: ${res.status}`,
+      );
       throw new Error(message);
     }
 
@@ -205,7 +245,14 @@ export async function getStemJobStatus(jobId: string): Promise<StemJobStatus> {
   if (!res.ok) {
     if (res.status === 404) throw new Error("Job not found");
     const t = await res.text();
-    throw new Error(t || `Status failed: ${res.status}`);
+    const ct = res.headers.get("content-type") || "";
+    let bodyError: string | null = null;
+    if (ct.includes("application/json") && t) {
+      bodyError = getApiErrorMessage(tryParseJson(t));
+    }
+    throw new Error(
+      userFacingHttpError(res.status, bodyError, t.slice(0, 800) || `Status failed: ${res.status}`),
+    );
   }
   const json: unknown = await res.json();
   if (!isStemJobStatusValue(json)) throw new Error("Unexpected response from status");
@@ -224,7 +271,7 @@ export async function splitStems(
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems };
   }
-  throw new Error(final.error ?? "Stem separation failed");
+  throw new Error(userFacingApiError(final.error ?? null, "Stem separation failed"));
 }
 
 /** Start expand (2-stem → 4-stem). Returns new job_id. Poll status until completed. */
@@ -244,13 +291,14 @@ export async function startExpand(
   });
   if (!res.ok) {
     const text = await res.text();
-    let message = text || `Expand failed: ${res.status}`;
-    if (res.headers.get("content-type")?.includes("application/json") && text) {
-      const parsed = tryParseJson(text);
-      const apiError = getApiErrorMessage(parsed);
-      if (apiError) message = apiError;
+    const ct = res.headers.get("content-type") || "";
+    let bodyError: string | null = null;
+    if (ct.includes("application/json") && text) {
+      bodyError = getApiErrorMessage(tryParseJson(text));
     }
-    throw new Error(message);
+    throw new Error(
+      userFacingHttpError(res.status, bodyError, text.slice(0, 800) || `Expand failed: ${res.status}`),
+    );
   }
   const json: unknown = await res.json();
   if (res.status === 202 && isAcceptedJobIdResponse(json)) {
@@ -273,9 +321,10 @@ export async function expandStems(
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems };
   }
-  throw new Error(final.error ?? "Expand failed");
+  throw new Error(userFacingApiError(final.error ?? null, "Expand failed"));
 }
 
+/** Public stem file path (no auth); callers must load audio via {@link fetchStemWavAsArrayBuffer} or {@link fetchStemWavAsBlob}. */
 export function getStemFileUrl(jobId: string, stemId: string): string {
   return `${API_BASE}/api/stems/file/${jobId}/${stemId}.wav`;
 }
@@ -304,7 +353,17 @@ export async function serverExportMasterWav(request: ServerExportMasterRequest):
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    const err = new Error(text || `Server export failed: ${res.status}`);
+    const ct = res.headers.get("content-type") || "";
+    let bodyError: string | null = null;
+    if (ct.includes("application/json") && text) {
+      bodyError = getApiErrorMessage(tryParseJson(text));
+    }
+    const msg = userFacingHttpError(
+      res.status,
+      bodyError,
+      text.slice(0, 800) || `Server export failed: ${res.status}`,
+    );
+    const err = new Error(msg);
     // @ts-expect-error attach status for caller fallback logic
     err.status = res.status;
     throw err;

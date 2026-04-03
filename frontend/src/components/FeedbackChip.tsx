@@ -9,9 +9,7 @@ export function FeedbackChip() {
 
   const handleSubmit = () => {
     if (!rating && !comment.trim()) return;
-    // Placeholder for future wiring into analytics / backend.
-    // eslint-disable-next-line no-console
-    console.log("BurntBeats feedback", { rating, comment });
+    // Placeholder: wire to analytics / backend when ready.
     setOpen(false);
     setRating(null);
     setComment("");

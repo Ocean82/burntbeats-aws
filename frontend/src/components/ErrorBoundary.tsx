@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    if (import.meta.env.DEV) console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.props.onError?.(error, errorInfo);
   }
 
@@ -65,7 +65,9 @@ export class ErrorBoundary extends Component<Props, State> {
           <div>
             <h2 className="text-xl font-semibold text-red-200">Something went wrong</h2>
             <p className="mt-2 max-w-md text-sm text-red-300/70">
-              {this.state.error?.message || 'An unexpected error occurred'}
+              {import.meta.env.DEV
+                ? (this.state.error?.message || "An unexpected error occurred")
+                : "Something went wrong. Please refresh the page or try again."}
             </p>
           </div>
           <button
@@ -90,7 +92,7 @@ export function AudioErrorBoundary({ children }: AudioErrorBoundaryProps) {
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
-        console.error('Audio error:', error, errorInfo);
+        if (import.meta.env.DEV) console.error("Audio error:", error, errorInfo);
       }}
     >
       {children}

@@ -3,6 +3,7 @@
  * Manages stemBuffers, loadedTracks, and isLoadingStems state.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchStemWavAsArrayBuffer } from "../api";
 import { defaultStemState } from "../stem-editor-state";
 
 interface StemEntry {
@@ -49,9 +50,8 @@ export function useStemLoading({
     if (toLoad.length > 0) {
       try {
         const results = await Promise.all(toLoad.map(async (stem) => {
-          const res = await fetch(stem.url);
-          if (!res.ok) throw new Error(`HTTP ${res.status} loading ${stem.id}`);
-          const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+          const ab = await fetchStemWavAsArrayBuffer(stem.url);
+          const buf = await ctx.decodeAudioData(ab);
           return { id: stem.id, buf };
         }));
         for (const { id, buf } of results) {
@@ -60,7 +60,7 @@ export function useStemLoading({
         }
       } catch (e) {
         setSplitError("Failed to load stems for playback. Please try again.");
-        console.error("Failed to load stems:", e);
+        if (import.meta.env.DEV) console.error("Failed to load stems:", e);
       }
     }
 

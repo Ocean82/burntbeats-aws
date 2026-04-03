@@ -85,13 +85,21 @@ test("GET /api/stems/file validates stemId before serving", async () => {
   assert.ok(typeof res.body.error === "string");
 });
 
+function minimalWavBuffer() {
+  const b = Buffer.alloc(12);
+  b.write("RIFF", 0);
+  b.writeUInt32LE(100, 4);
+  b.write("WAVE", 8);
+  return b;
+}
+
 test("POST /api/stems/split forwards X-Stem-Service-Token to stem service", async () => {
   lastStemServiceTokenHeader = undefined;
   const res = await request
     .post("/api/stems/split")
     .set("x-api-key", process.env.API_KEY)
     .field("stems", "2")
-    .attach("file", Buffer.from("test-audio-bytes"), "sample.wav")
+    .attach("file", minimalWavBuffer(), "sample.wav")
     .expect(202);
 
   assert.equal(typeof res.body.job_id, "string");

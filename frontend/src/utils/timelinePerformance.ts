@@ -105,9 +105,10 @@ export function recordTimelinePerformanceSample(category: TimelinePerfCategory, 
   if (!isTimelinePerformanceEnabled()) return;
   pushSample(category, durationMs);
   const budget = budgetFor(category);
-  if (durationMs > budget) {
+  if (import.meta.env.DEV && durationMs > budget) {
+    // eslint-disable-next-line no-console
     console.warn(
-      `[burntbeats/timeline-perf] ${category} exceeded budget: ${durationMs.toFixed(2)}ms (budget ${budget}ms)`
+      `[burntbeats/timeline-perf] ${category} exceeded budget: ${durationMs.toFixed(2)}ms (budget ${budget}ms)`,
     );
   }
 }
@@ -115,11 +116,11 @@ export function recordTimelinePerformanceSample(category: TimelinePerfCategory, 
 export function installTimelinePerformanceDebugHooks(): () => void {
   if (typeof window === "undefined") return () => undefined;
   window.__BB_DUMP_TIMELINE_PERF = () => {
-    console.table(getTimelinePerformanceSummary());
+    if (import.meta.env.DEV) console.table(getTimelinePerformanceSummary());
   };
   window.__BB_RESET_TIMELINE_PERF = () => {
     resetTimelinePerformanceSamples();
-    console.info("[burntbeats/timeline-perf] samples cleared");
+    if (import.meta.env.DEV) console.info("[burntbeats/timeline-perf] samples cleared");
   };
   return () => {
     window.__BB_DUMP_TIMELINE_PERF = undefined;

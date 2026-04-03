@@ -5,19 +5,26 @@
 import { useAuth } from "@clerk/react";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE, isLocalDevFullApp } from "../config";
+import { userFacingHttpError } from "../userFacingError";
 
-async function readBillingErrorBody(res: Response, fallback: string): Promise<string> {
+async function readBillingErrorMessage(res: Response, kind: "checkout" | "portal"): Promise<string> {
+  const text = await res.text().catch(() => "");
+  let bodyError: string | null = null;
   try {
-    const j = (await res.json()) as { error?: string };
-    if (j?.error && typeof j.error === "string") return j.error;
+    const j = text ? JSON.parse(text) : null;
+    if (j && typeof j === "object" && j !== null && typeof /** @type {{ error?: unknown }} */ (j).error === "string") {
+      bodyError = /** @type {{ error: string }} */ (j).error;
+    }
   } catch {
     /* ignore */
   }
-  return fallback;
+  const devFb =
+    kind === "checkout" ? `Checkout failed (${res.status})` : `Billing portal failed (${res.status})`;
+  return userFacingHttpError(res.status, bodyError, text.slice(0, 800) || devFb);
 }
 
 function notifyBillingFailure(context: string, err: unknown) {
-  console.error(context, err);
+  if (import.meta.env.DEV) console.error(context, err);
 }
 
 /** Base URL without query/hash (backend also strips; avoids huge hrefs). */
@@ -99,7 +106,7 @@ export function useSubscription(): UseSubscriptionResult {
         body: JSON.stringify({ plan: selectedPlan, returnUrl: checkoutReturnBase() }),
       });
       if (!res.ok) {
-        const msg = await readBillingErrorBody(res, `Checkout failed (${res.status})`);
+        const msg = await readBillingErrorMessage(res, "checkout");
         throw new Error(msg);
       }
       const { url } = (await res.json()) as { url: string };
@@ -126,7 +133,7 @@ export function useSubscription(): UseSubscriptionResult {
         body: JSON.stringify({ returnUrl: checkoutReturnBase() }),
       });
       if (!res.ok) {
-        const msg = await readBillingErrorBody(res, `Billing portal failed (${res.status})`);
+        const msg = await readBillingErrorMessage(res, "portal");
         throw new Error(msg);
       }
       const { url } = (await res.json()) as { url: string };

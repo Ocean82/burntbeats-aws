@@ -1,28 +1,10 @@
 // @ts-check
 /**
  * Validates Stripe Checkout / Customer Portal return URLs to prevent open redirects.
- * Allowlist mirrors FRONTEND_ORIGINS (same as CORS).
+ * Allowlist matches CORS (see allowedOrigins.js).
  */
 
-/**
- * @returns {Set<string>}
- */
-function getAllowedOrigins() {
-  const raw =
-    process.env.FRONTEND_ORIGINS ||
-    "http://localhost:5173,http://localhost:5174,http://localhost:3000";
-  const set = new Set();
-  for (const part of raw.split(",")) {
-    const s = part.trim();
-    if (!s) continue;
-    try {
-      set.add(new URL(s).origin);
-    } catch {
-      /* skip invalid entries */
-    }
-  }
-  return set;
-}
+import { getAllowedOriginSet } from "./allowedOrigins.js";
 
 /**
  * @param {string} urlString
@@ -34,7 +16,7 @@ export function isAllowedReturnUrl(urlString, requestOriginHeader) {
     const u = new URL(urlString);
     if (u.protocol !== "http:" && u.protocol !== "https:") return false;
     if (u.username || u.password) return false;
-    const allowed = getAllowedOrigins();
+    const allowed = getAllowedOriginSet();
     if (allowed.has(u.origin)) return true;
     if (requestOriginHeader) {
       try {
@@ -82,7 +64,7 @@ export function resolveStripeReturnUrl(req, bodyReturnUrl) {
   const base = `${u.origin}${u.pathname}`.replace(/\/$/, "") || u.origin;
   if (!isAllowedReturnUrl(base, req.headers.origin)) {
     throw Object.assign(
-      new Error("Invalid returnUrl — origin must be listed in FRONTEND_ORIGINS."),
+      new Error("Invalid returnUrl — origin must be an allowed frontend origin (see FRONTEND_ORIGINS / allowedOrigins)."),
       { status: 400 },
     );
   }

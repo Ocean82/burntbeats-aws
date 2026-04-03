@@ -22,6 +22,7 @@ export default defineViteConfig(({ mode }) => {
       },
     },
     build: {
+      // Never ship source maps to production (original TS/comments visible in DevTools).
       sourcemap: isProduction ? false : true,
       rollupOptions: {
         output: {

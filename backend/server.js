@@ -41,6 +41,9 @@ import {
 import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 import { presignStemGetUrl } from "./s3Presign.js";
 import { scanUploadedFile } from "./malwareScan.js";
+import { verifyUploadMatchesExtension } from "./uploadSniff.js";
+import { publicErrorMessage, sanitizedProxyClientError } from "./clientSafeError.js";
+import { getAllowedOriginSet } from "./allowedOrigins.js";
 
 // ── Startup env validation ──────────────────────────────────────────────────
 const REQUIRED_ENV_WARNINGS = [];
@@ -59,7 +62,6 @@ if (REQUIRED_ENV_WARNINGS.length > 0 && process.env.NODE_ENV !== "test") {
   console.warn(`[startup] Missing env vars: ${REQUIRED_ENV_WARNINGS.join(", ")}`);
 }
 
-const FRONTEND_ORIGINS = (process.env.FRONTEND_ORIGINS || "http://localhost:5173,http://localhost:5174,http://localhost:3000").split(",").map((s) => s.trim());
 const API_KEY = process.env.API_KEY || "";
 const JOB_TOKEN_SECRET = process.env.JOB_TOKEN_SECRET || "";
 const STEM_SERVICE_API_TOKEN = process.env.STEM_SERVICE_API_TOKEN || "";
@@ -116,8 +118,8 @@ function verifyJobToken(token, secret) {
 
 /**
  * Middleware: when JOB_TOKEN_SECRET is set, require a valid x-job-token header
- * (or ?token= query param) that matches the job_id.
- * Job id is resolved from: req.params.job_id → req.body.job_id → req.query.job_id
+ * that matches the job_id (never accept tokens in the query string — URLs leak via Referer/logs).
+ * Job id is resolved from: req.params.job_id → req.body.job_id
  * @param {import("express").Request} req
  * @param {import("express").Response} res
  * @param {import("express").NextFunction} next
@@ -125,8 +127,8 @@ function verifyJobToken(token, secret) {
 function jobTokenMiddleware(req, res, next) {
   const secret = process.env.JOB_TOKEN_SECRET || "";
   if (!secret) return next();
-  const jobId = req.params.job_id || (req.body && req.body.job_id) || req.query.job_id;
-  const token = req.headers["x-job-token"] || req.query.token;
+  const jobId = req.params.job_id || (req.body && req.body.job_id);
+  const token = req.headers["x-job-token"];
   const verified = verifyJobToken(/** @type {string} */ (token), secret);
   if (!verified || verified !== jobId) {
     return res.status(401).json({ error: "Missing or invalid job token." });
@@ -197,10 +199,26 @@ function validateStemFileParams(jobId, stemIdParam) {
   return { ok: true, stemId: `${raw}.wav` };
 }
 
-app.use(cors({
-  origin: FRONTEND_ORIGINS,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin(origin, callback) {
+      const allowed = getAllowedOriginSet();
+      if (!origin) {
+        // Non-browser clients (curl, supertest) omit Origin; same-origin navigations may too.
+        return callback(null, true);
+      }
+      try {
+        const o = new URL(origin).origin;
+        if (allowed.has(o)) return callback(null, true);
+      } catch {
+        return callback(null, false);
+      }
+      console.warn("[cors] blocked origin:", origin);
+      return callback(null, false);
+    },
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(rateLimitMiddleware);
 
@@ -273,7 +291,9 @@ async function requireUsageAuthPreUpload(req, res, next) {
       e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
         ? /** @type {{ status?: number }} */ (e).status
         : 401;
-    const msg = e instanceof Error ? e.message : "Missing auth token";
+    const raw = e instanceof Error ? e.message : "Missing auth token";
+    const fallback = status === 401 ? "Unauthorized" : "Unable to verify your account.";
+    const msg = publicErrorMessage(raw, fallback, "[requireUsageAuthPreUpload]");
     return res.status(status).json({ error: msg });
   }
 }
@@ -390,7 +410,8 @@ function proxyFormRequest(endpointPath, form, options = {}) {
   });
 }
 
-// Stream uploads to disk so we never hold a full large file in memory; proxy then streams from file to Python.
+// Stream uploads to disk (multer → UPLOAD_TMP_DIR under os.tmpdir(), see below), not whole-file RAM buffering.
+// Files are deleted after the split request finishes (success or error). S3 is used only for completed stem outputs when configured.
 const ALLOWED_AUDIO_MIMES = new Set([
   "audio/mpeg", "audio/mp3", "audio/wav", "audio/wave", "audio/x-wav",
   "audio/flac", "audio/x-flac", "audio/ogg", "audio/mp4", "audio/x-m4a",
@@ -430,7 +451,7 @@ app.post("/api/stems/split", authMiddleware, requireUsageAuthPreUpload, (req, re
         return res.status(415).json({ error: err.message });
       }
       console.error("[POST /api/stems/split] multer error:", err.code || err.message);
-      return res.status(400).json({ error: err.message || "Upload failed." });
+      return res.status(400).json({ error: "Upload failed. Please try again." });
     }
     next();
   });
@@ -441,6 +462,13 @@ app.post("/api/stems/split", authMiddleware, requireUsageAuthPreUpload, (req, re
     return res.status(400).json({ error: "Missing file. Upload an audio file and use form field 'file'." });
   }
   const filePath = req.file.path;
+  const declaredExt = path.extname(req.file.originalname || "").toLowerCase() || path.extname(filePath).toLowerCase();
+  const sniff = verifyUploadMatchesExtension(filePath, declaredExt);
+  if (!sniff.ok) {
+    await unlinkPromise(filePath).catch(() => {});
+    return res.status(415).json({ error: sniff.message });
+  }
+
   const stems = (req.body && req.body.stems) || "4";
   const quality = req.body && req.body.quality;
 
@@ -487,7 +515,10 @@ app.post("/api/stems/split", authMiddleware, requireUsageAuthPreUpload, (req, re
         e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
           ? /** @type {{ status?: number }} */ (e).status
           : 500;
-      const msg = e instanceof Error ? e.message : String(e);
+      const raw = e instanceof Error ? e.message : String(e);
+      const fallback =
+        status === 401 ? "Unable to verify your account. Please sign in again." : "Unable to reserve usage for this upload.";
+      const msg = publicErrorMessage(raw, fallback, "[POST /api/stems/split usage]");
       return res.status(status).json({ error: msg });
     }
   }
@@ -527,7 +558,7 @@ app.post("/api/stems/split", authMiddleware, requireUsageAuthPreUpload, (req, re
     }
     if (isProxyHttpError(e)) {
       console.warn("[POST /api/stems/split] stem service error:", e.statusCode, e.error);
-      return res.status(e.statusCode).json({ error: e.error });
+      return res.status(e.statusCode).json({ error: sanitizedProxyClientError(e.statusCode, e.error) });
     }
     const err = e && typeof e === "object" ? e : { name: "", message: String(e) };
     console.error("[POST /api/stems/split] proxy error:", err.name, err.message, err.cause ?? "");
@@ -559,13 +590,11 @@ app.get("/api/stems/status/:job_id", authMiddleware, jobTokenMiddleware, (req, r
     return res.status(404).json({ error: "Job not found" });
   }
   const baseUrl = `${req.protocol}://${req.get("host")}`;
-  // When job tokens are active, embed the token in stem URLs so <audio src> works without custom headers
-  const tokenVal = req.headers["x-job-token"] || req.query.token || "";
-  const tokenSuffix = process.env.JOB_TOKEN_SECRET && tokenVal ? `?token=${encodeURIComponent(tokenVal)}` : "";
+  // Stem file URLs intentionally omit job_token: clients must use x-job-token (or Authorization) on fetch.
   if (data.stems && Array.isArray(data.stems)) {
     data.stems = data.stems.map((s) => ({
       id: s.id,
-      url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav${tokenSuffix}`,
+      url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav`,
       path: s.path,
     }));
   }
@@ -573,11 +602,11 @@ app.get("/api/stems/status/:job_id", authMiddleware, jobTokenMiddleware, (req, r
 });
 
 app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, res) => {
-  const jobId = (req.body && req.body.job_id) || req.query.job_id;
+  const jobId = req.body && req.body.job_id;
   if (!jobId || !UUID_REGEX.test(jobId)) {
-    return res.status(400).json({ error: "Invalid or missing job_id. Provide the 2-stem job id to expand." });
+    return res.status(400).json({ error: "Invalid or missing job_id. Provide the 2-stem job id in the JSON body." });
   }
-  const quality = (req.body && req.body.quality) || req.query.quality;
+  const quality = req.body && req.body.quality;
 
   // Validate quality before proxying
   const VALID_QUALITY = new Set(["speed", "quality", "ultra"]);
@@ -605,7 +634,10 @@ app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, re
         e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
           ? /** @type {{ status?: number }} */ (e).status
           : 500;
-      const msg = e instanceof Error ? e.message : String(e);
+      const raw = e instanceof Error ? e.message : String(e);
+      const fallback =
+        status === 401 ? "Unable to verify your account. Please sign in again." : "Unable to reserve usage for expand.";
+      const msg = publicErrorMessage(raw, fallback, "[POST /api/stems/expand usage]");
       return res.status(status).json({ error: msg });
     }
   }
@@ -631,7 +663,8 @@ app.post("/api/stems/expand", authMiddleware, jobTokenMiddleware, async (req, re
       }
     }
     if (isProxyHttpError(e)) {
-      return res.status(e.statusCode).json({ error: e.error });
+      console.warn("[POST /api/stems/expand] stem service error:", e.statusCode, e.error);
+      return res.status(e.statusCode).json({ error: sanitizedProxyClientError(e.statusCode, e.error) });
     }
     console.error("[POST /api/stems/expand] proxy error:", e);
     return res.status(502).json({ error: "Stem service unavailable" });
@@ -709,7 +742,10 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
         e && typeof e === "object" && "status" in e && typeof /** @type {{ status?: number }} */ (e).status === "number"
           ? /** @type {{ status?: number }} */ (e).status
           : 500;
-      const msg = e instanceof Error ? e.message : String(e);
+      const raw = e instanceof Error ? e.message : String(e);
+      const fallback =
+        status === 401 ? "Unable to verify your account. Please sign in again." : "Unable to reserve usage for export.";
+      const msg = publicErrorMessage(raw, fallback, "[POST /api/stems/server-export usage]");
       return res.status(status).json({ error: msg });
     }
   }
@@ -757,10 +793,12 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
     });
 
     if (exitCode !== 0) {
-      return res.status(500).json({
-        error: "Server export render failed",
-        detail: stderrText ? stderrText.split("\n").slice(-30).join("\n") : undefined,
-      });
+      console.error(
+        "[POST /api/stems/server-export] python exit",
+        exitCode,
+        stderrText ? stderrText.split("\n").slice(-40).join("\n") : "",
+      );
+      return res.status(500).json({ error: "Server export render failed" });
     }
 
     if (!existsSync(exportOutPath)) {
@@ -785,7 +823,7 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
     try { unlink(exportOutPath, () => {}); } catch { /* ignore */ }
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[POST /api/stems/server-export] render exception:", msg);
-    return res.status(500).json({ error: "Server export failed", detail: msg });
+    return res.status(500).json({ error: "Server export failed" });
   }
 });
 
@@ -929,7 +967,7 @@ async function main() {
   server = app.listen(PORT, () => {
     console.log(`Backend listening on http://localhost:${PORT}`);
     console.log(`STEM_SERVICE_URL=${STEM_SERVICE_URL} STEM_OUTPUT_DIR=${STEM_OUTPUT_DIR}`);
-    console.log(`CORS allowed origins: ${FRONTEND_ORIGINS.join(", ")}`);
+    console.log(`CORS allowed origins: ${[...getAllowedOriginSet()].join(", ")}`);
     if (API_KEY) console.log("API key authentication: ENABLED");
     if (JOB_TOKEN_SECRET) console.log("Job token authentication: ENABLED");
   });

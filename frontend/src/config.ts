@@ -1,15 +1,22 @@
 /**
  * When set (`VITE_LOCAL_DEV_FULL_APP=1`), the UI skips Clerk sign-in and treats
  * subscription as Premium — for local stem/mixer testing without login or Stripe.
- * Disabled in production builds (`import.meta.env.PROD`) so the flag cannot ship enabled.
+ * Requires Vite `mode === "development"` so a stray env var in a production build cannot disable the paywall.
  */
 export function isLocalDevFullApp(): boolean {
+  if (import.meta.env.MODE !== "development") return false;
   if (import.meta.env.PROD) return false;
   const v = String(import.meta.env.VITE_LOCAL_DEV_FULL_APP ?? "")
     .trim()
     .toLowerCase();
   return v === "1" || v === "true";
 }
+
+/** Must stay in sync with backend MAX_UPLOAD_BYTES (default 500MB). Override with VITE_MAX_UPLOAD_BYTES. */
+export const MAX_UPLOAD_BYTES =
+  Number(import.meta.env.VITE_MAX_UPLOAD_BYTES) > 0
+    ? Number(import.meta.env.VITE_MAX_UPLOAD_BYTES)
+    : 500 * 1024 * 1024;
 
 // Centralized API base URL (no trailing slash).
 export const API_BASE =

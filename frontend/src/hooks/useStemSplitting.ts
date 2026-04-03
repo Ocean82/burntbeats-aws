@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 import { splitStems, expandStems, type SplitQuality } from "../api";
-import { PIPELINE_PROGRESS_THRESHOLDS } from "../config";
+import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS } from "../config";
 import { useAppStore } from "../store/appStore";
 import type { UseSubscriptionResult } from "./useSubscription";
 
@@ -102,6 +102,11 @@ export function useStemSplitting({
     const file = useAppStore.getState().uploadedFile;
     if (!file || !(file instanceof File) || file.size === 0) {
       setUploadState((prev) => ({ ...prev, splitError: "Upload an audio file first." }));
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      const mb = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
+      setUploadState((prev) => ({ ...prev, splitError: `File too large. Maximum size is ${mb}MB.` }));
       return;
     }
     setUploadState((prev) => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null }));
