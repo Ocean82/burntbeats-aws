@@ -3,10 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { AppShell } from "./app/app-shell.component";
 import { App } from "./App";
 
-// Mock Clerk's useAuth so App can render without ClerkProvider in tests
+// Mock Clerk so App can render without ClerkProvider in tests
 vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: () => Promise.resolve(null) }),
   ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
+  UserButton: () => <button type="button">Account</button>,
 }));
 
 // Avoid real fetch and ResizeObserver in tests
