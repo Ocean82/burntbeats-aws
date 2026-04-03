@@ -6,6 +6,7 @@
 import { useCallback, useState } from "react";
 import lamejs from "lamejs";
 import { fetchStemWavAsBlob, serverExportMasterWav } from "../api";
+import { SERVER_EXPORT_ENABLED } from "../config";
 import type { StemResult } from "../types";
 import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStereoWidthNode } from "../utils/audio";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
@@ -402,6 +403,7 @@ export function useExport(): UseExportReturn {
         const format = options.format;
 
         const canTryServer =
+          SERVER_EXPORT_ENABLED &&
           typeof serverExportJobId === "string" &&
           serverExportJobId.length > 0 &&
           Array.isArray(serverExportStemIds) &&

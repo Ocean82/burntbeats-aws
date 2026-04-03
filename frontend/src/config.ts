@@ -24,6 +24,12 @@ export const API_BASE =
     ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
     : (typeof window !== "undefined" && window.location.hostname !== "localhost" ? window.location.origin : "http://localhost:3001"));
 
+/** Optional server-side export feature flag. Disabled by default to avoid 404 noise when backend export is off. */
+export const SERVER_EXPORT_ENABLED =
+  ["1", "true", "yes"].includes(
+    String(import.meta.env.VITE_SERVER_EXPORT_ENABLED ?? "").trim().toLowerCase(),
+  );
+
 // Global configuration constants: first step is always 2-stem (vocals + instrumental).
 export const DEFAULT_STEM_COUNT = 2 as const;
 
