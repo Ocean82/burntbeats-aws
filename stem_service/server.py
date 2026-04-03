@@ -38,11 +38,6 @@ from stem_service.config import (
     MAX_SAMPLE_RATE,
     MAX_FILE_SIZE_MB,
 )
-from stem_service.demucs_onnx import (
-    demucs_onnx_6s_available,
-    demucs_onnx_embedded_available,
-    run_demucs_onnx_4stem,
-)
 from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.hybrid import (
     run_4stem_single_pass_or_hybrid,
@@ -108,17 +103,10 @@ class JobCancelledError(Exception):
 async def lifespan(app: FastAPI):
     """Validate required models at startup so first request fails fast instead of hanging."""
 
-    demucs_onnx_4 = demucs_onnx_embedded_available() or demucs_onnx_6s_available()
-    if not htdemucs_available() and not demucs_onnx_4:
+    if not htdemucs_available():
         raise RuntimeError(
-            "No Demucs model found: place htdemucs.pth/.th in models/ or htdemucs_embedded.onnx and htdemucs_6s.onnx. "
+            "No Demucs model found: place htdemucs.pth or htdemucs.th in models/. "
             "See README or scripts/copy-models.sh."
-        )
-    if demucs_onnx_4:
-        logger.info(
-            "Demucs ONNX 4-stem: embedded=%s, 6s=%s",
-            demucs_onnx_embedded_available(),
-            demucs_onnx_6s_available(),
         )
     if htdemucs_available():
         logger.info("Model check OK: htdemucs (models/htdemucs.pth or .th)")
@@ -415,9 +403,10 @@ def _run_separation_sync(
                     prefer_speed=prefer_speed,
                     progress_callback=on_progress,
                     job_logger=job_log,
+                    model_tier=model_tier,
                 )
         else:
-            # demucs_only: still prefer ONNX when available (best option)
+            # demucs_only: PyTorch Demucs (no Demucs ONNX path)
             if stem_count == 2:
                 path_kind, stage1_models = get_2stem_stage1_preview(
                     prefer_speed=prefer_speed,
@@ -440,29 +429,13 @@ def _run_separation_sync(
             else:
                 flat_dir = out_dir / "stems"
                 flat_dir.mkdir(parents=True, exist_ok=True)
-                use_6s = not prefer_speed
-                stem_list = None
-                if (use_6s and demucs_onnx_6s_available()) or (
-                    not use_6s and demucs_onnx_embedded_available()
-                ):
-                    job_log.info("Stage: demucs ONNX 4-stem  use_6s=%s", use_6s)
-                    stem_list, demucs_model = run_demucs_onnx_4stem(
-                        input_path,
-                        flat_dir,
-                        use_6s=use_6s,
-                        prefer_speed=prefer_speed,
-                    )
-                    if stem_list is not None and demucs_model is not None:
-                        models_used = [demucs_model]
-                        on_progress(100)
-                if stem_list is None:
-                    job_log.info("Stage: demucs subprocess 4-stem")
-                    stem_files = run_demucs(
-                        input_path, out_dir, stems=4, prefer_speed=prefer_speed
-                    )
-                    on_progress(50)
-                    stem_list = copy_stems_to_flat_dir(stem_files, flat_dir)
-                    models_used = ["htdemucs"]
+                job_log.info("Stage: demucs subprocess 4-stem (htdemucs)")
+                stem_files = run_demucs(
+                    input_path, out_dir, stems=4, prefer_speed=prefer_speed
+                )
+                on_progress(50)
+                stem_list = copy_stems_to_flat_dir(stem_files, flat_dir)
+                models_used = ["htdemucs"]
                 on_progress(100)
 
         # Check if cancelled before marking complete

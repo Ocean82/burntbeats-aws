@@ -10,10 +10,6 @@ except ImportError:
     sys.exit(1)
 
 models = [
-    "models/htdemucs_6s.onnx",
-    "models/htdemucs_embedded.onnx",
-    "models/htdemucs.onnx",
-    "models/demucsv4.onnx",
     "models/silero_vad.onnx",
     "models/scnet.onnx/scnet.onnx",
     "models/mdxnet_models/Kim_Vocal_2.onnx",

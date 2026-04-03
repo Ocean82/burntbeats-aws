@@ -4,6 +4,8 @@ MDX-Net ONNX inference for vocal and instrumental separation.
 Hardcoded configs derived from probing actual model tensor shapes (scripts/probe_onnx.py)
 and cross-referencing UVR model_data.json for n_fft and hop_length.
 
+UVR JSON field names vs this tuple are documented in ``docs/MODEL-PARAMS.md``.
+
 Key insight: hop_length is ALWAYS 1024 in UVR/MDX-Net — it is NOT n_fft//2.
 
 Vocal models  (primary_stem=Vocals):
@@ -47,11 +49,9 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     #                                    n_fft   hop   dim_f  dim_t  compensate
     "Kim_Vocal_1.onnx":                 (6144,  1024,  3072,  256,   1.035),
     "Kim_Vocal_2.onnx":                 (6144,  1024,  3072,  256,   1.035),
-    "Kim_Inst.onnx":                    (6144,  1024,  3072,  256,   1.035),
     "UVR-MDX-NET-Voc_FT.onnx":         (6144,  1024,  3072,  256,   1.035),
     "UVR-MDX-NET-Inst_HQ_4.onnx":      (5120,  1024,  2560,  256,   1.035),
     "UVR-MDX-NET-Inst_HQ_5.onnx":      (5120,  1024,  2560,  256,   1.035),
-    "UVR-MDX-NET_Crowd_HQ_1.onnx":     (5120,  1024,  2560,  256,   1.035),
     # MDX23C 2-stem (MDX23C vocal/instrumental ONNX)
     "mdx23c_vocal.onnx":              (6144,  1024,  3072,  256,   1.035),
     "mdx23c_instrumental.onnx":      (6144,  1024,  3072,  256,   1.035),
@@ -65,10 +65,6 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     "UVR_MDXNET_2_9682.onnx":         (4096,  1024,  2048,  256,   1.035),
     "UVR_MDXNET_3_9662.onnx":         (4096,  1024,  2048,  256,   1.035),
     "UVR_MDXNET_KARA.onnx":           (4096,  1024,  2048,  256,   1.035),
-    "UVR_MDXNET_KARA_2.onnx":         (4096,  1024,  2048,  256,   1.035),
-    # Kuiper lab — probed dim_f=2048 (2048/512 context variants)
-    "kuielab_a_vocals.onnx":          (4096,  1024,  2048,  512,   1.0),
-    "kuielab_b_vocals.onnx":          (4096,  1024,  2048,  256,   1.035),
 }
 
 # ---------------------------------------------------------------------------
@@ -97,53 +93,16 @@ DEREVERB_MODEL_PATHS: list[Path] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Tiered model selection — derived from benchmark tmp/model_matrix_benchmark/ranked_blended_q80_s20.csv
-# Benchmark date: 2026-03-22  |  Scoring: blended = quality_norm*0.80 + speed_norm*0.20
+# Tiered model selection — see docs/MODEL-SELECTION-AUTHORITY.md and
+# docs/ranked_practical_time_score.csv (canonical: score + elapsed on 30s clip).
 #
-# HARD CUTOFFS — a model failing ANY of these is excluded from ALL tiers:
-#   speed_norm  < 0.30  → excluded  (slow model)
-#   raw score   < 8.5   → excluded  (bad quality)
-#   score_num   < 8.5   → excluded  (bad quality)
-#   blended     < 0.75  → excluded  (poor overall)
-#   relabeled   = true  → excluded  (raw score is 0)
+# Rules (summary): prefer score >= 9; UVR_MDXNET_1/2 at 8.5 are allowed in fast
+# tier because they finish in ~26–29s on the reference clip. Kim_Vocal_* and
+# Voc_FT are quality tier (score 9+ but slower). Inst_HQ_5 = fast inst;
+# Inst_HQ_4 = quality. Legacy blended ranking (ranked_blended_q80_s20.csv) is
+# research-only — do not re-derive tiers from blended alone.
 #
-# MODELS THAT FAIL CUTOFFS:
-#   Voc_FT.onnx      speed_norm=0.293  → fails speed cutoff
-#   mdx23c           speed_norm=0.165-0.180 → fails speed cutoff
-#   kuielab_a/b      score_num=8.0     → fails quality cutoff
-#   KARA_2, Kim_Inst raw=0 relabeled   → excluded
-#   demucsv4         score_num=2.0     → fails quality cutoff
-#   htdemucs_6s/emb  score_num=1.0     → fails quality cutoff
-#   Crowd_HQ_1       score_num=1.0     → fails quality cutoff
-#   Reverb_HQ        score_num=1.0     → fails quality cutoff
-#
-# ELIGIBLE VOCAL MODELS (all 4 cutoffs pass):
-#   rank  model                   raw   score  speed_norm  blended
-#   1     UVR_MDXNET_3_9662.ort   9.0   9.0    0.8162      0.8832  ← fast
-#   2     UVR_MDXNET_KARA.ort     9.0   9.0    0.7841      0.8768  ← fast
-#   3     UVR_MDXNET_KARA.onnx    9.0   9.0    0.7541      0.8708  ← fast
-#   4     UVR_MDXNET_3_9662.onnx  9.0   9.0    0.7351      0.8670  ← fast
-#   5     UVR_MDXNET_2_9682.ort   8.5   8.5    0.8320      0.8464  ← fast
-#   6     UVR_MDXNET_1_9703.onnx  8.5   8.5    0.8252      0.8450  ← fast
-#   7     UVR_MDXNET_1_9703.ort   8.5   8.5    0.8134      0.8427  ← fast
-#   8     UVR_MDXNET_2_9682.onnx  8.5   8.5    0.7620      0.8324  ← fast
-#   16    Kim_Vocal_1.ort         9.0   9.0    0.3347      0.7869  ← quality
-#   18    Kim_Vocal_1.onnx        9.0   9.0    0.3332      0.7866  ← quality
-#   20    Kim_Vocal_2.ort         9.0   9.0    0.3239      0.7848  ← quality
-#   22    Kim_Vocal_2.onnx        9.0   9.0    0.3074      0.7815  ← quality
-#   23    Voc_FT.ort              9.0   9.0    0.3038      0.7808  ← quality
-#
-# ELIGIBLE INSTRUMENTAL MODELS (all 4 cutoffs pass):
-#   rank  model                      raw   score  speed_norm  blended
-#   10    UVR-MDX-NET-Inst_HQ_5.ort  9.0   9.0    0.4063      0.8013  ← fast
-#   11    UVR-MDX-NET-Inst_HQ_5.onnx 9.0   9.0    0.4019      0.8004  ← fast
-#   15    UVR-MDX-NET-Inst_HQ_4.ort  9.0   9.0    0.3411      0.7882  ← quality
-#   19    UVR-MDX-NET-Inst_HQ_4.onnx 9.0   9.0    0.3304      0.7861  ← quality
-#
-# TIER ASSIGNMENT within eligible pool:
-#   fast    = highest blended_score (best combined quality+speed)
-#   quality = highest quality_norm, then blended (slower but still eligible)
-#   balanced = same as fast
+# ORT: resolve_mdx_model_path() prefers .ort when present; lists use .onnx names.
 # ---------------------------------------------------------------------------
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
     # fast: top blended scores from eligible pool — ordered by blended desc
@@ -242,6 +201,14 @@ def _get_config(model_path: Path) -> tuple[int, int, int, int, float] | None:
 def mdx_model_configured(model_path: Path) -> bool:
     """True if this ONNX model has MDX config (n_fft, hop, dim_f, dim_t) and can be run."""
     return _get_config(model_path) is not None
+
+
+def mdx_config_for_logical_onnx_name(logical_onnx_name: str) -> tuple[int, int, int, int, float] | None:
+    """
+    Return ``(n_fft, hop_length, dim_f, dim_t, compensate)`` for a logical ``*.onnx`` key
+    in ``_MDX_CONFIGS`` (same keys as tier lists in ``MODEL-SELECTION-AUTHORITY.md``).
+    """
+    return _MDX_CONFIGS.get(logical_onnx_name)
 
 
 def _prefer_quantized(path: Path) -> Path:

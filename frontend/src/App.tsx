@@ -244,7 +244,7 @@ export function App() {
   );
 
   // ── Stem loading (fetch WAVs → AudioBuffers) ──────────────────────────────
-  const { stemBuffers, setStemBuffers, isLoadingStems, clearStemLoadingState } =
+  const { stemBuffers, setStemBuffers, isLoadingStems, clearStemLoadingState, loadingError, retryLoadStems } =
     useStemLoading({
       allStemEntries,
       audioContextRef,
@@ -282,6 +282,7 @@ export function App() {
     toggleGame,
   } = useUiModals();
   const { latencyStats, resetLatencyStats } = useUiLatencyMonitor();
+  const [undoToast, setUndoToast] = useState<string | null>(null);
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
@@ -648,7 +649,7 @@ export function App() {
               allowProcess={canUseBatchQueue}
               onProcessQueue={() =>
                 void processNextInQueue(
-                  2,
+                  canExpandToFourStems ? 4 : 2,
                   splitQuality,
                   (stems) =>
                     setUploadState((prev) => ({
@@ -763,7 +764,7 @@ export function App() {
               <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
                 <button
                   type="button"
-                  onClick={undoStemStates}
+                  onClick={() => { undoStemStates(); setUndoToast("Changes undone"); }}
                   disabled={!canUndo}
                   className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white"
                   title="Undo (Ctrl+Z)"
@@ -774,7 +775,7 @@ export function App() {
                 <div className="h-4 w-px bg-white/10" />
                 <button
                   type="button"
-                  onClick={redoStemStates}
+                  onClick={() => { redoStemStates(); setUndoToast("Changes redone"); }}
                   disabled={!canRedo}
                   className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white"
                   title="Redo (Ctrl+Y)"
@@ -1318,6 +1319,8 @@ export function App() {
                         getPlayheadPosition={getPlayheadPosition}
                         subscribePlayheadPosition={subscribePlayheadPosition}
                         isLoadingStems={isLoadingStems}
+                        loadingError={loadingError}
+                        onRetryLoadStems={retryLoadStems}
                         activeStemId={activeStemId || visibleStems[0]?.id}
                         onActiveStemChange={setActiveStemId}
                         onStemStateChange={handleStemStateChange}
@@ -1339,6 +1342,15 @@ export function App() {
                         aria-live="polite"
                       >
                         {exportCompareSummary}
+                      </p>
+                    )}
+                    {undoToast && (
+                      <p
+                        className="mt-2 text-xs text-amber-300/80"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        {undoToast}
                       </p>
                     )}
                   </AudioErrorBoundary>

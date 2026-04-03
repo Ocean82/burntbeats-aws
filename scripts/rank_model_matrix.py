@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""Rank matrix benchmark rows by score/time and by blended composite.
+
+Reads: tmp/model_matrix_benchmark/summary.csv
+Writes: ranked_score_time.csv, ranked_blended_q80_s20.csv under the same folder.
+
+Human tier decisions: maintain docs/ranked_practical_time_score.csv (tracked) and
+docs/MODEL-SELECTION-AUTHORITY.md — do not rely on blended output alone for product tiers.
+"""
 from __future__ import annotations
 
 import csv

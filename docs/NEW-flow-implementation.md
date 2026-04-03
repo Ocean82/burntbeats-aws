@@ -10,7 +10,7 @@
 - **Default 4-stem on CPU:** Prefer **SCNet** when available (paper: 9.0 dB SDR MUSDB18-HQ, **CPU time ~48% of HT Demucs**). Keep Demucs htdemucs as HQ fallback.
 - **2-stem:** Current stack is MDX ONNX (Kim_Vocal_2 / Voc_FT) + instrumental ONNX or phase inversion. NEW-flow suggests **SCNet 4-stem → collapse** (sum drums+bass+other = instrumental) as an alternative; we already have a fast 2-stem path (MDX). Optional later: add SCNet 2-stem mode (one model run) for users who want maximum speed over vocal-specialist quality.
 - **First step slowness:** Likely from (1) Stage 1 MDX overlap (75% quality = many chunks) and (2) 4-stem expand using Demucs. Mitigations: keep 50% overlap in speed mode; add **SCNet as first choice for 4-stem** so expand uses SCNet when available (~half the Demucs time).
-- **Avoid as default:** htdemucs_ft (4× slower), htdemucs_6s for production (piano issues). We already use htdemucs_embedded for speed and 6s only in quality; no change needed.
+- **Avoid as default:** htdemucs_ft (4× slower). Demucs ONNX experiments were retired; 4-stem uses SCNet and/or PyTorch htdemucs.
 
 ---
 
@@ -60,10 +60,9 @@ No change to existing Demucs or MDX env vars.
 - **Job log (split):** `tmp/stems/{job_id}/job.log` (or `OUTPUT_BASE/{job_id}/job.log`). Look for:
   - `4-stem: trying SCNet ONNX first` then `4-stem: SCNet ONNX succeeded` → SCNet was used.
   - `4-stem: SCNet ONNX failed or returned None` → SCNet failed; next line will show Demucs or hybrid.
-  - `4-stem: trying Demucs ONNX` / `4-stem: Demucs ONNX succeeded` → Demucs ONNX used.
-  - `4-stem: using hybrid pipeline` → Stage 1 + Demucs subprocess.
+  - `4-stem: using hybrid pipeline` → Stage 1 + PyTorch Demucs subprocess (Demucs ONNX path removed).
 - **Expand:** Same dir for the **expand** job id. Look for:
   - `expand: scnet_available=True  trying SCNet ONNX` then `expand: SCNet ONNX succeeded` → SCNet used.
   - `expand: SCNet ONNX returned None` or `expand: scnet_available=False` → Demucs path used.
-- **API:** `GET /status/{job_id}` (or `/split/status/{job_id}`) returns `models_used` when status is `completed`. Example: `["scnet_onnx"]` vs `["htdemucs_embedded.onnx"]` vs `["htdemucs"]`.
+- **API:** `GET /status/{job_id}` (or `/split/status/{job_id}`) returns `models_used` when status is `completed`. Example: `["scnet_onnx"]` vs `["htdemucs"]` (PyTorch subprocess).
 - **2-stem:** Unchanged; no SCNet. Stage 1 uses MDX ONNX (e.g. Kim_Vocal_2) or Demucs 2-stem; see vocal_stage1 logs.

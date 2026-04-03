@@ -1,6 +1,7 @@
 /**
- * useStemSplitting: manages the upload → split → expand workflow.
- * Handles file selection, 2-stem split, and 2→4-stem expansion.
+ * useStemSplitting: upload → split workflow.
+ * Premium/Studio: choosing 4 stems calls the API once with stems=4 (single job).
+ * Manual "Expand → 4 stems" still uses the expand endpoint after a 2-stem run.
  */
 import { useCallback, useEffect, useRef } from "react";
 import { splitStems, expandStems, type SplitQuality } from "../api";
@@ -111,8 +112,11 @@ export function useStemSplitting({
     }
     setUploadState((prev) => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null }));
     try {
-      // Split API always starts with 2-stem. 4-stem request expands immediately after.
-      const res = await splitStems(file, "2", splitQuality, (s) => {
+      // Premium/Studio: one server job for 4 stems (hybrid MDX + PyTorch Demucs / SCNet per backend).
+      // Basic: 2-stem only.
+      const stemsArg =
+        requestedStemMode === 4 && !isBasicPlan ? ("4" as const) : ("2" as const);
+      const res = await splitStems(file, stemsArg, splitQuality, (s) => {
         setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
         if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
         else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState((prev) => ({ ...prev, pipelineIndex: 2 }));
@@ -125,18 +129,6 @@ export function useStemSplitting({
         splitProgress: 100,
         pipelineIndex: 3,
       }));
-      if (requestedStemMode === 4 && !isBasicPlan) {
-        const expanded = await expandStems(res.job_id, splitQuality, (s) => {
-          setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
-        });
-        setUploadState((prev) => ({
-          ...prev,
-          splitResultStems: expanded.stems,
-          splitJobId: expanded.job_id,
-          splitProgress: 100,
-          pipelineIndex: 3,
-        }));
-      }
     } catch (err) {
       setUploadState((prev) => ({
         ...prev,

@@ -30,7 +30,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 DEFAULT_EXCLUDE_PARTS = ("demucs.onnx-main", "node_modules", ".git", "__pycache__")
 
-# stem_service/demucs_onnx.py
+# 4-stem Demucs: PyTorch htdemucs (see stem_service/split.py)
 SEGMENT_EMBEDDED = 343980
 
 
@@ -102,7 +102,7 @@ def classify_model(path: Path) -> dict[str, Any]:
         if t_int == SEGMENT_EMBEDDED:
             row["classification"] = "demucs_embedded_segment"
             row["pipeline_note"] = (
-                f"Matches demucs_onnx SEGMENT_SAMPLES={SEGMENT_EMBEDDED} — qualified for current 4-stem ONNX path"
+                f"Matches legacy embedded Demucs ONNX segment length {SEGMENT_EMBEDDED} (ONNX path removed; informational)"
             )
         elif isinstance(t_int, int):
             row["classification"] = "demucs_waveform_other_seg"
@@ -229,7 +229,7 @@ def main() -> int:
             f"| {'OK' if r.get('load_ok') else 'FAIL'} | {r.get('classification')} | "
             f"{'Y' if r.get('ort_present') else 'N'} | {r.get('size_mb')} | `{sh}` | `{r.get('path')}` |"
         )
-    lines.extend(["", "## Notes", "", "- **demucs_embedded_segment** models match the current `demucs_onnx.py` chunk length.", "- **demucs_waveform_other_seg** (e.g. 441000) will fail until the pipeline is extended for that export.", "- **mdx_*** rows need a matching entry in `stem_service/mdx_onnx.py` `_MDX_CONFIGS` to run.", "- Re-run after adding ONNX files: `python scripts/scan_models_inventory.py`", ""])
+    lines.extend(["", "## Notes", "", "- **demucs_embedded_segment** — legacy ONNX export shape note (production 4-stem uses PyTorch Demucs).", "- **demucs_waveform_other_seg** (e.g. 441000) — not used by current pipeline.", "- **mdx_*** rows need a matching entry in `stem_service/mdx_onnx.py` `_MDX_CONFIGS` to run.", "- Re-run after adding ONNX files: `python scripts/scan_models_inventory.py`", ""])
     md_path.write_text("\n".join(lines), encoding="utf-8")
 
     print(tmp_csv)

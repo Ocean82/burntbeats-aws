@@ -193,9 +193,9 @@ export function MultiStemEditor({
   if (stems.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/25 p-4">
+    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/25 p-4" role="region" aria-label="Stem mixer editor">
       {/* ── Toolbar ── */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap" role="toolbar" aria-label="Mixer controls">
         <button
           type="button"
           onClick={onPlayPause}

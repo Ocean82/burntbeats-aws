@@ -98,6 +98,16 @@ export function useMixerWorkspace({
     });
   }, [setStemStates]);
 
+  const mixIds = useMemo(() => mixStems.map((s) => s.id).join(","), [mixStems]);
+
+  useEffect(() => {
+    if (mixStems.length === 0) return;
+    setActiveStemId((prev) => {
+      if (prev && mixStems.some((s) => s.id === prev)) return prev;
+      return mixStems[0]?.id ?? "";
+    });
+  }, [mixIds, mixStems]);
+
   return {
     activeStemId,
     setActiveStemId,

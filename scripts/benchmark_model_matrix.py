@@ -8,7 +8,7 @@ stem_service.mdx_onnx.mdx_model_configured() for MDX rows.
 Benchmarks:
   - mdx_dim3072: run_vocal_onnx per file (separate ONNX/ORT runs)
   - mdx_dim2560: run_inst_onnx per file
-  - demucs_embedded_segment: run_demucs_onnx_4stem (use_6s=False)
+  - demucs_embedded_segment: skipped (Demucs ONNX path removed)
   - mdx23c_pair: one row for mdx23c_vocal + mdx23c_instrumental (handled once)
 
 Output: tmp/model_matrix_benchmark/summary.json and summary.csv
@@ -176,17 +176,14 @@ def main() -> int:
             seen_model_names.add(path.name)
 
         elif cls == "demucs_embedded_segment":
-            for use_ort, tag in ((False, "onnx"), (True, "ort")):
-                sub = out_root / f"demucs_{path.stem}_{tag}"
-                sub.mkdir(parents=True, exist_ok=True)
-                row = {
-                    "case": f"demucs:{path.name}",
-                    "backend": tag,
-                    "clip_sec": round(dur, 3),
-                }
-                row.update(bonv._bench_demucs(clip_path, sub, path, use_ort))
-                results.append(row)
-                print(json.dumps(row))
+            row = {
+                "case": f"demucs:{path.name}",
+                "backend": "skip",
+                "reason": "Demucs ONNX benchmarking removed — use PyTorch htdemucs",
+                "clip_sec": round(dur, 3),
+            }
+            results.append(row)
+            print(json.dumps(row))
             seen_model_names.add(path.name)
 
     js = out_root / "summary.json"

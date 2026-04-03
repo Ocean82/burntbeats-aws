@@ -26,6 +26,17 @@ SILERO_VAD_ONNX = MODELS_DIR / "silero_vad.onnx"
 SCNET_ONNX = MODELS_DIR / "scnet.onnx" / "scnet.onnx"
 USE_SCNET = os.environ.get("USE_SCNET", "1").strip().lower() in ("1", "true", "yes")
 
+# 4-stem routing: "auto" tries SCNet ONNX first (when USE_SCNET + model exist), then hybrid.
+# Set to "hybrid" in production if SCNet is flaky — forces Stage1 MDX + PyTorch Demucs only (no SCNet).
+FOUR_STEM_BACKEND = os.environ.get("FOUR_STEM_BACKEND", "auto").strip().lower()
+if FOUR_STEM_BACKEND not in ("auto", "hybrid"):
+    FOUR_STEM_BACKEND = "auto"
+
+
+def four_stem_skip_scnet() -> bool:
+    """When True, 4-stem jobs never attempt SCNet ONNX (use hybrid / Demucs paths only)."""
+    return FOUR_STEM_BACKEND == "hybrid"
+
 # Demucs extra bag models (for quality mode)
 DEMUCS_EXTRA_MODELS_DIR = MODELS_DIR / "Demucs_Models"
 DEMUCS_EXTRA_Q_YAML = DEMUCS_EXTRA_MODELS_DIR / "mdx_extra_q.yaml"

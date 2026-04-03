@@ -430,7 +430,11 @@ export function useExport(): UseExportReturn {
       }
       if (options.target === "stems" || options.target === "all") {
         const baseName = stripFileExtension(uploadName);
-        for (const stem of splitResultStems) await downloadStemByUrl(stem, baseName);
+        // Only job-backed stems (split pipeline). Loaded file stems use blob: URLs — skip those here.
+        const jobBacked = splitResultStems.filter((s) =>
+          s.url.includes("/api/stems/file/"),
+        );
+        for (const stem of jobBacked) await downloadStemByUrl(stem, baseName);
       }
       onClose();
       if (!hadError) onSuccess?.();

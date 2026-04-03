@@ -5,7 +5,7 @@ Convert selected ONNX models to ORT (optional), then benchmark ONNX vs ORT on th
 Default models (under models/):
   - Kim_Vocal_2.onnx
   - mdx23c_vocal.onnx + mdx23c_instrumental.onnx
-  - htdemucs_embedded.onnx  (4-stem Demucs; override with --demucs)
+  (Demucs ONNX / ORT 4-stem benchmarking was removed; use PyTorch htdemucs.)
 
 Input WAV: use --wav, or first line of benchmark_song.local.txt, or BENCHMARK_SONG env.
 Clips to --clip-seconds (default 30) for fair comparison.
@@ -37,11 +37,9 @@ os.environ.setdefault("USE_VAD_PRETRIM", "0")
 
 
 def _clear_session_caches() -> None:
-    import stem_service.demucs_onnx as d
     import stem_service.mdx_onnx as m
 
     m._session_cache.clear()
-    d._session_cache.clear()
 
 
 def _ensure_clip(src: Path, dst: Path, clip_seconds: float) -> float:
@@ -193,63 +191,19 @@ def _bench_mdx23c(
     }
 
 
-def _bench_demucs(
-    clip: Path, out_dir: Path, demucs_declared_onnx: Path, use_ort: bool
-) -> dict:
-    from stem_service.demucs_onnx import run_demucs_onnx_4stem
-
-    # When both .onnx and .ort exist, resolver prefers .ort unless we force ONNX.
-    try:
-        if use_ort:
-            os.environ.pop("BURNTBEATS_DISALLOW_ORT", None)
-            p = demucs_declared_onnx.with_suffix(".ort")
-            override = p if p.is_file() else demucs_declared_onnx
-        else:
-            os.environ["BURNTBEATS_DISALLOW_ORT"] = "1"
-            override = demucs_declared_onnx
-        if not override.is_file():
-            return {"error": f"missing demucs model: {override}"}
-
-        _clear_session_caches()
-        t0 = time.perf_counter()
-        stem_list, name = run_demucs_onnx_4stem(
-            clip,
-            out_dir,
-            use_6s=False,
-            demucs_model_override=override,
-            prefer_speed=False,
-        )
-        elapsed = time.perf_counter() - t0
-        return {
-            "model_file": override.name,
-            "reported": name,
-            "format": "ort" if str(override).lower().endswith(".ort") else "onnx",
-            "elapsed_sec": round(elapsed, 3),
-            "ok": stem_list is not None,
-        }
-    finally:
-        os.environ.pop("BURNTBEATS_DISALLOW_ORT", None)
-
-
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Benchmark ONNX vs ORT for Kim, MDX23C, Demucs")
+    ap = argparse.ArgumentParser(description="Benchmark ONNX vs ORT for Kim, MDX23C")
     ap.add_argument("--wav", type=Path, default=None, help="Input WAV (else benchmark_song.local.txt / BENCHMARK_SONG)")
     ap.add_argument("--models-dir", type=Path, default=None, help="Default: stem_service MODELS_DIR")
     ap.add_argument("--clip-seconds", type=float, default=30.0, help="Trim to first N seconds (default 30)")
     ap.add_argument("--out", type=Path, default=None, help="Output dir (default tmp/onnx_vs_ort_benchmark)")
     ap.add_argument("--skip-convert", action="store_true", help="Do not run ONNX→ORT conversion")
     ap.add_argument(
-        "--demucs",
-        type=str,
-        default="htdemucs_embedded.onnx",
-        help="Demucs 4-stem ONNX filename under models/ (default htdemucs_embedded.onnx)",
-    )
-    ap.add_argument(
         "--cases",
         nargs="*",
         default=None,
         metavar="CASE",
-        help="Which benchmarks to run: kim_vocal mdx23c_pair demucs_4stem. "
+        help="Which benchmarks to run: kim_vocal mdx23c_pair. "
         "Default: only cases whose ONNX files exist under models/.",
     )
     args = ap.parse_args()
@@ -263,9 +217,7 @@ def main() -> int:
     kim = models_dir / "Kim_Vocal_2.onnx"
     mdx_v = models_dir / "mdx23c_vocal.onnx"
     mdx_i = models_dir / "mdx23c_instrumental.onnx"
-    demucs = models_dir / args.demucs
-
-    all_case_ids = ("kim_vocal", "mdx23c_pair", "demucs_4stem")
+    all_case_ids = ("kim_vocal", "mdx23c_pair")
     if args.cases:
         wanted = tuple(c for c in args.cases if c in all_case_ids)
         unknown = [c for c in args.cases if c not in all_case_ids]
@@ -280,20 +232,19 @@ def main() -> int:
             for c, ok in (
                 ("kim_vocal", kim.is_file()),
                 ("mdx23c_pair", mdx_v.is_file() and mdx_i.is_file()),
-                ("demucs_4stem", demucs.is_file()),
             )
             if ok
         )
         if not wanted:
             print(
-                "No benchmark cases: place Kim_Vocal_2.onnx, mdx23c_*.onnx, and/or "
-                f"your Demucs ONNX ({demucs.name}) under {models_dir}, or pass --cases explicitly.",
+                f"No benchmark cases: place Kim_Vocal_2.onnx and/or mdx23c_*.onnx under {models_dir}, "
+                "or pass --cases explicitly.",
                 file=sys.stderr,
             )
             return 2
         print(f"Auto-selected cases (ONNX present): {', '.join(wanted)}")
 
-    to_convert = [p for p in (kim, mdx_v, mdx_i, demucs) if p.is_file()]
+    to_convert = [p for p in (kim, mdx_v, mdx_i) if p.is_file()]
     if not args.skip_convert and to_convert:
         print(f"Converting {len(to_convert)} ONNX file(s) to ORT (--enable_type_reduction)...")
         for p in to_convert:
@@ -311,7 +262,6 @@ def main() -> int:
     case_runners: dict[str, Callable[[Path, bool], dict[str, Any]]] = {
         "kim_vocal": lambda o, ort: _bench_kim(clip_path, o, kim, ort),
         "mdx23c_pair": lambda o, ort: _bench_mdx23c(clip_path, o, mdx_v, mdx_i, ort),
-        "demucs_4stem": lambda o, ort: _bench_demucs(clip_path, o, demucs, ort),
     }
 
     results: list[dict] = []

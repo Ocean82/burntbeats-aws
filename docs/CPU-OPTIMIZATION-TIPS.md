@@ -13,14 +13,9 @@
 | **Smaller segment sizes** | ✅ | ONNX: segment 256, overlap 2. Demucs: segment 7 s (under 7.8 s limit). Keeps memory and chunk size CPU-friendly. |
 | **Avoid ensemble on CPU** | ✅ Default | Quality bag defaults to **mdx_extra_q** (lighter 4-model bag). Set `DEMUCS_QUALITY_BAG=mdx_extra` only when you want the heavy bag and accept ~3–4× longer runs. |
 
-## htdemucs_6s.onnx and htdemucs_embedded.onnx
+## 4-stem Demucs (PyTorch, not ONNX)
 
-These **Demucs ONNX** models are **wired** in `stem_service/demucs_onnx.py`:
-
-- **htdemucs_embedded.onnx** — used for 4-stem **Speed** (single-pass).
-- **htdemucs_6s.onnx** — used for 4-stem **Quality** (better separation; 6-stem output folded to 4).
-
-When available under `models/`, the pipeline uses them for 4-stem (and for **expand** from 2-stem). Fallback is the Demucs subprocess (htdemucs.th).
+**Demucs ONNX was removed** from the runtime. For 4-stem and **expand**, the service uses **SCNet ONNX** when configured, then **PyTorch Demucs** via the `demucs` subprocess and **`htdemucs.pth` / `htdemucs.th`** under `models/`. Any `htdemucs_*.onnx` files you keep locally are for experiments or inventory only — they are not loaded by `stem_service` for 4-stem.
 
 ## Env summary *needs updating same as above*
 

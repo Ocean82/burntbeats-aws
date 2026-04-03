@@ -45,13 +45,14 @@
 | Doc | Contents |
 |-----|----------|
 | **[stem-pipeline.md](stem-pipeline.md)** | **Canonical** pipeline: 2-stem → expand, quality tiers, model order |
+| **[ranked_practical_time_score.csv](ranked_practical_time_score.csv)** | **Human** benchmark table (score + 30s elapsed); pair with [MODEL-SELECTION-AUTHORITY.md](MODEL-SELECTION-AUTHORITY.md) |
 | [MODELS-INVENTORY.md](MODELS-INVENTORY.md) | What to place under `models/` |
 | [../models/model_resources/model-information.md](../models/model_resources/model-information.md) | External pretrained-model catalog (reference) |
 | [AGENT-models-and-implementation.md](AGENT-models-and-implementation.md) | Path resolution, module map (implementation-focused) |
 | [JOB-METRICS.md](JOB-METRICS.md) | Metrics file and mode names |
 | [CPU-OPTIMIZATION-TIPS.md](CPU-OPTIMIZATION-TIPS.md) | `OMP_*`, ORT threads, Demucs settings |
-| [ONNX-EFFICIENCY-INVESTIGATION.md](ONNX-EFFICIENCY-INVESTIGATION.md) | ONNX inventory and pipeline cost notes |
-| [OPENVINO-INVESTIGATION.md](OPENVINO-INVESTIGATION.md) | OpenVINO experiment notes |
+| [ONNX-EFFICIENCY-INVESTIGATION.md](ONNX-EFFICIENCY-INVESTIGATION.md) | ONNX inventory (see **Status** note — Demucs ONNX retired) |
+| [OPENVINO-INVESTIGATION.md](OPENVINO-INVESTIGATION.md) | OpenVINO experiment notes (Demucs row updated 2026-04) |
 | [MODELS-NEW-AND-ALTERNATIVES.md](MODELS-NEW-AND-ALTERNATIVES.md) | Alternative / newer models (research) |
 | [NEW-flow.md](NEW-flow.md) | SCNet vs Demucs CPU research |
 | [NEW-flow-implementation.md](NEW-flow-implementation.md) | How SCNet wiring landed |

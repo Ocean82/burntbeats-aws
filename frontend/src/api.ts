@@ -250,11 +250,14 @@ export async function pollStemJobUntilDone(
   const start = Date.now();
   let consecutive404 = 0;
   const max404Retries = 5;
+  let backoffMs = STATUS_POLL_INTERVAL_MS;
+  const maxBackoffMs = 10000;
 
   while (Date.now() - start < STATUS_POLL_MAX_MS) {
     try {
       const status = await getStemJobStatus(jobId);
       consecutive404 = 0;
+      backoffMs = STATUS_POLL_INTERVAL_MS;
       requestAnimationFrame(() => onProgress(status));
       if (status.status === "completed" || status.status === "failed") return status;
     } catch (err) {
@@ -264,7 +267,8 @@ export async function pollStemJobUntilDone(
         throw err;
       }
     }
-    await new Promise((r) => setTimeout(r, STATUS_POLL_INTERVAL_MS));
+    await new Promise((r) => setTimeout(r, backoffMs));
+    backoffMs = Math.min(backoffMs * 1.5, maxBackoffMs);
   }
   throw new Error("Stem separation timed out.");
 }

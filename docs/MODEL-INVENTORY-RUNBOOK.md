@@ -33,7 +33,7 @@ Vendor trees (e.g. `models/demucs.onnx-main/`) are excluded by default.
 **Classifications** (see script for rules):
 
 - `mdx_dim3072` / `mdx_dim2560` — MDX-Net tensor layout; runnable if `stem_service/mdx_onnx.py` `_MDX_CONFIGS` has the filename.
-- `demucs_embedded_segment` — waveform length `343980` — matches `demucs_onnx.py` embedded path.
+- `demucs_embedded_segment` — waveform length `343980` — legacy Demucs ONNX shape class (inventory only; 4-stem production uses PyTorch Demucs).
 - `demucs_waveform_other_seg` — different segment (e.g. `441000`) — **not** supported by current pipeline without code changes.
 - `scnet_like`, `vad_like`, `unknown_shape`, etc.
 

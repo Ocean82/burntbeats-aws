@@ -39,6 +39,7 @@ export interface ProcessingSettingsPanelProps {
 
   onSplit: (requestedStemMode: 2 | 4) => void;
   isSplitting: boolean;
+  splitProgress?: number;
   splitResultStemsLength: number;
   isExpanding: boolean;
   onExpand: () => void;
@@ -84,6 +85,7 @@ export function ProcessingSettingsPanel({
   canExpandToFourStems = true,
   onSplit,
   isSplitting,
+  splitProgress = 0,
   splitResultStemsLength,
   isExpanding,
   onExpand,
@@ -140,22 +142,6 @@ export function ProcessingSettingsPanel({
   useEffect(() => {
     if (isSplitting) autoExpandedRef.current = false;
   }, [isSplitting]);
-
-  useEffect(() => {
-    if (
-      sourceMode === "split" &&
-      requestedStemMode === 4 &&
-      canExpandToFourStems &&
-      splitResultStemsLength === 2 &&
-      !isSplitting &&
-      !isExpanding &&
-      !splitError &&
-      !autoExpandedRef.current
-    ) {
-      autoExpandedRef.current = true;
-      onExpand();
-    }
-  }, [sourceMode, requestedStemMode, canExpandToFourStems, splitResultStemsLength, isSplitting, isExpanding, splitError, onExpand]);
 
   const showUsageRow =
     !subscriptionInactive &&
@@ -339,6 +325,10 @@ export function ProcessingSettingsPanel({
               }}
               className="w-20 accent-amber-500 disabled:opacity-40"
               aria-label="Number of stems"
+              aria-valuenow={requestedStemMode}
+              aria-valuemin={2}
+              aria-valuemax={4}
+              aria-valuetext={`${requestedStemMode} stems${requestedStemMode === 4 && !canExpandToFourStems ? " (requires Premium)" : ""}`}
             />
             <div className="flex w-20 justify-between text-[10px] text-white/40 font-mono">
               <span>2</span>
@@ -366,7 +356,7 @@ export function ProcessingSettingsPanel({
             {isSplitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Splitting…
+                Splitting{typeof splitProgress === "number" && splitProgress > 0 ? `… ${Math.round(splitProgress)}%` : "…"}
               </>
             ) : requestedStemMode === 4 ? "Split → 4 stems" : "Split stems"}
           </button>
@@ -499,14 +489,29 @@ export function ProcessingSettingsPanel({
           animate={{ opacity: 1, y: 0 }}
           className="mt-3 rounded-xl border border-red-400/30 bg-red-950/30 px-4 py-3"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-red-200">Split failed</p>
-              <p className="mt-0.5 text-xs text-red-300/90">{splitError}</p>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-red-200">Split failed</p>
+                <p className="mt-0.5 text-xs text-red-300/90">{splitError}</p>
+              </div>
             </div>
-            <button type="button" onClick={onDismissError} className="text-xs text-red-300/60 hover:text-red-200">
-              Dismiss
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => { onDismissError(); onSplit(requestedStemMode); }}
+                className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-black transition hover:bg-amber-400"
+              >
+                Try Again
+              </button>
+              <button
+                type="button"
+                onClick={onDismissError}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-white/70 transition hover:bg-white/10"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </motion.div>
       )}

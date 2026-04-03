@@ -21,5 +21,6 @@ These files are **historical**: investigations, old agent task lists, or researc
 | [AGENT-frontend-next-steps.md](AGENT-frontend-next-steps.md) | Old frontend plan |
 | [AGENT-GUIDE-historical.md](AGENT-GUIDE-historical.md) | Old hybrid/UVR research draft (see `stem-pipeline.md`) |
 | [music-tools-external-links.md](music-tools-external-links.md) | External link scratchpad (not project docs) |
+| [benchmark-demucs-onnx.md](benchmark-demucs-onnx.md) | Old Demucs ONNX benchmark vs production note (ONNX path removed 2026-04) |
 
 The YAML duplicate `AGENT-models-and-implementation.yaml` that lived here is now in [../agent-context/](../agent-context/README.md).

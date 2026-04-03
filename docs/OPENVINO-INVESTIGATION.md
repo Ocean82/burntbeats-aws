@@ -1,6 +1,9 @@
 # OpenVINO integration investigation
 
 **Date:** 2026-03-16  
+
+**Status (2026-04):** The **Demucs ONNX** row below is **historical** — that code path was removed; 4-stem uses PyTorch Demucs. MDX / SCNet ONNX notes remain relevant for OpenVINO exploration.
+
 **Goal:** Determine whether the burntbeats-aws stem separation project would benefit from incorporating and implementing Intel OpenVINO.
 
 ---
@@ -12,7 +15,7 @@
 | Component | Location | Runtime | Role |
 |-----------|----------|--------|------|
 | **MDX vocal/inst/dereverb** | `stem_service/mdx_onnx.py` | **onnxruntime** | Stage 1: 2-stem (vocals + instrumental); optional dereverb. Chunked spectrogram → `session.run()`; STFT/iSTFT via PyTorch. |
-| **Demucs 4-stem** | `stem_service/demucs_onnx.py` | **onnxruntime** | Single-pass 4-stem (htdemucs_embedded, htdemucs_6s, demucsv4). Input prep via PyTorch/torchaudio; forward pass ONNX. |
+| **Demucs 4-stem** | `stem_service/split.py` (`run_demucs`) | **PyTorch** (subprocess) | 4-stem via `demucs` CLI + `htdemucs.pth`/`.th` — not ONNX in current stack. |
 | **Silero VAD** | `stem_service/silero_onnx_vad.py` | **onnxruntime** | Pre-trim to vocal span (optional). ONNX-only. |
 | **Ultra (RoFormer)** | `stem_service/ultra.py` | **PyTorch** (music_source_separation) | Best quality 2-stem; CPU allowed but very slow; effectively GPU-only. |
 | **Phase inversion** | `stem_service/phase_inversion.py` | **PyTorch** (torch/torchaudio) | No model; arithmetic (original − vocals). |
@@ -27,7 +30,7 @@
 ### 1.3 Bottlenecks (from project docs)
 
 - **2-stem:** Already ONNX-first (MDX); Demucs 2-stem subprocess only when ONNX missing.
-- **4-stem:** Demucs ONNX first; fallback to Demucs subprocess (PyTorch) if ONNX missing or inference fails → slow and memory-heavy.
+- **4-stem:** SCNet ONNX first when enabled; else hybrid pipeline with PyTorch Demucs subprocess.
 - **CPU:** Chunk sizes, overlap, shifts=0, and thread limits are tuned for CPU; further gains are from faster ONNX execution or quantization.
 
 ---
@@ -50,7 +53,7 @@
 | Area | Benefit | Effort |
 |------|----------|--------|
 | **MDX ONNX (vocal, inst, dereverb)** | Same ONNX files; swap to OpenVINO EP. Potential CPU speedup (to be benchmarked). | Low: add OpenVINO EP to provider list in `config.get_onnx_providers()` and optionally in `mdx_onnx._onnx_session()`. |
-| **Demucs ONNX (4-stem)** | Same as above; single code path for session creation in `demucs_onnx.py`. | Low. |
+| **SCNet ONNX (4-stem)** | Same EP idea as MDX; ONNX in `scnet_onnx.py`. | Low. |
 | **Silero VAD** | Small model; possible latency reduction. | Low. |
 | **Intel CPU EC2 / on-prem** | If deployment is on Intel, OpenVINO is a natural fit. | N/A. |
 
@@ -60,7 +63,7 @@
 |------|--------|
 | **Ultra (RoFormer)** | PyTorch + external lib; not ONNX. Converting or replacing with OpenVINO would be a separate, large effort. |
 | **Phase inversion** | No trained model; simple tensor ops. No gain from OpenVINO. |
-| **Demucs subprocess (PyTorch)** | Fallback path; OpenVINO does not replace PyTorch Demucs. Reducing fallback usage (ensure ONNX path works) helps more than adding OpenVINO there. |
+| **Demucs subprocess (PyTorch)** | Primary 4-stem path after SCNet; OpenVINO does not apply. |
 | **AMD / ARM (e.g. Graviton)** | OpenVINO is optimized for Intel. On AWS Graviton or AMD, ORT CPU (or other EPs) may be better. |
 
 ### 3.3 Trade-offs
@@ -79,13 +82,13 @@
 ### 4.1 Summary
 
 - **Yes, the project can benefit from OpenVINO** in the sense that:
-  - The main stem path is **ONNX-heavy** (MDX, Demucs ONNX, Silero VAD).
+  - The main stem path is **ONNX-heavy** (MDX, optional SCNet, Silero VAD); 4-stem Demucs is **PyTorch**.
   - The stack is **CPU-first** and already tuned for CPU; a faster CPU backend for the same models is aligned with project goals.
   - Integration can be **low-effort** by using the **OpenVINO Execution Provider** for ONNX Runtime instead of replacing the pipeline.
 
 - **Whether it actually helps** depends on:
   - **Hardware:** Intel CPU (e.g. EC2 with Intel instances) → worth trying; AMD/ARM → stick with default ORT CPU or other EPs.
-  - **Measured gain:** You must **benchmark** your actual models (Kim_Vocal_2, Inst_HQ_4/5, htdemucs_embedded/6s, silero_vad) on your target machine. Published 3–4× numbers are for other architectures; audio separation may differ.
+  - **Measured gain:** You must **benchmark** your actual models (Kim_Vocal_2, Inst_HQ_4/5, SCNet if used, silero_vad) on your target machine. Published 3–4× numbers are for other architectures; audio separation may differ.
   - **Operational cost:** Willingness to add OpenVINO dependency and version pairing (ORT + OpenVINO) and to keep a fallback (e.g. CPUExecutionProvider when OpenVINO not available or on non-Intel).
 
 ### 4.2 Suggested approach (incremental)
@@ -93,7 +96,7 @@
 1. **Benchmark baseline**  
    On a representative Intel EC2 (or your target CPU), measure end-to-end time and, if possible, per-model time for:
    - 2-stem (MDX vocal + inst or phase inversion),
-   - 4-stem (Demucs ONNX),
+   - 4-stem (SCNet or PyTorch Demucs — benchmark separately),
    - Optional: VAD-only.
    Use current `onnxruntime` with `CPUExecutionProvider` and your existing env (e.g. `ONNXRUNTIME_NUM_THREADS`).
 

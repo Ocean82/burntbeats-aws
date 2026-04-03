@@ -30,10 +30,13 @@ export function useStemLoading({
   useEffect(() => { stemBuffersRef.current = stemBuffers; }, [stemBuffers]);
   const [loadedTracks, setLoadedTracks] = useState<Record<string, boolean>>({});
   const [isLoadingStems, setIsLoadingStems] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const loadIdRef = useRef<number>(0);
 
   const loadStemsIntoBuffers = useCallback(async () => {
     if (allStemEntries.length === 0) {
+      setStemBuffers({});
+      setLoadedTracks({});
       setIsLoadingStems(false);
       return;
     }
@@ -77,7 +80,10 @@ export function useStemLoading({
         if (e instanceof Error && e.message === "ABORTED") {
           return;
         }
-        setSplitError("Failed to load stems for playback. Please try again.");
+        const errorMsg = e instanceof Error ? e.message : "Unknown error";
+        const userMsg = `Failed to load stems: ${errorMsg}`;
+        setLoadingError(userMsg);
+        setSplitError(userMsg);
         if (import.meta.env.DEV) console.error("Failed to load stems:", e);
         setIsLoadingStems(false);
         return;
@@ -95,12 +101,27 @@ export function useStemLoading({
       return;
     }
 
-    setStemBuffers((p) => ({ ...p, ...newBuffers }));
-    setLoadedTracks((p) => ({ ...p, ...newLoaded }));
+    const allowedIds = new Set(allStemEntries.map((e) => e.id));
+    setStemBuffers((p) => {
+      const merged: Record<string, AudioBuffer> = {};
+      for (const id of allowedIds) {
+        if (newBuffers[id] !== undefined) merged[id] = newBuffers[id];
+        else if (p[id]) merged[id] = p[id];
+      }
+      return merged;
+    });
+    setLoadedTracks((p) => {
+      const next: Record<string, boolean> = {};
+      for (const id of allowedIds) {
+        if (newLoaded[id] !== undefined) next[id] = newLoaded[id];
+        else if (p[id]) next[id] = p[id];
+      }
+      return next;
+    });
     setStemStates((p: Record<string, unknown>) => {
-      const next = { ...p };
+      const next: Record<string, unknown> = {};
       for (const e of allStemEntries) {
-        if (!next[e.id]) next[e.id] = defaultStemState();
+        next[e.id] = p[e.id] ?? defaultStemState();
       }
       return next;
     });
@@ -115,7 +136,15 @@ export function useStemLoading({
     setStemBuffers({});
     setLoadedTracks({});
     setIsLoadingStems(false);
+    setLoadingError(null);
   }, []);
 
-  return { stemBuffers, setStemBuffers, loadedTracks, isLoadingStems, clearStemLoadingState };
+  const retryLoadStems = useCallback(() => {
+    setLoadingError(null);
+    setStemBuffers({});
+    setLoadedTracks({});
+    void loadStemsIntoBuffers();
+  }, [loadStemsIntoBuffers]);
+
+  return { stemBuffers, setStemBuffers, loadedTracks, isLoadingStems, clearStemLoadingState, loadingError, retryLoadStems };
 }

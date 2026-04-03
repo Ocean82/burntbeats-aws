@@ -1,5 +1,7 @@
 # Auto-generated model inventory
 
+**Note (2026-04):** Regenerating this file overwrites content. Rows like `demucs_*` describe **ONNX shape classification** only; **4-stem inference** uses PyTorch Demucs, not Demucs ONNX.
+
 **Generated (UTC):** 2026-03-24T01:21:31Z
 
 **Scanned:** `models` (recursive `*.onnx`)
@@ -74,7 +76,7 @@ Machine-readable: `tmp/model_inventory.csv`
 
 ## Notes
 
-- **demucs_embedded_segment** models match the current `demucs_onnx.py` chunk length.
+- **demucs_embedded_segment** — ONNX segment length class (historical; not used for 4-stem runtime).
 - **demucs_waveform_other_seg** (e.g. 441000) will fail until the pipeline is extended for that export.
 - **mdx_*** rows need a matching entry in `stem_service/mdx_onnx.py` `_MDX_CONFIGS` to run.
 - Re-run after adding ONNX files: `python scripts/scan_models_inventory.py`

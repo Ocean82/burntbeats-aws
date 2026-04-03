@@ -201,7 +201,11 @@ export function MixerPresetsModal({
               {/* Save New Preset */}
               {showSaveForm ? (
                 <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
+                  <label htmlFor="preset-name" className="mb-2 block text-sm font-medium text-amber-200">
+                    Preset Name
+                  </label>
                   <input
+                    id="preset-name"
                     type="text"
                     value={newPresetName}
                     onChange={(e) => setNewPresetName(e.target.value)}

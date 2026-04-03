@@ -145,6 +145,10 @@ export function BatchQueue({
                       className="mt-2 h-1 overflow-hidden rounded-full bg-white/10"
                       role="progressbar"
                       aria-label={`${item.fileName} progress`}
+                      aria-valuenow={item.progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuetext={`${item.fileName}: ${item.progress}% complete`}
                     >
                       <motion.div
                         className="h-full bg-amber-400"

@@ -11,8 +11,7 @@
 |------|------------------|----------|-------------------|
 | **2-stem vocal** | Kim_Vocal_2, UVR-MDX-NET-Voc_FT | mdx_onnx | Kim_Vocal_2 is fast; Voc_FT fallback. |
 | **2-stem instrumental** | UVR-MDX-NET-Inst_HQ_4, Inst_HQ_5 | mdx_onnx | HQ_5 often slightly better; both same config. |
-| **4-stem (speed)** | htdemucs_embedded.onnx | demucs_onnx | Faster, smaller; 4-stem. |
-| **4-stem (quality)** | htdemucs_6s.onnx | demucs_onnx | Better quality; 6-stem output (we use 4). |
+| **4-stem** | SCNet ONNX → PyTorch `htdemucs` | `scnet_onnx.py`, `split.py` | ONNX path for Demucs 4-stem was removed; see `stem-pipeline.md`. |
 | **Dereverb** | Reverb_HQ_By_FoxJoy.onnx | mdx_onnx | Optional post-pass; not in default path list. |
 | **VAD** | silero_vad.onnx | silero_onnx_vad | Small, cheap; optional pre-trim. |
 | **Ultra (2-stem)** | RoFormer .ckpt (e.g. bs_roformer_317) | ultra.py | Best quality; GPU-only in practice. |
@@ -26,7 +25,7 @@
 - **mdxnet_models/:** Kim_Vocal_2, Voc_FT, Inst_HQ_4, Inst_HQ_5, Reverb_HQ_By_FoxJoy (dereverb).
 - **MDX_Net_Models/:** Inst_HQ_5, UVR_MDXNET_*.onnx (1, 2, 3, KARA) — only Inst_HQ_5 is in the INST path; UVR_MDXNET_1/2/3 are **not** in `_MDX_CONFIGS` so they are **not used**.
 - **models/ root:** htdemucs.pth → .th (Demucs subprocess); silero_vad.onnx (if present; code also supports silero_vad.jit).
-- **Demucs ONNX:** htdemucs_embedded.onnx (speed), htdemucs_6s.onnx (quality), demucsv4.onnx (fallback). htdemucs.onnx is fallback for embedded.
+- **Demucs ONNX files** (if still on disk): experimental / inventory only — **not** loaded for 4-stem in production.
 
 ### 2.2 Present but not wired
 
@@ -61,8 +60,8 @@
    - Add to `_MDX_CONFIGS` and append to `VOCAL_MODEL_PATHS` or `INST_MODEL_PATHS` (e.g. try Inst first as “lighter inst” option).
    - Benchmark: compare time and quality vs Kim_Vocal_2 / Inst_HQ_5 on a few tracks. If faster and quality is acceptable, you have a **faster alternative without new files**.
 
-3. **Demucs ONNX: prefer embedded for speed, 6s for quality**  
-   Already implemented: Speed → htdemucs_embedded; Quality → htdemucs_6s. No change unless you find a newer ONNX export (e.g. Demucs v4 hybrid ONNX when publicly available) to add as an option.
+3. **Demucs 4-stem**  
+   Use **PyTorch** weights and `run_demucs`; optional **SCNet** ONNX first. In-process Demucs ONNX was removed as a primary path.
 
 ### 3.2 New or external models (optional)
 
@@ -71,12 +70,12 @@
 | **UVR-MDX-NET-Inst_Main.onnx** | Lighter instrumental (e.g. ~53 MB). | Often faster than Inst_HQ_*; quality a bit lower. | Probe shape, add config + path; use as “speed” inst option. |
 | **UVR-MDX-NET-Inst_HQ_2.onnx** | Another HQ variant (~67 MB). | Between Main and HQ_4/5. | Same as above. |
 | **MDX23C ONNX (if available)** | MDX23C in ONNX form. | High quality; may be faster than RoFormer .ckpt on CPU if ONNX exists. | Would need an ONNX export (UVR/audio-separator community); then add config like MDX. |
-| **Demucs v4 hybrid ONNX** | GSOC 2025 / community projects (e.g. Mixxx, sevagh/demucs.onnx) are working on Demucs v4 → ONNX. | Potentially better quality than htdemucs at similar or better speed once mature. | When a stable ONNX and I/O spec exist: add path and input/output handling in `demucs_onnx.py` (similar to demucsv4.onnx). |
+| **Demucs v4 hybrid ONNX** | Community experiments (e.g. Mixxx, sevagh/demucs.onnx). | Research only until a maintained export exists. | Would require a new module if reintroduced; current stack uses PyTorch Demucs for 4-stem. |
 | **Smaller VAD** | Silero VAD is already small; optional replacement with a tinier ONNX VAD if one appears. | Marginal gain; VAD is cheap. | Low; swap model path. |
 
 ### 3.3 What to avoid for “faster without losing quality”
 
-- **Spleeter:** Faster but lower quality than your current MDX/Demucs ONNX path; adds TensorFlow. Not recommended.
+- **Spleeter:** Faster but lower quality than your current MDX + PyTorch Demucs path; adds TensorFlow. Not recommended.
 - **Replacing Kim_Vocal_2 / Inst_HQ_5 with much smaller models** without testing: risk of audible quality drop; always A/B and measure.
 
 ---

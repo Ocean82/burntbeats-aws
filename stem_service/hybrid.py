@@ -80,13 +80,8 @@ from stem_service.config import (
     USE_VAD_PRETRIM,
     VAD_CHUNK_LENGTH_S,
     VAD_CHUNK_SILENCE_FLUSH_S,
+    four_stem_skip_scnet,
     scnet_available,
-)
-from stem_service.demucs_onnx import (
-    HTDEMUCS_ONNX,
-    demucs_onnx_6s_available,
-    demucs_onnx_embedded_available,
-    run_demucs_onnx_4stem,
 )
 from stem_service.scnet_onnx import (
     run_scnet_onnx_4stem,
@@ -209,24 +204,15 @@ def _run_chunked_4stem(
         chunk_out = chunks_dir / f"chunk_{i:03d}_stems"
         chunk_out.mkdir(parents=True, exist_ok=True)
 
-        chunk_override = None
-        if not prefer_speed and HTDEMUCS_ONNX.exists():
-            chunk_override = HTDEMUCS_ONNX
-        chunk_use_6s = not prefer_speed if chunk_override is None else False
-        stems, demucs_model = run_demucs_onnx_4stem(
+        stems, chunk_models = run_hybrid_4stem(
             chunk_path,
             chunk_out,
-            use_6s=chunk_use_6s,
-            demucs_model_override=chunk_override,
             prefer_speed=prefer_speed,
+            progress_callback=None,
+            job_logger=None,
         )
-        if stems is None or demucs_model is None:
-            stems, first_chunk_models = run_hybrid_4stem(
-                chunk_path, chunk_out, prefer_speed=prefer_speed
-            )
-        else:
-            if not first_chunk_models:
-                first_chunk_models = [demucs_model]
+        if not first_chunk_models:
+            first_chunk_models = chunk_models
         chunk_stem_lists.append(stems)
 
     flat_dir = output_dir / "stems"
@@ -243,14 +229,14 @@ def run_4stem_single_pass_or_hybrid(
     output_dir: Path,
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
-    demucs_model_override: Path | None = None,
     job_logger: "logging.Logger | None" = None,
+    model_tier: str = "balanced",
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Entry point for 4-stem separation.
     - If USE_VAD_CHUNKS=1 and VAD available: slice at silence boundaries,
       run separation per chunk, concatenate (Option B from VADSLICE doc).
-    - Otherwise: try SCNet ONNX first, then Demucs ONNX, then hybrid pipeline.
+    - Otherwise: try SCNet ONNX first, then hybrid pipeline (PyTorch Demucs for Stage 2).
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """
     output_dir = output_dir.resolve()
@@ -272,8 +258,12 @@ def run_4stem_single_pass_or_hybrid(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
-    # 4-stem: try SCNet first (CPU ~48% of Demucs per NEW-flow), then Demucs ONNX, then hybrid
-    if scnet_available() and scnet_onnx_runtime_available():
+    # 4-stem: try SCNet first (CPU ~48% of Demucs per NEW-flow), then hybrid (unless FOUR_STEM_BACKEND=hybrid)
+    if (
+        not four_stem_skip_scnet()
+        and scnet_available()
+        and scnet_onnx_runtime_available()
+    ):
         if progress_callback:
             progress_callback(5)
         _log.info("4-stem: trying SCNet ONNX first")
@@ -288,46 +278,22 @@ def run_4stem_single_pass_or_hybrid(
         _log.warning(
             "4-stem: SCNet ONNX failed or returned None, falling back to Demucs"
         )
-    elif scnet_available():
+    elif not four_stem_skip_scnet() and scnet_available():
         _log.warning(
             "4-stem: SCNet configured but disabled by self-test (%s); using Demucs",
             scnet_onnx_disable_reason(),
         )
+    elif four_stem_skip_scnet():
+        _log.info("4-stem: FOUR_STEM_BACKEND=hybrid — skipping SCNet ONNX")
 
-    demucs_override = demucs_model_override
-    # htdemucs_6s.onnx and htdemucs_embedded.onnx scored 1/10 in benchmarks —
-    # never use them as primary 4-stem path. Go straight to hybrid pipeline.
-    # Only allow a caller-supplied override (e.g. for testing).
-    can_demucs_onnx = demucs_override is not None and demucs_override.exists()
-    use_6s = False
-
-    if can_demucs_onnx:
-        if progress_callback:
-            progress_callback(10)
-        _log.info(
-            "4-stem: trying Demucs ONNX  use_6s=%s  override=%s",
-            use_6s,
-            demucs_override.name if demucs_override else None,
-        )
-        stem_list, demucs_model = run_demucs_onnx_4stem(
-            input_path,
-            flat_dir,
-            use_6s=use_6s,
-            demucs_model_override=demucs_override,
-            prefer_speed=prefer_speed,
-        )
-        if stem_list is not None and demucs_model is not None:
-            if progress_callback:
-                progress_callback(100)
-            _log.info("4-stem: Demucs ONNX succeeded  models_used=[%s]", demucs_model)
-            return stem_list, [demucs_model]
-
-    _log.info("4-stem: using hybrid pipeline (Stage 1 + Demucs subprocess)")
+    _log.info("4-stem: using hybrid pipeline (Stage 1 + PyTorch Demucs subprocess)")
     return run_hybrid_4stem(
         input_path,
         output_dir,
         prefer_speed=prefer_speed,
+        model_tier=model_tier,
         progress_callback=progress_callback,
+        job_logger=_log,
     )
 
 
@@ -519,7 +485,7 @@ def run_expand_to_4stem(
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Expand a 2-stem job (vocals + instrumental) to 4 stems.
-    Copies vocals from source; runs Demucs (ONNX when available) on instrumental for drums, bass, other.
+    Copies vocals from source; runs SCNet or PyTorch Demucs on instrumental for drums, bass, other.
     source_stems_dir: path to job's stems/ (must contain vocals.wav and instrumental.wav).
     Returns (stem_list, models_used) with stem_list order: vocals, drums, bass, other.
     """
@@ -541,7 +507,6 @@ def run_expand_to_4stem(
 
     if progress_callback:
         progress_callback(10)
-    use_6s = not prefer_speed
     stage2_flat = target_output_dir / "stage2"
     stage2_flat.mkdir(parents=True, exist_ok=True)
     stem_list: list[tuple[str, Path]] = [("vocals", dest_vocals)]
@@ -549,7 +514,11 @@ def run_expand_to_4stem(
 
     stem_files_rest: list[tuple[str, Path]] = []
     _log = job_logger or logger
-    if scnet_available() and scnet_onnx_runtime_available():
+    if (
+        not four_stem_skip_scnet()
+        and scnet_available()
+        and scnet_onnx_runtime_available()
+    ):
         _log.info("expand: scnet_available=True  trying SCNet ONNX on instrumental")
         scnet_list = run_scnet_onnx_4stem(
             instrumental_src, stage2_flat, prefer_speed=prefer_speed
@@ -565,34 +534,16 @@ def run_expand_to_4stem(
             _log.info("expand: SCNet ONNX succeeded  models_used=%s", models_used)
         else:
             _log.warning("expand: SCNet ONNX returned None  falling back to Demucs")
-    elif scnet_available():
+    elif not four_stem_skip_scnet() and scnet_available():
         _log.warning(
             "expand: SCNet configured but disabled by self-test (%s); using Demucs path",
             scnet_onnx_disable_reason(),
         )
     else:
-        _log.info("expand: scnet_available=False  using Demucs path")
-
-    if len(stem_list) == 1 and (
-        (use_6s and demucs_onnx_6s_available())
-        or (not use_6s and demucs_onnx_embedded_available())
-    ):
-        _log.info("expand: trying Demucs ONNX  use_6s=%s", use_6s)
-        onnx_list, demucs_model = run_demucs_onnx_4stem(
-            instrumental_src,
-            stage2_flat,
-            use_6s=use_6s,
-            prefer_speed=prefer_speed,
-        )
-        if onnx_list is not None and demucs_model is not None:
-            for stem_id, src in onnx_list:
-                if stem_id == "vocals":
-                    continue
-                dest = flat_dir / f"{stem_id}.wav"
-                shutil.copy2(src, dest)
-                stem_list.append((stem_id, dest))
-            models_used = [demucs_model]
-            _log.info("expand: Demucs ONNX succeeded  models_used=%s", models_used)
+        if four_stem_skip_scnet():
+            _log.info("expand: FOUR_STEM_BACKEND=hybrid — skipping SCNet; using Demucs")
+        else:
+            _log.info("expand: scnet_available=False  using Demucs path")
 
     if len(stem_list) == 1:
         _log.info("expand: using Demucs subprocess (htdemucs)")

@@ -293,6 +293,8 @@ app.use("/api/billing", billingRouter);
 function shouldSkipGlobalRateLimit(req) {
   if (req.method === "GET" && req.path.startsWith("/api/stems/status/"))
     return true;
+  if (req.method === "GET" && req.path === "/api/stems/cleanup")
+    return true;
   return false;
 }
 

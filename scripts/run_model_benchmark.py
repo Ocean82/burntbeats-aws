@@ -4,7 +4,7 @@ Benchmark all stem-separation models on a 30-second clip of a song.
 
 - Trims the input file to the first N seconds (default 30).
 - Runs 2-stem separation for each vocal and each instrumental ONNX model (with overrides).
-- Runs 4-stem separation for each Demucs ONNX model.
+- Runs 4-stem once via PyTorch Demucs (htdemucs.pth/.th) when available.
 - Saves stems under output_dir grouped by model name; writes summary CSV/JSON with timings and RTF.
 
 Usage (from repo root):
@@ -48,15 +48,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from stem_service.config import MODELS_DIR, REPO_ROOT
-from stem_service.demucs_onnx import (
-    EMBEDDED_ONNX,
-    HTDEMUCS_ONNX,
-    SIX_STEM_ONNX,
-    V4_ONNX,
-    run_demucs_onnx_4stem,
-)
+from stem_service.config import MODELS_DIR, REPO_ROOT, htdemucs_available
 from stem_service.hybrid import run_hybrid_2stem
+from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.mdx_onnx import INST_MODEL_PATHS, VOCAL_MODEL_PATHS
 
 
@@ -191,48 +185,46 @@ def run_2stem_benchmark(
 def run_4stem_benchmark(
     input_30s: Path,
     output_base: Path,
-    demucs_paths: list[tuple[str, Path]],
     audio_duration_seconds: float,
 ) -> list[dict]:
-    """Run 4-stem for each Demucs ONNX model. Returns list of run records."""
-    records: list[dict] = []
-    for name, path in demucs_paths:
-        out_dir = output_base / "4stem" / name
-        out_dir.mkdir(parents=True, exist_ok=True)
-        t0 = time.monotonic()
-        try:
-            stem_list, model_name = run_demucs_onnx_4stem(
-                input_30s,
-                out_dir,
-                use_6s="6s" in name.lower(),
-                demucs_model_override=path,
-            )
-            elapsed = time.monotonic() - t0
-            if stem_list is None or model_name is None:
-                raise RuntimeError("run_demucs_onnx_4stem returned None")
-            duration_s = audio_duration_seconds
-            rtf = round(elapsed / duration_s, 4) if duration_s > 0 else None
-            records.append({
-                "mode": "4stem",
-                "run_key": name,
-                "models_used": [model_name],
-                "elapsed_seconds": round(elapsed, 2),
-                "audio_duration_seconds": duration_s,
-                "realtime_factor": rtf,
-                "output_dir": str(out_dir),
-            })
-            print(f"  4stem {name}: {elapsed:.1f}s  RTF={rtf}")
-        except Exception as e:
-            print(f"  4stem {name}: FAILED {e}")
-            records.append({
-                "mode": "4stem",
-                "run_key": name,
-                "models_used": [name],
-                "error": str(e),
-                "elapsed_seconds": round(time.monotonic() - t0, 2),
-                "output_dir": str(out_dir),
-            })
-    return records
+    """Run 4-stem via PyTorch Demucs (subprocess). Returns list of run records."""
+    if not htdemucs_available():
+        print("  4stem: skip (no htdemucs.pth or htdemucs.th in models/)")
+        return []
+    name = "htdemucs_pytorch"
+    out_dir = output_base / "4stem" / name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    flat_dir = out_dir / "stems"
+    t0 = time.monotonic()
+    try:
+        stem_files = run_demucs(
+            input_30s, out_dir, stems=4, prefer_speed=False
+        )
+        copy_stems_to_flat_dir(stem_files, flat_dir)
+        elapsed = time.monotonic() - t0
+        duration_s = audio_duration_seconds
+        rtf = round(elapsed / duration_s, 4) if duration_s > 0 else None
+        records = [{
+            "mode": "4stem",
+            "run_key": name,
+            "models_used": ["htdemucs"],
+            "elapsed_seconds": round(elapsed, 2),
+            "audio_duration_seconds": duration_s,
+            "realtime_factor": rtf,
+            "output_dir": str(out_dir),
+        }]
+        print(f"  4stem {name}: {elapsed:.1f}s  RTF={rtf}")
+        return records
+    except Exception as e:
+        print(f"  4stem {name}: FAILED {e}")
+        return [{
+            "mode": "4stem",
+            "run_key": name,
+            "models_used": ["htdemucs"],
+            "error": str(e),
+            "elapsed_seconds": round(time.monotonic() - t0, 2),
+            "output_dir": str(out_dir),
+        }]
 
 
 def main() -> int:
@@ -297,17 +289,11 @@ def main() -> int:
     inst_models = existing_models_by_name(INST_MODEL_PATHS)
     first_vocal_name = next(iter(vocal_models.keys()), None) if vocal_models else None
 
-    demucs_paths: list[tuple[str, Path]] = []
-    for name, path in [
-        ("htdemucs_6s", SIX_STEM_ONNX),
-        ("htdemucs_embedded", EMBEDDED_ONNX),
-        ("htdemucs", HTDEMUCS_ONNX),
-        ("demucsv4", V4_ONNX),
-    ]:
-        if path.exists():
-            demucs_paths.append((name, path.resolve()))
-
-    print(f"Found {len(vocal_models)} vocal, {len(inst_models)} inst, {len(demucs_paths)} 4-stem ONNX models.")
+    four_stem_ok = htdemucs_available()
+    print(
+        f"Found {len(vocal_models)} vocal, {len(inst_models)} inst; "
+        f"4-stem PyTorch Demucs: {'yes' if four_stem_ok else 'no (missing htdemucs weights)'}"
+    )
 
     all_records: list[dict] = []
 
@@ -326,12 +312,10 @@ def main() -> int:
     elif args.skip_2stem:
         print("\nSkipping 2-stem (--skip-2stem).")
 
-    if not args.skip_4stem and demucs_paths:
+    if not args.skip_4stem and four_stem_ok:
         print("\n--- 4-stem runs ---")
         all_records.extend(
-            run_4stem_benchmark(
-                clip_path, output_base, demucs_paths, audio_duration_seconds
-            )
+            run_4stem_benchmark(clip_path, output_base, audio_duration_seconds)
         )
     elif args.skip_4stem:
         print("\nSkipping 4-stem (--skip-4stem).")

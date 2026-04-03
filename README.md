@@ -1,6 +1,6 @@
 # Burnt Beats — Stem Splitter / Mixer / Master
 
-**Documentation:** [docs/README.md](docs/README.md) (full index) · [docs/stem-pipeline.md](docs/stem-pipeline.md) (separation pipeline) · [docs/BILLING-AND-TOKENS.md](docs/BILLING-AND-TOKENS.md) (Stripe plans, tokens, Basic vs Premium) · [docs/MODEL-SELECTION-AUTHORITY.md](docs/MODEL-SELECTION-AUTHORITY.md) (**model selection — read before changing models**)
+**Documentation:** [docs/README.md](docs/README.md) (full index) · [docs/stem-pipeline.md](docs/stem-pipeline.md) (separation pipeline) · [docs/BILLING-AND-TOKENS.md](docs/BILLING-AND-TOKENS.md) (Stripe plans, tokens, Basic vs Premium) · [docs/MODEL-SELECTION-AUTHORITY.md](docs/MODEL-SELECTION-AUTHORITY.md) (**model selection — read before changing models**) · [docs/ranked_practical_time_score.csv](docs/ranked_practical_time_score.csv) (score + time benchmark table)
 
 Stem separation web app (**CPU-first; no GPU required**). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite. Backend: Node (Express). Stem engine: Python (**hybrid** + ONNX + optional Demucs subprocess). **Quality tiers:** Speed, Quality (default), Ultra — see [docs/stem-pipeline.md](docs/stem-pipeline.md) for exact routing.
 
@@ -14,12 +14,12 @@ Stem separation web app (**CPU-first; no GPU required**). **Flow:** Split a trac
 
 Model tier assignments are derived from benchmarks run 2026-03-22. The rules are:
 
-- **Minimum quality score: 8.5.** Models below this are banned from all tiers. This includes `kuielab_a/b` (8.0), `htdemucs_6s/embedded` (1.0), `demucsv4` (2.0), `Reverb_HQ_By_FoxJoy` (1.0).
+- **Minimum quality score: 8.5.** Models below this are banned from all tiers. This includes `kuielab_a/b` (8.0). Legacy Demucs **ONNX** exports (`htdemucs_6s`, `htdemucs_embedded`, `demucsv4`) scored 1–2/10 in benchmarks and are **not** used by the service; 4-stem uses **PyTorch** Demucs. `Reverb_HQ_By_FoxJoy` is scored 1 for wrong role in 2-stem vocal benchmarks but kept for ultra dereverb.
 - **ORT is preferred over ONNX** — `.ort` siblings are 5–10% faster and auto-selected at runtime by `resolve_mdx_model_path()`. Tier lists use `.onnx` names; ORT resolution is automatic.
 - **fast tier** = ranked by blended score (quality×0.8 + speed×0.2), fastest first.
 - **quality tier** = ranked by raw quality score descending.
 - **`UVR_MDXNET_KARA_2` and `Kim_Inst` are instrumental models** despite being labeled vocal in UVR — use only for inst separation.
-- **`htdemucs_6s`, `htdemucs_embedded`, `demucsv4` ONNX models scored 1–2/10** — they are never used as primary models, only as last-resort subprocess fallbacks.
+- **Demucs ONNX is not in the runtime** — 4-stem uses **PyTorch** (`htdemucs.pth` / `.th`) after optional SCNet; see [docs/stem-pipeline.md](docs/stem-pipeline.md).
 
 Current approved tiers (from `stem_service/mdx_onnx.py`):
 
