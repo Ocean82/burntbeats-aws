@@ -187,12 +187,15 @@ app.set("trust proxy", 1);
 /**
  * Get the correct base URL protocol for the current request.
  * Handles cases where the app is behind a reverse proxy/load balancer.
+ * When TLS terminates before Node (e.g. ALB → nginx on HTTP), `X-Forwarded-Proto`
+ * can be wrong if nginx sets it from `$scheme` only — set PUBLIC_BASE_URL in production.
  */
 function getBaseUrl(req) {
-  // Check for X-Forwarded-Proto header first (set by reverse proxies)
-  const protocol = req.get("X-Forwarded-Proto") || req.protocol;
+  const fixed = (process.env.PUBLIC_BASE_URL || "").trim().replace(/\/$/, "");
+  if (fixed) return fixed;
+  const proto = req.get("x-forwarded-proto") || req.protocol;
   const host = req.get("host") || "burntbeats.com";
-  return `${protocol}://${host}`;
+  return `${proto}://${host}`;
 }
 
 const STEM_SERVICE_URL =
@@ -594,20 +597,21 @@ app.post(
     }
 
     const stems = (req.body && req.body.stems) || "4";
-    const quality = req.body && req.body.quality;
-
+    /** @type {string | undefined} */
+    const rawQuality = req.body && req.body.quality;
     // Validate stems and quality before proxying to Python service
     if (stems !== "2" && stems !== "4") {
       await unlinkPromise(filePath).catch(() => {});
       return res.status(400).json({ error: "stems must be '2' or '4'" });
     }
-    const VALID_QUALITY = new Set(["speed", "quality", "ultra"]);
-    if (quality && !VALID_QUALITY.has(quality)) {
+    const VALID_QUALITY = new Set(["speed", "balanced", "quality", "ultra"]);
+    if (rawQuality && !VALID_QUALITY.has(rawQuality)) {
       await unlinkPromise(filePath).catch(() => {});
       return res
         .status(400)
         .json({ error: "quality must be 'speed', 'quality', or 'ultra'" });
     }
+    const quality = rawQuality === "balanced" ? "quality" : rawQuality;
 
     const scanResult = await scanUploadedFile(filePath);
     if (!scanResult.ok) {
@@ -789,15 +793,16 @@ app.post(
           "Invalid or missing job_id. Provide the 2-stem job id in the JSON body.",
       });
     }
-    const quality = req.body && req.body.quality;
-
+    /** @type {string | undefined} */
+    const rawQuality = req.body && req.body.quality;
     // Validate quality before proxying
-    const VALID_QUALITY = new Set(["speed", "quality", "ultra"]);
-    if (quality && !VALID_QUALITY.has(quality)) {
-      return res
-        .status(400)
-        .json({ error: "quality must be 'speed', 'quality', or 'ultra'" });
+    const VALID_QUALITY = new Set(["speed", "balanced", "quality", "ultra"]);
+    if (rawQuality && !VALID_QUALITY.has(rawQuality)) {
+      return res.status(400).json({
+        error: "quality must be 'speed', 'quality', or 'ultra'",
+      });
     }
+    const quality = rawQuality === "balanced" ? "quality" : rawQuality;
 
     /** @type {string | null} */
     let usageUserId = null;

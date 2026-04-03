@@ -45,6 +45,22 @@ function jobTokenHeader(jobId: string): Record<string, string> {
 /** Match `/api/stems/file/{uuid}/` in absolute or same-origin-relative URLs. */
 const STEM_FILE_JOB_ID_RE = /\/api\/stems\/file\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i;
 
+/** When the page is HTTPS but the API returned http:// same-host URLs (proxy mis-set X-Forwarded-Proto), upgrade so fetch is not blocked as mixed content. */
+function coerceStemFileUrlForFetch(stemUrl: string): string {
+  if (typeof window === "undefined") return stemUrl;
+  if (window.location.protocol !== "https:") return stemUrl;
+  try {
+    const u = new URL(stemUrl, window.location.origin);
+    if (u.hostname === window.location.hostname && u.protocol === "http:") {
+      u.protocol = "https:";
+      return u.toString();
+    }
+  } catch {
+    /* ignore */
+  }
+  return stemUrl;
+}
+
 /** Extract job UUID from a stem file URL returned by the API. */
 export function parseJobIdFromStemFileUrl(stemUrl: string): string | null {
   const m = stemUrl.match(STEM_FILE_JOB_ID_RE);
@@ -55,9 +71,10 @@ export function parseJobIdFromStemFileUrl(stemUrl: string): string | null {
  * Fetch a stem WAV using Authorization + x-job-token headers (never relies on ?token= in the URL).
  */
 export async function fetchStemWavAsArrayBuffer(stemUrl: string): Promise<ArrayBuffer> {
-  const jobId = parseJobIdFromStemFileUrl(stemUrl);
+  const coerced = coerceStemFileUrlForFetch(stemUrl);
+  const jobId = parseJobIdFromStemFileUrl(coerced);
   if (!jobId) throw new Error("Invalid stem file URL");
-  const pathUrl = stemUrl.split("?")[0];
+  const pathUrl = coerced.split("?")[0];
   const res = await fetch(pathUrl, {
     headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
   });
@@ -67,9 +84,10 @@ export async function fetchStemWavAsArrayBuffer(stemUrl: string): Promise<ArrayB
 
 /** Same as {@link fetchStemWavAsArrayBuffer} but returns a Blob (e.g. downloads). */
 export async function fetchStemWavAsBlob(stemUrl: string): Promise<Blob> {
-  const jobId = parseJobIdFromStemFileUrl(stemUrl);
+  const coerced = coerceStemFileUrlForFetch(stemUrl);
+  const jobId = parseJobIdFromStemFileUrl(coerced);
   if (!jobId) throw new Error("Invalid stem file URL");
-  const pathUrl = stemUrl.split("?")[0];
+  const pathUrl = coerced.split("?")[0];
   const res = await fetch(pathUrl, {
     headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
   });
