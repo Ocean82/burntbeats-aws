@@ -48,7 +48,6 @@ export function WaveformTimeline({
   onActivate,
   onStemStateChange,
 }: WaveformTimelineProps) {
-  // Pre-generate fake waveforms once per stem so skeletons look intentional
   const fakeWaveforms = useMemo(
     () => Object.fromEntries(stems.map((s) => [s.id, generateFakeWaveform(s.id, WAVEFORM_BINS)])),
     [stems]
@@ -56,53 +55,34 @@ export function WaveformTimeline({
 
   return (
     <div className="relative flex flex-col gap-1.5">
-      {isLoadingStems ? (
-        stems.map((stem) => (
+      {stems.map((stem) => {
+        const waveform = waveforms[stem.id];
+        const hasWaveform = Boolean(waveform && waveform.length > 0);
+        const state = stemStates[stem.id] ?? defaultStemState();
+        const isWaveformLoading = isLoadingStems || !hasWaveform;
+
+        return (
           <WaveformLaneMemo
             key={stem.id}
             stem={stem}
-            waveform={fakeWaveforms[stem.id] ?? []}
-            trim={defaultStemState().trim}
-            mixer={defaultStemState().mixer}
-            isActive={false}
-            isMuted={false}
-            isSoloed={false}
-            isLoading={true}
+            waveform={waveform ?? fakeWaveforms[stem.id] ?? []}
+            trim={state.trim}
+            mixer={state.mixer}
+            isActive={stem.id === activeStemId}
+            isMuted={state.muted}
+            isSoloed={state.soloed}
+            isLoading={isWaveformLoading && stems.length > 0}
             zoom={zoom}
             scrollPct={scrollPct}
+            playheadFraction={playheadVisiblePct / 100}
+            getAnalyserData={isPlaying ? getAnalyserData : undefined}
             onTrimChange={onTrimChange}
             onSeek={onSeek}
             onActivate={onActivate}
             onStemStateChange={onStemStateChange}
           />
-        ))
-      ) : (
-        stems.map((stem) => {
-          const waveform = waveforms[stem.id] ?? Array(WAVEFORM_BINS).fill(0);
-          const state = stemStates[stem.id] ?? defaultStemState();
-          return (
-            <WaveformLaneMemo
-              key={stem.id}
-              stem={stem}
-              waveform={waveform}
-              trim={state.trim}
-              mixer={state.mixer}
-              isActive={stem.id === activeStemId}
-              isMuted={state.muted}
-              isSoloed={state.soloed}
-              isLoading={false}
-              zoom={zoom}
-              scrollPct={scrollPct}
-              playheadFraction={playheadVisiblePct / 100}
-              getAnalyserData={isPlaying ? getAnalyserData : undefined}
-              onTrimChange={onTrimChange}
-              onSeek={onSeek}
-              onActivate={onActivate}
-              onStemStateChange={onStemStateChange}
-            />
-          );
-        })
-      )}
+        );
+      })}
 
       {showPlayhead && (
         <div

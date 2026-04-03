@@ -17,6 +17,7 @@ interface StemControlsProps {
   state: StemEditorState;
   duration: number;
   isPreviewPlaying: boolean;
+  isLoadingPreview: boolean;
   onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
 }
@@ -26,6 +27,7 @@ export const StemControls = memo(function StemControls({
   state,
   duration,
   isPreviewPlaying,
+  isLoadingPreview,
   onStemStateChange,
   onPreviewStem,
 }: StemControlsProps) {
@@ -46,16 +48,29 @@ export const StemControls = memo(function StemControls({
           <button
             type="button"
             onClick={() => onPreviewStem(stem.id)}
-            aria-label={isPreviewPlaying ? `Stop ${stem.label} preview` : `Preview ${stem.label}`}
+            disabled={isLoadingPreview}
+            aria-label={
+              isPreviewPlaying
+                ? `Stop ${stem.label} preview`
+                : `Preview ${stem.label}`
+            }
             className={cn(
-              "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
+              "flex min-w-[70px] items-center justify-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               isPreviewPlaying
                 ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
-                : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+              isLoadingPreview &&
+                "border-white/10 bg-white/5 text-white/70 opacity-50 cursor-not-allowed",
             )}
           >
-            {isPreviewPlaying ? <Square className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-            {isPreviewPlaying ? "Stop" : "Hear"}
+            {isLoadingPreview ? (
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : isPreviewPlaying ? (
+              <Square className="h-3 w-3" />
+            ) : (
+              <Play className="h-3 w-3" />
+            )}
+            {isLoadingPreview ? "" : isPreviewPlaying ? "Stop" : "Hear"}
           </button>
           <button
             type="button"
@@ -65,7 +80,7 @@ export const StemControls = memo(function StemControls({
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               soloed
                 ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
-                : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
             )}
           >
             <Headphones className="h-3 w-3" />
@@ -79,10 +94,14 @@ export const StemControls = memo(function StemControls({
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               muted
                 ? "border-red-400/40 bg-red-500/20 text-red-200"
-                : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
             )}
           >
-            {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            {muted ? (
+              <VolumeX className="h-3 w-3" />
+            ) : (
+              <Volume2 className="h-3 w-3" />
+            )}
             {muted ? "Unmute" : "Mute"}
           </button>
         </div>
@@ -101,7 +120,11 @@ export const StemControls = memo(function StemControls({
             step={0.1}
             value={trim.start}
             aria-label={`${stem.label} trim in`}
-            onChange={(event) => onStemStateChange(stem.id, { trim: { ...trim, start: Number(event.target.value) } })}
+            onChange={(event) =>
+              onStemStateChange(stem.id, {
+                trim: { ...trim, start: Number(event.target.value) },
+              })
+            }
             className="stem-accent-slider w-full"
           />
         </div>
@@ -117,7 +140,11 @@ export const StemControls = memo(function StemControls({
             step={0.1}
             value={trim.end}
             aria-label={`${stem.label} trim out`}
-            onChange={(event) => onStemStateChange(stem.id, { trim: { ...trim, end: Number(event.target.value) } })}
+            onChange={(event) =>
+              onStemStateChange(stem.id, {
+                trim: { ...trim, end: Number(event.target.value) },
+              })
+            }
             className="stem-accent-slider w-full"
           />
         </div>
@@ -127,7 +154,13 @@ export const StemControls = memo(function StemControls({
         <div>
           <div className="mb-1 flex justify-between text-[10px] text-white/50">
             <span>Pan</span>
-            <span>{mixer.pan === 0 ? "C" : mixer.pan > 0 ? `R${mixer.pan}` : `L${Math.abs(mixer.pan)}`}</span>
+            <span>
+              {mixer.pan === 0
+                ? "C"
+                : mixer.pan > 0
+                  ? `R${mixer.pan}`
+                  : `L${Math.abs(mixer.pan)}`}
+            </span>
           </div>
           <input
             type="range"
@@ -136,14 +169,26 @@ export const StemControls = memo(function StemControls({
             step={1}
             value={mixer.pan}
             aria-label={`${stem.label} pan`}
-            onChange={(event) => onStemStateChange(stem.id, { mixer: { ...mixer, pan: Number(event.target.value) } })}
+            onChange={(event) =>
+              onStemStateChange(stem.id, {
+                mixer: { ...mixer, pan: Number(event.target.value) },
+              })
+            }
             className="stem-accent-slider w-full"
           />
         </div>
         <div>
           <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span title="Stereo width: 0 = normal, negative = narrower, positive = wider">Width</span>
-            <span>{mixer.width === 0 ? "0" : mixer.width > 0 ? `+${mixer.width}` : mixer.width}</span>
+            <span title="Stereo width: 0 = normal, negative = narrower, positive = wider">
+              Width
+            </span>
+            <span>
+              {mixer.width === 0
+                ? "0"
+                : mixer.width > 0
+                  ? `+${mixer.width}`
+                  : mixer.width}
+            </span>
           </div>
           <input
             type="range"
@@ -152,7 +197,11 @@ export const StemControls = memo(function StemControls({
             step={1}
             value={mixer.width}
             aria-label={`${stem.label} stereo width`}
-            onChange={(event) => onStemStateChange(stem.id, { mixer: { ...mixer, width: Number(event.target.value) } })}
+            onChange={(event) =>
+              onStemStateChange(stem.id, {
+                mixer: { ...mixer, width: Number(event.target.value) },
+              })
+            }
             className="stem-accent-slider w-full"
           />
         </div>
@@ -160,110 +209,164 @@ export const StemControls = memo(function StemControls({
 
       <fieldset className="min-w-0 border-0 p-0">
         <legend className="sr-only">EQ, dynamics, and effects</legend>
-      {/* EQ */}
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>EQ Low</span>
-            <span>{mixer.eqLow > 0 ? `+${mixer.eqLow}` : mixer.eqLow} dB</span>
+        {/* EQ */}
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <div className="mb-1 flex justify-between text-[10px] text-white/50">
+              <span>EQ Low</span>
+              <span>
+                {mixer.eqLow > 0 ? `+${mixer.eqLow}` : mixer.eqLow} dB
+              </span>
+            </div>
+            <input
+              type="range"
+              min={-12}
+              max={12}
+              step={0.5}
+              value={mixer.eqLow}
+              aria-label={`${stem.label} EQ low`}
+              onChange={(e) =>
+                onStemStateChange(stem.id, {
+                  mixer: { ...mixer, eqLow: Number(e.target.value) },
+                })
+              }
+              className="stem-accent-slider w-full"
+            />
           </div>
-          <input
-            type="range" min={-12} max={12} step={0.5}
-            value={mixer.eqLow}
-            aria-label={`${stem.label} EQ low`}
-            onChange={(e) => onStemStateChange(stem.id, { mixer: { ...mixer, eqLow: Number(e.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>EQ Mid</span>
-            <span>{mixer.eqMid > 0 ? `+${mixer.eqMid}` : mixer.eqMid} dB</span>
+          <div>
+            <div className="mb-1 flex justify-between text-[10px] text-white/50">
+              <span>EQ Mid</span>
+              <span>
+                {mixer.eqMid > 0 ? `+${mixer.eqMid}` : mixer.eqMid} dB
+              </span>
+            </div>
+            <input
+              type="range"
+              min={-12}
+              max={12}
+              step={0.5}
+              value={mixer.eqMid}
+              aria-label={`${stem.label} EQ mid`}
+              onChange={(e) =>
+                onStemStateChange(stem.id, {
+                  mixer: { ...mixer, eqMid: Number(e.target.value) },
+                })
+              }
+              className="stem-accent-slider w-full"
+            />
           </div>
-          <input
-            type="range" min={-12} max={12} step={0.5}
-            value={mixer.eqMid}
-            aria-label={`${stem.label} EQ mid`}
-            onChange={(e) => onStemStateChange(stem.id, { mixer: { ...mixer, eqMid: Number(e.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>EQ High</span>
-            <span>{mixer.eqHigh > 0 ? `+${mixer.eqHigh}` : mixer.eqHigh} dB</span>
+          <div>
+            <div className="mb-1 flex justify-between text-[10px] text-white/50">
+              <span>EQ High</span>
+              <span>
+                {mixer.eqHigh > 0 ? `+${mixer.eqHigh}` : mixer.eqHigh} dB
+              </span>
+            </div>
+            <input
+              type="range"
+              min={-12}
+              max={12}
+              step={0.5}
+              value={mixer.eqHigh}
+              aria-label={`${stem.label} EQ high`}
+              onChange={(e) =>
+                onStemStateChange(stem.id, {
+                  mixer: { ...mixer, eqHigh: Number(e.target.value) },
+                })
+              }
+              className="stem-accent-slider w-full"
+            />
           </div>
-          <input
-            type="range" min={-12} max={12} step={0.5}
-            value={mixer.eqHigh}
-            aria-label={`${stem.label} EQ high`}
-            onChange={(e) => onStemStateChange(stem.id, { mixer: { ...mixer, eqHigh: Number(e.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
         </div>
-      </div>
 
-      {/* Effects */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Reverb</span>
-            <span>{mixer.reverbWet}%</span>
+        {/* Effects */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="mb-1 flex justify-between text-[10px] text-white/50">
+              <span>Reverb</span>
+              <span>{mixer.reverbWet}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={mixer.reverbWet}
+              aria-label={`${stem.label} reverb wet`}
+              onChange={(e) =>
+                onStemStateChange(stem.id, {
+                  mixer: { ...mixer, reverbWet: Number(e.target.value) },
+                })
+              }
+              className="stem-accent-slider w-full"
+            />
           </div>
-          <input
-            type="range" min={0} max={100} step={1}
-            value={mixer.reverbWet}
-            aria-label={`${stem.label} reverb wet`}
-            onChange={(e) => onStemStateChange(stem.id, { mixer: { ...mixer, reverbWet: Number(e.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Delay</span>
-            <span>{mixer.delayWet}%</span>
+          <div>
+            <div className="mb-1 flex justify-between text-[10px] text-white/50">
+              <span>Delay</span>
+              <span>{mixer.delayWet}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={mixer.delayWet}
+              aria-label={`${stem.label} delay wet`}
+              onChange={(e) =>
+                onStemStateChange(stem.id, {
+                  mixer: { ...mixer, delayWet: Number(e.target.value) },
+                })
+              }
+              className="stem-accent-slider w-full"
+            />
           </div>
-          <input
-            type="range" min={0} max={100} step={1}
-            value={mixer.delayWet}
-            aria-label={`${stem.label} delay wet`}
-            onChange={(e) => onStemStateChange(stem.id, { mixer: { ...mixer, delayWet: Number(e.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
         </div>
-      </div>
 
-      {/* Compressor */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Comp Threshold</span>
-            <span>{mixer.compThreshold} dB</span>
+        {/* Compressor */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <div className="mb-1 flex justify-between text-[10px] text-white/50">
+              <span>Comp Threshold</span>
+              <span>{mixer.compThreshold} dB</span>
+            </div>
+            <input
+              type="range"
+              min={-60}
+              max={0}
+              step={1}
+              value={mixer.compThreshold}
+              aria-label={`${stem.label} compressor threshold`}
+              onChange={(e) =>
+                onStemStateChange(stem.id, {
+                  mixer: { ...mixer, compThreshold: Number(e.target.value) },
+                })
+              }
+              className="stem-accent-slider w-full"
+            />
           </div>
-          <input
-            type="range" min={-60} max={0} step={1}
-            value={mixer.compThreshold}
-            aria-label={`${stem.label} compressor threshold`}
-            onChange={(e) => onStemStateChange(stem.id, { mixer: { ...mixer, compThreshold: Number(e.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Comp Ratio</span>
-            <span>{mixer.compRatio}:1</span>
+          <div>
+            <div className="mb-1 flex justify-between text-[10px] text-white/50">
+              <span>Comp Ratio</span>
+              <span>{mixer.compRatio}:1</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={20}
+              step={0.5}
+              value={mixer.compRatio}
+              aria-label={`${stem.label} compressor ratio`}
+              onChange={(e) =>
+                onStemStateChange(stem.id, {
+                  mixer: { ...mixer, compRatio: Number(e.target.value) },
+                })
+              }
+              className="stem-accent-slider w-full"
+            />
           </div>
-          <input
-            type="range" min={1} max={20} step={0.5}
-            value={mixer.compRatio}
-            aria-label={`${stem.label} compressor ratio`}
-            onChange={(e) => onStemStateChange(stem.id, { mixer: { ...mixer, compRatio: Number(e.target.value) } })}
-            className="stem-accent-slider w-full"
-          />
         </div>
-      </div>
       </fieldset>
-
     </div>
   );
 });

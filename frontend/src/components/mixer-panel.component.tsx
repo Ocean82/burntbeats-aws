@@ -32,6 +32,7 @@ export interface MixerPanelProps {
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
   playingStemId: string | null;
+  loadingPreviewStemId: string | null;
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
 }
@@ -60,6 +61,7 @@ export function MixerPanel({
   onStemStateChange,
   onPreviewStem,
   playingStemId,
+  loadingPreviewStemId,
   getMasterAnalyserTimeDomainData,
   getMasterAnalyserFrequencyData,
 }: MixerPanelProps) {
@@ -174,6 +176,7 @@ export function MixerPanel({
         onPlayPause={onPlayStop}
         onPreviewStem={onPreviewStem}
         playingStemId={playingStemId}
+        loadingPreviewStemId={loadingPreviewStemId}
         getAnalyserData={getMasterAnalyserTimeDomainData}
       />
     </>
