@@ -159,8 +159,9 @@ def extract_vocals_stage1(
                 return vocals_path, None, [speed_onnx.name]
 
     # BENCHMARK-DRIVEN PRIORITY ORDER (ranked_blended_q80_s20.csv):
-    # Quality tier: UVR-MDX-NET-Voc_FT scores 9.5 quality (highest of all) — use first.
-    # MDX23C scores 9.0 quality but takes 121s vs 74s — use as fallback only.
+    # Speed-optimized: UVR_MDXNET_3_9662 (score=9, 26.8s) and KARA (score=9, 27.9s) are fastest.
+    # Excluded: Voc_FT=74.6s, Kim_Vocal_2=71.2s — 3× slower for negligible quality gain.
+    # MDX23C=121.7s — excluded, too slow for 2-stem.
     # Demucs ONNX (htdemucs_6s, htdemucs_embedded) scored 1/10 — never use.
 
     # Check if we have MDX23C models available (quality fallback only)
@@ -198,7 +199,7 @@ def extract_vocals_stage1(
             )
             if inst_path is not None:
                 logger.info(
-                    "Stage 1: MDX23c vocal ONNX + MDX23c instrumental ONNX [overlap=%.0f%%]",
+                    "Stage 1: MDX23C vocal ONNX + MDX23C instrumental ONNX [overlap=%.0f%%]",
                     onnx_overlap * 100,
                 )
                 return (

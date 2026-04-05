@@ -82,15 +82,36 @@ function sniffMatchesExt(buf, ext) {
  * @returns {boolean}
  */
 function looksLikeMp3(buf) {
+  // Check for ID3v2 tag
   let i = 0;
   if (buf.length >= 10 && buf.toString("ascii", 0, 3) === "ID3") {
     const id3len =
       ((buf[6] & 0x7f) << 21) | ((buf[7] & 0x7f) << 14) | ((buf[8] & 0x7f) << 7) | (buf[9] & 0x7f);
-    if (id3len > MAX_ID3_SYNTHETIC) return false;
-    i = 10 + id3len;
+    if (id3len > MAX_ID3_SYNTHETIC) {
+      // ID3 size claim is absurd — fall through to sync word search
+      i = 0;
+    } else {
+      i = 10 + id3len;
+    }
   }
-  if (i >= buf.length - 1) return false;
-  const b0 = buf[i];
-  const b1 = buf[i + 1];
-  return b0 === 0xff && (b1 & 0xe0) === 0xe0;
+
+  // Check for MP3 sync word at expected position (after ID3 or at start)
+  if (i < buf.length - 1) {
+    const b0 = buf[i];
+    const b1 = buf[i + 1];
+    if (b0 === 0xff && (b1 & 0xe0) === 0xe0) return true;
+  }
+
+  // Fallback: search entire buffer for MP3 sync word pattern
+  // Valid MP3 frame starts with 0xFF followed by 0b111xxxxx
+  // We require at least 2 consecutive sync words to reduce false positives
+  let syncCount = 0;
+  for (let j = 0; j < buf.length - 3; j++) {
+    if (buf[j] === 0xff && (buf[j + 1] & 0xe0) === 0xe0) {
+      syncCount++;
+      if (syncCount >= 2) return true;
+    }
+  }
+
+  return false;
 }

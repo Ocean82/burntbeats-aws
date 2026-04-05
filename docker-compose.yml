@@ -80,6 +80,7 @@ services:
     environment:
       STEM_OUTPUT_DIR: /repo/tmp/stems
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
+      USE_VAD_PRETRIM: "false"
       OMP_NUM_THREADS: ${OMP_NUM_THREADS:-2}
       MKL_NUM_THREADS: ${MKL_NUM_THREADS:-2}
       ONNXRUNTIME_NUM_THREADS: ${ONNXRUNTIME_NUM_THREADS:-2}

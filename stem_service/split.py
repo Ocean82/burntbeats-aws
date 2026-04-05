@@ -6,6 +6,7 @@ Quality mode uses demucs.extra bag of models for better separation.
 
 from __future__ import annotations
 
+import logging
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,7 @@ from stem_service.config import (
     DEMUCS_OVERLAP,
     DEMUCS_SEGMENT_SEC,
     DEMUCS_EXTRA_SEGMENT,
+    DEMUCS_TIMEOUT_SEC,
     demucs_extra_available,
     ensure_htdemucs_th,
     get_demucs_quality_bag_config,
@@ -27,9 +29,13 @@ from stem_service.config import (
     DEMUCS_DEVICE,
 )
 
+logger = logging.getLogger(__name__)
+
 # Demucs output layout: <out_dir>/htdemucs/<track_name>/{vocals,drums,bass,other}.wav
 # With --two-stems=vocals: <out_dir>/htdemucs/<track_name>/{vocals,no_vocals}.wav
 # With demucs.extra: <out_dir>/demucs.extra/<track_name>/{vocals,drums,bass,other}.wav
+
+_VALID_STEMS = {2, 4}
 
 
 def run_demucs(
@@ -39,11 +45,14 @@ def run_demucs(
     prefer_speed: bool = True,
 ) -> list[tuple[str, Path]]:
     """
-    Run demucs separation. Returns list of (stem_id, wav_path).
+    Run Demucs separation. Returns list of (stem_id, wav_path).
     stems: 2 -> vocals, instrumental; 4 -> vocals, drums, bass, other.
     prefer_speed=True: shifts=0 (fastest), uses htdemucs.
     prefer_speed=False: uses demucs.extra bag (if available) for best quality, else htdemucs with 3 shifts.
     """
+    if stems not in _VALID_STEMS:
+        raise ValueError(f"stems must be 2 or 4, got {stems}")
+
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -53,6 +62,12 @@ def run_demucs(
     if use_extra:
         # Use selected quality bag (mdx_extra_q or mdx_extra per DEMUCS_QUALITY_BAG)
         model_name, repo, segment, output_subdir = get_demucs_quality_bag_config()
+        logger.info(
+            "Demucs: using %s bag (segment=%ds, repo=%s)",
+            model_name,
+            segment,
+            repo.name,
+        )
         cmd = _build_demucs_cmd(
             input_path=input_path,
             output_dir=output_dir,
@@ -62,7 +77,13 @@ def run_demucs(
             repo=repo,
             two_stems=False,
         )
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            timeout=DEMUCS_TIMEOUT_SEC,
+        )
         if result.returncode != 0:
             raise RuntimeError(
                 f"Demucs bag ({model_name}) failed: {result.stderr or result.stdout}"
@@ -77,8 +98,18 @@ def run_demucs(
                 "See README or scripts/copy-models.sh."
             )
         ensure_htdemucs_th()
-        shifts = 0 if USE_DEMUCS_SHIFTS_0 else (DEMUCS_SHIFTS_SPEED if prefer_speed else DEMUCS_SHIFTS_QUALITY)
+        shifts = (
+            0
+            if USE_DEMUCS_SHIFTS_0
+            else (DEMUCS_SHIFTS_SPEED if prefer_speed else DEMUCS_SHIFTS_QUALITY)
+        )
         segment = DEMUCS_SEGMENT_SEC
+        logger.info(
+            "Demucs: using htdemucs (shifts=%d, segment=%ds, two_stems=%s)",
+            shifts,
+            segment,
+            stems == 2,
+        )
         cmd = _build_demucs_cmd(
             input_path=input_path,
             output_dir=output_dir,
@@ -88,14 +119,20 @@ def run_demucs(
             repo=MODELS_DIR,
             two_stems=(stems == 2),
         )
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            timeout=DEMUCS_TIMEOUT_SEC,
+        )
         if result.returncode != 0:
-            raise RuntimeError(f"demucs failed: {result.stderr or result.stdout}")
+            raise RuntimeError(f"Demucs failed: {result.stderr or result.stdout}")
         track_name = input_path.stem
         base = output_dir / "htdemucs" / track_name
 
     if not base.exists():
-        raise RuntimeError(f"demucs did not create output under {base}")
+        raise RuntimeError(f"Demucs did not create output under {base}")
 
     stem_files: list[tuple[str, Path]] = []
     if stems == 2:

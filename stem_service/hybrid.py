@@ -7,19 +7,39 @@ Output: vocals, drums, bass, other (4 stems). Optional 2-stem: vocals + instrume
 from __future__ import annotations
 
 import argparse
-import logging
 import json
+import logging
 import shutil
 import sys
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
-
-logger = logging.getLogger(__name__)
 import soundfile as sf
 
+from stem_service.config import (
+    USE_VAD_CHUNKS,
+    USE_VAD_PRETRIM,
+    VAD_CHUNK_LENGTH_S,
+    VAD_CHUNK_SILENCE_FLUSH_S,
+    four_stem_skip_scnet,
+    scnet_available,
+)
+from stem_service.phase_inversion import create_perfect_instrumental
+from stem_service.scnet_onnx import (
+    run_scnet_onnx_4stem,
+    scnet_onnx_disable_reason,
+    scnet_onnx_runtime_available,
+)
+from stem_service.split import run_demucs
+from stem_service.vad import (
+    get_chunk_boundaries,
+    is_vad_available,
+    trim_audio_to_speech_span,
+)
+from stem_service.vocal_stage1 import extract_vocals_stage1
 
+logger = logging.getLogger(__name__)
 
 
 def collapse_4stem_to_2stem(
@@ -75,29 +95,6 @@ def collapse_4stem_to_2stem(
     return [("vocals", vocals_path), ("instrumental", instrumental_path)]
 
 
-from stem_service.config import (
-    USE_VAD_CHUNKS,
-    USE_VAD_PRETRIM,
-    VAD_CHUNK_LENGTH_S,
-    VAD_CHUNK_SILENCE_FLUSH_S,
-    four_stem_skip_scnet,
-    scnet_available,
-)
-from stem_service.scnet_onnx import (
-    run_scnet_onnx_4stem,
-    scnet_onnx_disable_reason,
-    scnet_onnx_runtime_available,
-)
-from stem_service.phase_inversion import create_perfect_instrumental
-from stem_service.split import run_demucs
-from stem_service.vad import (
-    get_chunk_boundaries,
-    is_vad_available,
-    trim_audio_to_speech_span,
-)
-from stem_service.vocal_stage1 import extract_vocals_stage1
-
-
 def _effective_input_path(
     input_path: Path,
     output_dir: Path,
@@ -106,9 +103,9 @@ def _effective_input_path(
     """If VAD trim requested and VAD available, trim to speech span; else return input.
     use_vad_trim: True = trim when VAD available; False = never trim; None = follow USE_VAD_PRETRIM env.
     """
-    if use_vad_trim is False:
+    if not USE_VAD_PRETRIM:
         return input_path
-    if use_vad_trim is not True and not USE_VAD_PRETRIM:
+    if use_vad_trim is False:
         return input_path
     if not is_vad_available():
         return input_path
@@ -320,9 +317,8 @@ def run_hybrid_4stem(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Match 2-stem semantics: speed → VAD trim when enabled; quality → full file (less bleed / predictable length)
-    effective_input = _effective_input_path(
-        input_path, output_dir, use_vad_trim=prefer_speed
-    )
+    # Pass None to follow USE_VAD_PRETRIM env var
+    effective_input = _effective_input_path(input_path, output_dir)
 
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
@@ -408,9 +404,8 @@ def run_hybrid_2stem(
 
     # Speed mode: VAD pre-trim to vocal span (skip silence at start/end)
     # Quality mode: process full file for best boundary accuracy
-    effective_input = _effective_input_path(
-        input_path, output_dir, use_vad_trim=prefer_speed
-    )
+    # Pass None to follow USE_VAD_PRETRIM env var
+    effective_input = _effective_input_path(input_path, output_dir)
 
     # ONNX-first: Stage 1 vocal (+ optional inst) or Demucs 2-stem fallback
     stage1_out = output_dir / "stage1"

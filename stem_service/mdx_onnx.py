@@ -47,44 +47,40 @@ logger = logging.getLogger(__name__)
 # compensate: post-iSTFT amplitude correction factor (from UVR model_data.json)
 _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     #                                    n_fft   hop   dim_f  dim_t  compensate
-    "Kim_Vocal_1.onnx":                 (6144,  1024,  3072,  256,   1.035),
-    "Kim_Vocal_2.onnx":                 (6144,  1024,  3072,  256,   1.035),
-    "UVR-MDX-NET-Voc_FT.onnx":         (6144,  1024,  3072,  256,   1.035),
-    "UVR-MDX-NET-Inst_HQ_4.onnx":      (5120,  1024,  2560,  256,   1.035),
-    "UVR-MDX-NET-Inst_HQ_5.onnx":      (5120,  1024,  2560,  256,   1.035),
+    "Kim_Vocal_1.onnx": (6144, 1024, 3072, 256, 1.035),
+    "Kim_Vocal_2.onnx": (6144, 1024, 3072, 256, 1.035),
+    "UVR-MDX-NET-Voc_FT.onnx": (6144, 1024, 3072, 256, 1.035),
+    "UVR-MDX-NET-Inst_HQ_4.onnx": (5120, 1024, 2560, 256, 1.035),
+    "UVR-MDX-NET-Inst_HQ_5.onnx": (5120, 1024, 2560, 256, 1.035),
     # MDX23C 2-stem (MDX23C vocal/instrumental ONNX)
-    "mdx23c_vocal.onnx":              (6144,  1024,  3072,  256,   1.035),
-    "mdx23c_instrumental.onnx":      (6144,  1024,  3072,  256,   1.035),
+    "mdx23c_vocal.onnx": (6144, 1024, 3072, 256, 1.035),
+    "mdx23c_instrumental.onnx": (6144, 1024, 3072, 256, 1.035),
     # Speed 2-stem default (models/model_int8.onnx): UVR/MDX int8 export — same I/O as Kim vocal when MDX-shaped
-    "model_int8.onnx":               (6144,  1024,  3072,  256,   1.035),
+    "model_int8.onnx": (6144, 1024, 3072, 256, 1.035),
     # De-reverb model: same n_fft/dim_f as Kim, but dim_t=512 (longer context window)
     # primary_stem=Reverb — output is the reverb component; subtract from input for dry signal
-    "Reverb_HQ_By_FoxJoy.onnx":        (6144,  1024,  3072,  512,   1.0),
+    "Reverb_HQ_By_FoxJoy.onnx": (6144, 1024, 3072, 512, 1.0),
     # UVR MDX-Net numbered exports — probed [batch,4,2048,256] → n_fft=4096 (4096//2+1=2049)
-    "UVR_MDXNET_1_9703.onnx":         (4096,  1024,  2048,  256,   1.035),
-    "UVR_MDXNET_2_9682.onnx":         (4096,  1024,  2048,  256,   1.035),
-    "UVR_MDXNET_3_9662.onnx":         (4096,  1024,  2048,  256,   1.035),
-    "UVR_MDXNET_KARA.onnx":           (4096,  1024,  2048,  256,   1.035),
+    "UVR_MDXNET_1_9703.onnx": (4096, 1024, 2048, 256, 1.035),
+    "UVR_MDXNET_2_9682.onnx": (4096, 1024, 2048, 256, 1.035),
+    "UVR_MDXNET_3_9662.onnx": (4096, 1024, 2048, 256, 1.035),
+    "UVR_MDXNET_KARA.onnx": (4096, 1024, 2048, 256, 1.035),
 }
 
 # ---------------------------------------------------------------------------
 # Model path lists — first existing file wins
-# ---------------------------------------------------------------------------
+# Only include fast models (score >= 8.5, time < 30s per benchmark)
 VOCAL_MODEL_PATHS: list[Path] = [
-    MDXNET_MODELS_DIR / "Kim_Vocal_2.onnx",
-    MODELS_DIR / "Kim_Vocal_2.onnx",
-    MDXNET_MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
-    MODELS_DIR / "UVR-MDX-NET-Voc_FT.onnx",
-    MODELS_DIR / "MDX_Net_Models" / "Kim_Vocal_2.onnx",
-    MODELS_DIR / "MDX_Net_Models" / "UVR-MDX-NET-Voc_FT.onnx",
+    MODELS_DIR / "UVR_MDXNET_3_9662.onnx",
+    MODELS_DIR / "UVR_MDXNET_KARA.onnx",
+    MDXNET_MODELS_DIR / "UVR_MDXNET_3_9662.onnx",
+    MDXNET_MODELS_DIR / "UVR_MDXNET_KARA.onnx",
 ]
 
 INST_MODEL_PATHS: list[Path] = [
-    MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
     MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
-    MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
+    MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
     MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
-    MODELS_DIR / "MDX_Net_Models" / "UVR-MDX-NET-Inst_HQ_5.onnx",
 ]
 
 DEREVERB_MODEL_PATHS: list[Path] = [
@@ -94,23 +90,22 @@ DEREVERB_MODEL_PATHS: list[Path] = [
 
 # ---------------------------------------------------------------------------
 # Tiered model selection — see docs/MODEL-SELECTION-AUTHORITY.md and
-# docs/ranked_practical_time_score.csv (canonical: score + elapsed on 30s clip).
+# tmp/model_matrix_benchmark/ranked_blended_q80_s20.csv (canonical: score + elapsed on 30s clip).
 #
-# Rules (summary): prefer score >= 9; UVR_MDXNET_1/2 at 8.5 are allowed in fast
-# tier because they finish in ~26–29s on the reference clip. Kim_Vocal_* and
-# Voc_FT are quality tier (score 9+ but slower). Inst_HQ_5 = fast inst;
-# Inst_HQ_4 = quality. Legacy blended ranking (ranked_blended_q80_s20.csv) is
-# research-only — do not re-derive tiers from blended alone.
+# Rules (summary): prefer score >= 9, time < 30s. UVR_MDXNET_1/2 at 8.5 are allowed in fast
+# tier because they finish in ~26–29s. Excluded: Voc_FT=74.6s, Kim_Vocal_*=65-71s —
+# 3× slower for negligible quality gain (0.5 points). Inst_HQ_5 = only inst model needed.
 #
 # ORT: resolve_mdx_model_path() prefers .ort when present; lists use .onnx names.
 # ---------------------------------------------------------------------------
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
-    # fast: top blended scores from eligible pool — ordered by blended desc
+    # fast: score-9 models under 30s — ordered by blended score desc
+    # Benchmark: 3_9662.ort=26.8s (blended=0.883), KARA.ort=27.9s (blended=0.877)
     "fast": [
-        "UVR_MDXNET_3_9662.onnx",   # blended=0.8832, quality_norm=0.90, speed_norm=0.816
-        "UVR_MDXNET_KARA.onnx",     # blended=0.8768, quality_norm=0.90, speed_norm=0.784
-        "UVR_MDXNET_2_9682.onnx",   # blended=0.8464, quality_norm=0.85, speed_norm=0.832
-        "UVR_MDXNET_1_9703.onnx",   # blended=0.8450, quality_norm=0.85, speed_norm=0.825
+        "UVR_MDXNET_3_9662.onnx",  # blended=0.8832 (ORT: 26.8s) — fastest score-9
+        "UVR_MDXNET_KARA.onnx",  # blended=0.8768 (ORT: 27.9s)
+        "UVR_MDXNET_2_9682.onnx",  # blended=0.8464 (ORT: 26.3s, score=8.5)
+        "UVR_MDXNET_1_9703.onnx",  # blended=0.8450 (ORT: 26.9s, score=8.5)
     ],
     # balanced: same as fast
     "balanced": [
@@ -119,14 +114,14 @@ _VOCAL_TIER_NAMES: dict[str, list[str]] = {
         "UVR_MDXNET_2_9682.onnx",
         "UVR_MDXNET_1_9703.onnx",
     ],
-    # quality: quality_norm=0.90 models from eligible pool, ordered by blended desc
-    # These pass all cutoffs but have lower speed_norm than fast tier
+    # quality: fast score-9 models with 75% overlap (no slow models — 9.5 is not worth 3× time)
+    # Benchmark: 3_9662=26.8s, KARA=27.9s, 2_9682=28.7s, 1_9703=26.5s (all score 8.5-9)
+    # Excluded: Voc_FT=74.6s, Kim_Vocal_1=65.7s, Kim_Vocal_2=71.2s — too slow for marginal gain
     "quality": [
-        "UVR_MDXNET_3_9662.onnx",   # quality_norm=0.90, blended=0.8832 — best of eligible
-        "UVR_MDXNET_KARA.onnx",     # quality_norm=0.90, blended=0.8768
-        "Kim_Vocal_1.onnx",         # quality_norm=0.90, blended=0.7869
-        "Kim_Vocal_2.onnx",         # quality_norm=0.90, blended=0.7848
-        "UVR-MDX-NET-Voc_FT.onnx",  # quality_norm=0.90 (ort), blended=0.7808 — note: resolves to .ort
+        "UVR_MDXNET_3_9662.onnx",  # score=9, 29.8s — best blended (0.867)
+        "UVR_MDXNET_KARA.onnx",  # score=9, 29.0s
+        "UVR_MDXNET_2_9682.onnx",  # score=8.5, 28.7s
+        "UVR_MDXNET_1_9703.onnx",  # score=8.5, 26.5s
     ],
 }
 
@@ -203,7 +198,9 @@ def mdx_model_configured(model_path: Path) -> bool:
     return _get_config(model_path) is not None
 
 
-def mdx_config_for_logical_onnx_name(logical_onnx_name: str) -> tuple[int, int, int, int, float] | None:
+def mdx_config_for_logical_onnx_name(
+    logical_onnx_name: str,
+) -> tuple[int, int, int, int, float] | None:
     """
     Return ``(n_fft, hop_length, dim_f, dim_t, compensate)`` for a logical ``*.onnx`` key
     in ``_MDX_CONFIGS`` (same keys as tier lists in ``MODEL-SELECTION-AUTHORITY.md``).
@@ -436,6 +433,7 @@ def _run_mdx_onnx(
 
     if sr != 44100:
         import torchaudio
+
         mix_t = torch.from_numpy(mix.T).unsqueeze(0).float()
         mix_t = torchaudio.functional.resample(mix_t, sr, 44100)
         mix = mix_t.squeeze(0).numpy().T
@@ -470,7 +468,13 @@ def _run_mdx_onnx(
     _log.info(
         "mdx_onnx: audio=%.1fs  n_fft=%d  hop=%d  chunk_size=%d  step=%d  "
         "n_chunks=%d  overlap=%.0f%%",
-        duration_s, n_fft, hop, chunk_size, step, n_chunks, overlap * 100,
+        duration_s,
+        n_fft,
+        hop,
+        chunk_size,
+        step,
+        n_chunks,
+        overlap * 100,
     )
 
     result = np.zeros((1, 2, total), dtype=np.float32)
@@ -484,7 +488,9 @@ def _run_mdx_onnx(
             elapsed = time.monotonic() - t_start
             _log.info(
                 "mdx_onnx: chunk %d/%d  elapsed=%.1fs",
-                chunk_idx, n_chunks, elapsed,
+                chunk_idx,
+                n_chunks,
+                elapsed,
             )
 
         start = i
@@ -531,7 +537,9 @@ def _run_mdx_onnx(
     elapsed_total = time.monotonic() - t_start
     _log.info(
         "mdx_onnx: finished %d chunks in %.1fs (%.2fs/chunk)",
-        chunk_idx, elapsed_total, elapsed_total / max(chunk_idx, 1),
+        chunk_idx,
+        elapsed_total,
+        elapsed_total / max(chunk_idx, 1),
     )
 
     # ── Reconstruct ───────────────────────────────────────────────────────────
@@ -562,11 +570,17 @@ def run_vocal_onnx(
     overlap: 0.5 for speed, 0.75 for quality (smoother chunk boundaries).
     Returns output_path on success, None if no model or inference fails.
     """
-    model_path = model_path_override if model_path_override is not None else get_available_vocal_onnx()
+    model_path = (
+        model_path_override
+        if model_path_override is not None
+        else get_available_vocal_onnx()
+    )
     if model_path is None or not model_path.exists():
         logger.debug("No vocal ONNX model found")
         return None
-    return _run_mdx_onnx(input_path, output_path, model_path, overlap=overlap, job_logger=job_logger)
+    return _run_mdx_onnx(
+        input_path, output_path, model_path, overlap=overlap, job_logger=job_logger
+    )
 
 
 def run_inst_onnx(
@@ -582,11 +596,17 @@ def run_inst_onnx(
     Returns output_path on success, None if no model or inference fails.
     This avoids phase inversion artifacts when available.
     """
-    model_path = model_path_override if model_path_override is not None else get_available_inst_onnx()
+    model_path = (
+        model_path_override
+        if model_path_override is not None
+        else get_available_inst_onnx()
+    )
     if model_path is None or not model_path.exists():
         logger.debug("No instrumental ONNX model found")
         return None
-    return _run_mdx_onnx(input_path, output_path, model_path, overlap=overlap, job_logger=job_logger)
+    return _run_mdx_onnx(
+        input_path, output_path, model_path, overlap=overlap, job_logger=job_logger
+    )
 
 
 def run_dereverb_onnx(

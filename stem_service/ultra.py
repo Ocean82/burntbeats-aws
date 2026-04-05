@@ -159,7 +159,7 @@ def run_ultra_4stem(
     input_path: Path,
     output_dir: Path,
     progress_callback: Callable[[int], None] | None = None,
-) -> list[tuple[str, Path]]:
+) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Ultra quality 4-stem separation using RoFormer for vocals, then Demucs on instrumental.
     Raises RuntimeError if ultra is not available or fails.
@@ -221,7 +221,7 @@ def run_ultra_2stem(
     input_path: Path,
     output_dir: Path,
     progress_callback: Callable[[int], None] | None = None,
-) -> list[tuple[str, Path]]:
+) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Ultra quality 2-stem (vocals + instrumental) using RoFormer.
     Applies de-reverb post-pass on vocals when Reverb_HQ model is available.
@@ -249,6 +249,7 @@ def run_ultra_2stem(
     # De-reverb post-pass on vocals (ultra mode only)
     models_used: list[str] = [model_path.name]
     from stem_service.mdx_onnx import run_dereverb_onnx
+
     dereverb_out = output_dir / "ultra_vocals_dry.wav"
     dry_path = run_dereverb_onnx(vocals_path, dereverb_out, overlap=0.75)
     if dry_path is not None:

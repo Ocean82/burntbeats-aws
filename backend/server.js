@@ -594,6 +594,12 @@ app.post(
       path.extname(filePath).toLowerCase();
     const sniff = verifyUploadMatchesExtension(filePath, declaredExt);
     if (!sniff.ok) {
+      console.warn(
+        "[POST /api/stems/split] sniff failed: ext=%s filename=%s message=%s",
+        declaredExt,
+        req.file?.originalname || "unknown",
+        sniff.message,
+      );
       await unlinkPromise(filePath).catch(() => {});
       return res.status(415).json({ error: sniff.message });
     }

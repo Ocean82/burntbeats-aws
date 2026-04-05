@@ -8,6 +8,8 @@ from pathlib import Path
 STEM_SERVICE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = STEM_SERVICE_DIR.parent
 MODELS_DIR = REPO_ROOT / "models"
+
+
 # Optional 2-stem speed: default MDX vocal ONNX (Kim_Vocal_2). Override with SPEED_2STEM_ONNX (e.g. vocals.int8.onnx last resort).
 def speed_2stem_onnx_path() -> Path:
     raw = os.environ.get("SPEED_2STEM_ONNX", "").strip()
@@ -36,6 +38,7 @@ if FOUR_STEM_BACKEND not in ("auto", "hybrid"):
 def four_stem_skip_scnet() -> bool:
     """When True, 4-stem jobs never attempt SCNet ONNX (use hybrid / Demucs paths only)."""
     return FOUR_STEM_BACKEND == "hybrid"
+
 
 # Demucs extra bag models (for quality mode)
 DEMUCS_EXTRA_MODELS_DIR = MODELS_DIR / "Demucs_Models"
@@ -85,7 +88,9 @@ def ensure_htdemucs_th() -> Path | None:
     """
     if HTDEMUCS_TH.exists():
         return HTDEMUCS_TH
-    if ensure_htdemucs_th_in_repo(MODELS_DIR, prefer_pth=HTDEMUCS_PTH if HTDEMUCS_PTH.exists() else None):
+    if ensure_htdemucs_th_in_repo(
+        MODELS_DIR, prefer_pth=HTDEMUCS_PTH if HTDEMUCS_PTH.exists() else None
+    ):
         return HTDEMUCS_TH if HTDEMUCS_TH.exists() else None
     return None
 
@@ -282,6 +287,8 @@ DEMUCS_OVERLAP = 0.25
 DEMUCS_SEGMENT_SEC = 7
 # demucs.extra bag segment (from mdx_extra_q.yaml)
 DEMUCS_EXTRA_SEGMENT = 44
+# Timeout for Demucs subprocess (seconds). 10 min default — long songs may need more.
+DEMUCS_TIMEOUT_SEC = int(os.environ.get("DEMUCS_TIMEOUT_SEC", "600"))
 
 
 def get_onnx_providers() -> list[str]:
