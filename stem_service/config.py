@@ -10,7 +10,7 @@ REPO_ROOT = STEM_SERVICE_DIR.parent
 MODELS_DIR = REPO_ROOT / "models"
 
 
-# Optional 2-stem speed: default MDX vocal ONNX (Kim_Vocal_2). Override with SPEED_2STEM_ONNX (e.g. vocals.int8.onnx last resort).
+# Legacy env hook (diagnostics / scripts). 2-stem Stage 1 uses a fixed rank1→4 waterfall in vocal_stage1.py, not this path.
 def speed_2stem_onnx_path() -> Path:
     raw = os.environ.get("SPEED_2STEM_ONNX", "").strip()
     return Path(raw).expanduser() if raw else MODELS_DIR / "UVR_MDXNET_3_9662.onnx"
@@ -30,9 +30,10 @@ USE_SCNET = os.environ.get("USE_SCNET", "1").strip().lower() in ("1", "true", "y
 
 # 4-stem routing: "auto" tries SCNet ONNX first (when USE_SCNET + model exist), then hybrid.
 # Set to "hybrid" in production if SCNet is flaky — forces Stage1 MDX + PyTorch Demucs only (no SCNet).
-FOUR_STEM_BACKEND = os.environ.get("FOUR_STEM_BACKEND", "auto").strip().lower()
+# Default "hybrid": Stage 2 / expand use PyTorch htdemucs only. Set FOUR_STEM_BACKEND=auto to try SCNet ONNX first.
+FOUR_STEM_BACKEND = os.environ.get("FOUR_STEM_BACKEND", "hybrid").strip().lower()
 if FOUR_STEM_BACKEND not in ("auto", "hybrid"):
-    FOUR_STEM_BACKEND = "auto"
+    FOUR_STEM_BACKEND = "hybrid"
 
 
 def four_stem_skip_scnet() -> bool:

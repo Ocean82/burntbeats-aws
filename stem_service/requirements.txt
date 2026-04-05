@@ -1,7 +1,11 @@
 # CPU-only stem splitting (no CUDA). For smaller install on CPU-only hosts: pip install torch --index-url https://download.pytorch.org/whl/cpu first, then pip install -r stem_service/requirements.txt
-torch>=2.0.0
-# Pin <2.9 so load/save work without torchcodec (WSL/CI)
-torchaudio>=2.0.0,<2.9
+#
+# Pin torch/torchaudio <2.6: PyTorch 2.6+ defaults torch.load(weights_only=True). Demucs loads
+# htdemucs checkpoints with pickle (HTDemucs class); unpickling fails unless weights_only=False,
+# and the stock `python -m demucs` CLI does not pass that flag — 2-stem/4-stem Demucs breaks.
+# Also keep <2.9 so load/save paths avoid torchcodec issues on some hosts (WSL/CI).
+torch>=2.0.0,<2.6
+torchaudio>=2.0.0,<2.6
 soundfile>=0.12.0
 demucs>=4.0.0
 # Required for 4-stem quality bag (mdx_extra_q / mdx_extra) — Demucs uses DiffQ for quantized models
@@ -9,7 +13,7 @@ diffq>=0.2.0
 # onnxruntime (not onnxruntime-gpu) for CPU-optimized MDX inference; SessionOptions use ORT_ENABLE_ALL + configurable threads
 onnxruntime>=1.14.0
 numpy>=2.0.0
-# Spleeter int8 ONNX path: scipy STFT/iSTFT (avoids PyTorch istft RuntimeError on some builds)
+# server_export (fftconvolve, resample, lfilter)
 scipy>=1.9.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0

@@ -68,8 +68,7 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Model path lists — first existing file wins
-# Only include fast models (score >= 8.5, time < 30s per benchmark)
+# Model path lists — first existing file wins (score-9 fast vocals only)
 VOCAL_MODEL_PATHS: list[Path] = [
     MODELS_DIR / "UVR_MDXNET_3_9662.onnx",
     MODELS_DIR / "UVR_MDXNET_KARA.onnx",
@@ -89,55 +88,44 @@ DEREVERB_MODEL_PATHS: list[Path] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Tiered model selection — see docs/MODEL-SELECTION-AUTHORITY.md and
-# tmp/model_matrix_benchmark/ranked_blended_q80_s20.csv (canonical: score + elapsed on 30s clip).
-#
-# Rules (summary): prefer score >= 9, time < 30s. UVR_MDXNET_1/2 at 8.5 are allowed in fast
-# tier because they finish in ~26–29s. Excluded: Voc_FT=74.6s, Kim_Vocal_*=65-71s —
-# 3× slower for negligible quality gain (0.5 points). Inst_HQ_5 = only inst model needed.
+# Tiered model selection — MUST match docs/MODEL-SELECTION-AUTHORITY.md.
+# Canonical benchmark table (score + 30s elapsed): docs/ranked_practical_time_score.csv
+# Legacy blended CSV under tmp/ is research-only; do not use it to order these lists.
 #
 # ORT: resolve_mdx_model_path() prefers .ort when present; lists use .onnx names.
 # ---------------------------------------------------------------------------
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
-    # fast: score-9 models under 30s — ordered by blended score desc
-    # Benchmark: 3_9662.ort=26.8s (blended=0.883), KARA.ort=27.9s (blended=0.877)
+    # fast / balanced: recommended_fast only (score 9 on benchmark clip)
     "fast": [
-        "UVR_MDXNET_3_9662.onnx",  # blended=0.8832 (ORT: 26.8s) — fastest score-9
-        "UVR_MDXNET_KARA.onnx",  # blended=0.8768 (ORT: 27.9s)
-        "UVR_MDXNET_2_9682.onnx",  # blended=0.8464 (ORT: 26.3s, score=8.5)
-        "UVR_MDXNET_1_9703.onnx",  # blended=0.8450 (ORT: 26.9s, score=8.5)
+        "UVR_MDXNET_3_9662.onnx",
+        "UVR_MDXNET_KARA.onnx",
     ],
-    # balanced: same as fast
     "balanced": [
         "UVR_MDXNET_3_9662.onnx",
         "UVR_MDXNET_KARA.onnx",
-        "UVR_MDXNET_2_9682.onnx",
-        "UVR_MDXNET_1_9703.onnx",
     ],
-    # quality: fast score-9 models with 75% overlap (no slow models — 9.5 is not worth 3× time)
-    # Benchmark: 3_9662=26.8s, KARA=27.9s, 2_9682=28.7s, 1_9703=26.5s (all score 8.5-9)
-    # Excluded: Voc_FT=74.6s, Kim_Vocal_1=65.7s, Kim_Vocal_2=71.2s — too slow for marginal gain
+    # quality: fast 9s first, then quality_slower per CSV (Kim / Voc_FT — higher score, slower)
     "quality": [
-        "UVR_MDXNET_3_9662.onnx",  # score=9, 29.8s — best blended (0.867)
-        "UVR_MDXNET_KARA.onnx",  # score=9, 29.0s
-        "UVR_MDXNET_2_9682.onnx",  # score=8.5, 28.7s
-        "UVR_MDXNET_1_9703.onnx",  # score=8.5, 26.5s
+        "UVR_MDXNET_3_9662.onnx",
+        "UVR_MDXNET_KARA.onnx",
+        "Kim_Vocal_1.onnx",
+        "Kim_Vocal_2.onnx",
+        "UVR-MDX-NET-Voc_FT.onnx",
     ],
 }
 
 _INST_TIER_NAMES: dict[str, list[str]] = {
-    # fast: Inst_HQ_5 — highest blended in eligible inst pool
+    # fast / balanced: recommended_fast — Inst_HQ_5 (faster on 30s clip than HQ_4)
     "fast": [
-        "UVR-MDX-NET-Inst_HQ_5.onnx",  # blended=0.8013, quality_norm=0.90, speed_norm=0.406
+        "UVR-MDX-NET-Inst_HQ_5.onnx",
     ],
-    # balanced: same as fast
     "balanced": [
         "UVR-MDX-NET-Inst_HQ_5.onnx",
     ],
-    # quality: all eligible inst models, ordered by blended desc
+    # quality: Inst_HQ_5 then quality_slower Inst_HQ_4
     "quality": [
-        "UVR-MDX-NET-Inst_HQ_5.onnx",  # blended=0.8013, quality_norm=0.90, speed_norm=0.406
-        "UVR-MDX-NET-Inst_HQ_4.onnx",  # blended=0.7882, quality_norm=0.90, speed_norm=0.341
+        "UVR-MDX-NET-Inst_HQ_5.onnx",
+        "UVR-MDX-NET-Inst_HQ_4.onnx",
     ],
 }
 
@@ -153,6 +141,20 @@ def _logical_onnx_name(model_path: Path) -> str:
     if model_path.suffix.lower() == ".ort":
         return model_path.with_suffix(".onnx").name
     return model_path.name
+
+
+# Subjective score < 9 vocal checkpoints from ranked_practical_time_score.csv — not used at runtime.
+SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX: frozenset[str] = frozenset(
+    {
+        "UVR_MDXNET_1_9703.onnx",
+        "UVR_MDXNET_2_9682.onnx",
+    }
+)
+
+
+def vocal_onnx_allowed_for_service(model_path: Path) -> bool:
+    """False for benchmark-ranked below-minimum vocal checkpoints (e.g. score 8.5 MDX-Net)."""
+    return _logical_onnx_name(model_path) not in SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX
 
 
 def resolve_mdx_model_path(declared_onnx: Path) -> Path | None:
@@ -243,11 +245,53 @@ def get_available_vocal_onnx(tier: str | None = None) -> Path | None:
         if path.exists():
             pq = _prefer_quantized(path)
             resolved = resolve_mdx_model_path(pq)
-            return resolved if resolved is not None else pq
+            chosen = resolved if resolved is not None else pq
+            if vocal_onnx_allowed_for_service(chosen):
+                return chosen
+            continue
         ort = path.with_suffix(".ort")
-        if ort.is_file():
+        if ort.is_file() and vocal_onnx_allowed_for_service(ort):
             return ort
     return None
+
+
+def resolve_single_vocal_onnx(logical_onnx_name: str) -> Path | None:
+    """First on-disk path for one logical vocal ONNX name (tier search dirs)."""
+    for path in _candidate_paths_by_names([logical_onnx_name]):
+        if path.exists():
+            pq = _prefer_quantized(path)
+            resolved = resolve_mdx_model_path(pq)
+            chosen = resolved if resolved is not None else pq
+            if vocal_onnx_allowed_for_service(chosen) and mdx_model_configured(chosen):
+                return chosen
+            continue
+        ort = path.with_suffix(".ort")
+        if (
+            ort.is_file()
+            and vocal_onnx_allowed_for_service(ort)
+            and mdx_model_configured(ort)
+        ):
+            return ort
+    return None
+
+
+def resolve_declared_vocal_onnx_path(model_path: Path) -> Path | None:
+    """Resolve a user/benchmark override path (.onnx / .ort / .quant.onnx sibling)."""
+    p = model_path
+    if not p.exists():
+        ort = p.with_suffix(".ort")
+        if ort.is_file():
+            p = ort
+        else:
+            return None
+    pq = _prefer_quantized(p) if p.suffix.lower() == ".onnx" else p
+    resolved = resolve_mdx_model_path(pq)
+    chosen = resolved if resolved is not None else pq
+    if not chosen.is_file():
+        return None
+    if not vocal_onnx_allowed_for_service(chosen) or not mdx_model_configured(chosen):
+        return None
+    return chosen
 
 
 def get_available_inst_onnx(tier: str | None = None) -> Path | None:
@@ -577,6 +621,12 @@ def run_vocal_onnx(
     )
     if model_path is None or not model_path.exists():
         logger.debug("No vocal ONNX model found")
+        return None
+    if not vocal_onnx_allowed_for_service(model_path):
+        logger.warning(
+            "Vocal ONNX %s is not used by stem service (below minimum benchmark tier)",
+            model_path.name,
+        )
         return None
     return _run_mdx_onnx(
         input_path, output_path, model_path, overlap=overlap, job_logger=job_logger

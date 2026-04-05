@@ -30,7 +30,6 @@ from stem_service.config import (
     REPO_ROOT,
     STEM_BACKEND,
     htdemucs_available,
-    speed_2stem_onnx_path,
     QUALITY_ULTRA,
     ultra_available_for_device,
     SUPPORTED_AUDIO_FORMATS,
@@ -117,10 +116,11 @@ async def lifespan(app: FastAPI):
         logger.info("ONNX Stage 1 not available; Stage 1 will use Demucs 2-stem")
 
     path_kind, stage1_models = get_2stem_stage1_preview()
-    logger.info("2-stem Stage 1 will use: path=%s models=%s", path_kind, stage1_models)
-    _sp = speed_2stem_onnx_path()
-    if _sp.exists():
-        logger.info("2-stem speed ONNX (when quality=speed): %s", _sp)
+    logger.info(
+        "2-stem Stage 1 waterfall preview (rank1→4): path=%s models=%s",
+        path_kind,
+        stage1_models,
+    )
 
     # Check ultra quality models
     ultra_info = get_ultra_model_info()

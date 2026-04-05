@@ -233,7 +233,7 @@ def run_4stem_single_pass_or_hybrid(
     Entry point for 4-stem separation.
     - If USE_VAD_CHUNKS=1 and VAD available: slice at silence boundaries,
       run separation per chunk, concatenate (Option B from VADSLICE doc).
-    - Otherwise: try SCNet ONNX first, then hybrid pipeline (PyTorch Demucs for Stage 2).
+    - Otherwise: PyTorch htdemucs by default (FOUR_STEM_BACKEND=hybrid). With FOUR_STEM_BACKEND=auto, try SCNet ONNX first, then hybrid.
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """
     output_dir = output_dir.resolve()
@@ -255,7 +255,7 @@ def run_4stem_single_pass_or_hybrid(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
-    # 4-stem: try SCNet first (CPU ~48% of Demucs per NEW-flow), then hybrid (unless FOUR_STEM_BACKEND=hybrid)
+    # 4-stem: default skips SCNet (FOUR_STEM_BACKEND=hybrid → htdemucs). auto tries SCNet first when available.
     if (
         not four_stem_skip_scnet()
         and scnet_available()
@@ -305,7 +305,7 @@ def run_hybrid_4stem(
     inst_model_override: Path | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
-    Stage 1: Extract vocals (Demucs 2-stem or ONNX when available).
+    Stage 1: Extract vocals via 2-stem waterfall (MDX ranks 1–3, then Demucs htdemucs 2-stem).
     Phase inversion: instrumental = original - vocals (skip if Demucs gives instrumental).
     Stage 2: Demucs 4-stem on instrumental → drums, bass, other.
     prefer_speed=True: VAD pre-trim when USE_VAD_PRETRIM; faster Stage 1 overlap.
@@ -391,8 +391,8 @@ def run_hybrid_2stem(
       - Full file, no trim
       - 75% ONNX overlap (smoother chunk boundaries, less bleed)
 
-    ONNX-first: use MDX vocal ONNX (+ instrumental ONNX or phase inversion) when
-    available; falls back to Demucs 2-stem subprocess only when no vocal ONNX found.
+    Stage 1 waterfall: rank1 UVR_MDXNET_3_9662 (or vocal_model_override) → rank2 KARA →
+    rank3 MDX23C pair → rank4 PyTorch htdemucs 2-stem.
 
     Returns [(stem_id, path), ...]: [("vocals", ...), ("instrumental", ...)].
     """
@@ -407,7 +407,7 @@ def run_hybrid_2stem(
     # Pass None to follow USE_VAD_PRETRIM env var
     effective_input = _effective_input_path(input_path, output_dir)
 
-    # ONNX-first: Stage 1 vocal (+ optional inst) or Demucs 2-stem fallback
+    # Stage 1: ranked ONNX then Demucs (see vocal_stage1.extract_vocals_stage1)
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
         effective_input,

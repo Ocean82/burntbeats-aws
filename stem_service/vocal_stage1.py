@@ -1,14 +1,11 @@
 """
 Stage 1: Extract vocals and instrumental.
 
-Priority order (CPU-only, ONNX-first):
-  1. Speed only: models/Kim_Vocal_2.onnx by default (MDX vocal; instrumental via phase inversion).
-     Override SPEED_2STEM_ONNX to try other ONNX; Spleeter int8 (e.g. vocals.int8.onnx) is tried only if that path
-     is a Spleeter graph — last resort before falling through to MDX23C.
-  2. MDX23C / Kim_Vocal_2 / Voc_FT vocal ONNX + instrumental ONNX when configured
-     → no phase inversion when both ONNX paths succeed
-  3. Vocal ONNX for vocals + phase inversion for instrumental
-  4. Demucs 2-stem (--two-stems vocals) with models/htdemucs.*
+2-stem waterfall (try rank N only if rank N-1 failed):
+  1. vocal_model_override (benchmark) if valid, else UVR_MDXNET_3_9662 (+ inst ONNX when present, else phase inversion).
+  2. UVR_MDXNET_KARA — same inst rule.
+  3. MDX23C vocal + MDX23C instrumental (both must succeed).
+  4. PyTorch Demucs htdemucs --two-stems=vocals.
      → model-native vocals + no_vocals (phase-aligned, no subtraction)
 
 Returns (vocals_path, instrumental_path | None).
@@ -32,21 +29,17 @@ from stem_service.config import (
     USE_DEMUCS_SHIFTS_0,
     ensure_htdemucs_th,
     htdemucs_available,
-    speed_2stem_onnx_path,
 )
 from stem_service.mdx_onnx import (
     get_available_inst_onnx,
-    get_available_vocal_onnx,
     mdx_model_configured,
+    resolve_declared_vocal_onnx_path,
     resolve_mdx_model_path,
+    resolve_single_vocal_onnx,
     run_inst_onnx,
     run_vocal_onnx,
+    vocal_onnx_allowed_for_service,
 )
-from stem_service.spleeter_int8_onnx import (
-    is_spleeter_vocals_int8_onnx,
-    run_spleeter_vocals_int8_2stem,
-)
-
 logger = logging.getLogger(__name__)
 
 
@@ -101,6 +94,59 @@ def _run_demucs_two_stem(
     return vocals, no_vocals
 
 
+def _pair_vocal_with_inst_onnx(
+    input_path: Path,
+    output_dir: Path,
+    onnx_overlap: float,
+    vocal_path: Path,
+    rank: int,
+    model_tier: str,
+    inst_model_override: Path | None,
+    job_logger: "logging.Logger | None",
+) -> tuple[Path, Path | None, list[str]] | None:
+    """Run vocal ONNX; add instrumental ONNX if available, else leave phase inversion to caller."""
+    vocals_out = output_dir / f"twostem_rank{rank}_vocals.wav"
+    vocals_path = run_vocal_onnx(
+        input_path,
+        vocals_out,
+        overlap=onnx_overlap,
+        job_logger=job_logger,
+        model_path_override=vocal_path,
+    )
+    if vocals_path is None:
+        return None
+    inst_model = (
+        inst_model_override
+        if inst_model_override is not None
+        else get_available_inst_onnx(tier=model_tier)
+    )
+    if inst_model is not None:
+        inst_out = output_dir / f"twostem_rank{rank}_instrumental.wav"
+        inst_path = run_inst_onnx(
+            input_path,
+            inst_out,
+            overlap=onnx_overlap,
+            job_logger=job_logger,
+            model_path_override=inst_model,
+        )
+        if inst_path is not None:
+            logger.info(
+                "Stage 1 rank %d: vocal %s + inst %s [overlap=%.0f%%]",
+                rank,
+                vocal_path.name,
+                inst_model.name,
+                onnx_overlap * 100,
+            )
+            return vocals_path, inst_path, [vocal_path.name, inst_model.name]
+    logger.info(
+        "Stage 1 rank %d: vocal %s + phase inversion [overlap=%.0f%%]",
+        rank,
+        vocal_path.name,
+        onnx_overlap * 100,
+    )
+    return vocals_path, None, [vocal_path.name, "phase_inversion"]
+
+
 def extract_vocals_stage1(
     input_path: Path,
     output_dir: Path,
@@ -122,63 +168,63 @@ def extract_vocals_stage1(
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 75% overlap for quality, 50% for speed
     onnx_overlap = 0.5 if prefer_speed else 0.75
 
-    # 2-stem speed: Spleeter int8 (vocals.int8.onnx) or MDX-style ONNX from SPEED_2STEM_ONNX before MDX23C pair.
-    speed_onnx = speed_2stem_onnx_path()
-    if prefer_speed and speed_onnx.exists():
-        if is_spleeter_vocals_int8_onnx(speed_onnx):
-            sp = run_spleeter_vocals_int8_2stem(
-                input_path,
-                output_dir,
-                model_path=speed_onnx,
-                job_logger=job_logger,
+    # Rank 1: benchmark override when valid, else UVR_MDXNET_3_9662 (see ranked_practical_time_score.csv).
+    rank1_vocal: Path | None = None
+    if vocal_model_override is not None:
+        if vocal_onnx_allowed_for_service(vocal_model_override):
+            rank1_vocal = resolve_declared_vocal_onnx_path(vocal_model_override)
+        else:
+            logger.warning(
+                "Ignoring vocal_model_override %s (not eligible for stem service)",
+                vocal_model_override.name,
             )
-            if sp is not None:
-                vocals_path, inst_path = sp
-                logger.info(
-                    "Stage 1: speed 2-stem Spleeter int8 (%s) — vocals + instrumental",
-                    speed_onnx.name,
-                )
-                return vocals_path, inst_path, [speed_onnx.name]
-        elif mdx_model_configured(speed_onnx):
-            vocals_out = output_dir / "speed2stem_vocals.wav"
-            vocals_path = run_vocal_onnx(
-                input_path,
-                vocals_out,
-                overlap=onnx_overlap,
-                job_logger=job_logger,
-                model_path_override=speed_onnx,
-            )
-            if vocals_path is not None:
-                logger.info(
-                    "Stage 1: speed 2-stem MDX vocal ONNX (%s) + phase inversion for instrumental",
-                    speed_onnx.name,
-                )
-                return vocals_path, None, [speed_onnx.name]
+    if rank1_vocal is None:
+        rank1_vocal = resolve_single_vocal_onnx("UVR_MDXNET_3_9662.onnx")
+    if rank1_vocal is not None:
+        got = _pair_vocal_with_inst_onnx(
+            input_path,
+            output_dir,
+            onnx_overlap,
+            rank1_vocal,
+            rank=1,
+            model_tier=model_tier,
+            inst_model_override=inst_model_override,
+            job_logger=job_logger,
+        )
+        if got is not None:
+            return got
 
-    # BENCHMARK-DRIVEN PRIORITY ORDER (ranked_blended_q80_s20.csv):
-    # Speed-optimized: UVR_MDXNET_3_9662 (score=9, 26.8s) and KARA (score=9, 27.9s) are fastest.
-    # Excluded: Voc_FT=74.6s, Kim_Vocal_2=71.2s — 3× slower for negligible quality gain.
-    # MDX23C=121.7s — excluded, too slow for 2-stem.
-    # Demucs ONNX (htdemucs_6s, htdemucs_embedded) scored 1/10 — never use.
+    # Rank 2: UVR_MDXNET_KARA
+    rank2_vocal = resolve_single_vocal_onnx("UVR_MDXNET_KARA.onnx")
+    if rank2_vocal is not None:
+        got = _pair_vocal_with_inst_onnx(
+            input_path,
+            output_dir,
+            onnx_overlap,
+            rank2_vocal,
+            rank=2,
+            model_tier=model_tier,
+            inst_model_override=inst_model_override,
+            job_logger=job_logger,
+        )
+        if got is not None:
+            return got
 
-    # Check if we have MDX23C models available (quality fallback only)
+    # Rank 3: MDX23C pair (both stems must succeed)
     from .config import mdx23c_vocal_available, mdx23c_inst_available
 
     mdx23c_vocal_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_vocal.onnx")
     mdx23c_inst_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_instrumental.onnx")
     if (
-        model_tier == "quality"
-        and mdx23c_vocal_available()
+        mdx23c_vocal_available()
         and mdx23c_inst_available()
         and mdx23c_vocal_path is not None
         and mdx23c_inst_path is not None
         and mdx_model_configured(mdx23c_vocal_path)
         and mdx_model_configured(mdx23c_inst_path)
     ):
-        # Use MDX23C models directly (NEW-FLOW RECOMMENDATION FOR 2-STEM)
         vocals_out = output_dir / "mdx23c_vocals.wav"
         vocals_path = run_vocal_onnx(
             input_path,
@@ -187,7 +233,6 @@ def extract_vocals_stage1(
             job_logger=job_logger,
             model_path_override=mdx23c_vocal_path,
         )
-
         if vocals_path is not None:
             inst_out = output_dir / "mdx23c_instrumental.wav"
             inst_path = run_inst_onnx(
@@ -199,7 +244,7 @@ def extract_vocals_stage1(
             )
             if inst_path is not None:
                 logger.info(
-                    "Stage 1: MDX23C vocal ONNX + MDX23C instrumental ONNX [overlap=%.0f%%]",
+                    "Stage 1 rank 3: MDX23C vocal + instrumental ONNX [overlap=%.0f%%]",
                     onnx_overlap * 100,
                 )
                 return (
@@ -208,58 +253,8 @@ def extract_vocals_stage1(
                     [mdx23c_vocal_path.name, mdx23c_inst_path.name],
                 )
 
-    # Fall back to existing vocal model detection
-    vocal_model = (
-        vocal_model_override
-        if vocal_model_override is not None
-        else get_available_vocal_onnx(tier=model_tier)
-    )
-    inst_model = (
-        inst_model_override
-        if inst_model_override is not None
-        else get_available_inst_onnx(tier=model_tier)
-    )
-
-    if vocal_model is not None and vocal_model.exists():
-        vocals_out = output_dir / "onnx_vocals.wav"
-        vocals_path = run_vocal_onnx(
-            input_path,
-            vocals_out,
-            overlap=onnx_overlap,
-            job_logger=job_logger,
-            model_path_override=vocal_model,
-        )
-
-        if vocals_path is not None:
-            # Try to also get instrumental from dedicated ONNX model
-            if inst_model is not None and inst_model.exists():
-                inst_out = output_dir / "onnx_instrumental.wav"
-                inst_path = run_inst_onnx(
-                    input_path,
-                    inst_out,
-                    overlap=onnx_overlap,
-                    job_logger=job_logger,
-                    model_path_override=inst_model,
-                )
-                if inst_path is not None:
-                    logger.info(
-                        "Stage 1: vocal ONNX (%s) + instrumental ONNX (%s) [overlap=%.0f%%]",
-                        vocal_model.name,
-                        inst_model.name,
-                        onnx_overlap * 100,
-                    )
-                    return vocals_path, inst_path, [vocal_model.name, inst_model.name]
-
-            # Vocal ONNX succeeded but no instrumental ONNX — caller does phase inversion
-            logger.info(
-                "Stage 1: vocal ONNX (%s) + phase inversion for instrumental [overlap=%.0f%%]",
-                vocal_model.name,
-                onnx_overlap * 100,
-            )
-            return vocals_path, None, [vocal_model.name, "phase_inversion"]
-
-    # No ONNX available — use Demucs 2-stem (model-native, phase-aligned)
-    logger.info("Stage 1: Demucs 2-stem (no ONNX available)")
+    # Rank 4: PyTorch Demucs htdemucs 2-stem
+    logger.info("Stage 1 rank 4: Demucs 2-stem (htdemucs)")
     vocals_path, no_vocals_path = _run_demucs_two_stem(
         input_path, output_dir, prefer_speed=prefer_speed
     )
@@ -270,27 +265,31 @@ def get_2stem_stage1_preview(
     prefer_speed: bool | None = None, model_tier: str | None = None
 ) -> tuple[str, list[str]]:
     """
-    Preview which Stage 1 path and models would be used for 2-stem (no inference).
-    Returns (path_kind, model_names) e.g. ("mdx23c", ["mdx23c_vocal.onnx", "mdx23c_instrumental.onnx"])
-    or ("onnx", ["Kim_Vocal_2.onnx", "UVR-MDX-NET-Inst_HQ_4.onnx"]) or ("demucs", ["htdemucs"]).
-    When prefer_speed is True and the speed ONNX exists (default models/Kim_Vocal_2.onnx), preview lists it first.
+    Preview the first 2-stem rank that would be attempted (on-disk checks only).
+    Waterfall: rank1 UVR_MDXNET_3_9662 → rank2 KARA → rank3 MDX23C pair → rank4 htdemucs.
     """
     from .config import mdx23c_vocal_available, mdx23c_inst_available
 
-    if prefer_speed is True:
-        sp = speed_2stem_onnx_path()
-        if sp.exists():
-            if mdx_model_configured(sp):
-                return ("mdx_speed", [sp.name])
-            if is_spleeter_vocals_int8_onnx(sp):
-                return ("spleeter_int8", [sp.name])
-
     tier = "fast" if prefer_speed else (model_tier or "balanced")
+
+    v1 = resolve_single_vocal_onnx("UVR_MDXNET_3_9662.onnx")
+    if v1 is not None:
+        inst = get_available_inst_onnx(tier=tier)
+        if inst is not None:
+            return ("onnx_rank1", [v1.name, inst.name])
+        return ("onnx_rank1", [v1.name, "phase_inversion"])
+
+    v2 = resolve_single_vocal_onnx("UVR_MDXNET_KARA.onnx")
+    if v2 is not None:
+        inst = get_available_inst_onnx(tier=tier)
+        if inst is not None:
+            return ("onnx_rank2", [v2.name, inst.name])
+        return ("onnx_rank2", [v2.name, "phase_inversion"])
+
     mdx23c_vocal_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_vocal.onnx")
     mdx23c_inst_path = resolve_mdx_model_path(MODELS_DIR / "mdx23c_instrumental.onnx")
     if (
-        tier == "quality"
-        and mdx23c_vocal_available()
+        mdx23c_vocal_available()
         and mdx23c_inst_available()
         and mdx23c_vocal_path is not None
         and mdx23c_inst_path is not None
@@ -298,12 +297,5 @@ def get_2stem_stage1_preview(
         and mdx_model_configured(mdx23c_inst_path)
     ):
         return ("mdx23c", [mdx23c_vocal_path.name, mdx23c_inst_path.name])
-
-    vocal_model = get_available_vocal_onnx(tier=tier)
-    inst_model = get_available_inst_onnx(tier=tier)
-    if vocal_model is not None and vocal_model.exists():
-        if inst_model is not None and inst_model.exists():
-            return ("onnx", [vocal_model.name, inst_model.name])
-        return ("onnx", [vocal_model.name, "phase_inversion"])
 
     return ("demucs", ["htdemucs"])

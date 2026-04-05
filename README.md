@@ -16,12 +16,12 @@ Stem separation web app (**CPU-first; no GPU required**). **Flow:** Split a trac
 
 Model tier assignments are derived from benchmarks run 2026-03-22. The rules are:
 
-- **Minimum quality score: 8.5.** Models below this are banned from all tiers. This includes `kuielab_a/b` (8.0). Legacy Demucs **ONNX** exports (`htdemucs_6s`, `htdemucs_embedded`, `demucsv4`) scored 1–2/10 in benchmarks and are **not** used by the service; 4-stem uses **PyTorch** Demucs. `Reverb_HQ_By_FoxJoy` is scored 1 for wrong role in 2-stem vocal benchmarks but kept for ultra dereverb.
+- **Minimum subjective score for selectable vocal ONNX: 9** on the benchmark clip. Score-**8.5** `UVR_MDXNET_1/2` rows in [`ranked_practical_time_score.csv`](docs/ranked_practical_time_score.csv) are **not** used. Models below **8.5** (e.g. `kuielab_a/b`) stay out of tier lists. Legacy Demucs **ONNX** exports scored 1–2/10 and are **not** used; 4-stem uses **PyTorch** Demucs. `Reverb_HQ_By_FoxJoy` is for ultra dereverb only, not default 2-stem vocals.
 - **ORT is preferred over ONNX** — `.ort` siblings are 5–10% faster and auto-selected at runtime by `resolve_mdx_model_path()`. Tier lists use `.onnx` names; ORT resolution is automatic.
-- **fast tier** — Order from **score + low `elapsed_sec`** on the 30s benchmark clip ([`ranked_practical_time_score.csv`](docs/ranked_practical_time_score.csv)); legacy blended columns are research-only—[authority doc](docs/MODEL-SELECTION-AUTHORITY.md).
+- **fast / balanced tier** — **`UVR_MDXNET_3_9662`** then **`UVR_MDXNET_KARA`** (score 9, fast elapsed on the 30s clip). Details: [`ranked_practical_time_score.csv`](docs/ranked_practical_time_score.csv), [authority doc](docs/MODEL-SELECTION-AUTHORITY.md).
 - **quality tier** — Same joint time/score framing; order and fallbacks match the authority doc and `mdx_onnx.py` (may include slower **9+** checkpoints after fast options where listed).
 - **`UVR_MDXNET_KARA_2` and `Kim_Inst` are instrumental models** despite being labeled vocal in UVR — use only for inst separation.
-- **Demucs ONNX is not in the runtime** — 4-stem uses **PyTorch** (`htdemucs.pth` / `.th`) after optional SCNet; see [docs/stem-pipeline.md](docs/stem-pipeline.md).
+- **Demucs ONNX is not in the runtime** — 4-stem / expand default to **PyTorch** `htdemucs` (`FOUR_STEM_BACKEND=hybrid`). Set `FOUR_STEM_BACKEND=auto` to try SCNet ONNX first when deployed; see [docs/stem-pipeline.md](docs/stem-pipeline.md).
 
 Current approved tiers (from `stem_service/mdx_onnx.py`):
 
@@ -206,6 +206,9 @@ Fixed in code: `stem_service/server.py` imports `asynccontextmanager` from `cont
 - **Models required:** Stem splitting needs at least `models/htdemucs.th` (or `htdemucs.pth`). Run `bash scripts/check-models.sh` from repo root; if it fails, run `python scripts/download_htdemucs_official.py` to download the official Demucs checkpoint into `models/`.
 - **Accept timeout:** The backend waits up to 5 minutes for the stem service to accept the upload (return 202). For large files or slow disk, increase `SPLIT_ACCEPT_TIMEOUT_MS` (e.g. 600000 for 10 min) in backend env or `backend/.env`.
 - **Polling:** The frontend polls for up to 16 minutes for job completion. CPU separation can take several minutes per track; use **Speed** quality for faster results.
+
+**`Weights only load failed` / `Unsupported global: ... HTDemucs` when Demucs runs (2-stem or 4-stem)**  
+PyTorch **2.6+** defaults `torch.load` to safe unpickling only; **Demucs** checkpoints need full pickle load. The repo pins **`torch` and `torchaudio` below 2.6** in `stem_service/requirements.txt`. If you overrode that and installed newer PyTorch, reinstall from the requirements file (or rebuild the **`stem_service`** Docker image).
 
 ---
 

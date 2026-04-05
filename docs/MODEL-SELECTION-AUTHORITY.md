@@ -12,7 +12,7 @@ Default model choices are **not** “pick the highest subjective score and ignor
 
 **Why runtime dominates at scale.** Matrix rows are measured on a **30-second** clip, but users upload **full tracks**. Wall time scales roughly with audio length in the same ballpark as the benchmark’s **real-time factor** (elapsed ÷ clip length). A path that needs ~75s for 30s of audio is on the order of **2.5× real time**; a ~4-minute song is then on the order of **many minutes** for that stage alone, before expand, I/O, and contention. At **tens of tracks per day**, a slightly higher score on a 1–10 scale can translate into **hours** of extra machine time and worse perceived responsiveness, for a gain listeners often do not notice in blind comparison—e.g. a **9.5** vs **9** when faster **9**s finish in **~26–29s** on the same clip (**roughly 2–3×** faster). When marginal quality is small and marginal time is large, the slower checkpoint is a **poor default** for a service even if it “wins” a score column.
 
-**What we do instead.** [`ranked_practical_time_score.csv`](ranked_practical_time_score.csv) and the tier tables below encode **joint** judgment: keep scores in an acceptable band (typically **≥ 9**, with **8.5** allowed only where the benchmark shows the same **fast** wall-clock class as other `UVR_MDXNET_*` rows), and **prefer low `elapsed_sec`** on the reference clip. Legacy **blended** scores (`quality_norm` / `speed_norm` composites) are **secondary**; see [Legacy: blended benchmark](#legacy-blended-benchmark-research-only).
+**What we do instead.** [`ranked_practical_time_score.csv`](ranked_practical_time_score.csv) and the tier tables below encode **joint** judgment: the stem service uses **subjective score ≥ 9** vocal checkpoints only. Rows tagged **`recommended_8_5_fast`** in the CSV are **not** selectable at runtime (same wall-clock class as fast 9s, lower score). **Prefer low `elapsed_sec`** on the reference clip among eligible models. Legacy **blended** scores are **secondary**; see [Legacy: blended benchmark](#legacy-blended-benchmark-research-only).
 
 **Quality is still tuned outside the checkpoint name.** Slower ONNX vocal models are not the only knob. End-user **speed** / **quality** / **ultra** modes (and internal MDX tier usage) still change **overlap, VAD usage, SCNet stride, Demucs bag / shifts**, and related routing—see **[`stem-pipeline.md`](stem-pipeline.md)** (*Quality tiers*). **Fast** and **quality** product modes therefore improve or preserve output through **pipeline parameters and fallbacks**, not only by selecting the slowest high-score MDX export.
 
@@ -30,14 +30,14 @@ Tier lists below are **names only**. For **`n_fft` / `dim_f` / `dim_t` / `compen
 
 - **Clip:** 30s (same as `scripts/run_model_matrix_benchmark.py` / matrix runs).
 - **Scores:** Parsed from per-run `sound-quality.md` / `sound-qulaity.md` under `tmp/model_matrix_benchmark/<case>/` (see `scripts/rank_model_matrix.py`).
-- **Decision rule:** Prefer **subjective score ≥ 9** and **low `elapsed_sec`** on that clip. Treat **8.5** as acceptable only for **fast** `UVR_MDXNET_*` rows (~26–29s). Do **not** use blended `quality_norm`/`speed_norm` math for product decisions unless you explicitly want a research composite.
+- **Decision rule:** **Subjective score ≥ 9** for any vocal path the service may choose; **low `elapsed_sec`** among those. The **8.5** `UVR_MDXNET_1/2` rows are documented in the CSV for comparison only — **not** wired into `mdx_onnx.py` tier lists. Do **not** use blended `quality_norm`/`speed_norm` math for product decisions unless you explicitly want a research composite.
 
 **Tiers in the CSV:**
 
 | CSV `tier` | Meaning |
 |------------|---------|
 | `recommended_fast` | Score 9 + fast elapsed (vocal MDX numbered/KARA, or Inst_HQ_5) |
-| `recommended_8_5_fast` | Score 8.5 but same speed class as fast UVR_MDXNET_* |
+| `recommended_8_5_fast` | Score 8.5 (same speed class as fast 9s) — **not used by the stem service** |
 | `quality_slower` | Score 9+ but slower (Kim_Vocal_*, Voc_FT, Inst_HQ_4) |
 | `slow_pair` | mdx23c (quality experiments, not fast tier) |
 | `special_*` | Reverb — not comparable to 2-stem vocal ranking |
@@ -55,10 +55,10 @@ Lists below are **logical ONNX names**; runtime resolves to `.ort` when present.
 
 | Mode | Order (try first → last) |
 |------|---------------------------|
-| **fast / balanced** | `UVR_MDXNET_3_9662` → `UVR_MDXNET_KARA` → `UVR_MDXNET_2_9682` → `UVR_MDXNET_1_9703` |
+| **fast / balanced** | `UVR_MDXNET_3_9662` → `UVR_MDXNET_KARA` (score **9** on the benchmark clip only) |
 | **quality** | `UVR_MDXNET_3_9662` → `UVR_MDXNET_KARA` → `Kim_Vocal_1` → `Kim_Vocal_2` → `UVR-MDX-NET-Voc_FT` |
 
-Fast tier uses **8.5** models (`UVR_MDXNET_1/2`) only in the **numbered MDX** family where the benchmark showed **~26–29s** on the 30s clip. Quality tier prioritizes **9** models that are slower (Kim / Voc_FT) after the fast 9s.
+**2-stem (production waterfall)** tries in order until one succeeds: **(1)** `vocal_model_override` when valid, else **`UVR_MDXNET_3_9662`** + instrumental ONNX or phase inversion; **(2)** **`UVR_MDXNET_KARA`** same; **(3)** **MDX23C** vocal + instrumental pair; **(4)** **PyTorch htdemucs** `--two-stems=vocals`. Tier lists below still apply to **instrumental ONNX** selection (`model_tier`) and other helpers; they do not insert Kim/Voc_FT into this 2-stem chain. **`vocal_model_override`** is rejected if disallowed (see `SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX` in `mdx_onnx.py`). `SPEED_2STEM_ONNX` is legacy/diagnostic only (see `config.speed_2stem_onnx_path`).
 
 ### Instrumental
 
