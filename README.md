@@ -4,7 +4,7 @@
 
 Stem separation web app (**CPU-first; no GPU required**). **Flow:** Split a track (2-stem: vocals + instrumental first) or **load stems** from other projects to mix. After 2-stem split, optionally **Keep going → 4 stems** (drums, bass, other). Mixer: trim, level, pan, **pitch** (semitones), **time stretch**, export master or stems. Frontend: React + Vite. Backend: Node (Express). Stem engine: Python (**hybrid** + ONNX + optional Demucs subprocess). **Quality tiers:** Speed, Quality (default), Ultra — see [docs/stem-pipeline.md](docs/stem-pipeline.md) for exact routing.
 
-**Last updated:** 2026-03-22
+**Last updated:** 2026-04-05
 
 ---
 
@@ -12,12 +12,14 @@ Stem separation web app (**CPU-first; no GPU required**). **Flow:** Split a trac
 
 **Full authority doc: [docs/MODEL-SELECTION-AUTHORITY.md](docs/MODEL-SELECTION-AUTHORITY.md)**
 
+**Defaults weigh wall time, not score alone:** a slightly higher subjective score is not worth many× slower runs on full songs when marginal quality is small—see [*Product principle: wall-clock time and throughput*](docs/MODEL-SELECTION-AUTHORITY.md#product-principle-wall-clock-time-and-throughput). **Speed / Quality / Ultra** still tune overlap, VAD, SCNet stride, Demucs, and related routing ([`stem-pipeline.md`](docs/stem-pipeline.md)).
+
 Model tier assignments are derived from benchmarks run 2026-03-22. The rules are:
 
 - **Minimum quality score: 8.5.** Models below this are banned from all tiers. This includes `kuielab_a/b` (8.0). Legacy Demucs **ONNX** exports (`htdemucs_6s`, `htdemucs_embedded`, `demucsv4`) scored 1–2/10 in benchmarks and are **not** used by the service; 4-stem uses **PyTorch** Demucs. `Reverb_HQ_By_FoxJoy` is scored 1 for wrong role in 2-stem vocal benchmarks but kept for ultra dereverb.
 - **ORT is preferred over ONNX** — `.ort` siblings are 5–10% faster and auto-selected at runtime by `resolve_mdx_model_path()`. Tier lists use `.onnx` names; ORT resolution is automatic.
-- **fast tier** = ranked by blended score (quality×0.8 + speed×0.2), fastest first.
-- **quality tier** = ranked by raw quality score descending.
+- **fast tier** — Order from **score + low `elapsed_sec`** on the 30s benchmark clip ([`ranked_practical_time_score.csv`](docs/ranked_practical_time_score.csv)); legacy blended columns are research-only—[authority doc](docs/MODEL-SELECTION-AUTHORITY.md).
+- **quality tier** — Same joint time/score framing; order and fallbacks match the authority doc and `mdx_onnx.py` (may include slower **9+** checkpoints after fast options where listed).
 - **`UVR_MDXNET_KARA_2` and `Kim_Inst` are instrumental models** despite being labeled vocal in UVR — use only for inst separation.
 - **Demucs ONNX is not in the runtime** — 4-stem uses **PyTorch** (`htdemucs.pth` / `.th`) after optional SCNet; see [docs/stem-pipeline.md](docs/stem-pipeline.md).
 

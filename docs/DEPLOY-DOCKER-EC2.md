@@ -28,7 +28,6 @@
 ## Routine sync (git on the server)
 
 From the repo clone on the instance (example path: **`/home/ubuntu/burntbeats-aws`**):
-
 ```bash
 cd /home/ubuntu/burntbeats-aws
 git pull --ff-only origin main

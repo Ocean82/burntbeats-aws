@@ -6,6 +6,18 @@
 
 ---
 
+## Product principle: wall-clock time and throughput
+
+Default model choices are **not** “pick the highest subjective score and ignore runtime.” They are **time-budgeted quality**: the best separation **we are willing to pay for in CPU minutes, queue latency, and daily capacity** on a shared host.
+
+**Why runtime dominates at scale.** Matrix rows are measured on a **30-second** clip, but users upload **full tracks**. Wall time scales roughly with audio length in the same ballpark as the benchmark’s **real-time factor** (elapsed ÷ clip length). A path that needs ~75s for 30s of audio is on the order of **2.5× real time**; a ~4-minute song is then on the order of **many minutes** for that stage alone, before expand, I/O, and contention. At **tens of tracks per day**, a slightly higher score on a 1–10 scale can translate into **hours** of extra machine time and worse perceived responsiveness, for a gain listeners often do not notice in blind comparison—e.g. a **9.5** vs **9** when faster **9**s finish in **~26–29s** on the same clip (**roughly 2–3×** faster). When marginal quality is small and marginal time is large, the slower checkpoint is a **poor default** for a service even if it “wins” a score column.
+
+**What we do instead.** [`ranked_practical_time_score.csv`](ranked_practical_time_score.csv) and the tier tables below encode **joint** judgment: keep scores in an acceptable band (typically **≥ 9**, with **8.5** allowed only where the benchmark shows the same **fast** wall-clock class as other `UVR_MDXNET_*` rows), and **prefer low `elapsed_sec`** on the reference clip. Legacy **blended** scores (`quality_norm` / `speed_norm` composites) are **secondary**; see [Legacy: blended benchmark](#legacy-blended-benchmark-research-only).
+
+**Quality is still tuned outside the checkpoint name.** Slower ONNX vocal models are not the only knob. End-user **speed** / **quality** / **ultra** modes (and internal MDX tier usage) still change **overlap, VAD usage, SCNet stride, Demucs bag / shifts**, and related routing—see **[`stem-pipeline.md`](stem-pipeline.md)** (*Quality tiers*). **Fast** and **quality** product modes therefore improve or preserve output through **pipeline parameters and fallbacks**, not only by selecting the slowest high-score MDX export.
+
+---
+
 ## MDX numeric parameters (n_fft, overlap, etc.)
 
 Tier lists below are **names only**. For **`n_fft` / `dim_f` / `dim_t` / `compensate`** and how they relate to UVR `model_data.json`, see **[`MODEL-PARAMS.md`](MODEL-PARAMS.md)**.

@@ -77,12 +77,32 @@ elif [ -f "$SOURCE/silero_vad.jit" ]; then
   echo "WARNING: Only silero_vad.jit found; pipeline now uses silero_vad.onnx — convert or copy the ONNX file"
 fi
 
-# 5. Root-level ONNX (optional; app also checks mdxnet_models/ and MDX_Net_Models/)
-for onnx in Kim_Vocal_2.onnx UVR-MDX-NET-Inst_HQ_5.onnx UVR-MDX-NET-Voc_FT.onnx; do
-  if [ -f "$SOURCE/$onnx" ]; then
-    cp -f "$SOURCE/$onnx" "$MODELS_DIR/$onnx"
-    echo "OK models/$onnx (from source root)"
-  fi
+# 5. Root-level MDX ONNX + ORT (optional; app also checks mdxnet_models/ and MDX_Net_Models/).
+#    Runtime prefers .ort when both exist — see stem_service.mdx_onnx resolve_mdx_model_path().
+#    Logical names / tiers: docs/MODEL-SELECTION-AUTHORITY.md, docs/ranked_practical_time_score.csv
+#    (Whole-tree copies in §2–§3 already include any .ort files inside those dirs.)
+root_mdx_bases=(
+  UVR_MDXNET_3_9662
+  UVR_MDXNET_KARA
+  UVR_MDXNET_2_9682
+  UVR_MDXNET_1_9703
+  Kim_Vocal_1
+  Kim_Vocal_2
+  UVR-MDX-NET-Voc_FT
+  UVR-MDX-NET-Inst_HQ_5
+  UVR-MDX-NET-Inst_HQ_4
+  Reverb_HQ_By_FoxJoy
+  mdx23c_vocal
+  mdx23c_instrumental
+)
+for base in "${root_mdx_bases[@]}"; do
+  for ext in onnx ort; do
+    f="${base}.${ext}"
+    if [ -f "$SOURCE/$f" ]; then
+      cp -f "$SOURCE/$f" "$MODELS_DIR/$f"
+      echo "OK models/$f (from source root)"
+    fi
+  done
 done
 
 echo ""
