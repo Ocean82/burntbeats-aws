@@ -43,10 +43,6 @@ import { PaywallBanner } from "./components/PaywallBanner";
 import { HeaderUserButton } from "./components/AuthGate";
 import { cn } from "./utils/cn";
 import type { StemDefinition, StemId, MixerState, TrimState } from "./types";
-import {
-  useKeyboardShortcuts,
-  type ShortcutHandlers,
-} from "./hooks/useKeyboardShortcuts";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
 import { useWaveformCompute } from "./hooks/useWaveformCompute";
 import { useExport } from "./hooks/useExport";
@@ -68,15 +64,17 @@ import {
 } from "./components/ErrorBoundary";
 import { ProcessingSettingsPanel } from "./components/ProcessingSettingsPanel";
 import { PIPELINE_ANIMATION_DELAYS_MS, isLocalDevFullApp } from "./config";
-import { defaultStemState, type StemEditorState } from "./stem-editor-state";
+import type { StemEditorState } from "./stem-editor-state";
 
 import { useAppStore } from "./store/appStore";
 import { useUiModals } from "./hooks/useUiModals";
 import { useGuidanceSystem } from "./hooks/useGuidanceSystem";
+import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts";
+import { useExportCompare } from "./hooks/useExportCompare";
+import { useExportModalAction } from "./hooks/useExportModalAction";
 import {
   useUiLatencyMonitor,
   startUiLatencyMark,
-  finishUiLatencyMark,
 } from "./hooks/useUiLatencyMonitor";
 import { PricingPage } from "./components/PricingPage";
 import { Skeleton } from "./components/ui/skeleton";
@@ -146,7 +144,7 @@ export function App() {
 
   useEffect(() => {
     void refetchUsage();
-  }, [splitResultStems.length, refetchUsage]);
+  }, [splitResultStems.length, subscription.status, localDevFullApp, refetchUsage]);
   const isBasicPlan =
     subscription.status === "active" && subscription.plan === "basic";
   const stemQualityOptions = isBasicPlan ? "speed_only" : "full";
@@ -195,10 +193,34 @@ export function App() {
     compareMasterExportServerAndClient,
   } = useExport();
 
-  const [isComparingExport, setIsComparingExport] = useState(false);
-  const [exportCompareSummary, setExportCompareSummary] = useState<
-    string | null
-  >(null);
+  const { isComparingExport, exportCompareSummary, onCompareExport } =
+    useExportCompare({
+      compareMasterExportServerAndClient,
+      loadedStemCount: loadedStems.length,
+      splitJobId,
+      splitResultStems,
+      stemBuffers,
+      stemStates,
+      uploadName,
+    });
+  const handleExportFromModal = useExportModalAction({
+    handleExportWithOptions,
+    stemBuffers,
+    mixStems,
+    stemStates,
+    uploadName,
+    setSplitError,
+    closeExportModal: () => closeModal("export"),
+    loadedStemCount: loadedStems.length,
+    splitJobId,
+    splitResultStems,
+    onSuccessfulExport: () => {
+      setExportNotice(
+        "Download started — check your browser’s downloads folder.",
+      );
+      setHasCompletedFirstExport(true);
+    },
+  });
 
   // ── Batch queue hook ──────────────────────────────────────────────────────
   const {
@@ -254,9 +276,7 @@ export function App() {
     useStemLoading({
       allStemEntries,
       audioContextRef,
-      setStemStates: setStemStates as unknown as (
-        updater: (prev: Record<string, unknown>) => Record<string, unknown>,
-      ) => void,
+      setStemStates,
       setSplitError,
     });
 
@@ -367,6 +387,13 @@ export function App() {
     // Before splitting, show the full default rack (helps solo/mute keyboard shortcuts).
     return stemDefinitions.map((s) => ({ ...s, id: s.id as StemId }));
   }, [splitResultStems, loadedStems]);
+  const resolvedActiveStemId = useMemo(
+    () =>
+      activeStemId && visibleStems.some((stem) => stem.id === activeStemId)
+        ? activeStemId
+        : visibleStems[0]?.id,
+    [activeStemId, visibleStems],
+  );
 
   const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
   const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
@@ -485,91 +512,24 @@ export function App() {
   }, []);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
-  const setSoloAtIndex = useCallback(
-    (index: number) => {
-      const id = visibleStems[index]?.id;
-      if (id)
-        setStemStates((c) => ({
-          ...c,
-          [id]: { ...(c[id] ?? defaultStemState()), soloed: !c[id]?.soloed },
-        }));
-    },
-    [visibleStems],
-  );
-  const setMuteFirst = useCallback(() => {
-    const id = visibleStems[0]?.id;
-    if (id)
-      setStemStates((c) => ({
-        ...c,
-        [id]: { ...(c[id] ?? defaultStemState()), muted: !c[id]?.muted },
-      }));
-  }, [visibleStems]);
-  const shortcutHandlers: ShortcutHandlers = useMemo(() => {
-    const TRIM_STEP = 1;
-    const nudgeTrim = (which: "start" | "end", delta: number) => {
-      if (!activeStemId) return;
-      setStemStates((p) => {
-        const st = p[activeStemId] ?? defaultStemState();
-        const { start, end } = st.trim;
-        const newTrim =
-          which === "start"
-            ? { start: Math.max(0, Math.min(start + delta, end - 1)), end }
-            : { start, end: Math.max(start + 1, Math.min(end + delta, 100)) };
-        return { ...p, [activeStemId]: { ...st, trim: newTrim } };
-      });
-    };
-    return {
-      playStop: () => {
-        if (mixStems.length > 0)
-          void handlePlayMix(mixStems, stemStates, stemBuffers);
-      },
-      solo1: () => setSoloAtIndex(0),
-      solo2: () => setSoloAtIndex(1),
-      solo3: () => setSoloAtIndex(2),
-      solo4: () => setSoloAtIndex(3),
-      muteToggle: setMuteFirst,
-      export: () => {
-        if (mixStems.length > 0) {
-          openModal("export");
-        }
-      },
-      undo: () => {
-        undoStemStates();
-      },
-      redo: () => {
-        redoStemStates();
-      },
-      trimStartLeft: () => nudgeTrim("start", -TRIM_STEP),
-      trimStartRight: () => nudgeTrim("start", +TRIM_STEP),
-      trimEndLeft: () => nudgeTrim("end", -TRIM_STEP),
-      trimEndRight: () => nudgeTrim("end", +TRIM_STEP),
-      help: () => {
-        openModal("help");
-      },
-      escape: () => {
-        if (showHelpModal) closeModal("help");
-        else if (showExportModal) closeModal("export");
-        else if (showPresetsModal) closeModal("presets");
-        else if (isPlayingMix) handleStopMix();
-      },
-    };
-  }, [
+  useAppKeyboardShortcuts({
+    visibleStems,
+    resolvedActiveStemId,
     mixStems,
     stemStates,
     stemBuffers,
-    activeStemId,
+    setStemStates,
     handlePlayMix,
     handleStopMix,
+    openModal,
+    closeModal,
     showHelpModal,
     showExportModal,
     showPresetsModal,
     isPlayingMix,
-    setSoloAtIndex,
-    setMuteFirst,
     undoStemStates,
     redoStemStates,
-  ]);
-  useKeyboardShortcuts(shortcutHandlers);
+  });
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-white">
@@ -600,27 +560,7 @@ export function App() {
             <ExportOptionsModal
               isOpen={showExportModal}
               onClose={() => closeModal("export")}
-              onExport={async (opts) => {
-                await handleExportWithOptions(
-                  opts,
-                  stemBuffers,
-                  mixStems,
-                  stemStates,
-                  uploadName,
-                  setSplitError,
-                  () => closeModal("export"),
-                  loadedStems.length === 0 ? splitJobId : null,
-                  loadedStems.length === 0
-                    ? splitResultStems.map((s) => s.id)
-                    : [],
-                  () => {
-                    setExportNotice(
-                      "Download started — check your browser’s downloads folder.",
-                    );
-                    setHasCompletedFirstExport(true);
-                  },
-                );
-              }}
+              onExport={handleExportFromModal}
               isExporting={isExporting}
               stemCount={mixStems.length}
               allowStemBundleTargets={exportAllowStemBundleTargets}
@@ -1257,61 +1197,7 @@ export function App() {
                           openModal("export");
                         }}
                         isComparingExport={isComparingExport}
-                        onCompareExport={
-                          loadedStems.length === 0 &&
-                          typeof splitJobId === "string" &&
-                          splitJobId.length > 0 &&
-                          splitResultStems.length > 0
-                            ? () => {
-                                void (async () => {
-                                  setIsComparingExport(true);
-                                  setExportCompareSummary(null);
-                                  try {
-                                    const metrics =
-                                      await compareMasterExportServerAndClient({
-                                        serverExportJobId: splitJobId,
-                                        stemBuffers,
-                                        splitResultStems,
-                                        stemStates,
-                                        uploadName,
-                                        normalize: true,
-                                        stemIds: splitResultStems.map(
-                                          (s) => s.id,
-                                        ),
-                                      });
-                                    if (!metrics.ok) {
-                                      setExportCompareSummary(
-                                        `Compare failed: ${metrics.error ?? "unknown error"}`,
-                                      );
-                                      return;
-                                    }
-                                    const rmsDb =
-                                      metrics.rmsDiffDb != null
-                                        ? `${metrics.rmsDiffDb.toFixed(1)} dB`
-                                        : "n/a";
-                                    setExportCompareSummary(
-                                      `Server vs Client: duration diff ${
-                                        metrics.durationDiffSec?.toFixed(3) ??
-                                        "n/a"
-                                      }s, RMS diff ${rmsDb}, peak diff ${
-                                        metrics.peakDiff?.toFixed(4) ?? "n/a"
-                                      }`,
-                                    );
-                                  } catch (e) {
-                                    setExportCompareSummary(
-                                      `Compare failed: ${
-                                        e instanceof Error
-                                          ? e.message
-                                          : "unknown error"
-                                      }`,
-                                    );
-                                  } finally {
-                                    setIsComparingExport(false);
-                                  }
-                                })();
-                              }
-                            : undefined
-                        }
+                        onCompareExport={onCompareExport}
                         onResetLevels={resetTrackAdjustments}
                         hasStemBuffers={Object.keys(stemBuffers).length > 0}
                         stems={visibleStems as StemWithOptionalUrl[]}
@@ -1328,7 +1214,7 @@ export function App() {
                         isLoadingStems={isLoadingStems}
                         loadingError={loadingError}
                         onRetryLoadStems={retryLoadStems}
-                        activeStemId={activeStemId || visibleStems[0]?.id}
+                        activeStemId={resolvedActiveStemId}
                         onActiveStemChange={setActiveStemId}
                         onStemStateChange={handleStemStateChange}
                         onPreviewStem={handlePreviewStemFromMixer}

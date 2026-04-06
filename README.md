@@ -97,6 +97,9 @@ pip install -r stem_service/requirements.txt   # if not using run-stem-service.s
 ```
 The stem run scripts may install deps on first start; manual work on the stem service should always use **`source .venv/bin/activate`** first.
 
+If you add/remove Python packages in `stem_service/requirements.txt`, also update `stem_service/requirements.lock.txt` so lock-based installs and CI stay in sync.
+From repo root with your venv active: `python scripts/refresh_stem_requirements_lock.py`.
+
 **Frontend .env:** Ensure `frontend/.env` has `VITE_API_BASE_URL=http://localhost:3001` (or your backend URL). Copy from `frontend/.env.example` if needed.
 
 ### 2. Run locally (localhost)

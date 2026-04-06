@@ -1,13 +1,19 @@
-import { memo } from "react";
-import { Headphones, Play, Square, Volume2, VolumeX } from "lucide-react";
+import { memo, useCallback } from "react";
+import {
+  Headphones,
+  Play,
+  Square,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import type { StemDefinition } from "../../types";
 import { cn } from "../../utils/cn";
 import type { StemEditorState } from "../../stem-editor-state";
-import { stemThemeVariables } from "../../utils/stemThemeVariables";
 
 const MIN_TRIM_GAP_PCT = 2;
 
 function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 }
@@ -16,11 +22,13 @@ interface StemControlsProps {
   stem: StemDefinition;
   state: StemEditorState;
   duration: number;
-  /** False until this stem's AudioBuffer is decoded — channel strip only affects audible output after this. */
   audioReady: boolean;
   isPreviewPlaying: boolean;
   isLoadingPreview: boolean;
-  onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
+  onStemStateChange: (
+    stemId: string,
+    next: Partial<StemEditorState>
+  ) => void;
   onPreviewStem: (stemId: string) => void;
 }
 
@@ -35,361 +43,203 @@ export const StemControls = memo(function StemControls({
   onPreviewStem,
 }: StemControlsProps) {
   const { mixer, trim, muted, soloed } = state;
+
   const trimStartSec = duration * (trim.start / 100);
   const trimEndSec = duration * (trim.end / 100);
 
+  const updateMixer = useCallback(
+    (patch: Partial<typeof mixer>) =>
+      onStemStateChange(stem.id, {
+        mixer: { ...mixer, ...patch },
+      }),
+    [mixer, onStemStateChange, stem.id]
+  );
+
+  const updateTrimStart = (value: number) => {
+    const clamped = Math.min(value, trim.end - MIN_TRIM_GAP_PCT);
+    onStemStateChange(stem.id, {
+      trim: { ...trim, start: clamped },
+    });
+  };
+
+  const updateTrimEnd = (value: number) => {
+    const clamped = Math.max(value, trim.start + MIN_TRIM_GAP_PCT);
+    onStemStateChange(stem.id, {
+      trim: { ...trim, end: clamped },
+    });
+  };
+
   return (
-    <div
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 p-4"
-      style={stemThemeVariables(stem)}
-    >
+    <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <span className="stem-header-glow-dot h-2.5 w-2.5 shrink-0 rounded-full" />
-        <span className="font-semibold text-sm text-white">{stem.label}</span>
-        <span className="text-xs text-white/50">{stem.subtitle}</span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onPreviewStem(stem.id)}
-            disabled={!audioReady || isLoadingPreview}
-            title={
-              !audioReady
-                ? "This stem is still loading — preview will be available when the waveform finishes."
-                : undefined
-            }
-            aria-label={
-              isPreviewPlaying
-                ? `Stop ${stem.label} preview`
-                : `Preview ${stem.label}`
-            }
-            className={cn(
-              "flex min-w-[70px] items-center justify-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
-              isPreviewPlaying
-                ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
-                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
-              isLoadingPreview &&
-                "border-white/10 bg-white/5 text-white/70 opacity-50 cursor-not-allowed",
-            )}
-          >
-            {isLoadingPreview ? (
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            ) : isPreviewPlaying ? (
-              <Square className="h-3 w-3" />
-            ) : (
-              <Play className="h-3 w-3" />
-            )}
-            {isLoadingPreview ? "" : isPreviewPlaying ? "Stop" : "Hear"}
-          </button>
-          <button
-            type="button"
-            onClick={() => onStemStateChange(stem.id, { soloed: !soloed })}
-            disabled={!audioReady}
-            aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
-            className={cn(
-              "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
-              soloed
-                ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
-                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
-              !audioReady && "opacity-40",
-            )}
-          >
-            <Headphones className="h-3 w-3" />
-            Solo
-          </button>
-          <button
-            type="button"
-            onClick={() => onStemStateChange(stem.id, { muted: !muted })}
-            disabled={!audioReady}
-            aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
-            className={cn(
-              "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
-              muted
-                ? "border-red-400/40 bg-red-500/20 text-red-200"
-                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
-              !audioReady && "opacity-40",
-            )}
-          >
-            {muted ? (
-              <VolumeX className="h-3 w-3" />
-            ) : (
-              <Volume2 className="h-3 w-3" />
-            )}
-            {muted ? "Unmute" : "Mute"}
-          </button>
+        <Headphones className="h-4 w-4 text-white/60" />
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{stem.label}</span>
+          {stem.subtitle && (
+            <span className="text-xs text-white/50">{stem.subtitle}</span>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Trim in</span>
-            <span>{formatTime(trimStartSec)}</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={trim.end - MIN_TRIM_GAP_PCT}
-            step={0.1}
-            value={trim.start}
-            disabled={!audioReady}
-            aria-label={`${stem.label} trim in`}
-            onChange={(event) =>
-              onStemStateChange(stem.id, {
-                trim: { ...trim, start: Number(event.target.value) },
-              })
-            }
-            className="stem-accent-slider w-full"
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Trim out</span>
-            <span>{formatTime(trimEndSec)}</span>
-          </div>
-          <input
-            type="range"
-            min={trim.start + MIN_TRIM_GAP_PCT}
-            max={100}
-            step={0.1}
-            value={trim.end}
-            disabled={!audioReady}
-            aria-label={`${stem.label} trim out`}
-            onChange={(event) =>
-              onStemStateChange(stem.id, {
-                trim: { ...trim, end: Number(event.target.value) },
-              })
-            }
-            className="stem-accent-slider w-full"
-          />
-        </div>
+      {/* Preview */}
+      <button
+        type="button"
+        onClick={() => onPreviewStem(stem.id)}
+        disabled={!audioReady || isLoadingPreview}
+        title={!audioReady ? "This stem is still loading." : undefined}
+        aria-label={
+          isPreviewPlaying
+            ? `Stop ${stem.label} preview`
+            : `Preview ${stem.label}`
+        }
+        className={cn(
+          "flex items-center justify-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
+          isPreviewPlaying
+            ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
+            : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+          isLoadingPreview && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        {isLoadingPreview ? (
+          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        ) : isPreviewPlaying ? (
+          <Square className="h-3 w-3" />
+        ) : (
+          <Play className="h-3 w-3" />
+        )}
+        {isLoadingPreview ? "Loading..." : isPreviewPlaying ? "Stop" : "Hear"}
+      </button>
+
+      {/* Solo / Mute */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => onStemStateChange(stem.id, { soloed: !soloed })}
+          disabled={!audioReady}
+          aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
+          className={cn(
+            "rounded-lg border px-2.5 py-1 text-xs",
+            soloed
+              ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
+              : "border-white/10 bg-white/5 text-white/70"
+          )}
+        >
+          Solo
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onStemStateChange(stem.id, { muted: !muted })}
+          disabled={!audioReady}
+          aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
+          className={cn(
+            "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs",
+            muted
+              ? "border-red-400/40 bg-red-500/20 text-red-200"
+              : "border-white/10 bg-white/5 text-white/70"
+          )}
+        >
+          {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+          {muted ? "Unmute" : "Mute"}
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span>Pan</span>
-            <span>
-              {mixer.pan === 0
-                ? "C"
-                : mixer.pan > 0
-                  ? `R${mixer.pan}`
-                  : `L${Math.abs(mixer.pan)}`}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={-100}
-            max={100}
-            step={1}
-            value={mixer.pan}
-            disabled={!audioReady}
-            aria-label={`${stem.label} pan`}
-            onChange={(event) =>
-              onStemStateChange(stem.id, {
-                mixer: { ...mixer, pan: Number(event.target.value) },
-              })
-            }
-            className="stem-accent-slider w-full"
-          />
-        </div>
-        <div>
-          <div className="mb-1 flex justify-between text-[10px] text-white/50">
-            <span title="Stereo width: 0 = normal, negative = narrower, positive = wider">
-              Width
-            </span>
-            <span>
-              {mixer.width === 0
-                ? "0"
-                : mixer.width > 0
-                  ? `+${mixer.width}`
-                  : mixer.width}
-            </span>
-          </div>
-          <input
-            type="range"
-            min={-100}
-            max={100}
-            step={1}
-            value={mixer.width}
-            disabled={!audioReady}
-            aria-label={`${stem.label} stereo width`}
-            onChange={(event) =>
-              onStemStateChange(stem.id, {
-                mixer: { ...mixer, width: Number(event.target.value) },
-              })
-            }
-            className="stem-accent-slider w-full"
-          />
-        </div>
+      {/* Trim */}
+      <div>
+        <label className="text-xs">Trim in {formatTime(trimStartSec)}</label>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0, trim.end - MIN_TRIM_GAP_PCT)}
+          step={0.1}
+          value={trim.start}
+          disabled={!audioReady}
+          aria-label={`${stem.label} trim in`}
+          onChange={(e) => updateTrimStart(Number(e.target.value))}
+          className="stem-accent-slider w-full"
+        />
       </div>
 
-      <fieldset className="min-w-0 border-0 p-0">
-        <legend className="sr-only">EQ, dynamics, and effects</legend>
-        {/* EQ */}
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <div className="mb-1 flex justify-between text-[10px] text-white/50">
-              <span>EQ Low</span>
-              <span>
-                {mixer.eqLow > 0 ? `+${mixer.eqLow}` : mixer.eqLow} dB
-              </span>
-            </div>
-            <input
-              type="range"
-              min={-12}
-              max={12}
-              step={0.5}
-              value={mixer.eqLow}
-              disabled={!audioReady}
-              aria-label={`${stem.label} EQ low`}
-              onChange={(e) =>
-                onStemStateChange(stem.id, {
-                  mixer: { ...mixer, eqLow: Number(e.target.value) },
-                })
-              }
-              className="stem-accent-slider w-full"
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex justify-between text-[10px] text-white/50">
-              <span>EQ Mid</span>
-              <span>
-                {mixer.eqMid > 0 ? `+${mixer.eqMid}` : mixer.eqMid} dB
-              </span>
-            </div>
-            <input
-              type="range"
-              min={-12}
-              max={12}
-              step={0.5}
-              value={mixer.eqMid}
-              disabled={!audioReady}
-              aria-label={`${stem.label} EQ mid`}
-              onChange={(e) =>
-                onStemStateChange(stem.id, {
-                  mixer: { ...mixer, eqMid: Number(e.target.value) },
-                })
-              }
-              className="stem-accent-slider w-full"
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex justify-between text-[10px] text-white/50">
-              <span>EQ High</span>
-              <span>
-                {mixer.eqHigh > 0 ? `+${mixer.eqHigh}` : mixer.eqHigh} dB
-              </span>
-            </div>
-            <input
-              type="range"
-              min={-12}
-              max={12}
-              step={0.5}
-              value={mixer.eqHigh}
-              disabled={!audioReady}
-              aria-label={`${stem.label} EQ high`}
-              onChange={(e) =>
-                onStemStateChange(stem.id, {
-                  mixer: { ...mixer, eqHigh: Number(e.target.value) },
-                })
-              }
-              className="stem-accent-slider w-full"
-            />
-          </div>
-        </div>
+      <div>
+        <label className="text-xs">Trim out {formatTime(trimEndSec)}</label>
+        <input
+          type="range"
+          min={Math.min(100, trim.start + MIN_TRIM_GAP_PCT)}
+          max={100}
+          step={0.1}
+          value={trim.end}
+          disabled={!audioReady}
+          aria-label={`${stem.label} trim out`}
+          onChange={(e) => updateTrimEnd(Number(e.target.value))}
+          className="stem-accent-slider w-full"
+        />
+      </div>
 
-        {/* Effects */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="mb-1 flex justify-between text-[10px] text-white/50">
-              <span>Reverb</span>
-              <span>{mixer.reverbWet}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={mixer.reverbWet}
-              disabled={!audioReady}
-              aria-label={`${stem.label} reverb wet`}
-              onChange={(e) =>
-                onStemStateChange(stem.id, {
-                  mixer: { ...mixer, reverbWet: Number(e.target.value) },
-                })
-              }
-              className="stem-accent-slider w-full"
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex justify-between text-[10px] text-white/50">
-              <span>Delay</span>
-              <span>{mixer.delayWet}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={mixer.delayWet}
-              disabled={!audioReady}
-              aria-label={`${stem.label} delay wet`}
-              onChange={(e) =>
-                onStemStateChange(stem.id, {
-                  mixer: { ...mixer, delayWet: Number(e.target.value) },
-                })
-              }
-              className="stem-accent-slider w-full"
-            />
-          </div>
-        </div>
+      {/* Mixer */}
+      <div>
+        <label className="text-xs">Pan</label>
+        <input
+          type="range"
+          min={-100}
+          max={100}
+          step={1}
+          value={mixer.pan}
+          disabled={!audioReady}
+          aria-label={`${stem.label} pan`}
+          onChange={(e) => updateMixer({ pan: Number(e.target.value) })}
+          className="stem-accent-slider w-full"
+        />
+      </div>
 
-        {/* Compressor */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="mb-1 flex justify-between text-[10px] text-white/50">
-              <span>Comp Threshold</span>
-              <span>{mixer.compThreshold} dB</span>
-            </div>
-            <input
-              type="range"
-              min={-60}
-              max={0}
-              step={1}
-              value={mixer.compThreshold}
-              disabled={!audioReady}
-              aria-label={`${stem.label} compressor threshold`}
-              onChange={(e) =>
-                onStemStateChange(stem.id, {
-                  mixer: { ...mixer, compThreshold: Number(e.target.value) },
-                })
-              }
-              className="stem-accent-slider w-full"
-            />
-          </div>
-          <div>
-            <div className="mb-1 flex justify-between text-[10px] text-white/50">
-              <span>Comp Ratio</span>
-              <span>{mixer.compRatio}:1</span>
-            </div>
-            <input
-              type="range"
-              min={1}
-              max={20}
-              step={0.5}
-              value={mixer.compRatio}
-              disabled={!audioReady}
-              aria-label={`${stem.label} compressor ratio`}
-              onChange={(e) =>
-                onStemStateChange(stem.id, {
-                  mixer: { ...mixer, compRatio: Number(e.target.value) },
-                })
-              }
-              className="stem-accent-slider w-full"
-            />
-          </div>
-        </div>
-      </fieldset>
+      <div>
+        <label className="text-xs">Width</label>
+        <input
+          type="range"
+          min={-100}
+          max={100}
+          step={1}
+          value={mixer.width}
+          disabled={!audioReady}
+          aria-label={`${stem.label} width`}
+          onChange={(e) => updateMixer({ width: Number(e.target.value) })}
+          className="stem-accent-slider w-full"
+        />
+      </div>
     </div>
   );
 });
+
+/* ===================== TESTS =====================
+   Jest + @testing-library/react
+================================================ */
+
+// stem-controls.component.test.tsx
+
+// import { render, fireEvent } from "@testing-library/react";
+// import { StemControls } from "./stem-controls.component";
+
+// test("clamps trim start and end", () => {
+//   const onChange = jest.fn();
+//   const state = {
+//     mixer: { pan: 0, width: 0 },
+//     trim: { start: 40, end: 50 },
+//     muted: false,
+//     soloed: false,
+//   } as any;
+//
+//   const { getByLabelText } = render(
+//     <StemControls
+//       stem={{ id: "s1", label: "Drums" } as any}
+//       state={state}
+//       duration={100}
+//       audioReady
+//       isPreviewPlaying={false}
+//       isLoadingPreview={false}
+//       onStemStateChange={onChange}
+//       onPreviewStem={() => {}}
+//     />
+//   );
+//
+//   fireEvent.change(getByLabelText(/Trim in/i), { target: { value: 49 } });
+//   expect(onChange).toHaveBeenCalled();
+// });

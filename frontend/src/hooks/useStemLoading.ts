@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchStemWavAsArrayBuffer } from "../api";
-import { defaultStemState } from "../stem-editor-state";
+import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 
 interface StemEntry {
   id: string;
@@ -15,7 +15,11 @@ interface StemEntry {
 interface UseStemLoadingArgs {
   allStemEntries: StemEntry[];
   audioContextRef: React.MutableRefObject<AudioContext | null>;
-  setStemStates: (updater: (prev: Record<string, unknown>) => Record<string, unknown>) => void;
+  setStemStates: (
+    updater: (
+      prev: Record<string, StemEditorState>,
+    ) => Record<string, StemEditorState>,
+  ) => void;
   setSplitError: (msg: string) => void;
 }
 
@@ -38,11 +42,13 @@ export function useStemLoading({
       setStemBuffers({});
       setLoadedTracks({});
       setIsLoadingStems(false);
+      setLoadingError(null);
       return;
     }
 
     const currentLoadId = ++loadIdRef.current;
     setIsLoadingStems(true);
+    setLoadingError(null);
 
     const Ctor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctor) {
@@ -118,19 +124,19 @@ export function useStemLoading({
       }
       return next;
     });
-    setStemStates((p: Record<string, unknown>) => {
-      const next: Record<string, unknown> = {};
+    setStemStates((p) => {
+      const next: Record<string, StemEditorState> = {};
       for (const e of allStemEntries) {
         next[e.id] = p[e.id] ?? defaultStemState();
       }
       return next;
     });
     setIsLoadingStems(false);
-  }, [allStemEntries, audioContextRef, setSplitError]);
+  }, [allStemEntries, audioContextRef, setSplitError, setStemStates]);
 
   useEffect(() => {
-    if (allStemEntries.length > 0) void loadStemsIntoBuffers();
-  }, [allStemEntries, loadStemsIntoBuffers]);
+    void loadStemsIntoBuffers();
+  }, [loadStemsIntoBuffers]);
 
   const clearStemLoadingState = useCallback(() => {
     setStemBuffers({});
