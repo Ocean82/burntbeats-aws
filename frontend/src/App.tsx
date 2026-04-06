@@ -193,35 +193,6 @@ export function App() {
     compareMasterExportServerAndClient,
   } = useExport();
 
-  const { isComparingExport, exportCompareSummary, onCompareExport } =
-    useExportCompare({
-      compareMasterExportServerAndClient,
-      loadedStemCount: loadedStems.length,
-      splitJobId,
-      splitResultStems,
-      stemBuffers,
-      stemStates,
-      uploadName,
-    });
-  const handleExportFromModal = useExportModalAction({
-    handleExportWithOptions,
-    stemBuffers,
-    mixStems,
-    stemStates,
-    uploadName,
-    setSplitError,
-    closeExportModal: () => closeModal("export"),
-    loadedStemCount: loadedStems.length,
-    splitJobId,
-    splitResultStems,
-    onSuccessfulExport: () => {
-      setExportNotice(
-        "Download started — check your browser’s downloads folder.",
-      );
-      setHasCompletedFirstExport(true);
-    },
-  });
-
   // ── Batch queue hook ──────────────────────────────────────────────────────
   const {
     batchQueue,
@@ -279,6 +250,35 @@ export function App() {
       setStemStates,
       setSplitError,
     });
+
+  const { isComparingExport, exportCompareSummary, onCompareExport } =
+    useExportCompare({
+      compareMasterExportServerAndClient,
+      loadedStemCount: loadedStems.length,
+      splitJobId,
+      splitResultStems,
+      stemBuffers,
+      stemStates,
+      uploadName,
+    });
+  const handleExportFromModal = useExportModalAction({
+    handleExportWithOptions,
+    stemBuffers,
+    mixStems,
+    stemStates,
+    uploadName,
+    setSplitError,
+    closeExportModal: () => closeModal("export"),
+    loadedStemCount: loadedStems.length,
+    splitJobId,
+    splitResultStems,
+    onSuccessfulExport: () => {
+      setExportNotice(
+        "Download started — check your browser’s downloads folder.",
+      );
+      setHasCompletedFirstExport(true);
+    },
+  });
 
   // ── Mixer workspace ───────────────────────────────────────────────────────
   const {
