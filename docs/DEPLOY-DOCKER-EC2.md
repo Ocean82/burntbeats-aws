@@ -22,6 +22,14 @@
 
 - Compose reads **`VITE_*`** build args from a **repo-root `.env`** (see **`docker-compose.yml`** `args:`). Keep that file **out of git**; copy from **`.env.example`** patterns per app.
 - **`backend/.env`** and stem service settings must match what Compose passes or mounts (see compose `environment:` blocks).
+- Avoid sharing raw output of `docker compose config` in tickets/chat/screenshots; it can inline resolved secret values.
+
+### Secret safety checklist
+
+- Store production secrets in a secret manager or protected host env, not committed `.env` files.
+- Treat any accidentally shared compose/env output as exposed.
+- If exposure is suspected, rotate immediately: Stripe secret/webhook keys, Clerk secret, API/job token secrets, and any AWS keys.
+- After rotation, redeploy and re-run health checks (`/api/health`, stem `/health`).
 
 ---
 

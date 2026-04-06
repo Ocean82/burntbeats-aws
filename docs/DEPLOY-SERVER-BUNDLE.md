@@ -22,6 +22,8 @@ The file **`scripts/deploy-exclude.txt`** drives both the tarball script and opt
 
 Adjust **`scripts/deploy-exclude.txt`** if you need to add more paths (e.g. another subproject’s artifacts).
 
+**Secret hygiene:** do not paste full env files or `docker compose config` output into shared channels; they may contain resolved secrets.
+
 ---
 
 ## 1. Create the tarball (WSL / Ubuntu)
