@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FolderOpen, Upload, ChevronDown, ChevronUp, Lock, Loader2 } from "lucide-react";
 import type { SplitQuality } from "../api";
@@ -102,7 +102,6 @@ export function ProcessingSettingsPanel({
 }: ProcessingSettingsPanelProps) {
   const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
   const [loadExpanded, setLoadExpanded] = useState(false);
-  const autoExpandedRef = useRef(false);
 
   const canChoosePaidQuality = stemQualityOptions !== "speed_only";
 
@@ -138,10 +137,6 @@ export function ProcessingSettingsPanel({
   useEffect(() => {
     if (!canExpandToFourStems && requestedStemMode !== 2) setRequestedStemMode(2);
   }, [canExpandToFourStems, requestedStemMode]);
-
-  useEffect(() => {
-    if (isSplitting) autoExpandedRef.current = false;
-  }, [isSplitting]);
 
   const showUsageRow =
     !subscriptionInactive &&
@@ -278,9 +273,13 @@ export function ProcessingSettingsPanel({
               <button
                 key={opt.value}
                 type="button"
-                disabled={!opt.enabled || isSplitting}
+                disabled={!opt.enabled || isSplitting || splitResultStemsLength > 0}
+                title={
+                  splitResultStemsLength > 0
+                    ? "Quality applies on the next upload. Upload a new file to choose again."
+                    : opt.hint
+                }
                 onClick={() => onQualityChange(opt.value)}
-                title={opt.hint}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-xs font-medium transition",
                   !opt.enabled
@@ -304,53 +303,71 @@ export function ProcessingSettingsPanel({
           )}
         </div>
 
-        {/* Stem count slider (full-width wrap on small screens) */}
-        <div className="flex w-full shrink-0 basis-full items-center gap-2 sm:basis-auto lg:w-auto">
-          <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Stems</span>
-          <div className="flex flex-col items-center gap-0.5">
-            <input
-              type="range"
-              min={2}
-              max={4}
-              step={2}
-              value={requestedStemMode}
-              disabled={isSplitting}
-              onChange={(e) => {
-                const val = parseInt(e.target.value) as 2 | 4;
-                if (val === 4 && !canExpandToFourStems && onUpgradeToPremium) {
-                  onUpgradeToPremium();
-                  return;
-                }
-                setRequestedStemMode(val);
-              }}
-              className="w-20 accent-amber-500 disabled:opacity-40"
-              aria-label="Number of stems"
-              aria-valuenow={requestedStemMode}
-              aria-valuemin={2}
-              aria-valuemax={4}
-              aria-valuetext={`${requestedStemMode} stems${requestedStemMode === 4 && !canExpandToFourStems ? " (requires Premium)" : ""}`}
-            />
-            <div className="flex w-20 justify-between text-[10px] text-white/40 font-mono">
-              <span>2</span>
-              <span className={cn(requestedStemMode === 4 ? "text-amber-300" : "", !canExpandToFourStems && "inline-flex items-center gap-1")}>
-                4
-                {!canExpandToFourStems && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
-              </span>
+        {/* Stem count: only before the first split — after that, 2→4 is Expand (not a second split). */}
+        {splitResultStemsLength === 0 ? (
+          <div className="flex w-full shrink-0 basis-full items-center gap-2 sm:basis-auto lg:w-auto">
+            <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Stems</span>
+            <div className="flex flex-col items-center gap-0.5">
+              <input
+                type="range"
+                min={2}
+                max={4}
+                step={2}
+                value={requestedStemMode}
+                disabled={isSplitting}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) as 2 | 4;
+                  if (val === 4 && !canExpandToFourStems && onUpgradeToPremium) {
+                    onUpgradeToPremium();
+                    return;
+                  }
+                  setRequestedStemMode(val);
+                }}
+                className="w-20 accent-amber-500 disabled:opacity-40"
+                aria-label="Number of stems"
+                aria-valuenow={requestedStemMode}
+                aria-valuemin={2}
+                aria-valuemax={4}
+                aria-valuetext={`${requestedStemMode} stems${requestedStemMode === 4 && !canExpandToFourStems ? " (requires Premium)" : ""}`}
+              />
+              <div className="flex w-20 justify-between text-[10px] text-white/40 font-mono">
+                <span>2</span>
+                <span className={cn(requestedStemMode === 4 ? "text-amber-300" : "", !canExpandToFourStems && "inline-flex items-center gap-1")}>
+                  4
+                  {!canExpandToFourStems && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+                </span>
+              </div>
+              {!canExpandToFourStems && (
+                <span className="text-[10px] font-medium uppercase tracking-wide text-white/45">
+                  4-stem requires Premium/Studio
+                </span>
+              )}
             </div>
-            {!canExpandToFourStems && (
-              <span className="text-[10px] font-medium uppercase tracking-wide text-white/45">
-                4-stem requires Premium/Studio
-              </span>
-            )}
           </div>
-        </div>
+        ) : (
+          <div className="flex shrink-0 flex-col justify-center rounded-xl border border-white/10 bg-black/20 px-3 py-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/45">Result</span>
+            <span className="text-xs font-medium text-white/80">
+              {splitResultStemsLength === 2 ? "2 stems" : "4 stems"}
+            </span>
+          </div>
+        )}
 
         {/* Split / action button */}
         {sourceMode === "split" && (
           <button
             type="button"
             onClick={() => onSplit(requestedStemMode)}
-            disabled={!uploadedFile || isSplitting}
+            disabled={
+              !uploadedFile ||
+              isSplitting ||
+              splitResultStemsLength > 0
+            }
+            title={
+              splitResultStemsLength > 0
+                ? "Upload a new file to run separation again. Each upload is a new job."
+                : undefined
+            }
             className="fire-button min-h-[44px] shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSplitting ? (
@@ -358,7 +375,13 @@ export function ProcessingSettingsPanel({
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Splitting{typeof splitProgress === "number" && splitProgress > 0 ? `… ${Math.round(splitProgress)}%` : "…"}
               </>
-            ) : requestedStemMode === 4 ? "Split → 4 stems" : "Split stems"}
+            ) : splitResultStemsLength > 0 ? (
+              "New file to split again"
+            ) : requestedStemMode === 4 ? (
+              "Split → 4 stems"
+            ) : (
+              "Split stems"
+            )}
           </button>
         )}
 
@@ -368,8 +391,19 @@ export function ProcessingSettingsPanel({
             <button
               type="button"
               onClick={onAddToQueue}
-              disabled={!uploadedFile || isSplitting || !canUseBatchQueue}
-              title={canUseBatchQueue ? "Add to batch queue" : "Requires Premium or Studio"}
+              disabled={
+                !uploadedFile ||
+                isSplitting ||
+                !canUseBatchQueue ||
+                splitResultStemsLength > 0
+              }
+              title={
+                splitResultStemsLength > 0
+                  ? "Clear results by uploading a new file before adding to the queue."
+                  : canUseBatchQueue
+                    ? "Add to batch queue"
+                    : "Requires Premium or Studio"
+              }
               className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="inline-flex items-center gap-1">
@@ -391,16 +425,27 @@ export function ProcessingSettingsPanel({
         )}
 
         {/* Manual expand */}
-        {canExpandToFourStems && splitResultStemsLength === 2 && !isExpanding && !isSplitting && requestedStemMode === 2 && !splitError && (
+        {canExpandToFourStems && splitResultStemsLength === 2 && !isExpanding && !isSplitting && !splitError && (
           <button
             type="button"
-            onClick={() => { autoExpandedRef.current = true; setRequestedStemMode(4); onExpand(); }}
+            onClick={() => onExpand()}
             className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/60 hover:text-white"
           >
             Expand → 4 stems
           </button>
         )}
       </div>
+
+      {sourceMode === "split" && splitResultStemsLength > 0 && (
+        <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-xs leading-relaxed text-white/65">
+          <span className="font-medium text-white/85">This upload is finished.</span>{" "}
+          To separate a different track, use <span className="text-white/90">Change</span> or{" "}
+          <span className="text-white/90">Clear</span> above and upload a new file — that starts a new job.
+          {splitResultStemsLength === 2 && canExpandToFourStems ? (
+            <> Use <span className="text-amber-200/90">Expand → 4 stems</span> if you want four parts from this same separation.</>
+          ) : null}
+        </p>
+      )}
 
       {showUsageRow && sourceMode === "split" && (
         <div

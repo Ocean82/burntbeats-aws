@@ -72,6 +72,7 @@ describe("MixerPanel", () => {
       onStemStateChange,
       onPreviewStem,
       playingStemId: null,
+      loadingPreviewStemId: null,
       getMasterAnalyserTimeDomainData: () => null,
       getMasterAnalyserFrequencyData: () => null,
       ...overrides,
@@ -102,7 +103,7 @@ describe("MixerPanel", () => {
   it("shows empty state when mixStemCount is 0", () => {
     renderMixer({ mixStemCount: 0 });
 
-    expect(screen.getByText(/Split a track or load stems to start mixing and exporting/i)).toBeInTheDocument();
+    expect(screen.getByText(/Split a track or load stem files above to start mixing and exporting/i)).toBeInTheDocument();
   });
 });
 

@@ -16,6 +16,8 @@ interface StemControlsProps {
   stem: StemDefinition;
   state: StemEditorState;
   duration: number;
+  /** False until this stem's AudioBuffer is decoded — channel strip only affects audible output after this. */
+  audioReady: boolean;
   isPreviewPlaying: boolean;
   isLoadingPreview: boolean;
   onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
@@ -26,6 +28,7 @@ export const StemControls = memo(function StemControls({
   stem,
   state,
   duration,
+  audioReady,
   isPreviewPlaying,
   isLoadingPreview,
   onStemStateChange,
@@ -48,7 +51,12 @@ export const StemControls = memo(function StemControls({
           <button
             type="button"
             onClick={() => onPreviewStem(stem.id)}
-            disabled={isLoadingPreview}
+            disabled={!audioReady || isLoadingPreview}
+            title={
+              !audioReady
+                ? "This stem is still loading — preview will be available when the waveform finishes."
+                : undefined
+            }
             aria-label={
               isPreviewPlaying
                 ? `Stop ${stem.label} preview`
@@ -75,12 +83,14 @@ export const StemControls = memo(function StemControls({
           <button
             type="button"
             onClick={() => onStemStateChange(stem.id, { soloed: !soloed })}
+            disabled={!audioReady}
             aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
             className={cn(
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               soloed
                 ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
                 : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+              !audioReady && "opacity-40",
             )}
           >
             <Headphones className="h-3 w-3" />
@@ -89,12 +99,14 @@ export const StemControls = memo(function StemControls({
           <button
             type="button"
             onClick={() => onStemStateChange(stem.id, { muted: !muted })}
+            disabled={!audioReady}
             aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
             className={cn(
               "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
               muted
                 ? "border-red-400/40 bg-red-500/20 text-red-200"
                 : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+              !audioReady && "opacity-40",
             )}
           >
             {muted ? (
@@ -119,6 +131,7 @@ export const StemControls = memo(function StemControls({
             max={trim.end - MIN_TRIM_GAP_PCT}
             step={0.1}
             value={trim.start}
+            disabled={!audioReady}
             aria-label={`${stem.label} trim in`}
             onChange={(event) =>
               onStemStateChange(stem.id, {
@@ -139,6 +152,7 @@ export const StemControls = memo(function StemControls({
             max={100}
             step={0.1}
             value={trim.end}
+            disabled={!audioReady}
             aria-label={`${stem.label} trim out`}
             onChange={(event) =>
               onStemStateChange(stem.id, {
@@ -168,6 +182,7 @@ export const StemControls = memo(function StemControls({
             max={100}
             step={1}
             value={mixer.pan}
+            disabled={!audioReady}
             aria-label={`${stem.label} pan`}
             onChange={(event) =>
               onStemStateChange(stem.id, {
@@ -196,6 +211,7 @@ export const StemControls = memo(function StemControls({
             max={100}
             step={1}
             value={mixer.width}
+            disabled={!audioReady}
             aria-label={`${stem.label} stereo width`}
             onChange={(event) =>
               onStemStateChange(stem.id, {
@@ -224,6 +240,7 @@ export const StemControls = memo(function StemControls({
               max={12}
               step={0.5}
               value={mixer.eqLow}
+              disabled={!audioReady}
               aria-label={`${stem.label} EQ low`}
               onChange={(e) =>
                 onStemStateChange(stem.id, {
@@ -246,6 +263,7 @@ export const StemControls = memo(function StemControls({
               max={12}
               step={0.5}
               value={mixer.eqMid}
+              disabled={!audioReady}
               aria-label={`${stem.label} EQ mid`}
               onChange={(e) =>
                 onStemStateChange(stem.id, {
@@ -268,6 +286,7 @@ export const StemControls = memo(function StemControls({
               max={12}
               step={0.5}
               value={mixer.eqHigh}
+              disabled={!audioReady}
               aria-label={`${stem.label} EQ high`}
               onChange={(e) =>
                 onStemStateChange(stem.id, {
@@ -292,6 +311,7 @@ export const StemControls = memo(function StemControls({
               max={100}
               step={1}
               value={mixer.reverbWet}
+              disabled={!audioReady}
               aria-label={`${stem.label} reverb wet`}
               onChange={(e) =>
                 onStemStateChange(stem.id, {
@@ -312,6 +332,7 @@ export const StemControls = memo(function StemControls({
               max={100}
               step={1}
               value={mixer.delayWet}
+              disabled={!audioReady}
               aria-label={`${stem.label} delay wet`}
               onChange={(e) =>
                 onStemStateChange(stem.id, {
@@ -336,6 +357,7 @@ export const StemControls = memo(function StemControls({
               max={0}
               step={1}
               value={mixer.compThreshold}
+              disabled={!audioReady}
               aria-label={`${stem.label} compressor threshold`}
               onChange={(e) =>
                 onStemStateChange(stem.id, {
@@ -356,6 +378,7 @@ export const StemControls = memo(function StemControls({
               max={20}
               step={0.5}
               value={mixer.compRatio}
+              disabled={!audioReady}
               aria-label={`${stem.label} compressor ratio`}
               onChange={(e) =>
                 onStemStateChange(stem.id, {

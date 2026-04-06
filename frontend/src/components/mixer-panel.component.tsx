@@ -180,8 +180,14 @@ export function MixerPanel({
           ) : (
             <button
               type="button"
-              className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white"
+              className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => setShowResetConfirm(true)}
+              disabled={!hasStemBuffers}
+              title={
+                !hasStemBuffers
+                  ? "Load stem audio first — then you can reset levels."
+                  : undefined
+              }
               aria-label="Reset all mixer levels to defaults"
             >
               <RotateCcw className="h-4 w-4" strokeWidth={2} />Reset levels
@@ -221,6 +227,7 @@ export function MixerPanel({
         isPlaying={isPlayingMix}
         playheadPct={playheadPct}
         isLoadingStems={isLoadingStems}
+        playbackReady={hasStemBuffers}
         activeStemId={activeStemId}
         onActiveStemChange={onActiveStemChange}
         onStemStateChange={onStemStateChange}

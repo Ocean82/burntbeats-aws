@@ -12,6 +12,8 @@ const WAVEFORM_BINS = 512;
 export interface WaveformTimelineProps {
   stems: StemDefinition[];
   waveforms: Record<string, number[]>;
+  /** Decoded buffer duration per stem (seconds); 0 until audio for that stem is ready. */
+  durations: Record<string, number>;
   stemStates: Record<string, StemEditorState>;
   isLoadingStems: boolean;
   zoom: number;
@@ -34,6 +36,7 @@ const WaveformLaneMemo = memo(WaveformLane);
 export function WaveformTimeline({
   stems,
   waveforms,
+  durations,
   stemStates,
   isLoadingStems,
   zoom,
@@ -60,6 +63,7 @@ export function WaveformTimeline({
         const hasWaveform = Boolean(waveform && waveform.length > 0);
         const state = stemStates[stem.id] ?? defaultStemState();
         const isWaveformLoading = isLoadingStems || !hasWaveform;
+        const audioReady = (durations[stem.id] ?? 0) > 0;
 
         return (
           <WaveformLaneMemo
@@ -72,6 +76,7 @@ export function WaveformTimeline({
             isMuted={state.muted}
             isSoloed={state.soloed}
             isLoading={isWaveformLoading && stems.length > 0}
+            audioReady={audioReady}
             zoom={zoom}
             scrollPct={scrollPct}
             playheadFraction={playheadVisiblePct / 100}

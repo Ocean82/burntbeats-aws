@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -13,6 +13,8 @@ interface ExportOptionsModalProps {
   onExport: (options: ExportOptions) => void;
   isExporting: boolean;
   stemCount: number;
+  /** When false, only a rendered master mix can be exported (no server stem file downloads). */
+  allowStemBundleTargets?: boolean;
 }
 
 export interface ExportOptions {
@@ -21,16 +23,15 @@ export interface ExportOptions {
   normalize: boolean;
 }
 
-const FORMAT_OPTIONS: { value: ExportFormat; label: string; description: string; available: boolean }[] = [
-  { value: "wav", label: "WAV", description: "Uncompressed, highest quality", available: true },
-  { value: "mp3", label: "MP3", description: "Compressed, smaller file size", available: true },
-  { value: "flac", label: "FLAC", description: "Lossless — coming soon", available: false },
+const FORMAT_OPTIONS: { value: ExportFormat; label: string; description: string }[] = [
+  { value: "wav", label: "WAV", description: "Uncompressed, highest quality" },
+  { value: "mp3", label: "MP3", description: "Compressed, smaller file size" },
 ];
 
-const TARGET_OPTIONS: { value: ExportTarget; label: string; description: string; icon: typeof Download }[] = [
+const TARGET_OPTIONS_ALL: { value: ExportTarget; label: string; description: string; icon: typeof Download }[] = [
   { value: "master", label: "Master Mix", description: "All stems mixed to one file", icon: FileAudio },
-  { value: "stems", label: "Individual Stems", description: "One file per stem", icon: Package },
-  { value: "all", label: "Master + Stems", description: "Master mix and all stems", icon: Package },
+  { value: "stems", label: "Individual Stems", description: "One file per stem (from your separation job)", icon: Package },
+  { value: "all", label: "Master + Stems", description: "Master mix and all downloadable stems", icon: Package },
 ];
 
 export function ExportOptionsModal({
@@ -39,6 +40,7 @@ export function ExportOptionsModal({
   onExport,
   isExporting,
   stemCount,
+  allowStemBundleTargets = true,
 }: ExportOptionsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(isOpen, modalRef, onClose, { disableEscape: isExporting });
@@ -48,6 +50,17 @@ export function ExportOptionsModal({
     target: "master",
     normalize: true,
   });
+
+  const targetOptions = allowStemBundleTargets
+    ? TARGET_OPTIONS_ALL
+    : TARGET_OPTIONS_ALL.filter((t) => t.value === "master");
+
+  useEffect(() => {
+    if (!isOpen || allowStemBundleTargets) return;
+    setOptions((o) =>
+      o.target === "master" ? o : { ...o, target: "master" },
+    );
+  }, [isOpen, allowStemBundleTargets]);
 
   return (
     <AnimatePresence>
@@ -107,27 +120,23 @@ export function ExportOptionsModal({
                 <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
                   Format
                 </label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {FORMAT_OPTIONS.map((format) => (
                     <button
                       key={format.value}
                       type="button"
-                      onClick={() => format.available && setOptions((o) => ({ ...o, format: format.value }))}
-                      disabled={!format.available}
+                      onClick={() => setOptions((o) => ({ ...o, format: format.value }))}
                       aria-pressed={options.format === format.value}
                       className={cn(
                         "rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
-                        !format.available && "cursor-not-allowed opacity-40",
-                        format.available && options.format === format.value
+                        options.format === format.value
                           ? "border-amber-400/50 bg-amber-500/15 text-white"
-                          : format.available
-                          ? "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"
-                          : "border-white/10 bg-white/5 text-white/40"
+                          : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10",
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{format.label}</span>
-                        {format.available && options.format === format.value && (
+                        {options.format === format.value && (
                           <Check className="h-3.5 w-3.5 text-amber-400" />
                         )}
                       </div>
@@ -143,7 +152,7 @@ export function ExportOptionsModal({
                   What to export
                 </label>
                 <div className="space-y-2">
-                  {TARGET_OPTIONS.map((target) => {
+                  {targetOptions.map((target) => {
                     const Icon = target.icon;
                     return (
                       <button

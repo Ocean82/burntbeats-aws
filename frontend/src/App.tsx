@@ -243,6 +243,12 @@ export function App() {
     [splitResultStems, loadedStems],
   );
 
+  /** Per-stem file export only works for job-backed URLs from separation — not blob-loaded files. */
+  const exportAllowStemBundleTargets = useMemo(
+    () => mixStems.some((s) => s.url.includes("/api/stems/file/")),
+    [mixStems],
+  );
+
   // ── Stem loading (fetch WAVs → AudioBuffers) ──────────────────────────────
   const { stemBuffers, setStemBuffers, isLoadingStems, clearStemLoadingState, loadingError, retryLoadStems } =
     useStemLoading({
@@ -617,6 +623,7 @@ export function App() {
               }}
               isExporting={isExporting}
               stemCount={mixStems.length}
+              allowStemBundleTargets={exportAllowStemBundleTargets}
             />
           </Suspense>
         ) : null}

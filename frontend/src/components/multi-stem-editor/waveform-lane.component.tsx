@@ -39,6 +39,8 @@ export interface WaveformLaneProps {
   isSoloed: boolean;
   /** When true, renders with a shimmer overlay to indicate loading state. */
   isLoading?: boolean;
+  /** When false, trim/seek and quick gain do not run (no decoded audio yet). */
+  audioReady?: boolean;
   zoom: number;
   scrollPct: number;
   /** 0–1 fraction of the visible lane width considered "played". */
@@ -61,6 +63,7 @@ export function WaveformLane({
   isMuted,
   isSoloed,
   isLoading = false,
+  audioReady = true,
   zoom,
   scrollPct,
   playheadFraction,
@@ -109,6 +112,7 @@ export function WaveformLane({
   }, [trim.start, trim.end, visibleStart, visibleRange]);
 
   const onMouseDown = useCallback((event: ReactMouseEvent) => {
+    if (!audioReady) return;
     event.stopPropagation();
     event.preventDefault();
     const mode = hitTestHandle(event);
@@ -124,7 +128,7 @@ export function WaveformLane({
         onSeekRef.current(pct, { phase: "move" });
       }
     }
-  }, [hitTestHandle, visibleStart, visibleRange]);
+  }, [audioReady, hitTestHandle, visibleStart, visibleRange]);
 
   useEffect(() => {
     const onMove = (event: MouseEvent) => {
@@ -221,7 +225,8 @@ export function WaveformLane({
     <div
       ref={laneRef}
       className={cn(
-        "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all cursor-crosshair",
+        "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all",
+        audioReady ? "cursor-crosshair" : "cursor-default",
         isActive ? "border-white/20" : "border-white/8",
         isMuted && "opacity-40"
       )}
@@ -267,12 +272,14 @@ export function WaveformLane({
         <button
           type="button"
           onClick={() => onStemStateChange(stem.id, { soloed: !isSoloed })}
+          disabled={!audioReady}
           aria-label={isSoloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
           className={cn(
             "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[10px] transition",
             isSoloed
               ? "border-amber-400/50 bg-amber-500/25 text-amber-100"
-              : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+              : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+            !audioReady && "opacity-40",
           )}
         >
           <Headphones className="h-3 w-3" aria-hidden />
@@ -280,12 +287,14 @@ export function WaveformLane({
         <button
           type="button"
           onClick={() => onStemStateChange(stem.id, { muted: !isMuted })}
+          disabled={!audioReady}
           aria-label={isMuted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
           className={cn(
             "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[10px] transition",
             isMuted
               ? "border-red-400/50 bg-red-500/25 text-red-100"
-              : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+              : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+            !audioReady && "opacity-40",
           )}
         >
           {isMuted ? <VolumeX className="h-3 w-3" aria-hidden /> : <Volume2 className="h-3 w-3" aria-hidden />}
@@ -298,11 +307,15 @@ export function WaveformLane({
             max={6}
             step={0.5}
             value={mixer.gain}
+            disabled={!audioReady}
             aria-valuetext={`${mixer.gain > 0 ? "+" : ""}${mixer.gain.toFixed(1)} dB`}
             onChange={(event) =>
               onStemStateChange(stem.id, { mixer: { ...mixer, gain: Number(event.target.value) } })
             }
-            className="stem-accent-slider h-1 w-14 min-w-[2.5rem] flex-1 cursor-pointer"
+            className={cn(
+              "stem-accent-slider h-1 w-14 min-w-[2.5rem] flex-1",
+              audioReady ? "cursor-pointer" : "cursor-not-allowed opacity-40",
+            )}
           />
           <span
             className="w-7 shrink-0 text-center font-mono text-[8px] leading-none text-white/70"

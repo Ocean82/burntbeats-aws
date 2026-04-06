@@ -46,6 +46,8 @@ export interface MultiStemEditorProps {
   isPlaying: boolean;
   playheadPct: number;
   isLoadingStems: boolean;
+  /** False until stem AudioBuffers are decoded — avoids play/mix tools that cannot output sound yet. */
+  playbackReady?: boolean;
   onStemStateChange: (stemId: string, next: Partial<StemEditorState>) => void;
   onSeek: (pct: number, opts?: { phase?: SeekPhase }) => void;
   onPlayPause: () => void;
@@ -75,13 +77,14 @@ export function MultiStemEditor({
   isPlaying,
   playheadPct,
   isLoadingStems,
+  playbackReady = false,
   onStemStateChange,
   onSeek,
   onPlayPause,
   onPreviewStem,
   playingStemId,
   loadingPreviewStemId,
-  controlledActiveStemId,
+  activeStemId: activeStemIdProp,
   onActiveStemChange,
   getAnalyserData,
 }: MultiStemEditorProps) {
@@ -92,7 +95,7 @@ export function MultiStemEditor({
   const [internalActiveStemId, setInternalActiveStemId] = useState<string>(
     stems[0]?.id ?? "",
   );
-  const activeStemId = controlledActiveStemId ?? internalActiveStemId;
+  const activeStemId = activeStemIdProp ?? internalActiveStemId;
   const setActiveStemId = useCallback(
     (id: string) => {
       setInternalActiveStemId(id);
@@ -132,6 +135,10 @@ export function MultiStemEditor({
     if (!isTimelinePerformanceEnabled()) return undefined;
     return installTimelinePerformanceDebugHooks();
   }, []);
+
+  useEffect(() => {
+    if (!playbackReady) setActivePanel(null);
+  }, [playbackReady]);
 
   // Keep activeStemId valid when stems change
   useEffect(() => {
@@ -199,13 +206,19 @@ export function MultiStemEditor({
         <button
           type="button"
           onClick={onPlayPause}
-          disabled={Object.keys(stemStates).length === 0}
+          disabled={!playbackReady}
+          title={
+            !playbackReady
+              ? "Wait for stems to finish loading, then play the mix."
+              : undefined
+          }
           aria-label={isPlaying ? "Stop mix" : "Play mix"}
           className={cn(
             "flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition",
             isPlaying
               ? "border-amber-400/50 bg-amber-500/20 text-amber-100"
               : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10",
+            !playbackReady && "opacity-40",
           )}
         >
           {isPlaying ? (
@@ -267,12 +280,19 @@ export function MultiStemEditor({
               key={id}
               type="button"
               onClick={() => setActivePanel((p) => (p === id ? null : id))}
+              disabled={!playbackReady}
               aria-pressed={activePanel === id}
+              title={
+                !playbackReady
+                  ? "Load stem audio first to use pitch, EQ, level, and time tools."
+                  : undefined
+              }
               className={cn(
                 "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition",
                 activePanel === id
                   ? "bg-amber-500/20 text-amber-200"
                   : "text-white/60 hover:text-white",
+                !playbackReady && "cursor-not-allowed opacity-40",
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -347,6 +367,7 @@ export function MultiStemEditor({
           <WaveformTimeline
             stems={stems}
             waveforms={waveforms}
+            durations={durations}
             stemStates={stemStates}
             isLoadingStems={isLoadingStems}
             zoom={zoom}
@@ -690,6 +711,7 @@ export function MultiStemEditor({
           stem={activeStem}
           state={activeState}
           duration={activeDuration}
+          audioReady={activeDuration > 0}
           isPreviewPlaying={playingStemId === activeStem.id}
           isLoadingPreview={loadingPreviewStemId === activeStem.id}
           onStemStateChange={onStemStateChange}
