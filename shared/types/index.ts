@@ -5,7 +5,12 @@
 
 export type StemId = "vocals" | "drums" | "bass" | "other" | "instrumental";
 
-export type JobStatus = "running" | "completed" | "failed" | "cancelled";
+export type JobStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 export type SplitQuality = "speed" | "balanced" | "quality" | "ultra";
 

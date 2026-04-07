@@ -6,6 +6,7 @@ WORKDIR /repo
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY stem_service/requirements.txt ./stem_service/requirements.txt

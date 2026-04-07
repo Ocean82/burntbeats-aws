@@ -617,9 +617,11 @@ app.post(
       await unlinkPromise(filePath).catch(() => {});
       return res
         .status(400)
-        .json({ error: "quality must be 'speed', 'quality', or 'ultra'" });
+        .json({
+          error: "quality must be 'speed', 'balanced', 'quality', or 'ultra'",
+        });
     }
-    const quality = rawQuality === "balanced" ? "quality" : rawQuality;
+    const quality = rawQuality;
 
     const scanResult = await scanUploadedFile(filePath);
     if (!scanResult.ok) {

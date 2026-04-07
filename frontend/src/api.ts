@@ -128,7 +128,13 @@ function getApiErrorMessage(parsed: unknown): string | null {
 }
 
 function isJobStatusValue(value: unknown): value is JobStatus {
-  return value === "running" || value === "completed" || value === "failed" || value === "cancelled";
+  return (
+    value === "queued" ||
+    value === "running" ||
+    value === "completed" ||
+    value === "failed" ||
+    value === "cancelled"
+  );
 }
 
 function isStemResultValue(value: unknown): value is StemResult {
@@ -175,7 +181,9 @@ export type SplitQuality = SharedSplitQuality;
 
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(import.meta.env.VITE_SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 const STATUS_POLL_INTERVAL_MS = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 1500;
-const STATUS_POLL_MAX_MS = Number(import.meta.env.VITE_STATUS_POLL_MAX_MS) || 16 * 60 * 1000;
+// Separation can legitimately exceed 16 minutes on CPU-heavy jobs; keep polling longer
+// so users get eventual completion instead of a false timeout.
+const STATUS_POLL_MAX_MS = Number(import.meta.env.VITE_STATUS_POLL_MAX_MS) || 30 * 60 * 1000;
 
 /** Start stem separation; returns job_id. Separation runs in background. */
 export async function startStemSplit(

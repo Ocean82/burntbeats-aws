@@ -17,6 +17,7 @@ import re
 import signal
 import time
 import uuid
+from collections import deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -92,10 +93,78 @@ import threading as _threading
 
 _running_jobs: dict[str, dict[str, Any]] = {}
 _jobs_lock = _threading.Lock()
+# Queue split jobs so only one heavy split runs at a time.
+_queued_splits: deque[dict[str, Any]] = deque()
+_queue_condition: asyncio.Condition | None = None
+_split_worker_task: asyncio.Task[Any] | None = None
 
 
 class JobCancelledError(Exception):
     """Raised inside progress callbacks to signal job cancellation."""
+
+
+def _queued_position(job_id: str) -> int | None:
+    for idx, item in enumerate(_queued_splits):
+        if item.get("job_id") == job_id:
+            return idx + 1
+    return None
+
+
+def _refresh_queue_progress_locked() -> None:
+    for idx, item in enumerate(_queued_splits):
+        out_dir: Path = item["out_dir"]
+        quality_mode: str = item["quality_mode"]
+        _write_progress(
+            out_dir,
+            {
+                "status": "queued",
+                "progress": 0,
+                "quality": quality_mode,
+                "queue_position": idx + 1,
+            },
+        )
+
+
+async def _enqueue_split_job(job: dict[str, Any]) -> int:
+    if _queue_condition is None:
+        raise RuntimeError("Split queue not initialized")
+    async with _queue_condition:
+        _queued_splits.append(job)
+        _refresh_queue_progress_locked()
+        pos = _queued_position(job["job_id"]) or len(_queued_splits)
+        _queue_condition.notify()
+        return pos
+
+
+async def _split_worker_loop() -> None:
+    if _queue_condition is None:
+        return
+    while True:
+        async with _queue_condition:
+            while not _queued_splits:
+                await _queue_condition.wait()
+            job = _queued_splits.popleft()
+            _refresh_queue_progress_locked()
+
+        out_dir: Path = job["out_dir"]
+        _write_progress(
+            out_dir,
+            {
+                "status": "running",
+                "progress": 0,
+                "quality": job["quality_mode"],
+            },
+        )
+        await asyncio.to_thread(
+            _run_separation_sync,
+            job["job_id"],
+            job["input_path"],
+            job["out_dir"],
+            job["stem_count"],
+            job["prefer_speed"],
+            job["quality_mode"],
+            job["correlation_id"],
+        )
 
 
 @asynccontextmanager
@@ -130,6 +199,10 @@ async def lifespan(app: FastAPI):
         logger.info("Ultra quality models not available (optional)")
 
     logger.info(f"CORS allowed origins: {FRONTEND_ORIGINS}")
+    global _queue_condition, _split_worker_task
+    _queue_condition = asyncio.Condition()
+    _split_worker_task = asyncio.create_task(_split_worker_loop())
+    logger.info("Split queue worker started")
 
     def graceful_shutdown(signal_name):
         logger.info(f"Received {signal_name}, initiating graceful shutdown...")
@@ -143,6 +216,12 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Shutting down stem service...")
+    if _split_worker_task is not None:
+        _split_worker_task.cancel()
+        try:
+            await _split_worker_task
+        except asyncio.CancelledError:
+            pass
 
 
 def _is_job_cancelled(job_id: str) -> bool:
@@ -680,28 +759,26 @@ async def split(
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
 
-    _write_progress(
-        out_dir, {"status": "running", "progress": 0, "quality": quality_mode}
+    correlation_id = getattr(request.state, "correlation_id", "unknown")
+    queue_position = await _enqueue_split_job(
+        {
+            "job_id": job_id,
+            "input_path": input_path,
+            "out_dir": out_dir,
+            "stem_count": stem_count,
+            "prefer_speed": prefer_speed,
+            "quality_mode": quality_mode,
+            "correlation_id": correlation_id,
+        }
     )
 
-    correlation_id = getattr(request.state, "correlation_id", "unknown")
-
-    async def run_in_thread() -> None:
-        await asyncio.to_thread(
-            _run_separation_sync,
-            job_id,
-            input_path,
-            out_dir,
-            stem_count,
-            prefer_speed,
-            quality_mode,
-            correlation_id,
-        )
-
-    asyncio.create_task(run_in_thread())
-
     return JSONResponse(
-        content={"job_id": job_id, "status": "accepted"}, status_code=202
+        content={
+            "job_id": job_id,
+            "status": "accepted",
+            "queue_position": queue_position,
+        },
+        status_code=202,
     )
 
 
@@ -812,6 +889,25 @@ async def cancel_job(job_id: str, request: Request) -> dict:
             "status": "cancelled",
             "message": "Job cancellation requested",
         }
+
+    # Cancel queued (not yet running) split jobs
+    if _queue_condition is not None:
+        async with _queue_condition:
+            before = len(_queued_splits)
+            kept = deque([j for j in _queued_splits if j.get("job_id") != job_id])
+            if len(kept) != before:
+                _queued_splits.clear()
+                _queued_splits.extend(kept)
+                _refresh_queue_progress_locked()
+                _write_progress(
+                    OUTPUT_BASE / job_id, {"status": "cancelled", "progress": 0}
+                )
+                logger.info("Queued job %s cancelled by user", job_id)
+                return {
+                    "job_id": job_id,
+                    "status": "cancelled",
+                    "message": "Queued job cancellation requested",
+                }
 
     raise HTTPException(status_code=404, detail="Job not found")
 
