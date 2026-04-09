@@ -15,6 +15,7 @@ import logging.handlers
 import os
 import re
 import signal
+import threading
 import time
 import uuid
 from collections import deque
@@ -96,7 +97,7 @@ _jobs_lock = _threading.Lock()
 # Queue split jobs so only one heavy split runs at a time.
 _queued_splits: deque[dict[str, Any]] = deque()
 _queue_condition: asyncio.Condition | None = None
-_split_worker_task: asyncio.Task[Any] | None = None
+_split_worker_tasks: list[asyncio.Task[Any]] = []
 
 
 class JobCancelledError(Exception):
@@ -167,6 +168,41 @@ async def _split_worker_loop() -> None:
         )
 
 
+def _split_worker_count() -> int:
+    raw = (os.environ.get("SPLIT_MAX_CONCURRENCY") or "1").strip()
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return 1
+    return max(1, parsed)
+
+
+def _schedule_s3_upload(
+    job_id: str,
+    stems_dir: Path,
+    out_dir: Path,
+    progress_data: dict[str, Any],
+) -> None:
+    """Run S3 upload out-of-band and patch progress with S3 metadata when ready."""
+
+    def _run() -> None:
+        try:
+            s3_meta = upload_job_stems_to_s3(job_id, stems_dir)
+            if not s3_meta:
+                return
+            updated = dict(progress_data)
+            updated["s3"] = s3_meta
+            _write_progress(out_dir, updated)
+        except Exception:
+            logger.exception("Async S3 upload failed for job %s", job_id)
+
+    threading.Thread(
+        target=_run,
+        name=f"s3-upload-{job_id[:8]}",
+        daemon=True,
+    ).start()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Validate required models at startup so first request fails fast instead of hanging."""
@@ -199,10 +235,14 @@ async def lifespan(app: FastAPI):
         logger.info("Ultra quality models not available (optional)")
 
     logger.info(f"CORS allowed origins: {FRONTEND_ORIGINS}")
-    global _queue_condition, _split_worker_task
+    global _queue_condition, _split_worker_tasks
     _queue_condition = asyncio.Condition()
-    _split_worker_task = asyncio.create_task(_split_worker_loop())
-    logger.info("Split queue worker started")
+    worker_count = _split_worker_count()
+    _split_worker_tasks = [
+        asyncio.create_task(_split_worker_loop(), name=f"split-worker-{idx + 1}")
+        for idx in range(worker_count)
+    ]
+    logger.info("Split queue workers started: count=%d", worker_count)
 
     def graceful_shutdown(signal_name):
         logger.info(f"Received {signal_name}, initiating graceful shutdown...")
@@ -216,12 +256,14 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Shutting down stem service...")
-    if _split_worker_task is not None:
-        _split_worker_task.cancel()
+    for task in _split_worker_tasks:
+        task.cancel()
+    for task in _split_worker_tasks:
         try:
-            await _split_worker_task
+            await task
         except asyncio.CancelledError:
             pass
+    _split_worker_tasks = []
 
 
 def _is_job_cancelled(job_id: str) -> bool:
@@ -548,10 +590,8 @@ def _run_separation_sync(
             "mode_name": mode_name,
             "models_used": models_used,
         }
-        s3_meta = upload_job_stems_to_s3(job_id, out_dir / "stems")
-        if s3_meta:
-            progress_data["s3"] = s3_meta
         _write_progress(out_dir, progress_data)
+        _schedule_s3_upload(job_id, out_dir / "stems", out_dir, progress_data)
 
         metrics_record = {
             "job_id": job_id,
@@ -652,10 +692,8 @@ def _run_expand_sync(
             "expand_from": source_job_id,
             "models_used": models_used,
         }
-        s3_meta = upload_job_stems_to_s3(expand_job_id, out_dir / "stems")
-        if s3_meta:
-            expand_progress["s3"] = s3_meta
         _write_progress(out_dir, expand_progress)
+        _schedule_s3_upload(expand_job_id, out_dir / "stems", out_dir, expand_progress)
         job_log.info(
             "=== EXPAND COMPLETE  elapsed=%.1fs  models=%s ===", elapsed, models_used
         )

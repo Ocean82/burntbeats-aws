@@ -134,6 +134,21 @@ _INST_TIER_NAMES: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 _session_cache: dict[str, Any] = {}
 _cache_lock = threading.Lock()
+_hann_window_cache: dict[int, Any] = {}
+_window_cache_lock = threading.Lock()
+
+
+def _get_hann_window(n_fft: int):
+    """Return cached Hann window tensor for repeated STFT/iSTFT calls."""
+    with _window_cache_lock:
+        existing = _hann_window_cache.get(n_fft)
+        if existing is not None:
+            return existing
+        import torch
+
+        created = torch.hann_window(n_fft, periodic=True)
+        _hann_window_cache[n_fft] = created
+        return created
 
 
 def _logical_onnx_name(model_path: Path) -> str:
@@ -362,7 +377,7 @@ def _stft(wav: torch.Tensor, n_fft: int, hop: int, dim_f: int) -> torch.Tensor:
     """
     import torch
 
-    window = torch.hann_window(n_fft, periodic=True)
+    window = _get_hann_window(n_fft)
     batch_dims = wav.shape[:-2]
     channels, time_dim = wav.shape[-2], wav.shape[-1]
     reshaped = wav.reshape([-1, time_dim])
@@ -392,7 +407,7 @@ def _istft(spec: torch.Tensor, n_fft: int, hop: int) -> torch.Tensor:
     """
     import torch
 
-    window = torch.hann_window(n_fft, periodic=True)
+    window = _get_hann_window(n_fft)
     batch_dims = spec.shape[:-3]
     channel_dim, freq_dim, time_dim = spec.shape[-3], spec.shape[-2], spec.shape[-1]
     n_bins = n_fft // 2 + 1
@@ -525,6 +540,7 @@ def _run_mdx_onnx(
     divider = np.zeros((1, 2, total), dtype=np.float32)
 
     # ── Process chunks ────────────────────────────────────────────────────────
+    hann_window_cache: dict[int, np.ndarray] = {}
     chunk_idx = 0
     for i in range(0, total, step):
         chunk_idx += 1
@@ -542,7 +558,10 @@ def _run_mdx_onnx(
         chunk_size_actual = end - start
 
         # Hann window for overlap-add
-        window = np.hanning(chunk_size_actual).astype(np.float32)
+        window = hann_window_cache.get(chunk_size_actual)
+        if window is None:
+            window = np.hanning(chunk_size_actual).astype(np.float32)
+            hann_window_cache[chunk_size_actual] = window
         window = np.tile(window[None, None, :], (1, 2, 1))
 
         # Extract chunk, zero-pad if short
@@ -554,7 +573,7 @@ def _run_mdx_onnx(
             )
 
         # (2, chunk_size) → (1, 2, chunk_size) tensor
-        mix_tensor = torch.tensor(mix_part[np.newaxis], dtype=torch.float32)
+        mix_tensor = torch.from_numpy(mix_part[np.newaxis]).to(dtype=torch.float32)
 
         # STFT → (1, 4, dim_f, dim_t)
         spek = _stft(mix_tensor, n_fft, hop, dim_f)
@@ -570,9 +589,7 @@ def _run_mdx_onnx(
             return None
 
         # iSTFT → (1, 2, samples)
-        wav_out = _istft(
-            torch.tensor(spec_pred, dtype=torch.float32), n_fft, hop
-        ).numpy()
+        wav_out = _istft(torch.from_numpy(spec_pred), n_fft, hop).numpy()
 
         # Overlap-add with Hann window
         result[..., start:end] += wav_out[..., : end - start] * window
