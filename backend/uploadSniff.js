@@ -8,6 +8,8 @@ import { openSync, readSync, closeSync } from "fs";
 const HEADER_BYTES = 4096;
 /** Reject absurd ID3 size claims (mitigate header DoS). */
 const MAX_ID3_SYNTHETIC = 256 * 1024;
+/** Additional bytes to inspect past ID3 for first MP3 frame sync. */
+const MP3_POST_ID3_SCAN_BYTES = 4096;
 
 /**
  * @param {string} filePath
@@ -25,11 +27,26 @@ export function verifyUploadMatchesExtension(filePath, extWithDot) {
   try {
     fd = openSync(filePath, "r");
     const buf = Buffer.allocUnsafe(HEADER_BYTES);
-    const n = readSync(fd, buf, 0, HEADER_BYTES, 0);
+    let n = readSync(fd, buf, 0, HEADER_BYTES, 0);
     if (n < 4) {
       return { ok: false, message: "File is empty or too small to be audio." };
     }
-    const slice = buf.subarray(0, n);
+    let slice = buf.subarray(0, n);
+    if (ext === ".mp3" && slice.length >= 10 && slice.toString("ascii", 0, 3) === "ID3") {
+      const id3len =
+        ((slice[6] & 0x7f) << 21) |
+        ((slice[7] & 0x7f) << 14) |
+        ((slice[8] & 0x7f) << 7) |
+        (slice[9] & 0x7f);
+      if (id3len <= MAX_ID3_SYNTHETIC) {
+        const needed = 10 + id3len + MP3_POST_ID3_SCAN_BYTES;
+        if (needed > n) {
+          const expanded = Buffer.allocUnsafe(needed);
+          n = readSync(fd, expanded, 0, needed, 0);
+          slice = expanded.subarray(0, n);
+        }
+      }
+    }
     return sniffMatchesExt(slice, ext);
   } catch {
     return { ok: false, message: "Could not read uploaded file." };
