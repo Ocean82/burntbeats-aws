@@ -1,0 +1,9 @@
+{
+  "scenario_id": "09_scnet_4stem",
+  "title": "SCNet 4-stem (PyTorch subprocess or ONNX)",
+  "status": "skipped",
+  "error": "skipped via --no-scnet",
+  "audio_input_file": "D:\\burntbeats-aws\\tmp_test\\pipeline_matrix_20260412_135049Z\\sample_30s.wav",
+  "clip_audio_file": "D:\\burntbeats-aws\\tmp_test2\\sample_30s.wav",
+  "clip_duration_requested_s": 30.0
+}

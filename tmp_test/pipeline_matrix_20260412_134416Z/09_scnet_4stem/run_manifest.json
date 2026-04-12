@@ -1,0 +1,55 @@
+{
+  "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T13:48:04.060Z",
+  "finished_at_utc": "2026-04-12T13:49:02.207Z",
+  "completion_time_seconds": 58.146,
+  "scenario_id": "09_scnet_4stem",
+  "title": "SCNet 4-stem (PyTorch subprocess or ONNX)",
+  "pipeline": "scnet-pytorch",
+  "elapsed_seconds": 58.146,
+  "status": "ok",
+  "error": null,
+  "source_input": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_wav": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav",
+  "models": [
+    {
+      "role": "scnet_repo",
+      "path": "/mnt/d/burntbeats-aws/models/scnet_models/SCNet-main",
+      "model_path": "/mnt/d/burntbeats-aws/models/scnet_models/SCNet-main",
+      "model_name": "SCNet-main"
+    },
+    {
+      "role": "checkpoint",
+      "path": "/mnt/d/burntbeats-aws/models/scnet_models/scnet.th",
+      "name": "scnet.th",
+      "suffix": ".th",
+      "size_bytes": 42434545,
+      "sha256": "f8aff3bc8dd816aad392800d9d69519add719a2fbd22550af6f8cb2138d25ff5",
+      "model_path": "/mnt/d/burntbeats-aws/models/scnet_models/scnet.th",
+      "model_name": "scnet.th"
+    },
+    {
+      "role": "config",
+      "path": "/mnt/d/burntbeats-aws/stem_service/scnet_musdb_default.yaml",
+      "name": "scnet_musdb_default.yaml",
+      "suffix": ".yaml",
+      "size_bytes": 1139,
+      "sha256": "b33e751198db0cfb1134f709963cddecc291bc5fd74d256a37c2e686c8ef1e6b",
+      "model_path": "/mnt/d/burntbeats-aws/stem_service/scnet_musdb_default.yaml",
+      "model_name": "scnet_musdb_default.yaml"
+    }
+  ],
+  "output_audio": [
+    "vocals.wav",
+    "vocals.mp3",
+    "drums.wav",
+    "drums.mp3",
+    "bass.wav",
+    "bass.mp3",
+    "other.wav",
+    "other.mp3"
+  ],
+  "ffmpeg_mp3": true
+}

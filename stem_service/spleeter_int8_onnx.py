@@ -26,7 +26,7 @@ import numpy as np
 import soundfile as sf
 from scipy import signal
 
-from stem_service.config import MODELS_DIR, get_onnx_providers
+from stem_service.config import get_onnx_providers, resolve_models_root_file
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,11 @@ def run_spleeter_vocals_int8_2stem(
     Returns (vocals_wav, instrumental_wav) or None on failure.
     """
     _log = job_logger or logger
-    path = model_path if model_path is not None else MODELS_DIR / "vocals.int8.onnx"
+    path = (
+        model_path
+        if model_path is not None
+        else resolve_models_root_file("vocals.int8.onnx")
+    )
     if not path.exists():
         return None
 

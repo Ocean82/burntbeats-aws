@@ -58,7 +58,15 @@ Lists below are **logical ONNX names**; runtime resolves to `.ort` when present.
 | **fast / balanced** | `UVR_MDXNET_3_9662` → `UVR_MDXNET_KARA` (score **9** on the benchmark clip only) |
 | **quality** | `UVR_MDXNET_3_9662` → `UVR_MDXNET_KARA` → `Kim_Vocal_1` → `Kim_Vocal_2` → `UVR-MDX-NET-Voc_FT` |
 
-**2-stem (production waterfall)** tries in order until one succeeds: **(1)** `vocal_model_override` when valid, else **`UVR_MDXNET_3_9662`** + instrumental ONNX or phase inversion; **(2)** **`UVR_MDXNET_KARA`** same; **(3)** **MDX23C** vocal + instrumental pair; **(4)** **PyTorch htdemucs** `--two-stems=vocals`. Tier lists below still apply to **instrumental ONNX** selection (`model_tier`) and other helpers; they do not insert Kim/Voc_FT into this 2-stem chain. **`vocal_model_override`** is rejected if disallowed (see `SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX` in `mdx_onnx.py`). `SPEED_2STEM_ONNX` is legacy/diagnostic only (see `config.speed_2stem_onnx_path`).
+**2-stem (production waterfall)** is implemented in **`stem_service/vocal_stage1.py`** (`extract_vocals_stage1`). Order until one succeeds (when `prefer_speed` is false and `model_tier` is **balanced** / **quality**, **MDX23C** is first):
+
+1. **MDX23C rank 0** — **quality:** `mdx23c_vocal` only + mix − vocal in `mdx_onnx` (`InstrumentalSource.MDX23C_MIX_MINUS`). **balanced:** `mdx23c_vocal` + `mdx23c_instrumental` ONNX (`ONNX_SEPARATE_INST`).
+2. **UVR_MDXNET_3_9662** (after optional audio-separator branch): vocal ONNX + optional second instrumental ONNX (`USE_TWO_STEM_INST_ONNX_PASS`) or **`PHASE_INVERSION_PENDING`**.
+3. **UVR_MDXNET_KARA** — same as (2).
+4. **MDX23C rank 3** — same quality/balanced split as (1) if (1) did not return.
+5. **PyTorch htdemucs** `--two-stems=vocals` (`DEMUCS_TWO_STEM`).
+
+Return value includes **`InstrumentalSource`** so hybrid never relies on guessing from `instrumental_path is None` alone — see **`docs/MODEL-PARAMS.md`** (*Stage 1 return value*). Tier lists below still apply to **instrumental ONNX** selection (`model_tier`) for ranks 1–2; they do not insert Kim/Voc_FT into this 2-stem chain. **`vocal_model_override`** is rejected if disallowed (see `SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX` in `mdx_onnx.py`). `SPEED_2STEM_ONNX` is legacy/diagnostic only (see `config.speed_2stem_onnx_path`).
 
 ### Instrumental
 

@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "sync-favicon": "node scripts/sync-favicon.mjs",
+    "predev": "npm run sync-favicon",
+    "prebuild": "npm run sync-favicon",
     "dev": "vite",
     "build": "vite build",
     "build:singlefile": "vite build --mode singlefile",

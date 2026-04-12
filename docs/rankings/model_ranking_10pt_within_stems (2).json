@@ -1,0 +1,1451 @@
+[
+  {
+    "stem_count": 6,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "5c90dfd2-34c22ccb__7ae9d6de",
+    "elapsed_seconds": 13.211,
+    "quality_score_10pt": 9,
+    "rank_within_stem_group": 1,
+    "stem_group_size": 5
+  },
+  {
+    "stem_count": 6,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "5c90dfd2-34c22ccb__d105a4c8",
+    "elapsed_seconds": 13.363,
+    "quality_score_10pt": 9,
+    "rank_within_stem_group": 2,
+    "stem_group_size": 5
+  },
+  {
+    "stem_count": 6,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "5c90dfd2-34c22ccb__2aad324b",
+    "elapsed_seconds": 13.391,
+    "quality_score_10pt": 9,
+    "rank_within_stem_group": 3,
+    "stem_group_size": 5
+  },
+  {
+    "stem_count": 6,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "5c90dfd2-34c22ccb__29d4388e",
+    "elapsed_seconds": 15.593,
+    "quality_score_10pt": 9,
+    "rank_within_stem_group": 4,
+    "stem_group_size": 5
+  },
+  {
+    "stem_count": 6,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "5c90dfd2-34c22ccb",
+    "elapsed_seconds": 18.186,
+    "quality_score_10pt": 9,
+    "rank_within_stem_group": 5,
+    "stem_group_size": 5
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "04573f0d-f3cf25b2__29d4388e",
+    "elapsed_seconds": 13.721,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 1,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "04573f0d-f3cf25b2__2aad324b",
+    "elapsed_seconds": 13.732,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 2,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "d12395a8-e57c48e6__d105a4c8",
+    "elapsed_seconds": 13.841,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 3,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "04573f0d-f3cf25b2__7ae9d6de",
+    "elapsed_seconds": 14.624,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 4,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "htdemucs__8cd93e44",
+    "elapsed_seconds": 14.701,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 5,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "04573f0d-f3cf25b2",
+    "elapsed_seconds": 15.06,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 6,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "f7e0c4bc-ba3fe64a__d105a4c8",
+    "elapsed_seconds": 15.636,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 7,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "f7e0c4bc-ba3fe64a__2aad324b",
+    "elapsed_seconds": 15.673,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 8,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "f7e0c4bc-ba3fe64a__29d4388e",
+    "elapsed_seconds": 15.771,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 9,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "f7e0c4bc-ba3fe64a",
+    "elapsed_seconds": 15.951,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 10,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "f7e0c4bc-ba3fe64a__7ae9d6de",
+    "elapsed_seconds": 15.958,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 11,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "04573f0d-f3cf25b2__d105a4c8",
+    "elapsed_seconds": 19.072,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 12,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "955717e8-8726e21a__d105a4c8",
+    "elapsed_seconds": 19.977,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 13,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "955717e8-8726e21a__2aad324b",
+    "elapsed_seconds": 20.039,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 14,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "d12395a8-e57c48e6",
+    "elapsed_seconds": 20.058,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 15,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "92cfc3b6-ef3bcb9c__7ae9d6de",
+    "elapsed_seconds": 20.299,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 16,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "955717e8-8726e21a__29d4388e",
+    "elapsed_seconds": 20.991,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 17,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "92cfc3b6-ef3bcb9c__2aad324b",
+    "elapsed_seconds": 21.097,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 18,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "955717e8-8726e21a",
+    "elapsed_seconds": 21.223,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 19,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "92cfc3b6-ef3bcb9c__29d4388e",
+    "elapsed_seconds": 21.34,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 20,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "92cfc3b6-ef3bcb9c__d105a4c8",
+    "elapsed_seconds": 21.433,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 21,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "d12395a8-e57c48e6__2aad324b",
+    "elapsed_seconds": 21.55,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 22,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "d12395a8-e57c48e6__29d4388e",
+    "elapsed_seconds": 21.867,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 23,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "955717e8-8726e21a__7ae9d6de",
+    "elapsed_seconds": 22.059,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 24,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "92cfc3b6-ef3bcb9c",
+    "elapsed_seconds": 22.098,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 25,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "htdemucs",
+    "elapsed_seconds": 22.582,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 26,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Transformer Demucs (HTDemucs)",
+    "model_hash": "d12395a8-e57c48e6__7ae9d6de",
+    "elapsed_seconds": 23.776,
+    "quality_score_10pt": 8,
+    "rank_within_stem_group": 27,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "cfa93e08-61801ae1__7ae9d6de",
+    "elapsed_seconds": 5.231,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 28,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "cfa93e08-61801ae1__2aad324b",
+    "elapsed_seconds": 6.08,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 29,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "e51eebcc-c1b80bdd__f00f2b3c",
+    "elapsed_seconds": 6.742,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 30,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "e51eebcc-c1b80bdd__2aad324b",
+    "elapsed_seconds": 6.765,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 31,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7fd6ef75-a905dd85__d105a4c8",
+    "elapsed_seconds": 6.939,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 32,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "fa0cb7f9-100d8bf4__7ae9d6de",
+    "elapsed_seconds": 6.945,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 33,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "cfa93e08-61801ae1__29d4388e",
+    "elapsed_seconds": 7.016,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 34,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "cfa93e08-61801ae1",
+    "elapsed_seconds": 7.032,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 35,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "fa0cb7f9-100d8bf4__2aad324b",
+    "elapsed_seconds": 7.037,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 36,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "c511e2ab-fe698775",
+    "elapsed_seconds": 7.041,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 37,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "modelo_final__d105a4c8",
+    "elapsed_seconds": 7.058,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 38,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "modelo_final__7ae9d6de",
+    "elapsed_seconds": 7.063,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 39,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "75fc33f5-1941ce65__2aad324b",
+    "elapsed_seconds": 7.084,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 40,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "modelo_final",
+    "elapsed_seconds": 7.128,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 41,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "modelo_final__29d4388e",
+    "elapsed_seconds": 7.136,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 42,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "cfa93e08-61801ae1__f00f2b3c",
+    "elapsed_seconds": 7.262,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 43,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "a1d90b5c-ae9d2452__d105a4c8",
+    "elapsed_seconds": 7.334,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 44,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "75fc33f5-1941ce65__29d4388e",
+    "elapsed_seconds": 7.36,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 45,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "e51eebcc-c1b80bdd__d105a4c8",
+    "elapsed_seconds": 7.417,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 46,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "fa0cb7f9-100d8bf4__d105a4c8",
+    "elapsed_seconds": 7.586,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 47,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "83fc094f-4a16d450",
+    "elapsed_seconds": 7.619,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 48,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "c511e2ab-fe698775__29d4388e",
+    "elapsed_seconds": 7.753,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 49,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "fa0cb7f9-100d8bf4__29d4388e",
+    "elapsed_seconds": 7.818,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 50,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "fa0cb7f9-100d8bf4",
+    "elapsed_seconds": 7.928,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 51,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "c511e2ab-fe698775__d105a4c8",
+    "elapsed_seconds": 7.978,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 52,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7fd6ef75-a905dd85__f00f2b3c",
+    "elapsed_seconds": 8.159,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 53,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "14fc6a69-a89dd0ee__7ae9d6de",
+    "elapsed_seconds": 8.19,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 54,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "a1d90b5c-ae9d2452__7ae9d6de",
+    "elapsed_seconds": 8.253,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 55,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "a1d90b5c-ae9d2452",
+    "elapsed_seconds": 8.357,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 56,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7d865c68-3d5dd56b__d105a4c8",
+    "elapsed_seconds": 8.419,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 57,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7d865c68-3d5dd56b__7ae9d6de",
+    "elapsed_seconds": 8.431,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 58,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "902315c2-b39ce9c9__29d4388e",
+    "elapsed_seconds": 8.47,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 59,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "5d2d6c55-db83574e__7ae9d6de",
+    "elapsed_seconds": 8.485,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 60,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7d865c68-3d5dd56b__2aad324b",
+    "elapsed_seconds": 8.486,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 61,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "83fc094f-4a16d450__7ae9d6de",
+    "elapsed_seconds": 8.52,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 62,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "5d2d6c55-db83574e__f00f2b3c",
+    "elapsed_seconds": 8.549,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 63,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7fd6ef75-a905dd85__29d4388e",
+    "elapsed_seconds": 8.557,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 64,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "e51eebcc-c1b80bdd__7ae9d6de",
+    "elapsed_seconds": 8.558,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 65,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "c511e2ab-fe698775__2aad324b",
+    "elapsed_seconds": 8.574,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 66,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "902315c2-b39ce9c9__7ae9d6de",
+    "elapsed_seconds": 8.575,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 67,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "5d2d6c55-db83574e__d105a4c8",
+    "elapsed_seconds": 8.583,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 68,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "5d2d6c55-db83574e",
+    "elapsed_seconds": 8.619,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 69,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "5d2d6c55-db83574e__29d4388e",
+    "elapsed_seconds": 8.621,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 70,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7d865c68-3d5dd56b",
+    "elapsed_seconds": 8.709,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 71,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7fd6ef75-a905dd85__7ae9d6de",
+    "elapsed_seconds": 8.74,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 72,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "83fc094f-4a16d450__f00f2b3c",
+    "elapsed_seconds": 8.89,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 73,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "464b36d7-e5a9386e__d105a4c8",
+    "elapsed_seconds": 9.007,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 74,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "464b36d7-e5a9386e__2aad324b",
+    "elapsed_seconds": 9.013,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 75,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "83fc094f-4a16d450__d105a4c8",
+    "elapsed_seconds": 9.058,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 76,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "c511e2ab-fe698775__7ae9d6de",
+    "elapsed_seconds": 9.09,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 77,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "902315c2-b39ce9c9",
+    "elapsed_seconds": 9.141,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 78,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7fd6ef75-a905dd85",
+    "elapsed_seconds": 9.209,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 79,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "42e558d4-196e0e1b__29d4388e",
+    "elapsed_seconds": 9.226,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 80,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "14fc6a69-a89dd0ee__2aad324b",
+    "elapsed_seconds": 9.371,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 81,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "464b36d7-e5a9386e__7ae9d6de",
+    "elapsed_seconds": 9.383,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 82,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7fd6ef75-a905dd85__2aad324b",
+    "elapsed_seconds": 9.411,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 83,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "14fc6a69-a89dd0ee",
+    "elapsed_seconds": 9.472,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 84,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "464b36d7-e5a9386e",
+    "elapsed_seconds": 9.497,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 85,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "a1d90b5c-ae9d2452__29d4388e",
+    "elapsed_seconds": 9.597,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 86,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "902315c2-b39ce9c9__d105a4c8",
+    "elapsed_seconds": 9.679,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 87,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "902315c2-b39ce9c9__2aad324b",
+    "elapsed_seconds": 9.714,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 88,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "14fc6a69-a89dd0ee__29d4388e",
+    "elapsed_seconds": 9.753,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 89,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "7d865c68-3d5dd56b__29d4388e",
+    "elapsed_seconds": 9.798,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 90,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "modelo_final__2aad324b",
+    "elapsed_seconds": 9.964,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 91,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "5d2d6c55-db83574e__2aad324b",
+    "elapsed_seconds": 10.082,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 92,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "305bc58f-18378783__7ae9d6de",
+    "elapsed_seconds": 10.123,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 93,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "42e558d4-196e0e1b__7ae9d6de",
+    "elapsed_seconds": 10.188,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 94,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "305bc58f-18378783__d105a4c8",
+    "elapsed_seconds": 10.401,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 95,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "83fc094f-4a16d450__29d4388e",
+    "elapsed_seconds": 10.714,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 96,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "75fc33f5-1941ce65__7ae9d6de",
+    "elapsed_seconds": 10.777,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 97,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "305bc58f-18378783__2aad324b",
+    "elapsed_seconds": 10.965,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 98,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "42e558d4-196e0e1b",
+    "elapsed_seconds": 11.149,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 99,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "42e558d4-196e0e1b__2aad324b",
+    "elapsed_seconds": 11.326,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 100,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "e51eebcc-c1b80bdd",
+    "elapsed_seconds": 11.417,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 101,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "305bc58f-18378783__29d4388e",
+    "elapsed_seconds": 12.022,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 102,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "305bc58f-18378783",
+    "elapsed_seconds": 12.332,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 103,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "75fc33f5-1941ce65",
+    "elapsed_seconds": 12.744,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 104,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "a1d90b5c-ae9d2452__f00f2b3c",
+    "elapsed_seconds": 13.294,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 105,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "464b36d7-e5a9386e__f00f2b3c",
+    "elapsed_seconds": 13.447,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 106,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "464b36d7-e5a9386e__29d4388e",
+    "elapsed_seconds": 16.311,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 107,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "e51eebcc-c1b80bdd__29d4388e",
+    "elapsed_seconds": 16.645,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 108,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "83fc094f-4a16d450__2aad324b",
+    "elapsed_seconds": 19.91,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 109,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "14fc6a69-a89dd0ee__f00f2b3c",
+    "elapsed_seconds": 23.898,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 110,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "14fc6a69-a89dd0ee__d105a4c8",
+    "elapsed_seconds": 24.953,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 111,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "cfa93e08-61801ae1__d105a4c8",
+    "elapsed_seconds": 25.887,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 112,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "75fc33f5-1941ce65__d105a4c8",
+    "elapsed_seconds": 28.909,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 113,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "42e558d4-196e0e1b__d105a4c8",
+    "elapsed_seconds": 31.035,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 114,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "a1d90b5c-ae9d2452__2aad324b",
+    "elapsed_seconds": 32.645,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 115,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "7ecf8ec1-70f50cc9__d105a4c8",
+    "elapsed_seconds": 6.728,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 116,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "6b9c2ca1-3fd82607__29d4388e",
+    "elapsed_seconds": 6.978,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 117,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "0d19c1c6-0f06f20e__7ae9d6de",
+    "elapsed_seconds": 7.002,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 118,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "b72baf4e-8778635e",
+    "elapsed_seconds": 7.222,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 119,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "b72baf4e-8778635e__d105a4c8",
+    "elapsed_seconds": 7.234,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 120,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "b72baf4e-8778635e__7ae9d6de",
+    "elapsed_seconds": 7.507,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 121,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "6b9c2ca1-3fd82607__2aad324b",
+    "elapsed_seconds": 7.765,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 122,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "7ecf8ec1-70f50cc9__2aad324b",
+    "elapsed_seconds": 7.792,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 123,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "7ecf8ec1-70f50cc9__7ae9d6de",
+    "elapsed_seconds": 8.019,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 124,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "9a6b4851-03af0aa6__d105a4c8",
+    "elapsed_seconds": 8.234,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 125,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "1ef250f1-592467ce__2aad324b",
+    "elapsed_seconds": 8.534,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 126,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "0d19c1c6-0f06f20e__29d4388e",
+    "elapsed_seconds": 8.541,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 127,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "6b9c2ca1-3fd82607__7ae9d6de",
+    "elapsed_seconds": 8.611,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 128,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "6b9c2ca1-3fd82607",
+    "elapsed_seconds": 8.761,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 129,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "7ecf8ec1-70f50cc9__29d4388e",
+    "elapsed_seconds": 9.037,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 130,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "0d19c1c6-0f06f20e__d105a4c8",
+    "elapsed_seconds": 9.167,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 131,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "1ef250f1-592467ce__29d4388e",
+    "elapsed_seconds": 9.271,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 132,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "1ef250f1-592467ce__7ae9d6de",
+    "elapsed_seconds": 9.29,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 133,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "b72baf4e-8778635e__2aad324b",
+    "elapsed_seconds": 9.419,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 134,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "1ef250f1-592467ce__d105a4c8",
+    "elapsed_seconds": 9.486,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 135,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "9a6b4851-03af0aa6__29d4388e",
+    "elapsed_seconds": 10.171,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 136,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "1ef250f1-592467ce",
+    "elapsed_seconds": 10.995,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 137,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "7ecf8ec1-70f50cc9",
+    "elapsed_seconds": 11.231,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 138,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "9a6b4851-03af0aa6",
+    "elapsed_seconds": 11.469,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 139,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "6b9c2ca1-3fd82607__d105a4c8",
+    "elapsed_seconds": 11.638,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 140,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "9a6b4851-03af0aa6__2aad324b",
+    "elapsed_seconds": 12.234,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 141,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "0d19c1c6-0f06f20e",
+    "elapsed_seconds": 15.921,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 142,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "9a6b4851-03af0aa6__7ae9d6de",
+    "elapsed_seconds": 17.903,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 143,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "0d19c1c6-0f06f20e__2aad324b",
+    "elapsed_seconds": 42.282,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 144,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "Demucs (convolutional U-Net)",
+    "model_hash": "b72baf4e-8778635e__29d4388e",
+    "elapsed_seconds": 44.35,
+    "quality_score_10pt": 6,
+    "rank_within_stem_group": 145,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "EMBER-DEMUCS-SEPARATOR-ALT",
+    "model_hash": "EMBER-DEMUCS-SEPARATOR-ALT",
+    "elapsed_seconds": 25.155,
+    "quality_score_10pt": 4,
+    "rank_within_stem_group": 146,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 4,
+    "model_name": "htdemucs_embedded",
+    "model_hash": "htdemucs_embedded",
+    "elapsed_seconds": 28.092,
+    "quality_score_10pt": 4,
+    "rank_within_stem_group": 147,
+    "stem_group_size": 147
+  },
+  {
+    "stem_count": 2,
+    "model_name": "MDX23C-8KFFT-InstVoc_HQ_2",
+    "model_hash": "MDX23C-8KFFT-InstVoc_HQ_2",
+    "elapsed_seconds": 700.68,
+    "quality_score_10pt": 10,
+    "rank_within_stem_group": 1,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "MDX23C-8KFFT-InstVoc_HQ",
+    "model_hash": "MDX23C-8KFFT-InstVoc_HQ",
+    "elapsed_seconds": 719.314,
+    "quality_score_10pt": 10,
+    "rank_within_stem_group": 2,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "ebf34a2d",
+    "elapsed_seconds": 6.186,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 3,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "ebf34a2db__f00f2b3c",
+    "elapsed_seconds": 6.619,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 4,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "ebf34a2db__d105a4c8",
+    "elapsed_seconds": 6.737,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 5,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "ebf34a2db__29d4388e",
+    "elapsed_seconds": 6.778,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 6,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "ebf34a2db__2aad324b",
+    "elapsed_seconds": 7.014,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 7,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "ebf34a2db__7ae9d6de",
+    "elapsed_seconds": 7.693,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 8,
+    "stem_group_size": 9
+  },
+  {
+    "stem_count": 2,
+    "model_name": "Hybrid Demucs (HDemucs)",
+    "model_hash": "ebf34a2db",
+    "elapsed_seconds": 7.807,
+    "quality_score_10pt": 7,
+    "rank_within_stem_group": 9,
+    "stem_group_size": 9
+  }
+]

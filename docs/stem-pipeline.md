@@ -27,12 +27,20 @@ Demucs **ONNX/ORT** 4-stem inference was removed; production relies on **PyTorch
 
 ## 2-stem Stage 1 priority
 
-1. **MDX23C** vocal + instrumental ONNX if both present and configured.
-2. Otherwise **Kim_Vocal_2 / Voc_FT** + **Inst_HQ_** ONNX (or phase inversion if only vocal ONNX).
-3. Else **Demucs** `--two-stems=vocals` (native vocals + no_vocals).
+Implemented in `stem_service/vocal_stage1.py` (`extract_vocals_stage1`). When `prefer_speed` is false and `model_tier` is **balanced** or **quality**, **MDX23C** is attempted first (if vocal weights exist and are configured):
+
+1. **MDX23C rank 0** — **quality:** `mdx23c_vocal` only; instrumental = mix − vocal inside `mdx_onnx` (one ONNX pass). **balanced:** `mdx23c_vocal` + `mdx23c_instrumental` ONNX (two passes).
+2. **UVR_MDXNET_3_9662** (or valid `vocal_model_override`) — optional audio-separator CLI; else vocal ONNX + optional second instrumental ONNX (`USE_TWO_STEM_INST_ONNX_PASS`) or **phase inversion pending**.
+3. **UVR_MDXNET_KARA** — same pairing rules as rank 1.
+4. **MDX23C rank 3** — same quality/balanced split as step 1 if step 1 did not return.
+5. **Demucs** `htdemucs` `--two-stems=vocals` (native vocals + `no_vocals`).
+
+Hybrid code does **not** infer behavior from `instrumental_path is None` alone: see **`InstrumentalSource`** and **`[MODEL-PARAMS.md](MODEL-PARAMS.md)`** (*Stage 1 return value*).
 
 ## Related docs
 
+- [MODEL-PARAMS.md](MODEL-PARAMS.md) — MDX tensor params, overlap, **`InstrumentalSource`** / 4-tuple Stage 1 return
+- [MODEL-SELECTION-AUTHORITY.md](MODEL-SELECTION-AUTHORITY.md) — tier lists vs production waterfall
 - [benchmark-demucs-onnx.md](benchmark-demucs-onnx.md) — historical notes on Demucs ONNX benchmarks (ONNX path retired)
 - [ORT-MODEL-CONVERSION.md](ORT-MODEL-CONVERSION.md) — optional build-time ONNX → ORT (faster loads; `models/demucs.onnx-main` README context)
 - [MODELS-INVENTORY.md](MODELS-INVENTORY.md) — Files under `models/`

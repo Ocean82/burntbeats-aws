@@ -1,0 +1,10 @@
+scenario_id,status,started_at_utc,finished_at_utc,completion_time_seconds,model_names_joined,model_paths_joined
+01_2stem_fast_main,ok,2026-04-12T13:50:50.547Z,2026-04-12T13:51:05.864Z,15.316,UVR_MDXNET_3_9662.ort;phase_inversion,/mnt/d/burntbeats-aws/models/UVR_MDXNET_3_9662.ort;
+02_2stem_fast_backup,ok,2026-04-12T13:51:07.203Z,2026-04-12T13:51:21.168Z,13.965,UVR_MDXNET_KARA.ort;phase_inversion,/mnt/d/burntbeats-aws/models/UVR_MDXNET_KARA.ort;
+03_2stem_quality_main,ok,2026-04-12T13:51:22.453Z,2026-04-12T13:52:35.849Z,73.395,mdx23c_vocal.onnx;mdx23c_instrumental.onnx,/mnt/d/burntbeats-aws/models/mdx23c_vocal.onnx;/mnt/d/burntbeats-aws/models/mdx23c_instrumental.onnx
+04_2stem_quality_backup,ok,2026-04-12T13:52:39.425Z,2026-04-12T13:53:44.887Z,65.462,Kim_Vocal_2.ort;phase_inversion,/mnt/d/burntbeats-aws/models/Kim_Vocal_2.ort;
+05_4stem_fast_main,ok,2026-04-12T13:53:46.932Z,2026-04-12T13:54:47.660Z,60.728,d12395a8-e57c48e6.th,/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank27/d12395a8-e57c48e6.th
+06_4stem_fast_backup,ok,2026-04-12T13:54:50.785Z,2026-04-12T13:55:17.295Z,26.510,cfa93e08-61801ae1.th,/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank28/cfa93e08-61801ae1.th
+07_4stem_quality_main,ok,2026-04-12T13:55:21.023Z,2026-04-12T13:55:54.308Z,33.285,04573f0d-f3cf25b2.th,/mnt/d/burntbeats-aws/models/Demucs_Models/quality_4stem_rank1/04573f0d-f3cf25b2.th
+08_4stem_quality_backup,ok,2026-04-12T13:55:57.813Z,2026-04-12T13:56:31.544Z,33.732,92cfc3b6-ef3bcb9c.th,/mnt/d/burntbeats-aws/models/Demucs_Models/quality_4stem_rank2/92cfc3b6-ef3bcb9c.th
+09_scnet_4stem,ok,2026-04-12T13:56:35.455Z,2026-04-12T13:57:33.890Z,58.436,SCNet-main;scnet.th;scnet_musdb_default.yaml,/mnt/d/burntbeats-aws/models/scnet_models/SCNet-main;/mnt/d/burntbeats-aws/models/scnet_models/scnet.th;/mnt/d/burntbeats-aws/stem_service/scnet_musdb_default.yaml

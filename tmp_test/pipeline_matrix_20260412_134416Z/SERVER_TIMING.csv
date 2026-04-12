@@ -1,0 +1,10 @@
+scenario_id,status,started_at_utc,finished_at_utc,completion_time_seconds,model_names_joined,model_paths_joined
+01_2stem_fast_main,ok,2026-04-12T13:44:16.895Z,2026-04-12T13:44:30.069Z,13.174,UVR_MDXNET_3_9662.ort;phase_inversion,/mnt/d/burntbeats-aws/models/UVR_MDXNET_3_9662.ort;
+02_2stem_fast_backup,ok,2026-04-12T13:44:31.390Z,2026-04-12T13:44:43.614Z,12.224,UVR_MDXNET_KARA.ort;phase_inversion,/mnt/d/burntbeats-aws/models/UVR_MDXNET_KARA.ort;
+03_2stem_quality_main,ok,2026-04-12T13:44:44.887Z,2026-04-12T13:45:52.587Z,67.701,mdx23c_vocal.onnx;mdx23c_instrumental.onnx,/mnt/d/burntbeats-aws/models/mdx23c_vocal.onnx;/mnt/d/burntbeats-aws/models/mdx23c_instrumental.onnx
+04_2stem_quality_backup,ok,2026-04-12T13:45:55.797Z,2026-04-12T13:47:04.517Z,68.720,Kim_Vocal_2.ort;phase_inversion,/mnt/d/burntbeats-aws/models/Kim_Vocal_2.ort;
+05_4stem_fast_main,error,2026-04-12T13:47:06.495Z,2026-04-12T13:47:46.135Z,39.640,d12395a8-e57c48e6__7ae9d6de.th,/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank27/d12395a8-e57c48e6__7ae9d6de.th
+06_4stem_fast_backup,error,2026-04-12T13:47:46.626Z,2026-04-12T13:48:02.384Z,15.759,cfa93e08-61801ae1__7ae9d6de.th,/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank28/cfa93e08-61801ae1__7ae9d6de.th
+07_4stem_quality_main,skipped,,,,,
+08_4stem_quality_backup,skipped,,,,,
+09_scnet_4stem,ok,2026-04-12T13:48:04.060Z,2026-04-12T13:49:02.207Z,58.146,SCNet-main;scnet.th;scnet_musdb_default.yaml,/mnt/d/burntbeats-aws/models/scnet_models/SCNet-main;/mnt/d/burntbeats-aws/models/scnet_models/scnet.th;/mnt/d/burntbeats-aws/stem_service/scnet_musdb_default.yaml

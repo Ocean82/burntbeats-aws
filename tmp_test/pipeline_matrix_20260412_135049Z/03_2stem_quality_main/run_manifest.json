@@ -1,0 +1,47 @@
+{
+  "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T13:51:22.453Z",
+  "finished_at_utc": "2026-04-12T13:52:35.849Z",
+  "completion_time_seconds": 73.395,
+  "scenario_id": "03_2stem_quality_main",
+  "title": "2-stem quality main (MDX23C first if present, else waterfall)",
+  "pipeline": "2-stem",
+  "prefer_speed": false,
+  "model_tier": "quality",
+  "elapsed_seconds": 73.395,
+  "status": "ok",
+  "error": null,
+  "source_input": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_wav": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+  "models": [
+    {
+      "role": "onnx",
+      "path": "/mnt/d/burntbeats-aws/models/mdx23c_vocal.onnx",
+      "name": "mdx23c_vocal.onnx",
+      "suffix": ".onnx",
+      "size_bytes": 66759214,
+      "sha256": "ce74ef3b6a6024ce44211a07be9cf8bc6d87728cc852a68ab34eb8e58cde9c8b",
+      "model_path": "/mnt/d/burntbeats-aws/models/mdx23c_vocal.onnx",
+      "model_name": "mdx23c_vocal.onnx"
+    },
+    {
+      "role": "onnx",
+      "path": "/mnt/d/burntbeats-aws/models/mdx23c_instrumental.onnx",
+      "name": "mdx23c_instrumental.onnx",
+      "suffix": ".onnx",
+      "size_bytes": 66759214,
+      "sha256": "86b1940e7122fbdd2beadc65507cbff6c352d79012a8a7e60d56db98532af5f7",
+      "model_path": "/mnt/d/burntbeats-aws/models/mdx23c_instrumental.onnx",
+      "model_name": "mdx23c_instrumental.onnx"
+    }
+  ],
+  "output_audio": [
+    "vocals.wav",
+    "vocals.mp3",
+    "instrumental.wav",
+    "instrumental.mp3"
+  ],
+  "ffmpeg_mp3": true
+}

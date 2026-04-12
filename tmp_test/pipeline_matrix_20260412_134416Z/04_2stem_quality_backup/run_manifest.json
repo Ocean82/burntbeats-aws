@@ -1,0 +1,43 @@
+{
+  "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T13:45:55.797Z",
+  "finished_at_utc": "2026-04-12T13:47:04.517Z",
+  "completion_time_seconds": 68.72,
+  "scenario_id": "04_2stem_quality_backup",
+  "title": "2-stem quality backup (Kim / Voc_FT; tier fast skips MDX23C rank0)",
+  "pipeline": "2-stem",
+  "prefer_speed": false,
+  "model_tier": "fast",
+  "elapsed_seconds": 68.72,
+  "status": "ok",
+  "error": null,
+  "source_input": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_wav": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav",
+  "models": [
+    {
+      "role": "onnx",
+      "path": "/mnt/d/burntbeats-aws/models/Kim_Vocal_2.ort",
+      "name": "Kim_Vocal_2.ort",
+      "suffix": ".ort",
+      "size_bytes": 66858744,
+      "sha256": "adec7bafbf292e29b0214249eb3c14a4a65f9e32ff3130de31d377d6272bdec9",
+      "model_path": "/mnt/d/burntbeats-aws/models/Kim_Vocal_2.ort",
+      "model_name": "Kim_Vocal_2.ort"
+    },
+    {
+      "role": "instrumental_method",
+      "logical_name": "phase_inversion",
+      "model_name": "phase_inversion",
+      "model_path": null
+    }
+  ],
+  "output_audio": [
+    "vocals.wav",
+    "vocals.mp3",
+    "instrumental.wav",
+    "instrumental.mp3"
+  ],
+  "ffmpeg_mp3": true
+}

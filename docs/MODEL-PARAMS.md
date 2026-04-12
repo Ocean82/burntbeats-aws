@@ -8,9 +8,29 @@ This doc ties together **where separation settings live** in this repo and how t
 |------|--------|
 | **STFT / chunk shapes** (`n_fft`, `hop_length`, `dim_f`, `dim_t`) | **`stem_service/mdx_onnx.py`** → `_MDX_CONFIGS`, keyed by **logical `*.onnx` filename** (same config applies to a sibling `.ort`). Values are derived from **probed ONNX input tensor shapes** (`scripts/probe_onnx.py`) and checked against UVR fields where they align. |
 | **Amplitude compensate** (`compensate`) | Same tuple’s last element — taken from UVR `model_data` when available, kept in lockstep with `_MDX_CONFIGS`. |
-| **Chunk overlap** (inference stitching) | **Not** in `model_data.json`. Set in **`stem_service/vocal_stage1.py`**: `prefer_speed=True` → 50% overlap (`0.5`); else 75% (`0.75`). |
+| **Chunk overlap** (inference stitching) | **Not** in `model_data.json`. Set in **`stem_service/vocal_stage1.py`**: `prefer_speed=True` → 50% overlap (`0.5`); else 75% (`0.75`). Quality tier additionally forces 50% overlap for MDX ONNX when `prefer_speed` is false (CPU latency). |
 
 If `models/` is missing locally, inference still uses the built-in table; optional JSON loading is for tooling and cross-checks only (`stem_service/mdx_model_params.py`).
+
+---
+
+## Stage 1 return value and `InstrumentalSource`
+
+`extract_vocals_stage1(...)` returns a **4-tuple**:
+
+`(vocals_path, instrumental_path | None, models_used, instrumental_source)`.
+
+`instrumental_source` is an **`InstrumentalSource`** enum (`stem_service/vocal_stage1.py`). It removes ambiguity: a `None` instrumental path only means “hybrid must still subtract” when the source is **`PHASE_INVERSION_PENDING`**.
+
+| `InstrumentalSource` | `instrumental_path` | Hybrid behavior (`stem_service/hybrid.py`) |
+|----------------------|---------------------|---------------------------------------------|
+| `PHASE_INVERSION_PENDING` | `None` | `_materialize_stage1_instrumental` → `create_perfect_instrumental` (aligned mix − vocal). |
+| `MDX23C_MIX_MINUS` | WAV path | Copy; stem already written as mix − vocal inside `mdx_onnx` (single `mdx23c_vocal` pass). |
+| `ONNX_SEPARATE_INST` | WAV path | Copy; from a second instrumental ONNX (e.g. Inst HQ, `mdx23c_instrumental`). |
+| `DEMUCS_TWO_STEM` | `no_vocals` path | Copy; model-native Demucs stem. |
+| `AUDIO_SEPARATOR` | WAV path | Copy; from audio-separator CLI. |
+
+**Backward compatibility:** `unpack_stage1_legacy(quad)` returns the first three fields only.
 
 ---
 
@@ -83,6 +103,7 @@ Tier order for defaults is in **`docs/MODEL-SELECTION-AUTHORITY.md`** (not dupli
 
 ## Related code
 
-- `stem_service/mdx_onnx.py` — `_MDX_CONFIGS`, `_get_config`, inference.
-- `stem_service/vocal_stage1.py` — overlap (`0.5` / `0.75`).
+- `stem_service/mdx_onnx.py` — `_MDX_CONFIGS`, `_get_config`, inference; mix-minus instrumental for `mdx23c_vocal` when `instrumental_output_path` is set.
+- `stem_service/vocal_stage1.py` — overlap (`0.5` / `0.75`), `InstrumentalSource`, `extract_vocals_stage1`.
+- `stem_service/hybrid.py` — `_materialize_stage1_instrumental` (copy vs phase inversion from enum).
 - `stem_service/mdx_model_params.py` — optional merged load of hash-keyed JSON for scripts.

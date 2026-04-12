@@ -1,0 +1,11 @@
+scenario_id: 05_4stem_fast_main
+title: 4-stem fast main (d12395a8 / speed_4stem_rank27)
+status: ok
+audio_input_file: /mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3
+clip_audio_file: /mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav
+started_at_utc: 2026-04-12T13:53:46.932Z
+finished_at_utc: 2026-04-12T13:54:47.660Z
+completion_time_seconds: 60.728
+
+models (name | path):
+  - d12395a8-e57c48e6.th | /mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank27/d12395a8-e57c48e6.th

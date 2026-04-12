@@ -21,9 +21,9 @@ from typing import Any
 import numpy as np
 
 from stem_service.config import (
-    SCNET_ONNX,
     TARGET_SAMPLE_RATE,
     get_onnx_providers,
+    get_scnet_onnx_path,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,6 +46,8 @@ _runtime_enabled = True
 _runtime_disable_reason: str | None = None
 _compatible_freq_cached: int | None = None
 _compatible_spec_time_cached: int | None = None
+# For spec_freq==2049 only: "native" (full STFT Nyquist) vs "demucs_zero" (2048 bins + zero row).
+_scnet_nyquist_mode_cached: str = "native"
 
 
 def _get_session(path: Path) -> Any | None:
@@ -108,6 +110,7 @@ def _build_spec(
     waveform: np.ndarray,
     spec_freq: int,
     spec_time: int,
+    nyquist_mode_2049: str = "native",
 ) -> np.ndarray:
     """Build spectrogram (1, 4, spec_freq, spec_time) from waveform (1, 2, N). Channels: L_real, L_imag, R_real, R_imag."""
     import torch
@@ -131,10 +134,13 @@ def _build_spec(
     sr = torch.stft(w[1], **kw)
     spec = torch.stack([sl.real, sl.imag, sr.real, sr.imag], dim=0).unsqueeze(0)
     bins_full = N_FFT // 2 + 1  # 2049
-    # 2049 ONNX inputs often match Demucs-style 2048-bin features + zero Nyquist (not raw STFT Nyquist).
+    # Some exports expect full STFT bins (native Nyquist); others match Demucs-style 2048 + zero Nyquist row.
     if spec_freq == 2049:
-        spec = spec[:, :, :2048, :]
-        spec = torch.nn.functional.pad(spec, (0, 0, 0, 1))  # pad freq dim (…, 2049, time)
+        if nyquist_mode_2049 == "demucs_zero":
+            spec = spec[:, :, :2048, :]
+            spec = torch.nn.functional.pad(spec, (0, 0, 0, 1))
+        else:
+            spec = spec[:, :, :bins_full, :]
     elif spec_freq == 2048:
         spec = spec[:, :, :2048, :]
     else:
@@ -156,32 +162,42 @@ def _select_compatible_freq(
     inp_name: str,
     spec_time: int,
     freq_candidates: list[int],
-) -> int | None:
+) -> tuple[int, str] | None:
     """
-    Run a tiny preflight inference with silence to detect which frequency bin count
-    is compatible with this SCNet export. Returns compatible freq or None.
+    Preflight with silence. Returns (spec_freq, nyquist_mode_2049) or None.
+    For try_freq==2049, tries native STFT layout first, then demucs_zero.
     """
     silent_chunk = np.zeros((1, 2, spec_time * HOP), dtype=np.float32)
     for try_freq in freq_candidates:
-        try:
-            spec_np = _build_spec(silent_chunk, try_freq, spec_time)
-            _ = session.run(None, {inp_name: spec_np})
-            logger.info("scnet_onnx: preflight succeeded with freq=%s", try_freq)
-            return try_freq
-        except Exception as error:
-            message = str(error)
-            if "MatMul" in message and "dimension mismatch" in message:
-                logger.warning(
-                    "scnet_onnx: preflight MatMul dimension mismatch with freq=%s",
+        modes = ("native", "demucs_zero") if try_freq == 2049 else ("native",)
+        for nyq in modes:
+            try:
+                spec_np = _build_spec(
+                    silent_chunk, try_freq, spec_time, nyquist_mode_2049=nyq
+                )
+                _ = session.run(None, {inp_name: spec_np})
+                logger.info(
+                    "scnet_onnx: preflight succeeded with freq=%s nyquist_2049=%s",
                     try_freq,
+                    nyq,
+                )
+                return (try_freq, nyq)
+            except Exception as error:
+                message = str(error)
+                if "MatMul" in message and "dimension mismatch" in message:
+                    logger.warning(
+                        "scnet_onnx: preflight MatMul mismatch freq=%s nyquist_2049=%s",
+                        try_freq,
+                        nyq,
+                    )
+                    continue
+                logger.warning(
+                    "scnet_onnx: preflight failed freq=%s nyquist_2049=%s: %s",
+                    try_freq,
+                    nyq,
+                    error,
                 )
                 continue
-            logger.warning(
-                "scnet_onnx: preflight failed with freq=%s: %s",
-                try_freq,
-                error,
-            )
-            continue
     return None
 
 
@@ -241,13 +257,17 @@ def run_scnet_onnx_4stem(
     """
     import soundfile as sf
 
+    onnx_path = get_scnet_onnx_path()
+    if onnx_path is None:
+        return None
+
     if not scnet_onnx_runtime_available():
         reason = scnet_onnx_disable_reason()
         if reason:
             logger.warning("scnet_onnx: runtime disabled (%s)", reason)
         return None
 
-    session = _get_session(SCNET_ONNX)
+    session = _get_session(onnx_path)
     if session is None:
         logger.warning("scnet_onnx: no session after runtime self-test")
         return None
@@ -280,6 +300,7 @@ def run_scnet_onnx_4stem(
     mix_t = mix_t.reshape(1, 2, -1)
 
     compatible_freq = _compatible_freq_cached
+    nyq_mode = _scnet_nyquist_mode_cached
     if compatible_freq is None:
         # Defensive fallback when self-test cache is unavailable.
         freq_candidates = [spec_freq]
@@ -287,12 +308,16 @@ def run_scnet_onnx_4stem(
             freq_candidates.append(2048)
         elif spec_freq == 2048:
             freq_candidates.append(2049)
-        compatible_freq = _select_compatible_freq(
+        pair = _select_compatible_freq(
             session=session,
             inp_name=inp_name,
             spec_time=spec_time,
             freq_candidates=freq_candidates,
         )
+        if pair is None:
+            compatible_freq = None
+        else:
+            compatible_freq, nyq_mode = pair
     if compatible_freq is None:
         logger.warning("scnet_onnx: no compatible input freq found; falling back")
         return None
@@ -318,7 +343,9 @@ def run_scnet_onnx_4stem(
                     constant_values=0,
                 )
 
-            spec_np = _build_spec(chunk, try_freq, spec_time)
+            spec_np = _build_spec(
+                chunk, try_freq, spec_time, nyquist_mode_2049=nyq_mode
+            )
             feed = {inp_name: spec_np}
 
             try:
@@ -385,7 +412,7 @@ def run_scnet_onnx_4stem(
 
 def scnet_onnx_available() -> bool:
     """True if SCNet ONNX model exists (caller should also check config.scnet_available() for USE_SCNET)."""
-    return SCNET_ONNX.exists()
+    return get_scnet_onnx_path() is not None
 
 
 def scnet_onnx_disable_reason() -> str | None:
@@ -399,20 +426,24 @@ def scnet_onnx_runtime_available() -> bool:
     If preflight fails, SCNet is auto-disabled for this process to avoid repeated failures.
     """
     global _selftest_done, _runtime_enabled, _runtime_disable_reason
-    global _compatible_freq_cached, _compatible_spec_time_cached
+    global _compatible_freq_cached, _compatible_spec_time_cached, _scnet_nyquist_mode_cached
+
+    onnx_path = get_scnet_onnx_path()
+    if onnx_path is None:
+        return False
 
     with _cache_lock:
         if _selftest_done:
             return _runtime_enabled
 
-    if not SCNET_ONNX.exists():
+    if not onnx_path.is_file():
         with _cache_lock:
             _selftest_done = True
             _runtime_enabled = False
-            _runtime_disable_reason = f"missing model at {SCNET_ONNX}"
+            _runtime_disable_reason = f"missing model at {onnx_path}"
         return False
 
-    session = _get_session(SCNET_ONNX)
+    session = _get_session(onnx_path)
     if session is None:
         with _cache_lock:
             _selftest_done = True
@@ -429,7 +460,7 @@ def scnet_onnx_runtime_available() -> bool:
         elif spec_freq == 2048:
             freq_candidates.append(2049)
 
-        compatible_freq = _select_compatible_freq(
+        pair = _select_compatible_freq(
             session=session,
             inp_name=inp_name,
             spec_time=spec_time,
@@ -437,25 +468,30 @@ def scnet_onnx_runtime_available() -> bool:
         )
         with _cache_lock:
             _selftest_done = True
-            if compatible_freq is None:
+            if pair is None:
                 _runtime_enabled = False
                 _runtime_disable_reason = "preflight failed (no compatible freq)"
                 _compatible_freq_cached = None
                 _compatible_spec_time_cached = None
+                _scnet_nyquist_mode_cached = "native"
             else:
+                cf, nyq = pair
                 _runtime_enabled = True
                 _runtime_disable_reason = None
-                _compatible_freq_cached = compatible_freq
+                _compatible_freq_cached = cf
                 _compatible_spec_time_cached = spec_time
-        if compatible_freq is None:
+                _scnet_nyquist_mode_cached = nyq
+        if pair is None:
             logger.warning("scnet_onnx: startup self-test failed; disabling SCNet for this process")
         else:
+            cf, nyq = pair
             logger.info(
-                "scnet_onnx: startup self-test passed (freq=%s,time=%s)",
-                compatible_freq,
+                "scnet_onnx: startup self-test passed (freq=%s,time=%s,nyquist_2049=%s)",
+                cf,
                 spec_time,
+                nyq,
             )
-        return compatible_freq is not None
+        return pair is not None
     except Exception as e:
         with _cache_lock:
             _selftest_done = True
@@ -463,5 +499,6 @@ def scnet_onnx_runtime_available() -> bool:
             _runtime_disable_reason = f"preflight exception: {e}"
             _compatible_freq_cached = None
             _compatible_spec_time_cached = None
+            _scnet_nyquist_mode_cached = "native"
         logger.warning("scnet_onnx: startup self-test exception; disabling SCNet: %s", e)
         return False

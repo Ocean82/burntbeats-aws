@@ -1,0 +1,43 @@
+{
+  "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T13:50:50.547Z",
+  "finished_at_utc": "2026-04-12T13:51:05.864Z",
+  "completion_time_seconds": 15.316,
+  "scenario_id": "01_2stem_fast_main",
+  "title": "2-stem fast main (UVR_MDXNET_3_9662)",
+  "pipeline": "2-stem",
+  "prefer_speed": true,
+  "model_tier": "fast",
+  "elapsed_seconds": 15.316,
+  "status": "ok",
+  "error": null,
+  "source_input": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_wav": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+  "models": [
+    {
+      "role": "onnx",
+      "path": "/mnt/d/burntbeats-aws/models/UVR_MDXNET_3_9662.ort",
+      "name": "UVR_MDXNET_3_9662.ort",
+      "suffix": ".ort",
+      "size_bytes": 29804048,
+      "sha256": "ba70874b1f4caf648fa3759def78bc161d281c18707911736a6e31af565e2289",
+      "model_path": "/mnt/d/burntbeats-aws/models/UVR_MDXNET_3_9662.ort",
+      "model_name": "UVR_MDXNET_3_9662.ort"
+    },
+    {
+      "role": "instrumental_method",
+      "logical_name": "phase_inversion",
+      "model_name": "phase_inversion",
+      "model_path": null
+    }
+  ],
+  "output_audio": [
+    "vocals.wav",
+    "vocals.mp3",
+    "instrumental.wav",
+    "instrumental.mp3"
+  ],
+  "ffmpeg_mp3": true
+}

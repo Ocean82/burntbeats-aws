@@ -92,7 +92,7 @@ def classify_model(path: Path) -> dict[str, Any]:
 
     if in0.name and "spectrogram" in in0.name.lower():
         row["classification"] = "scnet_like"
-        row["pipeline_note"] = "Spectrogram input — SCNet-style; service uses `config.SCNET_ONNX` path"
+        row["pipeline_note"] = "Spectrogram input — SCNet-style; service uses get_scnet_onnx_path() resolution"
         return row
 
     # --- Demucs waveform branch: rank-3 (batch, 2, time) ---

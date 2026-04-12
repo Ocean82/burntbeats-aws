@@ -131,15 +131,17 @@ def segment_stage1() -> bool:
     stage1_out = TEST_DIR / "stage1_out"
     _log("  [Stage 1] vocal extraction (may take 1–3 min on CPU)...", end=" ")
     try:
-        vocals_path, inst_path, models_used = extract_vocals_stage1(TEST_WAV, stage1_out)
+        vocals_path, inst_path, models_used, inst_src = extract_vocals_stage1(
+            TEST_WAV, stage1_out
+        )
         if not vocals_path.exists() or vocals_path.stat().st_size < 100:
             _log("FAIL (no vocals file)")
             return False
-        _log(f"OK  models={models_used}")
+        _log(f"OK  models={models_used}  instrumental_source={inst_src.value}")
         if inst_path is not None:
-            _log(f"    instrumental ONNX: {inst_path}")
+            _log(f"    instrumental path: {inst_path}")
         else:
-            _log("    instrumental: phase inversion (no inst ONNX)")
+            _log("    instrumental: pending hybrid phase inversion")
         return True
     except Exception as e:
         _log(f"FAIL ({e})")

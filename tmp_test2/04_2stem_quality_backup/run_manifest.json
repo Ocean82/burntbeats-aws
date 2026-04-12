@@ -1,0 +1,44 @@
+{
+  "audio_input_file": "D:\\burntbeats-aws\\tmp_test\\pipeline_matrix_20260412_135049Z\\sample_30s.wav",
+  "clip_audio_file": "D:\\burntbeats-aws\\tmp_test2\\sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T16:47:33.403Z",
+  "finished_at_utc": "2026-04-12T16:48:49.738Z",
+  "completion_time_seconds": 76.336,
+  "scenario_id": "04_2stem_quality_backup",
+  "title": "2-stem quality backup (Kim / Voc_FT; tier fast skips MDX23C rank0)",
+  "pipeline": "2-stem",
+  "prefer_speed": false,
+  "model_tier": "fast",
+  "elapsed_seconds": 76.336,
+  "status": "ok",
+  "error": null,
+  "source_input": "D:\\burntbeats-aws\\tmp_test\\pipeline_matrix_20260412_135049Z\\sample_30s.wav",
+  "clip_wav": "D:\\burntbeats-aws\\tmp_test2\\sample_30s.wav",
+  "models": [
+    {
+      "role": "onnx",
+      "path": "D:\\burntbeats-aws\\models\\models_by_type\\onnx\\Kim_Vocal_2.onnx",
+      "name": "Kim_Vocal_2.onnx",
+      "suffix": ".onnx",
+      "size_bytes": 66759214,
+      "sha256": "ce74ef3b6a6024ce44211a07be9cf8bc6d87728cc852a68ab34eb8e58cde9c8b",
+      "model_path": "D:\\burntbeats-aws\\models\\models_by_type\\onnx\\Kim_Vocal_2.onnx",
+      "model_name": "Kim_Vocal_2.onnx"
+    },
+    {
+      "role": "instrumental_method",
+      "logical_name": "phase_inversion",
+      "model_name": "phase_inversion",
+      "model_path": null
+    }
+  ],
+  "instrumental_from_separate_model_or_demucs": false,
+  "instrumental_via_phase_inversion": true,
+  "two_stem_note": "UVR/Kim ONNX paths use a single-stem vocal network; instrumental is either a second ONNX pass (USE_TWO_STEM_INST_ONNX_PASS=1) or phase inversion. MDX23C uses two ONNX models (vocal + inst). Demucs uses one model, two outputs.",
+  "output_audio": [
+    "vocals.wav",
+    "instrumental.wav"
+  ],
+  "ffmpeg_mp3": false
+}

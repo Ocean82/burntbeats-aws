@@ -1,0 +1,9 @@
+{
+  "scenario_id": "08_4stem_quality_backup",
+  "title": "4-stem quality backup (one .th in Demucs_Models/quality_4stem_rank2)",
+  "status": "skipped",
+  "error": "missing quality_4stem_rankN folder or not exactly one matching .th",
+  "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav",
+  "clip_duration_requested_s": 30.0
+}

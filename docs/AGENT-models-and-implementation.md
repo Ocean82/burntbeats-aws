@@ -1,6 +1,6 @@
 # Agent model alignment and implementation
 
-**Last updated:** 2026-03-17  
+**Last updated:** 2026-04-12  
 **Purpose:** Align [AGENT-Knowledge-Block](AGENT-Knowledge-Block.md), [AGENT-decision-knowledge-context](AGENT-decision-knowledge-context.md) with the stem splitter implementation. Ensure models live **only** under the project; no links to external paths.
 
 ---
@@ -19,7 +19,7 @@
 |-----------|-----------|------|
 | **stem_service/config.py** | `Path(__file__).resolve().parent.parent` = repo root | `models/`, `models/htdemucs.pth` / `htdemucs.th` |
 | **stem_service/split.py** | REPO_ROOT from config | `models/htdemucs.th` (--repo; pip demucs loads only .th) |
-| **stem_service/hybrid.py** | REPO_ROOT | Stage 1: Demucs 2-stem; Stage 2: Demucs on instrumental (htdemucs) |
+| **stem_service/hybrid.py** | REPO_ROOT | Stage 1: `extract_vocals_stage1` (ONNX waterfall or Demucs 2-stem); `_materialize_stage1_instrumental` uses `InstrumentalSource` to choose copy vs `phase_inversion`. Stage 2: Demucs on instrumental (htdemucs). |
 | **stem_api** (Rust, legacy/unused) | `REPO_ROOT` env | Not wired in by current stack; orchestration happens in Node + Python |
 
 No hardcoded `D:\` or `stem-models` in code. All paths are relative to the repo. Stage 1 ONNX is implemented under `stem_service/mdx_onnx.py` and `stem_service/vocal_stage1.py`; see [stem-pipeline.md](stem-pipeline.md).

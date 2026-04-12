@@ -62,12 +62,13 @@ Run these to validate the full flow. Manual steps; automate where noted.
 
 ## 3. Instrumental subtraction quality
 
-**Goal:** When Stage 1 is Demucs, instrumental is model-native (`no_vocals`); when Stage 1 is ONNX, instrumental is phase inversion. Compare quality where both paths are possible.
+**Goal:** When Stage 1 is Demucs, instrumental is model-native (`no_vocals`). When Stage 1 returns **`InstrumentalSource.PHASE_INVERSION_PENDING`**, hybrid builds instrumental via **`phase_inversion`** (aligned mix − vocal). When Stage 1 returns **`MDX23C_MIX_MINUS`**, instrumental is already on disk (mix − vocal inside `mdx_onnx`) — hybrid only copies; that is **not** the same code path as `phase_inversion.py`, though it is the same arithmetic in the MDX pipeline buffers.
 
 **What to verify**
 
 - Demucs path: instrumental = copy of Demucs `no_vocals` (phase-aligned).
-- ONNX path: instrumental = original − vocals with strict length/channel/sr alignment (no obvious phasing/hollowness).
+- Generic vocal ONNX + pending inversion: hybrid `create_perfect_instrumental` (original − aligned vocals).
+- MDX23C quality: instrumental file from `mdx_onnx` companion write — copy only in hybrid.
 - If you have a track where both can run, A/B: same track with “quality” (ONNX if available) vs “speed” (Demucs 2-stem); compare instrumental clarity and phase.
 
 **How**
@@ -80,7 +81,8 @@ Run these to validate the full flow. Manual steps; automate where noted.
 
 | Component | Behavior |
 |-----------|----------|
-| `stem_service/hybrid.py` | If `stage1_instrumental` is not None (Demucs), copy to `instrumental.wav`; else `create_perfect_instrumental(...)`. |
+| `stem_service/vocal_stage1.py` | Returns a 4-tuple: vocals path, optional instrumental path, `models_used`, and `InstrumentalSource` — see `docs/MODEL-PARAMS.md`. |
+| `stem_service/hybrid.py` | `_materialize_stage1_instrumental`: if `PHASE_INVERSION_PENDING`, run `create_perfect_instrumental`; else require a path and copy to `instrumental.wav`. |
 | `stem_service/phase_inversion.py` | Align vocal to original length (pad/trim), channels (broadcast mono→stereo), sample rate; then instrumental = original − vocal. |
 
 **Pass:** Demucs instrumental is clean (native); ONNX instrumental has no obvious phase/hollow issues (or you document known limits).

@@ -87,17 +87,22 @@ def main() -> int:
     clip_path = out_root / "clip_benchmark.wav"
     dur = bonv._ensure_clip(wav, clip_path, args.clip_seconds)
 
-    from stem_service.config import MODELS_DIR
-    from stem_service.mdx_onnx import mdx_model_configured
+    from stem_service.config import MODELS_DIR, resolve_models_root_file
+    from stem_service.mdx_onnx import mdx_model_configured, resolve_mdx_model_path
 
     results: list[dict[str, Any]] = []
     mdx23c_done = False
     seen_model_names: set[str] = set()
 
     # MDX23C pair first (single combined benchmark)
-    mdx_v = MODELS_DIR / "mdx23c_vocal.onnx"
-    mdx_i = MODELS_DIR / "mdx23c_instrumental.onnx"
-    if mdx_v.is_file() and mdx_i.is_file() and mdx_model_configured(mdx_v) and mdx_model_configured(mdx_i):
+    mdx_v = resolve_mdx_model_path(resolve_models_root_file("mdx23c_vocal.onnx"))
+    mdx_i = resolve_mdx_model_path(resolve_models_root_file("mdx23c_instrumental.onnx"))
+    if (
+        mdx_v is not None
+        and mdx_i is not None
+        and mdx_model_configured(mdx_v)
+        and mdx_model_configured(mdx_i)
+    ):
         for use_ort, tag in ((False, "onnx"), (True, "ort")):
             sub = out_root / f"mdx23c_pair_{tag}"
             sub.mkdir(parents=True, exist_ok=True)

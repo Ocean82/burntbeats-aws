@@ -1,0 +1,48 @@
+{
+  "audio_input_file": "D:\\burntbeats-aws\\tmp_test\\pipeline_matrix_20260412_135049Z\\sample_30s.wav",
+  "clip_audio_file": "D:\\burntbeats-aws\\tmp_test2\\sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T16:46:17.097Z",
+  "finished_at_utc": "2026-04-12T16:47:31.939Z",
+  "completion_time_seconds": 74.84,
+  "scenario_id": "03_2stem_quality_main",
+  "title": "2-stem quality main (MDX23C first if present, else waterfall)",
+  "pipeline": "2-stem",
+  "prefer_speed": false,
+  "model_tier": "quality",
+  "elapsed_seconds": 74.84,
+  "status": "ok",
+  "error": null,
+  "source_input": "D:\\burntbeats-aws\\tmp_test\\pipeline_matrix_20260412_135049Z\\sample_30s.wav",
+  "clip_wav": "D:\\burntbeats-aws\\tmp_test2\\sample_30s.wav",
+  "models": [
+    {
+      "role": "onnx",
+      "path": "D:\\burntbeats-aws\\models\\models_by_type\\onnx\\mdx23c_vocal.onnx",
+      "name": "mdx23c_vocal.onnx",
+      "suffix": ".onnx",
+      "size_bytes": 66759214,
+      "sha256": "ce74ef3b6a6024ce44211a07be9cf8bc6d87728cc852a68ab34eb8e58cde9c8b",
+      "model_path": "D:\\burntbeats-aws\\models\\models_by_type\\onnx\\mdx23c_vocal.onnx",
+      "model_name": "mdx23c_vocal.onnx"
+    },
+    {
+      "role": "onnx",
+      "path": "D:\\burntbeats-aws\\models\\models_by_type\\onnx\\mdx23c_instrumental.onnx",
+      "name": "mdx23c_instrumental.onnx",
+      "suffix": ".onnx",
+      "size_bytes": 66759214,
+      "sha256": "86b1940e7122fbdd2beadc65507cbff6c352d79012a8a7e60d56db98532af5f7",
+      "model_path": "D:\\burntbeats-aws\\models\\models_by_type\\onnx\\mdx23c_instrumental.onnx",
+      "model_name": "mdx23c_instrumental.onnx"
+    }
+  ],
+  "instrumental_from_separate_model_or_demucs": true,
+  "instrumental_via_phase_inversion": false,
+  "two_stem_note": "UVR/Kim ONNX paths use a single-stem vocal network; instrumental is either a second ONNX pass (USE_TWO_STEM_INST_ONNX_PASS=1) or phase inversion. MDX23C uses two ONNX models (vocal + inst). Demucs uses one model, two outputs.",
+  "output_audio": [
+    "vocals.wav",
+    "instrumental.wav"
+  ],
+  "ffmpeg_mp3": false
+}

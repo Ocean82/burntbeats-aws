@@ -1,0 +1,11 @@
+scenario_id: 08_4stem_quality_backup
+title: 4-stem quality backup (one .th in Demucs_Models/quality_4stem_rank2)
+status: ok
+audio_input_file: /mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3
+clip_audio_file: /mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav
+started_at_utc: 2026-04-12T13:55:57.813Z
+finished_at_utc: 2026-04-12T13:56:31.544Z
+completion_time_seconds: 33.732
+
+models (name | path):
+  - 92cfc3b6-ef3bcb9c.th | /mnt/d/burntbeats-aws/models/Demucs_Models/quality_4stem_rank2/92cfc3b6-ef3bcb9c.th

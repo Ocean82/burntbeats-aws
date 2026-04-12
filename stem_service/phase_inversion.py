@@ -8,9 +8,34 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import soundfile as sf
 import torch
 import torchaudio
+
+
+def _load_audio_tensor(path: Path) -> tuple[torch.Tensor, int]:
+    """Load (channels_first, float32) and sample rate. Prefer soundfile for WAV/FLAC when installed."""
+    suf = path.suffix.lower()
+    if suf in (".wav", ".flac", ".ogg", ".aif", ".aiff"):
+        try:
+            import soundfile as sf
+
+            data, sr = sf.read(str(path), always_2d=True, dtype="float32")
+            return torch.from_numpy(data.T), int(sr)
+        except ImportError:
+            pass
+    wav, sr = torchaudio.load(str(path))
+    return wav, int(sr)
+
+
+def _write_wav(path: Path, ch_last: torch.Tensor, sr: int) -> None:
+    """Write stereo/mono float WAV; use soundfile if available, else torchaudio."""
+    arr = ch_last.detach().cpu().numpy()
+    try:
+        import soundfile as sf
+
+        sf.write(str(path), arr, int(sr))
+    except ImportError:
+        torchaudio.save(str(path), torch.from_numpy(arr.T).float(), int(sr))
 
 
 def create_perfect_instrumental(
@@ -40,8 +65,8 @@ def create_perfect_instrumental(
         raise FileNotFoundError(f"Vocal audio not found or not a file: {vocal_path}")
 
     try:
-        orig, sr_orig = torchaudio.load(str(original_path))
-        vocal, sr_vocal = torchaudio.load(str(vocal_path))
+        orig, sr_orig = _load_audio_tensor(original_path)
+        vocal, sr_vocal = _load_audio_tensor(vocal_path)
     except Exception as e:
         raise RuntimeError(f"Failed to load audio for phase inversion: {e}") from e
 
@@ -76,7 +101,7 @@ def create_perfect_instrumental(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        sf.write(str(output_path), instrumental.T.numpy(), int(sr_orig))
+        _write_wav(output_path, instrumental.T, int(sr_orig))
     except Exception as e:
         raise RuntimeError(f"Failed to write instrumental WAV to {output_path}: {e}") from e
     return output_path

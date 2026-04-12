@@ -1,0 +1,31 @@
+{
+  "audio_input_file": "D:\\burntbeats-aws\\tmp_test\\pipeline_matrix_20260412_135049Z\\sample_30s.wav",
+  "clip_audio_file": "D:\\burntbeats-aws\\tmp_test2\\sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T16:48:55.855Z",
+  "finished_at_utc": "2026-04-12T16:48:59.465Z",
+  "completion_time_seconds": 3.61,
+  "scenario_id": "06_4stem_fast_backup",
+  "title": "4-stem fast backup (rank #28 mapped .th)",
+  "pipeline": "4-stem-demucs-speed",
+  "demucs_n": "cfa93e08",
+  "repo": "D:\\burntbeats-aws\\models\\Demucs_Models\\speed_4stem_rank28",
+  "segment_sec": 7,
+  "elapsed_seconds": 3.61,
+  "status": "error",
+  "error": "Demucs bag (cfa93e08) failed: Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"D:\\burntbeats-aws\\stem_service\\demucs_entry.py\", line 109, in <module>\n    main()\n    ~~~~^^\n  File \"D:\\burntbeats-aws\\stem_service\\demucs_entry.py\", line 105, in main\n    runpy.run_module(\"demucs\", run_name=\"__main__\", alter_sys=True)\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<frozen runpy>\", line 226, in run_module\n  File \"<frozen runpy>\", line 98, in _run_module_code\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\demucs\\__main__.py\", line 10, in <module>\n    main()\n    ~~~~^^\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\demucs\\separate.py\", line 133, in main\n    model = get_model_from_args(args)\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\demucs\\pretrained.py\", line 96, in get_model_from_args\n    return get_model(name=args.name, repo=args.repo)\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\demucs\\pretrained.py\", line 76, in get_model\n    model = any_repo.get_model(name)\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\demucs\\repo.py\", line 146, in get_model\n    return self.model_repo.get_model(name_or_sig)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\demucs\\repo.py\", line 101, in get_model\n    return load_model(file)\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\demucs\\states.py\", line 59, in load_model\n    package = torch.load(path, 'cpu')\n  File \"D:\\burntbeats-aws\\stem_service\\demucs_entry.py\", line 70, in _load\n    return _real(*args, **kwargs)\n  File \"C:\\Users\\sammy\\AppData\\Roaming\\Python\\Python314\\site-packages\\torch\\serialization.py\", line 1529, in load\n    raise pickle.UnpicklingError(_get_wo_message(str(e))) from None\n_pickle.UnpicklingError: Weights only load failed. This file can still be loaded, to do so you have two options, \u001b[1mdo those steps only if you trust the source of the checkpoint\u001b[0m. \n\t(1) In PyTorch 2.6, we changed the default value of the `weights_only` argument in `torch.load` from `False` to `True`. Re-running `torch.load` with `weights_only` set to `False` will likely succeed, but it can result in arbitrary code execution. Do it only if you got the file from a trusted source.\n\t(2) Alternatively, to load with `weights_only=True` please check the recommended steps in the following error message.\n\tWeightsUnpickler error: Unsupported global: GLOBAL demucs.hdemucs.HDemucs was not an allowed global by default. Please use `torch.serialization.add_safe_globals([demucs.hdemucs.HDemucs])` or the `torch.serialization.safe_globals([demucs.hdemucs.HDemucs])` context manager to allowlist this global if you trust this class/function.\n\nCheck the documentation of torch.load to learn more about types accepted by default with weights_only https://pytorch.org/docs/stable/generated/torch.load.html.\n",
+  "source_input": "D:\\burntbeats-aws\\tmp_test\\pipeline_matrix_20260412_135049Z\\sample_30s.wav",
+  "clip_wav": "D:\\burntbeats-aws\\tmp_test2\\sample_30s.wav",
+  "models": [
+    {
+      "role": "demucs_checkpoint",
+      "path": "D:\\burntbeats-aws\\models\\Demucs_Models\\speed_4stem_rank28\\cfa93e08-61801ae1.th",
+      "name": "cfa93e08-61801ae1.th",
+      "suffix": ".th",
+      "size_bytes": 167399275,
+      "sha256": "61801ae1567d606c97a9c3469e943ae306d0a873eeb60d623ae7cfc7042b3f68",
+      "model_path": "D:\\burntbeats-aws\\models\\Demucs_Models\\speed_4stem_rank28\\cfa93e08-61801ae1.th",
+      "model_name": "cfa93e08-61801ae1.th"
+    }
+  ]
+}

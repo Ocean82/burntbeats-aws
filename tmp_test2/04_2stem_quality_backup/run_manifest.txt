@@ -1,0 +1,12 @@
+scenario_id: 04_2stem_quality_backup
+title: 2-stem quality backup (Kim / Voc_FT; tier fast skips MDX23C rank0)
+status: ok
+audio_input_file: D:\burntbeats-aws\tmp_test\pipeline_matrix_20260412_135049Z\sample_30s.wav
+clip_audio_file: D:\burntbeats-aws\tmp_test2\sample_30s.wav
+started_at_utc: 2026-04-12T16:47:33.403Z
+finished_at_utc: 2026-04-12T16:48:49.738Z
+completion_time_seconds: 76.336
+
+models (name | path):
+  - Kim_Vocal_2.onnx | D:\burntbeats-aws\models\models_by_type\onnx\Kim_Vocal_2.onnx
+  - phase_inversion | None

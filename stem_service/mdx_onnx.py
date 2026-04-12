@@ -27,7 +27,13 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import torch
 
-from stem_service.config import MDXNET_MODELS_DIR, MODELS_DIR, get_onnx_providers
+from stem_service.config import (
+    MDXNET_MODELS_DIR,
+    MODELS_DIR,
+    MODELS_BY_TYPE_DIR,
+    get_onnx_providers,
+    resolve_models_root_file,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,21 +76,21 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
 # ---------------------------------------------------------------------------
 # Model path lists — first existing file wins (score-9 fast vocals only)
 VOCAL_MODEL_PATHS: list[Path] = [
-    MODELS_DIR / "UVR_MDXNET_3_9662.onnx",
-    MODELS_DIR / "UVR_MDXNET_KARA.onnx",
+    resolve_models_root_file("UVR_MDXNET_3_9662.onnx"),
+    resolve_models_root_file("UVR_MDXNET_KARA.onnx"),
     MDXNET_MODELS_DIR / "UVR_MDXNET_3_9662.onnx",
     MDXNET_MODELS_DIR / "UVR_MDXNET_KARA.onnx",
 ]
 
 INST_MODEL_PATHS: list[Path] = [
-    MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
+    resolve_models_root_file("UVR-MDX-NET-Inst_HQ_5.onnx"),
     MDXNET_MODELS_DIR / "UVR-MDX-NET-Inst_HQ_5.onnx",
-    MODELS_DIR / "UVR-MDX-NET-Inst_HQ_4.onnx",
+    resolve_models_root_file("UVR-MDX-NET-Inst_HQ_4.onnx"),
 ]
 
 DEREVERB_MODEL_PATHS: list[Path] = [
     MDXNET_MODELS_DIR / "Reverb_HQ_By_FoxJoy.onnx",
-    MODELS_DIR / "Reverb_HQ_By_FoxJoy.onnx",
+    resolve_models_root_file("Reverb_HQ_By_FoxJoy.onnx"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -158,6 +164,11 @@ def _logical_onnx_name(model_path: Path) -> str:
     return model_path.name
 
 
+def is_mdx23c_vocal_checkpoint(model_path: Path) -> bool:
+    """True for ``mdx23c_vocal.onnx`` / sibling ``.ort`` — single-pass vocal + optional mix-minus-vocal inst."""
+    return _logical_onnx_name(model_path) == "mdx23c_vocal.onnx"
+
+
 # Subjective score < 9 vocal checkpoints from ranked_practical_time_score.csv — not used at runtime.
 SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX: frozenset[str] = frozenset(
     {
@@ -200,6 +211,10 @@ def resolve_mdx_model_path(declared_onnx: Path) -> Path | None:
     ort = p.with_suffix(".ort")
     if ort.is_file():
         return ort
+    if p.suffix.lower() == ".onnx":
+        typed_ort = MODELS_BY_TYPE_DIR / "ort" / ort.name
+        if typed_ort.is_file():
+            return typed_ort
     if p.suffix.lower() == ".onnx" and p.is_file():
         return p
     return None
@@ -240,6 +255,7 @@ def _candidate_paths_by_names(names: list[str]) -> list[Path]:
     for nm in names:
         out.extend(
             [
+                resolve_models_root_file(nm),
                 MODELS_DIR / nm,
                 MDXNET_MODELS_DIR / nm,
                 MODELS_DIR / "MDX_Net_Models" / nm,
@@ -433,6 +449,7 @@ def _run_mdx_onnx(
     model_path: Path,
     overlap: float = 0.75,
     job_logger: "logging.Logger | None" = None,
+    instrumental_output_path: Path | None = None,
 ) -> Path | None:
     """
     Core MDX-Net ONNX inference following the UVR5 / audio-separator reference exactly.
@@ -609,12 +626,43 @@ def _run_mdx_onnx(
     tar_waves = tar_waves[:, :, trim:-trim]
     source = tar_waves[0, :, :n_samples]  # (2, n_samples)
 
-    out_wav = (source * compensate).T  # (n_samples, 2)
+    vocal_matrix = source * compensate  # (2, n_samples), matches written vocal
+    out_wav = vocal_matrix.T  # (n_samples, 2)
     out_wav = np.clip(out_wav, -1.0, 1.0)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(str(output_path), out_wav, 44100, subtype="PCM_16")
     _log.info("mdx_onnx: wrote %s (%s)", output_path.name, model_path.name)
+
+    # MDX23C vocal checkpoint: complementary instrumental = mix minus vocal (same pass, no second ONNX).
+    if (
+        instrumental_output_path is not None
+        and _logical_onnx_name(model_path) == "mdx23c_vocal.onnx"
+    ):
+        try:
+            inst = mix_np[:, :n_samples].astype(np.float32) - vocal_matrix.astype(np.float32)
+            inst_wav = np.clip(inst.T, -1.0, 1.0)
+            instrumental_output_path = Path(instrumental_output_path)
+            instrumental_output_path.parent.mkdir(parents=True, exist_ok=True)
+            sf.write(
+                str(instrumental_output_path),
+                inst_wav,
+                44100,
+                subtype="PCM_16",
+            )
+            _log.info(
+                "mdx_onnx: wrote %s (mix minus vocal, %s)",
+                instrumental_output_path.name,
+                model_path.name,
+            )
+        except Exception as e:
+            _log.warning("mdx_onnx: instrumental companion write failed: %s", e)
+            try:
+                output_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+            return None
+
     return output_path
 
 
@@ -625,10 +673,13 @@ def run_vocal_onnx(
     overlap: float = 0.75,
     job_logger: "logging.Logger | None" = None,
     model_path_override: Path | None = None,
+    instrumental_output_path: Path | None = None,
 ) -> Path | None:
     """
     Extract vocals using the best available vocal ONNX model (or model_path_override when set).
     overlap: 0.5 for speed, 0.75 for quality (smoother chunk boundaries).
+    For ``mdx23c_vocal.onnx`` / ``.ort``, if ``instrumental_output_path`` is set, also writes
+    instrumental = input mix minus vocal (same inference pass; MDX23C quality path).
     Returns output_path on success, None if no model or inference fails.
     """
     model_path = (
@@ -646,7 +697,12 @@ def run_vocal_onnx(
         )
         return None
     return _run_mdx_onnx(
-        input_path, output_path, model_path, overlap=overlap, job_logger=job_logger
+        input_path,
+        output_path,
+        model_path,
+        overlap=overlap,
+        job_logger=job_logger,
+        instrumental_output_path=instrumental_output_path,
     )
 
 

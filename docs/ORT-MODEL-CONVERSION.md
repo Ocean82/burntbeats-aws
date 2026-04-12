@@ -1,8 +1,23 @@
 # ONNX → ORT conversion (build-time, optional)
 
-## What `models/demucs.onnx-main` was (optional vendor tree)
+## Demucs ONNX: use **`models/demucs.onnx-main`** (not `Demucs_Models`)
 
-If present, the **[demucs.onnx](https://github.com/sevagh/demucs.onnx)** upstream sample under `models/demucs.onnx-main/` is **reference code** for exporting Demucs-style graphs and converting to **ORT**. It is **excluded** from inventory scans by default.
+The canonical checkout for **[demucs.onnx](https://github.com/sevagh/demucs.onnx)** in this workspace is:
+
+**`D:\burntbeats-aws\models\demucs.onnx-main`** (repo-relative **`models/demucs.onnx-main/`**).
+
+Use **that tree** for export scripts, graph layout, and how to think about ONNX → ORT for **Demucs-style** models.
+
+Do **not** treat these as substitutes for that vendor tree:
+
+| Path | What it is |
+|------|------------|
+| **`models/demucs.onnx-main/`** | **sevagh/demucs.onnx** — source, export tooling, samples (this is the right reference). |
+| **`models/Demucs_Models/`** | Pip Demucs **`.th` + YAML** repos for `demucs -n … --repo …` — not the ONNX export project. |
+| **`models/models_by_type/onnx|ort/`** | Flat storage for **built** `.onnx` / `.ort` **artifacts** (optional layout). |
+| **`D:\__model_testing\models\Demucs_Models`** | Sync **source** for copying prebuilt weights into the repo — still not `demucs.onnx-main`. |
+
+`demucs.onnx-main` stays **excluded** from bulk inventory scans by default (`scripts/scan_models_inventory.py`).
 
 **Production 4-stem** does **not** use in-process Demucs ONNX — use **PyTorch** `htdemucs.pth` / `htdemucs.th`. MDX / SCNet ONNX still use the ORT preference below.
 

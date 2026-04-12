@@ -1,0 +1,199 @@
+{
+  "created_utc": "20260412_135049Z",
+  "matrix_run_started_at_utc": "2026-04-12T13:50:50.451Z",
+  "matrix_run_finished_at_utc": "2026-04-12T13:57:35.664Z",
+  "matrix_total_wall_seconds": 405.214,
+  "sum_scenario_completion_seconds": 380.829,
+  "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "scaling_note": "Times are for the clip length above on this machine. Full songs scale roughly with duration for CPU-bound steps.",
+  "runs": [
+    {
+      "scenario_id": "01_2stem_fast_main",
+      "title": "2-stem fast main (UVR_MDXNET_3_9662)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:50:50.547Z",
+      "finished_at_utc": "2026-04-12T13:51:05.864Z",
+      "completion_time_seconds": 15.316,
+      "elapsed_seconds": 15.316,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "UVR_MDXNET_3_9662.ort",
+          "model_path": "/mnt/d/burntbeats-aws/models/UVR_MDXNET_3_9662.ort"
+        },
+        {
+          "model_name": "phase_inversion",
+          "model_path": null
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "02_2stem_fast_backup",
+      "title": "2-stem fast backup (UVR_MDXNET_KARA)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:51:07.203Z",
+      "finished_at_utc": "2026-04-12T13:51:21.168Z",
+      "completion_time_seconds": 13.965,
+      "elapsed_seconds": 13.965,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "UVR_MDXNET_KARA.ort",
+          "model_path": "/mnt/d/burntbeats-aws/models/UVR_MDXNET_KARA.ort"
+        },
+        {
+          "model_name": "phase_inversion",
+          "model_path": null
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "03_2stem_quality_main",
+      "title": "2-stem quality main (MDX23C first if present, else waterfall)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:51:22.453Z",
+      "finished_at_utc": "2026-04-12T13:52:35.849Z",
+      "completion_time_seconds": 73.395,
+      "elapsed_seconds": 73.395,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "mdx23c_vocal.onnx",
+          "model_path": "/mnt/d/burntbeats-aws/models/mdx23c_vocal.onnx"
+        },
+        {
+          "model_name": "mdx23c_instrumental.onnx",
+          "model_path": "/mnt/d/burntbeats-aws/models/mdx23c_instrumental.onnx"
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "04_2stem_quality_backup",
+      "title": "2-stem quality backup (Kim / Voc_FT; tier fast skips MDX23C rank0)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:52:39.425Z",
+      "finished_at_utc": "2026-04-12T13:53:44.887Z",
+      "completion_time_seconds": 65.462,
+      "elapsed_seconds": 65.462,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "Kim_Vocal_2.ort",
+          "model_path": "/mnt/d/burntbeats-aws/models/Kim_Vocal_2.ort"
+        },
+        {
+          "model_name": "phase_inversion",
+          "model_path": null
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "05_4stem_fast_main",
+      "title": "4-stem fast main (d12395a8 / speed_4stem_rank27)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:53:46.932Z",
+      "finished_at_utc": "2026-04-12T13:54:47.660Z",
+      "completion_time_seconds": 60.728,
+      "elapsed_seconds": 60.728,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "d12395a8-e57c48e6.th",
+          "model_path": "/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank27/d12395a8-e57c48e6.th"
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "06_4stem_fast_backup",
+      "title": "4-stem fast backup (cfa93e08 / speed_4stem_rank28)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:54:50.785Z",
+      "finished_at_utc": "2026-04-12T13:55:17.295Z",
+      "completion_time_seconds": 26.51,
+      "elapsed_seconds": 26.51,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "cfa93e08-61801ae1.th",
+          "model_path": "/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank28/cfa93e08-61801ae1.th"
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "07_4stem_quality_main",
+      "title": "4-stem quality main (one .th in Demucs_Models/quality_4stem_rank1)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:55:21.023Z",
+      "finished_at_utc": "2026-04-12T13:55:54.308Z",
+      "completion_time_seconds": 33.285,
+      "elapsed_seconds": 33.285,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "04573f0d-f3cf25b2.th",
+          "model_path": "/mnt/d/burntbeats-aws/models/Demucs_Models/quality_4stem_rank1/04573f0d-f3cf25b2.th"
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "08_4stem_quality_backup",
+      "title": "4-stem quality backup (one .th in Demucs_Models/quality_4stem_rank2)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:55:57.813Z",
+      "finished_at_utc": "2026-04-12T13:56:31.544Z",
+      "completion_time_seconds": 33.732,
+      "elapsed_seconds": 33.732,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "92cfc3b6-ef3bcb9c.th",
+          "model_path": "/mnt/d/burntbeats-aws/models/Demucs_Models/quality_4stem_rank2/92cfc3b6-ef3bcb9c.th"
+        }
+      ],
+      "detail": ""
+    },
+    {
+      "scenario_id": "09_scnet_4stem",
+      "title": "SCNet 4-stem (PyTorch subprocess or ONNX)",
+      "status": "ok",
+      "started_at_utc": "2026-04-12T13:56:35.455Z",
+      "finished_at_utc": "2026-04-12T13:57:33.890Z",
+      "completion_time_seconds": 58.436,
+      "elapsed_seconds": 58.436,
+      "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+      "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_135049Z/sample_30s.wav",
+      "models": [
+        {
+          "model_name": "SCNet-main",
+          "model_path": "/mnt/d/burntbeats-aws/models/scnet_models/SCNet-main"
+        },
+        {
+          "model_name": "scnet.th",
+          "model_path": "/mnt/d/burntbeats-aws/models/scnet_models/scnet.th"
+        },
+        {
+          "model_name": "scnet_musdb_default.yaml",
+          "model_path": "/mnt/d/burntbeats-aws/stem_service/scnet_musdb_default.yaml"
+        }
+      ],
+      "detail": ""
+    }
+  ]
+}

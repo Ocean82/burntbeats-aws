@@ -1,0 +1,12 @@
+scenario_id: 02_2stem_fast_backup
+title: 2-stem fast backup (UVR_MDXNET_KARA)
+status: ok
+audio_input_file: /mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3
+clip_audio_file: /mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav
+started_at_utc: 2026-04-12T13:44:31.390Z
+finished_at_utc: 2026-04-12T13:44:43.614Z
+completion_time_seconds: 12.224
+
+models (name | path):
+  - UVR_MDXNET_KARA.ort | /mnt/d/burntbeats-aws/models/UVR_MDXNET_KARA.ort
+  - phase_inversion | None

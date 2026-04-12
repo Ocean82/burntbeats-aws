@@ -1,0 +1,31 @@
+{
+  "audio_input_file": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_audio_file": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav",
+  "clip_duration_requested_s": 30.0,
+  "started_at_utc": "2026-04-12T13:47:46.626Z",
+  "finished_at_utc": "2026-04-12T13:48:02.384Z",
+  "completion_time_seconds": 15.759,
+  "scenario_id": "06_4stem_fast_backup",
+  "title": "4-stem fast backup (cfa93e08 / speed_4stem_rank28)",
+  "pipeline": "4-stem-demucs-speed",
+  "demucs_n": "cfa93e08",
+  "repo": "/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank28",
+  "segment_sec": 7,
+  "elapsed_seconds": 15.759,
+  "status": "error",
+  "error": "Demucs bag (cfa93e08) failed: \u001b[1mFATAL:\u001b[0m Invalid checksum for file /mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank28/cfa93e08-61801ae1__7ae9d6de.th, expected 61801ae1__7ae9d6de but got 61801ae1567d606c97\n",
+  "source_input": "/mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3",
+  "clip_wav": "/mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav",
+  "models": [
+    {
+      "role": "demucs_checkpoint",
+      "path": "/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank28/cfa93e08-61801ae1__7ae9d6de.th",
+      "name": "cfa93e08-61801ae1__7ae9d6de.th",
+      "suffix": ".th",
+      "size_bytes": 167399275,
+      "sha256": "61801ae1567d606c97a9c3469e943ae306d0a873eeb60d623ae7cfc7042b3f68",
+      "model_path": "/mnt/d/burntbeats-aws/models/Demucs_Models/speed_4stem_rank28/cfa93e08-61801ae1__7ae9d6de.th",
+      "model_name": "cfa93e08-61801ae1__7ae9d6de.th"
+    }
+  ]
+}

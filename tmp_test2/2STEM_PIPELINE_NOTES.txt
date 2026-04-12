@@ -1,0 +1,9 @@
+2-stem pipeline (stem_service.vocal_stage1.extract_vocals_stage1)
+================================================================
+- MDX/UVR vocal ONNX (e.g. UVR_MDXNET_3_9662, KARA, Kim): one network estimates VOCALS only.
+  They do not emit instrumental in a single forward pass in this integration.
+- Default: USE_TWO_STEM_INST_ONNX_PASS is off → instrumental = phase inversion (mix − vocals).
+  Inversion is cheap vs a second full MDX pass; enabling a second inst ONNX is slower, not faster.
+- MDX23C: two separate ONNX models (vocal + instrumental); both runs succeed → no inversion.
+- Fallback Demucs htdemucs --two-stems=vocals: one model, native vocals + no_vocals (no inversion).
+Per-scenario flags are in each run_manifest.json (instrumental_* keys).

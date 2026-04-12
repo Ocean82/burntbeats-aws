@@ -2,7 +2,7 @@
 # This file pins stem_service dependencies for reproducible installs.
 torch==2.2.0+cu118
 torchaudio==2.2.0
-soundfile==0.12.1
+soundfile==0.13.1
 demucs==4.0.1
 diffq==0.2.4
 onnxruntime==1.23.2

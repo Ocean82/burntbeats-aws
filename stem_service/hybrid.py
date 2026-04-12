@@ -23,7 +23,9 @@ from stem_service.config import (
     VAD_CHUNK_LENGTH_S,
     VAD_CHUNK_SILENCE_FLUSH_S,
     four_stem_skip_scnet,
+    get_scnet_onnx_path,
     scnet_available,
+    scnet_torch_available,
 )
 from stem_service.phase_inversion import create_perfect_instrumental
 from stem_service.scnet_onnx import (
@@ -31,15 +33,41 @@ from stem_service.scnet_onnx import (
     scnet_onnx_disable_reason,
     scnet_onnx_runtime_available,
 )
+from stem_service.scnet_torch import run_scnet_torch_4stem
 from stem_service.split import run_demucs
 from stem_service.vad import (
     get_chunk_boundaries,
     is_vad_available,
     trim_audio_to_speech_span,
 )
-from stem_service.vocal_stage1 import extract_vocals_stage1
+from stem_service.vocal_stage1 import InstrumentalSource, extract_vocals_stage1
 
 logger = logging.getLogger(__name__)
+
+
+def _materialize_stage1_instrumental(
+    effective_input: Path,
+    vocals_path: Path,
+    stage1_instrumental: Path | None,
+    inst_src: InstrumentalSource,
+    dest_instrumental: Path,
+) -> None:
+    """
+    Copy Stage-1 instrumental when already final, or run phase inversion when pending.
+    Enforces invariants so ``None`` is never ambiguous.
+    """
+    if inst_src.needs_hybrid_phase_inversion():
+        if stage1_instrumental is not None:
+            raise ValueError(
+                "Stage 1 invariant: PHASE_INVERSION_PENDING but instrumental path is set"
+            )
+        create_perfect_instrumental(effective_input, vocals_path, dest_instrumental)
+        return
+    if stage1_instrumental is None:
+        raise ValueError(
+            f"Stage 1 invariant: instrumental_source={inst_src.value!r} requires a path"
+        )
+    shutil.copy2(stage1_instrumental, dest_instrumental)
 
 
 def collapse_4stem_to_2stem(
@@ -255,33 +283,47 @@ def run_4stem_single_pass_or_hybrid(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
-    # 4-stem: default skips SCNet (FOUR_STEM_BACKEND=hybrid → htdemucs). auto tries SCNet first when available.
-    if (
-        not four_stem_skip_scnet()
-        and scnet_available()
-        and scnet_onnx_runtime_available()
-    ):
-        if progress_callback:
-            progress_callback(5)
-        _log.info("4-stem: trying SCNet ONNX first")
-        scnet_list = run_scnet_onnx_4stem(
-            input_path, flat_dir, prefer_speed=prefer_speed
-        )
-        if scnet_list is not None:
+    # 4-stem: default skips SCNet (FOUR_STEM_BACKEND=hybrid). auto tries PyTorch SCNet repo, then ONNX, then Demucs.
+    if not four_stem_skip_scnet() and scnet_available():
+        if scnet_torch_available():
             if progress_callback:
-                progress_callback(100)
-            _log.info("4-stem: SCNet ONNX succeeded  models_used=[scnet_onnx]")
-            return scnet_list, ["scnet_onnx"]
-        _log.warning(
-            "4-stem: SCNet ONNX failed or returned None, falling back to Demucs"
-        )
-    elif not four_stem_skip_scnet() and scnet_available():
-        _log.warning(
-            "4-stem: SCNet configured but disabled by self-test (%s); using Demucs",
-            scnet_onnx_disable_reason(),
-        )
+                progress_callback(5)
+            _log.info("4-stem: trying SCNet PyTorch (starrytong/SCNet)")
+            scnet_list = run_scnet_torch_4stem(
+                input_path, flat_dir, prefer_speed=prefer_speed
+            )
+            if scnet_list is not None:
+                if progress_callback:
+                    progress_callback(100)
+                _log.info("4-stem: SCNet PyTorch succeeded  models_used=[scnet_torch]")
+                return scnet_list, ["scnet_torch"]
+            _log.warning(
+                "4-stem: SCNet PyTorch failed or returned None; trying ONNX or Demucs"
+            )
+
+        onnx_path = get_scnet_onnx_path()
+        if onnx_path is not None and scnet_onnx_runtime_available():
+            if progress_callback:
+                progress_callback(5)
+            _log.info("4-stem: trying SCNet ONNX")
+            scnet_list = run_scnet_onnx_4stem(
+                input_path, flat_dir, prefer_speed=prefer_speed
+            )
+            if scnet_list is not None:
+                if progress_callback:
+                    progress_callback(100)
+                _log.info("4-stem: SCNet ONNX succeeded  models_used=[scnet_onnx]")
+                return scnet_list, ["scnet_onnx"]
+            _log.warning(
+                "4-stem: SCNet ONNX failed or returned None, falling back to Demucs"
+            )
+        elif onnx_path is not None:
+            _log.warning(
+                "4-stem: SCNet ONNX present but disabled by self-test (%s); using Demucs",
+                scnet_onnx_disable_reason(),
+            )
     elif four_stem_skip_scnet():
-        _log.info("4-stem: FOUR_STEM_BACKEND=hybrid — skipping SCNet ONNX")
+        _log.info("4-stem: FOUR_STEM_BACKEND=hybrid — skipping SCNet")
 
     _log.info("4-stem: using hybrid pipeline (Stage 1 + PyTorch Demucs subprocess)")
     return run_hybrid_4stem(
@@ -321,7 +363,7 @@ def run_hybrid_4stem(
     effective_input = _effective_input_path(input_path, output_dir)
 
     stage1_out = output_dir / "stage1"
-    vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
+    vocals_path, stage1_instrumental, stage1_models, inst_src = extract_vocals_stage1(
         effective_input,
         stage1_out,
         prefer_speed=prefer_speed,
@@ -333,12 +375,14 @@ def run_hybrid_4stem(
     if progress_callback:
         progress_callback(35)
 
-    # Skip phase inversion if Demucs already gave us instrumental (faster!)
     instrumental_path = output_dir / "instrumental.wav"
-    if stage1_instrumental is not None:
-        shutil.copy2(stage1_instrumental, instrumental_path)
-    else:
-        create_perfect_instrumental(effective_input, vocals_path, instrumental_path)
+    _materialize_stage1_instrumental(
+        effective_input,
+        vocals_path,
+        stage1_instrumental,
+        inst_src,
+        instrumental_path,
+    )
 
     if progress_callback:
         progress_callback(40)
@@ -409,7 +453,7 @@ def run_hybrid_2stem(
 
     # Stage 1: ranked ONNX then Demucs (see vocal_stage1.extract_vocals_stage1)
     stage1_out = output_dir / "stage1"
-    vocals_path, stage1_instrumental, stage1_models = extract_vocals_stage1(
+    vocals_path, stage1_instrumental, stage1_models, inst_src = extract_vocals_stage1(
         effective_input,
         stage1_out,
         prefer_speed=prefer_speed,
@@ -420,10 +464,13 @@ def run_hybrid_2stem(
     )
 
     instrumental_path = output_dir / "instrumental.wav"
-    if stage1_instrumental is not None:
-        shutil.copy2(stage1_instrumental, instrumental_path)
-    else:
-        create_perfect_instrumental(effective_input, vocals_path, instrumental_path)
+    _materialize_stage1_instrumental(
+        effective_input,
+        vocals_path,
+        stage1_instrumental,
+        inst_src,
+        instrumental_path,
+    )
 
     if progress_callback:
         progress_callback(50)
@@ -442,7 +489,7 @@ def _stage1_only(input_path: Path, output_dir: Path) -> Path:
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     stage1_out = output_dir / "stage1"
-    vocals_path, _, _ = extract_vocals_stage1(input_path, stage1_out)
+    vocals_path, _, _, _ = extract_vocals_stage1(input_path, stage1_out)
     dest = output_dir / "vocals.wav"
     shutil.copy2(vocals_path, dest)
     return dest
@@ -509,31 +556,53 @@ def run_expand_to_4stem(
 
     stem_files_rest: list[tuple[str, Path]] = []
     _log = job_logger or logger
-    if (
-        not four_stem_skip_scnet()
-        and scnet_available()
-        and scnet_onnx_runtime_available()
-    ):
-        _log.info("expand: scnet_available=True  trying SCNet ONNX on instrumental")
-        scnet_list = run_scnet_onnx_4stem(
-            instrumental_src, stage2_flat, prefer_speed=prefer_speed
-        )
-        if scnet_list is not None:
-            for stem_id, src in scnet_list:
-                if stem_id == "vocals":
-                    continue
-                dest = flat_dir / f"{stem_id}.wav"
-                shutil.copy2(src, dest)
-                stem_list.append((stem_id, dest))
-            models_used = ["scnet_onnx"]
-            _log.info("expand: SCNet ONNX succeeded  models_used=%s", models_used)
-        else:
-            _log.warning("expand: SCNet ONNX returned None  falling back to Demucs")
-    elif not four_stem_skip_scnet() and scnet_available():
-        _log.warning(
-            "expand: SCNet configured but disabled by self-test (%s); using Demucs path",
-            scnet_onnx_disable_reason(),
-        )
+    if not four_stem_skip_scnet() and scnet_available():
+        if scnet_torch_available():
+            _log.info("expand: trying SCNet PyTorch on instrumental")
+            scnet_list = run_scnet_torch_4stem(
+                instrumental_src, stage2_flat, prefer_speed=prefer_speed
+            )
+            if scnet_list is not None:
+                for stem_id, src in scnet_list:
+                    if stem_id == "vocals":
+                        continue
+                    dest = flat_dir / f"{stem_id}.wav"
+                    shutil.copy2(src, dest)
+                    stem_list.append((stem_id, dest))
+                models_used = ["scnet_torch"]
+                _log.info("expand: SCNet PyTorch succeeded  models_used=%s", models_used)
+            else:
+                _log.warning(
+                    "expand: SCNet PyTorch returned None  trying ONNX or Demucs"
+                )
+
+        if len(stem_list) == 1:
+            onnx_path = get_scnet_onnx_path()
+            if onnx_path is not None and scnet_onnx_runtime_available():
+                _log.info("expand: trying SCNet ONNX on instrumental")
+                scnet_list = run_scnet_onnx_4stem(
+                    instrumental_src, stage2_flat, prefer_speed=prefer_speed
+                )
+                if scnet_list is not None:
+                    for stem_id, src in scnet_list:
+                        if stem_id == "vocals":
+                            continue
+                        dest = flat_dir / f"{stem_id}.wav"
+                        shutil.copy2(src, dest)
+                        stem_list.append((stem_id, dest))
+                    models_used = ["scnet_onnx"]
+                    _log.info(
+                        "expand: SCNet ONNX succeeded  models_used=%s", models_used
+                    )
+                else:
+                    _log.warning(
+                        "expand: SCNet ONNX returned None  falling back to Demucs"
+                    )
+            elif onnx_path is not None:
+                _log.warning(
+                    "expand: SCNet ONNX disabled by self-test (%s); using Demucs path",
+                    scnet_onnx_disable_reason(),
+                )
     else:
         if four_stem_skip_scnet():
             _log.info("expand: FOUR_STEM_BACKEND=hybrid — skipping SCNet; using Demucs")

@@ -1,0 +1,12 @@
+scenario_id: 04_2stem_quality_backup
+title: 2-stem quality backup (Kim / Voc_FT; tier fast skips MDX23C rank0)
+status: ok
+audio_input_file: /mnt/d/burntbeats-aws/tmp_test/M.I.A. - Paper airplanes.mp3
+clip_audio_file: /mnt/d/burntbeats-aws/tmp_test/pipeline_matrix_20260412_134416Z/sample_30s.wav
+started_at_utc: 2026-04-12T13:45:55.797Z
+finished_at_utc: 2026-04-12T13:47:04.517Z
+completion_time_seconds: 68.72
+
+models (name | path):
+  - Kim_Vocal_2.ort | /mnt/d/burntbeats-aws/models/Kim_Vocal_2.ort
+  - phase_inversion | None
