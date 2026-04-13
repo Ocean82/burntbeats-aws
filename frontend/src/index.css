@@ -34,6 +34,24 @@
     box-sizing: border-box;
   }
 
+  /* Pair unprefixed alongside webkit for linter compliance */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Remove ineffective vertical-align from block-display media elements */
+  img,
+  svg,
+  video,
+  canvas,
+  audio,
+  iframe,
+  embed,
+  object {
+    vertical-align: unset;
+  }
+
   html {
     background:
       radial-gradient(ellipse 120% 80% at 50% -20%, rgba(255, 100, 50, 0.18), transparent 45%),
@@ -62,6 +80,14 @@
   ::selection {
     background: rgba(255, 156, 105, 0.28);
     color: white;
+  }
+}
+
+/* Pair standard line-clamp alongside -webkit-line-clamp for linter compliance */
+@layer utilities {
+  [class*="line-clamp"] {
+    -webkit-line-clamp: var(--tw-line-clamp);
+    line-clamp: var(--tw-line-clamp);
   }
 }
 
