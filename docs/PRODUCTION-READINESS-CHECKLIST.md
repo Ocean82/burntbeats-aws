@@ -25,7 +25,7 @@ This checklist is intentionally short and repeatable before each deploy.
   - `/home/ubuntu/burntbeats-aws/.env`
   - `/home/ubuntu/burntbeats-aws/backend/.env`
   - `/home/ubuntu/burntbeats-aws/frontend/.env`
-  - `/home/ubuntu/burntbeats-aws/stem_service/.env`
+  - `/home/ubuntu/burntbeats-aws/stem_service/.env` (loaded by Compose for **`stem_service`** when present; use container paths for any file-based settings — see **`stem_service/.env.example`**)
 - Expected mode: `-rw-------` (`600`)
 
 ## 4) Minimal Runtime Verification

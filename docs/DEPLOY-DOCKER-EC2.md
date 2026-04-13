@@ -21,7 +21,8 @@
 ## Environment and secrets
 
 - Compose reads **`VITE_*`** build args from a **repo-root `.env`** (see **`docker-compose.yml`** `args:`). Keep that file **out of git**; copy from **`.env.example`** patterns per app.
-- **`backend/.env`** and stem service settings must match what Compose passes or mounts (see compose `environment:` blocks).
+- **`stem_service`:** Compose loads optional **`stem_service/.env`** (`env_file`, `required: false`). Use it for pipeline tuning (Demucs bootstrap, mmap, metrics path, etc.) without editing `docker-compose.yml`. **Precedence:** any variable also set under the service’s `environment:` block in **`docker-compose.yml`** wins over `stem_service/.env` — production paths like `STEM_OUTPUT_DIR` stay explicit in compose.
+- **`backend/.env`** is not wired as `env_file` in compose; the backend container gets env from the compose `environment:` block plus substitution from the **repo-root** `.env`. Keep **`backend/.env`** for native `run-backend.sh` / docs if you use it.
 - Avoid sharing raw output of `docker compose config` in tickets/chat/screenshots; it can inline resolved secret values.
 
 ### Secret safety checklist

@@ -78,6 +78,11 @@ services:
     build:
       context: .
       dockerfile: stem_service/Dockerfile
+    # Optional tuning / pipeline flags (copy from stem_service/.env.example). Missing file is OK.
+    # Precedence: keys listed under environment: below override the same key from this file.
+    env_file:
+      - path: stem_service/.env
+        required: false
     ports:
       - "127.0.0.1:5000:5000"
     environment:
