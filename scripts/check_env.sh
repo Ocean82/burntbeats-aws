@@ -152,7 +152,16 @@ check_f() {
 
 check_f "VITE_CLERK_PUBLISHABLE_KEY"  '^pk_(live|test)_[A-Za-z0-9+/=]{10,}' "VITE_CLERK_PUBLISHABLE_KEY"
 check_f "VITE_STRIPE_PUBLISHABLE_KEY" '^pk_(live|test)_[A-Za-z0-9]{20,}'     "VITE_STRIPE_PUBLISHABLE_KEY"
-check_f "VITE_API_BASE_URL"           '^https?://'                             "VITE_API_BASE_URL"
+
+# Empty = same-origin API (Docker Compose + nginx /api proxy, or static host serving SPA + API on one origin).
+vite_api="${FENV[VITE_API_BASE_URL]:-}"
+if [[ -z "$vite_api" ]]; then
+  pass "VITE_API_BASE_URL is empty — same-origin /api (typical Docker + reverse proxy)"
+elif echo "$vite_api" | grep -qE '^https?://'; then
+  pass "VITE_API_BASE_URL is set"
+else
+  fail "VITE_API_BASE_URL must be empty (same-origin) or an http(s) URL"
+fi
 
 # Warn if frontend still points to localhost in production
 if echo "${FENV[VITE_API_BASE_URL]:-}" | grep -q "localhost"; then

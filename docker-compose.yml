@@ -4,7 +4,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://backend:3001}
+        # Leave unset for same-origin API calls (nginx proxies /api/ → backend). Do NOT use
+        # http://backend:3001 here — that hostname only exists inside the Compose network;
+        # the browser would fail to resolve it. Optional: set to your public https:// origin.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
         VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
         VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY}
         VITE_STRIPE_PRICING_TABLE_ID: ${VITE_STRIPE_PRICING_TABLE_ID:-}
