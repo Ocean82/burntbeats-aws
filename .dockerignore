@@ -1,0 +1,42 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Dependencies / Environments
+.venv
+venv
+node_modules
+
+# Heavy Models (Excludes both raw and server_models to keep build context lean)
+models/
+server_models/
+*.pth
+*.th
+*.onnx
+*.safetensors
+
+# Local temp and test outputs
+tmp/
+tmp_*/
+stem_test*/
+benchmark_out*/
+logs/
+*.tgz
+
+# IDE, OS, Python caches
+.vscode/
+.idea/
+.cursor/
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyo
+*.pyc
+.pytest_cache
+.ruff_cache
+
+# Local environments (prevent secret leak to image context)
+.env
+.env.*
+!.env.example

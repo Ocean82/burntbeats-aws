@@ -60,9 +60,13 @@ job_metrics.jsonl
 
 # Temp
 tmp/
+tmp_test*/
 temp/
 *.tmp
 *.temp
+stem_test*/
+logs/
+server_models/
 benchmark_out/
 benchmark_out_*/
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)

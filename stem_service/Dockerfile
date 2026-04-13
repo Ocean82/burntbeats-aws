@@ -1,18 +1,23 @@
+# Stem split API — reproducible CPU image. Pin digest in deploy configs for production parity.
+# Build from repo root: docker build -f stem_service/Dockerfile .
 FROM python:3.11-slim
 
 WORKDIR /repo
 
-# Build tools needed for diffq (C extension) and other compiled deps
+# Build tools (diffq), ffmpeg (clip/matrix), libsndfile (soundfile)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     ffmpeg \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY stem_service/requirements.txt ./stem_service/requirements.txt
-RUN pip install --no-cache-dir -r stem_service/requirements.txt
+COPY stem_service/requirements.lock.txt ./stem_service/requirements.lock.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r stem_service/requirements.lock.txt \
+        --extra-index-url https://download.pytorch.org/whl/cpu
 
-# Copy the stem_service package so imports like `from stem_service.config` work
+# Application package (imports like `from stem_service.config` require this layout)
 COPY stem_service/ ./stem_service/
 
 EXPOSE 5000

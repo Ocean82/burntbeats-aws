@@ -348,7 +348,10 @@ def main() -> int:
     )
     from stem_service.scnet_torch import run_scnet_torch_4stem
     from stem_service.split import _run_demucs_4stem_named_bag
+    from stem_service.runtime_info import get_stem_runtime_versions
     from stem_service.vocal_stage1 import InstrumentalSource, extract_vocals_stage1
+
+    stem_runtime_snapshot = get_stem_runtime_versions()
 
     if args.input:
         src = args.input.expanduser().resolve()
@@ -906,6 +909,7 @@ def main() -> int:
         "matrix_run_finished_at_utc": matrix_run_finished_at_utc,
         "matrix_total_wall_seconds": matrix_total_wall_seconds,
         "sum_scenario_completion_seconds": sum_scenario_seconds,
+        "stem_runtime": stem_runtime_snapshot,
         "audio_input_file": str(src.resolve()),
         "clip_audio_file": str(clip.resolve()),
         "clip_duration_requested_s": args.duration,

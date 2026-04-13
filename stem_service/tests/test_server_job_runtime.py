@@ -107,3 +107,47 @@ def test_run_separation_sync_schedules_s3_upload_async(monkeypatch) -> None:
     assert isinstance(scheduled["progress_data"], dict)
     progress = (out_dir / server.PROGRESS_FILENAME).read_text(encoding="utf-8")
     assert '"status": "completed"' in progress
+
+
+def test_run_separation_sync_demucs_only_2stem_calls_demucs_only_helper(monkeypatch) -> None:
+    job_id = "00000000-0000-0000-0000-000000000003"
+    out_dir = server.OUTPUT_BASE / job_id
+    stems_dir = out_dir / "stems"
+    stems_dir.mkdir(parents=True, exist_ok=True)
+    input_path = out_dir / "input.wav"
+    input_path.write_bytes(b"not-a-real-wav")
+
+    vocal_path = stems_dir / "vocals.wav"
+    inst_path = stems_dir / "instrumental.wav"
+    vocal_path.write_bytes(b"v")
+    inst_path.write_bytes(b"i")
+
+    called: list[str] = []
+
+    def fake_demucs_only(*_a, **_k):
+        called.append("demucs_only")
+        return [("vocals", vocal_path), ("instrumental", inst_path)], ["htdemucs"]
+
+    def fake_hybrid(*_a, **_k):
+        called.append("hybrid")
+        return [("vocals", vocal_path), ("instrumental", inst_path)], ["fake"]
+
+    monkeypatch.setattr(server, "STEM_BACKEND", "demucs_only")
+    monkeypatch.setattr(server, "run_demucs_only_2stem", fake_demucs_only)
+    monkeypatch.setattr(server, "run_hybrid_2stem", fake_hybrid)
+    monkeypatch.setattr(server, "upload_job_stems_to_s3", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(server, "_append_metrics_log", lambda *_args, **_kwargs: None)
+
+    server._run_separation_sync(
+        job_id=job_id,
+        input_path=input_path,
+        out_dir=out_dir,
+        stem_count=2,
+        prefer_speed=False,
+        quality_mode="quality",
+    )
+
+    assert "demucs_only" in called
+    assert "hybrid" not in called
+    progress = (out_dir / server.PROGRESS_FILENAME).read_text(encoding="utf-8")
+    assert '"status": "completed"' in progress

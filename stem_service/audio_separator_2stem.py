@@ -14,6 +14,7 @@ import logging
 import os
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 
 from stem_service.ffmpeg_util import ffmpeg_subprocess_env
@@ -142,8 +143,9 @@ def run_audio_separator_2stem(
         )
         return None
 
-    out_v = output_dir / "separator_vocals.wav"
-    out_i = output_dir / "separator_instrumental.wav"
+    suffix = uuid.uuid4().hex[:12]
+    out_v = output_dir / f"separator_vocals_{suffix}.wav"
+    out_i = output_dir / f"separator_instrumental_{suffix}.wav"
     shutil.copy2(voc, out_v)
     shutil.copy2(inst, out_i)
     return out_v, out_i

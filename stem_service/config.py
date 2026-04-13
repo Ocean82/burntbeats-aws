@@ -1,15 +1,20 @@
 """Stem service config: repo root and model paths (no external links)."""
 
+import logging
 import os
 import shutil
 from pathlib import Path
+
+_config_log = logging.getLogger(__name__)
 
 import yaml
 
 # Repo root = parent of stem_service
 STEM_SERVICE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = STEM_SERVICE_DIR.parent
-MODELS_DIR = REPO_ROOT / "models"
+# Permit overriding the models dir for production payload drops (e.g. server_models)
+_models_dir_env = os.environ.get("STEM_MODELS_DIR", "models").strip()
+MODELS_DIR = REPO_ROOT / _models_dir_env
 MODELS_BY_TYPE_DIR = MODELS_DIR / "models_by_type"
 
 _MODEL_EXT_TO_SUBDIR: dict[str, str] = {
@@ -230,6 +235,19 @@ def ensure_htdemucs_th() -> Path | None:
 def htdemucs_available() -> bool:
     """True if we have a Demucs model (either .pth or .th) for htdemucs."""
     return HTDEMUCS_PTH.exists() or HTDEMUCS_TH.exists()
+
+
+def stem_allow_missing_htdemucs_at_startup() -> bool:
+    """When True, the API process may start without htdemucs weights (CI/tests).
+
+    Demucs-backed separation still requires models on disk at job time.
+    Set env ``STEM_ALLOW_MISSING_HTDEMUCS=1`` only for automated tests or dry runs.
+    """
+    return os.environ.get("STEM_ALLOW_MISSING_HTDEMUCS", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
 
 def scnet_available() -> bool:
@@ -516,8 +534,18 @@ else:
     DEMUCS_DEVICE = "cpu"
 
 
-# Backend mode: demucs_only | hybrid (hybrid = Stage1 vocals + phase inversion + Stage2 Demucs on instrumental)
-STEM_BACKEND = os.environ.get("STEM_BACKEND", "hybrid")
+# Backend mode: demucs_only | hybrid (hybrid = Stage1 ONNX waterfall + phase inversion when needed + Stage2 Demucs on instrumental)
+_stem_backend_raw = os.environ.get("STEM_BACKEND", "hybrid").strip().lower()
+if _stem_backend_raw == "demucs_only":
+    STEM_BACKEND = "demucs_only"
+elif _stem_backend_raw in ("", "hybrid"):
+    STEM_BACKEND = "hybrid"
+else:
+    STEM_BACKEND = "hybrid"
+    _config_log.warning(
+        "STEM_BACKEND=%r is invalid; expected 'hybrid' or 'demucs_only'. Using 'hybrid'.",
+        os.environ.get("STEM_BACKEND", ""),
+    )
 # Pre-trim input to vocal span with Silero VAD (Stage 0). Cheap on CPU; keeps pipeline fast. Default: enabled.
 USE_VAD_PRETRIM = os.environ.get("USE_VAD_PRETRIM", "true").strip().lower() in (
     "1",
@@ -561,6 +589,9 @@ DEMUCS_SEGMENT_SEC = 7
 DEMUCS_EXTRA_SEGMENT = 44
 # Timeout for Demucs subprocess (seconds). 10 min default — long songs may need more.
 DEMUCS_TIMEOUT_SEC = int(os.environ.get("DEMUCS_TIMEOUT_SEC", "600"))
+
+# Maximum number of pending jobs in the separation queue. Rejects new API requests if full.
+MAX_QUEUE_DEPTH = int(os.environ.get("MAX_QUEUE_DEPTH", "20"))
 
 # Demucs runs as ``python -m …`` subprocess. Use stem_service.demucs_entry for mmap + thread tuning.
 _USE_DEMUCS_BOOTSTRAP_RAW = os.environ.get("USE_DEMUCS_BOOTSTRAP", "1").strip().lower()

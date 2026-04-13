@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from stem_service.demucs_subprocess import format_demucs_subprocess_failure
 from stem_service.config import (
     MODELS_DIR,
     REPO_ROOT,
@@ -66,7 +67,7 @@ def _run_demucs_4stem_named_bag(
     )
     if result.returncode != 0:
         raise RuntimeError(
-            f"Demucs bag ({model_name}) failed: {result.stderr or result.stdout}"
+            f"Demucs bag ({model_name}) failed.\n{format_demucs_subprocess_failure(result)}"
         )
     track_name = input_path.stem
     base = output_dir / output_subdir / track_name
@@ -216,7 +217,7 @@ def run_demucs(
         timeout=DEMUCS_TIMEOUT_SEC,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"Demucs failed: {result.stderr or result.stdout}")
+        raise RuntimeError(format_demucs_subprocess_failure(result))
     track_name = input_path.stem
     base = output_dir / "htdemucs" / track_name
 

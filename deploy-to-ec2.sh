@@ -19,9 +19,13 @@ tar czf /tmp/burntbeats-deploy.tar.gz \
   --exclude='./.pytest_cache' \
   --exclude='./.ruff_cache' \
   --exclude='./frontend/dist' \
-  --exclude='./tmp' \
+  --exclude='./tmp*' \
+  --exclude='./stem_test*' \
+  --exclude='./logs' \
+  --exclude='./.cursor' \
+  --exclude='./.idea' \
   --exclude='./models' \
-  --exclude='./benchmark_out' \
+  --exclude='./benchmark_out*' \
   --exclude='./*.tgz' \
   .
 

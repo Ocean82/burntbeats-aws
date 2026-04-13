@@ -74,8 +74,9 @@ Run these to validate the full flow. Manual steps; automate where noted.
 **How**
 
 1. **Speed path (Demucs 2-stem):** Split with quality = speed. In `{job_id}/stems/` use `instrumental.wav`; it was copied from `stage1/htdemucs/.../no_vocals.wav` (see `hybrid.py`).
-2. **Quality path (ONNX):** Split with quality ≠ speed (and ONNX model present). Instrumental is from `phase_inversion.py` (original − aligned vocals). Listen for hollow/phasey artifacts.
-3. Optional: same song, run both; compare instrumentals in a DAW (phase, low-end, stereo).
+2. **`STEM_BACKEND=demucs_only` + 2-stem:** Instrumental is always Demucs-native (`no_vocals`); no ONNX Stage 1. Confirm logs show `demucs_only` / `run_demucs_only_2stem`, not the MDX waterfall preview.
+3. **Quality path (hybrid + ONNX):** Split with quality ≠ speed (and ONNX model present). When `InstrumentalSource` is pending, instrumental is from `phase_inversion.py` (original − aligned vocals). Listen for hollow/phasey artifacts.
+4. Optional: same song, run both; compare instrumentals in a DAW (phase, low-end, stereo).
 
 **Code touchpoints**
 

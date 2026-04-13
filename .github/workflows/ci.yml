@@ -80,4 +80,23 @@ jobs:
         run: |
           python -m pip install numpy soundfile "pedalboard>=0.9.0"
           python -c "import stem_service.pitch_shift as m; print(m.__name__)"
+      - name: Install stem_service locked deps (CPU PyTorch)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libsndfile1
+          python -m pip install -r stem_service/requirements.lock.txt \
+            --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Torchaudio I/O smoke
+        run: python scripts/smoke_torchaudio_io.py
+      - name: Stem service unit tests
+        env:
+          STEM_ALLOW_MISSING_HTDEMUCS: "1"
+        run: python -m pytest stem_service/tests -q
+
+  stem-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build stem_service image
+        run: docker build -f stem_service/Dockerfile .
 

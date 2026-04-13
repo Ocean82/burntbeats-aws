@@ -1,4 +1,6 @@
-# CPU-only stem splitting (no CUDA). For smaller install on CPU-only hosts: pip install torch --index-url https://download.pytorch.org/whl/cpu first, then pip install -r stem_service/requirements.txt
+# CPU-only stem splitting (no CUDA). Reproducible installs: use stem_service/requirements.lock.txt with
+#   pip install -r stem_service/requirements.lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
+# (see stem_service/Dockerfile and Makefile). For ad-hoc CPU: pip install torch --index-url https://download.pytorch.org/whl/cpu then this file.
 #
 # Pin torch/torchaudio <2.6: PyTorch 2.6+ defaults torch.load(weights_only=True). Demucs loads
 # htdemucs checkpoints with pickle (HTDemucs class); unpickling fails unless weights_only=False,
@@ -15,7 +17,8 @@ diffq>=0.2.0
 # onnxruntime (not onnxruntime-gpu) for CPU-optimized MDX inference; SessionOptions use ORT_ENABLE_ALL + configurable threads
 onnxruntime>=1.14.0
 # Optional: Intel OpenVINO execution provider for ONNX (set USE_ONNX_OPENVINO=1 in .env). Use a build that ships the EP, e.g. onnxruntime-openvino.
-numpy>=2.0.0
+# NumPy 2.x can break older torch wheels (e.g. 2.2); keep <2.6 for scipy compatibility.
+numpy>=1.24.0,<2.6
 # server_export (fftconvolve, resample, lfilter)
 scipy>=1.9.0
 fastapi>=0.100.0
@@ -33,4 +36,4 @@ pedalboard>=0.9.0
 # Test dependencies
 pytest
 requests
-httpx
+httpx>=0.23.0,<0.28.0

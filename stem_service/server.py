@@ -32,16 +32,20 @@ from stem_service.config import (
     REPO_ROOT,
     STEM_BACKEND,
     htdemucs_available,
+    stem_allow_missing_htdemucs_at_startup,
     QUALITY_ULTRA,
     ultra_available_for_device,
     SUPPORTED_AUDIO_FORMATS,
     MIN_SAMPLE_RATE,
     MAX_SAMPLE_RATE,
     MAX_FILE_SIZE_MB,
+    MAX_QUEUE_DEPTH,
 )
+from stem_service.runtime_info import get_stem_runtime_versions, log_stem_runtime_versions
 from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.hybrid import (
     run_4stem_single_pass_or_hybrid,
+    run_demucs_only_2stem,
     run_expand_to_4stem,
     run_hybrid_2stem,
 )
@@ -207,12 +211,20 @@ def _schedule_s3_upload(
 async def lifespan(app: FastAPI):
     """Validate required models at startup so first request fails fast instead of hanging."""
 
+    log_stem_runtime_versions(logger)
+
     if not htdemucs_available():
-        raise RuntimeError(
-            "No Demucs model found: place htdemucs.pth or htdemucs.th in models/. "
-            "See README or scripts/copy-models.sh."
-        )
-    if htdemucs_available():
+        if stem_allow_missing_htdemucs_at_startup():
+            logger.warning(
+                "STEM_ALLOW_MISSING_HTDEMUCS is set: starting without htdemucs weights. "
+                "Demucs-backed jobs will fail until models are installed under models/."
+            )
+        else:
+            raise RuntimeError(
+                "No Demucs model found: place htdemucs.pth or htdemucs.th in models/. "
+                "See README or scripts/copy-models.sh."
+            )
+    else:
         logger.info("Model check OK: htdemucs (models/htdemucs.pth or .th)")
     onnx_path = get_available_vocal_onnx()
     if onnx_path:
@@ -220,7 +232,7 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("ONNX Stage 1 not available; Stage 1 will use Demucs 2-stem")
 
-    path_kind, stage1_models = get_2stem_stage1_preview()
+    path_kind, stage1_models = get_2stem_stage1_preview(stem_backend=STEM_BACKEND)
     logger.info(
         "2-stem Stage 1 waterfall preview (rank1→4): path=%s models=%s",
         path_kind,
@@ -501,6 +513,7 @@ def _run_separation_sync(
                 path_kind, stage1_models = get_2stem_stage1_preview(
                     prefer_speed=prefer_speed,
                     model_tier=model_tier,
+                    stem_backend=STEM_BACKEND,
                 )
                 job_log.info(
                     "Stage: hybrid 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
@@ -527,11 +540,12 @@ def _run_separation_sync(
                     model_tier=model_tier,
                 )
         else:
-            # demucs_only: PyTorch Demucs (no Demucs ONNX path)
+            # demucs_only: PyTorch Demucs (no Stage 1 ONNX waterfall)
             if stem_count == 2:
                 path_kind, stage1_models = get_2stem_stage1_preview(
                     prefer_speed=prefer_speed,
                     model_tier=model_tier,
+                    stem_backend=STEM_BACKEND,
                 )
                 job_log.info(
                     "Stage: demucs_only 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
@@ -539,11 +553,10 @@ def _run_separation_sync(
                     path_kind,
                     stage1_models,
                 )
-                stem_list, models_used = run_hybrid_2stem(
+                stem_list, models_used = run_demucs_only_2stem(
                     input_path,
                     out_dir,
                     prefer_speed=prefer_speed,
-                    model_tier=model_tier,
                     progress_callback=on_progress,
                     job_logger=job_log,
                 )
@@ -589,6 +602,7 @@ def _run_separation_sync(
             "prefer_speed": prefer_speed,
             "mode_name": mode_name,
             "models_used": models_used,
+            "stem_runtime": get_stem_runtime_versions(),
         }
         _write_progress(out_dir, progress_data)
         _schedule_s3_upload(job_id, out_dir / "stems", out_dir, progress_data)
@@ -606,6 +620,7 @@ def _run_separation_sync(
             else None,
             "realtime_factor": realtime_factor,
             "models_used": models_used,
+            "stem_runtime": get_stem_runtime_versions(),
         }
         _append_metrics_log(metrics_record)
 
@@ -636,7 +651,36 @@ def _run_separation_sync(
     finally:
         with _jobs_lock:
             _running_jobs.pop(job_id, None)
-    CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
+            
+        # Enterprise Fix 1: Always delete the massive input payload once processing resolves or catastrophically errors
+        if input_path and input_path.exists():
+            try:
+                input_path.unlink()
+                job_log.info("Deleted input.wav to prevent storage leak")
+            except OSError as e:
+                job_log.warning("Could not delete input.wav: %s", e)
+                
+        # Enterprise Fix 2: If the job failed completely or was cancelled, conservatively wipe the stems folder 
+        # to prevent ghosting gigabytes of split audio while safely preserving progress.json and job.log
+        progress_data = {}
+        progress_path = out_dir / PROGRESS_FILENAME
+        if progress_path.exists():
+            try:
+                progress_data = json.loads(progress_path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                pass
+                
+        if progress_data.get("status") in ("cancelled", "failed", "running"):
+            stems_dir = out_dir / "stems"
+            if stems_dir.exists():
+                import shutil
+                try:
+                    shutil.rmtree(stems_dir, ignore_errors=True)
+                    job_log.info("Wiped stems/ directory for errored job to recover disk space")
+                except OSError:
+                    pass
+                    
+        CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
 
 
 def _run_expand_sync(
@@ -767,6 +811,15 @@ async def split(
         quality_mode,
         model_tier,
     )
+
+    if _queue_condition is not None:
+        async with _queue_condition:
+            if len(_queued_splits) >= MAX_QUEUE_DEPTH:
+                logger.warning("Rejecting split request: max queue depth %d reached", MAX_QUEUE_DEPTH)
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Service capacity reached. Server is currently processing its maximum depth of {MAX_QUEUE_DEPTH} connections. Please try again later.",
+                )
 
     job_id = str(uuid.uuid4())
     out_dir = OUTPUT_BASE / job_id
@@ -952,7 +1005,10 @@ async def cancel_job(job_id: str, request: Request) -> dict:
 
 @app.get("/health")
 async def health() -> dict:
-    payload: dict[str, str] = {"status": "ok"}
+    payload: dict[str, object] = {
+        "status": "ok",
+        "runtime": get_stem_runtime_versions(),
+    }
     if os.environ.get("NODE_ENV", "development").lower() != "production":
         payload["repo_root"] = str(REPO_ROOT)
     return payload

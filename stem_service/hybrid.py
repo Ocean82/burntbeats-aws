@@ -189,6 +189,7 @@ def _run_chunked_4stem(
     output_dir: Path,
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
+    job_logger: "logging.Logger | None" = None,
 ) -> tuple[list[tuple[str, Path]], list[str]] | None:
     """
     VAD-chunked 4-stem separation (Option B from VADSLICE doc).
@@ -234,7 +235,7 @@ def _run_chunked_4stem(
             chunk_out,
             prefer_speed=prefer_speed,
             progress_callback=None,
-            job_logger=None,
+            job_logger=job_logger,
         )
         if not first_chunk_models:
             first_chunk_models = chunk_models
@@ -275,6 +276,7 @@ def run_4stem_single_pass_or_hybrid(
             output_dir,
             prefer_speed=prefer_speed,
             progress_callback=progress_callback,
+            job_logger=job_logger,
         )
         if chunked is not None:
             stem_list, models_used = chunked
@@ -482,6 +484,51 @@ def run_hybrid_2stem(
     if progress_callback:
         progress_callback(100)
     return [("vocals", dest_v), ("instrumental", dest_i)], stage1_models
+
+
+def run_demucs_only_2stem(
+    input_path: Path,
+    output_dir: Path,
+    prefer_speed: bool = False,
+    progress_callback: Callable[[int], None] | None = None,
+    job_logger: "logging.Logger | None" = None,
+) -> tuple[list[tuple[str, Path]], list[str]]:
+    """
+    2-stem separation using PyTorch Demucs only (no MDX ONNX Stage 1 waterfall).
+    Same flat layout as ``run_hybrid_2stem``: ``stems/vocals.wav`` and ``stems/instrumental.wav``.
+    VAD pre-trim matches hybrid when ``prefer_speed`` and ``USE_VAD_PRETRIM`` apply.
+    """
+    output_dir = output_dir.resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    flat_dir = output_dir / "stems"
+    flat_dir.mkdir(parents=True, exist_ok=True)
+    _log = job_logger or logger
+    effective_input = _effective_input_path(input_path, output_dir)
+    stage_out = output_dir / "stage1_demucs"
+    _log.info(
+        "2-stem demucs_only: PyTorch htdemucs --two-stems=vocals (prefer_speed=%s)",
+        prefer_speed,
+    )
+    stem_files = run_demucs(
+        effective_input, stage_out, stems=2, prefer_speed=prefer_speed
+    )
+    if progress_callback:
+        progress_callback(50)
+    dest_v = flat_dir / "vocals.wav"
+    dest_i = flat_dir / "instrumental.wav"
+    for stem_id, src in stem_files:
+        if stem_id == "vocals":
+            shutil.copy2(src, dest_v)
+        elif stem_id == "instrumental":
+            shutil.copy2(src, dest_i)
+    if progress_callback:
+        progress_callback(100)
+    if not dest_v.is_file() or not dest_i.is_file():
+        raise RuntimeError(
+            "demucs_only 2-stem: missing vocals or instrumental after Demucs; "
+            f"stem_files={stem_files!r}"
+        )
+    return [("vocals", dest_v), ("instrumental", dest_i)], ["htdemucs"]
 
 
 def _stage1_only(input_path: Path, output_dir: Path) -> Path:

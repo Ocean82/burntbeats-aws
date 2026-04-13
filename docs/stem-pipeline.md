@@ -18,6 +18,15 @@ This document describes the **implemented** behavior in `stem_service/`. For ins
 
 Exact routing is in `stem_service/server.py` → `stem_service/hybrid.py`, `vocal_stage1.py`, `mdx_onnx.py`, `scnet_onnx.py`, `split.py`, `ultra.py`.
 
+## `STEM_BACKEND` (`hybrid` vs `demucs_only`)
+
+| Mode | 2-stem | 4-stem |
+|------|--------|--------|
+| **`hybrid`** (default) | `run_hybrid_2stem` → `extract_vocals_stage1` (ONNX waterfall, `InstrumentalSource`, optional phase inversion) | `run_4stem_single_pass_or_hybrid` (SCNet / hybrid Demucs, etc.) |
+| **`demucs_only`** | `run_demucs_only_2stem` → PyTorch `htdemucs` `--two-stems=vocals` only (no MDX ONNX Stage 1) | `run_demucs` 4-stem only |
+
+Unknown `STEM_BACKEND` values produce a **config warning** and behave as **`hybrid`**. `get_2stem_stage1_preview(..., stem_backend=STEM_BACKEND)` reflects this for server logs.
+
 ## 4-stem routing order
 
 1. **SCNet ONNX** — If `USE_SCNET=1` and `models/scnet.onnx/scnet.onnx` exists.

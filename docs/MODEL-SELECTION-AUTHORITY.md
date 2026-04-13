@@ -66,7 +66,7 @@ Lists below are **logical ONNX names**; runtime resolves to `.ort` when present.
 4. **MDX23C rank 3** — same quality/balanced split as (1) if (1) did not return.
 5. **PyTorch htdemucs** `--two-stems=vocals` (`DEMUCS_TWO_STEM`).
 
-Return value includes **`InstrumentalSource`** so hybrid never relies on guessing from `instrumental_path is None` alone — see **`docs/MODEL-PARAMS.md`** (*Stage 1 return value*). Tier lists below still apply to **instrumental ONNX** selection (`model_tier`) for ranks 1–2; they do not insert Kim/Voc_FT into this 2-stem chain. **`vocal_model_override`** is rejected if disallowed (see `SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX` in `mdx_onnx.py`). `SPEED_2STEM_ONNX` is legacy/diagnostic only (see `config.speed_2stem_onnx_path`).
+Return value includes **`InstrumentalSource`** so hybrid never relies on guessing from `instrumental_path is None` alone — see **`docs/MODEL-PARAMS.md`** (*Stage 1 return value*). **`STEM_BACKEND=demucs_only`** skips this entire ONNX waterfall for **2-stem** and uses PyTorch Demucs only (`run_demucs_only_2stem`); tier lists below do not apply there. Tier lists still apply to **instrumental ONNX** selection (`model_tier`) for hybrid ranks 1–2; they do not insert Kim/Voc_FT into this 2-stem chain. **`vocal_model_override`** is rejected if disallowed (see `SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX` in `mdx_onnx.py`). `SPEED_2STEM_ONNX` is legacy/diagnostic only (see `config.speed_2stem_onnx_path`).
 
 ### Instrumental
 

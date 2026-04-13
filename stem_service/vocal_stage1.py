@@ -43,6 +43,7 @@ from stem_service.config import (
     htdemucs_available,
     resolve_models_root_file,
 )
+from stem_service.demucs_subprocess import format_demucs_subprocess_failure
 from stem_service.audio_separator_2stem import (
     audio_separator_2stem_enabled,
     resolve_audio_separator_exe,
@@ -108,20 +109,6 @@ def _resolve_mdx23c_pair_path(declared_onnx: Path) -> Path | None:
     return Path(s) if s else None
 
 
-def _fmt_demucs_subprocess_failure(result: subprocess.CompletedProcess[str]) -> str:
-    lim = 8000
-    out = (result.stdout or "").strip()
-    err = (result.stderr or "").strip()
-    if len(out) > lim:
-        out = f"...(truncated)\n{out[-lim:]}"
-    if len(err) > lim:
-        err = f"...(truncated)\n{err[-lim:]}"
-    return (
-        f"Demucs 2-stem failed (exit {result.returncode}).\n"
-        f"STDOUT:\n{out or '(empty)'}\nSTDERR:\n{err or '(empty)'}"
-    )
-
-
 def _should_run_inst_onnx_pass(prefer_speed: bool, model_tier: str) -> bool:
     """
     Whether 2-stem stage1 should run the second ONNX instrumental pass.
@@ -182,7 +169,9 @@ def _run_demucs_two_stem(
     # capture_output keeps full streams in memory; trim only when formatting errors
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
     if result.returncode != 0:
-        raise RuntimeError(_fmt_demucs_subprocess_failure(result))
+        raise RuntimeError(
+            f"Demucs 2-stem failed.\n{format_demucs_subprocess_failure(result)}"
+        )
     base = output_dir / "htdemucs" / input_path.stem
     vocals = base / "vocals.wav"
     no_vocals = base / "no_vocals.wav"
@@ -393,7 +382,7 @@ def extract_vocals_stage1(
         if vocal_onnx_allowed_for_service(vocal_model_override):
             rank1_vocal = resolve_declared_vocal_onnx_path(vocal_model_override)
         else:
-            logger.warning(
+            log.warning(
                 "Ignoring vocal_model_override %s (not eligible for stem service)",
                 vocal_model_override.name,
             )
@@ -410,7 +399,7 @@ def extract_vocals_stage1(
         sep = run_audio_separator_2stem(input_path, output_dir, rank1_vocal)
         if sep is not None:
             v_wav, i_wav = sep
-            logger.info(
+            log.info(
                 "Stage 1: audio-separator 2-stem (%s)",
                 rank1_vocal.name,
             )
@@ -529,14 +518,19 @@ def extract_vocals_stage1(
 
 
 def get_2stem_stage1_preview(
-    prefer_speed: bool | None = None, model_tier: str | None = None
+    prefer_speed: bool | None = None,
+    model_tier: str | None = None,
+    stem_backend: str | None = None,
 ) -> tuple[str, list[str]]:
     """
     Preview the first 2-stem rank that would be attempted (on-disk checks only).
-    Waterfall: rank0 MDX23C (quality: vocal + mix-minus-vocal; balanced: pair) → rank1 UVR_MDXNET_3_9662 →
-    rank2 KARA → rank3 MDX23C → rank4 htdemucs.
+    When ``stem_backend`` is ``demucs_only``, returns the PyTorch Demucs 2-stem path (no ONNX waterfall).
+    Otherwise: rank0 MDX23C → rank1 UVR → rank2 KARA → rank3 MDX23C → rank4 htdemucs.
     """
     from .config import mdx23c_vocal_available, mdx23c_inst_available
+
+    if stem_backend == "demucs_only":
+        return ("demucs", ["htdemucs"])
 
     tier = "fast" if prefer_speed else (model_tier or "balanced")
 

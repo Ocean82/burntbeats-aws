@@ -15,6 +15,7 @@ TMP_OUTPUT_DIR = Path(tempfile.mkdtemp(prefix="burntbeats-stem-output-"))
 os.environ["STEM_OUTPUT_DIR"] = str(TMP_OUTPUT_DIR)
 os.environ["NODE_ENV"] = "production"
 os.environ["FRONTEND_ORIGINS"] = "http://localhost:5173,http://localhost"
+os.environ["STEM_ALLOW_MISSING_HTDEMUCS"] = "1"
 
 from stem_service.server import app  # noqa: E402
 
@@ -27,6 +28,9 @@ def test_health_production_omits_repo_root() -> None:
     body = response.json()
     assert body["status"] == "ok"
     assert "repo_root" not in body
+    assert "runtime" in body
+    assert isinstance(body["runtime"], dict)
+    assert "python" in body["runtime"]
 
 
 def test_status_invalid_job_id() -> None:
