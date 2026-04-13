@@ -15,6 +15,8 @@ import { App } from "./App";
 import { LandingPage } from "./pages/LandingPage";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
+import { LegalPage } from "./pages/LegalPage";
+import { LegalAcceptanceGate } from "./components/LegalAcceptanceGate";
 
 /** Shown while Clerk loads session — avoids a blank screen (perceived hang). */
 function ClerkLoadingShell() {
@@ -42,9 +44,11 @@ function LocalDevRoot() {
 
   return (
     <ErrorBoundary>
-      <AppShell>
-        <App />
-      </AppShell>
+      <LegalAcceptanceGate>
+        <AppShell>
+          <App />
+        </AppShell>
+      </LegalAcceptanceGate>
     </ErrorBoundary>
   );
 }
@@ -87,6 +91,11 @@ function AuthenticatedRoot() {
 }
 
 export function Root() {
+  const path =
+    typeof window !== "undefined" ? window.location.pathname : "/";
+  if (path === "/privacy-policy") return <LegalPage doc="privacy-policy" />;
+  if (path === "/terms-of-service") return <LegalPage doc="terms-of-service" />;
+
   if (isLocalDevFullApp()) {
     return <LocalDevRoot />;
   }

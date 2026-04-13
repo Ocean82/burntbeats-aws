@@ -3,7 +3,7 @@
  * Server-side export is optional (`POST /api/stems/server-export`); see docs/ARCHITECTURE-FLOW.md.
  * Master mix stem set matches playback via `filterStemsForAudibleMix`.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import lamejs from "lamejs";
 import { fetchStemWavAsBlob, serverExportMasterWav } from "../api";
 import { SERVER_EXPORT_ENABLED } from "../config";
@@ -75,6 +75,8 @@ export type ExportCompareMetrics = {
 
 export function useExport(): UseExportReturn {
   const [isExporting, setIsExporting] = useState(false);
+  const lastExportAtRef = useRef(0);
+  const EXPORT_ACTION_COOLDOWN_MS = 8000;
 
   const triggerDownload = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
@@ -386,6 +388,19 @@ export function useExport(): UseExportReturn {
     serverExportStemIds?: string[],
     onSuccess?: () => void
   ) => {
+    const now = Date.now();
+    const msSinceLastExport = now - lastExportAtRef.current;
+    if (msSinceLastExport < EXPORT_ACTION_COOLDOWN_MS) {
+      const waitSeconds = Math.max(
+        1,
+        Math.ceil((EXPORT_ACTION_COOLDOWN_MS - msSinceLastExport) / 1000),
+      );
+      onError(
+        `Please wait ${waitSeconds}s before starting another export.`,
+      );
+      return;
+    }
+
     let hadError = false;
     const wrapErr = (msg: string) => {
       hadError = true;
@@ -436,6 +451,7 @@ export function useExport(): UseExportReturn {
         );
         for (const stem of jobBacked) await downloadStemByUrl(stem, baseName);
       }
+      lastExportAtRef.current = Date.now();
       onClose();
       if (!hadError) onSuccess?.();
     } catch (e) {

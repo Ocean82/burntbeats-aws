@@ -22,6 +22,21 @@ async function authHeaders(): Promise<Record<string, string>> {
   return { Authorization: `Bearer ${token}` };
 }
 
+export async function acceptLegal(params: { tosVersion: string; privacyVersion: string }): Promise<{ ok: true }> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}/api/legal/accept`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    throw await userFacingHttpError(res);
+  }
+  const j = (await res.json()) as { ok?: unknown };
+  if (j && j.ok === true) return { ok: true };
+  throw userFacingApiError("Unexpected response from server.");
+}
+
 // Per-job token store: job_id → job_token (short-lived, issued by backend on split/expand)
 const jobTokenStore = new Map<string, string>();
 

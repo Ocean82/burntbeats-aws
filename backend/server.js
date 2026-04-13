@@ -27,7 +27,7 @@ import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 import { billingRouter } from "./billing.js";
 import { emailRouter } from "./email-routes.js";
-import { verifyClerkBearer } from "./clerkAuth.js";
+import { verifyClerkBearer, getClerkClient } from "./clerkAuth.js";
 import {
   computeExpandCost,
   computeServerExportCost,
@@ -90,6 +90,14 @@ const RATE_LIMIT_WINDOW_MS =
   Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS =
   Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 10;
+const STEM_FILE_RATE_LIMIT_WINDOW_MS =
+  Number(process.env.STEM_FILE_RATE_LIMIT_WINDOW_MS) || 60 * 1000;
+const STEM_FILE_RATE_LIMIT_MAX_REQUESTS =
+  Number(process.env.STEM_FILE_RATE_LIMIT_MAX_REQUESTS) || 30;
+const SERVER_EXPORT_RATE_LIMIT_WINDOW_MS =
+  Number(process.env.SERVER_EXPORT_RATE_LIMIT_WINDOW_MS) || 60 * 1000;
+const SERVER_EXPORT_RATE_LIMIT_MAX_REQUESTS =
+  Number(process.env.SERVER_EXPORT_RATE_LIMIT_MAX_REQUESTS) || 4;
 /** Default age for cleanup endpoint when `maxAgeHours` query is omitted */
 const STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS = (() => {
   const raw = Number(process.env.STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS);
@@ -161,6 +169,8 @@ function jobTokenMiddleware(req, res, next) {
 }
 
 const rateLimitStore = new Map();
+const stemFileRateLimitStore = new Map();
+const serverExportRateLimitStore = new Map();
 
 // Prune expired entries so the store does not grow unbounded.
 const RATE_LIMIT_PRUNE_INTERVAL_MS = 2 * RATE_LIMIT_WINDOW_MS;
@@ -168,6 +178,12 @@ const rateLimitPruneInterval = setInterval(() => {
   const now = Date.now();
   for (const [ip, record] of rateLimitStore.entries()) {
     if (now > record.resetTime) rateLimitStore.delete(ip);
+  }
+  for (const [key, record] of stemFileRateLimitStore.entries()) {
+    if (now > record.resetTime) stemFileRateLimitStore.delete(key);
+  }
+  for (const [key, record] of serverExportRateLimitStore.entries()) {
+    if (now > record.resetTime) serverExportRateLimitStore.delete(key);
   }
 }, RATE_LIMIT_PRUNE_INTERVAL_MS);
 // In test mode, avoid keeping the event loop alive just for pruning.
@@ -280,6 +296,55 @@ app.use(rateLimitMiddleware);
 app.use("/api/email", emailRouter);
 app.use("/api/billing", billingRouter);
 
+// ── Legal acceptance (one-time gate) ─────────────────────────────────────────
+const LEGAL_TOS_VERSION = process.env.LEGAL_TOS_VERSION || "2025-01";
+const LEGAL_PRIVACY_VERSION = process.env.LEGAL_PRIVACY_VERSION || "2025-01";
+
+app.post("/api/legal/accept", async (req, res) => {
+  try {
+    const userId = await verifyClerkBearer(req);
+    const clerk = getClerkClient();
+    if (!clerk) return res.status(503).json({ error: "Auth not configured" });
+
+    const body = req.body && typeof req.body === "object" ? req.body : {};
+    const tosVersion =
+      typeof body.tosVersion === "string" && body.tosVersion
+        ? body.tosVersion
+        : "";
+    const privacyVersion =
+      typeof body.privacyVersion === "string" && body.privacyVersion
+        ? body.privacyVersion
+        : "";
+    if (tosVersion !== LEGAL_TOS_VERSION || privacyVersion !== LEGAL_PRIVACY_VERSION) {
+      return res.status(400).json({
+        error: "Invalid legal document version.",
+      });
+    }
+
+    const u = await clerk.users.getUser(userId);
+    const existing = (u && u.publicMetadata && typeof u.publicMetadata === "object")
+      ? u.publicMetadata
+      : {};
+    const next = {
+      ...existing,
+      legalAccepted: {
+        tosVersion: LEGAL_TOS_VERSION,
+        privacyVersion: LEGAL_PRIVACY_VERSION,
+        acceptedAt: new Date().toISOString(),
+      },
+    };
+    await clerk.users.updateUser(userId, { publicMetadata: next });
+    return res.json({ ok: true });
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e && typeof e.status === "number"
+        ? e.status
+        : 401;
+    const msg = e instanceof Error ? e.message : "Unauthorized";
+    return res.status(status).json({ error: msg });
+  }
+});
+
 /**
  * @param {import("express").Request} req
  * @param {import("express").Response} res
@@ -312,6 +377,77 @@ function rateLimitMiddleware(req, res, next) {
     return res
       .status(429)
       .json({ error: "Too many requests. Please slow down." });
+  }
+  record.count++;
+  next();
+}
+
+/**
+ * Stricter throttle for stem file GETs. Keyed by IP + job_id to allow normal playback/download
+ * while preventing repeated export-click spam from saturating disk/network.
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ */
+function stemFileRateLimitMiddleware(req, res, next) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const jobId = req.params.job_id || "unknown";
+  const key = `${ip}|${jobId}`;
+  const now = Date.now();
+  const record = stemFileRateLimitStore.get(key);
+  if (!record || now > record.resetTime) {
+    stemFileRateLimitStore.set(key, {
+      count: 1,
+      resetTime: now + STEM_FILE_RATE_LIMIT_WINDOW_MS,
+    });
+    return next();
+  }
+  if (record.count >= STEM_FILE_RATE_LIMIT_MAX_REQUESTS) {
+    res.set(
+      "Retry-After",
+      String(Math.ceil(STEM_FILE_RATE_LIMIT_WINDOW_MS / 1000)),
+    );
+    return res.status(429).json({
+      error: "Too many stem file downloads. Please wait and try again.",
+    });
+  }
+  record.count++;
+  next();
+}
+
+/**
+ * Expensive server-export endpoint throttle. Keyed by IP + user id when available.
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ */
+function serverExportRateLimitMiddleware(req, res, next) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const jobId =
+    req.body &&
+    typeof req.body === "object" &&
+    typeof req.body.job_id === "string" &&
+    req.body.job_id.length > 0
+      ? req.body.job_id
+      : "unknown-job";
+  const key = `${ip}|${jobId}`;
+  const now = Date.now();
+  const record = serverExportRateLimitStore.get(key);
+  if (!record || now > record.resetTime) {
+    serverExportRateLimitStore.set(key, {
+      count: 1,
+      resetTime: now + SERVER_EXPORT_RATE_LIMIT_WINDOW_MS,
+    });
+    return next();
+  }
+  if (record.count >= SERVER_EXPORT_RATE_LIMIT_MAX_REQUESTS) {
+    res.set(
+      "Retry-After",
+      String(Math.ceil(SERVER_EXPORT_RATE_LIMIT_WINDOW_MS / 1000)),
+    );
+    return res.status(429).json({
+      error: "Too many export requests. Please wait and try again.",
+    });
   }
   record.count++;
   next();
@@ -898,7 +1034,11 @@ app.post(
 
 // Optional server-side master export (FFmpeg / mastering). Default app behavior is client-side export.
 // When disabled: 404. When enabled: renders server-side master WAV via stem_service.
-app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
+app.post(
+  "/api/stems/server-export",
+  serverExportRateLimitMiddleware,
+  authMiddleware,
+  async (req, res) => {
   const enabled = ["1", "true", "yes"].includes(
     (process.env.SERVER_EXPORT_ENABLED || "").toLowerCase(),
   );
@@ -1096,7 +1236,8 @@ app.post("/api/stems/server-export", authMiddleware, async (req, res) => {
     console.error("[POST /api/stems/server-export] render exception:", msg);
     return res.status(500).json({ error: "Server export failed" });
   }
-});
+  },
+);
 
 app.delete("/api/stems/:job_id", authMiddleware, async (req, res) => {
   const { job_id } = req.params;
@@ -1124,6 +1265,7 @@ app.get(
   "/api/stems/file/:job_id/:stemId",
   authMiddleware,
   jobTokenMiddleware,
+  stemFileRateLimitMiddleware,
   async (req, res) => {
     const { job_id, stemId } = req.params;
     const validated = validateStemFileParams(job_id, stemId);
