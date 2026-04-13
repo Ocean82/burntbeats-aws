@@ -1,8 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/react";
+import { initGoogleTag } from "./analytics/initGoogleTag";
 import "./index.css";
 import { Root } from "./Root";
+
+const gaMeasurementId = String(import.meta.env.VITE_GA_MEASUREMENT_ID ?? "").trim();
+if (gaMeasurementId) {
+  initGoogleTag(gaMeasurementId);
+}
 
 if (import.meta.env.PROD && String(import.meta.env.VITE_LOCAL_DEV_FULL_APP ?? "").trim()) {
   console.warn(
