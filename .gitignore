@@ -46,6 +46,7 @@ dist/
 
 # IDE / OS
 .cursor/
+.claude
 .idea/
 .vscode/
 .vs/

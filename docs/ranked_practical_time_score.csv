@@ -1,28 +1,28 @@
-tier,role,model,backend,score,elapsed_sec_30s_clip,notes
-recommended_fast,vocal_2stem,UVR_MDXNET_3_9662.ort,ort,9,26.802,fastest 9 on benchmark clip; prefer ORT when available
-recommended_fast,vocal_2stem,UVR_MDXNET_KARA.ort,ort,9,27.899,
-recommended_fast,vocal_2stem,UVR_MDXNET_KARA.onnx,onnx,9,29.01,
-recommended_fast,vocal_2stem,UVR_MDXNET_3_9662.onnx,onnx,9,29.758,
-recommended_8_5_fast,vocal_2stem,UVR_MDXNET_2_9682.ort,ort,8.5,26.293,use when you need 8.5 tier speed; all UVR_MDXNET_1/2/3 in ~26–29s
-recommended_8_5_fast,vocal_2stem,UVR_MDXNET_1_9703.onnx,onnx,8.5,26.508,
-recommended_8_5_fast,vocal_2stem,UVR_MDXNET_1_9703.ort,ort,8.5,26.894,
-recommended_8_5_fast,vocal_2stem,UVR_MDXNET_2_9682.onnx,onnx,8.5,28.709,
-quality_slower,vocal_2stem,UVR-MDX-NET-Voc_FT.onnx,onnx,9.5,74.613,highest subjective score in run but much slower than numbered UVR_MDXNET_*9s
-quality_slower,vocal_2stem,Kim_Vocal_1.ort,ort,9,65.365,
-quality_slower,vocal_2stem,Kim_Vocal_1.onnx,onnx,9,65.65,
-quality_slower,vocal_2stem,Kim_Vocal_2.ort,ort,9,67.533,
-quality_slower,vocal_2stem,Kim_Vocal_2.onnx,onnx,9,71.153,
-quality_slower,vocal_2stem,UVR-MDX-NET-Voc_FT.ort,ort,9,72.005,
-slow_pair,vocal_2stem,mdx23c_vocal.onnx,onnx,9,121.716,mdx23c pair; quality path not fast tier
-slow_pair,vocal_2stem,mdx23c_vocal.ort,ort,9,132.467,
-recommended_fast,instrumental,UVR-MDX-NET-Inst_HQ_5.ort,ort,9,53.837,
-recommended_fast,instrumental,UVR-MDX-NET-Inst_HQ_5.onnx,onnx,9,54.425,
-quality_slower,instrumental,UVR-MDX-NET-Inst_HQ_4.ort,ort,9,64.139,
-quality_slower,instrumental,UVR-MDX-NET-Inst_HQ_4.onnx,onnx,9,66.202,
-special_not_ranked_like_vocal,vocal_2stem,Reverb_HQ_By_FoxJoy.onnx,onnx,1,83.185,dereverb stem; SCORE=1 is wrong role for 2-stem vocal ranking — keep for ultra post-pass only
-special_not_ranked_like_vocal,vocal_2stem,Reverb_HQ_By_FoxJoy.ort,ort,1,84.886,
-exclude,vocal_2stem,kuielab_a_vocals.*,,8,31+,below 9; skip unless desperate
-exclude,vocal_2stem,kuielab_b_vocals.*,,8,28–31,below 9
-exclude,demucs_onnx,demucsv4.* / htdemucs_* embedded / 6s,,1–2,various,poor scores in this benchmark; use PyTorch htdemucs .pth/.th instead
-exclude,instrumental,UVR-MDX-NET_Crowd_HQ_1.*,,1,,wrong tool for default inst path
+tier,role,model,backend,score,elapsed_sec_30s_clip,notes,
+recommended_fast,vocal_2stem,UVR_MDXNET_3_9662.ort,ort,9,26.802,fastest 9 on benchmark clip; prefer ORT when available,
+recommended_fast,vocal_2stem,UVR_MDXNET_KARA.ort,ort,9,27.899,,
+recommended_fast,vocal_2stem,UVR_MDXNET_KARA.onnx,onnx,9,29.01,,
+recommended_fast,vocal_2stem,UVR_MDXNET_3_9662.onnx,onnx,9,29.758,,
+recommended_8_5_fast,vocal_2stem,UVR_MDXNET_2_9682.ort,ort,8.5,26.293,use when you need 8.5 tier speed; all UVR_MDXNET_1/2/3 in ~26–29s,
+recommended_8_5_fast,vocal_2stem,UVR_MDXNET_1_9703.onnx,onnx,8.5,26.508,,
+recommended_8_5_fast,vocal_2stem,UVR_MDXNET_1_9703.ort,ort,8.5,26.894,,
+recommended_8_5_fast,vocal_2stem,UVR_MDXNET_2_9682.onnx,onnx,8.5,28.709,,
+quality_slower,vocal_2stem,UVR-MDX-NET-Voc_FT.onnx,onnx,9.5,74.613,highest subjective score in run but much slower than numbered UVR_MDXNET_*9s,
+quality_slower,vocal_2stem,Kim_Vocal_1.ort,ort,9,65.365,,
+quality_slower,vocal_2stem,Kim_Vocal_1.onnx,onnx,9,65.65,,
+quality_slower,vocal_2stem,Kim_Vocal_2.ort,ort,9,67.533,,
+quality_slower,vocal_2stem,Kim_Vocal_2.onnx,onnx,9,71.153,,
+quality_slower,vocal_2stem,UVR-MDX-NET-Voc_FT.ort,ort,9,72.005,,
+slow_pair,vocal_2stem,mdx23c_vocal.onnx,onnx,9,121.716,mdx23c pair; quality path not fast tier,
+slow_pair,vocal_2stem,mdx23c_vocal.ort,ort,9,132.467,,
+recommended_fast,instrumental,UVR-MDX-NET-Inst_HQ_5.ort,ort,9,53.837,,
+recommended_fast,instrumental,UVR-MDX-NET-Inst_HQ_5.onnx,onnx,9,54.425,,
+quality_slower,instrumental,UVR-MDX-NET-Inst_HQ_4.ort,ort,9,64.139,,
+quality_slower,instrumental,UVR-MDX-NET-Inst_HQ_4.onnx,onnx,9,66.202,,
+special_not_ranked_like_vocal,vocal_2stem,Reverb_HQ_By_FoxJoy.onnx,onnx,1,83.185,dereverb stem; SCORE=1 is wrong role for 2-stem vocal ranking — keep for ultra post-pass only,
+special_not_ranked_like_vocal,vocal_2stem,Reverb_HQ_By_FoxJoy.ort,ort,1,84.886,,
+exclude,vocal_2stem,kuielab_a_vocals.*,,8,31+,below 9; skip unless desperate,
+exclude,vocal_2stem,kuielab_b_vocals.*,,8,28–31,below 9,
+exclude,demucs_onnx,demucsv4.* / htdemucs_* embedded / 6s,,1–2,various,poor scores in this benchmark; use PyTorch htdemucs .pth/.th instead,
+exclude,instrumental,UVR-MDX-NET_Crowd_HQ_1.*,,1,,wrong tool for default inst path,
 exclude,mislabeled,Kim_Inst.* / KARA_2.*,,0 or relabeled,,,instrument outputs; not vocal-2stem models
