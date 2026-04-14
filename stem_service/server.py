@@ -607,38 +607,45 @@ def _run_separation_sync(
         _write_progress(out_dir, progress_data)
         _schedule_s3_upload(job_id, out_dir / "stems", out_dir, progress_data)
 
-        metrics_record = {
-            "job_id": job_id,
-            "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "mode_name": mode_name,
-            "stem_count": stem_count,
-            "quality_mode": quality_mode,
-            "prefer_speed": prefer_speed,
-            "elapsed_seconds": round(elapsed, 2),
-            "audio_duration_seconds": round(audio_duration_seconds, 2)
-            if audio_duration_seconds is not None
-            else None,
-            "realtime_factor": realtime_factor,
-            "models_used": models_used,
-            "stem_runtime": get_stem_runtime_versions(),
-        }
-        _append_metrics_log(metrics_record)
+        # Do not let metrics / logging failures overwrite a successful job (that would mark
+        # status failed and trigger finally to wipe stems/).
+        try:
+            metrics_record = {
+                "job_id": job_id,
+                "completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "mode_name": mode_name,
+                "stem_count": stem_count,
+                "quality_mode": quality_mode,
+                "prefer_speed": prefer_speed,
+                "elapsed_seconds": round(elapsed, 2),
+                "audio_duration_seconds": round(audio_duration_seconds, 2)
+                if audio_duration_seconds is not None
+                else None,
+                "realtime_factor": realtime_factor,
+                "models_used": models_used,
+                "stem_runtime": get_stem_runtime_versions(),
+            }
+            _append_metrics_log(metrics_record)
 
-        job_log.info(
-            "=== JOB COMPLETE  elapsed=%.1fs  audio=%.1fs  RTF=%s  mode=%s  models=%s ===",
-            elapsed,
-            audio_duration_seconds or 0,
-            realtime_factor,
-            mode_name,
-            models_used,
-        )
-        logger.info(
-            "Completed job %s in %.1fs (mode=%s, RTF=%s)",
-            job_id,
-            elapsed,
-            mode_name,
-            realtime_factor,
-        )
+            job_log.info(
+                "=== JOB COMPLETE  elapsed=%.1fs  audio=%.1fs  RTF=%s  mode=%s  models=%s ===",
+                elapsed,
+                audio_duration_seconds or 0,
+                realtime_factor,
+                mode_name,
+                models_used,
+            )
+            logger.info(
+                "Completed job %s in %.1fs (mode=%s, RTF=%s)",
+                job_id,
+                elapsed,
+                mode_name,
+                realtime_factor,
+            )
+        except Exception as post_err:
+            job_log.warning(
+                "Post-complete bookkeeping failed (job left as completed): %s", post_err
+            )
     except JobCancelledError:
         elapsed = time.monotonic() - t0
         job_log.info("=== JOB CANCELLED  elapsed=%.1fs ===", elapsed)

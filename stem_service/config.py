@@ -167,8 +167,10 @@ DEMUCS_SPEED_4STEM_RANK28_REPO = DEMUCS_EXTRA_MODELS_DIR / "speed_4stem_rank28"
 # Tuple: (subdir under Demucs_Models, checkpoint ``.th`` filename, ``demucs -n`` short id).
 # Within-4-stem ranks: fast #27 / #28, quality #1 / #2 (see docs/rankings).
 DEMUCS_SPEED_4STEM_CHECKPOINTS: tuple[tuple[str, str, str], ...] = (
-    ("speed_4stem_rank27", "d12395a8-e57c48e6__7ae9d6de.th", "d12395a8"),
-    ("speed_4stem_rank28", "cfa93e08-61801ae1__7ae9d6de.th", "cfa93e08"),
+    # Actual filename on disk: d12395a8-e57c48e6.th (no __7ae9d6de suffix).
+    # _resolved_demucs_mapped_ckpt handles both the full and legacy short names.
+    ("speed_4stem_rank27", "d12395a8-e57c48e6.th", "d12395a8"),
+    ("speed_4stem_rank28", "cfa93e08-61801ae1.th", "cfa93e08"),
 )
 DEMUCS_QUALITY_4STEM_RANK1_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank1"
 DEMUCS_QUALITY_4STEM_RANK2_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank2"
