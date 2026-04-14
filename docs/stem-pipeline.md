@@ -46,6 +46,20 @@ Implemented in `stem_service/vocal_stage1.py` (`extract_vocals_stage1`). When `p
 
 Hybrid code does **not** infer behavior from `instrumental_path is None` alone: see **`InstrumentalSource`** and **`[MODEL-PARAMS.md](MODEL-PARAMS.md)`** (*Stage 1 return value*).
 
+## 2-stem ORT model contract (consistency)
+
+For 2-stem ONNX Runtime inference, runtime should prefer `.ort` siblings when present (`resolve_mdx_model_path()`), and teams should keep the following logical order consistent:
+
+- **Fast 2-stem primary:** `UVR_MDXNET_3_9662.ort`
+- **Fast 2-stem fallback:** `UVR_MDXNET_KARA.ort`
+- **Quality 2-stem primary:** `Kim_Vocal_2.ort`
+- **Quality 2-stem fallback:** `Kim_Vocal_1.ort`
+
+Notes:
+
+- These entries are the intended vocal model contract for 2-stem selection consistency.
+- If an `.ort` file is missing, runtime may fall back to `.onnx` for the same logical model name.
+
 ## Related docs
 
 - [MODEL-PARAMS.md](MODEL-PARAMS.md) — MDX tensor params, overlap, **`InstrumentalSource`** / 4-tuple Stage 1 return

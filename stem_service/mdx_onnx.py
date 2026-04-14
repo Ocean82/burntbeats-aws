@@ -94,14 +94,21 @@ DEREVERB_MODEL_PATHS: list[Path] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Tiered model selection — MUST match docs/MODEL-SELECTION-AUTHORITY.md.
-# Canonical benchmark table (score + 30s elapsed): docs/ranked_practical_time_score.csv
-# Legacy blended CSV under tmp/ is research-only; do not use it to order these lists.
+# CPU-only single-model tier assignments — MUST match docs/MODEL-SELECTION-AUTHORITY.md.
 #
-# ORT: resolve_mdx_model_path() prefers .ort when present; lists use .onnx names.
+# 2-stem vocal waterfall (all tiers, try rank 1 first):
+#   fast  rank 1: UVR_MDXNET_3_9662  — self-contained, score 9, fastest on CPU
+#   fast  rank 2: UVR_MDXNET_KARA    — self-contained, score 9, fast fallback
+#   qual  rank 1: UVR_MDXNET_3_9662  — same fast model, quality overlap setting
+#   qual  rank 2: UVR_MDXNET_KARA    — fallback
+#   qual  rank 3: Kim_Vocal_2        — higher score, slower, quality-only fallback
+#   qual  rank 4: Kim_Vocal_1        — last ONNX resort before htdemucs
+#
+# Instrumental = phase inversion (original − vocals). No second ONNX pass.
+# No ensembles, no bags, no MDX23C — CPU-only, single model per job.
+# ORT: resolve_mdx_model_path() auto-prefers .ort; lists use .onnx names.
 # ---------------------------------------------------------------------------
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
-    # fast / balanced: recommended_fast only (score 9 on benchmark clip)
     "fast": [
         "UVR_MDXNET_3_9662.onnx",
         "UVR_MDXNET_KARA.onnx",
@@ -110,29 +117,20 @@ _VOCAL_TIER_NAMES: dict[str, list[str]] = {
         "UVR_MDXNET_3_9662.onnx",
         "UVR_MDXNET_KARA.onnx",
     ],
-    # quality: fast 9s first, then quality_slower per CSV (Kim / Voc_FT — higher score, slower)
     "quality": [
         "UVR_MDXNET_3_9662.onnx",
         "UVR_MDXNET_KARA.onnx",
-        "Kim_Vocal_1.onnx",
         "Kim_Vocal_2.onnx",
-        "UVR-MDX-NET-Voc_FT.onnx",
+        "Kim_Vocal_1.onnx",
     ],
 }
 
 _INST_TIER_NAMES: dict[str, list[str]] = {
-    # fast / balanced: recommended_fast — Inst_HQ_5 (faster on 30s clip than HQ_4)
-    "fast": [
-        "UVR-MDX-NET-Inst_HQ_5.onnx",
-    ],
-    "balanced": [
-        "UVR-MDX-NET-Inst_HQ_5.onnx",
-    ],
-    # quality: Inst_HQ_5 then quality_slower Inst_HQ_4
-    "quality": [
-        "UVR-MDX-NET-Inst_HQ_5.onnx",
-        "UVR-MDX-NET-Inst_HQ_4.onnx",
-    ],
+    # Instrumental ONNX pass disabled by default (USE_TWO_STEM_INST_ONNX_PASS).
+    # When enabled, Inst_HQ_5 is the only CPU-viable single-model option.
+    "fast": ["UVR-MDX-NET-Inst_HQ_5.onnx"],
+    "balanced": ["UVR-MDX-NET-Inst_HQ_5.onnx"],
+    "quality": ["UVR-MDX-NET-Inst_HQ_5.onnx"],
 }
 
 # ---------------------------------------------------------------------------
