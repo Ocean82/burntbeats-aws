@@ -105,6 +105,22 @@ for base in "${root_mdx_bases[@]}"; do
   done
 done
 
+# 6. Populate models/models_by_type/ort/ from MDX_Net_Models/ and mdxnet_models/ so that
+#    export_server_models.py can find ORT files via the typed path used by resolve_mdx_model_path().
+#    This mirrors what sync_models_from_model_testing.ps1 does on Windows.
+mkdir -p "$MODELS_DIR/models_by_type/ort"
+for dir in "$MODELS_DIR/MDX_Net_Models" "$MODELS_DIR/mdxnet_models"; do
+  if [ -d "$dir" ]; then
+    find "$dir" -maxdepth 1 -name '*.ort' | while read -r ort_file; do
+      dest="$MODELS_DIR/models_by_type/ort/$(basename "$ort_file")"
+      if [ ! -f "$dest" ] || [ "$ort_file" -nt "$dest" ]; then
+        cp -f "$ort_file" "$dest"
+        echo "OK models/models_by_type/ort/$(basename "$ort_file")"
+      fi
+    done
+  fi
+done
+
 echo ""
 # Refresh models inventory so INVENTORY.md is up to date
 if [ -f "$ROOT/scripts/build_models_inventory.py" ]; then

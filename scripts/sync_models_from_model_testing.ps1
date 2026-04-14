@@ -112,28 +112,44 @@ if (Test-Path $ftYaml) {
     Write-Warning "htdemucs_ft.yaml not found under $DmDst - run again after v3_v4_repo copy"
 }
 
-# Speed rank 27 / 28: filenames must match stem_service.config DEMUCS_SPEED_4STEM_CHECKPOINTS (one .th per folder).
-$p27 = Join-Path $Th "d12395a8-e57c48e6__7ae9d6de.th"
-if (-not (Test-Path $p27)) { $p27 = Join-Path $Th "d12395a8-e57c48e6.th" }
-$p28 = Join-Path $Th "cfa93e08-61801ae1__7ae9d6de.th"
-if (-not (Test-Path $p28)) { $p28 = Join-Path $Th "cfa93e08-61801ae1.th" }
+# Speed rank 27 / 28: destination filenames MUST match DEMUCS_SPEED_4STEM_CHECKPOINTS in
+# stem_service/config.py (short names, no __7ae9d6de suffix). One .th per folder.
+$p27 = Join-Path $Th "d12395a8-e57c48e6.th"
+if (-not (Test-Path $p27)) { $p27 = Join-Path $Th "d12395a8-e57c48e6__7ae9d6de.th" }
+$p28 = Join-Path $Th "cfa93e08-61801ae1.th"
+if (-not (Test-Path $p28)) { $p28 = Join-Path $Th "cfa93e08-61801ae1__7ae9d6de.th" }
 if (Test-Path $p27) {
-    Copy-Item $p27 (Join-Path $DmDst "speed_4stem_rank27\d12395a8-e57c48e6__7ae9d6de.th") -Force
-} else { Write-Warning "Missing d12395a8-e57c48e6__7ae9d6de.th (or short name) under $Th" }
+    Copy-Item $p27 (Join-Path $DmDst "speed_4stem_rank27\d12395a8-e57c48e6.th") -Force
+} else { Write-Warning "Missing d12395a8-e57c48e6.th (or __7ae9d6de variant) under $Th" }
 if (Test-Path $p28) {
-    Copy-Item $p28 (Join-Path $DmDst "speed_4stem_rank28\cfa93e08-61801ae1__7ae9d6de.th") -Force
-} else { Write-Warning "Missing cfa93e08-61801ae1__7ae9d6de.th (or short name) under $Th" }
+    Copy-Item $p28 (Join-Path $DmDst "speed_4stem_rank28\cfa93e08-61801ae1.th") -Force
+} else { Write-Warning "Missing cfa93e08-61801ae1.th (or __7ae9d6de variant) under $Th" }
 
-# Quality rank 1 / 2: DEMUCS_QUALITY_4STEM_CHECKPOINTS (exact destination names for config).
+# Quality rank 1 / 2: DEMUCS_QUALITY_4STEM_CHECKPOINTS (exact destination names for stem_service.config).
+# Source: $Th = D:\__model_testing\models\models_by_type\th
+# Rank1 MUST be ``04573f0d-f3cf25b2__29d4388e.th`` — do *not* fall back to ``04573f0d-f3cf25b2.th``:
+# that short name is the htdemucs_ft bag shard copied above to Demucs_Models root; it matches the
+# __2aad324b-ranked variant on disk, not rank #1. A previous fallback here produced byte-identical
+# rank1/rank2 folders and mislabeled weights.
 $pQ1 = Join-Path $Th "04573f0d-f3cf25b2__29d4388e.th"
-if (-not (Test-Path $pQ1)) { $pQ1 = Join-Path $Th "04573f0d-f3cf25b2.th" }
 $pQ2 = Join-Path $Th "04573f0d-f3cf25b2__2aad324b.th"
+$q1Dest = Join-Path $DmDst "quality_4stem_rank1\04573f0d-f3cf25b2__29d4388e.th"
+$q2Dest = Join-Path $DmDst "quality_4stem_rank2\04573f0d-f3cf25b2__2aad324b.th"
 if (Test-Path $pQ1) {
-    Copy-Item $pQ1 (Join-Path $DmDst "quality_4stem_rank1\04573f0d-f3cf25b2__29d4388e.th") -Force
-} else { Write-Warning "Missing 04573f0d-f3cf25b2__29d4388e.th (or 04573f0d-f3cf25b2.th) under $Th" }
+    Copy-Item $pQ1 $q1Dest -Force
+} else {
+    Write-Warning "Missing $pQ1 — cannot populate quality_4stem_rank1. Add the true __29d4388e variant to ``__model_testing`` (do not substitute 04573f0d-f3cf25b2.th)."
+}
 if (Test-Path $pQ2) {
-    Copy-Item $pQ2 (Join-Path $DmDst "quality_4stem_rank2\04573f0d-f3cf25b2__2aad324b.th") -Force
+    Copy-Item $pQ2 $q2Dest -Force
 } else { Write-Warning "Missing $pQ2" }
+if ((Test-Path $q1Dest) -and (Test-Path $q2Dest)) {
+    $h1 = (Get-FileHash $q1Dest -Algorithm SHA256).Hash
+    $h2 = (Get-FileHash $q2Dest -Algorithm SHA256).Hash
+    if ($h1 -eq $h2) {
+        Write-Warning "quality_4stem_rank1 and quality_4stem_rank2 checkpoints are byte-identical — rank1 should be __29d4388e, rank2 __2aad324b; replace $pQ1 with the correct file."
+    }
+}
 
 # SCNet ONNX: stem_service resolves models/scnet_models/scnet.onnx first, then models/scnet.onnx/scnet.onnx
 $scnetSrc = Join-Path $Onnx "scnet.onnx"

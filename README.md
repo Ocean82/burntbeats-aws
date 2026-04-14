@@ -88,6 +88,8 @@ bash scripts/copy-models.sh "/mnt/d/DAW Collection/stem-models"
 ```
 The script looks for htdemucs at source root, then in `source/flow-models/` and `source/flow-models/demucs/ckpt/` (deep stem-models layout). For a known-good test run, prefer `python scripts/download_htdemucs_official.py` so `models/htdemucs.th` is the official format. See `docs/MODELS-INVENTORY.md` for details.
 
+**Portable `server_models/` (ship to the server):** The full `models/` tree can be huge. After ONNX/ORT and Demucs checkpoints live under **`models/`** (including **`models/models_by_type/onnx`** and **`…/ort`**, plus **`models/Demucs_Models/`** ranked folders), build a minimal payload with **`python scripts/export_server_models.py`**. That script always resolves files from **`models/`**, not from `server_models` (even if your shell has `STEM_MODELS_DIR=server_models` set). Copy **`server_models/`** to the host and set **`STEM_MODELS_DIR=server_models`** for the stem process (Compose can use the same layout under `./server_models` as a volume if you prefer not to mount all of `models/`). Optional: **`STEM_EXPORT_MODELS_DIR`** if your canonical weights use a different folder name under the repo root.
+
 **Python venv (from repo root, WSL/Ubuntu):**
 ```bash
 cd /path/to/burntbeats-aws   # e.g. /mnt/d/burntbeats-aws in WSL

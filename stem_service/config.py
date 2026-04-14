@@ -12,7 +12,9 @@ import yaml
 # Repo root = parent of stem_service
 STEM_SERVICE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = STEM_SERVICE_DIR.parent
-# Permit overriding the models dir for production payload drops (e.g. server_models)
+# Runtime models root (default ``models/``). For deployment, point at ``server_models/`` after
+# building it with ``python scripts/export_server_models.py`` — that script always reads from
+# the canonical ``models/`` tree (see STEM_EXPORT_MODELS_DIR there), not from server_models.
 _models_dir_env = os.environ.get("STEM_MODELS_DIR", "models").strip()
 MODELS_DIR = REPO_ROOT / _models_dir_env
 MODELS_BY_TYPE_DIR = MODELS_DIR / "models_by_type"
@@ -175,7 +177,19 @@ DEMUCS_SPEED_4STEM_CHECKPOINTS: tuple[tuple[str, str, str], ...] = (
 DEMUCS_QUALITY_4STEM_RANK1_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank1"
 DEMUCS_QUALITY_4STEM_RANK2_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank2"
 DEMUCS_QUALITY_4STEM_CHECKPOINTS: tuple[tuple[str, str, str], ...] = (
+    # rank1: intended on-disk name is ``04573f0d-f3cf25b2__29d4388e.th`` (declared here).
+    # Some layouts only have ``04573f0d-f3cf25b2.th``; _resolved_demucs_mapped_ckpt then
+    # matches via legacy prefix strip — but that does not prove the bytes are the
+    # __29d4388e bag variant. Before renaming to the suffixed name, replace the file
+    # from your stem-models source if needed (``cmp`` vs rank2 should *not* be equal:
+    # a mistaken short-name copy can be byte-identical to ``…__2aad324b.th`` in rank2).
+    # Optional sanity: ``sha256sum`` on the blob; the ``__…`` tag is a model/bag id,
+    # not guaranteed to equal the last 8 hex chars of the file hash.
+    # After the correct ``__29d4388e`` bytes are in rank1, rename/save as:
+    #   mv …/quality_4stem_rank1/04573f0d-f3cf25b2.th \
+    #      …/quality_4stem_rank1/04573f0d-f3cf25b2__29d4388e.th
     ("quality_4stem_rank1", "04573f0d-f3cf25b2__29d4388e.th", "04573f0d"),
+    # rank2 disk file: 04573f0d-f3cf25b2__2aad324b.th — exact match.
     ("quality_4stem_rank2", "04573f0d-f3cf25b2__2aad324b.th", "04573f0d"),
 )
 

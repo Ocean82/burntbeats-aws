@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify model configuration."""
 
+import hashlib
 import sys
 from pathlib import Path
 
@@ -50,6 +51,24 @@ for row in demucs_quality_4stem_configs():
     print(
         f"  quality 4-stem: -n {name}  --repo {repo}  --segment {seg}  out={sub}/  ck={ck.name}"
     )
+
+_cfgs = demucs_quality_4stem_configs()
+if len(_cfgs) >= 2:
+    _ck1, _ck2 = _cfgs[0][4], _cfgs[1][4]
+    if _ck1.is_file() and _ck2.is_file() and _ck1.stat().st_size == _ck2.stat().st_size:
+        def _sha256(p: Path) -> bytes:
+            h = hashlib.sha256()
+            with open(p, "rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                    h.update(chunk)
+            return h.digest()
+
+        if _sha256(_ck1) == _sha256(_ck2):
+            print(
+                "  WARNING: quality rank1 and rank2 checkpoint files are byte-identical - "
+                "rank1 should be 04573f0d-f3cf25b2__29d4388e, not the same blob as rank2 "
+                "(see scripts/sync_models_from_model_testing.ps1; add __29d4388e.th to __model_testing)."
+            )
 
 print()
 print("=== Quality YAML bags (only if DEMUCS_QUALITY_BAG is auto/bags) ===")

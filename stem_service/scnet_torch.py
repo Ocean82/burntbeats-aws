@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 
 from stem_service.config import (
+    DEMUCS_TIMEOUT_SEC,
     scnet_torch_available,
     scnet_torch_checkpoint_path,
     scnet_torch_config_path,
@@ -45,7 +46,13 @@ def run_scnet_torch_4stem(
     repo = scnet_torch_repo_root()
     checkpoint = scnet_torch_checkpoint_path()
     config = scnet_torch_config_path()
-    assert repo is not None and config is not None
+    if repo is None or config is None:
+        logger.warning(
+            "scnet_torch: repo or config unavailable (repo=%s, config=%s)",
+            repo,
+            config,
+        )
+        return None
 
     input_path = input_path.resolve()
     output_dir = output_dir.resolve()
@@ -85,7 +92,7 @@ def run_scnet_torch_4stem(
                 env=env,
                 capture_output=True,
                 text=True,
-                timeout=None,
+                timeout=DEMUCS_TIMEOUT_SEC,
             )
             if proc.returncode != 0:
                 err = (proc.stderr or proc.stdout or "").strip()

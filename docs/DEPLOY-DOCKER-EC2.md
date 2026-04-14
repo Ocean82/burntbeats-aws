@@ -103,6 +103,7 @@ Then confirm **`sudo docker compose ps`** shows all services **healthy**. Do **n
 ## Models and data
 
 - **`models/`** is large and usually **not** in git. On the server it is often mounted into **`stem_service`** (see compose **`volumes:`**). Sync models with **`scripts/copy-models.sh`** or a targeted **`rsync`** (see [DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md) §2).
+- **Smaller deploy bundle:** On your dev machine, keep the authoritative ONNX/ORT under **`models/models_by_type/`** and Demucs under **`models/Demucs_Models/`**, then run **`python scripts/export_server_models.py`** to populate **`server_models/`**. That export **always reads from `models/`** (not from `server_models`), then you rsync only **`server_models/`** and set **`STEM_MODELS_DIR=server_models`** for the stem container (or mount **`./server_models:/repo/models`** and keep the default env).
 - **`tmp/stems`** (or compose **`STEM_OUTPUT_DIR`**) is runtime output; compose may mount **`./tmp/stems`**.
 
 ---

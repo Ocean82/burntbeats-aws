@@ -41,7 +41,7 @@ from stem_service.config import (
     MAX_FILE_SIZE_MB,
     MAX_QUEUE_DEPTH,
 )
-from stem_service.runtime_info import get_stem_runtime_versions, log_stem_runtime_versions
+from stem_service.runtime_info import get_stem_runtime_versions, log_stem_runtime_versions, verify_torchaudio_can_load_wav
 from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.hybrid import (
     run_4stem_single_pass_or_hybrid,
@@ -213,6 +213,14 @@ async def lifespan(app: FastAPI):
 
     log_stem_runtime_versions(logger)
 
+    try:
+        verify_torchaudio_can_load_wav()
+        logger.info("torchaudio I/O smoke test passed")
+    except RuntimeError as e:
+        logger.error("torchaudio I/O smoke test FAILED: %s", e)
+        if not stem_allow_missing_htdemucs_at_startup():
+            raise
+        logger.warning("STEM_ALLOW_MISSING_HTDEMUCS set — continuing despite torchaudio failure")
     if not htdemucs_available():
         if stem_allow_missing_htdemucs_at_startup():
             logger.warning(
@@ -658,35 +666,38 @@ def _run_separation_sync(
     finally:
         with _jobs_lock:
             _running_jobs.pop(job_id, None)
-            
-        # Enterprise Fix 1: Always delete the massive input payload once processing resolves or catastrophically errors
+
+        # Always delete the input file once processing resolves to prevent storage leaks.
         if input_path and input_path.exists():
             try:
                 input_path.unlink()
-                job_log.info("Deleted input.wav to prevent storage leak")
+                job_log.info("Deleted input file to prevent storage leak")
             except OSError as e:
-                job_log.warning("Could not delete input.wav: %s", e)
-                
-        # Enterprise Fix 2: If the job failed completely or was cancelled, conservatively wipe the stems folder 
-        # to prevent ghosting gigabytes of split audio while safely preserving progress.json and job.log
-        progress_data = {}
-        progress_path = out_dir / PROGRESS_FILENAME
-        if progress_path.exists():
+                job_log.warning("Could not delete input file: %s", e)
+
+        # Wipe stems/ only for terminal non-success states to recover disk space.
+        # Read status from the progress file written by the exception handlers above;
+        # never wipe when status is "completed" — that would destroy finished stems.
+        _final_status: str | None = None
+        _progress_path = out_dir / PROGRESS_FILENAME
+        if _progress_path.exists():
             try:
-                progress_data = json.loads(progress_path.read_text(encoding="utf-8"))
+                _final_status = json.loads(
+                    _progress_path.read_text(encoding="utf-8")
+                ).get("status")
             except (json.JSONDecodeError, OSError):
                 pass
-                
-        if progress_data.get("status") in ("cancelled", "failed", "running"):
+
+        if _final_status in ("cancelled", "failed"):
             stems_dir = out_dir / "stems"
             if stems_dir.exists():
-                import shutil
+                import shutil as _shutil
                 try:
-                    shutil.rmtree(stems_dir, ignore_errors=True)
-                    job_log.info("Wiped stems/ directory for errored job to recover disk space")
+                    _shutil.rmtree(stems_dir, ignore_errors=True)
+                    job_log.info("Wiped stems/ for %s job to recover disk space", _final_status)
                 except OSError:
                     pass
-                    
+
         CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
 
 

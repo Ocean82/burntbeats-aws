@@ -744,13 +744,13 @@ def main() -> int:
             return 1
         try:
             if args.stems == 2:
-                stem_list = run_hybrid_2stem(args.input, args.out_dir)
+                stem_list, _models = run_hybrid_2stem(args.input, args.out_dir)
             else:
-                stem_list = run_hybrid_4stem(args.input, args.out_dir)
+                stem_list, _models = run_hybrid_4stem(args.input, args.out_dir)
             out_base = args.out_dir.resolve()
             payload = {
                 "stems": [
-                    {"id": stem_id, "path": str(p[1].relative_to(out_base))}
+                    {"id": stem_id, "path": str(p.relative_to(out_base))}
                     for stem_id, p in stem_list
                 ],
             }
