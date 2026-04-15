@@ -1,3 +1,5 @@
+
+###update and investigate this entire page to ensure that e
 # Summary: Demucs Model Weights, File Types, Model Manipulation & CPU Info
 
 ## Demucs Model Weights & File Types
@@ -286,12 +288,12 @@ Operates in **STFT domain**: for each frequency bin, it takes the **magnitude** 
 
 ---
 
-## CPU-Specific Information
+## CPU-Specific Information ****needs investigating and updating***
 
 ### CPU Performance for Separation
 
 - **CPU separation is very slow** compared to GPU - "even Ryzen 5950X is slower than 1050 Ti"
-- MDX-Net HQ_3: ~2 minutes on Ryzen 5 3600, ~20 minutes on Core 2 Quad
+- MDX-Net HQ_3: ~2 minutes on Ryzen 5 3600, ~20 minutes on Core 2 Quad *we arent using many of these models^
 - HQ_4: ~13 minutes on C2Q @3.6GHz
 - MDX23C and Demucs: "cannot be processed under ~5-17 hours without GPU acceleration" on C2Q
 - Roformers on CPU: Extremely slow. BS-Roformer SW 6-stem took "2 hours" on i3-7100u
@@ -308,7 +310,7 @@ Operates in **STFT domain**: for each frequency bin, it takes the **magnitude** 
 - Minimum RAM: 8GB official, works on 6GB, 4GB may run out on longer tracks
 - UVR requires minimum **3GB free disk space on C:\** drive
 
-### CPU-Only Workarounds
+### CPU-Only Workarounds ****find every single work around, trick, alteration, manipulation possible***
 
 - On 4GB VRAM cards, "use CPU processing instead" - may produce fewer vocal residues than constrained GPU processing
 - If GPU acceleration isn't available, "you're forced using CPU processing, which is very slow"
@@ -317,7 +319,7 @@ Operates in **STFT domain**: for each frequency bin, it takes the **magnitude** 
 
 ### CPU-Friendly Models (Fastest inference)
 
-Small/fast models for CPU users:
+Small/fast models for CPU users: *investigate current models, usage and best way to use and run models. 
 - **voc_ft** (MDX-Net v2, "probably the fastest" for CPU)
 - **Kim Vocal 2** (MDX-Net v2, older but fast)
 - **MDX-Net HQ_5** (only 56MB, fastest HQ model)
@@ -333,7 +335,7 @@ Small/fast models for CPU users:
 ---
 
 ## Weight File Types Summary
-
+****update to current models. leave date and time for verification. 
 | Extension | Architecture                     | Notes                                           |
 | --------- | -------------------------------- | ----------------------------------------------- |
 | `.ckpt`   | Roformers, MDX23C, SCNet, Apollo | PyTorch checkpoint, used by MSST and UVR        |
@@ -350,3 +352,5 @@ Small/fast models for CPU users:
 - The `strict=False` parameter in `load_state_dict` can resolve compatibility issues when loading weights with minor mismatches
 - PyTorch 2.6+ requires `torch.serialization.safe_globals([torch._C._nn.gelu])` before `torch.load` for security reasons
 - Models can be loaded on CPU with `map_location='cpu'` parameter
+
+----list any other possible ways to achieve higher quality and speed. 

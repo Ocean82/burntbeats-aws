@@ -1,5 +1,5 @@
 # New models and faster alternatives (no quality loss)
-
+#update this file. keep dates current. 
 **Date:** 2026-03-16  
 **Goal:** Investigate the project’s model files for new models and potential alternatives that are faster than current choices without losing quality.
 
@@ -80,7 +80,7 @@
 
 ---
 
-## 4. Recommended action plan
+## 4. Recommended action plan... update should be done regulary. not current. 
 
 1. **Short term (no new downloads)**  
    - Ensure all MDX ONNX models you use have `.quant.onnx` and that the service uses them (`USE_INT8_ONNX=1`).  
@@ -97,7 +97,7 @@
 ---
 
 ## 5. References
-
+#not current. 
 - **Probe script:** `scripts/probe_onnx.py` (add any new ONNX path to probe input/output shapes).  
 - **MDX config:** `stem_service/mdx_onnx.py` — `_MDX_CONFIGS`, `VOCAL_MODEL_PATHS`, `INST_MODEL_PATHS`.  
 - **Quantization:** `scripts/quantize_onnx_models.py`, `docs/archive/QUANTIZATION-8BIT.md`.  

@@ -25,7 +25,6 @@ If `models/` is missing locally, inference still uses the built-in table; option
 | `InstrumentalSource` | `instrumental_path` | Hybrid behavior (`stem_service/hybrid.py`) |
 |----------------------|---------------------|---------------------------------------------|
 | `PHASE_INVERSION_PENDING` | `None` | `_materialize_stage1_instrumental` → `create_perfect_instrumental` (aligned mix − vocal). |
-| `MDX23C_MIX_MINUS` | WAV path | Copy; stem already written as mix − vocal inside `mdx_onnx` (single `mdx23c_vocal` pass). |
 | `ONNX_SEPARATE_INST` | WAV path | Copy; from a second instrumental ONNX (e.g. Inst HQ, `mdx23c_instrumental`). |
 | `DEMUCS_TWO_STEM` | `no_vocals` path | Copy; model-native Demucs stem. |
 | `AUDIO_SEPARATOR` | WAV path | Copy; from audio-separator CLI. |
@@ -42,7 +41,7 @@ If `models/` is missing locally, inference still uses the built-in table; option
 | `models/MDX_Net_Models/model_data/model_name_mapper.json` | Maps **internal model id** (e.g. `Kim_Vocal_1`, `UVR_MDXNET_3_9662`) to **human display name** — not a hash→filename map. |
 | `models/mdxnet_models/model_data.json` | Another hash-keyed copy (may overlap; same field names). |
 
-Entries look like:
+Entries look like: but still should verify
 
 ```json
 {
@@ -59,7 +58,7 @@ Entries look like:
 ---
 
 ## Field mapping (UVR name → `mdx_onnx` tuple)
-
+## Alway verify thyis is still true.
 Runtime tuple: **`(n_fft, hop_length, dim_f, dim_t, compensate)`**.
 
 | UVR / JSON field | Maps to | Notes |
@@ -74,6 +73,7 @@ Runtime tuple: **`(n_fft, hop_length, dim_f, dim_t, compensate)`**.
 ---
 
 ## Built-in `_MDX_CONFIGS` snapshot (logical ONNX names)
+## always verify this holds true. Update as needed. 
 
 | Logical name | n_fft | hop | dim_f | dim_t | compensate |
 |--------------|------:|----:|------:|------:|-----------:|
@@ -95,13 +95,13 @@ Tier order for defaults is in **`docs/MODEL-SELECTION-AUTHORITY.md`** (not dupli
 
 ---
 
-## Hash keys vs filenames
+## Hash keys vs filenames should be constantly evaluated and updated to ensure constistiancy. 
 
 `model_data.json` keys are **MD5-style hashes** of model weights (UVR-internal). This repo does **not** ship a full **hash → `*.onnx` filename** table. To validate a row against a file you already have, compute the hash UVR uses for that artifact or compare **tensor shapes + compensate** against the table above.
 
 ---
 
-## Related code
+## Related code should be updated and alway varified. 
 
 - `stem_service/mdx_onnx.py` — `_MDX_CONFIGS`, `_get_config`, inference; mix-minus instrumental for `mdx23c_vocal` when `instrumental_output_path` is set.
 - `stem_service/vocal_stage1.py` — overlap (`0.5` / `0.75`), `InstrumentalSource`, `extract_vocals_stage1`.
