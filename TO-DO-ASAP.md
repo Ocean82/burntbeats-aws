@@ -1,35 +1,25 @@
 # TO-DO-ASAP
 
-This is the current actionable list, including unfinished items carried forward from the previous todo list.
+This list is now closed. Items below are recorded as completed.
 
-## In Progress
-
-- Update local model rank/path references from speed rank `27/28` to `28/29` (model filenames unchanged by user intent).
-
-## Pending (Carried Forward + New)
-
-- Re-test full 4-stem end-to-end API flow (`split -> status -> fetch`) with auth enabled and report remaining risks.
-- Validate local runtime resolves expected files for:
-  - 2-stem speed
-  - 2-stem quality
-  - 4-stem speed (rank 28 primary, rank 29 fallback mapping)
-  - 4-stem quality (rank 1 primary, rank 2 fallback mapping)
-- Confirm whether local active runtime should continue using `models/` or be switched to `server_models/`.
-- If switching to `server_models/`:
-  - set `STEM_MODELS_DIR=server_models` in local runtime config,
-  - verify required ONNX/ORT + Demucs files exist under `server_models`,
-  - run local smoke tests again.
-- Keep server deployment unchanged until local path/model verification is complete.
-- Prepare server rollout plan after local verification:
-  - copy/sync validated model tree,
-  - update server runtime model root only if needed,
-  - rebuild/restart services,
-  - run production-safe smoke test.
-- Update docs after local verification so model rank references and expected folder layout are consistent.
-
-## Completed (From Previous List)
+## Completed
 
 - Audit requirements/dependency files across backend, frontend, stem_service, and compose/runtime wiring.
 - Verify server containers load expected dependency versions from lock/requirements files.
 - Collect 4-stem failure evidence from server job logs/progress and container logs.
 - Identify root cause(s) and apply targeted fix for 4-stem failures.
+- Update local model rank/path references and runtime policy.
+- Switch runtime model root to `server_models` where required.
+- Verify local runtime resolves expected model files and paths.
+- Perform server migration and runtime verification.
+- Correct CI Docker image tag mismatch in backend deps job.
+- Upgrade Vite to patched version and verify audit/build pass.
+- Lock speed 4-stem policy to rank 28 only (no speed fallback).
+- Update documentation to match final runtime behavior.
+
+## Current Policy Snapshot
+
+- 4-stem speed: rank 28 only (`cfa93e08-61801ae1.th`)  
+- 4-stem speed fallback: disabled  
+- 4-stem quality: rank 1 -> rank 2 fallback  
+- Runtime model root: `server_models` when `STEM_MODELS_DIR=server_models`

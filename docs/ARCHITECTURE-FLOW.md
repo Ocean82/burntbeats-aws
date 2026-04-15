@@ -1,6 +1,6 @@
 # Architecture: server / client / billing / ops
 
-**Last updated:** 2026-03-22
+**Last updated:** 2026-04-15
 
 This document is the **product contract** for how Burnt Beats splits audio, stores stems, bills usage, and keeps the system tidy.
 
@@ -53,6 +53,25 @@ Subscriptions and monthly credits: Stripe + Clerk webhook (`docs/BILLING-AND-TOK
 | **TTL cleanup** | **`POST /api/stems/cleanup?maxAgeHours=…`** (requires **`API_KEY`**) deletes job dirs under `STEM_OUTPUT_DIR` **older than** the threshold, plus old upload temp files. Default **`maxAgeHours`** comes from **`STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS`** (fallback **24**). Run from **cron** in production (e.g. nightly). **S3:** delete objects separately (e.g. lifecycle rule on prefix `stems/`) if you no longer keep local copies. |
 | **S3 CORS** | If the browser loads presigned URLs directly, configure the bucket **CORS** to allow **`GET`** from your app origin (or tests may fail for `<audio src>` / `fetch`). |
 | **Server FFmpeg export** | **Not implemented** — next step after S3. Reserved: **`POST /api/stems/server-export`**. |
+
+---
+
+## 5. 4-stem speed policy
+
+| Concern | Behavior |
+|--------|----------|
+| **Fast 4-stem model** | Uses **Demucs rank 28 only**: `speed_4stem_rank28/cfa93e08-61801ae1.th` |
+| **Fast 4-stem fallback** | **Disabled by policy** (no speed fallback checkpoint) |
+| **Model root** | When `STEM_MODELS_DIR=server_models`, runtime resolves from `/repo/server_models` |
+
+## 6. Locked model quality/latency policy
+
+| Concern | Behavior |
+|--------|----------|
+| **Model selection authority** | Use only ranked, user-approved checkpoints; no lower-quality substitutions. |
+| **Stage 1 passes** | Keep single-pass default. Do not add vocal+instrumental dual ONNX passes in production. |
+| **Instrumental strategy** | Default is phase inversion (original minus vocals). |
+| **Latency protection** | Do not add extra quality passes that materially increase wait time unless explicitly approved. |
 
 Example cleanup (cron):
 

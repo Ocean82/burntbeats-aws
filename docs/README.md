@@ -29,6 +29,7 @@ Legacy investigations and planning notes belong in `docs/archive/`.
 - `MODEL-INVENTORY-RUNBOOK.md` - model inventory maintenance workflow
 - `MODEL-INVENTORY-AUTO.md` - auto-generated inventory outputs
 - `MODEL-PARAMS.md` - model parameter mapping and usage notes
+- `MODEL-PATH-AND-SELECTION-INVESTIGATION-2026-04-15.md` - final runtime/path audit (includes **4-stem speed rank 28 only, no speed fallback**)
 - `ranked_practical_time_score.csv` - benchmark summary table
 
 ## Research / Secondary References

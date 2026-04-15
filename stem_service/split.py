@@ -2,7 +2,7 @@
 Stem separation using Demucs, CPU-only.
 
 4-stem policy:
-- speed: try mapped speed ranks (28 -> 29), then fallback to htdemucs
+- speed: rank 28 only, then fallback to htdemucs
 - quality/balanced: try mapped quality ranks (1 -> 2), then fallback to htdemucs
 """
 
