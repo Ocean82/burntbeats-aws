@@ -1,7 +1,0 @@
-node_modules
-npm-debug.log*
-.npm
-.env
-.env.*
-tmp
-*.log

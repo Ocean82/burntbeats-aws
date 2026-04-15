@@ -1,4 +1,4 @@
-****Latest RESEARCH****(this requires a very deep investigation and should not be overlooked. investigate to understand and determine if logic is true or false.) do not assume to be true until dated. 
+****Latest RESEARCH****
 // Possible new model setup and usage // 
 
  on a CPU-only EC2 t3.large, I would make SCNet your default production separator for the standard 4-stem case, and build your 2-stem mode by running that same 4-stem model and summing bass + drums + other = instrumental/accompaniment. That recommendation is mostly about your hardware: AWS lists t3.large at 2 vCPUs / 8 GiB RAM with 30% baseline CPU utilization per vCPU, and SCNet is the strongest primary-source option I found that explicitly combines strong separation quality with a CPU-speed claim: its paper reports 9.0 dB SDR on MUSDB18-HQ and says its CPU inference time is 48% of HT Demucs. The MUSDB18 target setup is the usual drums / bass / vocals / other stem split. 

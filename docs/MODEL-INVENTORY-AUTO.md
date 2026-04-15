@@ -76,6 +76,7 @@ Machine-readable: `tmp/model_inventory.csv`
 
 ## Notes
 
-#ensure that all models are available both on server and locally. 
-#verify paths
-#verify current run times are set up to allow models to run in most optimized states.
+- **demucs_embedded_segment** — ONNX segment length class (historical; not used for 4-stem runtime).
+- **demucs_waveform_other_seg** (e.g. 441000) will fail until the pipeline is extended for that export.
+- **mdx_*** rows need a matching entry in `stem_service/mdx_onnx.py` `_MDX_CONFIGS` to run.
+- Re-run after adding ONNX files: `python scripts/scan_models_inventory.py`

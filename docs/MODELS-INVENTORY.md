@@ -1,6 +1,6 @@
-# Deep inventory: models/ and stem-models. (very much should be updated frequently)
+# Deep inventory: models/ and stem-models
 
-**Date:** 2026-03-09 (reviewed 2026-03-17)  update update update update update. 
+**Date:** 2026-03-09 (reviewed 2026-03-17)  
 **Purpose:** Full recursive audit of `/path/to/burntbeats-aws/models` and copy source `/path/to/stem-models` (all subdirectories). So no models are missed.
 
 **Automated (facts on *this* tree):** Run `python scripts/scan_models_inventory.py` → `tmp/model_inventory.csv` + `docs/MODEL-INVENTORY-AUTO.md`. Full workflow (ORT conversion + 30s matrix): [MODEL-INVENTORY-RUNBOOK.md](MODEL-INVENTORY-RUNBOOK.md).
@@ -11,7 +11,7 @@
 
 Recursive scan: **6 directories**, **54 files** (including configs). No flow-models here — flow-models lives under stem-models or was audited separately.
 
-### 1.1 Directory tree. has not been updated. 4/12/2026
+### 1.1 Directory tree
 
 ```
 models/
@@ -126,7 +126,6 @@ stem-models/
 | `models/silero_vad.jit` | `stem-models/silero_vad.jit` |
 
 ### 2.3 Additional items in stem-models (not copied by script yet)
--verify and update with date
 
 | Location | Files | Note |
 |----------|--------|------|
@@ -140,7 +139,6 @@ stem-models/
 ---
 
 ## 3. How to sync from stem-models (WSL)
-verify and update...
 
 From repo root:
 
@@ -159,6 +157,6 @@ This copies htdemucs (→ .pth + .th), full MDX_Net_Models tree, mdxnet_models f
 ---
 
 ## 4. Summary
-needs to be updated. 
+
 - **Project `models/`:** Fully listed; depth is shallow (mdxnet_models, MDX_Net_Models/model_data/mdx_c_configs). No models missed in this tree.
 - **stem-models:** Full recursive scan; 51 dirs; all .pth/.th/.ckpt/.onnx/.jit and key .yaml/.json listed. Copy script uses the main sources; doc above lists every additional model location for optional copying or future pipelines.

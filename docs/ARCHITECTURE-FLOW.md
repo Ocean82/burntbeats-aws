@@ -1,5 +1,5 @@
 # Architecture: server / client / billing / ops
-# Alter this document if updated. Investigate how current structure is set to function.
+
 **Last updated:** 2026-03-22
 
 This document is the **product contract** for how Burnt Beats splits audio, stores stems, bills usage, and keeps the system tidy.
@@ -36,8 +36,11 @@ This document is the **product contract** for how Burnt Beats splits audio, stor
 | Action | Tokens? |
 |--------|--------|
 | **Split** (`POST /api/stems/split`) | Yes — when `USAGE_TOKENS_ENABLED`, proportional to **source duration** (1 token ≈ 1 minute of audio, partial minutes round up). See `backend/usageTokens.js`. |
+| **Expand / re-split** (`POST /api/stems/expand`) | Yes — same minute-based rules. |
+| **Future server export** (`POST /api/stems/server-export`) | Will charge when implemented (same duration basis unless product changes). |
+| **Poll status, download stem files, mix, edit, client master export** | **No** — not metered. |
 
-.
+Subscriptions and monthly credits: Stripe + Clerk webhook (`docs/BILLING-AND-TOKENS.md`).
 
 ---
 

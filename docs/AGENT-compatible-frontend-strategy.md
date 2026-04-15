@@ -1,7 +1,5 @@
-##verify and update to ensure that this is the best strategy to proceed with. alter as needed and date and time. 
-
 # ============================================================
-# UI REPLACEMENT & AGENT-COMPATIBLE FRONTEND STRATEGY 
+# UI REPLACEMENT & AGENT-COMPATIBLE FRONTEND STRATEGY
 # (DROP-IN DOCUMENT)
 # ============================================================
 

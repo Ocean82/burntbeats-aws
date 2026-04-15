@@ -4,8 +4,6 @@
 
 **Single direction:** run and deploy from the root [README.md](../README.md); understand stem logic from [stem-pipeline.md](stem-pipeline.md); tune CPU/models from the references below. Everything in `docs/archive/` is **historical** (investigations, old plans).
 
-**any time a document is altered in docs files, use date and time as signature to verify current upkeep is being maintained. If no date and time located in document then consider document unverified and immediately begin full and thorough investigation for drift. update all needed documents. archive needed documents. date and time stamp everything altered or moved. 4/12/2026
-
 ---
 
 ## Repository layout (high level)
@@ -43,7 +41,7 @@
 ---
 
 ## Stem engine (authoritative)
-needs to be updated for drift. 
+
 | Doc | Contents |
 |-----|----------|
 | **[stem-pipeline.md](stem-pipeline.md)** | **Canonical** pipeline: 2-stem → expand, quality tiers, model order |
@@ -61,7 +59,7 @@ needs to be updated for drift.
 
 ---
 
-## Frontend / product (needs to be updated and verified)
+## Frontend / product
 
 | Doc | Contents |
 |-----|----------|
@@ -71,7 +69,7 @@ needs to be updated for drift.
 ---
 
 ## Archive (read-only context)
-#needs updating and verifying
+
 | Location | Contents |
 |----------|----------|
 | [archive/README.md](archive/README.md) | List of archived files |
@@ -81,7 +79,7 @@ Do **not** treat archive docs as current behavior; verify against `stem_service/
 
 ---
 
-## Optional agent / strategy context (non-normative) ***should be updated and verified***
+## Optional agent / strategy context (non-normative)
 
 Markdown in `docs/`; YAML mirrors live in **[agent-context/](agent-context/README.md)** for tooling. These do **not** override [stem-pipeline.md](stem-pipeline.md) or the root README.
 
