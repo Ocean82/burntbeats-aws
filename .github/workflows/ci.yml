@@ -100,3 +100,19 @@ jobs:
       - name: Build stem_service image
         run: docker build -f stem_service/Dockerfile .
 
+  backend-docker-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build backend image (clean context)
+        run: docker build -f backend/Dockerfile backend
+      - name: Verify backend production deps in container
+        run: |
+          set -euo pipefail
+          cid="$(docker create burntbeats-backend:latest)"
+          trap "docker rm -f \"$cid\" >/dev/null 2>&1 || true" EXIT
+          docker cp "$cid:/app/package.json" /tmp/backend-package.json
+          docker cp "$cid:/app/node_modules/@clerk/express/package.json" /tmp/clerk-express.json
+          docker cp "$cid:/app/node_modules/multer/package.json" /tmp/multer.json
+          node -e "const p=require('/tmp/backend-package.json'); const c=require('/tmp/clerk-express.json').version; const m=require('/tmp/multer.json').version; const semver=(range,v)=>range.replace(/^[~^]/,'').split('.').slice(0,2).join('.')===v.split('.').slice(0,2).join('.'); if(!semver(p.dependencies['@clerk/express'],c)){console.error('clerk version mismatch',p.dependencies['@clerk/express'],c); process.exit(1);} if(!semver(p.dependencies['multer'],m)){console.error('multer version mismatch',p.dependencies['multer'],m); process.exit(1);} console.log('backend docker deps OK:',c,m);"
+
