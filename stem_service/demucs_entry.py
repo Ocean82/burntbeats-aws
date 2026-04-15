@@ -132,12 +132,7 @@ def _patch_torch_load_for_demucs() -> None:
 
     def _load(*args, **kwargs):
         # Normalise positional map_location (torch.load(path, 'cpu')) to keyword form
-        # so we can safely inject weights_only without shifting positional indices.
-        if len(args) >= 2 and "map_location" not in kwargs:
-            args = (args[0],)
-            kwargs.setdefault("map_location", args[0] if len(args) == 1 else "cpu")
-            # Re-extract: args was already mutated above; rebuild cleanly.
-        # Rebuild: keep only path as positional, everything else as kwargs.
+        # so we can safely inject kwargs without shifting positional indices.
         path_arg = args[0] if args else kwargs.pop("f", None)
         if len(args) > 1:
             kwargs.setdefault("map_location", args[1])
@@ -145,7 +140,8 @@ def _patch_torch_load_for_demucs() -> None:
 
         # PyTorch 2.6+ defaults weights_only=True; Demucs checkpoints unpickle model classes.
         kwargs.setdefault("weights_only", False)
-        if want_mmap:
+        # torch.load(mmap=True) requires a string file path on torch 2.2.
+        if want_mmap and isinstance(path_arg, str):
             kwargs.setdefault("mmap", True)
 
         try:

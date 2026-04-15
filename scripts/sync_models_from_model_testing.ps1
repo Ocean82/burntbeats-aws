@@ -80,8 +80,8 @@ if (Test-Path $DmSrc) {
     Write-Warning "Optional source not found: $DmSrc"
 }
 
-New-Item -ItemType Directory -Force -Path (Join-Path $DmDst "speed_4stem_rank27") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $DmDst "speed_4stem_rank28") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $DmDst "speed_4stem_rank29") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $DmDst "quality_4stem_rank1") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $DmDst "quality_4stem_rank2") | Out-Null
 
@@ -112,18 +112,11 @@ if (Test-Path $ftYaml) {
     Write-Warning "htdemucs_ft.yaml not found under $DmDst - run again after v3_v4_repo copy"
 }
 
-# Speed rank 27 / 28: destination filenames MUST match DEMUCS_SPEED_4STEM_CHECKPOINTS in
-# stem_service/config.py (short names, no __7ae9d6de suffix). One .th per folder.
-$p27 = Join-Path $Th "d12395a8-e57c48e6.th"
-if (-not (Test-Path $p27)) { $p27 = Join-Path $Th "d12395a8-e57c48e6__7ae9d6de.th" }
+# Speed rank 28 only (no runtime fallback): MODEL#28 in model-ranking-bigmix.csv.
 $p28 = Join-Path $Th "cfa93e08-61801ae1.th"
-if (-not (Test-Path $p28)) { $p28 = Join-Path $Th "cfa93e08-61801ae1__7ae9d6de.th" }
-if (Test-Path $p27) {
-    Copy-Item $p27 (Join-Path $DmDst "speed_4stem_rank27\d12395a8-e57c48e6.th") -Force
-} else { Write-Warning "Missing d12395a8-e57c48e6.th (or __7ae9d6de variant) under $Th" }
 if (Test-Path $p28) {
     Copy-Item $p28 (Join-Path $DmDst "speed_4stem_rank28\cfa93e08-61801ae1.th") -Force
-} else { Write-Warning "Missing cfa93e08-61801ae1.th (or __7ae9d6de variant) under $Th" }
+} else { Write-Warning "Missing cfa93e08-61801ae1.th under $Th" }
 
 # Quality rank 1 / 2: DEMUCS_QUALITY_4STEM_CHECKPOINTS (exact destination names for stem_service.config).
 # Source: $Th = D:\__model_testing\models\models_by_type\th

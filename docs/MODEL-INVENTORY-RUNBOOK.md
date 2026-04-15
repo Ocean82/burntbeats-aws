@@ -6,7 +6,7 @@ Facts over guesses: every ONNX under `models/` is classified, optionally convert
 
 Use a **venv created on the same OS** you run Python on:
 
-- **WSL Ubuntu:** `cd /mnt/d/burntbeats-aws && source .venv/bin/activate` — there is no `venv\Scripts` on Linux; that is normal.
+- **WSL Ubuntu:** `cd /path/to/burntbeats-aws && source .venv/bin/activate` — there is no `venv\Scripts` on Linux; that is normal.
 - **Windows PowerShell:** `.\.venv\Scripts\Activate.ps1`
 
 Mixing a Windows venv with WSL Python (or the reverse) causes real breakage. The ONNX Runtime lines below are **not** that.

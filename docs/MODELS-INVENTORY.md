@@ -55,7 +55,7 @@ All are present and wired for the app (htdemucs → .th; ONNX vocal paths in mdx
 
 ## 2. Copy source: `/path/to/stem-models`
 
-Recursive scan: **51 directories**, all model/config file types below. WSL path: `/mnt/d/DAW Collection/stem-models`.
+Recursive scan: **51 directories**, all model/config file types below.
 
 ### 2.1 Directory tree (full depth)
 
@@ -143,13 +143,13 @@ stem-models/
 From repo root:
 
 ```bash
-STEM_MODELS_SOURCE="/mnt/d/DAW Collection/stem-models" bash scripts/copy-models.sh
+STEM_MODELS_SOURCE="/path/to/stem-models" bash scripts/copy-models.sh
 ```
 
 Or:
 
 ```bash
-bash scripts/copy-models.sh "/mnt/d/DAW Collection/stem-models"
+bash scripts/copy-models.sh "/path/to/stem-models"
 ```
 
 This copies htdemucs (→ .pth + .th), full MDX_Net_Models tree, mdxnet_models from all-uvr-models/mdxnet_models-onnx, and silero_vad.jit. Optional root ONNX and v5/flow-models extras can be added to the script if you want them under `models/`.

@@ -162,16 +162,14 @@ DEMUCS_QUALITY_BAG_BACKUP_NAME = "04573f0d-f3cf25b2__2aad324b"
 DEMUCS_QUALITY_BAG_BACKUP_YAML = (
     DEMUCS_EXTRA_MODELS_DIR / f"{DEMUCS_QUALITY_BAG_BACKUP_NAME}.yaml"
 )
-DEMUCS_SPEED_4STEM_RANK27_REPO = DEMUCS_EXTRA_MODELS_DIR / "speed_4stem_rank27"
 DEMUCS_SPEED_4STEM_RANK28_REPO = DEMUCS_EXTRA_MODELS_DIR / "speed_4stem_rank28"
+DEMUCS_SPEED_4STEM_RANK29_REPO = DEMUCS_EXTRA_MODELS_DIR / "speed_4stem_rank29"
 
 # 4-stem single-checkpoint Demucs: fixed layout under ``Demucs_Models/<subdir>/``.
 # Tuple: (subdir under Demucs_Models, checkpoint ``.th`` filename, ``demucs -n`` short id).
-# Within-4-stem ranks: fast #27 / #28, quality #1 / #2 (see docs/rankings).
+# Within-4-stem ranks: fast #28 only, quality #1 / #2 (see docs/rankings).
 DEMUCS_SPEED_4STEM_CHECKPOINTS: tuple[tuple[str, str, str], ...] = (
-    # Actual filename on disk: d12395a8-e57c48e6.th (no __7ae9d6de suffix).
-    # _resolved_demucs_mapped_ckpt handles both the full and legacy short names.
-    ("speed_4stem_rank27", "d12395a8-e57c48e6.th", "d12395a8"),
+    # Fast 4-stem primary only (no speed fallback): MODEL#28 from model-ranking-bigmix.csv.
     ("speed_4stem_rank28", "cfa93e08-61801ae1.th", "cfa93e08"),
 )
 DEMUCS_QUALITY_4STEM_RANK1_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank1"

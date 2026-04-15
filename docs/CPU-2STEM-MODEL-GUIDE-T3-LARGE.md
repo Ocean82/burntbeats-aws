@@ -10,8 +10,8 @@ This is a strong high-speed, high-quality option for CPU vocal separation.
 - **Why it is good:** Consistently ranks near the top of 2-stem quality comparisons.
 - **Performance:** Typically much faster than RoFormer-class and hybrid Demucs workflows on CPU.
 - **Best use:** Default `Quality` tier for production vocal/instrumental extraction.
-
-## 2) MDX23C-InstVoc HQ
+*****UPDATE***** 
+## 2) MDX23C-InstVoc HQ (wrong model. this file needs to be updated)
 
 A newer architecture that sits between classic MDX and heavier transformer-style models.
 
@@ -20,7 +20,7 @@ A newer architecture that sits between classic MDX and heavier transformer-style
 - **Best use:** `Pro` / `Ultra` tier where users accept extra processing time for cleaner stems.
 
 ## 3) Mel-Roformer (L6 / Small)
-
+******this is not the model we are using anymore****4/15/2026
 If you need a RoFormer option, prefer lighter Mel-Roformer variants over heavier alternatives.
 
 - **Why it is good:** Strong vocal isolation quality with lower bleed in many benchmarks.
@@ -28,7 +28,7 @@ If you need a RoFormer option, prefer lighter Mel-Roformer variants over heavier
 - **Best use:** Highest isolation quality scenarios where speed is secondary.
 
 ## 4) VR Architecture (HP-UVR models)
-
+****not using anymore--update
 Legacy architecture, but still very useful for low-resource and speed-first paths.
 
 - **Why it is good:** Very fast on CPU-only environments.
@@ -36,16 +36,16 @@ Legacy architecture, but still very useful for low-resource and speed-first path
 - **Best use:** `Speed` / `Lite` tier and quick preview generation.
 
 ## Suggested Tier Mapping (Web App)
-
+needs to be updated to reflect current usage.
 | Tier | Recommended Model | Approx. Speed (t3.large) |
 |---|---|---|
 | Speed | `UVR-MDX-NET-Voc_FT` or `VR HP2` | `< 2 minutes` |
 | Quality | `Kim Vocal 2` | `2-4 minutes` |
-| Pro | `MDX23C-InstVoc HQ` | `4-6 minutes` |
+| Pro | `MDX23CNONOONONMONONVoc HQ` | `4-6 minutes` |
 
 ## ONNX Deployment Note
 
-When available, prefer quantized ONNX variants (`uint8`, `q4`) for CPU-serving.  
+When available, prefer quantized ONNX variants (`uint8`, `q4`)onnx models dont quantize well* for CPU-serving.  
 These can substantially reduce CPU and memory usage while keeping acceptable separation quality.
 
 ## Source Links

@@ -121,5 +121,5 @@ The following was used for an earlier **blended** ordering (`quality_norm * 0.8 
 
 ## Related
 
-- [`MASTER-PLAN.md`](MASTER-PLAN.md) — phased cleanup and roadmap.
-- [`stem-pipeline.md`](stem-pipeline.md) — runtime routing (SCNet, PyTorch Demucs, MDX).
+- [`stem-pipeline.md`](stem-pipeline.md) - runtime routing (SCNet, PyTorch Demucs, MDX).
+- [`MODELS-INVENTORY.md`](MODELS-INVENTORY.md) - model file inventory and placement.

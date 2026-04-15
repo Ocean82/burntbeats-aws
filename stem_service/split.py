@@ -1,6 +1,9 @@
 """
-Stem separation using Demucs (htdemucs or YAML-defined bags in Demucs_Models), CPU-only.
-Demucs CLI defaults: --shifts 0 (speed), --overlap 0.25, --segment from yaml or config.
+Stem separation using Demucs, CPU-only.
+
+4-stem policy:
+- speed: try mapped speed ranks (28 -> 29), then fallback to htdemucs
+- quality/balanced: try mapped quality ranks (1 -> 2), then fallback to htdemucs
 """
 
 from __future__ import annotations
@@ -22,25 +25,22 @@ from stem_service.config import (
     DEMUCS_SEGMENT_SEC,
     DEMUCS_TIMEOUT_SEC,
     demucs_cli_module,
-    demucs_extra_available,
-    demucs_quality_4stem_configs,
-    demucs_quality_yaml_bags_allowed,
     demucs_speed_4stem_configs,
+    demucs_quality_4stem_configs,
     ensure_htdemucs_th,
-    get_demucs_quality_bag_config,
     htdemucs_available,
     DEMUCS_DEVICE,
 )
 
 logger = logging.getLogger(__name__)
 
-# Demucs output layout: <out_dir>/<model_or_subdir>/<track_name>/{vocals,drums,bass,other}.wav
+# Demucs output layout: <out_dir>/<model>/<track_name>/{vocals,drums,bass,other}.wav
 # With --two-stems=vocals: <out_dir>/htdemucs/<track_name>/{vocals,no_vocals}.wav
 
 _VALID_STEMS = {2, 4}
 
 
-def _run_demucs_4stem_named_bag(
+def _run_demucs_4stem_named_checkpoint(
     input_path: Path,
     output_dir: Path,
     model_name: str,
@@ -48,7 +48,7 @@ def _run_demucs_4stem_named_bag(
     segment: int,
     output_subdir: str,
 ) -> list[tuple[str, Path]]:
-    """Run demucs -n <model_name> with repo/segment; return stem paths (4-stem only)."""
+    """Run demucs -n <model_name> against one mapped checkpoint folder."""
     cmd = _build_demucs_cmd(
         input_path=input_path,
         output_dir=output_dir,
@@ -66,9 +66,7 @@ def _run_demucs_4stem_named_bag(
         timeout=DEMUCS_TIMEOUT_SEC,
     )
     if result.returncode != 0:
-        raise RuntimeError(
-            f"Demucs bag ({model_name}) failed.\n{format_demucs_subprocess_failure(result)}"
-        )
+        raise RuntimeError(format_demucs_subprocess_failure(result))
     track_name = input_path.stem
     base = output_dir / output_subdir / track_name
     if not base.exists():
@@ -90,9 +88,8 @@ def run_demucs(
     """
     Run Demucs separation. Returns list of (stem_id, wav_path).
     stems: 2 -> vocals, instrumental; 4 -> vocals, drums, bass, other.
-    prefer_speed=True, stems=4: single-checkpoint speed repos (rank 27 → 28) when present, else htdemucs.
-    prefer_speed=False, stems=4: single-checkpoint quality repos (rank1 → rank2), then optional YAML bags
-    if ``DEMUCS_QUALITY_BAG`` is not ``single``, else htdemucs with shifts per config.
+    2-stem always uses htdemucs.
+    4-stem uses mapped rank checkpoints first, then falls back to htdemucs.
     """
     if stems not in _VALID_STEMS:
         raise ValueError(f"stems must be 2 or 4, got {stems}")
@@ -100,26 +97,24 @@ def run_demucs(
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine which model to use
-    use_quality_bag = (
-        not prefer_speed
-        and stems == 4
-        and demucs_quality_yaml_bags_allowed()
-        and demucs_extra_available()
-    )
-
-    if stems == 4 and prefer_speed:
-        speed_cfgs = demucs_speed_4stem_configs()
+    if stems == 4:
+        cfgs = (
+            demucs_speed_4stem_configs()
+            if prefer_speed
+            else demucs_quality_4stem_configs()
+        )
+        lane = "speed" if prefer_speed else "quality"
         last_err: RuntimeError | None = None
-        for model_name, repo, segment, output_subdir, _ck in speed_cfgs:
+        for model_name, repo, segment, output_subdir, _ck in cfgs:
             logger.info(
-                "Demucs: 4-stem speed trying %s (segment=%ds, repo=%s)",
+                "Demucs: 4-stem %s trying %s (segment=%ds, repo=%s)",
+                lane,
                 model_name,
                 segment,
                 repo.name,
             )
             try:
-                return _run_demucs_4stem_named_bag(
+                return _run_demucs_4stem_named_checkpoint(
                     input_path,
                     output_dir,
                     model_name,
@@ -129,57 +124,18 @@ def run_demucs(
                 )
             except RuntimeError as e:
                 last_err = e
-                logger.warning("Demucs: speed bag %s failed: %s", model_name, e)
+                logger.warning(
+                    "Demucs: 4-stem %s checkpoint %s failed: %s",
+                    lane,
+                    model_name,
+                    e,
+                )
         if last_err is not None:
             logger.info(
-                "Demucs: all speed single checkpoints failed, falling back to htdemucs (%s)",
+                "Demucs: 4-stem %s checkpoints failed; fallback to htdemucs (%s)",
+                lane,
                 last_err,
             )
-
-    if stems == 4 and not prefer_speed:
-        q_cfgs = demucs_quality_4stem_configs()
-        last_q: RuntimeError | None = None
-        for model_name, repo, segment, output_subdir, _ck in q_cfgs:
-            logger.info(
-                "Demucs: 4-stem quality single trying %s (segment=%ds, repo=%s)",
-                model_name,
-                segment,
-                repo.name,
-            )
-            try:
-                return _run_demucs_4stem_named_bag(
-                    input_path,
-                    output_dir,
-                    model_name,
-                    repo,
-                    segment,
-                    output_subdir,
-                )
-            except RuntimeError as e:
-                last_q = e
-                logger.warning("Demucs: quality single %s failed: %s", model_name, e)
-        if last_q is not None:
-            logger.info(
-                "Demucs: all quality single checkpoints failed (%s); yaml bag or htdemucs next",
-                last_q,
-            )
-
-    if use_quality_bag:
-        model_name, repo, segment, output_subdir = get_demucs_quality_bag_config()
-        logger.info(
-            "Demucs: using %s bag (segment=%ds, repo=%s)",
-            model_name,
-            segment,
-            repo.name,
-        )
-        return _run_demucs_4stem_named_bag(
-            input_path,
-            output_dir,
-            model_name,
-            repo,
-            segment,
-            output_subdir,
-        )
 
     # Single htdemucs (2-stem or 4-stem fallback)
     if not htdemucs_available():

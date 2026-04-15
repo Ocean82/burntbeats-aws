@@ -87,6 +87,7 @@ services:
     ports:
       - "127.0.0.1:5000:5000"
     environment:
+      STEM_MODELS_DIR: ${STEM_MODELS_DIR:-models}
       STEM_OUTPUT_DIR: /repo/tmp/stems
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
       USE_VAD_PRETRIM: "false"
@@ -107,6 +108,7 @@ services:
     volumes:
       - ./tmp/stems:/repo/tmp/stems
       - ./models:/repo/models
+      - ./server_models:/repo/server_models
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 20s

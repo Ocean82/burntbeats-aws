@@ -93,4 +93,4 @@ Other subdirs: **autoencoders/** (VAE JSON configs), **config/** (model_1920.jso
 
 - Pip demucs: `demucs/repo.py` (LocalRepo scans only `.th`).
 - App: `stem_service/config.py`, `split.py`, `vocal_stage1.py`, `scripts/copy-models.sh`.
-- Model policy: [AGENT-models-and-implementation.md](AGENT-models-and-implementation.md).
+- Model policy (current): [../MODEL-SELECTION-AUTHORITY.md](../MODEL-SELECTION-AUTHORITY.md).

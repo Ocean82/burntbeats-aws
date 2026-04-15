@@ -1,6 +1,6 @@
 # Demucs ONNX benchmarks vs production processing (archived)
 
-**Archived:** 2026-04-03 — In-process **Demucs ONNX** (`stem_service/demucs_onnx.py`) was **removed**. Production 4-stem uses **SCNet ONNX** (optional) and **PyTorch Demucs** (`htdemucs.pth` / `htdemucs.th`). See [../stem-pipeline.md](../stem-pipeline.md) and [../MASTER-PLAN.md](../MASTER-PLAN.md).
+**Archived:** 2026-04-03 — In-process **Demucs ONNX** (`stem_service/demucs_onnx.py`) was **removed**. Production 4-stem uses **SCNet ONNX** (optional) and **PyTorch Demucs** (`htdemucs.pth` / `htdemucs.th`). See [../stem-pipeline.md](../stem-pipeline.md) and [../MODEL-SELECTION-AUTHORITY.md](../MODEL-SELECTION-AUTHORITY.md).
 
 The text below is preserved for historical context.
 

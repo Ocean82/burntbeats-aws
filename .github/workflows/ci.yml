@@ -105,7 +105,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build backend image (clean context)
-        run: docker build -f backend/Dockerfile backend
+        run: docker build -t burntbeats-backend:latest -f backend/Dockerfile backend
       - name: Verify backend production deps in container
         run: |
           set -euo pipefail
