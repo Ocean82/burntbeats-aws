@@ -1,6 +1,7 @@
 /**
- * useSubscription: checks whether the current Clerk user has an active Stripe subscription.
- * Fetches /api/billing/subscription (backend verifies Clerk JWT + Stripe status).
+ * useSubscription: plan access for the signed-in user.
+ * Fetches /api/billing/subscription: positive usage-token balance counts as Basic (no Stripe sub required);
+ * otherwise backend checks Stripe subscription status.
  */
 import { useAuth } from "@clerk/react";
 import { useCallback, useEffect, useState } from "react";

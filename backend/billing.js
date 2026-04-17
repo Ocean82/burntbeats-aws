@@ -11,7 +11,7 @@
  * - Use Stripe CLI: `stripe prices retrieve price_xxx` to inspect Price metadata (e.g. tokens_per_month).
  *
  * Routes:
- *   GET  /api/billing/subscription  — { active, plan } for current user
+ *   GET  /api/billing/subscription  — { active, plan } for current user (token balance > 0 ⇒ basic, no Stripe sub required)
  *   GET  /api/billing/usage         — { balance, periodEnd } (usage tokens in Clerk privateMetadata)
  *   POST /api/billing/checkout      — create Stripe Checkout session { url }; body: { priceId, returnUrl }
  *   POST /api/billing/portal        — create Stripe Customer Portal session { url }
@@ -132,15 +132,29 @@ function planFromSubscription(sub) {
 router.get("/subscription", async (req, res) => {
   try {
     const userId = await verifyClerkBearer(req);
-    const stripe = getStripe();
     const clerk = getClerkClient();
-    if (!stripe || !clerk) return res.json({ active: false, plan: null });
+    if (!clerk) return res.json({ active: false, plan: null });
+
+    const stripe = getStripe();
     const user = await clerk.users.getUser(userId);
     const customerId = /** @type {string|undefined} */ (user.publicMetadata?.stripeCustomerId);
-    if (!customerId) return res.json({ active: false, plan: null });
-    const sub = await getActiveSubscription(customerId);
-    if (!sub) return res.json({ active: false, plan: null });
-    return res.json({ active: true, plan: planFromSubscription(sub) });
+    if (stripe && customerId) {
+      const sub = await getActiveSubscription(customerId);
+      if (sub) {
+        return res.json({ active: true, plan: planFromSubscription(sub) });
+      }
+    }
+
+    const { balance } = await getUsageBalance(userId);
+    if (balance > 0) {
+      return res.json({
+        active: true,
+        plan: "basic",
+        entitlement: "usage_tokens",
+      });
+    }
+
+    return res.json({ active: false, plan: null });
   } catch (/** @type {any} */ err) {
     console.error("[billing/subscription] error:", err.message);
     const msg = publicErrorMessage(
