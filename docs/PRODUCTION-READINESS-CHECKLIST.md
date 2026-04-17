@@ -8,6 +8,7 @@ This checklist is intentionally short and repeatable before each deploy.
 - Confirm:
   - `USAGE_TOKENS_ENABLED` is on
   - `ALLOW_UNMETERED_PROD` is off/unset
+  - `DEV_BYPASS_UPLOAD_AUTH` is off/unset
   - Stripe and Clerk key environments match (`live` with `live`, `test` with `test`)
 
 ## 2) Billing/Identity Consistency (Read-only)
@@ -31,6 +32,7 @@ This checklist is intentionally short and repeatable before each deploy.
 ## 4) Minimal Runtime Verification
 
 - **Docker Compose deploy (typical EC2 path):** After `git pull`, rebuild and recreate as needed — see **[DEPLOY-DOCKER-EC2.md](DEPLOY-DOCKER-EC2.md)** (single-service builds, **build duration**, **container name conflicts** → `docker compose down` / `up -d`).
+- Ensure local-only override files are not used in production rollout commands (for example `docker-compose.local-nobind.yml`).
 - Confirm containers healthy:
   - `sudo docker compose ps` — `backend`, `frontend`, `stem_service` report **healthy** (or equivalent).
 - Confirm endpoint behavior:

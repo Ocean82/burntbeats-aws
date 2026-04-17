@@ -119,6 +119,12 @@ else
   pass "ALLOW_UNMETERED_PROD is OFF"
 fi
 
+if [[ "${BENV[DEV_BYPASS_UPLOAD_AUTH]:-}" =~ ^(1|true|yes)$ ]]; then
+  fail "DEV_BYPASS_UPLOAD_AUTH is ON — disable for production"
+else
+  pass "DEV_BYPASS_UPLOAD_AUTH is OFF"
+fi
+
 # Warn if FRONTEND_ORIGINS still has localhost in production
 if [[ -n "${BENV[FRONTEND_ORIGINS]:-}" ]]; then
   if echo "${BENV[FRONTEND_ORIGINS]}" | grep -q "localhost" && \

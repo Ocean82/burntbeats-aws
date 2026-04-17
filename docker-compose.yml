@@ -38,6 +38,7 @@ services:
     ports:
       - "127.0.0.1:3001:3001"
     environment:
+      NODE_ENV: production
       PORT: 3001
       # Absolute https base for stem URLs in JSON (avoids http:// links when proxies omit X-Forwarded-Proto).
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
@@ -62,6 +63,7 @@ services:
       S3_PRESIGN_EXPIRES_SECONDS: ${S3_PRESIGN_EXPIRES_SECONDS:-3600}
       USAGE_TOKENS_ENABLED: ${USAGE_TOKENS_ENABLED:-1}
       USAGE_DEFAULT_TOKENS_PER_MONTH: ${USAGE_DEFAULT_TOKENS_PER_MONTH:-6000}
+      DEV_BYPASS_UPLOAD_AUTH: ${DEV_BYPASS_UPLOAD_AUTH:-0}
     volumes:
       - ./tmp/stems:/app/tmp/stems
     healthcheck:
