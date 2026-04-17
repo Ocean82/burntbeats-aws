@@ -34,13 +34,13 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
           {/* Modal */}
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-lg rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
+              className="relative w-full max-w-lg max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-6"
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -53,14 +53,14 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="mb-6 flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
                     <Keyboard className="h-5 w-5 text-amber-400" />
                   </div>
-                  <div>
-                    <h2 id="help-modal-title" className="text-lg font-semibold text-white">Keyboard Shortcuts</h2>
-                    <p className="text-xs text-white/65">Quick actions for power users</p>
+                  <div className="min-w-0">
+                    <h2 id="help-modal-title" className="break-words text-lg font-semibold text-white">Keyboard Shortcuts</h2>
+                    <p className="break-words text-xs text-white/65">Quick actions for power users</p>
                   </div>
                 </div>
                 <button
@@ -77,10 +77,10 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 {uniqueShortcuts.map((shortcut) => (
                   <div
                     key={shortcut.action}
-                    className="flex items-center justify-between rounded-xl bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]"
+                    className="flex items-start justify-between gap-3 rounded-xl bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]"
                   >
-                    <span className="text-sm text-white/80">{shortcut.description}</span>
-                    <kbd className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-xs text-amber-200">
+                    <span className="min-w-0 break-words text-sm text-white/80">{shortcut.description}</span>
+                    <kbd className="max-w-[45%] shrink-0 break-all rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-xs text-amber-200">
                       {shortcut.label}
                     </kbd>
                   </div>
@@ -104,7 +104,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
               {/* Footer */}
               <div className="mt-4 text-center">
-                <p className="text-xs text-white/40">
+                <p className="break-words text-xs text-white/40">
                   Press <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px]">?</kbd> anytime to show this help
                 </p>
               </div>

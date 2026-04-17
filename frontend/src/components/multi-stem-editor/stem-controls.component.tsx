@@ -81,47 +81,50 @@ export const StemControls = memo(function StemControls({
         </div>
       </div>
 
-      {/* Preview */}
-      <button
-        type="button"
-        onClick={() => onPreviewStem(stem.id)}
-        disabled={!audioReady || isLoadingPreview}
-        title={!audioReady ? "This stem is still loading." : undefined}
-        aria-label={
-          isPreviewPlaying
-            ? `Stop ${stem.label} preview`
-            : `Preview ${stem.label}`
-        }
-        className={cn(
-          "flex items-center justify-center gap-1 rounded-lg border px-2.5 py-1 text-xs transition",
-          isPreviewPlaying
-            ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
-            : "border-white/10 bg-white/5 text-white/70 hover:text-white",
-          isLoadingPreview && "opacity-50 cursor-not-allowed"
-        )}
-      >
-        {isLoadingPreview ? (
-          <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-        ) : isPreviewPlaying ? (
-          <Square className="h-3 w-3" />
-        ) : (
-          <Play className="h-3 w-3" />
-        )}
-        {isLoadingPreview ? "Loading..." : isPreviewPlaying ? "Stop" : "Hear"}
-      </button>
+      {/* Quick actions */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onPreviewStem(stem.id)}
+          disabled={!audioReady || isLoadingPreview}
+          title={!audioReady ? "This stem is still loading." : undefined}
+          aria-label={
+            isPreviewPlaying
+              ? `Stop ${stem.label} preview`
+              : `Preview ${stem.label}`
+          }
+          className={cn(
+            "flex min-h-[38px] flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+            isPreviewPlaying
+              ? "border-amber-400/45 bg-amber-500/20 text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.18)]"
+              : "border-white/10 bg-white/5 text-white/75 hover:border-white/20 hover:text-white",
+            isLoadingPreview && "cursor-not-allowed opacity-50",
+          )}
+        >
+          {isLoadingPreview ? (
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          ) : isPreviewPlaying ? (
+            <Square className="h-3.5 w-3.5" />
+          ) : (
+            <Headphones className="h-3.5 w-3.5" />
+          )}
+          {isLoadingPreview
+            ? "Loading..."
+            : isPreviewPlaying
+              ? "Stop preview"
+              : "Preview"}
+        </button>
 
-      {/* Solo / Mute */}
-      <div className="flex gap-2">
         <button
           type="button"
           onClick={() => onStemStateChange(stem.id, { soloed: !soloed })}
           disabled={!audioReady}
           aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
           className={cn(
-            "rounded-lg border px-2.5 py-1 text-xs",
+            "min-h-[38px] rounded-lg border px-3 py-1.5 text-xs font-medium",
             soloed
-              ? "border-amber-400/40 bg-amber-500/20 text-amber-200"
-              : "border-white/10 bg-white/5 text-white/70"
+              ? "border-amber-400/45 bg-amber-500/20 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.14)]"
+              : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:text-white"
           )}
         >
           Solo
@@ -133,10 +136,10 @@ export const StemControls = memo(function StemControls({
           disabled={!audioReady}
           aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
           className={cn(
-            "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs",
+            "flex min-h-[38px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium",
             muted
               ? "border-red-400/40 bg-red-500/20 text-red-200"
-              : "border-white/10 bg-white/5 text-white/70"
+              : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:text-white"
           )}
         >
           {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}

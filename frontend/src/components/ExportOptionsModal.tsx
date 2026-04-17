@@ -76,13 +76,13 @@ export function ExportOptionsModal({
             }}
           />
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
+              className="relative w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-6"
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -95,14 +95,14 @@ export function ExportOptionsModal({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="mb-6 flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
                     <Download className="h-5 w-5 text-amber-400" />
                   </div>
-                  <div>
-                    <h2 id="export-options-title" className="text-lg font-semibold text-white">Export Options</h2>
-                    <p className="text-xs text-white/65">Configure your export settings</p>
+                  <div className="min-w-0">
+                    <h2 id="export-options-title" className="break-words text-lg font-semibold text-white">Export Options</h2>
+                    <p className="break-words text-xs text-white/65">Configure your export settings</p>
                   </div>
                 </div>
                 <button
@@ -126,7 +126,6 @@ export function ExportOptionsModal({
                       key={format.value}
                       type="button"
                       onClick={() => setOptions((o) => ({ ...o, format: format.value }))}
-                      aria-pressed={options.format === format.value}
                       className={cn(
                         "rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                         options.format === format.value
@@ -159,7 +158,6 @@ export function ExportOptionsModal({
                         key={target.value}
                         type="button"
                         onClick={() => setOptions((o) => ({ ...o, target: target.value }))}
-                        aria-pressed={options.target === target.value}
                         className={cn(
                           "flex w-full items-center justify-between rounded-xl border px-4 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                           options.target === target.value
@@ -169,9 +167,9 @@ export function ExportOptionsModal({
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-4 w-4" />
-                          <div className="text-left">
-                            <span className="block font-medium">{target.label}</span>
-                            <span className="text-[10px] text-white/50">{target.description}</span>
+                          <div className="min-w-0 text-left">
+                            <span className="block break-words font-medium">{target.label}</span>
+                            <span className="block break-words text-[10px] text-white/50">{target.description}</span>
                           </div>
                         </div>
                         {options.target === target.value && (
@@ -184,15 +182,13 @@ export function ExportOptionsModal({
               </div>
 
               {/* Normalize Toggle */}
-              <div className="mb-6 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                <div>
-                  <span className="block text-sm font-medium text-white">Normalize Audio</span>
-                  <span className="text-xs text-white/65">Boost quiet mixes to a consistent loudness</span>
+              <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className="min-w-0">
+                  <span className="block break-words text-sm font-medium text-white">Normalize Audio</span>
+                  <span className="block break-words text-xs text-white/65">Boost quiet mixes to a consistent loudness</span>
                 </div>
                 <button
                   type="button"
-                  role="switch"
-                  aria-checked={options.normalize}
                   aria-label="Toggle audio normalization"
                   title="Toggle audio normalization"
                   onClick={() => setOptions((o) => ({ ...o, normalize: !o.normalize }))}

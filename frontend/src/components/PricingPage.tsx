@@ -97,7 +97,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
   };
 
   return (
-    <div className="relative mx-auto flex max-w-[1200px] flex-col gap-10 px-4 py-4 sm:px-6 lg:px-8">
+    <div className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-10 overflow-x-clip px-3 py-4 sm:px-6 lg:px-8">
       {/* Wayfinding: in-app pricing view — always offer an explicit path back without browser Back */}
       <nav
         aria-label="Breadcrumb"
@@ -127,14 +127,14 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
       </nav>
 
       {/* Header / hero */}
-      <section className="glass-panel mirror-sheen rounded-[2rem] px-6 py-8 lg:px-10">
+      <section className="glass-panel mirror-sheen rounded-[2rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-xl space-y-4">
             <p className="eyebrow text-amber-200/90">Pricing & plans</p>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
+            <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
               Choose how you burn through beats.
             </h1>
-            <p className="text-base leading-7 text-white/85">
+            <p className="break-words text-base leading-7 text-white/85">
               Go monthly for a steady flow of tokens, or keep it simple with a{" "}
               <span className="font-semibold text-amber-200">Top‑Up Pack</span> — pay as you go with
               no subscription required.
@@ -163,7 +163,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </div>
           <div className="mt-2 flex flex-col items-start gap-3 lg:items-end">
             {subscription.status === "active" && subscription.plan && (
-              <p className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-[11px] font-medium text-emerald-200/90">
+              <p className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-[10px] font-medium text-emerald-200/90 sm:text-[11px]">
                 Current plan: <span className="uppercase">{subscription.plan}</span>
               </p>
             )}
@@ -188,24 +188,24 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           return (
             <div
               key={plan.id}
-              className={`glass-panel flex h-full flex-col justify-between rounded-2xl border bg-black/40 p-5 ${accentRing}`}
+              className={`glass-panel flex h-full min-w-0 flex-col justify-between rounded-2xl border bg-black/40 p-5 ${accentRing}`}
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-base font-semibold text-white/95">{plan.name}</h2>
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="break-words text-base font-semibold text-white/95">{plan.name}</h2>
                   {plan.badge && (
-                    <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100/85">
+                    <span className="max-w-[60%] break-words rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-100/85 sm:text-[10px]">
                       {plan.badge}
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-medium text-amber-200/95">{plan.priceLabel}</p>
-                <p className="text-sm leading-6 text-white/80">{plan.description}</p>
+                <p className="break-words text-sm font-medium text-amber-200/95">{plan.priceLabel}</p>
+                <p className="break-words text-sm leading-6 text-white/80">{plan.description}</p>
                 <ul className="mt-3 space-y-1.5 text-sm text-white/80">
                   {plan.details.map((d) => (
                     <li key={d} className="flex items-start gap-2">
                     <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-300" />
-                      <span>{d}</span>
+                      <span className="break-words">{d}</span>
                     </li>
                   ))}
                 </ul>
@@ -259,7 +259,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           : { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.4, delay: 0.2 } })}
       >
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-white/80 sm:tracking-[0.16em]">
             What happens if I run out of tokens?
           </p>
           <p>
@@ -268,7 +268,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </p>
         </div>
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-white/80 sm:tracking-[0.16em]">
             Can I switch plans later?
           </p>
           <p>
@@ -277,7 +277,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </p>
         </div>
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-white/80 sm:tracking-[0.16em]">
             Is there a long‑term contract?
           </p>
           <p>
@@ -285,7 +285,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           </p>
         </div>
         <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/80">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-white/80 sm:tracking-[0.16em]">
             Do you offer refunds?
           </p>
           <p>

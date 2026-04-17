@@ -160,13 +160,13 @@ export function MixerPresetsModal({
           />
 
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-md rounded-3xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl backdrop-blur-xl"
+              className="relative w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-6"
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -179,14 +179,14 @@ export function MixerPresetsModal({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="mb-6 flex items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
                     <Sliders className="h-5 w-5 text-amber-400" />
                   </div>
-                  <div>
-                    <h2 id="mixer-presets-title" className="text-lg font-semibold text-white">Mixer Presets</h2>
-                    <p className="text-xs text-white/65">Save and load your mix settings</p>
+                  <div className="min-w-0">
+                    <h2 id="mixer-presets-title" className="break-words text-lg font-semibold text-white">Mixer Presets</h2>
+                    <p className="break-words text-xs text-white/65">Save and load your mix settings</p>
                   </div>
                 </div>
                 <button
@@ -210,7 +210,7 @@ export function MixerPresetsModal({
                     value={newPresetName}
                     onChange={(e) => setNewPresetName(e.target.value)}
                     placeholder="Enter preset name..."
-                    className="mb-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-amber-400/50 focus:outline-none"
+                    className="mb-3 w-full min-w-0 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-amber-400/50 focus:outline-none"
                     autoFocus
                   />
                   <div className="flex gap-2">
@@ -245,15 +245,15 @@ export function MixerPresetsModal({
                 {presets.map((preset) => (
                   <div
                     key={preset.id}
-                    className="group flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]"
+                    className="group flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]"
                   >
-                    <div>
-                      <span className="block text-sm font-medium text-white">{preset.name}</span>
-                      <span className="text-xs text-white/40">
+                    <div className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-white">{preset.name}</span>
+                      <span className="block break-words text-xs text-white/40">
                         {preset.id.startsWith("custom-") ? "Custom" : "Default"} preset
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                       {preset.id.startsWith("custom-") && (
                         <button
                           onClick={() => deletePreset(preset.id)}

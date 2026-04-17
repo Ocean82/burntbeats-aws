@@ -82,10 +82,19 @@ if (REQUIRED_ENV_WARNINGS.length > 0 && process.env.NODE_ENV !== "test") {
     `[startup] Missing env vars: ${REQUIRED_ENV_WARNINGS.join(", ")}`,
   );
 }
-
 const API_KEY = process.env.API_KEY || "";
 const JOB_TOKEN_SECRET = process.env.JOB_TOKEN_SECRET || "";
 const STEM_SERVICE_API_TOKEN = process.env.STEM_SERVICE_API_TOKEN || "";
+const DEV_BYPASS_UPLOAD_AUTH =
+  process.env.NODE_ENV !== "production" &&
+  ["1", "true", "yes"].includes(
+    (process.env.DEV_BYPASS_UPLOAD_AUTH || "").toLowerCase(),
+  );
+if (DEV_BYPASS_UPLOAD_AUTH && process.env.NODE_ENV !== "test") {
+  console.warn(
+    "[startup] DEV_BYPASS_UPLOAD_AUTH enabled — upload/expand usage auth is bypassed in non-production mode.",
+  );
+}
 const JOB_TOKEN_TTL_MS = Number(process.env.JOB_TOKEN_TTL_MS) || 60 * 60 * 1000; // 1 hour default
 const RATE_LIMIT_WINDOW_MS =
   Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000;
@@ -482,6 +491,7 @@ function authMiddleware(req, res, next) {
  * @param {import("express").NextFunction} next
  */
 async function requireUsageAuthPreUpload(req, res, next) {
+  if (DEV_BYPASS_UPLOAD_AUTH) return next();
   if (!isUsageTokensEnabled()) return next();
   try {
     const userId = await verifyClerkBearer(req);
@@ -790,7 +800,7 @@ app.post(
     let usageUserId = null;
     let usageCost = 0;
     let usageReserved = false;
-    if (isUsageTokensEnabled()) {
+    if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH) {
       try {
         usageUserId =
           /** @type {any} */ (req)._usageUserId ||
@@ -958,7 +968,7 @@ app.post(
     let usageUserId = null;
     let usageCost = 0;
     let usageReserved = false;
-    if (isUsageTokensEnabled()) {
+    if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH) {
       try {
         usageUserId = await verifyClerkBearer(req);
         const inputPath = findJobInputPath(path.join(STEM_OUTPUT_DIR, jobId));

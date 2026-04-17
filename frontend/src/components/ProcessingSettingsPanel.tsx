@@ -189,7 +189,7 @@ export function ProcessingSettingsPanel({
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onDropUpload(e.dataTransfer.files?.[0] ?? null); }}
             onClick={!uploadedFile ? onBrowseUpload : undefined}
             className={cn(
-              "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl border px-4 py-4 transition-all",
+              "flex min-w-0 flex-1 cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center",
               !uploadedFile
                 ? "border-amber-400/60 bg-amber-950/40 shadow-[0_0_24px_rgba(255,140,80,0.35)] hover:border-amber-400/90 hover:bg-amber-950/60 hover:shadow-[0_0_32px_rgba(255,140,80,0.5)] active:scale-[0.99]"
                 : "border-white/10 bg-black/20 hover:border-white/20",
@@ -197,15 +197,15 @@ export function ProcessingSettingsPanel({
             )}
           >
             <Upload className={cn("h-5 w-5 shrink-0 transition-colors", !uploadedFile ? "text-amber-400" : "text-white/70")} strokeWidth={2} />
-            <span className="truncate text-sm font-semibold text-white">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
               {uploadedFile ? uploadName : isDragging ? "Drop it!" : "Click to upload or drag & drop"}
             </span>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
               {uploadedFile && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onClearUpload(); }}
-                  className="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
+                  className="min-h-[36px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
                 >
                   Clear
                 </button>
@@ -214,7 +214,7 @@ export function ProcessingSettingsPanel({
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onBrowseUpload(); }}
                 className={cn(
-                  "rounded-lg border px-3 py-1 text-xs font-semibold transition-all",
+                  "min-h-[36px] whitespace-nowrap rounded-lg border px-3 py-1 text-xs font-semibold transition-all",
                   !uploadedFile
                     ? "border-amber-400/60 bg-amber-500/20 text-amber-200 hover:border-amber-400 hover:bg-amber-500/30"
                     : "border-white/10 text-white/60 hover:border-white/30 hover:text-white"
@@ -234,20 +234,20 @@ export function ProcessingSettingsPanel({
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onLoadStems(e.dataTransfer.files); }}
             onClick={() => loadStemsInputRef.current?.click()}
             className={cn(
-              "flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl border px-4 py-4 transition-all",
+              "flex min-w-0 flex-1 cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center",
               "border-white/20 bg-white/[0.03] hover:border-amber-400/40 hover:bg-white/[0.05] active:scale-[0.99]",
               isDragging && "scale-[1.02] border-amber-400/60 bg-white/[0.06]",
             )}
           >
             <FolderOpen className="h-5 w-5 shrink-0 text-white/60" strokeWidth={1.5} />
-            <span className="truncate text-sm font-semibold text-white/80">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">
               {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : isDragging ? "Drop it!" : "Click to load stems or drag & drop"}
             </span>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
+            <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); loadStemsInputRef.current?.click(); }}
-                className="rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-white/60 hover:border-white/30 hover:text-white"
+                className="min-h-[36px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-white/60 hover:border-white/30 hover:text-white"
               >
                 Browse
               </button>
@@ -266,7 +266,7 @@ export function ProcessingSettingsPanel({
         )}
 
         {/* Quality selector */}
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1.5">
           <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Quality</span>
           <div className="flex rounded-xl border border-white/10 bg-black/20 p-0.5">
             {qualityOptions.map((opt) => (
@@ -325,9 +325,6 @@ export function ProcessingSettingsPanel({
                 }}
                 className="w-20 accent-amber-500 disabled:opacity-40"
                 aria-label="Number of stems"
-                aria-valuenow={requestedStemMode}
-                aria-valuemin={2}
-                aria-valuemax={4}
                 aria-valuetext={`${requestedStemMode} stems${requestedStemMode === 4 && !canExpandToFourStems ? " (requires Premium)" : ""}`}
               />
               <div className="flex w-20 justify-between text-[10px] text-white/40 font-mono">
@@ -492,12 +489,12 @@ export function ProcessingSettingsPanel({
         <div className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3">
           <ul className="space-y-1.5">
             {loadedStems.map((s) => (
-              <li key={s.id} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
-                <span className="truncate text-sm text-white">{s.label.replace(/\.[^/.]+$/, "")}</span>
+              <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2">
+                <span className="min-w-0 truncate text-sm text-white">{s.label.replace(/\.[^/.]+$/, "")}</span>
                 <button
                   type="button"
                   onClick={() => onRemoveLoadedStem(s.id)}
-                  className="text-xs text-red-300/80 hover:text-red-300"
+                  className="shrink-0 text-xs text-red-300/80 hover:text-red-300"
                   aria-label={`Remove ${s.label}`}
                 >
                   Remove
@@ -538,7 +535,7 @@ export function ProcessingSettingsPanel({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-red-200">Split failed</p>
-                <p className="mt-0.5 text-xs text-red-300/90">{splitError}</p>
+                <p className="mt-0.5 break-words text-xs text-red-300/90">{splitError}</p>
               </div>
             </div>
             <div className="flex gap-2">

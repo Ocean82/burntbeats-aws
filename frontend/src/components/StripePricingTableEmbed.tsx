@@ -78,7 +78,7 @@ export function StripePricingTableEmbed({
 
   if (!pricingTableId || !publishableKey) {
     return (
-      <p className="text-center text-sm text-amber-200/80">
+      <p className="break-words px-2 text-center text-sm text-amber-200/80">
         Set <code className="rounded bg-white/10 px-1">VITE_STRIPE_PRICING_TABLE_ID</code> and{" "}
         <code className="rounded bg-white/10 px-1">VITE_STRIPE_PUBLISHABLE_KEY</code> in{" "}
         <code className="rounded bg-white/10 px-1">frontend/.env</code> to show live pricing.
@@ -86,5 +86,9 @@ export function StripePricingTableEmbed({
     );
   }
 
-  return <div ref={containerRef} className="stripe-pricing-table-host w-full min-h-[420px]" />;
+  return (
+    <div className="w-full overflow-x-auto">
+      <div ref={containerRef} className="stripe-pricing-table-host min-h-[420px] w-full min-w-[280px]" />
+    </div>
+  );
 }

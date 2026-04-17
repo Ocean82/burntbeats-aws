@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useUser } from "@clerk/react";
 import { LEGAL_VERSIONS } from "../legal/versions";
 import { acceptLegal } from "../api";
+import { isLocalDevFullApp } from "../config";
 
 type LegalAcceptance = {
   tosVersion?: string;
@@ -24,6 +25,9 @@ function readAcceptance(u: unknown): LegalAcceptance | null {
 }
 
 export function LegalAcceptanceGate({ children }: { children: React.ReactNode }) {
+  // Local UI QA mode: bypass legal API dependency in dev full-app mode.
+  if (isLocalDevFullApp()) return <>{children}</>;
+
   const { user, isLoaded } = useUser();
   const [checked, setChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);

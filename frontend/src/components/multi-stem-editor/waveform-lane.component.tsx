@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { Headphones, Volume2, VolumeX } from "lucide-react";
 import type { MixerState, StemDefinition, TrimState } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { cn } from "../../utils/cn";
 import { drawWaveformBars } from "../../utils/waveformCanvas";
-import { stemThemeVariables, trimVisiblePercentsStyle } from "../../utils/stemThemeVariables";
 import type { SeekPhase } from "../../types/playbackSeek";
 
 const BAR_BUDGET = 300;
 const HANDLE_HIT_PX = 12;
 const MIN_TRIM_GAP_PCT = 2;
+const NO_SEEK_SELECTOR =
+  "button,input,label,select,textarea,a,[role='toolbar'],[data-no-seek]";
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
@@ -73,6 +74,7 @@ export function WaveformLane({
   onActivate,
   onStemStateChange,
 }: WaveformLaneProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const laneRef = useRef<HTMLDivElement>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
   const draggingRef = useRef<"start" | "end" | "seek" | null>(null);
@@ -84,6 +86,7 @@ export function WaveformLane({
   const lastSeekPctRef = useRef(0);
   const visibleStartRef = useRef(0);
   const visibleRangeRef = useRef(1);
+  const activePointerIdRef = useRef<number | null>(null);
 
   trimRef.current = trim;
   stemIdRef.current = stem.id;
@@ -96,14 +99,14 @@ export function WaveformLane({
   visibleStartRef.current = visibleStart;
   visibleRangeRef.current = visibleRange;
 
-  const hitTestHandle = useCallback((event: ReactMouseEvent): "start" | "end" | "seek" => {
+  const hitTestHandle = useCallback((clientX: number): "start" | "end" | "seek" => {
     const rect = laneRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0) return "seek";
     const toPixel = (pct: number) => {
       const fraction = clamp((pct / 100 - visibleStart) / visibleRange, 0, 1);
       return fraction * rect.width;
     };
-    const mouseX = event.clientX - rect.left;
+    const mouseX = clientX - rect.left;
     const distanceStart = Math.abs(mouseX - toPixel(trim.start));
     const distanceEnd = Math.abs(mouseX - toPixel(trim.end));
     if (distanceStart <= HANDLE_HIT_PX) return "start";
@@ -111,12 +114,18 @@ export function WaveformLane({
     return "seek";
   }, [trim.start, trim.end, visibleStart, visibleRange]);
 
-  const onMouseDown = useCallback((event: ReactMouseEvent) => {
+  const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!audioReady) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest(NO_SEEK_SELECTOR)) {
+      return;
+    }
     event.stopPropagation();
     event.preventDefault();
-    const mode = hitTestHandle(event);
+    const mode = hitTestHandle(event.clientX);
     draggingRef.current = mode;
+    activePointerIdRef.current = event.pointerId;
+    laneRef.current?.setPointerCapture?.(event.pointerId);
 
     if (mode === "seek") {
       didDragRef.current = true;
@@ -131,8 +140,8 @@ export function WaveformLane({
   }, [audioReady, hitTestHandle, visibleStart, visibleRange]);
 
   useEffect(() => {
-    const onMove = (event: MouseEvent) => {
-      if (!draggingRef.current) return;
+    const onMove = (event: PointerEvent) => {
+      if (!draggingRef.current || activePointerIdRef.current !== event.pointerId) return;
       didDragRef.current = true;
       const rect = laneRef.current?.getBoundingClientRect();
       if (!rect || rect.width <= 0) return;
@@ -154,18 +163,26 @@ export function WaveformLane({
         onSeekRef.current(pct, { phase: "move" });
       }
     };
-    const onUp = () => {
+    const onUp = (event: PointerEvent) => {
+      if (activePointerIdRef.current !== event.pointerId) return;
+      const lane = laneRef.current;
+      if (lane?.hasPointerCapture?.(event.pointerId)) {
+        lane.releasePointerCapture(event.pointerId);
+      }
+      activePointerIdRef.current = null;
       const mode = draggingRef.current;
       draggingRef.current = null;
       if (mode === "seek") {
         onSeekRef.current(lastSeekPctRef.current, { phase: "end" });
       }
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, []);
 
@@ -178,6 +195,22 @@ export function WaveformLane({
   const toVisible = (pct: number) => clamp((pct / 100 - visibleStart) / visibleRange, 0, 1) * 100;
   const trimStartVisible = toVisible(trim.start);
   const trimEndVisible = toVisible(trim.end);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    el.style.setProperty("--stem-glow", stem.glow);
+    el.style.setProperty("--stem-glow-soft", stem.glowSoft);
+    el.style.setProperty("--stem-color", stem.glow);
+    el.style.setProperty("--stem-color-soft", stem.glowSoft);
+  }, [stem.glow, stem.glowSoft]);
+
+  useEffect(() => {
+    const lane = laneRef.current;
+    if (!lane) return;
+    lane.style.setProperty("--trim-start-vis", String(trimStartVisible));
+    lane.style.setProperty("--trim-end-vis", String(trimEndVisible));
+  }, [trimStartVisible, trimEndVisible]);
 
   useEffect(() => {
     const canvas = waveformCanvasRef.current;
@@ -223,26 +256,95 @@ export function WaveformLane({
 
   return (
     <div
-      ref={laneRef}
-      className={cn(
-        "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all",
-        audioReady ? "cursor-crosshair" : "cursor-default",
-        isActive ? "border-white/20" : "border-white/8",
-        isMuted && "opacity-40"
-      )}
-      style={{
-        ...stemThemeVariables(stem),
-        ...trimVisiblePercentsStyle(trimStartVisible, trimEndVisible),
-      }}
-      onMouseDown={onMouseDown}
-      onClick={() => {
-        if (didDragRef.current) {
-          didDragRef.current = false;
-          return;
-        }
-        onActivate(stem.id);
-      }}
+      ref={rootRef}
+      className={cn("relative w-full", isMuted && "opacity-40")}
     >
+      <div
+        className="mb-1 flex justify-end"
+        role="toolbar"
+        aria-label={`${stem.label} quick mixer`}
+      >
+        <div
+          className="pointer-events-auto flex max-w-[min(100%,11rem)] items-center gap-0.5 rounded-md border border-white/10 bg-black/55 px-0.5 py-0.5 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            onClick={() => onStemStateChange(stem.id, { soloed: !isSoloed })}
+            disabled={!audioReady}
+            aria-label={isSoloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-[10px] transition sm:h-8 sm:w-8",
+              isSoloed
+                ? "border-[color:var(--stem-glow)]/60 bg-[color:var(--stem-glow)]/25 text-white"
+                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+              !audioReady && "opacity-40",
+            )}
+          >
+            <Headphones className="h-3 w-3" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => onStemStateChange(stem.id, { muted: !isMuted })}
+            disabled={!audioReady}
+            aria-label={isMuted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-[10px] transition sm:h-8 sm:w-8",
+              isMuted
+                ? "border-red-400/50 bg-red-500/25 text-red-100"
+                : "border-white/10 bg-white/5 text-[color:var(--stem-glow)]/85 hover:text-white",
+              !audioReady && "opacity-40",
+            )}
+          >
+            {isMuted ? <VolumeX className="h-3 w-3" aria-hidden /> : <Volume2 className="h-3 w-3" aria-hidden />}
+          </button>
+          <label className="flex min-w-0 flex-1 items-center gap-0.5 px-0.5">
+            <span className="sr-only">{stem.label} gain in decibels</span>
+            <input
+              type="range"
+              min={-20}
+              max={6}
+              step={0.5}
+              value={mixer.gain}
+              disabled={!audioReady}
+              aria-valuetext={`${mixer.gain > 0 ? "+" : ""}${mixer.gain.toFixed(1)} dB`}
+              onChange={(event) =>
+                onStemStateChange(stem.id, { mixer: { ...mixer, gain: Number(event.target.value) } })
+              }
+              className={cn(
+                "stem-accent-slider h-1 w-14 min-w-[2.5rem] flex-1",
+                audioReady ? "cursor-pointer" : "cursor-not-allowed opacity-40",
+              )}
+            />
+            <span
+              className="w-7 shrink-0 text-center font-mono text-[8px] leading-none text-white/70"
+              aria-hidden
+            >
+              {mixer.gain > 0 ? "+" : ""}
+              {mixer.gain.toFixed(1)}
+            </span>
+          </label>
+        </div>
+      </div>
+      <div
+        ref={laneRef}
+        className={cn(
+          "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all",
+          audioReady ? "cursor-crosshair" : "cursor-default",
+          isActive ? "border-white/20" : "border-white/8",
+        )}
+        onPointerDown={onPointerDown}
+        onClick={(event) => {
+          const target = event.target as HTMLElement | null;
+          if (target?.closest(NO_SEEK_SELECTOR)) {
+            return;
+          }
+          if (didDragRef.current) {
+            didDragRef.current = false;
+            return;
+          }
+          onActivate(stem.id);
+        }}
+      >
       <canvas
         ref={waveformCanvasRef}
         className="absolute inset-0 h-full w-full px-0.5"
@@ -262,69 +364,6 @@ export function WaveformLane({
         {stem.label}
       </span>
 
-      <div
-        className="pointer-events-auto absolute right-1 top-0.5 z-10 flex max-w-[min(100%,11rem)] items-center gap-0.5 rounded-md border border-white/10 bg-black/55 px-0.5 py-0.5 backdrop-blur-sm"
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={(event) => event.stopPropagation()}
-        role="toolbar"
-        aria-label={`${stem.label} quick mixer`}
-      >
-        <button
-          type="button"
-          onClick={() => onStemStateChange(stem.id, { soloed: !isSoloed })}
-          disabled={!audioReady}
-          aria-label={isSoloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
-          className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[10px] transition",
-            isSoloed
-              ? "border-amber-400/50 bg-amber-500/25 text-amber-100"
-              : "border-white/10 bg-white/5 text-white/70 hover:text-white",
-            !audioReady && "opacity-40",
-          )}
-        >
-          <Headphones className="h-3 w-3" aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => onStemStateChange(stem.id, { muted: !isMuted })}
-          disabled={!audioReady}
-          aria-label={isMuted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
-          className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[10px] transition",
-            isMuted
-              ? "border-red-400/50 bg-red-500/25 text-red-100"
-              : "border-white/10 bg-white/5 text-white/70 hover:text-white",
-            !audioReady && "opacity-40",
-          )}
-        >
-          {isMuted ? <VolumeX className="h-3 w-3" aria-hidden /> : <Volume2 className="h-3 w-3" aria-hidden />}
-        </button>
-        <label className="flex min-w-0 flex-1 items-center gap-0.5 px-0.5">
-          <span className="sr-only">{stem.label} gain in decibels</span>
-          <input
-            type="range"
-            min={-20}
-            max={6}
-            step={0.5}
-            value={mixer.gain}
-            disabled={!audioReady}
-            aria-valuetext={`${mixer.gain > 0 ? "+" : ""}${mixer.gain.toFixed(1)} dB`}
-            onChange={(event) =>
-              onStemStateChange(stem.id, { mixer: { ...mixer, gain: Number(event.target.value) } })
-            }
-            className={cn(
-              "stem-accent-slider h-1 w-14 min-w-[2.5rem] flex-1",
-              audioReady ? "cursor-pointer" : "cursor-not-allowed opacity-40",
-            )}
-          />
-          <span
-            className="w-7 shrink-0 text-center font-mono text-[8px] leading-none text-white/70"
-            aria-hidden
-          >
-            {mixer.gain > 0 ? "+" : ""}
-            {mixer.gain.toFixed(1)}
-          </span>
-        </label>
       </div>
     </div>
   );

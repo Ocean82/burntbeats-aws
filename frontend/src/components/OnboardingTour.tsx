@@ -104,7 +104,7 @@ export function OnboardingTour({
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl"
+              className="relative w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]"
               role="dialog"
               aria-modal="true"
               aria-labelledby="onboarding-title"
@@ -128,7 +128,7 @@ export function OnboardingTour({
                 onClick={handleSkip}
                 aria-label="Skip onboarding tour"
                 title="Skip onboarding tour"
-                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/40 transition hover:bg-white/10 hover:text-white"
+                className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white/5 text-white/40 transition hover:bg-white/10 hover:text-white sm:h-8 sm:w-8"
               >
                 <X className="h-4 w-4" />
               </button>

@@ -1,0 +1,18 @@
+services:
+  backend:
+    environment:
+      NODE_ENV: development
+      DEV_BYPASS_UPLOAD_AUTH: "1"
+    volumes:
+      - stems_data:/app/tmp/stems
+
+  stem_service:
+    volumes:
+      - stems_data:/repo/tmp/stems
+      - models_data:/repo/models
+      - server_models_data:/repo/server_models
+
+volumes:
+  stems_data:
+  models_data:
+  server_models_data:
