@@ -61,10 +61,10 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
         <div className="mesh-overlay" />
       </div>
 
-      <div className="relative mx-auto flex max-w-xl flex-col gap-6 px-4 py-14 sm:px-6">
-        <div className="rounded-3xl border border-white/10 bg-black/25 p-6 shadow-2xl backdrop-blur">
-          <h1 className="text-xl font-semibold">Before you continue</h1>
-          <p className="mt-2 text-sm leading-6 text-white/75">
+      <div className="relative mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">
+        <div className="rounded-3xl border border-white/10 bg-black/25 p-5 shadow-2xl backdrop-blur sm:p-6">
+          <h1 className="text-2xl font-semibold leading-tight sm:text-4xl">Before you continue</h1>
+          <p className="mt-2 break-words text-sm leading-6 text-white/75">
             Please review and accept the{" "}
             <a className="text-amber-300 hover:text-amber-200 underline underline-offset-4" href="/terms-of-service" target="_blank" rel="noreferrer">
               Terms of Service
@@ -76,7 +76,7 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
             .
           </p>
 
-          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
             <input
               type="checkbox"
               className="mt-1 h-4 w-4 accent-amber-400"
@@ -84,7 +84,7 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
               onChange={(e) => setChecked(e.target.checked)}
               disabled={submitting}
             />
-            <span className="text-sm text-white/85">
+            <span className="break-words text-sm text-white/85">
               I agree to the Terms of Service and Privacy Policy.
             </span>
           </label>
@@ -99,7 +99,7 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
             type="button"
             onClick={onAccept}
             disabled={!checked || submitting}
-            className="fire-button mt-5 w-full rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
+            className="fire-button mt-5 w-full rounded-xl px-4 py-3 text-sm font-semibold transition disabled:opacity-50"
           >
             {submitting ? "Saving…" : "Agree and continue"}
           </button>

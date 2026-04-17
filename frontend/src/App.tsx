@@ -626,11 +626,11 @@ export function App() {
       <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
         {/* Header */}
         <header
-          className="glass-panel mirror-sheen flex flex-col gap-6 rounded-[2rem] px-6 py-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"
+          className="glass-panel mirror-sheen flex flex-col gap-6 rounded-[2rem] px-4 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"
           aria-label="Burnt Beats"
         >
           <div className="flex flex-col gap-4 sm:gap-5">
-            <div className="inline-flex w-fit items-center gap-3 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-amber-100/80">
+            <div className="inline-flex w-fit max-w-full flex-wrap items-center gap-2 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/80 sm:text-[11px] sm:tracking-[0.35em]">
               Stem Splitter / Mixer / Master
               <span className="h-1 w-1 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
             </div>
@@ -645,7 +645,7 @@ export function App() {
             </p>
           </div>
           <div className="flex flex-col gap-3 lg:items-end">
-            <div className="flex items-center gap-2 text-sm text-white/75">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-white/75 sm:text-sm">
               <span
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
@@ -662,7 +662,9 @@ export function App() {
                 />
                 Upload
               </span>
-              <span className="text-white/20">→</span>
+              <span className="text-white/20" aria-hidden>
+                →
+              </span>
               <span
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
@@ -679,7 +681,9 @@ export function App() {
                 />
                 Split
               </span>
-              <span className="text-white/20">→</span>
+              <span className="text-white/20" aria-hidden>
+                →
+              </span>
               <span
                 className={cn(
                   "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
@@ -1261,7 +1265,7 @@ export function App() {
         onClick={toggleGame}
         aria-label={showGame ? "Close Stem Fall game" : "Open Stem Fall game"}
         className={cn(
-          "fixed bottom-0 right-8 z-50 flex items-center gap-2 rounded-t-xl border border-b-0 px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300",
+          "fixed bottom-0 right-2 z-50 flex items-center gap-2 rounded-t-xl border border-b-0 px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 sm:right-8 sm:px-4 sm:py-2.5 sm:text-xs",
           showGame
             ? "border-amber-500/40 bg-amber-500/20 text-amber-200"
             : "border-white/15 bg-black/70 text-white/60 hover:text-white backdrop-blur-md",
@@ -1383,7 +1387,7 @@ export function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
             transition={{ duration: reduceMotion ? 0 : 0.25 }}
-            className="pointer-events-none fixed bottom-20 left-1/2 z-[60] max-w-md -translate-x-1/2 rounded-xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-sm text-emerald-50 shadow-lg backdrop-blur-md md:bottom-8"
+            className="pointer-events-none fixed bottom-20 left-1/2 z-[60] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-sm text-emerald-50 shadow-lg backdrop-blur-md sm:w-auto md:bottom-8"
           >
             {exportNotice}
           </motion.div>

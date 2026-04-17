@@ -85,18 +85,18 @@ export function LandingPage() {
       <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
 
         {/* Nav */}
-        <nav className="flex items-center justify-between py-6">
+        <nav className="flex flex-wrap items-center justify-between gap-3 py-6">
           <div className="logo-burnt">
             <span className="logo-burnt-fire text-2xl">Burnt Beats</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <SignInButton mode="modal">
-              <button type="button" className="ghost-button text-sm px-5 py-2">
+              <button type="button" className="ghost-button px-4 py-2 text-xs sm:px-5 sm:text-sm">
                 Sign in
               </button>
             </SignInButton>
             <SignUpButton mode="modal">
-              <button type="button" className="fire-button text-sm px-5 py-2">
+              <button type="button" className="fire-button px-4 py-2 text-xs sm:px-5 sm:text-sm">
                 Get started
               </button>
             </SignUpButton>
@@ -108,16 +108,16 @@ export function LandingPage() {
           className="flex flex-col items-center gap-8 py-20 text-center"
           {...fadeUp(0, 20)}
         >
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-sm font-semibold uppercase tracking-[0.3em] text-amber-100/90">
+          <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/90 sm:text-sm sm:tracking-[0.3em]">
             Stem Splitter · Mixer · Master
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
           </div>
 
-          <h1 className="logo-burnt max-w-3xl text-5xl sm:text-6xl lg:text-7xl leading-tight">
+          <h1 className="logo-burnt max-w-3xl text-4xl leading-tight sm:text-6xl lg:text-7xl">
             <span className="logo-burnt-fire">Burnt Beats</span>
           </h1>
 
-          <p className="max-w-xl text-base leading-7 text-white/85 sm:text-lg">
+          <p className="max-w-xl break-words text-base leading-7 text-white/85 sm:text-lg">
             Turn full songs into usable stems in minutes — then level, trim, and export radio-ready mixes without plugins or installs.
           </p>
 
@@ -143,7 +143,7 @@ export function LandingPage() {
           </button>
 
           {/* Trust + risk reversal */}
-          <div className="flex flex-col items-center gap-2 text-sm text-white/70 sm:flex-row sm:gap-4">
+          <div className="flex max-w-full flex-col items-center gap-2 text-center text-sm text-white/70 sm:flex-row sm:gap-4 sm:text-left">
             <div className="flex items-center gap-2">
               <span className="status-light" />
               CPU-optimised · No GPU required
@@ -323,7 +323,7 @@ export function LandingPage() {
               <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
                 How do tokens map to songs?
               </p>
-              <p>
+              <p className="break-words">
                 1 token = 1 minute of audio. A 3‑minute track costs 3 tokens to split, and another 3 if you expand to 4 stems. Partial minutes round up, so you always know the cost upfront.
               </p>
             </div>
@@ -350,7 +350,7 @@ export function LandingPage() {
 
         {/* Footer CTA */}
         <motion.section
-          className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-8 py-12 text-center"
+          className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-4 py-10 text-center sm:px-8 sm:py-12"
           {...fadeUp(0.35)}
         >
           <p className="mb-2 text-2xl font-bold text-white/90">Ready to split?</p>

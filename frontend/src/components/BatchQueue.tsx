@@ -124,7 +124,7 @@ export function BatchQueue({
                         {formatFileSize(item.fileSize)}
                         {item.status === "processing" && ` • ${item.progress}%`}
                         {item.error && (
-                          <span className="text-red-400"> • {item.error}</span>
+                          <span className="break-words text-red-400"> • {item.error}</span>
                         )}
                       </p>
                     </div>
@@ -145,15 +145,12 @@ export function BatchQueue({
                       className="mt-2 h-1 overflow-hidden rounded-full bg-white/10"
                       role="progressbar"
                       aria-label={`${item.fileName} progress`}
-                      aria-valuenow={item.progress}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuetext={`${item.fileName}: ${item.progress}% complete`}
+                      aria-valuetext={`${item.fileName}: ${Math.max(0, Math.min(100, Math.round(Number(item.progress) || 0)))}% complete`}
                     >
                       <motion.div
                         className="h-full bg-amber-400"
                         initial={{ width: 0 }}
-                        animate={{ width: `${item.progress}%` }}
+                        animate={{ width: `${Math.max(0, Math.min(100, Number(item.progress) || 0))}%` }}
                       />
                     </div>
                   )}

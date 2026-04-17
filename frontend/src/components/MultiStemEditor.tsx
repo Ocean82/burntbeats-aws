@@ -327,7 +327,7 @@ export function MultiStemEditor({
         <div
           className={cn(
             "min-w-0 flex-1 transition-all duration-300",
-            activePanel ? "mr-72" : "",
+            activePanel ? "md:mr-72" : "",
           )}
         >
           <WaveformTimeline
@@ -352,8 +352,7 @@ export function MultiStemEditor({
 
         {activePanel && activeStem && (
           <div
-            className="absolute right-0 top-0 z-20 w-72 flex flex-col rounded-xl border border-white/10 bg-black/80 backdrop-blur-md shadow-[-8px_0_24px_rgba(0,0,0,0.5)] overflow-y-auto animate-in slide-in-from-right duration-300"
-            style={{ maxHeight: 320 }}
+            className="absolute inset-x-0 top-0 z-20 flex max-h-[320px] flex-col overflow-y-auto rounded-xl border border-white/10 bg-black/90 backdrop-blur-md shadow-[-8px_0_24px_rgba(0,0,0,0.5)] animate-in slide-in-from-right duration-300 md:inset-x-auto md:right-0 md:w-72 md:bg-black/80"
           >
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-black/40">
               <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300">
