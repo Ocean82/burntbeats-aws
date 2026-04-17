@@ -35,6 +35,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:3001:3001"
     environment:
       PORT: 3001
       # Absolute https base for stem URLs in JSON (avoids http:// links when proxies omit X-Forwarded-Proto).

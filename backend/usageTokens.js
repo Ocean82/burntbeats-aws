@@ -390,3 +390,49 @@ export async function creditTopupTokens(clerkUserId, grant) {
     });
   });
 }
+
+/**
+ * One-time welcome grant for brand-new accounts.
+ * Protected by the same per-user lock used for debit/credit operations.
+ * @param {string} clerkUserId
+ * @param {number} grant
+ * @returns {Promise<{ granted: boolean, balance: number }>}
+ */
+export async function grantWelcomeSignupTokens(clerkUserId, grant) {
+  const clerk = getClerkClient();
+  if (!clerk) return { granted: false, balance: 0 };
+  if (!Number.isFinite(grant) || grant <= 0) {
+    const { balance } = await getUsageBalance(clerkUserId);
+    return { granted: false, balance };
+  }
+
+  /** @type {{ granted: boolean, balance: number }} */
+  let result = { granted: false, balance: 0 };
+  await withUserUsageLock(clerkUserId, async () => {
+    const user = await clerk.users.getUser(clerkUserId);
+    const prev = user.privateMetadata?.usageTokens;
+    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const curBal = Number(rec.balance) || 0;
+    if (rec.welcomeGrantAppliedAt) {
+      result = { granted: false, balance: curBal };
+      return;
+    }
+    const now = Date.now();
+    const nextBal = curBal + Math.floor(grant);
+    await clerk.users.updateUserMetadata(clerkUserId, {
+      privateMetadata: {
+        .../** @type {Record<string, unknown>} */ (user.privateMetadata || {}),
+        usageTokens: {
+          ...rec,
+          balance: nextBal,
+          welcomeGrantAppliedAt: now,
+          welcomeGrantAmount: Math.floor(grant),
+          lastTopupAt: now,
+          lastTopupAmount: Math.floor(grant),
+        },
+      },
+    });
+    result = { granted: true, balance: nextBal };
+  });
+  return result;
+}

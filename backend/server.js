@@ -26,6 +26,7 @@ import https from "https";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 import { billingRouter } from "./billing.js";
+import { clerkWebhookRouter } from "./clerkWebhook.js";
 import { emailRouter } from "./email-routes.js";
 import { verifyClerkBearer, getClerkClient } from "./clerkAuth.js";
 import {
@@ -242,6 +243,8 @@ app.use((req, res, next) => {
 
 // Stripe webhook needs raw body — mount before express.json()
 app.use("/api/billing/webhook", express.raw({ type: "application/json" }));
+// Clerk webhook needs raw body for Svix signature verification.
+app.use("/api/clerk/webhook", express.raw({ type: "application/json" }));
 
 // Temp dir for streaming uploads (one file per request; cleaned after proxy).
 const UPLOAD_TMP_DIR = path.join(os.tmpdir(), "burntbeats-upload");
@@ -295,6 +298,7 @@ app.use(rateLimitMiddleware);
 // Billing routes (Clerk auth + Stripe)
 app.use("/api/email", emailRouter);
 app.use("/api/billing", billingRouter);
+app.use("/api/clerk", clerkWebhookRouter);
 
 // ── Legal acceptance (one-time gate) ─────────────────────────────────────────
 const LEGAL_TOS_VERSION = process.env.LEGAL_TOS_VERSION || "2025-01";
