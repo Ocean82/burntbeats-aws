@@ -7,6 +7,13 @@ __pycache__/
 *.pyo
 .Python
 *.so
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage/
 
 # Models (large files; copy from D:\DAW Collection\stem-models per docs)
 models/
@@ -72,6 +79,7 @@ benchmark_out/
 benchmark_out_*/
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
 benchmark_song.local.txt
+agent-transcripts/
 
 # Playwright (frontend)
 frontend/test-results/

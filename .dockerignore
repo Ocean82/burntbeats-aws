@@ -7,6 +7,8 @@
 .venv
 venv
 node_modules
+frontend/node_modules
+backend/node_modules
 
 # Heavy Models (Excludes both raw and server_models to keep build context lean)
 models/
@@ -23,11 +25,18 @@ stem_test*/
 benchmark_out*/
 logs/
 *.tgz
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage/
+htmlcov/
 
 # IDE, OS, Python caches
 .vscode/
 .idea/
 .cursor/
+.claude/
+.vs/
 .DS_Store
 Thumbs.db
 __pycache__/
@@ -40,3 +49,15 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Root context is used for stem_service image only.
+# Exclude unrelated app/source areas to reduce context size and leakage risk.
+frontend/
+backend/
+docs/
+scripts/
+legal/
+benchmark_song.local.txt
+burnt-beats-pricing-structure/
+agent-transcripts/
+gamer_tag/
