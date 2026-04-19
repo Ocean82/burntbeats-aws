@@ -2,7 +2,7 @@
 # Target CPython 3.11–3.12 (matches Dockerfile / CI). Newer Python may lack torch 2.2 wheels.
 # Install on Linux/Docker/CI with PyTorch CPU index so wheels resolve correctly, e.g.:
 #   pip install -r stem_service/requirements.lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.0
+torch==2.8.0
 torchaudio==2.2.0
 soundfile==0.13.1
 imageio-ffmpeg==0.5.1
