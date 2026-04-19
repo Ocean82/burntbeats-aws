@@ -16,7 +16,7 @@
 # demucs_entry.py patches torch.load to inject weights_only=False + safe_globals allowlist,
 # but this only works when the subprocess uses the venv Python (sys.executable).
 # Also keep <2.9 so load/save paths avoid torchcodec issues on some hosts (WSL/CI).
-torch>=2.0.0,<2.6
+torch>=2.0.0,<2.9
 torchaudio>=2.0.0,<2.6
 soundfile>=0.12.0
 # Bundled ffmpeg when system ffmpeg is not on PATH (matrix clip extraction, optional audio-separator env)
