@@ -3,7 +3,7 @@
 # Install on Linux/Docker/CI with PyTorch CPU index so wheels resolve correctly, e.g.:
 #   pip install -r stem_service/requirements.lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.8.0
-torchaudio==2.2.0
+torchaudio==2.8.0
 soundfile==0.13.1
 imageio-ffmpeg==0.5.1
 demucs==4.0.1
@@ -18,5 +18,5 @@ pedalboard==0.9.0
 boto3==1.42.9
 httpx==0.27.2
 pytest==9.0.3
-requests==2.32.5
+requests==2.33.0
 scipy==1.16.3

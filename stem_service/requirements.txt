@@ -10,14 +10,14 @@
 # patch runs in the subprocess Python — if that Python is not the venv Python,
 # the patch is applied to the wrong torch installation.
 #
-# Pin torch/torchaudio <2.6: PyTorch 2.6+ defaults torch.load(weights_only=True). Demucs loads
-# htdemucs checkpoints with pickle (HTDemucs class); unpickling fails unless weights_only=False,
-# and the stock `python -m demucs` CLI does not pass that flag — 2-stem/4-stem Demucs breaks.
-# demucs_entry.py patches torch.load to inject weights_only=False + safe_globals allowlist,
-# but this only works when the subprocess uses the venv Python (sys.executable).
-# Also keep <2.9 so load/save paths avoid torchcodec issues on some hosts (WSL/CI).
+# PyTorch 2.6+ defaults torch.load(weights_only=True). Demucs loads htdemucs checkpoints with
+# pickle (HTDemucs class); unpickling fails unless weights_only=False. demucs_entry.py patches
+# torch.load to inject weights_only=False + safe_globals allowlist, but this only works when the
+# subprocess uses the venv Python (sys.executable).
+# Keep torch/torchaudio on the same minor and <2.9 so wheels resolve together and load/save paths
+# avoid torchcodec issues on some hosts (WSL/CI).
 torch>=2.0.0,<2.9
-torchaudio>=2.0.0,<2.6
+torchaudio>=2.0.0,<2.9
 soundfile>=0.12.0
 # Bundled ffmpeg when system ffmpeg is not on PATH (matrix clip extraction, optional audio-separator env)
 imageio-ffmpeg>=0.4.0
