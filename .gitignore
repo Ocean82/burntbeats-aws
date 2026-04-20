@@ -80,6 +80,7 @@ benchmark_out_*/
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
 benchmark_song.local.txt
 agent-transcripts/
+docs/deploy-reports/
 
 # Playwright (frontend)
 frontend/test-results/
