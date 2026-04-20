@@ -51,6 +51,25 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
         <p className="text-sm text-white/55">Subscriptions renew monthly · 1 token = 1 minute of audio · cancel anytime.</p>
       </div>
 
+      <button
+        type="button"
+        onClick={() => void handleSelect("basic")}
+        disabled={loading !== null}
+        className={cn(
+          "fire-button flex min-h-[48px] w-full items-center justify-center gap-2 px-4 py-3 text-sm font-semibold",
+          "disabled:cursor-not-allowed disabled:opacity-60",
+        )}
+      >
+        {loading === "basic" ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Redirecting to secure checkout...
+          </>
+        ) : (
+          "Pay now with Stripe · Start Basic ($9/mo)"
+        )}
+      </button>
+
       <div className="flex flex-col gap-3">
         {PLANS.map((plan) => (
           <button

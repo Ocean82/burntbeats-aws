@@ -95,6 +95,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
   const handleSelectPlan = (plan: Plan) => {
     void subscription.startCheckout(plan);
   };
+  const showPrimaryCheckout = subscription.status !== "active";
 
   return (
     <div className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-10 overflow-x-clip px-3 py-4 sm:px-6 lg:px-8">
@@ -166,6 +167,16 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
               <p className="rounded-full border border-emerald-400/40 bg-emerald-500/15 px-3 py-1 text-[10px] font-medium text-emerald-200/90 sm:text-[11px]">
                 Current plan: <span className="uppercase">{subscription.plan}</span>
               </p>
+            )}
+            {showPrimaryCheckout && (
+              <button
+                type="button"
+                onClick={() => handleSelectPlan("basic")}
+                disabled={subscription.status === "loading"}
+                className="fire-button tap-feedback min-h-[44px] w-full px-5 py-2 text-sm sm:w-auto"
+              >
+                Pay now with Stripe · Start Basic
+              </button>
             )}
           </div>
         </div>
