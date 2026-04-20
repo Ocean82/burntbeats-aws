@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import { StripePricingTableEmbed } from "./StripePricingTableEmbed";
 
@@ -30,7 +31,7 @@ const PLANS: PlanConfig[] = [
   {
     id: "topup",
     name: "Top‑Up Pack",
-    priceLabel: "$5 · Pay As You Go",
+    priceLabel: "$5 one-time · Pay as you go",
     badge: "No subscription",
     emphasis: true,
     highlight: "primary",
@@ -41,59 +42,63 @@ const PLANS: PlanConfig[] = [
       "Great for guests, collaborators, and light users.",
       "Top up again any time you run low.",
     ],
-    cta: "Top up & go",
+    cta: "Buy Top‑Up Pack",
   },
   {
     id: "basic",
     name: "Basic",
-    priceLabel: "$9 / month · 120 tokens",
+    priceLabel: "$9/month · 120 tokens",
     badge: "Starter",
     description: "For artists who want a steady trickle of sessions every month.",
     details: [
-      "120 tokens/month — 1 token per minute of audio.",
+      "120 tokens/month · 1 token = 1 minute of audio.",
       "2 high‑quality stems (Vocal + Instruments).",
       "Priority processing over free/guest traffic.",
       "Mixer / editor functions included.",
     ],
-    cta: "Start with Basic",
+    cta: "Start Basic",
   },
   {
     id: "premium",
     name: "Premium",
-    priceLabel: "$15 / month · 300 tokens",
+    priceLabel: "$15/month · 300 tokens",
     badge: "Most popular",
     highlight: "primary",
     description: "For active producers bouncing between projects all week.",
     details: [
-      "300 tokens/month — 1 token per minute of audio.",
+      "300 tokens/month · 1 token = 1 minute of audio.",
       "High‑quality multi‑stem options.",
       "Priority processing and batch tools unlocked.",
       "Full mixer / editor functions and pro mixing tools.",
     ],
-    cta: "Go Premium",
+    cta: "Start Premium",
   },
   {
     id: "studio",
     name: "Studio",
-    priceLabel: "$25 / month · 600 tokens",
+    priceLabel: "$25/month · 600 tokens",
     badge: "For power users",
     description: "For studios, engineers, and heavy hitters who live in stems.",
     details: [
-      "600 tokens/month — 1 token per minute of audio.",
+      "600 tokens/month · 1 token = 1 minute of audio.",
       "Highest quality stem options and full multi‑stem support.",
       "Priority listing in queues.",
       "Bonus tokens awarded regularly.",
       "Beta feature previews.",
       "Full license with no‑royalty payment option.",
     ],
-    cta: "Unlock Studio",
+    cta: "Start Studio",
   },
 ];
 
 export function PricingPage({ subscription, onClose, usageContext }: PricingPageProps) {
   const reduceMotion = useReducedMotion();
+  const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<Plan | null>(null);
   const handleSelectPlan = (plan: Plan) => {
-    void subscription.startCheckout(plan);
+    setCheckoutLoadingPlan(plan);
+    void subscription.startCheckout(plan).finally(() => {
+      setCheckoutLoadingPlan(null);
+    });
   };
   const showPrimaryCheckout = subscription.status !== "active";
 
@@ -130,30 +135,31 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
       {/* Header / hero */}
       <section className="glass-panel mirror-sheen rounded-[2rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-xl space-y-4">
+          <div className="max-w-2xl space-y-3">
             <p className="eyebrow text-amber-200/90">Pricing & plans</p>
             <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
-              Choose how you burn through beats.
+              Pick your plan and start splitting in minutes.
             </h1>
             <p className="break-words text-base leading-7 text-white/85">
-              Go monthly for a steady flow of tokens, or keep it simple with a{" "}
-              <span className="font-semibold text-amber-200">Top‑Up Pack</span> — pay as you go with
-              no subscription required.
-            </p>
-            <p className="text-sm text-white/75">
-              All plans run on the same high‑quality separation engine. Upgrade or cancel any time.
+              Go monthly for consistent tokens, or start with a{" "}
+              <span className="font-semibold text-amber-200">Top‑Up Pack</span> to try Burnt Beats
+              with no subscription.
             </p>
             <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
               <span className="font-semibold text-amber-200">1 token = 1 minute of audio.</span>{" "}
               Each split or expand charges tokens based on your track length — a 3‑min song costs 3 tokens. Partial minutes round up.
             </p>
-            <p className="text-sm text-white/80">
-              Most producers start with <span className="font-semibold text-amber-200">Premium</span> for weekly sessions, then
-              move up to <span className="font-semibold text-amber-200">Studio</span> when they&apos;re living in stems every day.
-            </p>
+            <ul className="grid gap-2 text-sm text-white/78 sm:grid-cols-2">
+              <li className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                Top‑Up Pack: one-time credits, no subscription.
+              </li>
+              <li className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                Monthly plans: more tokens and faster workflow.
+              </li>
+            </ul>
             {subscription.status === "inactive" && usageContext?.hasCompletedFirstExport && (
               <p className="text-sm text-amber-100/95">
-                You&apos;ve already finished a stem — most artists upgrade once they&apos;re splitting tracks every week or more.
+                You&apos;ve already finished a stem — upgrading now keeps your workflow fast and uninterrupted.
               </p>
             )}
             {subscription.plan === "basic" && (usageContext?.splitsThisSession ?? 0) >= 3 && (
@@ -172,10 +178,19 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
               <button
                 type="button"
                 onClick={() => handleSelectPlan("basic")}
-                disabled={subscription.status === "loading"}
-                className="fire-button tap-feedback min-h-[44px] w-full px-5 py-2 text-sm sm:w-auto"
+                disabled={subscription.status === "loading" || checkoutLoadingPlan !== null}
+                aria-label="Pay now with Stripe and start Basic plan"
+                aria-live="polite"
+                className="fire-button tap-feedback min-h-[44px] w-full px-5 py-2 text-sm sm:w-auto sm:min-w-[240px]"
               >
-                Pay now with Stripe · Start Basic
+                {checkoutLoadingPlan === "basic" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Redirecting to checkout...
+                  </span>
+                ) : (
+                  "Start Basic · Secure Stripe checkout"
+                )}
               </button>
             )}
           </div>
@@ -199,9 +214,9 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
           return (
             <div
               key={plan.id}
-              className={`glass-panel flex h-full min-w-0 flex-col justify-between rounded-2xl border bg-black/40 p-5 ${accentRing}`}
+              className={`glass-panel flex h-full min-w-0 flex-col justify-between rounded-2xl border bg-black/40 p-4 sm:p-5 ${accentRing}`}
             >
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="break-words text-base font-semibold text-white/95">{plan.name}</h2>
                   {plan.badge && (
@@ -211,28 +226,46 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
                   )}
                 </div>
                 <p className="break-words text-sm font-medium text-amber-200/95">{plan.priceLabel}</p>
-                <p className="break-words text-sm leading-6 text-white/80">{plan.description}</p>
-                <ul className="mt-3 space-y-1.5 text-sm text-white/80">
+                <p className="break-words text-sm leading-5 text-white/78">{plan.description}</p>
+                <ul className="mt-2 space-y-1.5 text-sm text-white/80">
                   {plan.details.map((d) => (
                     <li key={d} className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-300" />
+                      <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-300" />
                       <span className="break-words">{d}</span>
                     </li>
                   ))}
                 </ul>
               </div>
-              <div className="mt-5 flex flex-col gap-2">
+              <div className="mt-4 flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => handleSelectPlan(plan.id)}
+                  aria-label={
+                    isActive
+                      ? `${plan.name} is your current plan`
+                      : `Choose ${plan.name} plan`
+                  }
                   className={
                     plan.highlight === "primary" || plan.emphasis
-                      ? "fire-button tap-feedback w-full py-2 text-xs"
-                      : "ghost-button tap-feedback w-full py-2 text-xs"
+                      ? "fire-button tap-feedback min-h-[40px] w-full py-2 text-xs"
+                      : "ghost-button tap-feedback min-h-[40px] w-full py-2 text-xs"
                   }
-                  disabled={subscription.status === "loading"}
+                  disabled={
+                    subscription.status === "loading" ||
+                    checkoutLoadingPlan !== null ||
+                    isActive
+                  }
                 >
-                  {isActive ? "Current plan" : plan.cta}
+                  {checkoutLoadingPlan === plan.id ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Redirecting...
+                    </span>
+                  ) : isActive ? (
+                    "Current plan"
+                  ) : (
+                    plan.cta
+                  )}
                 </button>
                 {plan.id === "topup" && (
                   <p className="text-xs leading-5 text-amber-100/90">
@@ -255,7 +288,7 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
         <div className="mb-4 text-center">
           <p className="eyebrow mb-1 text-xs text-amber-200/90">Live pricing</p>
           <p className="text-sm text-white/80">
-            Secure checkout powered by Stripe. You can also compare plans directly in the table
+            Secure checkout powered by Stripe. Compare plans and start with the one that fits your workflow
             below.
           </p>
         </div>
@@ -300,8 +333,8 @@ export function PricingPage({ subscription, onClose, usageContext }: PricingPage
             Do you offer refunds?
           </p>
           <p>
-            If something goes wrong with your account or billing, reach out and we&apos;ll make it right. For normal
-            usage, you can always start small with a Top‑Up pack first.
+            If anything goes wrong with billing, reach out and we&apos;ll make it right. If you&apos;re unsure, start small
+            with a Top‑Up Pack first.
           </p>
         </div>
       </motion.section>

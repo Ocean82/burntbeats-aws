@@ -30,14 +30,22 @@ export function AppMobileMoreMenu({
 }: AppMobileMoreMenuProps) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const menuId = "app-mobile-more-menu";
 
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   return (
@@ -49,14 +57,15 @@ export function AppMobileMoreMenu({
           "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/15 bg-black/20 text-white/75 transition hover:text-white tap-feedback",
           open && "border-amber-400/50 bg-amber-500/15 text-amber-100",
         )}
-        aria-expanded={open}
         aria-haspopup="true"
+        aria-controls={menuId}
         aria-label={open ? "Close menu" : "More actions"}
       >
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
       {open && (
         <div
+          id={menuId}
           className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/15 bg-[#14100e]/98 py-1 shadow-xl backdrop-blur-md"
           role="menu"
         >

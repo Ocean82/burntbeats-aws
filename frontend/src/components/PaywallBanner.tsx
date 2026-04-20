@@ -15,19 +15,19 @@ const PLANS: { id: Plan; label: string; price: string; features: string[] }[] = 
   {
     id: "basic",
     label: "Basic",
-    price: "$9/mo",
+    price: "$9/month",
     features: ["Monthly token allowance (see plan)", "2-stem · Speed only", "Waveform mixer + WAV export"],
   },
   {
     id: "premium",
     label: "Premium",
-    price: "$15/mo",
+    price: "$15/month",
     features: ["Higher token allowance", "2-stem then 4-stem expand", "Speed + Quality · waveform", "Batch queue"],
   },
   {
     id: "studio",
     label: "Studio",
-    price: "$25/mo",
+    price: "$25/month",
     features: ["Everything in Premium", "Priority processing"],
   },
 ];
@@ -55,6 +55,8 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
         type="button"
         onClick={() => void handleSelect("basic")}
         disabled={loading !== null}
+        aria-label="Pay now with Stripe and start Basic plan"
+        aria-live="polite"
         className={cn(
           "fire-button flex min-h-[48px] w-full items-center justify-center gap-2 px-4 py-3 text-sm font-semibold",
           "disabled:cursor-not-allowed disabled:opacity-60",
@@ -66,7 +68,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
             Redirecting to secure checkout...
           </>
         ) : (
-          "Pay now with Stripe · Start Basic ($9/mo)"
+          "Start Basic ($9/month) · Secure Stripe checkout"
         )}
       </button>
 
@@ -76,7 +78,12 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
             key={plan.id}
             type="button"
             onClick={() => void handleSelect(plan.id)}
-            disabled={loading !== null}
+            disabled={loading !== null || (subscription.status === "active" && subscription.plan === plan.id)}
+            aria-label={
+              subscription.status === "active" && subscription.plan === plan.id
+                ? `${plan.label} plan is your current plan`
+                : `Choose ${plan.label} plan`
+            }
             className={cn(
               "flex items-center justify-between rounded-xl border px-4 py-4 text-left transition",
               "border-white/10 bg-white/5 hover:border-amber-400/40 hover:bg-amber-500/10",
@@ -85,7 +92,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
               plan.id === "premium" && "border-amber-400/30 bg-amber-500/10",
             )}
           >
-            <div className="flex flex-col gap-1">
+            <div className="min-w-0 flex flex-col gap-1">
               <span className="text-sm font-semibold text-white">
                 {plan.label}
                 {plan.id === "premium" && (
@@ -94,7 +101,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
                   </span>
                 )}
               </span>
-              <span className="text-sm text-white/65">{plan.features.join(" · ")}</span>
+              <span className="break-words text-sm text-white/65">{plan.features.join(" · ")}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0 pl-4">
               <span className="text-sm font-semibold text-amber-300">{plan.price}</span>
@@ -110,9 +117,10 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
           type="button"
           onClick={() => void handleSelect("topup")}
           disabled={loading !== null}
+          aria-label="Buy one-time top-up credits"
           className="text-white/50 underline hover:text-white/80 disabled:opacity-60"
         >
-          Buy credits ($5)
+          Buy Top‑Up Pack ($5 one-time)
         </button>
       </p>
     </div>
