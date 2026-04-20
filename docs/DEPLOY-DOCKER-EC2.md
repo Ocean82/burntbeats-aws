@@ -127,5 +127,6 @@ Use **[DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md)** when you are **copyin
 - **`sudo docker compose ps`** — services **healthy**.
 - **`curl -fsS http://127.0.0.1:5173/`** (or your mapped host port) — HTML from the frontend container.
 - **`curl -fsS http://127.0.0.1:5173/api/health`** — proxied backend health (through the frontend container’s nginx).
+- **`python scripts/post_deploy_smoke.py`** — checks prod URLs (`/sitemap.xml`, `/robots.txt`, `/pricing`, legal pages) and writes a timestamped report under **`docs/deploy-reports/`**.
 
 Adjust host/port if your **`docker-compose.yml` port mappings differ.
