@@ -184,12 +184,13 @@ export function ProcessingSettingsPanel({
         {/* Upload drop zone (split mode) */}
         {sourceMode === "split" && (
           <div
+            data-testid="split-upload-dropzone"
             onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
             onDragLeave={() => onSetIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onDropUpload(e.dataTransfer.files?.[0] ?? null); }}
             onClick={!uploadedFile ? onBrowseUpload : undefined}
             className={cn(
-              "flex min-w-0 flex-1 cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center",
+              "flex min-w-0 basis-full cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center lg:basis-auto lg:flex-1",
               !uploadedFile
                 ? "border-amber-400/60 bg-amber-950/40 shadow-[0_0_24px_rgba(255,140,80,0.35)] hover:border-amber-400/90 hover:bg-amber-950/60 hover:shadow-[0_0_32px_rgba(255,140,80,0.5)] active:scale-[0.99]"
                 : "border-white/10 bg-black/20 hover:border-white/20",
@@ -229,12 +230,13 @@ export function ProcessingSettingsPanel({
         {/* Load mode drop zone */}
         {sourceMode === "load" && (
           <div
+            data-testid="load-upload-dropzone"
             onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
             onDragLeave={() => onSetIsDragging(false)}
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onLoadStems(e.dataTransfer.files); }}
             onClick={() => loadStemsInputRef.current?.click()}
             className={cn(
-              "flex min-w-0 flex-1 cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center",
+              "flex min-w-0 basis-full cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center lg:basis-auto lg:flex-1",
               "border-white/20 bg-white/[0.03] hover:border-amber-400/40 hover:bg-white/[0.05] active:scale-[0.99]",
               isDragging && "scale-[1.02] border-amber-400/60 bg-white/[0.06]",
             )}
@@ -266,9 +268,9 @@ export function ProcessingSettingsPanel({
         )}
 
         {/* Quality selector */}
-        <div className="flex max-w-full shrink-0 flex-wrap items-center gap-1.5">
+        <div data-testid="quality-controls" className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-1.5 sm:w-auto">
           <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Quality</span>
-          <div className="flex rounded-xl border border-white/10 bg-black/20 p-0.5">
+          <div className="flex w-full rounded-xl border border-white/10 bg-black/20 p-0.5 sm:w-auto">
             {qualityOptions.map((opt) => (
               <button
                 key={opt.value}
@@ -281,7 +283,7 @@ export function ProcessingSettingsPanel({
                 }
                 onClick={() => onQualityChange(opt.value)}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                  "min-h-[36px] whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition",
                   !opt.enabled
                     ? "cursor-not-allowed text-white/25"
                     : opt.value === quality
