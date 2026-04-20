@@ -200,12 +200,12 @@ export function ProcessingSettingsPanel({
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
               {uploadedFile ? uploadName : isDragging ? "Drop it!" : "Click to upload or drag & drop"}
             </span>
-            <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
+            <div className="ml-auto flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               {uploadedFile && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onClearUpload(); }}
-                  className="min-h-[36px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
+                  className="min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
                 >
                   Clear
                 </button>
@@ -214,7 +214,7 @@ export function ProcessingSettingsPanel({
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onBrowseUpload(); }}
                 className={cn(
-                  "min-h-[36px] whitespace-nowrap rounded-lg border px-3 py-1 text-xs font-semibold transition-all",
+                  "min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border px-3 py-1 text-xs font-semibold transition-all",
                   !uploadedFile
                     ? "border-amber-400/60 bg-amber-500/20 text-amber-200 hover:border-amber-400 hover:bg-amber-500/30"
                     : "border-white/10 text-white/60 hover:border-white/30 hover:text-white"
@@ -243,11 +243,11 @@ export function ProcessingSettingsPanel({
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">
               {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : isDragging ? "Drop it!" : "Click to load stems or drag & drop"}
             </span>
-            <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto">
+            <div className="ml-auto flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); loadStemsInputRef.current?.click(); }}
-                className="min-h-[36px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-white/60 hover:border-white/30 hover:text-white"
+                className="min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-white/60 hover:border-white/30 hover:text-white"
               >
                 Browse
               </button>

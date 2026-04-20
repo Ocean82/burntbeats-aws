@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Menu, Save, HelpCircle, X } from "lucide-react";
+import { Menu, Save, HelpCircle, MessageSquarePlus, Coins, Sparkles, Scale, X } from "lucide-react";
 import { cn } from "../utils/cn";
 
 export interface AppMobileMoreMenuProps {
@@ -8,10 +8,15 @@ export interface AppMobileMoreMenuProps {
   onOpenPortal: () => void;
   onOpenPresets: () => void;
   onOpenHelp: () => void;
+  onOpenUsage: () => void;
+  onOpenFeedback: () => void;
+  onRestartTour: () => void;
+  onOpenLegal: () => void;
   pricingLabel: string;
   pricingTitle: string;
   showBilling: boolean;
   isPricingView: boolean;
+  usageSummary?: string;
 }
 
 /**
@@ -23,10 +28,15 @@ export function AppMobileMoreMenu({
   onOpenPortal,
   onOpenPresets,
   onOpenHelp,
+  onOpenUsage,
+  onOpenFeedback,
+  onRestartTour,
+  onOpenLegal,
   pricingLabel,
   pricingTitle,
   showBilling,
   isPricingView,
+  usageSummary,
 }: AppMobileMoreMenuProps) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -90,7 +100,19 @@ export function AppMobileMoreMenu({
             }}
             title={pricingTitle}
           >
-            {isPricingView ? "Back to editor" : pricingLabel}
+            {pricingLabel}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            onClick={() => {
+              onOpenUsage();
+              setOpen(false);
+            }}
+          >
+            <Coins className="h-4 w-4 opacity-70" />
+            {usageSummary ? `Usage & tokens (${usageSummary})` : "Usage & tokens"}
           </button>
           {showBilling && (
             <button
@@ -128,6 +150,42 @@ export function AppMobileMoreMenu({
           >
             <HelpCircle className="h-4 w-4 opacity-70" />
             Keyboard shortcuts
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            onClick={() => {
+              onRestartTour();
+              setOpen(false);
+            }}
+          >
+            <Sparkles className="h-4 w-4 opacity-70" />
+            Restart guided tour
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            onClick={() => {
+              onOpenFeedback();
+              setOpen(false);
+            }}
+          >
+            <MessageSquarePlus className="h-4 w-4 opacity-70" />
+            Send feedback
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            onClick={() => {
+              onOpenLegal();
+              setOpen(false);
+            }}
+          >
+            <Scale className="h-4 w-4 opacity-70" />
+            Legal & privacy
           </button>
         </div>
       )}

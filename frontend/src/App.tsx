@@ -625,6 +625,37 @@ export function App() {
       </div>
 
       <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
+        <nav
+          aria-label="Workspace tabs"
+          className="glass-panel mirror-sheen inline-flex w-fit max-w-full items-center gap-1 self-start rounded-xl border border-white/10 p-1"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveView("editor")}
+            className={cn(
+              "min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+              activeView === "editor"
+                ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
+                : "text-white/65 hover:text-white border border-transparent",
+            )}
+            aria-current={activeView === "editor" ? "page" : undefined}
+          >
+            Editor
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView("pricing")}
+            className={cn(
+              "min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+              activeView === "pricing"
+                ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
+                : "text-white/65 hover:text-white border border-transparent",
+            )}
+            aria-current={activeView === "pricing" ? "page" : undefined}
+          >
+            Plans
+          </button>
+        </nav>
         {/* Header */}
         <header
           className="glass-panel mirror-sheen flex flex-col gap-6 rounded-[2rem] px-4 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"
@@ -778,41 +809,6 @@ export function App() {
                 >
                   Full pricing &amp; features
                 </button>
-                {(() => {
-                  const isInactive = subscription.status === "inactive";
-                  const pricingLabel = isInactive
-                    ? "Upgrade · Pricing"
-                    : subscription.plan === "basic"
-                      ? "More tokens & faster queues"
-                      : "Manage plan";
-                  const title =
-                    activeView === "pricing"
-                      ? "Back to main editor"
-                      : isInactive
-                        ? "View pricing & tokens"
-                        : "View or change your plan";
-                  return (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveView((v) =>
-                          v === "editor" ? "pricing" : "editor",
-                        )
-                      }
-                      className={cn(
-                        "flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 text-xs font-semibold transition tap-feedback",
-                        isInactive
-                          ? "border border-amber-400/70 bg-amber-500/20 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.55)] hover:bg-amber-500/30 hover:text-white"
-                          : "border border-white/15 bg-black/20 text-white/70 hover:text-white",
-                      )}
-                      title={title}
-                    >
-                      {activeView === "pricing"
-                        ? "Back to editor"
-                        : pricingLabel}
-                    </button>
-                  );
-                })()}
                 {subscription.status === "active" && !localDevFullApp && (
                   <button
                     type="button"
@@ -831,30 +827,33 @@ export function App() {
                     "https://www.burntbeats.com/pricing";
                   window.open(url, "_blank", "noopener,noreferrer");
                 }}
-                onOpenPricing={() =>
-                  setActiveView((v) => (v === "editor" ? "pricing" : "editor"))
-                }
+                onOpenPricing={() => setActiveView("pricing")}
+                onOpenUsage={() => setActiveView("pricing")}
                 onOpenPortal={() => void subscription.openPortal()}
                 onOpenPresets={() => openModal("presets")}
                 onOpenHelp={() => openModal("help")}
-                pricingLabel={
-                  subscription.status === "inactive"
-                    ? "Upgrade · Pricing"
-                    : subscription.plan === "basic"
-                      ? "More tokens & faster queues"
-                      : "Manage plan"
-                }
-                pricingTitle={
-                  activeView === "pricing"
-                    ? "Back to main editor"
-                    : subscription.status === "inactive"
-                      ? "View pricing & tokens"
-                      : "View or change your plan"
-                }
+                onOpenFeedback={() => {
+                  window.dispatchEvent(new Event("burntbeats:open-feedback"));
+                }}
+                onRestartTour={() => {
+                  window.dispatchEvent(new Event("burntbeats:open-onboarding"));
+                }}
+                onOpenLegal={() => {
+                  window.open("/terms-of-service", "_blank", "noopener,noreferrer");
+                }}
+                pricingLabel="Plans & subscriptions"
+                pricingTitle="View and select subscriptions"
                 showBilling={
                   subscription.status === "active" && !localDevFullApp
                 }
                 isPricingView={activeView === "pricing"}
+                usageSummary={
+                  usageLoading
+                    ? "loading"
+                    : usageBalance != null
+                      ? `${Math.floor(usageBalance)} left`
+                      : undefined
+                }
               />
             </div>
           </div>

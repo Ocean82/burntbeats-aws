@@ -57,6 +57,17 @@ export function OnboardingTour({
     }
   }, []);
 
+  useEffect(() => {
+    const onOpen = () => {
+      setCurrentStep(0);
+      setIsVisible(true);
+    };
+    window.addEventListener("burntbeats:open-onboarding", onOpen);
+    return () => {
+      window.removeEventListener("burntbeats:open-onboarding", onOpen);
+    };
+  }, []);
+
   const handleComplete = () => {
     localStorage.setItem(ONBOARDING_KEY, "true");
     setIsVisible(false);

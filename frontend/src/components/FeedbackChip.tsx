@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Rating = "great" | "ok" | "confusing" | null;
 
@@ -6,6 +6,14 @@ export function FeedbackChip() {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState<Rating>(null);
   const [comment, setComment] = useState("");
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("burntbeats:open-feedback", onOpen);
+    return () => {
+      window.removeEventListener("burntbeats:open-feedback", onOpen);
+    };
+  }, []);
 
   const handleSubmit = () => {
     if (!rating && !comment.trim()) return;
