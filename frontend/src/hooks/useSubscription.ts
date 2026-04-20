@@ -7,6 +7,7 @@ import { useAuth } from "@clerk/react";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE, isLocalDevFullApp } from "../config";
 import { userFacingHttpError } from "../userFacingError";
+import { trackEvent } from "../analytics/events";
 
 async function readBillingErrorMessage(res: Response, kind: "checkout" | "portal"): Promise<string> {
   const text = await res.text().catch(() => "");
@@ -93,12 +94,14 @@ export function useSubscription(): UseSubscriptionResult {
   // Refetch after Stripe redirects back with ?checkout=success
   useEffect(() => {
     if (window.location.search.includes("checkout=success")) {
+      trackEvent("checkout_returned_success");
       void fetchStatus();
     }
   }, [fetchStatus]);
 
   const startCheckout = useCallback(async (selectedPlan: Plan) => {
     if (localFullApp) return;
+    trackEvent("checkout_started", { plan: selectedPlan });
     try {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/api/billing/checkout`, {
@@ -112,18 +115,25 @@ export function useSubscription(): UseSubscriptionResult {
       }
       const { url } = (await res.json()) as { url: string };
       if (!url) throw new Error("Checkout did not return a URL");
+      trackEvent("checkout_redirected", { plan: selectedPlan });
       window.location.href = url;
     } catch (err) {
       notifyBillingFailure("Checkout failed:", err);
       setBillingError(err instanceof Error ? err.message : "Checkout failed. Please try again.");
+      trackEvent("checkout_failed", {
+        plan: selectedPlan,
+        error: (err instanceof Error ? err.message : "Checkout failed").slice(0, 120),
+      });
     }
   }, [getToken, localFullApp]);
 
   const openPortal = useCallback(async () => {
     if (localFullApp) return;
+    trackEvent("billing_portal_open_started");
     try {
       const loginUrl = getStripeCustomerPortalLoginUrl();
       if (loginUrl) {
+        trackEvent("billing_portal_redirected", { via: "direct_login_url" });
         window.location.assign(loginUrl);
         return;
       }
@@ -139,10 +149,14 @@ export function useSubscription(): UseSubscriptionResult {
       }
       const { url } = (await res.json()) as { url: string };
       if (!url) throw new Error("Portal did not return a URL");
+      trackEvent("billing_portal_redirected", { via: "api_portal" });
       window.location.href = url;
     } catch (err) {
       notifyBillingFailure("Portal failed:", err);
       setBillingError(err instanceof Error ? err.message : "Billing portal failed. Please try again.");
+      trackEvent("billing_portal_failed", {
+        error: (err instanceof Error ? err.message : "Billing portal failed").slice(0, 120),
+      });
     }
   }, [getToken, localFullApp]);
 

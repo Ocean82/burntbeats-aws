@@ -12,6 +12,7 @@ import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStereoWidt
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
 import type { ExportOptions } from "../components";
+import { trackEvent } from "../analytics/events";
 
 export function stripFileExtension(fileName: string): string {
   return fileName.replace(/\.[^/.]+$/, "");
@@ -388,6 +389,13 @@ export function useExport(): UseExportReturn {
     serverExportStemIds?: string[],
     onSuccess?: () => void
   ) => {
+    trackEvent("export_started", {
+      target: options.target,
+      format: options.format,
+      normalize: options.normalize,
+      has_loaded_stems: splitResultStems.some((s) => s.id.startsWith("loaded_")),
+      stem_count: splitResultStems.length,
+    });
     const now = Date.now();
     const msSinceLastExport = now - lastExportAtRef.current;
     if (msSinceLastExport < EXPORT_ACTION_COOLDOWN_MS) {
@@ -398,6 +406,7 @@ export function useExport(): UseExportReturn {
       onError(
         `Please wait ${waitSeconds}s before starting another export.`,
       );
+      trackEvent("export_blocked_cooldown", { wait_seconds: waitSeconds });
       return;
     }
 
@@ -409,6 +418,7 @@ export function useExport(): UseExportReturn {
 
     if ((options.target === "stems" || options.target === "all") && splitResultStems.length === 0) {
       onError("No stems to export. Split a track or load stems first.");
+      trackEvent("export_failed_validation", { reason: "no_stems" });
       return;
     }
     setIsExporting(true);
@@ -454,8 +464,17 @@ export function useExport(): UseExportReturn {
       lastExportAtRef.current = Date.now();
       onClose();
       if (!hadError) onSuccess?.();
+      trackEvent("export_completed", {
+        target: options.target,
+        format: options.format,
+      });
     } catch (e) {
       wrapErr(e instanceof Error ? e.message : "Export failed");
+      trackEvent("export_failed", {
+        target: options.target,
+        format: options.format,
+        error: (e instanceof Error ? e.message : "Export failed").slice(0, 120),
+      });
     } finally {
       setIsExporting(false);
     }

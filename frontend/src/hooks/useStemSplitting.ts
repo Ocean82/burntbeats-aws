@@ -8,6 +8,7 @@ import { splitStems, expandStems, type SplitQuality } from "../api";
 import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS } from "../config";
 import { useAppStore } from "../store/appStore";
 import type { UseSubscriptionResult } from "./useSubscription";
+import { trackEvent } from "../analytics/events";
 
 interface UseStemSplittingArgs {
   subscription: UseSubscriptionResult;
@@ -46,8 +47,14 @@ export function useStemSplitting({
   const handleFile = useCallback((file: File | null) => {
     if (!file) {
       setUploadState((prev) => ({ ...prev, uploadedFile: null }));
+      trackEvent("track_upload_cleared");
       return;
     }
+    const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "unknown" : "none";
+    trackEvent("track_upload_selected", {
+      file_extension: extension,
+      file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)),
+    });
     setUploadState((prev) => ({
       ...prev,
       uploadName: file.name,
@@ -96,6 +103,7 @@ export function useStemSplitting({
   const triggerSplit = useCallback(async (requestedStemMode: 2 | 4 = 2) => {
     const { status } = subscription;
     if (status !== "active") {
+      trackEvent("split_blocked_subscription_inactive", { requested_stems: requestedStemMode });
       await subscription.startCheckout("basic");
       return;
     }
@@ -103,11 +111,17 @@ export function useStemSplitting({
     const file = useAppStore.getState().uploadedFile;
     if (!file || !(file instanceof File) || file.size === 0) {
       setUploadState((prev) => ({ ...prev, splitError: "Upload an audio file first." }));
+      trackEvent("split_failed_validation", { reason: "missing_upload", requested_stems: requestedStemMode });
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       const mb = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
       setUploadState((prev) => ({ ...prev, splitError: `File too large. Maximum size is ${mb}MB.` }));
+      trackEvent("split_failed_validation", {
+        reason: "file_too_large",
+        requested_stems: requestedStemMode,
+        max_upload_mb: mb,
+      });
       return;
     }
     setUploadState((prev) => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null }));
@@ -116,6 +130,12 @@ export function useStemSplitting({
       // Basic: 2-stem only.
       const stemsArg =
         requestedStemMode === 4 && !isBasicPlan ? ("4" as const) : ("2" as const);
+      trackEvent("split_started", {
+        requested_stems: requestedStemMode,
+        actual_stems: Number(stemsArg),
+        quality: splitQuality,
+        plan: subscription.plan ?? "none",
+      });
       const res = await splitStems(file, stemsArg, splitQuality, (s) => {
         setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
         if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
@@ -129,13 +149,22 @@ export function useStemSplitting({
         splitProgress: 100,
         pipelineIndex: 3,
       }));
+      trackEvent("split_completed", {
+        stems_count: res.stems.length,
+        quality: splitQuality,
+      });
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Split failed";
       setUploadState((prev) => ({
         ...prev,
-        splitError: err instanceof Error ? err.message : "Split failed",
+        splitError: errMsg,
         splitProgress: 0,
         pipelineIndex: 0,
       }));
+      trackEvent("split_failed", {
+        quality: splitQuality,
+        error: errMsg.slice(0, 120),
+      });
     } finally {
       setUploadState((prev) => ({ ...prev, isSplitting: false }));
     }
@@ -144,10 +173,12 @@ export function useStemSplitting({
   const triggerExpand = useCallback(async () => {
     if (isBasicPlan) {
       setSplitError("4-stem expand requires Premium or Studio.");
+      trackEvent("expand_blocked_basic_plan");
       return;
     }
     const { splitJobId, splitResultStems } = useAppStore.getState();
     if (!splitJobId || splitResultStems.length !== 2) return;
+    trackEvent("expand_started", { quality: splitQuality, from_stems: splitResultStems.length });
     setUploadState((prev) => ({ ...prev, splitError: null, isExpanding: true, splitProgress: 0, pipelineIndex: 0 }));
     try {
       const res = await expandStems(splitJobId, splitQuality, (s) => {
@@ -163,13 +194,16 @@ export function useStemSplitting({
         splitProgress: 100,
         pipelineIndex: 3,
       }));
+      trackEvent("expand_completed", { stems_count: res.stems.length, quality: splitQuality });
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Expand failed";
       setUploadState((prev) => ({
         ...prev,
-        splitError: err instanceof Error ? err.message : "Expand failed",
+        splitError: errMsg,
         splitProgress: 0,
         pipelineIndex: 0,
       }));
+      trackEvent("expand_failed", { error: errMsg.slice(0, 120), quality: splitQuality });
     } finally {
       setUploadState((prev) => ({ ...prev, isExpanding: false }));
     }
