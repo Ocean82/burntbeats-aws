@@ -82,13 +82,39 @@
     background: rgba(255, 156, 105, 0.28);
     color: white;
   }
+
+  /* Custom dark scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
 }
+
 
 /* Pair standard line-clamp alongside -webkit-line-clamp for linter compliance */
 @layer utilities {
   [class*="line-clamp"] {
     -webkit-line-clamp: var(--tw-line-clamp);
     line-clamp: var(--tw-line-clamp);
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 }
 

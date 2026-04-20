@@ -190,7 +190,7 @@ export function ProcessingSettingsPanel({
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onDropUpload(e.dataTransfer.files?.[0] ?? null); }}
             onClick={!uploadedFile ? onBrowseUpload : undefined}
             className={cn(
-              "flex min-w-0 basis-full cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center lg:basis-auto lg:flex-1",
+              "flex min-w-0 basis-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-4 transition-all lg:basis-auto lg:flex-1",
               !uploadedFile
                 ? "border-amber-400/60 bg-amber-950/40 shadow-[0_0_24px_rgba(255,140,80,0.35)] hover:border-amber-400/90 hover:bg-amber-950/60 hover:shadow-[0_0_32px_rgba(255,140,80,0.5)] active:scale-[0.99]"
                 : "border-white/10 bg-black/20 hover:border-white/20",
@@ -201,7 +201,7 @@ export function ProcessingSettingsPanel({
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
               {uploadedFile ? uploadName : isDragging ? "Drop it!" : "Click to upload or drag & drop"}
             </span>
-            <div className="ml-auto flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
+            <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
               {uploadedFile && (
                 <button
                   type="button"
@@ -236,7 +236,7 @@ export function ProcessingSettingsPanel({
             onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onLoadStems(e.dataTransfer.files); }}
             onClick={() => loadStemsInputRef.current?.click()}
             className={cn(
-              "flex min-w-0 basis-full cursor-pointer flex-wrap items-start gap-3 rounded-xl border px-4 py-4 transition-all sm:flex-nowrap sm:items-center lg:basis-auto lg:flex-1",
+              "flex min-w-0 basis-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-4 transition-all lg:basis-auto lg:flex-1",
               "border-white/20 bg-white/[0.03] hover:border-amber-400/40 hover:bg-white/[0.05] active:scale-[0.99]",
               isDragging && "scale-[1.02] border-amber-400/60 bg-white/[0.06]",
             )}
@@ -245,7 +245,7 @@ export function ProcessingSettingsPanel({
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">
               {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : isDragging ? "Drop it!" : "Click to load stems or drag & drop"}
             </span>
-            <div className="ml-auto flex w-full shrink-0 flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
+            <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); loadStemsInputRef.current?.click(); }}
@@ -270,7 +270,7 @@ export function ProcessingSettingsPanel({
         {/* Quality selector */}
         <div data-testid="quality-controls" className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-1.5 sm:w-auto">
           <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Quality</span>
-          <div className="flex w-full rounded-xl border border-white/10 bg-black/20 p-0.5 sm:w-auto">
+          <div className="flex w-full overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-0.5 sm:w-auto scrollbar-hide">
             {qualityOptions.map((opt) => (
               <button
                 key={opt.value}

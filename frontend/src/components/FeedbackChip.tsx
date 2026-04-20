@@ -28,7 +28,7 @@ export function FeedbackChip() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[11px] font-medium text-white/75 shadow-lg backdrop-blur-md hover:text-white"
+        className="fixed bottom-24 right-5 z-40 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[11px] font-medium text-white/75 shadow-lg backdrop-blur-md hover:text-white"
       >
         How&apos;s Burnt Beats so far?
       </button>
@@ -36,7 +36,7 @@ export function FeedbackChip() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 w-72 rounded-2xl border border-white/15 bg-black/90 p-3 text-[11px] text-white/80 shadow-xl backdrop-blur-md">
+    <div className="fixed bottom-24 right-5 z-40 w-72 rounded-2xl border border-white/15 bg-black/90 p-3 text-[11px] text-white/80 shadow-xl backdrop-blur-md">
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="font-semibold uppercase tracking-[0.18em] text-white/55">
           Quick feedback

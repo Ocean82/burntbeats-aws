@@ -533,7 +533,7 @@ export function App() {
   });
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-white">
       <a
         href="#main-content"
         className="fixed left-4 top-4 z-[100] -translate-y-[130%] rounded-xl border border-amber-400/50 bg-[#1a1412]/95 px-4 py-2.5 text-sm font-medium text-white shadow-lg outline-none transition-transform duration-200 focus-visible:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-400/50"
