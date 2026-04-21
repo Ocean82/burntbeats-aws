@@ -5,6 +5,7 @@
  */
 import { useCallback, useRef, useState } from "react";
 import lamejs from "lamejs";
+import JSZip from "jszip";
 import { fetchStemWavAsBlob, serverExportMasterWav } from "../api";
 import { SERVER_EXPORT_ENABLED } from "../config";
 import type { StemResult } from "../types";
@@ -423,6 +424,10 @@ export function useExport(): UseExportReturn {
     }
     setIsExporting(true);
     try {
+      const requiresZip = options.target === "stems" || options.target === "all";
+      let masterBlob: { blob: Blob; filename: string } | null = null;
+      const baseName = stripFileExtension(uploadName);
+
       if (options.target === "master" || options.target === "all") {
         const normalize = options.normalize;
         const format = options.format;
@@ -434,32 +439,77 @@ export function useExport(): UseExportReturn {
           Array.isArray(serverExportStemIds) &&
           serverExportStemIds.length > 0;
 
-        if (format === "mp3") {
-          // MP3 export currently uses client-side encoding from rendered WAV.
-          await exportMasterMp3({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, wrapErr);
-        } else if (canTryServer) {
-          try {
-            await exportMasterWavServer(serverExportJobId as string, serverExportStemIds as string[], stemStates, uploadName, normalize);
-          } catch (e) {
-            const status = typeof e === "object" && e !== null && "status" in e ? (e as { status: unknown }).status : undefined;
-            // Server export disabled => fall back to client export.
-            if (status === 404) {
-              await exportMasterWav({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, wrapErr);
-            } else {
-              throw e;
+        let curBlob: Blob | undefined;
+        try {
+          if (format === "mp3") {
+            const wavB = await renderClientMasterWavBlob({ normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
+            curBlob = encodeWavToMp3(await wavB.arrayBuffer());
+          } else if (canTryServer) {
+            try {
+              const stemStatesSubset: Record<string, StemEditorState> = {};
+              for (const id of serverExportStemIds as string[]) {
+                if (stemStates[id]) stemStatesSubset[id] = stemStates[id];
+              }
+              curBlob = await serverExportMasterWav({
+                job_id: serverExportJobId as string,
+                stem_ids: serverExportStemIds as string[],
+                stem_states: stemStatesSubset,
+                upload_name: uploadName,
+                normalize: normalize ?? false,
+              });
+            } catch (e) {
+              const status = typeof e === "object" && e !== null && "status" in e ? (e as { status: unknown }).status : undefined;
+              if (status === 404) {
+                curBlob = await renderClientMasterWavBlob({ normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
+              } else {
+                throw e;
+              }
             }
+          } else {
+            curBlob = await renderClientMasterWavBlob({ normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
           }
-        } else {
-          await exportMasterWav({ normalize, skipBusy: true }, stemBuffers, splitResultStems, stemStates, uploadName, wrapErr);
+          if (curBlob) {
+            masterBlob = { blob: curBlob, filename: buildMasterExportFilename(uploadName, format) };
+          }
+        } catch (e) {
+          wrapErr(e instanceof Error ? e.message : "Master export failed");
+        }
+
+        // If not zipping, just download it directly now.
+        if (masterBlob && !requiresZip && !hadError) {
+          triggerDownload(masterBlob.blob, masterBlob.filename);
         }
       }
-      if (options.target === "stems" || options.target === "all") {
-        const baseName = stripFileExtension(uploadName);
+
+      if (requiresZip && !hadError) {
         // Only job-backed stems (split pipeline). Loaded file stems use blob: URLs — skip those here.
-        const jobBacked = splitResultStems.filter((s) =>
-          s.url.includes("/api/stems/file/"),
+        const jobBacked = splitResultStems.filter((s) => s.url.includes("/api/stems/file/"));
+        
+        if (jobBacked.length === 0 && !masterBlob) {
+          wrapErr("No valid stems or master track to export.");
+          return;
+        }
+
+        const zip = new JSZip();
+
+        if (masterBlob) {
+          zip.file(masterBlob.filename, masterBlob.blob);
+        }
+
+        // Fetch all stem blobs concurrently for high performance
+        const stemResults = await Promise.all(
+          jobBacked.map(async (stem) => {
+            const blob = await fetchStemWavAsBlob(stem.url);
+            return { id: stem.id, blob };
+          })
         );
-        for (const stem of jobBacked) await downloadStemByUrl(stem, baseName);
+
+        for (const sr of stemResults) {
+          zip.file(`${baseName}_${sr.id}.wav`, sr.blob);
+        }
+
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        triggerDownload(zipBlob, `${baseName}_export.zip`);
       }
       lastExportAtRef.current = Date.now();
       onClose();
