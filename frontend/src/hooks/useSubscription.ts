@@ -9,20 +9,34 @@ import { API_BASE, isLocalDevFullApp } from "../config";
 import { userFacingHttpError } from "../userFacingError";
 import { trackEvent } from "../analytics/events";
 
-async function readBillingErrorMessage(res: Response, kind: "checkout" | "portal"): Promise<string> {
+async function readBillingErrorMessage(
+  res: Response,
+  kind: "checkout" | "portal",
+): Promise<string> {
   const text = await res.text().catch(() => "");
   let bodyError: string | null = null;
   try {
     const j = text ? JSON.parse(text) : null;
-    if (j && typeof j === "object" && j !== null && typeof /** @type {{ error?: unknown }} */ (j).error === "string") {
-      bodyError = /** @type {{ error: string }} */ (j).error;
+    if (
+      j &&
+      typeof j === "object" &&
+      j !== null &&
+      typeof (/** @type {{ error?: unknown }} */ j.error) === "string"
+    ) {
+      bodyError = /** @type {{ error: string }} */ j.error;
     }
   } catch {
     /* ignore */
   }
   const devFb =
-    kind === "checkout" ? `Checkout failed (${res.status})` : `Billing portal failed (${res.status})`;
-  return userFacingHttpError(res.status, bodyError, text.slice(0, 800) || devFb);
+    kind === "checkout"
+      ? `Checkout failed (${res.status})`
+      : `Billing portal failed (${res.status})`;
+  return userFacingHttpError(
+    res.status,
+    bodyError,
+    text.slice(0, 800) || devFb,
+  );
 }
 
 function notifyBillingFailure(context: string, err: unknown) {
@@ -42,7 +56,7 @@ function getStripeCustomerPortalLoginUrl(): string {
   return typeof u === "string" && u.startsWith("http") ? u.trim() : "";
 }
 
-export type Plan = "basic" | "premium" | "studio" | "topup";
+export type Plan = "basic" | "premium" | "studio" | "topup" | "single";
 export type SubscriptionStatus = "loading" | "active" | "inactive" | "error";
 
 export interface UseSubscriptionResult {
@@ -64,7 +78,9 @@ export function useSubscription(): UseSubscriptionResult {
   const [status, setStatus] = useState<SubscriptionStatus>(
     localFullApp ? "active" : "loading",
   );
-  const [plan, setPlan] = useState<Plan | null>(localFullApp ? "premium" : null);
+  const [plan, setPlan] = useState<Plan | null>(
+    localFullApp ? "premium" : null,
+  );
   const [billingError, setBillingError] = useState<string | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -73,13 +89,21 @@ export function useSubscription(): UseSubscriptionResult {
       setPlan("premium");
       return;
     }
-    if (!isSignedIn) { setStatus("inactive"); setPlan(null); return; }
+    if (!isSignedIn) {
+      setStatus("inactive");
+      setPlan(null);
+      return;
+    }
     try {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/api/billing/subscription`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) { setStatus("inactive"); setPlan(null); return; }
+      if (!res.ok) {
+        setStatus("inactive");
+        setPlan(null);
+        return;
+      }
       const data = (await res.json()) as { active: boolean; plan: Plan | null };
       setStatus(data.active ? "active" : "inactive");
       setPlan(data.active ? data.plan : null);
@@ -89,7 +113,9 @@ export function useSubscription(): UseSubscriptionResult {
     }
   }, [getToken, isSignedIn, localFullApp]);
 
-  useEffect(() => { void fetchStatus(); }, [fetchStatus]);
+  useEffect(() => {
+    void fetchStatus();
+  }, [fetchStatus]);
 
   // Refetch after Stripe redirects back with ?checkout=success
   useEffect(() => {
@@ -99,33 +125,49 @@ export function useSubscription(): UseSubscriptionResult {
     }
   }, [fetchStatus]);
 
-  const startCheckout = useCallback(async (selectedPlan: Plan) => {
-    if (localFullApp) return;
-    trackEvent("checkout_started", { plan: selectedPlan });
-    try {
-      const token = await getToken();
-      const res = await fetch(`${API_BASE}/api/billing/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan: selectedPlan, returnUrl: checkoutReturnBase() }),
-      });
-      if (!res.ok) {
-        const msg = await readBillingErrorMessage(res, "checkout");
-        throw new Error(msg);
+  const startCheckout = useCallback(
+    async (selectedPlan: Plan) => {
+      if (localFullApp) return;
+      trackEvent("checkout_started", { plan: selectedPlan });
+      try {
+        const token = await getToken();
+        const res = await fetch(`${API_BASE}/api/billing/checkout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            plan: selectedPlan,
+            returnUrl: checkoutReturnBase(),
+          }),
+        });
+        if (!res.ok) {
+          const msg = await readBillingErrorMessage(res, "checkout");
+          throw new Error(msg);
+        }
+        const { url } = (await res.json()) as { url: string };
+        if (!url) throw new Error("Checkout did not return a URL");
+        trackEvent("checkout_redirected", { plan: selectedPlan });
+        window.location.href = url;
+      } catch (err) {
+        notifyBillingFailure("Checkout failed:", err);
+        setBillingError(
+          err instanceof Error
+            ? err.message
+            : "Checkout failed. Please try again.",
+        );
+        trackEvent("checkout_failed", {
+          plan: selectedPlan,
+          error: (err instanceof Error ? err.message : "Checkout failed").slice(
+            0,
+            120,
+          ),
+        });
       }
-      const { url } = (await res.json()) as { url: string };
-      if (!url) throw new Error("Checkout did not return a URL");
-      trackEvent("checkout_redirected", { plan: selectedPlan });
-      window.location.href = url;
-    } catch (err) {
-      notifyBillingFailure("Checkout failed:", err);
-      setBillingError(err instanceof Error ? err.message : "Checkout failed. Please try again.");
-      trackEvent("checkout_failed", {
-        plan: selectedPlan,
-        error: (err instanceof Error ? err.message : "Checkout failed").slice(0, 120),
-      });
-    }
-  }, [getToken, localFullApp]);
+    },
+    [getToken, localFullApp],
+  );
 
   const openPortal = useCallback(async () => {
     if (localFullApp) return;
@@ -140,7 +182,10 @@ export function useSubscription(): UseSubscriptionResult {
       const token = await getToken();
       const res = await fetch(`${API_BASE}/api/billing/portal`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ returnUrl: checkoutReturnBase() }),
       });
       if (!res.ok) {
@@ -153,12 +198,26 @@ export function useSubscription(): UseSubscriptionResult {
       window.location.href = url;
     } catch (err) {
       notifyBillingFailure("Portal failed:", err);
-      setBillingError(err instanceof Error ? err.message : "Billing portal failed. Please try again.");
+      setBillingError(
+        err instanceof Error
+          ? err.message
+          : "Billing portal failed. Please try again.",
+      );
       trackEvent("billing_portal_failed", {
-        error: (err instanceof Error ? err.message : "Billing portal failed").slice(0, 120),
+        error: (err instanceof Error
+          ? err.message
+          : "Billing portal failed"
+        ).slice(0, 120),
       });
     }
   }, [getToken, localFullApp]);
 
-  return { status, plan, billingError, startCheckout, openPortal, refetch: fetchStatus };
+  return {
+    status,
+    plan,
+    billingError,
+    startCheckout,
+    openPortal,
+    refetch: fetchStatus,
+  };
 }

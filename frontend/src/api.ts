@@ -204,7 +204,8 @@ const STATUS_POLL_MAX_MS = Number(import.meta.env.VITE_STATUS_POLL_MAX_MS) || 30
 export async function startStemSplit(
   file: File,
   stems: "2" | "4",
-  quality?: SplitQuality
+  quality?: SplitQuality,
+  isSample?: boolean
 ): Promise<{ job_id: string }> {
   if (!file || !(file instanceof File) || file.size === 0) {
     throw new Error("No file provided. Upload an audio file first.");
@@ -218,6 +219,7 @@ export async function startStemSplit(
   form.append("file", file);
   form.append("stems", stems);
   if (quality) form.append("quality", quality);
+  if (isSample) form.append("sample", "true");
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), SPLIT_ACCEPT_TIMEOUT_MS);
@@ -322,9 +324,10 @@ export async function splitStems(
   file: File,
   stems: "2" | "4",
   quality?: SplitQuality,
+  isSample?: boolean,
   onProgress?: (status: StemJobStatus) => void
 ): Promise<SplitResponse> {
-  const { job_id } = await startStemSplit(file, stems, quality);
+  const { job_id } = await startStemSplit(file, stems, quality, isSample);
   const final = await pollStemJobUntilDone(job_id, (s) => onProgress?.(s));
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems };

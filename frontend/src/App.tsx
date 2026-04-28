@@ -121,6 +121,7 @@ export function App() {
     splitJobId,
     loadedStems,
     splitError,
+    isSample,
     isDragging,
     isSplitting,
     isExpanding,
@@ -144,7 +145,12 @@ export function App() {
 
   useEffect(() => {
     void refetchUsage();
-  }, [splitResultStems.length, subscription.status, localDevFullApp, refetchUsage]);
+  }, [
+    splitResultStems.length,
+    subscription.status,
+    localDevFullApp,
+    refetchUsage,
+  ]);
   const isBasicPlan =
     subscription.status === "active" && subscription.plan === "basic";
   const stemQualityOptions = isBasicPlan ? "speed_only" : "full";
@@ -243,13 +249,19 @@ export function App() {
   );
 
   // ── Stem loading (fetch WAVs → AudioBuffers) ──────────────────────────────
-  const { stemBuffers, setStemBuffers, isLoadingStems, clearStemLoadingState, loadingError, retryLoadStems } =
-    useStemLoading({
-      allStemEntries,
-      audioContextRef,
-      setStemStates,
-      setSplitError,
-    });
+  const {
+    stemBuffers,
+    setStemBuffers,
+    isLoadingStems,
+    clearStemLoadingState,
+    loadingError,
+    retryLoadStems,
+  } = useStemLoading({
+    allStemEntries,
+    audioContextRef,
+    setStemStates,
+    setSplitError,
+  });
 
   const { isComparingExport, exportCompareSummary, onCompareExport } =
     useExportCompare({
@@ -396,6 +408,14 @@ export function App() {
   );
 
   const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
+
+  useEffect(() => {
+    const handleOpenPricing = () => setActiveView("pricing");
+    window.addEventListener("burntbeats:open-pricing", handleOpenPricing);
+    return () =>
+      window.removeEventListener("burntbeats:open-pricing", handleOpenPricing);
+  }, []);
+
   const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [showDevLatencyPanel, setShowDevLatencyPanel] = useState(true);
@@ -565,6 +585,7 @@ export function App() {
               isExporting={isExporting}
               stemCount={mixStems.length}
               allowStemBundleTargets={exportAllowStemBundleTargets}
+              isSample={isSample}
             />
           </Suspense>
         ) : null}
@@ -747,7 +768,10 @@ export function App() {
               <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
                 <button
                   type="button"
-                  onClick={() => { undoStemStates(); setUndoToast("Changes undone"); }}
+                  onClick={() => {
+                    undoStemStates();
+                    setUndoToast("Changes undone");
+                  }}
                   disabled={!canUndo}
                   className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white"
                   title="Undo (Ctrl+Z)"
@@ -758,7 +782,10 @@ export function App() {
                 <div className="h-4 w-px bg-white/10" />
                 <button
                   type="button"
-                  onClick={() => { redoStemStates(); setUndoToast("Changes redone"); }}
+                  onClick={() => {
+                    redoStemStates();
+                    setUndoToast("Changes redone");
+                  }}
                   disabled={!canRedo}
                   className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white"
                   title="Redo (Ctrl+Y)"
@@ -839,7 +866,11 @@ export function App() {
                   window.dispatchEvent(new Event("burntbeats:open-onboarding"));
                 }}
                 onOpenLegal={() => {
-                  window.open("/terms-of-service", "_blank", "noopener,noreferrer");
+                  window.open(
+                    "/terms-of-service",
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
                 }}
                 pricingLabel="Plans & subscriptions"
                 pricingTitle="View and select subscriptions"
@@ -982,9 +1013,9 @@ export function App() {
                       onUpgradeToPremium={() =>
                         void subscription.startCheckout("premium")
                       }
-                      onSplit={(requestedStemMode) => {
+                      onSplit={(requestedStemMode, isSample) => {
                         startUiLatencyMark("mixer-ready-after-stems");
-                        void triggerSplit(requestedStemMode);
+                        void triggerSplit(requestedStemMode, isSample);
                       }}
                       isSplitting={isSplitting}
                       splitResultStemsLength={splitResultStems.length}
@@ -1198,7 +1229,11 @@ export function App() {
                         onSeekMix={handleSeekMix}
                         isExporting={isExporting}
                         onExport={() => {
-                          openModal("export");
+                          if (isSample) {
+                            setActiveView("pricing");
+                          } else {
+                            openModal("export");
+                          }
                         }}
                         isComparingExport={isComparingExport}
                         onCompareExport={onCompareExport}
@@ -1339,7 +1374,11 @@ export function App() {
             type="button"
             onClick={() => setShowDevLatencyPanel((v) => !v)}
             className="fixed bottom-4 left-4 z-[60] rounded-lg border border-white/15 bg-black/80 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/75 backdrop-blur-md transition hover:text-white"
-            aria-label={showDevLatencyPanel ? "Hide dev latency panel" : "Show dev latency panel"}
+            aria-label={
+              showDevLatencyPanel
+                ? "Hide dev latency panel"
+                : "Show dev latency panel"
+            }
           >
             {showDevLatencyPanel ? "Hide latency" : "Show latency"}
           </button>

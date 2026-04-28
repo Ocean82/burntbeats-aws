@@ -10,6 +10,7 @@ export interface AppState {
   splitJobId: string | null;
   loadedStems: Array<{ id: string; label: string; url: string }>;
   splitError: string | null;
+  isSample: boolean;
   isDragging: boolean;
   isSplitting: boolean;
   isExpanding: boolean;
@@ -28,6 +29,7 @@ export const useAppStore = create<AppState>((set) => ({
   splitJobId: null,
   loadedStems: [],
   splitError: null,
+  isSample: false,
   isDragging: false,
   isSplitting: false,
   isExpanding: false,

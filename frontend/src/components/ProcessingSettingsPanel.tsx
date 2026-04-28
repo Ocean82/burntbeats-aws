@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { FolderOpen, Upload, ChevronDown, ChevronUp, Lock, Loader2 } from "lucide-react";
+import {
+  FolderOpen,
+  Upload,
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  Loader2,
+} from "lucide-react";
 import type { SplitQuality } from "../api";
 import type React from "react";
 
@@ -37,7 +44,7 @@ export interface ProcessingSettingsPanelProps {
   stemQualityOptions?: "speed_only" | "full";
   canExpandToFourStems?: boolean;
 
-  onSplit: (requestedStemMode: 2 | 4) => void;
+  onSplit: (requestedStemMode: 2 | 4, isSample?: boolean) => void;
   isSplitting: boolean;
   splitProgress?: number;
   splitResultStemsLength: number;
@@ -102,23 +109,38 @@ export function ProcessingSettingsPanel({
 }: ProcessingSettingsPanelProps) {
   const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
   const [loadExpanded, setLoadExpanded] = useState(false);
+  const [isSample, setIsSample] = useState(false);
 
   const canChoosePaidQuality = stemQualityOptions !== "speed_only";
 
   const qualityOptions = useMemo(() => {
-    const opts: Array<{ value: SplitQuality; label: string; enabled: boolean; hint: string }> = [
-      { value: "speed", label: "Fast", enabled: true, hint: "Quickest turnaround" },
+    const opts: Array<{
+      value: SplitQuality;
+      label: string;
+      enabled: boolean;
+      hint: string;
+    }> = [
+      {
+        value: "speed",
+        label: "Fast",
+        enabled: true,
+        hint: "Quickest turnaround",
+      },
       {
         value: "balanced",
         label: "Balanced",
         enabled: canChoosePaidQuality,
-        hint: canChoosePaidQuality ? "Good quality + speed balance" : "Requires Premium or Studio",
+        hint: canChoosePaidQuality
+          ? "Good quality + speed balance"
+          : "Requires Premium or Studio",
       },
       {
         value: "quality",
         label: "Quality",
         enabled: canChoosePaidQuality,
-        hint: canChoosePaidQuality ? "Higher quality, slower than balanced" : "Requires Premium or Studio",
+        hint: canChoosePaidQuality
+          ? "Higher quality, slower than balanced"
+          : "Requires Premium or Studio",
       },
       // Intentionally not offering "ultra" in UI:
       // - Ultra is not guaranteed to be available on CPU-only EC2 deployments
@@ -135,7 +157,8 @@ export function ProcessingSettingsPanel({
   }, [quality, onQualityChange]);
 
   useEffect(() => {
-    if (!canExpandToFourStems && requestedStemMode !== 2) setRequestedStemMode(2);
+    if (!canExpandToFourStems && requestedStemMode !== 2)
+      setRequestedStemMode(2);
   }, [canExpandToFourStems, requestedStemMode]);
 
   const showUsageRow =
@@ -147,16 +170,18 @@ export function ProcessingSettingsPanel({
 
   return (
     <div data-testid="processing-settings-panel">
-      {subscriptionInactive && sourceMode === "split" && (
+      {subscriptionInactive && sourceMode === "split" && !isSample && (
         <p className="mb-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100/95">
-          <span className="font-semibold text-amber-50">Active plan required to split.</span>{" "}
-          Choosing a plan opens secure Stripe checkout. Export and mixing stay available after you load or split stems.
+          <span className="font-semibold text-amber-50">
+            Active plan required to split full tracks.
+          </span>{" "}
+          Choosing a plan opens secure Stripe checkout. Or, check "Try for free"
+          below.
         </p>
       )}
 
       {/* ── Horizontal toolbar row ── */}
       <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
-
         {/* Mode toggle */}
         <div className="flex shrink-0 rounded-xl border border-white/10 bg-black/20 p-0.5">
           <button
@@ -164,7 +189,9 @@ export function ProcessingSettingsPanel({
             onClick={() => onSourceModeChange("split")}
             className={cn(
               "rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              sourceMode === "split" ? "bg-amber-500/20 text-amber-200" : "text-white/60 hover:text-white",
+              sourceMode === "split"
+                ? "bg-amber-500/20 text-amber-200"
+                : "text-white/60 hover:text-white",
             )}
           >
             Split
@@ -174,7 +201,9 @@ export function ProcessingSettingsPanel({
             onClick={() => onSourceModeChange("load")}
             className={cn(
               "rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              sourceMode === "load" ? "bg-amber-500/20 text-amber-200" : "text-white/60 hover:text-white",
+              sourceMode === "load"
+                ? "bg-amber-500/20 text-amber-200"
+                : "text-white/60 hover:text-white",
             )}
           >
             Load
@@ -185,27 +214,48 @@ export function ProcessingSettingsPanel({
         {sourceMode === "split" && (
           <div
             data-testid="split-upload-dropzone"
-            onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              onSetIsDragging(true);
+            }}
             onDragLeave={() => onSetIsDragging(false)}
-            onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onDropUpload(e.dataTransfer.files?.[0] ?? null); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              onSetIsDragging(false);
+              onDropUpload(e.dataTransfer.files?.[0] ?? null);
+            }}
             onClick={!uploadedFile ? onBrowseUpload : undefined}
             className={cn(
               "flex min-w-0 basis-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-4 transition-all lg:basis-auto lg:flex-1",
               !uploadedFile
                 ? "border-amber-400/60 bg-amber-950/40 shadow-[0_0_24px_rgba(255,140,80,0.35)] hover:border-amber-400/90 hover:bg-amber-950/60 hover:shadow-[0_0_32px_rgba(255,140,80,0.5)] active:scale-[0.99]"
                 : "border-white/10 bg-black/20 hover:border-white/20",
-              isDragging && "scale-[1.02] border-amber-400/90 bg-amber-950/60 shadow-[0_0_32px_rgba(255,140,80,0.5)]",
+              isDragging &&
+                "scale-[1.02] border-amber-400/90 bg-amber-950/60 shadow-[0_0_32px_rgba(255,140,80,0.5)]",
             )}
           >
-            <Upload className={cn("h-5 w-5 shrink-0 transition-colors", !uploadedFile ? "text-amber-400" : "text-white/70")} strokeWidth={2} />
+            <Upload
+              className={cn(
+                "h-5 w-5 shrink-0 transition-colors",
+                !uploadedFile ? "text-amber-400" : "text-white/70",
+              )}
+              strokeWidth={2}
+            />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
-              {uploadedFile ? uploadName : isDragging ? "Drop it!" : "Click to upload or drag & drop"}
+              {uploadedFile
+                ? uploadName
+                : isDragging
+                  ? "Drop it!"
+                  : "Click to upload or drag & drop"}
             </span>
             <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
               {uploadedFile && (
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onClearUpload(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClearUpload();
+                  }}
                   className="min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
                 >
                   Clear
@@ -213,12 +263,15 @@ export function ProcessingSettingsPanel({
               )}
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onBrowseUpload(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBrowseUpload();
+                }}
                 className={cn(
                   "min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border px-3 py-1 text-xs font-semibold transition-all",
                   !uploadedFile
                     ? "border-amber-400/60 bg-amber-500/20 text-amber-200 hover:border-amber-400 hover:bg-amber-500/30"
-                    : "border-white/10 text-white/60 hover:border-white/30 hover:text-white"
+                    : "border-white/10 text-white/60 hover:border-white/30 hover:text-white",
                 )}
               >
                 {uploadedFile ? "Change" : "Browse"}
@@ -231,9 +284,16 @@ export function ProcessingSettingsPanel({
         {sourceMode === "load" && (
           <div
             data-testid="load-upload-dropzone"
-            onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              onSetIsDragging(true);
+            }}
             onDragLeave={() => onSetIsDragging(false)}
-            onDrop={(e) => { e.preventDefault(); onSetIsDragging(false); onLoadStems(e.dataTransfer.files); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              onSetIsDragging(false);
+              onLoadStems(e.dataTransfer.files);
+            }}
             onClick={() => loadStemsInputRef.current?.click()}
             className={cn(
               "flex min-w-0 basis-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-4 transition-all lg:basis-auto lg:flex-1",
@@ -241,14 +301,24 @@ export function ProcessingSettingsPanel({
               isDragging && "scale-[1.02] border-amber-400/60 bg-white/[0.06]",
             )}
           >
-            <FolderOpen className="h-5 w-5 shrink-0 text-white/60" strokeWidth={1.5} />
+            <FolderOpen
+              className="h-5 w-5 shrink-0 text-white/60"
+              strokeWidth={1.5}
+            />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">
-              {loadedStemCount > 0 ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded` : isDragging ? "Drop it!" : "Click to load stems or drag & drop"}
+              {loadedStemCount > 0
+                ? `${loadedStemCount} stem${loadedStemCount !== 1 ? "s" : ""} loaded`
+                : isDragging
+                  ? "Drop it!"
+                  : "Click to load stems or drag & drop"}
             </span>
             <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); loadStemsInputRef.current?.click(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  loadStemsInputRef.current?.click();
+                }}
                 className="min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-white/60 hover:border-white/30 hover:text-white"
               >
                 Browse
@@ -256,11 +326,18 @@ export function ProcessingSettingsPanel({
               {loadedStemCount > 0 && (
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); setLoadExpanded((v) => !v); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLoadExpanded((v) => !v);
+                  }}
                   className="text-white/50 hover:text-white"
                   aria-label="Toggle loaded stems list"
                 >
-                  {loadExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {loadExpanded ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                 </button>
               )}
             </div>
@@ -268,14 +345,21 @@ export function ProcessingSettingsPanel({
         )}
 
         {/* Quality selector */}
-        <div data-testid="quality-controls" className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-1.5 sm:w-auto">
-          <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Quality</span>
+        <div
+          data-testid="quality-controls"
+          className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-1.5 sm:w-auto"
+        >
+          <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">
+            Quality
+          </span>
           <div className="flex w-full overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-0.5 sm:w-auto scrollbar-hide">
             {qualityOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                disabled={!opt.enabled || isSplitting || splitResultStemsLength > 0}
+                disabled={
+                  !opt.enabled || isSplitting || splitResultStemsLength > 0
+                }
                 title={
                   splitResultStemsLength > 0
                     ? "Quality applies on the next upload. Upload a new file to choose again."
@@ -293,7 +377,12 @@ export function ProcessingSettingsPanel({
               >
                 <span className="inline-flex items-center gap-1">
                   {opt.label}
-                  {!opt.enabled && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+                  {!opt.enabled && (
+                    <Lock
+                      className="h-3 w-3 text-white/35"
+                      aria-hidden="true"
+                    />
+                  )}
                 </span>
               </button>
             ))}
@@ -308,7 +397,9 @@ export function ProcessingSettingsPanel({
         {/* Stem count: only before the first split — after that, 2→4 is Expand (not a second split). */}
         {splitResultStemsLength === 0 ? (
           <div className="flex w-full shrink-0 basis-full items-center gap-2 sm:basis-auto lg:w-auto">
-            <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">Stems</span>
+            <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">
+              Stems
+            </span>
             <div className="flex flex-col items-center gap-0.5">
               <input
                 type="range"
@@ -319,7 +410,11 @@ export function ProcessingSettingsPanel({
                 disabled={isSplitting}
                 onChange={(e) => {
                   const val = parseInt(e.target.value) as 2 | 4;
-                  if (val === 4 && !canExpandToFourStems && onUpgradeToPremium) {
+                  if (
+                    val === 4 &&
+                    !canExpandToFourStems &&
+                    onUpgradeToPremium
+                  ) {
                     onUpgradeToPremium();
                     return;
                   }
@@ -331,9 +426,19 @@ export function ProcessingSettingsPanel({
               />
               <div className="flex w-20 justify-between text-[10px] text-white/40 font-mono">
                 <span>2</span>
-                <span className={cn(requestedStemMode === 4 ? "text-amber-300" : "", !canExpandToFourStems && "inline-flex items-center gap-1")}>
+                <span
+                  className={cn(
+                    requestedStemMode === 4 ? "text-amber-300" : "",
+                    !canExpandToFourStems && "inline-flex items-center gap-1",
+                  )}
+                >
                   4
-                  {!canExpandToFourStems && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+                  {!canExpandToFourStems && (
+                    <Lock
+                      className="h-3 w-3 text-white/35"
+                      aria-hidden="true"
+                    />
+                  )}
                 </span>
               </div>
               {!canExpandToFourStems && (
@@ -345,7 +450,9 @@ export function ProcessingSettingsPanel({
           </div>
         ) : (
           <div className="flex shrink-0 flex-col justify-center rounded-xl border border-white/10 bg-black/20 px-3 py-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/45">Result</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+              Result
+            </span>
             <span className="text-xs font-medium text-white/80">
               {splitResultStemsLength === 2 ? "2 stems" : "4 stems"}
             </span>
@@ -354,34 +461,47 @@ export function ProcessingSettingsPanel({
 
         {/* Split / action button */}
         {sourceMode === "split" && (
-          <button
-            type="button"
-            onClick={() => onSplit(requestedStemMode)}
-            disabled={
-              !uploadedFile ||
-              isSplitting ||
-              splitResultStemsLength > 0
-            }
-            title={
-              splitResultStemsLength > 0
-                ? "Upload a new file to run separation again. Each upload is a new job."
-                : undefined
-            }
-            className="fire-button min-h-[44px] shrink-0 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSplitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Splitting{typeof splitProgress === "number" && splitProgress > 0 ? `… ${Math.round(splitProgress)}%` : "…"}
-              </>
-            ) : splitResultStemsLength > 0 ? (
-              "New file to split again"
-            ) : requestedStemMode === 4 ? (
-              "Split → 4 stems"
-            ) : (
-              "Split stems"
-            )}
-          </button>
+          <div className="flex shrink-0 flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => onSplit(requestedStemMode, isSample)}
+              disabled={
+                !uploadedFile || isSplitting || splitResultStemsLength > 0
+              }
+              title={
+                splitResultStemsLength > 0
+                  ? "Upload a new file to run separation again. Each upload is a new job."
+                  : undefined
+              }
+              className="fire-button min-h-[44px] shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSplitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Splitting
+                  {typeof splitProgress === "number" && splitProgress > 0
+                    ? `… ${Math.round(splitProgress)}%`
+                    : "…"}
+                </>
+              ) : splitResultStemsLength > 0 ? (
+                "New file to split again"
+              ) : requestedStemMode === 4 ? (
+                "Split → 4 stems"
+              ) : (
+                "Split stems"
+              )}
+            </button>
+            <label className="flex items-center gap-2 text-xs text-white/70 cursor-pointer hover:text-white transition">
+              <input
+                type="checkbox"
+                checked={isSample}
+                onChange={(e) => setIsSample(e.target.checked)}
+                disabled={isSplitting || splitResultStemsLength > 0}
+                className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-amber-500 focus:ring-offset-black disabled:opacity-50"
+              />
+              Try for free (30s sample)
+            </label>
+          </div>
         )}
 
         {/* Queue button */}
@@ -407,12 +527,15 @@ export function ProcessingSettingsPanel({
             >
               <span className="inline-flex items-center gap-1">
                 + Queue
-                {!canUseBatchQueue && <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />}
+                {!canUseBatchQueue && (
+                  <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />
+                )}
               </span>
             </button>
             {!canUseBatchQueue && (
               <span className="max-w-[12rem] text-[10px] text-white/45">
-                Premium &amp; Studio plans let you run whole queues automatically while you work.
+                Premium &amp; Studio plans let you run whole queues
+                automatically while you work.
               </span>
             )}
           </div>
@@ -420,28 +543,42 @@ export function ProcessingSettingsPanel({
 
         {/* Expanding indicator */}
         {isExpanding && (
-          <span className="shrink-0 text-xs text-amber-200/80">Expanding to 4 stems…</span>
+          <span className="shrink-0 text-xs text-amber-200/80">
+            Expanding to 4 stems…
+          </span>
         )}
 
         {/* Manual expand */}
-        {canExpandToFourStems && splitResultStemsLength === 2 && !isExpanding && !isSplitting && !splitError && (
-          <button
-            type="button"
-            onClick={() => onExpand()}
-            className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/60 hover:text-white"
-          >
-            Expand → 4 stems
-          </button>
-        )}
+        {canExpandToFourStems &&
+          splitResultStemsLength === 2 &&
+          !isExpanding &&
+          !isSplitting &&
+          !splitError && (
+            <button
+              type="button"
+              onClick={() => onExpand()}
+              className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/60 hover:text-white"
+            >
+              Expand → 4 stems
+            </button>
+          )}
       </div>
 
       {sourceMode === "split" && splitResultStemsLength > 0 && (
         <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-xs leading-relaxed text-white/65">
-          <span className="font-medium text-white/85">This upload is finished.</span>{" "}
-          To separate a different track, use <span className="text-white/90">Change</span> or{" "}
-          <span className="text-white/90">Clear</span> above and upload a new file — that starts a new job.
+          <span className="font-medium text-white/85">
+            This upload is finished.
+          </span>{" "}
+          To separate a different track, use{" "}
+          <span className="text-white/90">Change</span> or{" "}
+          <span className="text-white/90">Clear</span> above and upload a new
+          file — that starts a new job.
           {splitResultStemsLength === 2 && canExpandToFourStems ? (
-            <> Use <span className="text-amber-200/90">Expand → 4 stems</span> if you want four parts from this same separation.</>
+            <>
+              {" "}
+              Use <span className="text-amber-200/90">Expand → 4 stems</span> if
+              you want four parts from this same separation.
+            </>
           ) : null}
         </p>
       )}
@@ -463,11 +600,18 @@ export function ProcessingSettingsPanel({
           ) : (
             <>
               {usageBalance !== null && (
-                <span className="font-medium text-white/90">Balance: {Math.floor(usageBalance)} tokens</span>
+                <span className="font-medium text-white/90">
+                  Balance: {Math.floor(usageBalance)} tokens
+                </span>
               )}
               {estimatedSplitTokens !== null && (
                 <span className={cn(usageBalance !== null && "ml-2")}>
-                  · This split: ~{estimatedSplitTokens} token{estimatedSplitTokens === 1 ? "" : "s"}
+                  · This split:{" "}
+                  {isSample ? (
+                    <span className="text-emerald-400 font-bold">FREE</span>
+                  ) : (
+                    `~${estimatedSplitTokens} token${estimatedSplitTokens === 1 ? "" : "s"}`
+                  )}
                 </span>
               )}
               {splitResultStemsLength === 2 &&
@@ -479,7 +623,8 @@ export function ProcessingSettingsPanel({
                   </span>
                 )}
               <span className="mt-1 block text-xs text-white/50">
-                1 token ≈ 1 minute of audio (rounds up). Metered when enabled on the server.
+                1 token ≈ 1 minute of audio (rounds up). Metered when enabled on
+                the server.
               </span>
             </>
           )}
@@ -491,8 +636,13 @@ export function ProcessingSettingsPanel({
         <div className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3">
           <ul className="space-y-1.5">
             {loadedStems.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2">
-                <span className="min-w-0 truncate text-sm text-white">{s.label.replace(/\.[^/.]+$/, "")}</span>
+              <li
+                key={s.id}
+                className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2"
+              >
+                <span className="min-w-0 truncate text-sm text-white">
+                  {s.label.replace(/\.[^/.]+$/, "")}
+                </span>
                 <button
                   type="button"
                   onClick={() => onRemoveLoadedStem(s.id)}
@@ -523,7 +673,10 @@ export function ProcessingSettingsPanel({
         multiple
         className="hidden"
         aria-label="Load stem files"
-        onChange={(e) => { onLoadStems(e.target.files); e.target.value = ""; }}
+        onChange={(e) => {
+          onLoadStems(e.target.files);
+          e.target.value = "";
+        }}
       />
 
       {/* Error */}
@@ -537,13 +690,18 @@ export function ProcessingSettingsPanel({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-medium text-red-200">Split failed</p>
-                <p className="mt-0.5 break-words text-xs text-red-300/90">{splitError}</p>
+                <p className="mt-0.5 break-words text-xs text-red-300/90">
+                  {splitError}
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => { onDismissError(); onSplit(requestedStemMode); }}
+                onClick={() => {
+                  onDismissError();
+                  onSplit(requestedStemMode);
+                }}
                 className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-black transition hover:bg-amber-400"
               >
                 Try Again

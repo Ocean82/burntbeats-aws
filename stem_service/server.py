@@ -776,6 +776,7 @@ async def split(
     file: UploadFile = File(...),
     stems: str = Form("2"),
     quality: str | None = Form(None),
+    sample: str | None = Form(None),
 ) -> dict:
     """
     Start stem separation. Returns 202 with job_id. Separation runs in background.
@@ -800,6 +801,7 @@ async def split(
     quality_lower = (quality or "").strip().lower()
     prefer_speed = quality_lower == "speed"
     is_ultra = quality_lower == QUALITY_ULTRA
+    is_sample = (sample or "").strip().lower() in ("true", "1", "yes")
 
     # Ultra on CPU: allowed but slow. ultra.py will raise a clear error if the
     # library (audio-separator[cpu]) is not installed — no silent downgrade.
@@ -824,10 +826,11 @@ async def split(
         model_tier = "balanced"
 
     logger.info(
-        "Split request: stems=%s, quality=%s, model_tier=%s",
+        "Split request: stems=%s, quality=%s, model_tier=%s, sample=%s",
         stem_count,
         quality_mode,
         model_tier,
+        is_sample,
     )
 
     if _queue_condition is not None:
@@ -867,6 +870,32 @@ async def split(
     is_valid, error_msg = _validate_audio_file(input_path)
     if not is_valid:
         raise HTTPException(status_code=400, detail=error_msg)
+
+    # Clip for sample mode if requested
+    if is_sample:
+        from stem_service.ffmpeg_util import resolve_ffmpeg_executable
+        ffmpeg_exe = resolve_ffmpeg_executable()
+        if ffmpeg_exe:
+            # Clip to 60s. We use -c copy for speed, but re-encoding might be safer for some formats.
+            # For a 60s preview, -c copy is usually acceptable and near-instant.
+            clipped_path = out_dir / f"input_sample{suffix}"
+            cmd = [
+                str(ffmpeg_exe),
+                "-y",
+                "-ss", "0",
+                "-t", "60",
+                "-i", str(input_path),
+                "-c", "copy",
+                str(clipped_path)
+            ]
+            try:
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                if clipped_path.exists() and clipped_path.stat().st_size > 0:
+                    input_path.unlink()
+                    input_path = clipped_path
+                    logger.info("Clipped input to 60s for sample mode: %s", job_id)
+            except subprocess.CalledProcessError as e:
+                logger.error("Failed to clip sample for job %s: %s", job_id, e.stderr)
 
     correlation_id = getattr(request.state, "correlation_id", "unknown")
     queue_position = await _enqueue_split_job(

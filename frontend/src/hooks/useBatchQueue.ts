@@ -93,7 +93,7 @@ export function useBatchQueue(): UseBatchQueueReturn {
 
         updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "processing" as const, progress: 0 } : i));
         try {
-          const res = await splitStems(file, String(stemCount) as "2" | "4", splitQuality, (status) => {
+          const res = await splitStems(file, String(stemCount) as "2" | "4", splitQuality, false, (status) => {
             updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, progress: status.progress } : i));
           });
           updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "complete" as const, progress: 100 } : i));

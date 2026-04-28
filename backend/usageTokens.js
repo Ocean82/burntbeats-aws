@@ -33,25 +33,33 @@ async function withUserUsageLock(userId, fn) {
   const got = await redis.set(lockKey, "1", { NX: true, EX: 30 });
   if (!got) {
     throw Object.assign(
-      new Error("Another request is already in progress for this account. Please retry."),
+      new Error(
+        "Another request is already in progress for this account. Please retry.",
+      ),
       { status: 429 },
     );
   }
   try {
     return await fn();
   } finally {
-    await redis.del(lockKey).catch(() => { /* best-effort */ });
+    await redis.del(lockKey).catch(() => {
+      /* best-effort */
+    });
   }
 }
 
 /** @returns {boolean} */
 export function isUsageTokensEnabled() {
-  return ["1", "true", "yes"].includes((process.env.USAGE_TOKENS_ENABLED || "").toLowerCase());
+  return ["1", "true", "yes"].includes(
+    (process.env.USAGE_TOKENS_ENABLED || "").toLowerCase(),
+  );
 }
 
 /** Dev bypass: debit checks always pass */
 function isUsageTokensDevUnlimited() {
-  return ["1", "true", "yes"].includes((process.env.USAGE_TOKENS_DEV_UNLIMITED || "").toLowerCase());
+  return ["1", "true", "yes"].includes(
+    (process.env.USAGE_TOKENS_DEV_UNLIMITED || "").toLowerCase(),
+  );
 }
 
 /**
@@ -67,8 +75,12 @@ export function computeTokensFromDurationSeconds(durationSec) {
  * @param {number} durationSec
  * @param {string|undefined} _quality
  * @param {string|undefined} _stems
+ * @param {boolean} [isSample]
  */
-export function computeSplitCost(durationSec, _quality, _stems) {
+export function computeSplitCost(durationSec, _quality, _stems, isSample) {
+  if (isSample && isSampleModeEnabled() && durationSec <= 60) {
+    return 0;
+  }
   return computeTokensFromDurationSeconds(durationSec);
 }
 
@@ -124,12 +136,16 @@ export async function getUsageBalance(userId) {
   if (!clerk) return { balance: 0, periodEnd: null };
   const user = await clerk.users.getUser(userId);
   const u = user.privateMetadata?.usageTokens;
-  const rec = u && typeof u === "object" ? /** @type {Record<string, unknown>} */ (u) : {};
+  const rec =
+    u && typeof u === "object"
+      ? /** @type {Record<string, unknown>} */ (u)
+      : {};
   const balance = Number(rec.balance);
   const periodEnd = rec.periodEnd != null ? Number(rec.periodEnd) : null;
   return {
     balance: Number.isFinite(balance) ? balance : 0,
-    periodEnd: periodEnd != null && Number.isFinite(periodEnd) ? periodEnd : null,
+    periodEnd:
+      periodEnd != null && Number.isFinite(periodEnd) ? periodEnd : null,
   };
 }
 
@@ -146,7 +162,10 @@ export async function reserveUsageTokens(userId, cost) {
   await withUserUsageLock(userId, async () => {
     const user = await clerk.users.getUser(userId);
     const prev = user.privateMetadata?.usageTokens;
-    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const rec =
+      prev && typeof prev === "object"
+        ? { .../** @type {Record<string, unknown>} */ (prev) }
+        : {};
     const curBal = Number(rec.balance) || 0;
     if (curBal < cost) {
       const err = /** @type {Error & { status?: number }} */ (
@@ -185,7 +204,10 @@ export async function refundUsageTokens(userId, amount) {
   await withUserUsageLock(userId, async () => {
     const user = await clerk.users.getUser(userId);
     const prev = user.privateMetadata?.usageTokens;
-    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const rec =
+      prev && typeof prev === "object"
+        ? { .../** @type {Record<string, unknown>} */ (prev) }
+        : {};
     const curBal = Number(rec.balance) || 0;
     await clerk.users.updateUserMetadata(userId, {
       privateMetadata: {
@@ -237,8 +259,14 @@ export function subscriptionBillingPeriod(sub) {
  * @param {import("stripe").Stripe} stripe
  * @param {{ stripeEventId?: string }} [options]
  */
-export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, options = {}) {
-  const stripeEventId = typeof options.stripeEventId === "string" ? options.stripeEventId : "";
+export async function creditSubscriptionAllowance(
+  clerkUserId,
+  sub,
+  stripe,
+  options = {},
+) {
+  const stripeEventId =
+    typeof options.stripeEventId === "string" ? options.stripeEventId : "";
   const clerk = getClerkClient();
   if (!clerk) return;
 
@@ -254,7 +282,10 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
       await new Promise((r) => setTimeout(r, 200));
       const u0 = await clerk.users.getUser(clerkUserId);
       const r0 = u0.privateMetadata?.usageTokens;
-      const rec0 = r0 && typeof r0 === "object" ? /** @type {Record<string, unknown>} */ (r0) : {};
+      const rec0 =
+        r0 && typeof r0 === "object"
+          ? /** @type {Record<string, unknown>} */ (r0)
+          : {};
       if (rec0.lastCreditedPeriodStart === periodStart) return;
       return;
     }
@@ -263,10 +294,19 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
   try {
     const user = await clerk.users.getUser(clerkUserId);
     const prev = user.privateMetadata?.usageTokens;
-    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const rec =
+      prev && typeof prev === "object"
+        ? { .../** @type {Record<string, unknown>} */ (prev) }
+        : {};
 
-    if (stripeEventId && typeof rec.processedStripeCreditEventIds === "object" && rec.processedStripeCreditEventIds !== null) {
-      const ev = /** @type {Record<string, number>} */ (rec.processedStripeCreditEventIds);
+    if (
+      stripeEventId &&
+      typeof rec.processedStripeCreditEventIds === "object" &&
+      rec.processedStripeCreditEventIds !== null
+    ) {
+      const ev = /** @type {Record<string, number>} */ (
+        rec.processedStripeCreditEventIds
+      );
       if (ev[stripeEventId]) return;
     }
     if (rec.lastCreditedPeriodStart === periodStart) {
@@ -277,13 +317,23 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
     if (!priceId) return;
     const price = await stripe.prices.retrieve(priceId);
     const grant = tokensPerMonthFromPrice(price);
-    const periodEndMs = periodEnd != null && typeof periodEnd === "number" ? periodEnd * 1000 : null;
+    const periodEndMs =
+      periodEnd != null && typeof periodEnd === "number"
+        ? periodEnd * 1000
+        : null;
     const curBal = Number(rec.balance) || 0;
 
     /** @type {Record<string, number>} */
     let nextProcessed = {};
-    if (typeof rec.processedStripeCreditEventIds === "object" && rec.processedStripeCreditEventIds !== null) {
-      nextProcessed = { .../** @type {Record<string, number>} */ (rec.processedStripeCreditEventIds) };
+    if (
+      typeof rec.processedStripeCreditEventIds === "object" &&
+      rec.processedStripeCreditEventIds !== null
+    ) {
+      nextProcessed = {
+        .../** @type {Record<string, number>} */ (
+          rec.processedStripeCreditEventIds
+        ),
+      };
     }
     if (stripeEventId) {
       nextProcessed[stripeEventId] = Date.now();
@@ -300,11 +350,15 @@ export async function creditSubscriptionAllowance(clerkUserId, sub, stripe, opti
           lastCreditedPeriodStart: periodStart,
           lastCreditAt: Date.now(),
           lastCreditAmount: grant,
-          ...(stripeEventId ? { processedStripeCreditEventIds: nextProcessed } : {}),
+          ...(stripeEventId
+            ? { processedStripeCreditEventIds: nextProcessed }
+            : {}),
         },
       },
     });
-    console.log(`[usageTokens] credited ${grant} tokens user=${clerkUserId} period=${periodStart}`);
+    console.log(
+      `[usageTokens] credited ${grant} tokens user=${clerkUserId} period=${periodStart}`,
+    );
   } finally {
     if (redis && lockKey) {
       try {
@@ -331,9 +385,13 @@ export function tokensPerMonthFromPrice(price) {
     const n = Number(meta.token_allowance);
     if (Number.isFinite(n) && n > 0) return Math.floor(n);
   }
-  if (meta?.token_seconds_per_month != null && meta.token_seconds_per_month !== "") {
+  if (
+    meta?.token_seconds_per_month != null &&
+    meta.token_seconds_per_month !== ""
+  ) {
     const sec = Number(meta.token_seconds_per_month);
-    if (Number.isFinite(sec) && sec > 0) return Math.max(1, Math.ceil(sec / 60));
+    if (Number.isFinite(sec) && sec > 0)
+      return Math.max(1, Math.ceil(sec / 60));
   }
   const def = Number(process.env.USAGE_DEFAULT_TOKENS_PER_MONTH);
   return Number.isFinite(def) && def > 0 ? Math.floor(def) : 0;
@@ -356,7 +414,8 @@ export function tokensPerTopupFromPrice(price) {
   for (const key of ["token_seconds_per_topup", "token_second_per_topup"]) {
     if (meta?.[key] != null && meta[key] !== "") {
       const sec = Number(meta[key]);
-      if (Number.isFinite(sec) && sec > 0) return Math.max(1, Math.ceil(sec / 60));
+      if (Number.isFinite(sec) && sec > 0)
+        return Math.max(1, Math.ceil(sec / 60));
     }
   }
   // Backwards-compatible fallback for teams using a shared metadata key.
@@ -375,7 +434,10 @@ export async function creditTopupTokens(clerkUserId, grant) {
   await withUserUsageLock(clerkUserId, async () => {
     const user = await clerk.users.getUser(clerkUserId);
     const prev = user.privateMetadata?.usageTokens;
-    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const rec =
+      prev && typeof prev === "object"
+        ? { .../** @type {Record<string, unknown>} */ (prev) }
+        : {};
     const curBal = Number(rec.balance) || 0;
     await clerk.users.updateUserMetadata(clerkUserId, {
       privateMetadata: {
@@ -401,24 +463,27 @@ export async function creditTopupTokens(clerkUserId, grant) {
 export async function grantWelcomeSignupTokens(clerkUserId, grant) {
   const clerk = getClerkClient();
   if (!clerk) return { granted: false, balance: 0 };
-  if (!Number.isFinite(grant) || grant <= 0) {
-    const { balance } = await getUsageBalance(clerkUserId);
-    return { granted: false, balance };
-  }
+
+  // Ensure we always grant at least 1 token even if env is missing,
+  // but allow explicit 0 if that's what's intended.
+  const amount = Number.isFinite(grant) ? Math.floor(grant) : 1;
 
   /** @type {{ granted: boolean, balance: number }} */
   let result = { granted: false, balance: 0 };
   await withUserUsageLock(clerkUserId, async () => {
     const user = await clerk.users.getUser(clerkUserId);
     const prev = user.privateMetadata?.usageTokens;
-    const rec = prev && typeof prev === "object" ? { .../** @type {Record<string, unknown>} */ (prev) } : {};
+    const rec =
+      prev && typeof prev === "object"
+        ? { .../** @type {Record<string, unknown>} */ (prev) }
+        : {};
     const curBal = Number(rec.balance) || 0;
     if (rec.welcomeGrantAppliedAt) {
       result = { granted: false, balance: curBal };
       return;
     }
     const now = Date.now();
-    const nextBal = curBal + Math.floor(grant);
+    const nextBal = curBal + amount;
     await clerk.users.updateUserMetadata(clerkUserId, {
       privateMetadata: {
         .../** @type {Record<string, unknown>} */ (user.privateMetadata || {}),
@@ -426,13 +491,37 @@ export async function grantWelcomeSignupTokens(clerkUserId, grant) {
           ...rec,
           balance: nextBal,
           welcomeGrantAppliedAt: now,
-          welcomeGrantAmount: Math.floor(grant),
+          welcomeGrantAmount: amount,
           lastTopupAt: now,
-          lastTopupAmount: Math.floor(grant),
+          lastTopupAmount: amount,
         },
       },
     });
     result = { granted: true, balance: nextBal };
   });
   return result;
+}
+
+/**
+ * Check if sample mode is enabled.
+ * Sample mode allows free 30-60 second splits without consuming tokens.
+ * @returns {boolean}
+ */
+export function isSampleModeEnabled() {
+  return ["1", "true", "yes"].includes(
+    (process.env.SAMPLE_MODE_ENABLED || "").toLowerCase(),
+  );
+}
+
+/**
+ * Calculate token cost for sample mode.
+ * Always returns 0 tokens for durations up to 60 seconds.
+ * @param {number} durationSec
+ * @returns {number}
+ */
+export function calculateSampleModeCost(durationSec) {
+  if (isSampleModeEnabled() && durationSec <= 60) {
+    return 0; // Free for up to 60 seconds
+  }
+  return Math.max(1, Math.ceil(durationSec / 60));
 }

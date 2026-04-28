@@ -13,6 +13,7 @@ interface ImportMetaEnv {
   readonly VITE_SERVER_EXPORT_ENABLED?: string;
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string;
   readonly VITE_STRIPE_PRICING_TABLE_ID?: string;
+  readonly VITE_STRIPE_PACKAGE_PRICING_TABLE_ID?: string;
   /** Optional: Stripe Customer Portal login URL (Dashboard → Customer portal → Login link). If set, in-app Billing uses this instead of POST /api/billing/portal. */
   readonly VITE_STRIPE_CUSTOMER_PORTAL_URL?: string;
   /** Optional: GA4 measurement ID (G-xxxxxxxxxx). Baked in at build time; set in Docker/root .env for production. */

@@ -27,7 +27,10 @@ import {
   tokensPerTopupFromPrice,
 } from "./usageTokens.js";
 import { resolveStripeReturnUrl } from "./returnUrl.js";
-import { tryClaimWebhookEvent, releaseWebhookEventClaim } from "./stripeRedis.js";
+import {
+  tryClaimWebhookEvent,
+  releaseWebhookEventClaim,
+} from "./stripeRedis.js";
 import { publicErrorMessage } from "./clientSafeError.js";
 
 const router = express.Router();
@@ -40,7 +43,10 @@ const router = express.Router();
  */
 function safeBillingError(err, fallback) {
   const msg =
-    err && typeof err === "object" && "message" in err && typeof /** @type {{ message?: unknown }} */ (err).message === "string"
+    err &&
+    typeof err === "object" &&
+    "message" in err &&
+    typeof (/** @type {{ message?: unknown }} */ (err).message) === "string"
       ? /** @type {{ message: string }} */ (err).message
       : null;
   if (!msg) return fallback;
@@ -52,10 +58,11 @@ function safeBillingError(err, fallback) {
 // Price ID map — read at request time so restarts aren't needed after env changes
 function getPriceIds() {
   return {
-    basic:   process.env.STRIPE_PRICE_ID_BASIC   || "",
+    basic: process.env.STRIPE_PRICE_ID_BASIC || "",
     premium: process.env.STRIPE_PRICE_ID_PREMIUM || "",
-    studio:  process.env.STRIPE_PRICE_ID_STUDIO  || "",
-    topup:   process.env.STRIPE_PRICE_ID_TOPUP   || "",
+    studio: process.env.STRIPE_PRICE_ID_STUDIO || "",
+    topup: process.env.STRIPE_PRICE_ID_TOPUP || "",
+    single: process.env.STRIPE_PRICE_ID_SINGLE || "",
   };
 }
 
@@ -65,8 +72,14 @@ let _stripeKey = "";
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY || "";
-  if (!key) { console.warn("[billing] STRIPE_SECRET_KEY not set"); return null; }
-  if (key !== _stripeKey) { _stripe = new Stripe(key); _stripeKey = key; }
+  if (!key) {
+    console.warn("[billing] STRIPE_SECRET_KEY not set");
+    return null;
+  }
+  if (key !== _stripeKey) {
+    _stripe = new Stripe(key);
+    _stripeKey = key;
+  }
   return _stripe;
 }
 
@@ -81,7 +94,9 @@ async function getOrCreateStripeCustomer(userId) {
   const stripe = getStripe();
   if (!clerk || !stripe) throw new Error("Billing not configured");
   const user = await clerk.users.getUser(userId);
-  const existing = /** @type {string|undefined} */ (user.publicMetadata?.stripeCustomerId);
+  const existing = /** @type {string|undefined} */ (
+    user.publicMetadata?.stripeCustomerId
+  );
   if (existing) return existing;
   const email = user.emailAddresses?.[0]?.emailAddress;
   const customer = await stripe.customers.create({
@@ -89,7 +104,9 @@ async function getOrCreateStripeCustomer(userId) {
     metadata: { clerkUserId: userId },
   });
   const prevPublic =
-    user.publicMetadata && typeof user.publicMetadata === "object" && !Array.isArray(user.publicMetadata)
+    user.publicMetadata &&
+    typeof user.publicMetadata === "object" &&
+    !Array.isArray(user.publicMetadata)
       ? /** @type {Record<string, unknown>} */ ({ ...user.publicMetadata })
       : {};
   await clerk.users.updateUserMetadata(userId, {
@@ -137,7 +154,9 @@ router.get("/subscription", async (req, res) => {
 
     const stripe = getStripe();
     const user = await clerk.users.getUser(userId);
-    const customerId = /** @type {string|undefined} */ (user.publicMetadata?.stripeCustomerId);
+    const customerId = /** @type {string|undefined} */ (
+      user.publicMetadata?.stripeCustomerId
+    );
     if (stripe && customerId) {
       const sub = await getActiveSubscription(customerId);
       if (sub) {
@@ -207,19 +226,24 @@ router.post("/checkout", async (req, res) => {
   try {
     const userId = await verifyClerkBearer(req);
     const stripe = getStripe();
-    if (!stripe) return res.status(503).json({ error: "Billing not configured — STRIPE_SECRET_KEY not set" });
+    if (!stripe)
+      return res
+        .status(503)
+        .json({ error: "Billing not configured — STRIPE_SECRET_KEY not set" });
 
     const plan = /** @type {string} */ (req.body?.plan);
     const priceIds = getPriceIds();
     const priceId = priceIds[/** @type {keyof typeof priceIds} */ (plan)];
     if (!priceId) {
-      return res.status(400).json({ error: `Unknown plan "${plan}". Valid: ${Object.keys(priceIds).join(", ")}` });
+      return res.status(400).json({
+        error: `Unknown plan "${plan}". Valid: ${Object.keys(priceIds).join(", ")}`,
+      });
     }
 
     const customerId = await getOrCreateStripeCustomer(userId);
     const returnBase = resolveStripeReturnUrl(req, req.body?.returnUrl);
 
-    const isOneTime = plan === "topup";
+    const isOneTime = plan === "topup" || plan === "single";
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: isOneTime ? "payment" : "subscription",
@@ -230,9 +254,16 @@ router.post("/checkout", async (req, res) => {
 
     return res.json({ url: session.url });
   } catch (/** @type {any} */ err) {
-    console.error("[billing/checkout] error:", err.message, err.raw ?? "", err.stack?.split("\n").slice(0, 3).join(" ") ?? "");
+    console.error(
+      "[billing/checkout] error:",
+      err.message,
+      err.raw ?? "",
+      err.stack?.split("\n").slice(0, 3).join(" ") ?? "",
+    );
     const status = err.status || 500;
-    return res.status(status).json({ error: safeBillingError(err, "Checkout failed") });
+    return res
+      .status(status)
+      .json({ error: safeBillingError(err, "Checkout failed") });
   }
 });
 
@@ -241,7 +272,10 @@ router.post("/portal", async (req, res) => {
   try {
     const userId = await verifyClerkBearer(req);
     const stripe = getStripe();
-    if (!stripe) return res.status(503).json({ error: "Billing not configured — STRIPE_SECRET_KEY not set" });
+    if (!stripe)
+      return res
+        .status(503)
+        .json({ error: "Billing not configured — STRIPE_SECRET_KEY not set" });
 
     const customerId = await getOrCreateStripeCustomer(userId);
     const returnBase = resolveStripeReturnUrl(req, req.body?.returnUrl);
@@ -254,7 +288,9 @@ router.post("/portal", async (req, res) => {
   } catch (/** @type {any} */ err) {
     console.error("[billing/portal] error:", err.message);
     const status = err.status || 500;
-    return res.status(status).json({ error: safeBillingError(err, "Portal session failed") });
+    return res
+      .status(status)
+      .json({ error: safeBillingError(err, "Portal session failed") });
   }
 });
 
@@ -267,13 +303,17 @@ router.post("/webhook", async (req, res) => {
     return res.status(503).json({ error: "Webhook not configured" });
   }
   const sig = req.headers["stripe-signature"];
-  if (!sig) return res.status(400).json({ error: "Missing stripe-signature header" });
+  if (!sig)
+    return res.status(400).json({ error: "Missing stripe-signature header" });
 
   let event;
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (/** @type {any} */ err) {
-    console.error("[billing/webhook] signature verification failed:", err.message);
+    console.error(
+      "[billing/webhook] signature verification failed:",
+      err.message,
+    );
     return res.status(400).json({ error: "Invalid webhook signature" });
   }
 
@@ -286,49 +326,79 @@ router.post("/webhook", async (req, res) => {
     switch (event.type) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const sub = /** @type {import("stripe").Stripe.Subscription} */ (event.data.object);
-        console.log(`[billing/webhook] ${event.type} customer=${sub.customer} status=${sub.status}`);
+        const sub = /** @type {import("stripe").Stripe.Subscription} */ (
+          event.data.object
+        );
+        console.log(
+          `[billing/webhook] ${event.type} customer=${sub.customer} status=${sub.status}`,
+        );
         if (sub.status === "active" && stripe) {
-          const custId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+          const custId =
+            typeof sub.customer === "string" ? sub.customer : sub.customer.id;
           const customer = await stripe.customers.retrieve(custId);
-          const clerkUserId = /** @type {any} */ (customer).metadata?.clerkUserId;
+          const clerkUserId = /** @type {any} */ (customer).metadata
+            ?.clerkUserId;
           if (clerkUserId) {
-            await creditSubscriptionAllowance(clerkUserId, sub, stripe, { stripeEventId: event.id });
+            await creditSubscriptionAllowance(clerkUserId, sub, stripe, {
+              stripeEventId: event.id,
+            });
           }
         }
         break;
       }
       case "customer.subscription.deleted": {
-        const sub = /** @type {import("stripe").Stripe.Subscription} */ (event.data.object);
-        console.log(`[billing/webhook] ${event.type} customer=${sub.customer} status=${sub.status}`);
+        const sub = /** @type {import("stripe").Stripe.Subscription} */ (
+          event.data.object
+        );
+        console.log(
+          `[billing/webhook] ${event.type} customer=${sub.customer} status=${sub.status}`,
+        );
         break;
       }
       case "invoice.payment_succeeded": {
-        const inv = /** @type {import("stripe").Stripe.Invoice} */ (event.data.object);
+        const inv = /** @type {import("stripe").Stripe.Invoice} */ (
+          event.data.object
+        );
         const subId = /** @type {any} */ (inv).subscription;
         if (subId && stripe) {
           const sub = await stripe.subscriptions.retrieve(
             typeof subId === "string" ? subId : subId.id,
           );
-          const custId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
+          const custId =
+            typeof sub.customer === "string" ? sub.customer : sub.customer.id;
           const customer = await stripe.customers.retrieve(custId);
-          const clerkUserId = /** @type {any} */ (customer).metadata?.clerkUserId;
+          const clerkUserId = /** @type {any} */ (customer).metadata
+            ?.clerkUserId;
           if (clerkUserId) {
-            await creditSubscriptionAllowance(clerkUserId, sub, stripe, { stripeEventId: event.id });
+            await creditSubscriptionAllowance(clerkUserId, sub, stripe, {
+              stripeEventId: event.id,
+            });
           }
         }
         break;
       }
       case "checkout.session.completed": {
-        const session = /** @type {import("stripe").Stripe.Checkout.Session} */ (event.data.object);
-        console.log(`[billing/webhook] checkout.session.completed customer=${session.customer} mode=${session.mode}`);
+        const session =
+          /** @type {import("stripe").Stripe.Checkout.Session} */ (
+            event.data.object
+          );
+        console.log(
+          `[billing/webhook] checkout.session.completed customer=${session.customer} mode=${session.mode}`,
+        );
         if (session.mode === "payment" && stripe) {
-          const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+          const customerId =
+            typeof session.customer === "string"
+              ? session.customer
+              : session.customer?.id;
           if (customerId) {
             const customer = await stripe.customers.retrieve(customerId);
-            const clerkUserId = /** @type {any} */ (customer).metadata?.clerkUserId;
+            const clerkUserId = /** @type {any} */ (customer).metadata
+              ?.clerkUserId;
             if (clerkUserId) {
-              const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 20 });
+              const lineItems = await stripe.checkout.sessions.listLineItems(
+                session.id,
+                { limit: 20 },
+              );
               let grant = 0;
               for (const li of lineItems.data) {
                 const p = li.price;
@@ -340,7 +410,9 @@ router.post("/webhook", async (req, res) => {
               }
               if (grant > 0) {
                 await creditTopupTokens(clerkUserId, grant);
-                console.log(`[billing/webhook] topup credited user=${clerkUserId} amount=${grant}`);
+                console.log(
+                  `[billing/webhook] topup credited user=${clerkUserId} amount=${grant}`,
+                );
               }
             }
           }

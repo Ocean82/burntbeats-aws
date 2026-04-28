@@ -100,9 +100,9 @@ export function useStemSplitting({
     });
   }, []);
 
-  const triggerSplit = useCallback(async (requestedStemMode: 2 | 4 = 2) => {
+  const triggerSplit = useCallback(async (requestedStemMode: 2 | 4 = 2, isSample = false) => {
     const { status } = subscription;
-    if (status !== "active") {
+    if (status !== "active" && !isSample) {
       trackEvent("split_blocked_subscription_inactive", { requested_stems: requestedStemMode });
       await subscription.startCheckout("basic");
       return;
@@ -124,7 +124,7 @@ export function useStemSplitting({
       });
       return;
     }
-    setUploadState((prev) => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null }));
+    setUploadState((prev) => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null, isSample }));
     try {
       // Premium/Studio: one server job for 4 stems (hybrid MDX + PyTorch Demucs / SCNet per backend).
       // Basic: 2-stem only.
@@ -136,7 +136,7 @@ export function useStemSplitting({
         quality: splitQuality,
         plan: subscription.plan ?? "none",
       });
-      const res = await splitStems(file, stemsArg, splitQuality, (s) => {
+      const res = await splitStems(file, stemsArg, splitQuality, isSample, (s) => {
         setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
         if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
         else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState((prev) => ({ ...prev, pipelineIndex: 2 }));

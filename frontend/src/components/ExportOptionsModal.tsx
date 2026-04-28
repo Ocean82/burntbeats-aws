@@ -15,6 +15,8 @@ interface ExportOptionsModalProps {
   stemCount: number;
   /** When false, only a rendered master mix can be exported (no server stem file downloads). */
   allowStemBundleTargets?: boolean;
+  /** When true, the current session is a sample; block downloads and show upgrade CTA. */
+  isSample?: boolean;
 }
 
 export interface ExportOptions {
@@ -23,15 +25,39 @@ export interface ExportOptions {
   normalize: boolean;
 }
 
-const FORMAT_OPTIONS: { value: ExportFormat; label: string; description: string }[] = [
+const FORMAT_OPTIONS: {
+  value: ExportFormat;
+  label: string;
+  description: string;
+}[] = [
   { value: "wav", label: "WAV", description: "Uncompressed, highest quality" },
   { value: "mp3", label: "MP3", description: "Compressed, smaller file size" },
 ];
 
-const TARGET_OPTIONS_ALL: { value: ExportTarget; label: string; description: string; icon: typeof Download }[] = [
-  { value: "master", label: "Master Mix", description: "All stems mixed to one file", icon: FileAudio },
-  { value: "stems", label: "Individual Stems", description: "One file per stem (from your separation job)", icon: Package },
-  { value: "all", label: "Master + Stems", description: "Master mix and all downloadable stems", icon: Package },
+const TARGET_OPTIONS_ALL: {
+  value: ExportTarget;
+  label: string;
+  description: string;
+  icon: typeof Download;
+}[] = [
+  {
+    value: "master",
+    label: "Master Mix",
+    description: "All stems mixed to one file",
+    icon: FileAudio,
+  },
+  {
+    value: "stems",
+    label: "Individual Stems",
+    description: "One file per stem (from your separation job)",
+    icon: Package,
+  },
+  {
+    value: "all",
+    label: "Master + Stems",
+    description: "Master mix and all downloadable stems",
+    icon: Package,
+  },
 ];
 
 export function ExportOptionsModal({
@@ -57,9 +83,7 @@ export function ExportOptionsModal({
 
   useEffect(() => {
     if (!isOpen || allowStemBundleTargets) return;
-    setOptions((o) =>
-      o.target === "master" ? o : { ...o, target: "master" },
-    );
+    setOptions((o) => (o.target === "master" ? o : { ...o, target: "master" }));
   }, [isOpen, allowStemBundleTargets]);
 
   return (
@@ -101,8 +125,15 @@ export function ExportOptionsModal({
                     <Download className="h-5 w-5 text-amber-400" />
                   </div>
                   <div className="min-w-0">
-                    <h2 id="export-options-title" className="break-words text-lg font-semibold text-white">Export Options</h2>
-                    <p className="break-words text-xs text-white/65">Configure your export settings</p>
+                    <h2
+                      id="export-options-title"
+                      className="break-words text-lg font-semibold text-white"
+                    >
+                      Export Options
+                    </h2>
+                    <p className="break-words text-xs text-white/65">
+                      Configure your export settings
+                    </p>
                   </div>
                 </div>
                 <button
@@ -125,7 +156,9 @@ export function ExportOptionsModal({
                     <button
                       key={format.value}
                       type="button"
-                      onClick={() => setOptions((o) => ({ ...o, format: format.value }))}
+                      onClick={() =>
+                        setOptions((o) => ({ ...o, format: format.value }))
+                      }
                       className={cn(
                         "rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                         options.format === format.value
@@ -139,7 +172,9 @@ export function ExportOptionsModal({
                           <Check className="h-3.5 w-3.5 text-amber-400" />
                         )}
                       </div>
-                      <p className="mt-0.5 text-[10px] text-white/65">{format.description}</p>
+                      <p className="mt-0.5 text-[10px] text-white/65">
+                        {format.description}
+                      </p>
                     </button>
                   ))}
                 </div>
@@ -157,19 +192,25 @@ export function ExportOptionsModal({
                       <button
                         key={target.value}
                         type="button"
-                        onClick={() => setOptions((o) => ({ ...o, target: target.value }))}
+                        onClick={() =>
+                          setOptions((o) => ({ ...o, target: target.value }))
+                        }
                         className={cn(
                           "flex w-full items-center justify-between rounded-xl border px-4 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                           options.target === target.value
                             ? "border-amber-400/50 bg-amber-500/15 text-white"
-                            : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10"
+                            : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10",
                         )}
                       >
                         <div className="flex items-center gap-3">
                           <Icon className="h-4 w-4" />
                           <div className="min-w-0 text-left">
-                            <span className="block break-words font-medium">{target.label}</span>
-                            <span className="block break-words text-[10px] text-white/50">{target.description}</span>
+                            <span className="block break-words font-medium">
+                              {target.label}
+                            </span>
+                            <span className="block break-words text-[10px] text-white/50">
+                              {target.description}
+                            </span>
                           </div>
                         </div>
                         {options.target === target.value && (
@@ -184,47 +225,86 @@ export function ExportOptionsModal({
               {/* Normalize Toggle */}
               <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                 <div className="min-w-0">
-                  <span className="block break-words text-sm font-medium text-white">Normalize Audio</span>
-                  <span className="block break-words text-xs text-white/65">Boost quiet mixes to a consistent loudness</span>
+                  <span className="block break-words text-sm font-medium text-white">
+                    Normalize Audio
+                  </span>
+                  <span className="block break-words text-xs text-white/65">
+                    Boost quiet mixes to a consistent loudness
+                  </span>
                 </div>
                 <button
                   type="button"
                   aria-label="Toggle audio normalization"
                   title="Toggle audio normalization"
-                  onClick={() => setOptions((o) => ({ ...o, normalize: !o.normalize }))}
+                  onClick={() =>
+                    setOptions((o) => ({ ...o, normalize: !o.normalize }))
+                  }
                   className={cn(
                     "relative h-6 w-11 rounded-full transition-colors",
-                    options.normalize ? "bg-amber-500" : "bg-white/20"
+                    options.normalize ? "bg-amber-500" : "bg-white/20",
                   )}
                 >
                   <span
                     className={cn(
                       "absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all",
-                      options.normalize ? "left-6" : "left-1"
+                      options.normalize ? "left-6" : "left-1",
                     )}
                   />
                 </button>
               </div>
 
-              {/* Export Button */}
-              <button
-                type="button"
-                onClick={() => onExport(options)}
-                disabled={isExporting}
-                className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
-              >
-                {isExporting ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Export {options.target === "stems" ? `${stemCount} Stems` : options.target === "all" ? "All Files" : "Master"}
-                  </>
-                )}
-              </button>
+              {/* Export Button or Sample CTA */}
+              {isSample ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-center">
+                    <p className="text-sm font-medium text-amber-200">
+                      Export is disabled for free samples
+                    </p>
+                    <p className="mt-1 text-xs text-white/70">
+                      Upgrade to a plan to download full tracks and individual
+                      stems.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      // We need a way to switch to pricing view.
+                      // For now, let's assume we can trigger a custom event or use a callback.
+                      window.dispatchEvent(
+                        new CustomEvent("burntbeats:open-pricing"),
+                      );
+                    }}
+                    className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition"
+                  >
+                    View Plans & Pricing
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onExport(options)}
+                  disabled={isExporting}
+                  className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
+                >
+                  {isExporting ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Export{" "}
+                      {options.target === "stems"
+                        ? `${stemCount} Stems`
+                        : options.target === "all"
+                          ? "All Files"
+                          : "Master"}
+                    </>
+                  )}
+                </button>
+              )}
             </motion.div>
           </motion.div>
         </>
