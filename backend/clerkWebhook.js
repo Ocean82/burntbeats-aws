@@ -10,6 +10,13 @@ const router = express.Router();
  * Handles user.created for one-time welcome token grants.
  */
 router.post("/webhook", async (req, res) => {
+  // Ensure sensitive environment variables are not exposed
+  if (!process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
+    console.warn(
+      "Warning: CLERK_WEBHOOK_SIGNING_SECRET is not set. Ensure this is configured in your environment.",
+    );
+  }
+
   const signingSecret = process.env.CLERK_WEBHOOK_SIGNING_SECRET || "";
   if (!signingSecret) {
     return res.status(503).json({ error: "Clerk webhook not configured" });
@@ -24,25 +31,40 @@ router.post("/webhook", async (req, res) => {
 
   try {
     const wh = new Webhook(signingSecret);
-    const payload = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body || {});
+    const payload = Buffer.isBuffer(req.body)
+      ? req.body.toString("utf8")
+      : JSON.stringify(req.body || {});
     const evt = wh.verify(payload, {
       "svix-id": svixId,
       "svix-timestamp": svixTimestamp,
       "svix-signature": svixSignature,
     });
 
-    if (evt && typeof evt === "object" && "type" in evt && evt.type === "user.created") {
-      const data = "data" in evt && evt.data && typeof evt.data === "object" ? evt.data : null;
-      const clerkUserId = data && "id" in data && typeof data.id === "string" ? data.id : "";
+    if (
+      evt &&
+      typeof evt === "object" &&
+      "type" in evt &&
+      evt.type === "user.created"
+    ) {
+      const data =
+        "data" in evt && evt.data && typeof evt.data === "object"
+          ? evt.data
+          : null;
+      const clerkUserId =
+        data && "id" in data && typeof data.id === "string" ? data.id : "";
       if (clerkUserId) {
-        const grant = Math.floor(Number(process.env.USAGE_SIGNUP_WELCOME_TOKENS || 5));
+        const grant = Math.floor(
+          Number(process.env.USAGE_SIGNUP_WELCOME_TOKENS || 5),
+        );
         const welcome = await grantWelcomeSignupTokens(clerkUserId, grant);
         if (welcome.granted) {
           console.log(
             `[clerk/webhook] welcome grant credited user=${clerkUserId} amount=${grant} balance=${welcome.balance}`,
           );
         } else {
-          console.log(`[clerk/webhook] welcome grant skipped user=${clerkUserId}`);
+          console.log(
+            `[clerk/webhook] welcome grant skipped user=${clerkUserId}`,
+          );
         }
       }
     }

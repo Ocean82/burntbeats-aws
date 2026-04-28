@@ -2,10 +2,26 @@
 /**
  * Shared Clerk JWT verification for billing and usage-token routes.
  */
-import { createClerkClient, verifyToken as clerkVerifyToken } from "@clerk/express";
+import {
+  createClerkClient,
+  verifyToken as clerkVerifyToken,
+} from "@clerk/express";
 
 let _clerk = /** @type {ReturnType<typeof createClerkClient> | null} */ (null);
 let _clerkKey = "";
+
+// Ensure sensitive environment variables are not exposed
+if (!process.env.CLERK_SECRET_KEY) {
+  console.warn(
+    "Warning: CLERK_SECRET_KEY is not set. Ensure this is configured in your environment.",
+  );
+}
+
+if (!process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
+  console.warn(
+    "Warning: CLERK_WEBHOOK_SIGNING_SECRET is not set. Ensure this is configured in your environment.",
+  );
+}
 
 export function getClerkClient() {
   const key = process.env.CLERK_SECRET_KEY || "";
@@ -25,9 +41,14 @@ export function getClerkClient() {
 export async function verifyClerkBearer(req) {
   const authHeader = req.headers["authorization"] || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
-  if (!token) throw Object.assign(new Error("Missing auth token"), { status: 401 });
+  if (!token)
+    throw Object.assign(new Error("Missing auth token"), { status: 401 });
   const clerk = getClerkClient();
-  if (!clerk) throw Object.assign(new Error("Auth not configured — CLERK_SECRET_KEY not set"), { status: 503 });
+  if (!clerk)
+    throw Object.assign(
+      new Error("Auth not configured — CLERK_SECRET_KEY not set"),
+      { status: 503 },
+    );
   const key = process.env.CLERK_SECRET_KEY || "";
   try {
     const payload = await clerkVerifyToken(token, { secretKey: key });
