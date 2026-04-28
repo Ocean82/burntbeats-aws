@@ -77,6 +77,19 @@ logs/
 server_models/
 benchmark_out/
 benchmark_out_*/
+
+# Temporary files and directories
+backend/tmp/
+backend/cache/
+backend/logs/
+backend/tmp/**
+backend/cache/**
+backend/logs/**
+
+# Add any additional sensitive files
+backend/.env
+backend/.env.*
+
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
 benchmark_song.local.txt
 agent-transcripts/
@@ -86,3 +99,7 @@ docs/deploy-reports/
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
+
+# Backend
+clerkWebhook.js/
+
