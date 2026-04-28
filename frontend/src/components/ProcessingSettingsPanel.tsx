@@ -499,7 +499,7 @@ export function ProcessingSettingsPanel({
                 disabled={isSplitting || splitResultStemsLength > 0}
                 className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-amber-500 focus:ring-offset-black disabled:opacity-50"
               />
-              Try for free (30s sample)
+              Try for free (60s sample)
             </label>
           </div>
         )}

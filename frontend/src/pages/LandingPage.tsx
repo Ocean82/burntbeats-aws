@@ -148,7 +148,7 @@ export function LandingPage() {
               >
                 Sign In
               </button>
-            </SignUpButton>
+            </SignInButton>
           </div>
 
           <div className="flex flex-col items-center gap-6 text-xs text-white/50 sm:flex-row">
