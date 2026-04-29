@@ -13,7 +13,7 @@ export function initGoogleTag(measurementId: string): void {
   const gtag: Gtag = function gtag(...args: GtagCommand) {
     window.dataLayer!.push(args as unknown[]);
   };
-  window.gtag = gtag;
+  window.gtag = gtag as any;
 
   const script = document.createElement("script");
   script.async = true;

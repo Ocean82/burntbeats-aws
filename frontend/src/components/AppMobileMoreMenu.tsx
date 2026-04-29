@@ -15,7 +15,6 @@ export interface AppMobileMoreMenuProps {
   pricingLabel: string;
   pricingTitle: string;
   showBilling: boolean;
-  isPricingView: boolean;
   usageSummary?: string;
 }
 
@@ -35,7 +34,6 @@ export function AppMobileMoreMenu({
   pricingLabel,
   pricingTitle,
   showBilling,
-  isPricingView,
   usageSummary,
 }: AppMobileMoreMenuProps) {
   const [open, setOpen] = useState(false);

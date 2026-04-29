@@ -877,7 +877,6 @@ export function App() {
                 showBilling={
                   subscription.status === "active" && !localDevFullApp
                 }
-                isPricingView={activeView === "pricing"}
                 usageSummary={
                   usageLoading
                     ? "loading"

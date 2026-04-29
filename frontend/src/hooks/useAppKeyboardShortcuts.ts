@@ -4,6 +4,7 @@ import {
   useKeyboardShortcuts,
   type ShortcutHandlers,
 } from "./useKeyboardShortcuts";
+import type { ModalKey } from "./useUiModals";
 
 type VisibleStem = { id: string };
 type MixStem = { id: string; url: string };
@@ -25,8 +26,8 @@ interface UseAppKeyboardShortcutsArgs {
     buffers: Record<string, AudioBuffer>,
   ) => Promise<void> | void;
   handleStopMix: () => void;
-  openModal: (modal: string) => void;
-  closeModal: (modal: string) => void;
+  openModal: (modal: ModalKey) => void;
+  closeModal: (modal: ModalKey) => void;
   showHelpModal: boolean;
   showExportModal: boolean;
   showPresetsModal: boolean;

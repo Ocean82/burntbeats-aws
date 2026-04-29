@@ -2,45 +2,12 @@ import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  Mic2,
-  Layers,
-  Sliders,
-  Download,
   Zap,
-  Music2,
   ShieldCheck,
-  Users,
-  Clock,
-  Headphones,
   AudioWaveform,
-  Guitar,
 } from "lucide-react";
 import { StripePricingTableEmbed } from "../components/StripePricingTableEmbed";
 
-const FEATURES = [
-  {
-    icon: Mic2,
-    title: "High-Fidelity Separation",
-    desc: "Split any track into vocals, drums, bass, and melody.",
-  },
-  {
-    icon: Sliders,
-    title: "Pro Mixer",
-    desc: "Trim, level, pan, and pitch-shift stems independently.",
-  },
-  {
-    icon: Download,
-    title: "Flexible Export",
-    desc: "Export your master mix or individual stems as WAV.",
-  },
-];
-
-function scrollToPricing() {
-  const el = document.getElementById("pricing");
-  if (!el) return;
-  const instant = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  el.scrollIntoView({ behavior: instant ? "auto" : "smooth", block: "start" });
-}
 
 export function LandingPage() {
   const { isSignedIn } = useAuth();

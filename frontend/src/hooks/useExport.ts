@@ -19,7 +19,7 @@ export function stripFileExtension(fileName: string): string {
   return fileName.replace(/\.[^/.]+$/, "");
 }
 
-export function buildMasterExportFilename(uploadName: string, format: "wav" | "mp3"): string {
+export function buildMasterExportFilename(uploadName: string, format: string): string {
   return `${stripFileExtension(uploadName)}_master.${format}`;
 }
 

@@ -67,6 +67,7 @@ export function ExportOptionsModal({
   isExporting,
   stemCount,
   allowStemBundleTargets = true,
+  isSample,
 }: ExportOptionsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(isOpen, modalRef, onClose, { disableEscape: isExporting });

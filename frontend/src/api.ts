@@ -30,11 +30,19 @@ export async function acceptLegal(params: { tosVersion: string; privacyVersion: 
     body: JSON.stringify(params),
   });
   if (!res.ok) {
-    throw await userFacingHttpError(res);
+    const text = await res.text().catch(() => "");
+    const contentType = res.headers.get("content-type") || "";
+    let bodyError: string | null = null;
+    if (contentType.includes("application/json") && text) {
+      bodyError = getApiErrorMessage(tryParseJson(text));
+    }
+    throw new Error(
+      userFacingHttpError(res.status, bodyError, text.slice(0, 800) || `Accept legal failed: ${res.status}`)
+    );
   }
   const j = (await res.json()) as { ok?: unknown };
   if (j && j.ok === true) return { ok: true };
-  throw userFacingApiError("Unexpected response from server.");
+  throw new Error(userFacingApiError(null, "Unexpected response from server."));
 }
 
 // Per-job token store: job_id → job_token (short-lived, issued by backend on split/expand)

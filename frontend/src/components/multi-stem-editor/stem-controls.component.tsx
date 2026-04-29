@@ -1,7 +1,6 @@
 import { memo, useCallback } from "react";
 import {
   Headphones,
-  Play,
   Square,
   Volume2,
   VolumeX,
