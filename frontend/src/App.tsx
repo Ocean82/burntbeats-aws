@@ -8,7 +8,7 @@ import {
   Suspense,
 } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { HelpCircle, Undo2, Redo2, Save, Gamepad2 } from "lucide-react";
+import { HelpCircle, Undo2, Redo2, Save, Gamepad2, Loader2, Sparkles } from "lucide-react";
 
 const importStemFall = () => import("./components/stem-fall/StemFall");
 const importHelpModal = () => import("./components/HelpModal");
@@ -110,6 +110,27 @@ function canPreloadChunks(): boolean {
 export function App() {
   const localDevFullApp = isLocalDevFullApp();
   const reduceMotion = useReducedMotion();
+
+  // ── Smart Sticky Header State ─────────────────────────────────────────────
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY < 10) {
+        setHeaderVisible(true);
+      } else if (currentScrollY > lastScrollY.current + 5) {
+        setHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY.current - 5) {
+        setHeaderVisible(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // ── Upload / split state ──────────────────────────────────────────────────
   const uploadState = useAppStore();
@@ -679,7 +700,11 @@ export function App() {
         </nav>
         {/* Header */}
         <header
-          className="glass-panel mirror-sheen flex flex-col gap-6 rounded-[2rem] px-4 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-center lg:justify-between lg:px-8"
+          className={cn(
+            "glass-panel mirror-sheen flex flex-col gap-6 rounded-[2rem] px-4 py-5 sm:px-6 sm:py-6 lg:flex-row lg:items-center lg:justify-between lg:px-8",
+            "header-sticky",
+            !headerVisible && "header-sticky-hidden"
+          )}
           aria-label="Burnt Beats"
         >
           <div className="flex flex-col gap-4 sm:gap-5">
@@ -967,12 +992,13 @@ export function App() {
                 }}
               >
                 {/* Top bar: Processing Settings (horizontal) */}
-                <motion.div
-                  onPointerDown={handleGuidancePanelInteract}
-                  className={cn(
-                    "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
-                    guidanceTarget === "source" && guidanceRingClass,
-                  )}
+                  <motion.div
+                    onPointerDown={handleGuidancePanelInteract}
+                    className={cn(
+                      "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
+                      guidanceTarget === "source" && guidanceRingClass,
+                      isSplitting && "splitting-scan-glow"
+                    )}
                   variants={{
                     hidden: { opacity: 0, y: 12 },
                     visible: { opacity: 1, y: 0 },
@@ -1169,27 +1195,105 @@ export function App() {
                       )}
 
                     {uploadedFile == null && mixStems.length === 0 && (
-                      <div className="mb-4 rounded-2xl border border-dashed border-white/15 bg-black/30 px-4 py-3 text-sm text-white/85">
-                        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/80">
-                          Start your first project
-                        </p>
-                        <ul className="mb-2 list-disc space-y-1 pl-4 text-white/80">
-                          <li>Create DJ edits and mashups from any track.</li>
-                          <li>
-                            Study reference mixes by soloing drums, bass, or
-                            vocals.
-                          </li>
-                          <li>
-                            Pull parts for lessons, breakdowns, or content.
-                          </li>
-                        </ul>
-                        <button
-                          type="button"
-                          onClick={handleBrowseUpload}
-                          className="rounded-full bg-white/90 px-3 py-2 text-xs font-semibold text-black hover:bg-white"
-                        >
-                          Upload a track
-                        </button>
+                      <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40 relative">
+                        {/* Overlay to blur and block interaction while providing CTA */}
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
+                          <div className="rounded-[2rem] border border-amber-400/30 bg-amber-500/10 px-8 py-6 text-center shadow-[0_0_40px_rgba(255,140,80,0.15)] backdrop-blur-md">
+                            <h3 className="mb-2 text-xl font-bold text-white">
+                              Your studio awaits
+                            </h3>
+                            <p className="mb-6 max-w-xs text-sm text-amber-50/70">
+                              Upload a track to automatically split it into stems, then mix and master your creation.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleBrowseUpload}
+                              className="fire-button inline-flex h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold shadow-lg transition-transform hover:scale-105 active:scale-95"
+                            >
+                              Upload a track
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Ghost UI Content */}
+                        <div className="px-6 py-5 opacity-40 pointer-events-none select-none filter grayscale-[30%]">
+                          <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full bg-white/10" />
+                              <div className="space-y-2">
+                                <div className="h-3 w-32 rounded bg-white/20" />
+                                <div className="h-2 w-24 rounded bg-white/10" />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <div className="h-8 w-8 rounded-lg border border-white/10 bg-white/5" />
+                              <div className="h-8 w-24 rounded-lg border border-white/10 bg-white/5" />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            {/* Ghost Strip 1 */}
+                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4">
+                              <div className="flex justify-between items-center">
+                                <div className="h-4 w-16 rounded bg-amber-400/40" />
+                                <div className="h-4 w-4 rounded-full bg-white/20" />
+                              </div>
+                              <div className="h-24 w-full rounded bg-white/10" />
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                </div>
+                                <div className="h-1.5 w-full rounded bg-white/10" />
+                              </div>
+                            </div>
+                            {/* Ghost Strip 2 */}
+                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4 hidden md:flex" style={{ animationDelay: '0.1s' }}>
+                              <div className="flex justify-between items-center">
+                                <div className="h-4 w-16 rounded bg-sky-400/40" />
+                                <div className="h-4 w-4 rounded-full bg-white/20" />
+                              </div>
+                              <div className="h-24 w-full rounded bg-white/10" />
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                </div>
+                                <div className="h-1.5 w-full rounded bg-white/10" />
+                              </div>
+                            </div>
+                            {/* Ghost Strip 3 */}
+                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4 hidden xl:flex" style={{ animationDelay: '0.2s' }}>
+                              <div className="flex justify-between items-center">
+                                <div className="h-4 w-16 rounded bg-rose-400/40" />
+                                <div className="h-4 w-4 rounded-full bg-white/20" />
+                              </div>
+                              <div className="h-24 w-full rounded bg-white/10" />
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                </div>
+                                <div className="h-1.5 w-full rounded bg-white/10" />
+                              </div>
+                            </div>
+                            {/* Ghost Strip 4 */}
+                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4 hidden xl:flex" style={{ animationDelay: '0.3s' }}>
+                              <div className="flex justify-between items-center">
+                                <div className="h-4 w-16 rounded bg-emerald-400/40" />
+                                <div className="h-4 w-4 rounded-full bg-white/20" />
+                              </div>
+                              <div className="h-24 w-full rounded bg-white/10" />
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                </div>
+                                <div className="h-1.5 w-full rounded bg-white/10" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -1444,6 +1548,46 @@ export function App() {
         )}
       </AnimatePresence>
 
+      {/* Quick Split Floating CTA */}
+      <AnimatePresence>
+        {!headerVisible && uploadedFile && splitResultStems.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed top-6 right-6 z-50 shadow-2xl"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                // If not splitting, let the user trigger it easily
+                if (!isSplitting) {
+                  // The button scrolls them back to the settings panel
+                  // We could trigger split directly, but scrolling back up
+                  // shows them the progress natively.
+                }
+              }}
+              className="group flex h-12 items-center gap-3 rounded-full border border-amber-400/40 bg-amber-500/20 px-5 pr-2 font-bold shadow-[0_0_24px_rgba(255,140,80,0.25)] backdrop-blur-md transition-all hover:border-amber-400/80 hover:bg-amber-500/30 hover:scale-105 active:scale-95"
+            >
+              <div className="flex items-center gap-2">
+                {isSplitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-amber-300" />
+                ) : (
+                  <Sparkles className="h-4 w-4 text-amber-300" />
+                )}
+                <span className="text-sm text-amber-50">
+                  {isSplitting ? "Splitting..." : "Split Track"}
+                </span>
+              </div>
+              <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 text-amber-300 transition-colors group-hover:bg-amber-400 group-hover:text-amber-900">
+                ↑
+              </div>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {activeView === "editor" && <FeedbackChip />}
     </div>
   );

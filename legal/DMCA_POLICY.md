@@ -1,7 +1,9 @@
 # ⚖️ BurntBeats DMCA Policy
+**BURNT BEATS
+**BURNTBEATS.COM
 
 **Effective Date:** January 2025  
-**Last Updated:** January 2025
+**Last Updated:** APRIL 2026
 
 ---
 
@@ -28,9 +30,9 @@ To report copyright infringement, send a notice to our DMCA agent with the follo
 ### **2.2 DMCA Contact Information**
 
 **DMCA Agent:**  
-**Email:** dmca@burntbeats.com  
+**Email:** burntbeats@burntbeats.com  
 **Address:** [1917 Knoxbridge Rd Forney TX 75126]  
-**Phone:** [4699640064]  
+**Phone:** [9725599533]  
 **Response Time:** Within 24 hours
 
 ### **2.3 Notice Format**
@@ -192,11 +194,11 @@ BurntBeats provides:
 
 ### **9.2 General Copyright Questions**
 **Email:** copyright@burntbeats.com  
-**Phone:** [2144225854]  
+**Phone:** [9725599533]  
 **Hours:** Monday-Friday, 9 AM - 5 PM EST
 
 ### **9.3 Legal Department**
-**Email:** legal@burntbeats.com  
+**Email:** burntbeats@burntbeats.com  
 **For:** Complex legal matters and court actions
 
 ---

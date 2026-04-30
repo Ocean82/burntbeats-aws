@@ -1,7 +1,8 @@
 # 🔥 BurntBeats Terms of Service
-
+**BURNT BEATS
+**BURNTBEATS.COM
 **Effective Date:** January 2025  
-**Last Updated:** January 2025
+**Last Updated:** April 2026
 
 ---
 
@@ -45,16 +46,14 @@ Violation of these terms will result in:
 ## 🎵 **3. AI-GENERATED CONTENT RIGHTS**
 
 ### **3.1 Personal Use License**
-- Users receive **limited license rights** for personal use only
-- **NO ownership transfer** unless Commercial License purchased
-- **Attribution required** for personal use
-- **No commercial use** without Commercial License
+- Users receive **unlimited license rights** as apllicable by law
+- **Attribution required** where required by law
+- **No commercial use** unauthorized
 
 ### **3.2 Commercial License**
-- **Full ownership transfer** with Commercial License purchase
-- **Complete rights** to modify, sell, and distribute
+- **Complete rights** to modify, sell, and distribute as permitted by law
 - **No attribution required**
-- **Worldwide, perpetual, exclusive rights**
+- **Worldwide, perpetual, exclusive rights** as permitted by law
 
 ### **3.3 AI Model Protection**
 - **AI models remain BurntBeats property** regardless of license type
@@ -101,13 +100,13 @@ You may not use the Platform for:
 
 ### **6.1 Payment Terms**
 - **All sales final** for digital products
-- **No refunds** for AI-generated content
+- **No refunds** 
 - **Chargeback disputes** will result in account termination
 - **Fraudulent payments** will be prosecuted
 
 ### **6.2 Commercial License Pricing**
-- **Dynamic pricing** based on file size and quality
-- **Full ownership** requires Commercial License
+- **Dynamic pricing** based on subscription or usage selection
+- **Full ownership** 
 - **No partial ownership** or shared rights available
 
 ---
@@ -152,7 +151,7 @@ Upon termination:
 ### **9.1 Jurisdiction**
 - **Governing law:** United States Federal Law
 - **Jurisdiction:** Federal and State Courts
-- **Venue:** [Your State] Courts
+- **Venue:** TEXAS Courts
 - **Class action waiver** applies
 
 ### **9.2 Dispute Resolution**
@@ -165,9 +164,9 @@ Upon termination:
 
 ## 📞 **10. CONTACT INFORMATION**
 
-**Legal Notices:** legal@burntbeats.com  
-**DMCA Notices:** dmca@burntbeats.com  
-**General Support:** support@burntbeats.com
+**Legal Notices:** burntbeats@burntbeats.com  
+**DMCA Notices:** burntbeats@burntbeats.com  
+**General Support:** burntbeats@burntbeats.com
 
 ---
 

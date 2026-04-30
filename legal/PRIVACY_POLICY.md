@@ -1,7 +1,8 @@
 # 🔒 BurntBeats Privacy Policy
-
+**BURNT BEATS
+**BURNTBEATS.COM
 **Effective Date:** January 2025  
-**Last Updated:** January 2025
+**Last Updated:** April 2026
 
 ---
 
@@ -101,7 +102,6 @@
 We may share data with:
 - **Stripe** (payment processing) - encrypted
 - **AWS** (cloud storage) - encrypted
-- **Neon** (database hosting) - encrypted
 - **Analytics providers** (anonymized data only)
 
 ### **5.2 Legal Requirements**
@@ -186,12 +186,12 @@ We may disclose data when:
 ## 📞 **10. CONTACT US**
 
 ### **10.1 Privacy Questions**
-**Email:** privacy@burntbeats.com  
-**Address:** [Your Business Address]  
-**Phone:** [Your Phone Number]
+**Email:** burntbeats@burntbeats.com  
+**Address:** [1917 Knoxbridge Rd., Forney TX, 75126]  
+**Phone:** [972-559-9533]
 
 ### **10.2 Data Protection Officer**
-**Email:** dpo@burntbeats.com  
+**Email:** burntbeats@burntbeats.com  
 **Response time:** Within 72 hours  
 **Languages:** English, Spanish, French
 

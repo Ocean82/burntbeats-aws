@@ -31,7 +31,7 @@ const PLANS: PlanConfig[] = [
   {
     id: "single",
     name: "Single Song Pack",
-    priceLabel: "$0.99 one-time",
+    priceLabel: "$0.99 pay as you go",
     badge: "Best for trying",
     description: "Enough for one basic song split. No subscription required.",
     details: [
@@ -39,22 +39,25 @@ const PLANS: PlanConfig[] = [
       "Perfect for trying Burnt Beats on a single track.",
       "No recurring charges, ever.",
       "Standard quality stems.",
+	  "Unlimited purchases",
+	  "Karaoke style split",
     ],
     cta: "Buy Single Pack",
   },
   {
     id: "topup",
     name: "Top‑Up Pack",
-    priceLabel: "$5 one-time",
+    priceLabel: "$5 pay as you go",
     badge: "Most flexible",
     emphasis: true,
     highlight: "primary",
     description: "Perfect if you only need stems occasionally.",
     details: [
       "One‑time purchase of tokens — no recurring charge.",
-      "Use the same high‑quality stem engine as monthly plans.",
+      "Use the same high‑quality stem engine if already on monthly plans.",
       "Great for guests and collaborators.",
       "Top up again any time you run low.",
+	  "No plan requred for Karaoke splits",
     ],
     cta: "Buy Top‑Up Pack",
   },
@@ -68,6 +71,7 @@ const PLANS: PlanConfig[] = [
     details: [
       "120 tokens/month (1 token = 1 minute).",
       "2 high‑quality stems (Vocal + Instruments).",
+      "Great for Karaoke splits",
       "Priority processing over free traffic.",
       "Mixer / editor functions included.",
     ],
@@ -82,6 +86,7 @@ const PLANS: PlanConfig[] = [
     description: "For active producers bouncing between projects all week.",
     details: [
       "300 tokens/month (1 token = 1 minute).",
+	  "Higer-quality selections available",
       "High‑quality multi‑stem options (4 stems).",
       "Priority processing and batch tools unlocked.",
       "Full mixer / editor functions and pro mixing tools.",
@@ -253,22 +258,33 @@ export function PricingPage({
         {PLANS.map((plan) => {
           const isActive =
             subscription.status === "active" && subscription.plan === plan.id;
+          const isPremium = plan.id === "premium";
           const accentRing =
-            plan.emphasis || plan.highlight === "primary"
-              ? "border-amber-400/50 shadow-[0_0_40px_rgba(251,191,36,0.45)]"
+            isPremium
+              ? "border-amber-400/70 shadow-[0_0_0_1px_rgba(251,191,36,0.2),0_0_48px_rgba(251,191,36,0.35)]"
+              : plan.emphasis || plan.highlight === "primary"
+              ? "border-amber-400/40 shadow-[0_0_28px_rgba(251,191,36,0.2)]"
               : "border-white/10";
 
           return (
             <div
               key={plan.id}
-              className={`glass-panel flex h-full min-w-0 flex-col justify-between rounded-2xl border bg-black/40 p-4 sm:p-5 ${accentRing}`}
+              className={`glass-panel flex h-full min-w-0 flex-col justify-between rounded-2xl border bg-black/40 p-4 sm:p-5 ${accentRing} ${isPremium ? "scale-[1.03] origin-center" : ""}`}
             >
               <div className="space-y-2.5">
+                {isPremium && (
+                  <div className="-mx-1 -mt-1 mb-2 flex justify-center">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-200 shadow-[0_0_12px_rgba(251,191,36,0.3)]">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+                      Most Popular
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="break-words text-base font-semibold text-white/95">
                     {plan.name}
                   </h2>
-                  {plan.badge && (
+                  {plan.badge && !isPremium && (
                     <span className="max-w-[60%] break-words rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-100/85 sm:text-[10px]">
                       {plan.badge}
                     </span>

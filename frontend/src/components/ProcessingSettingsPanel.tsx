@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderOpen,
   Upload,
@@ -7,6 +7,8 @@ import {
   ChevronUp,
   Lock,
   Loader2,
+  Sparkles,
+  Music2,
 } from "lucide-react";
 import type { SplitQuality } from "../api";
 import type React from "react";
@@ -175,110 +177,147 @@ export function ProcessingSettingsPanel({
           <span className="font-semibold text-amber-50">
             Active plan required to split full tracks.
           </span>{" "}
-          Choosing a plan opens secure Stripe checkout. Or, check "Try for free"
-          below.
+          Choosing a plan opens secure Stripe checkout. Or use{" "}
+          <span className="font-semibold text-amber-200">Try for free</span> below.
         </p>
       )}
 
-      {/* ── Horizontal toolbar row ── */}
-      <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
-        {/* Mode toggle */}
-        <div className="flex shrink-0 rounded-xl border border-white/10 bg-black/20 p-0.5">
-          <button
-            type="button"
-            onClick={() => onSourceModeChange("split")}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              sourceMode === "split"
-                ? "bg-amber-500/20 text-amber-200"
-                : "text-white/60 hover:text-white",
-            )}
-          >
-            Split
-          </button>
-          <button
-            type="button"
-            onClick={() => onSourceModeChange("load")}
-            className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              sourceMode === "load"
-                ? "bg-amber-500/20 text-amber-200"
-                : "text-white/60 hover:text-white",
-            )}
-          >
-            Load
-          </button>
-        </div>
+      {/* ── Mode toggle ── */}
+      <div className="mb-4 flex w-fit rounded-xl border border-white/10 bg-black/20 p-0.5">
+        <button
+          type="button"
+          onClick={() => onSourceModeChange("split")}
+          className={cn(
+            "rounded-lg px-4 py-1.5 text-xs font-medium transition",
+            sourceMode === "split"
+              ? "bg-amber-500/20 text-amber-200"
+              : "text-white/60 hover:text-white",
+          )}
+        >
+          Split
+        </button>
+        <button
+          type="button"
+          onClick={() => onSourceModeChange("load")}
+          className={cn(
+            "rounded-lg px-4 py-1.5 text-xs font-medium transition",
+            sourceMode === "load"
+              ? "bg-amber-500/20 text-amber-200"
+              : "text-white/60 hover:text-white",
+          )}
+        >
+          Load
+        </button>
+      </div>
 
-        {/* Upload drop zone (split mode) */}
-        {sourceMode === "split" && (
-          <div
-            data-testid="split-upload-dropzone"
-            onDragOver={(e) => {
-              e.preventDefault();
-              onSetIsDragging(true);
-            }}
-            onDragLeave={() => onSetIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              onSetIsDragging(false);
-              onDropUpload(e.dataTransfer.files?.[0] ?? null);
-            }}
-            onClick={!uploadedFile ? onBrowseUpload : undefined}
-            className={cn(
-              "flex min-w-0 basis-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-4 transition-all lg:basis-auto lg:flex-1",
-              !uploadedFile
-                ? "border-amber-400/60 bg-amber-950/40 shadow-[0_0_24px_rgba(255,140,80,0.35)] hover:border-amber-400/90 hover:bg-amber-950/60 hover:shadow-[0_0_32px_rgba(255,140,80,0.5)] active:scale-[0.99]"
-                : "border-white/10 bg-black/20 hover:border-white/20",
-              isDragging &&
-                "scale-[1.02] border-amber-400/90 bg-amber-950/60 shadow-[0_0_32px_rgba(255,140,80,0.5)]",
-            )}
-          >
-            <Upload
-              className={cn(
-                "h-5 w-5 shrink-0 transition-colors",
-                !uploadedFile ? "text-amber-400" : "text-white/70",
-              )}
-              strokeWidth={2}
-            />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
-              {uploadedFile
-                ? uploadName
-                : isDragging
-                  ? "Drop it!"
-                  : "Click to upload or drag & drop"}
-            </span>
-            <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
-              {uploadedFile && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClearUpload();
-                  }}
-                  className="min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
-                >
-                  Clear
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBrowseUpload();
-                }}
-                className={cn(
-                  "min-h-[36px] min-w-[82px] whitespace-nowrap rounded-lg border px-3 py-1 text-xs font-semibold transition-all",
-                  !uploadedFile
-                    ? "border-amber-400/60 bg-amber-500/20 text-amber-200 hover:border-amber-400 hover:bg-amber-500/30"
-                    : "border-white/10 text-white/60 hover:border-white/30 hover:text-white",
-                )}
-              >
-                {uploadedFile ? "Change" : "Browse"}
-              </button>
-            </div>
+      {/* ── Hero drop zone (split mode, no file yet) ── */}
+      {sourceMode === "split" && !uploadedFile && (
+        <div
+          data-testid="split-upload-dropzone"
+          onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
+          onDragLeave={() => onSetIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            onSetIsDragging(false);
+            onDropUpload(e.dataTransfer.files?.[0] ?? null);
+          }}
+          onClick={onBrowseUpload}
+          className={cn(
+            "dropzone-hero flex w-full cursor-pointer flex-col items-center justify-center gap-4 px-6 py-14 text-center",
+            isDragging && "dropzone-dragging",
+          )}
+          role="button"
+          aria-label="Upload audio file"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && onBrowseUpload()}
+        >
+          <div className={cn(
+            "flex h-16 w-16 items-center justify-center rounded-full border transition-all duration-300",
+            isDragging
+              ? "border-amber-400/80 bg-amber-500/25 shadow-[0_0_32px_rgba(255,172,92,0.5)]"
+              : "border-amber-400/40 bg-amber-500/10 shadow-[0_0_20px_rgba(255,140,80,0.2)]",
+          )}>
+            {isDragging
+              ? <Music2 className="h-8 w-8 text-amber-300" />
+              : <Upload className="h-8 w-8 text-amber-400" strokeWidth={1.5} />}
           </div>
-        )}
+          <div>
+            <p className="text-lg font-bold text-white">
+              {isDragging ? "Drop it!" : "Drop your track here"}
+            </p>
+            <p className="mt-1 text-sm text-white/55">
+              or{" "}
+              <span className="text-amber-300 underline decoration-amber-400/40 underline-offset-2">
+                click to browse
+              </span>
+              {" · MP3, WAV, FLAC, M4A"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-white/40">
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-amber-500/60" />
+              AI stem separation
+            </span>
+            <span className="h-1 w-1 rounded-full bg-white/20" />
+            <span>Vocals · Drums · Bass · Melody</span>
+            <span className="h-1 w-1 rounded-full bg-white/20" />
+            <span>60s free sample available</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Compact file bar (split mode, file selected) ── */}
+      {sourceMode === "split" && uploadedFile && (
+        <div
+          data-testid="split-upload-dropzone"
+          onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
+          onDragLeave={() => onSetIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            onSetIsDragging(false);
+            onDropUpload(e.dataTransfer.files?.[0] ?? null);
+          }}
+          className={cn(
+            "mb-3 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-all",
+            "border-white/10 bg-black/20 hover:border-white/20",
+            isDragging && "scale-[1.01] border-amber-400/50 bg-amber-950/20",
+          )}
+        >
+          <Upload className="h-4 w-4 shrink-0 text-white/50" strokeWidth={2} />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
+            {uploadName}
+          </span>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onClearUpload}
+              className="min-h-[32px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={onBrowseUpload}
+              className="min-h-[32px] whitespace-nowrap rounded-lg border border-white/10 px-3 py-1 text-xs font-semibold text-white/60 hover:border-white/30 hover:text-white"
+            >
+              Change
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Progressive disclosure: settings shown only after file is ready ── */}
+      <AnimatePresence>
+        {(uploadedFile != null || sourceMode === "load") && (
+          <motion.div
+            key="settings-revealed"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            style={{ overflow: "hidden" }}
+          >
+            <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
 
         {/* Load mode drop zone */}
         {sourceMode === "load" && (
@@ -459,48 +498,61 @@ export function ProcessingSettingsPanel({
           </div>
         )}
 
-        {/* Split / action button */}
+        {/* Split / action button + Try for free pill */}
         {sourceMode === "split" && (
           <div className="flex shrink-0 flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => onSplit(requestedStemMode, isSample)}
-              disabled={
-                !uploadedFile || isSplitting || splitResultStemsLength > 0
-              }
-              title={
-                splitResultStemsLength > 0
-                  ? "Upload a new file to run separation again. Each upload is a new job."
-                  : undefined
-              }
-              className="fire-button min-h-[44px] shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSplitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Splitting
-                  {typeof splitProgress === "number" && splitProgress > 0
-                    ? `… ${Math.round(splitProgress)}%`
-                    : "…"}
-                </>
-              ) : splitResultStemsLength > 0 ? (
-                "New file to split again"
-              ) : requestedStemMode === 4 ? (
-                "Split → 4 stems"
-              ) : (
-                "Split stems"
-              )}
-            </button>
-            <label className="flex items-center gap-2 text-xs text-white/70 cursor-pointer hover:text-white transition">
-              <input
-                type="checkbox"
-                checked={isSample}
-                onChange={(e) => setIsSample(e.target.checked)}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSplit(requestedStemMode, isSample)}
+                disabled={
+                  !uploadedFile || isSplitting || splitResultStemsLength > 0
+                }
+                title={
+                  splitResultStemsLength > 0
+                    ? "Upload a new file to run separation again. Each upload is a new job."
+                    : undefined
+                }
+                className="fire-button min-h-[44px] shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSplitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Splitting
+                    {typeof splitProgress === "number" && splitProgress > 0
+                      ? `… ${Math.round(splitProgress)}%`
+                      : "…"}
+                  </>
+                ) : splitResultStemsLength > 0 ? (
+                  "New file to split again"
+                ) : requestedStemMode === 4 ? (
+                  "Split → 4 stems"
+                ) : (
+                  "Split stems"
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSample((v) => !v)}
                 disabled={isSplitting || splitResultStemsLength > 0}
-                className="rounded border-white/20 bg-black/40 text-amber-500 focus:ring-amber-500 focus:ring-offset-black disabled:opacity-50"
-              />
-              Try for free (60s sample)
-            </label>
+                aria-pressed={isSample}
+                title="Process only the first 60 seconds — free, no tokens used"
+                className={cn(
+                  "min-h-[44px] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                  isSample
+                    ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]"
+                    : "border-white/15 bg-white/5 text-white/65 hover:border-white/30 hover:text-white",
+                )}
+              >
+                <Sparkles className={cn("h-3.5 w-3.5", isSample ? "text-emerald-300" : "text-white/40")} />
+                {isSample ? "Free sample ✓" : "Try for free"}
+              </button>
+            </div>
+            {isSample && (
+              <p className="text-[11px] text-emerald-400/80">
+                60-second sample · no tokens consumed
+              </p>
+            )}
           </div>
         )}
 
@@ -562,10 +614,10 @@ export function ProcessingSettingsPanel({
               Expand → 4 stems
             </button>
           )}
-      </div>
+            </div>{/* end flex row */}
 
-      {sourceMode === "split" && splitResultStemsLength > 0 && (
-        <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-xs leading-relaxed text-white/65">
+            {sourceMode === "split" && splitResultStemsLength > 0 && (
+              <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-xs leading-relaxed text-white/65">
           <span className="font-medium text-white/85">
             This upload is finished.
           </span>{" "}
@@ -580,10 +632,10 @@ export function ProcessingSettingsPanel({
               you want four parts from this same separation.
             </>
           ) : null}
-        </p>
-      )}
+              </p>
+            )}
 
-      {showUsageRow && sourceMode === "split" && (
+            {showUsageRow && sourceMode === "split" && (
         <div
           className={cn(
             "mt-3 rounded-xl border px-4 py-2.5 text-sm leading-relaxed",
@@ -628,8 +680,11 @@ export function ProcessingSettingsPanel({
               </span>
             </>
           )}
-        </div>
-      )}
+            </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Loaded stems list (collapsible) */}
       {sourceMode === "load" && loadExpanded && loadedStems.length > 0 && (

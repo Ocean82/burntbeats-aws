@@ -988,6 +988,127 @@
   100% { transform: scale(1); }
 }
 
+/* ── Hero drop zone ─────────────────────────────────────────────────────────
+   Large central upload area shown before any file is selected.
+   Animated dashed border pulses gently to attract attention.                */
+.dropzone-hero {
+  position: relative;
+  border-radius: 1.5rem;
+  border: 2px dashed rgba(255, 140, 80, 0.45);
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 50%, rgba(255, 100, 50, 0.07), transparent 70%),
+    rgba(255, 80, 40, 0.04);
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+  animation: dropzonePulse 3s ease-in-out infinite;
+}
+
+.dropzone-hero:hover,
+.dropzone-hero.dropzone-dragging {
+  border-color: rgba(255, 172, 92, 0.85);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255, 110, 55, 0.14), transparent 70%),
+    rgba(255, 90, 50, 0.07);
+  box-shadow:
+    0 0 0 1px rgba(255, 172, 92, 0.2),
+    0 0 40px rgba(255, 130, 60, 0.25),
+    inset 0 0 30px rgba(255, 100, 50, 0.06);
+  animation: none;
+}
+
+/* ── Splitting scan-line glow ────────────────────────────────────────────────
+   Applied to the ProcessingSettingsPanel wrapper while isSplitting = true.   */
+.splitting-scan-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.splitting-scan-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 172, 92, 0.18) 40%,
+    rgba(255, 200, 120, 0.3) 50%,
+    rgba(255, 172, 92, 0.18) 60%,
+    transparent 100%
+  );
+  animation: scanLine 1.8s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ── Ghost mixer channel strips ─────────────────────────────────────────────
+   Non-interactive faded preview of what the mixer will look like.            */
+.ghost-mixer-strip {
+  opacity: 0.28;
+  filter: blur(1.5px) saturate(0.4);
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.4s ease;
+}
+
+.ghost-mixer-waveform {
+  height: 48px;
+  border-radius: 0.5rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.09) 15%,
+    rgba(255, 255, 255, 0.05) 30%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.04) 60%,
+    rgba(255, 255, 255, 0.08) 75%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  position: relative;
+  overflow: hidden;
+}
+
+/* Sticky header transition */
+.header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms ease;
+}
+
+.header-sticky-hidden {
+  transform: translateY(-110%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Keyframes ───────────────────────────────────────────────────────────────*/
+@keyframes scanLine {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes dropzonePulse {
+  0%, 100% {
+    border-color: rgba(255, 140, 80, 0.38);
+    box-shadow: 0 0 20px rgba(255, 100, 50, 0.06);
+  }
+  50% {
+    border-color: rgba(255, 172, 92, 0.65);
+    box-shadow: 0 0 32px rgba(255, 110, 55, 0.14);
+  }
+}
+
 /* Respect reduced-motion preferences for accessibility and comfort */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -1004,7 +1125,9 @@
   .swipe-hint,
   .wave-bar,
   .load-to-tracks-ready,
-  .progress-shimmer::after {
+  .progress-shimmer::after,
+  .dropzone-hero,
+  .splitting-scan-glow::after {
     animation: none !important;
   }
 }
