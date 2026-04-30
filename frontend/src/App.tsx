@@ -116,17 +116,24 @@ export function App() {
   const lastScrollY = useRef(0);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      if (currentScrollY < 10) {
-        setHeaderVisible(true);
-      } else if (currentScrollY > lastScrollY.current + 5) {
-        setHeaderVisible(false);
-      } else if (currentScrollY < lastScrollY.current - 5) {
-        setHeaderVisible(true);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          
+          if (currentScrollY < 10) {
+            setHeaderVisible(true);
+          } else if (currentScrollY > lastScrollY.current + 5) {
+            setHeaderVisible(false);
+          } else if (currentScrollY < lastScrollY.current - 5) {
+            setHeaderVisible(true);
+          }
+          lastScrollY.current = currentScrollY;
+          ticking = false;
+        });
+        ticking = true;
       }
-      lastScrollY.current = currentScrollY;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -1232,66 +1239,34 @@ export function App() {
                           </div>
 
                           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                            {/* Ghost Strip 1 */}
-                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4">
-                              <div className="flex justify-between items-center">
-                                <div className="h-4 w-16 rounded bg-amber-400/40" />
-                                <div className="h-4 w-4 rounded-full bg-white/20" />
-                              </div>
-                              <div className="h-24 w-full rounded bg-white/10" />
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <div className="h-2 w-6 rounded bg-white/20" />
-                                  <div className="h-2 w-6 rounded bg-white/20" />
+                            {[
+                              { color: "amber", delay: "0s", hideClass: "" },
+                              { color: "sky", delay: "0.1s", hideClass: "hidden md:flex" },
+                              { color: "rose", delay: "0.2s", hideClass: "hidden xl:flex" },
+                              { color: "emerald", delay: "0.3s", hideClass: "hidden xl:flex" },
+                            ].map((strip, idx) => (
+                              <div
+                                key={idx}
+                                className={cn(
+                                  "ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4",
+                                  strip.hideClass
+                                )}
+                                style={{ animationDelay: strip.delay }}
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div className={`h-4 w-16 rounded bg-${strip.color}-400/40`} />
+                                  <div className="h-4 w-4 rounded-full bg-white/20" />
                                 </div>
-                                <div className="h-1.5 w-full rounded bg-white/10" />
-                              </div>
-                            </div>
-                            {/* Ghost Strip 2 */}
-                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4 hidden md:flex" style={{ animationDelay: '0.1s' }}>
-                              <div className="flex justify-between items-center">
-                                <div className="h-4 w-16 rounded bg-sky-400/40" />
-                                <div className="h-4 w-4 rounded-full bg-white/20" />
-                              </div>
-                              <div className="h-24 w-full rounded bg-white/10" />
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <div className="h-2 w-6 rounded bg-white/20" />
-                                  <div className="h-2 w-6 rounded bg-white/20" />
+                                <div className="h-24 w-full rounded bg-white/10" />
+                                <div className="space-y-2">
+                                  <div className="flex justify-between">
+                                    <div className="h-2 w-6 rounded bg-white/20" />
+                                    <div className="h-2 w-6 rounded bg-white/20" />
+                                  </div>
+                                  <div className="h-1.5 w-full rounded bg-white/10" />
                                 </div>
-                                <div className="h-1.5 w-full rounded bg-white/10" />
                               </div>
-                            </div>
-                            {/* Ghost Strip 3 */}
-                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4 hidden xl:flex" style={{ animationDelay: '0.2s' }}>
-                              <div className="flex justify-between items-center">
-                                <div className="h-4 w-16 rounded bg-rose-400/40" />
-                                <div className="h-4 w-4 rounded-full bg-white/20" />
-                              </div>
-                              <div className="h-24 w-full rounded bg-white/10" />
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <div className="h-2 w-6 rounded bg-white/20" />
-                                  <div className="h-2 w-6 rounded bg-white/20" />
-                                </div>
-                                <div className="h-1.5 w-full rounded bg-white/10" />
-                              </div>
-                            </div>
-                            {/* Ghost Strip 4 */}
-                            <div className="ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4 hidden xl:flex" style={{ animationDelay: '0.3s' }}>
-                              <div className="flex justify-between items-center">
-                                <div className="h-4 w-16 rounded bg-emerald-400/40" />
-                                <div className="h-4 w-4 rounded-full bg-white/20" />
-                              </div>
-                              <div className="h-24 w-full rounded bg-white/10" />
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <div className="h-2 w-6 rounded bg-white/20" />
-                                  <div className="h-2 w-6 rounded bg-white/20" />
-                                </div>
-                                <div className="h-1.5 w-full rounded bg-white/10" />
-                              </div>
-                            </div>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -1578,7 +1553,7 @@ export function App() {
                   <Sparkles className="h-4 w-4 text-amber-300" />
                 )}
                 <span className="text-sm text-amber-50">
-                  {isSplitting ? "Splitting..." : "Split Track"}
+                  {isSplitting ? "Splitting..." : "Review & Split"}
                 </span>
               </div>
               <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 text-amber-300 transition-colors group-hover:bg-amber-400 group-hover:text-amber-900">
