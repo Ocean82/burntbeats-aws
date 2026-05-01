@@ -1,5 +1,4 @@
 export const LEGAL_VERSIONS = Object.freeze({
-  tos: "2025-01",
-  privacy: "2025-01",
+  tos: "2026-05",
+  privacy: "2026-05",
 });
-

@@ -252,22 +252,38 @@ export function LandingPage() {
         {/* Footer */}
         <footer className="border-t border-white/5 py-8 text-center text-sm text-white/30">
           <p>© {new Date().getFullYear()} Burnt Beats. All rights reserved.</p>
-          {typeof import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL ===
-            "string" &&
-            import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL.startsWith(
-              "http",
-            ) && (
-              <p className="mt-3">
-                <a
-                  href={import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/45 underline decoration-white/20 underline-offset-2 transition hover:text-amber-200/90"
-                >
-                  Manage billing
-                </a>
-              </p>
-            )}
+          <nav aria-label="Footer links" className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <a
+              href="/terms-of-service"
+              className="text-white/45 underline decoration-white/20 underline-offset-2 transition hover:text-amber-200/90"
+            >
+              Terms of Service
+            </a>
+            <span aria-hidden="true">·</span>
+            <a
+              href="/privacy-policy"
+              className="text-white/45 underline decoration-white/20 underline-offset-2 transition hover:text-amber-200/90"
+            >
+              Privacy Policy
+            </a>
+            {typeof import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL ===
+              "string" &&
+              import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL.startsWith(
+                "http",
+              ) && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <a
+                    href={import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white/45 underline decoration-white/20 underline-offset-2 transition hover:text-amber-200/90"
+                  >
+                    Manage billing
+                  </a>
+                </>
+              )}
+          </nav>
         </footer>
       </div>
     </div>
