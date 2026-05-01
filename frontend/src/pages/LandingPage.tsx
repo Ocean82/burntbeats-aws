@@ -1,13 +1,9 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import {
-  Zap,
-  ShieldCheck,
-  AudioWaveform,
-} from "lucide-react";
+import { Zap, ShieldCheck, AudioWaveform } from "lucide-react";
+import type { PlanConfig } from "../components/PricingTablePreview";
 import { PricingTablePreview } from "../components/PricingTablePreview";
-
 
 export function LandingPage() {
   const { isSignedIn } = useAuth();
@@ -15,19 +11,17 @@ export function LandingPage() {
   const [pricingTab, setPricingTab] = useState<"subscriptions" | "packs">(
     "subscriptions",
   );
-  /** Framer entrance: skip motion when user prefers reduced motion. */
-  const fadeUp = (delay = 0, y: 16 | 20 = 16) =>
-    reduceMotion
-      ? {
-          initial: false as const,
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0 },
-        }
-      : {
-          initial: { opacity: 0, y },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.5, delay },
-        };
+
+  const renderPricingCTA = (plan: PlanConfig) => (
+    <SignUpButton mode="modal" fallbackRedirectUrl="/app">
+      <button
+        type="button"
+        className="w-full rounded-lg border border-amber-400/30 bg-amber-500/20 px-4 py-3 font-medium text-amber-200 transition hover:border-amber-400/50 hover:bg-amber-500/30"
+      >
+        {plan.cta}
+      </button>
+    </SignUpButton>
+  );
 
   // Clerk modal sign-in sets isSignedIn → Root re-renders and swaps to App automatically.
   // Nothing extra needed here — Root handles the switch.
@@ -169,7 +163,10 @@ export function LandingPage() {
           </div>
 
           <div className="glass-panel rounded-2xl border border-white/10 p-4 sm:p-6">
-            <PricingTablePreview pricingType={pricingTab} />
+            <PricingTablePreview
+              pricingType={pricingTab}
+              ctaButtonRenderer={renderPricingCTA}
+            />
           </div>
 
           <div className="mt-10 grid gap-4 text-left text-base leading-relaxed text-white/80 sm:grid-cols-2">

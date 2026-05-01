@@ -39,8 +39,8 @@ const PLANS: PlanConfig[] = [
       "Perfect for trying Burnt Beats on a single track.",
       "No recurring charges, ever.",
       "Standard quality stems.",
-	  "Unlimited purchases",
-	  "Karaoke style split",
+      "Unlimited purchases",
+      "Karaoke style split",
     ],
     cta: "Buy Single Pack",
   },
@@ -57,7 +57,7 @@ const PLANS: PlanConfig[] = [
       "Use the same high‑quality stem engine if already on monthly plans.",
       "Great for guests and collaborators.",
       "Top up again any time you run low.",
-	  "No plan requred for Karaoke splits",
+      "No plan requred for Karaoke splits",
     ],
     cta: "Buy Top‑Up Pack",
   },
@@ -86,7 +86,7 @@ const PLANS: PlanConfig[] = [
     description: "For active producers bouncing between projects all week.",
     details: [
       "300 tokens/month (1 token = 1 minute).",
-	  "Higer-quality selections available",
+      "Higer-quality selections available",
       "High‑quality multi‑stem options (4 stems).",
       "Priority processing and batch tools unlocked.",
       "Full mixer / editor functions and pro mixing tools.",
@@ -129,6 +129,25 @@ export function PricingPage({
     });
   };
   const showPrimaryCheckout = subscription.status !== "active";
+
+  const renderCheckoutCTA = (plan: PlanConfig) => (
+    <button
+      onClick={() => handleSelectPlan(plan.id as Plan)}
+      disabled={
+        subscription.status === "loading" || checkoutLoadingPlan !== null
+      }
+      className="w-full rounded-lg border border-amber-400/30 bg-amber-500/20 px-4 py-3 font-medium text-amber-200 transition hover:border-amber-400/50 hover:bg-amber-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {checkoutLoadingPlan === plan.id ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Redirecting...
+        </span>
+      ) : (
+        plan.cta
+      )}
+    </button>
+  );
 
   return (
     <div className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-10 overflow-x-clip px-3 py-4 sm:px-6 lg:px-8">
@@ -259,10 +278,9 @@ export function PricingPage({
           const isActive =
             subscription.status === "active" && subscription.plan === plan.id;
           const isPremium = plan.id === "premium";
-          const accentRing =
-            isPremium
-              ? "border-amber-400/70 shadow-[0_0_0_1px_rgba(251,191,36,0.2),0_0_48px_rgba(251,191,36,0.35)]"
-              : plan.emphasis || plan.highlight === "primary"
+          const accentRing = isPremium
+            ? "border-amber-400/70 shadow-[0_0_0_1px_rgba(251,191,36,0.2),0_0_48px_rgba(251,191,36,0.35)]"
+            : plan.emphasis || plan.highlight === "primary"
               ? "border-amber-400/40 shadow-[0_0_28px_rgba(251,191,36,0.2)]"
               : "border-white/10";
 
@@ -393,7 +411,10 @@ export function PricingPage({
             </button>
           </div>
         </div>
-        <PricingTablePreview pricingType={pricingTab} />
+        <PricingTablePreview
+          pricingType={pricingTab}
+          ctaButtonRenderer={renderCheckoutCTA}
+        />
       </motion.section>
 
       {/* FAQ / objections reducer */}
