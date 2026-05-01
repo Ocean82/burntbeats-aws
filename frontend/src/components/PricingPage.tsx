@@ -2,7 +2,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
-import { StripePricingTableEmbed } from "./StripePricingTableEmbed";
+import { PricingTablePreview } from "./PricingTablePreview";
 
 interface UsageContext {
   hasCompletedFirstExport?: boolean;
@@ -393,13 +393,7 @@ export function PricingPage({
             </button>
           </div>
         </div>
-        <StripePricingTableEmbed
-          pricingTableId={
-            pricingTab === "subscriptions"
-              ? import.meta.env.VITE_STRIPE_PRICING_TABLE_ID
-              : import.meta.env.VITE_STRIPE_PACKAGE_PRICING_TABLE_ID
-          }
-        />
+        <PricingTablePreview pricingType={pricingTab} />
       </motion.section>
 
       {/* FAQ / objections reducer */}

@@ -6,7 +6,7 @@ import {
   ShieldCheck,
   AudioWaveform,
 } from "lucide-react";
-import { StripePricingTableEmbed } from "../components/StripePricingTableEmbed";
+import { PricingTablePreview } from "../components/PricingTablePreview";
 
 
 export function LandingPage() {
@@ -169,13 +169,7 @@ export function LandingPage() {
           </div>
 
           <div className="glass-panel rounded-2xl border border-white/10 p-4 sm:p-6">
-            <StripePricingTableEmbed
-              pricingTableId={
-                pricingTab === "subscriptions"
-                  ? import.meta.env.VITE_STRIPE_PRICING_TABLE_ID
-                  : import.meta.env.VITE_STRIPE_PACKAGE_PRICING_TABLE_ID
-              }
-            />
+            <PricingTablePreview pricingType={pricingTab} />
           </div>
 
           <div className="mt-10 grid gap-4 text-left text-base leading-relaxed text-white/80 sm:grid-cols-2">
