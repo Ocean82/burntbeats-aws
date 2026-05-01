@@ -597,6 +597,36 @@ def _run_separation_sync(
             {"id": stem_id, "path": str(p.relative_to(OUTPUT_BASE))}
             for stem_id, p in stem_list
         ]
+
+        # Optional BPM analysis (non-blocking — failure does not affect job success)
+        bpm_meta: dict[str, Any] | None = None
+        try:
+            from stem_service.bpm_analysis import estimate_bpm
+
+            # Analyze the original input file for BPM (before it was deleted)
+            # Since input_path is deleted in the finally block, we analyze the
+            # first stem (vocals or the first available stem) as a proxy.
+            # This is a reasonable heuristic since stems preserve the original tempo.
+            analysis_source: Path | None = None
+            for stem_id, p in stem_list:
+                if stem_id in ("vocals", "drums", "instrumental"):
+                    analysis_source = p
+                    break
+            if analysis_source is None and stem_list:
+                analysis_source = stem_list[0][1]
+
+            if analysis_source and analysis_source.exists():
+                bpm_meta = estimate_bpm(analysis_source)
+                if bpm_meta:
+                    job_log.info(
+                        "BPM estimate: bpm=%.1f offset=%.3fs confidence=%.2f",
+                        bpm_meta.get("bpm", 0),
+                        bpm_meta.get("beat_offset_seconds", 0),
+                        bpm_meta.get("confidence", 0),
+                    )
+        except Exception as bpm_err:
+            job_log.debug("BPM analysis skipped (non-critical): %s", bpm_err)
+
         progress_data: dict[str, Any] = {
             "status": "completed",
             "progress": 100,
@@ -613,6 +643,8 @@ def _run_separation_sync(
             "models_used": models_used,
             "stem_runtime": get_stem_runtime_versions(),
         }
+        if bpm_meta:
+            progress_data["beat_grid"] = bpm_meta
         _write_progress(out_dir, progress_data)
         _schedule_s3_upload(job_id, out_dir / "stems", out_dir, progress_data)
 

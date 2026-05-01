@@ -148,6 +148,7 @@ export function useStemSplitting({
         splitJobId: res.job_id,
         splitProgress: 100,
         pipelineIndex: 3,
+        beatGrid: res.beat_grid ?? null,
       }));
       trackEvent("split_completed", {
         stems_count: res.stems.length,
@@ -193,6 +194,7 @@ export function useStemSplitting({
         splitJobId: res.job_id,
         splitProgress: 100,
         pipelineIndex: 3,
+        beatGrid: res.beat_grid ?? prev.beatGrid,
       }));
       trackEvent("expand_completed", { stems_count: res.stems.length, quality: splitQuality });
     } catch (err) {

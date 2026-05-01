@@ -1,10 +1,11 @@
-import { Download, HelpCircle, Play, RotateCcw, Square, Sliders, RefreshCw, AlertTriangle } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { Download, HelpCircle, Play, RotateCcw, Square, Sliders, RefreshCw, AlertTriangle, Volume2, VolumeX } from "lucide-react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import type { StemDefinition } from "../types";
 import type { StemEditorState } from "../stem-editor-state";
+import type { BeatGridMetadata } from "../api";
 import { MultiStemEditor } from "./MultiStemEditor";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
-import { VUMeter } from "./VUMeter";
+import { StereoVUMeter } from "./StereoVUMeter";
 import { cn } from "../utils/cn";
 import type { SeekPhase } from "../types/playbackSeek";
 
@@ -49,6 +50,8 @@ export interface MixerPanelProps {
   masterVolume: number;
   /** Callback to update master output gain. */
   onMasterVolumeChange: (value: number) => void;
+  /** Optional beat-grid metadata from backend BPM analysis. */
+  beatGrid?: BeatGridMetadata | null;
 }
 
 export function MixerPanel({
@@ -82,8 +85,11 @@ export function MixerPanel({
   getMasterAnalyserFrequencyData,
   masterVolume,
   onMasterVolumeChange,
+  beatGrid,
 }: MixerPanelProps) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [masterMuted, setMasterMuted] = useState(false);
+  const preMuteVolumeRef = useRef(masterVolume);
   const playheadPct = useSyncExternalStore(
     subscribePlayheadPosition,
     getPlayheadPosition,
@@ -131,16 +137,16 @@ export function MixerPanel({
           </div>
         </div>
 
-        {/* VU meter column */}
+        {/* Stereo VU meters with peak hold/decay */}
         <div className="flex flex-col items-center gap-1 border-r border-white/[0.08] px-3 py-3">
           <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
             Level
           </p>
-          <VUMeter
+          <StereoVUMeter
             getAnalyserData={getMasterAnalyserTimeDomainData}
-            color="var(--accent)"
             isPlaying={isPlayingMix || playingStemId !== null}
-            height={56}
+            height={120}
+            width={64}
           />
         </div>
 
@@ -150,33 +156,64 @@ export function MixerPanel({
             Master
           </p>
           <div className="relative flex flex-1 flex-col items-center justify-center gap-1.5">
-            {/* Vertical fader — uses webkit slider-vertical for cross-browser support */}
+            {/* Vertical fader */}
             <input
               type="range"
               min={0}
               max={1.5}
               step={0.01}
-              value={masterVolume}
-              onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
+              value={masterMuted ? 0 : masterVolume}
+              onChange={(e) => {
+                if (masterMuted) setMasterMuted(false);
+                onMasterVolumeChange(Number(e.target.value));
+              }}
               aria-label="Master output volume"
-              aria-valuetext={gainToDb(masterVolume)}
-              className="h-24 w-2 cursor-pointer accent-amber-500"
+              aria-valuetext={masterMuted ? "Muted" : gainToDb(masterVolume)}
+              className={cn(
+                "h-24 w-2 cursor-pointer accent-amber-500",
+                masterMuted && "opacity-40",
+              )}
               style={{ WebkitAppearance: "slider-vertical", writingMode: "vertical-lr", direction: "rtl" } as React.CSSProperties}
             />
-            {/* dB readout */}
+            {/* dB readout / mute indicator */}
             <span
               className={cn(
                 "font-mono text-[9px] font-semibold tabular-nums",
-                masterVolume > 1.05
-                  ? "text-amber-300"
-                  : masterVolume < 0.05
-                    ? "text-white/30"
-                    : "text-white/60",
+                masterMuted
+                  ? "text-red-400"
+                  : masterVolume > 1.05
+                    ? "text-amber-300"
+                    : masterVolume < 0.05
+                      ? "text-white/30"
+                      : "text-white/60",
               )}
               aria-hidden
             >
-              {gainToDb(masterVolume)}
+              {masterMuted ? "MUTE" : gainToDb(masterVolume)}
             </span>
+            {/* Mute toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                if (masterMuted) {
+                  setMasterMuted(false);
+                  onMasterVolumeChange(preMuteVolumeRef.current);
+                } else {
+                  preMuteVolumeRef.current = masterVolume;
+                  setMasterMuted(true);
+                  onMasterVolumeChange(0);
+                }
+              }}
+              aria-label={masterMuted ? "Unmute master" : "Mute master"}
+              className={cn(
+                "flex h-6 w-6 items-center justify-center rounded transition",
+                masterMuted
+                  ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
+              )}
+            >
+              {masterMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            </button>
           </div>
         </div>
       </div>
@@ -304,6 +341,7 @@ export function MixerPanel({
         playingStemId={playingStemId}
         loadingPreviewStemId={loadingPreviewStemId}
         getAnalyserData={getMasterAnalyserTimeDomainData}
+        beatGrid={beatGrid}
       />
     </>
   );

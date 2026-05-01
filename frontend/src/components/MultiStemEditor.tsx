@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   Activity,
+  Grid,
   Play,
   Sliders,
   Square,
@@ -21,9 +22,11 @@ import {
 } from "lucide-react";
 
 import type { StemDefinition, TrimState } from "../types";
+import type { BeatGridMetadata } from "../api";
 import { cn } from "../utils/cn";
 import { useTimelineViewport } from "../hooks/useTimelineViewport";
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
+import { computeBeatGridPcts } from "../utils/beatGrid";
 import { TimelineRuler } from "./multi-stem-editor/timeline-ruler.component";
 import { WaveformTimeline } from "./multi-stem-editor/waveform-timeline.component";
 import { StemTabs } from "./multi-stem-editor/stem-tabs.component";
@@ -46,6 +49,8 @@ export interface MultiStemEditorProps {
   isLoadingStems: boolean;
   /** False until stem AudioBuffers are decoded — avoids play/mix tools that cannot output sound yet. */
   playbackReady?: boolean;
+  /** Optional beat-grid metadata from backend BPM analysis. */
+  beatGrid?: BeatGridMetadata | null;
   onStemStateChange: (
     stemId: string,
     next: Partial<StemEditorState>,
@@ -79,6 +84,7 @@ export function MultiStemEditor({
   playheadPct,
   isLoadingStems,
   playbackReady = false,
+  beatGrid,
   onStemStateChange,
   onSeek,
   onPlayPause,
@@ -93,6 +99,7 @@ export function MultiStemEditor({
     "pitch" | "eq" | "amplitude" | "time" | null
   >(null);
   const [mixerConsoleOpen, setMixerConsoleOpen] = useState(false);
+  const [showBeatGrid, setShowBeatGrid] = useState(false);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
     stems[0]?.id ?? null,
   );
@@ -184,6 +191,11 @@ export function MultiStemEditor({
     });
   }, [scrollPct, zoom, maxDuration]);
 
+  const beatGridPcts = useMemo(() => {
+    if (!showBeatGrid || !beatGrid) return [];
+    return computeBeatGridPcts({ beatGrid, maxDuration, scrollPct, zoom });
+  }, [showBeatGrid, beatGrid, maxDuration, scrollPct, zoom]);
+
   const playheadVisiblePct =
     clamp(
       (playheadPct / 100 - visibleStartGlobal) / visibleRangeGlobal,
@@ -259,6 +271,23 @@ export function MultiStemEditor({
             <ZoomIn className="h-4 w-4" />
           </button>
         </div>
+
+        {beatGrid && (
+          <button
+            type="button"
+            onClick={() => setShowBeatGrid((v) => !v)}
+            aria-label="Toggle beat grid"
+            className={cn(
+              "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
+              showBeatGrid
+                ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                : "border-white/10 bg-white/5 text-white/60 hover:text-white",
+            )}
+          >
+            <Grid className="h-3.5 w-3.5" />
+            Beat Grid
+          </button>
+        )}
 
         {zoom > 1 && (
           <input
@@ -344,6 +373,7 @@ export function MultiStemEditor({
             isPlaying={isAnalyserOutputActive}
             getAnalyserData={getAnalyserData}
             tickPcts={ticks.map((t) => t.pct)}
+            beatGridPcts={beatGridPcts}
             onTrimChange={handleTrimChange}
             onSeek={instrumentedOnSeek}
             onActivate={handleActivate}

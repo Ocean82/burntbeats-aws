@@ -36,6 +36,14 @@ export interface JobStatusResponse {
   progress: number;
   stems?: StemResult[];
   error?: string;
+  /** Optional beat-grid metadata emitted by the backend after separation. */
+  beat_grid?: BeatGridMetadata;
+}
+
+export interface BeatGridMetadata {
+  bpm: number;
+  beat_offset_seconds: number;
+  confidence: number;
 }
 
 export interface CancelResponse {

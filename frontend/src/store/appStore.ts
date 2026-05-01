@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { SplitQuality } from "../api";
 import type { StemResult } from "../types";
+import type { BeatGridMetadata } from "../api";
 
 export interface AppState {
   quality: SplitQuality;
@@ -16,6 +17,7 @@ export interface AppState {
   isExpanding: boolean;
   splitProgress: number;
   pipelineIndex: number;
+  beatGrid: BeatGridMetadata | null;
 
   setUploadState: (update: Partial<AppState> | ((prev: AppState) => Partial<AppState>)) => void;
   setSplitError: (msg: string | null) => void;
@@ -35,6 +37,7 @@ export const useAppStore = create<AppState>((set) => ({
   isExpanding: false,
   splitProgress: 0,
   pipelineIndex: 0,
+  beatGrid: null,
 
   setUploadState: (update) =>
     set((state) =>

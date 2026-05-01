@@ -177,6 +177,12 @@ function isStemJobStatusValue(value: unknown): value is StemJobStatus {
     if (!Array.isArray(value.stems)) return false;
     if (!value.stems.every(isStemResultValue)) return false;
   }
+  if (value.beat_grid !== undefined) {
+    if (!isRecord(value.beat_grid)) return false;
+    if (typeof value.beat_grid.bpm !== "number" || !Number.isFinite(value.beat_grid.bpm)) return false;
+    if (typeof value.beat_grid.beat_offset_seconds !== "number" || !Number.isFinite(value.beat_grid.beat_offset_seconds)) return false;
+    if (typeof value.beat_grid.confidence !== "number" || !Number.isFinite(value.beat_grid.confidence)) return false;
+  }
   return true;
 }
 
@@ -191,6 +197,13 @@ export interface SplitResponse {
   job_id: string;
   status: string;
   stems: StemResult[];
+  beat_grid?: BeatGridMetadata;
+}
+
+export interface BeatGridMetadata {
+  bpm: number;
+  beat_offset_seconds: number;
+  confidence: number;
 }
 
 export interface StemJobStatus {
@@ -198,6 +211,7 @@ export interface StemJobStatus {
   progress: number;
   stems?: StemResult[];
   error?: string;
+  beat_grid?: BeatGridMetadata;
 }
 
 export type SplitQuality = SharedSplitQuality;
@@ -338,7 +352,7 @@ export async function splitStems(
   const { job_id } = await startStemSplit(file, stems, quality, isSample);
   const final = await pollStemJobUntilDone(job_id, (s) => onProgress?.(s));
   if (final.status === "completed" && final.stems) {
-    return { job_id, status: "completed", stems: final.stems };
+    return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };
   }
   throw new Error(userFacingApiError(final.error ?? null, "Stem separation failed"));
 }
@@ -388,7 +402,7 @@ export async function expandStems(
   const { job_id } = await startExpand(jobId, quality);
   const final = await pollStemJobUntilDone(job_id, (s) => onProgress?.(s));
   if (final.status === "completed" && final.stems) {
-    return { job_id, status: "completed", stems: final.stems };
+    return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };
   }
   throw new Error(userFacingApiError(final.error ?? null, "Expand failed"));
 }

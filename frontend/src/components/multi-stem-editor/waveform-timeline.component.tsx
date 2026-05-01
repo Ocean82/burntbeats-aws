@@ -23,6 +23,8 @@ export interface WaveformTimelineProps {
   showPlayhead: boolean;
   /** Ruler tick positions (0–100) used to draw time grid lines behind the lanes. */
   tickPcts?: number[];
+  /** Beat-grid positions (0–100) computed from backend BPM metadata. */
+  beatGridPcts?: number[];
   /** Optional: time-domain analyser data for live waveform modulation during playback. */
   getAnalyserData?: () => Uint8Array | null;
   /** Whether audio is currently playing (gates the analyser modulation). */
@@ -47,6 +49,7 @@ export function WaveformTimeline({
   playheadVisiblePct,
   showPlayhead,
   tickPcts,
+  beatGridPcts,
   getAnalyserData,
   isPlaying = false,
   onTrimChange,
@@ -68,6 +71,19 @@ export function WaveformTimeline({
             <div
               key={pct}
               className="absolute inset-y-0 w-px bg-white/[0.05]"
+              style={{ left: `${pct}%` }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Beat grid lines — amber markers from backend BPM analysis */}
+      {beatGridPcts && beatGridPcts.length > 0 && (
+        <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+          {beatGridPcts.map((pct, i) => (
+            <div
+              key={i}
+              className="absolute inset-y-0 w-px bg-amber-400/25"
               style={{ left: `${pct}%` }}
             />
           ))}
