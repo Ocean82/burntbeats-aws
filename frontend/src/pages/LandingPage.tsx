@@ -5,12 +5,27 @@ import { Zap, ShieldCheck, AudioWaveform } from "lucide-react";
 import type { PlanConfig } from "../components/PricingTablePreview";
 import { PricingTablePreview } from "../components/PricingTablePreview";
 
+/** Framer Motion fade-up preset. delay in seconds, distance in px. */
+function fadeUp(delay = 0, distance = 16) {
+  return {
+    initial: { opacity: 0, y: distance },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.45, delay, ease: "easeOut" },
+  };
+}
+
 export function LandingPage() {
   const { isSignedIn } = useAuth();
   const reduceMotion = useReducedMotion();
   const [pricingTab, setPricingTab] = useState<"subscriptions" | "packs">(
     "subscriptions",
   );
+
+  /** Respects prefers-reduced-motion — skips animation when true. */
+  const anim = (delay = 0, distance = 16) =>
+    reduceMotion
+      ? { initial: false as const, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
+      : fadeUp(delay, distance);
 
   const renderPricingCTA = (plan: PlanConfig) => (
     <SignUpButton mode="modal" fallbackRedirectUrl="/app">
@@ -77,7 +92,7 @@ export function LandingPage() {
         {/* Hero */}
         <motion.section
           className="flex flex-col items-center gap-6 py-12 text-center"
-          {...fadeUp(0, 20)}
+          {...anim(0, 20)}
         >
           <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/90 sm:text-xs sm:tracking-[0.3em]">
             Stem Splitter · Mixer · Master
@@ -129,7 +144,7 @@ export function LandingPage() {
         </motion.section>
 
         {/* Pricing — Stripe hosted pricing table */}
-        <motion.section id="pricing" className="py-12" {...fadeUp(0.15)}>
+        <motion.section id="pricing" className="py-12" {...anim(0.15)}>
           <div className="mb-8 text-center">
             <p className="eyebrow mb-2">Simple Pricing</p>
             <p className="text-base leading-relaxed text-white/75">
@@ -216,7 +231,7 @@ export function LandingPage() {
         {/* Footer CTA */}
         <motion.section
           className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-4 py-10 text-center sm:px-8 sm:py-12"
-          {...fadeUp(0.35)}
+          {...anim(0.35)}
         >
           <p className="mb-2 text-2xl font-bold text-white/90">
             Ready to split?
