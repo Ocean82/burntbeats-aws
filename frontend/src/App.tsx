@@ -215,6 +215,8 @@ export function App() {
     stopPreview,
     getMasterAnalyserTimeDomainData,
     getMasterAnalyserFrequencyData,
+    masterVolume,
+    setMasterVolume,
   } = useAudioPlayback({
     onError: (message) => setSplitError(message),
     stemStates,
@@ -436,6 +438,22 @@ export function App() {
   );
 
   const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
+
+  // Ref for auto-scrolling to the mixer when a split completes
+  const mixerSectionRef = useRef<HTMLDivElement | null>(null);
+  // Track previous splitting state to detect the transition
+  const wasSplittingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasSplittingRef.current && !isSplitting && splitResultStems.length > 0) {
+      // Small delay lets the collapse animation start first
+      const t = window.setTimeout(() => {
+        mixerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 320);
+      return () => window.clearTimeout(t);
+    }
+    wasSplittingRef.current = isSplitting;
+  }, [isSplitting, splitResultStems.length]);
 
   useEffect(() => {
     const handleOpenPricing = () => setActiveView("pricing");
@@ -1061,6 +1079,7 @@ export function App() {
                       usageLoading={usageLoading}
                       estimatedSplitTokens={estimatedSplitTokens}
                       estimatedExpandTokens={estimatedSplitTokens}
+                      isCollapsed={splitResultStems.length > 0 && !isSplitting}
                     />
                     {subscription.status === "inactive" && (
                       <div className="mt-3 border-t border-white/10 pt-3">
@@ -1077,6 +1096,7 @@ export function App() {
 
                 {/* Full-width Mixer workspace */}
                 <motion.div
+                  ref={mixerSectionRef}
                   onPointerDown={handleGuidancePanelInteract}
                   className={cn(
                     // `glass-panel` uses `overflow: hidden`; allow the mixer waveform/panels to overflow so menus are reachable.
@@ -1343,6 +1363,8 @@ export function App() {
                         getMasterAnalyserFrequencyData={
                           getMasterAnalyserFrequencyData
                         }
+                        masterVolume={masterVolume}
+                        onMasterVolumeChange={setMasterVolume}
                       />
                     </Suspense>
                     {exportCompareSummary && (

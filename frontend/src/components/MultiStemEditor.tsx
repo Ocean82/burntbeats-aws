@@ -343,6 +343,7 @@ export function MultiStemEditor({
             showPlayhead={playheadPct > 0}
             isPlaying={isAnalyserOutputActive}
             getAnalyserData={getAnalyserData}
+            tickPcts={ticks.map((t) => t.pct)}
             onTrimChange={handleTrimChange}
             onSeek={instrumentedOnSeek}
             onActivate={handleActivate}

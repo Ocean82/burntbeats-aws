@@ -8,6 +8,14 @@ import { VUMeter } from "./VUMeter";
 import { cn } from "../utils/cn";
 import type { SeekPhase } from "../types/playbackSeek";
 
+/** Convert a linear gain value (0–1.5) to a dB string for display. */
+function gainToDb(gain: number): string {
+  if (gain <= 0) return "-∞";
+  const db = 20 * Math.log10(gain);
+  if (db >= 0) return `+${db.toFixed(1)} dB`;
+  return `${db.toFixed(1)} dB`;
+}
+
 export interface MixerPanelProps {
   mixStemCount: number;
   isPlayingMix: boolean;
@@ -37,6 +45,10 @@ export interface MixerPanelProps {
   loadingPreviewStemId: string | null;
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
+  /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
+  masterVolume: number;
+  /** Callback to update master output gain. */
+  onMasterVolumeChange: (value: number) => void;
 }
 
 export function MixerPanel({
@@ -68,6 +80,8 @@ export function MixerPanel({
   loadingPreviewStemId,
   getMasterAnalyserTimeDomainData,
   getMasterAnalyserFrequencyData,
+  masterVolume,
+  onMasterVolumeChange,
 }: MixerPanelProps) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const playheadPct = useSyncExternalStore(
@@ -101,21 +115,68 @@ export function MixerPanel({
       <p className="eyebrow">Mixer</p>
       <h2 className="font-display text-2xl tracking-[-0.04em] text-white mb-5">Timeline · Mix · Export</h2>
 
-      <div className="mb-4 rounded-xl border border-white/10 bg-black/25 p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/45">Master output</p>
-        <div className="flex flex-wrap items-end gap-4">
+      {/* ── Master Channel Strip ── */}
+      <div className="mb-5 flex items-stretch gap-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+        {/* Spectrum analyzer — takes up most of the width */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1 border-r border-white/[0.08] px-3 py-3">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+            Spectrum
+          </p>
+          <div className="flex-1">
+            <SpectrumAnalyzer
+              getFrequencyData={getMasterAnalyserFrequencyData}
+              isPlaying={isPlayingMix || playingStemId !== null}
+              height={56}
+            />
+          </div>
+        </div>
+
+        {/* VU meter column */}
+        <div className="flex flex-col items-center gap-1 border-r border-white/[0.08] px-3 py-3">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+            Level
+          </p>
           <VUMeter
             getAnalyserData={getMasterAnalyserTimeDomainData}
             color="var(--accent)"
             isPlaying={isPlayingMix || playingStemId !== null}
-            height={72}
+            height={56}
           />
-          <div className="min-h-[48px] min-w-[min(100%,12rem)] flex-1">
-            <SpectrumAnalyzer
-              getFrequencyData={getMasterAnalyserFrequencyData}
-              isPlaying={isPlayingMix || playingStemId !== null}
-              height={48}
+        </div>
+
+        {/* Master fader column */}
+        <div className="flex flex-col items-center gap-1 px-4 py-3">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+            Master
+          </p>
+          <div className="relative flex flex-1 flex-col items-center justify-center gap-1.5">
+            {/* Vertical fader — uses webkit slider-vertical for cross-browser support */}
+            <input
+              type="range"
+              min={0}
+              max={1.5}
+              step={0.01}
+              value={masterVolume}
+              onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
+              aria-label="Master output volume"
+              aria-valuetext={gainToDb(masterVolume)}
+              className="h-24 w-2 cursor-pointer accent-amber-500"
+              style={{ WebkitAppearance: "slider-vertical", writingMode: "vertical-lr", direction: "rtl" } as React.CSSProperties}
             />
+            {/* dB readout */}
+            <span
+              className={cn(
+                "font-mono text-[9px] font-semibold tabular-nums",
+                masterVolume > 1.05
+                  ? "text-amber-300"
+                  : masterVolume < 0.05
+                    ? "text-white/30"
+                    : "text-white/60",
+              )}
+              aria-hidden
+            >
+              {gainToDb(masterVolume)}
+            </span>
           </div>
         </div>
       </div>

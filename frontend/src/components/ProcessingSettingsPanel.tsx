@@ -9,6 +9,7 @@ import {
   Loader2,
   Sparkles,
   Music2,
+  Settings2,
 } from "lucide-react";
 import type { SplitQuality } from "../api";
 import type React from "react";
@@ -69,6 +70,11 @@ export interface ProcessingSettingsPanelProps {
   estimatedSplitTokens?: number | null;
   /** Estimated tokens for expand 2→4 (same duration as split). */
   estimatedExpandTokens?: number | null;
+  /**
+   * When true, the panel renders in a compact collapsed bar.
+   * The user can expand it by clicking "Edit Source".
+   */
+  isCollapsed?: boolean;
 }
 
 export function ProcessingSettingsPanel({
@@ -108,10 +114,21 @@ export function ProcessingSettingsPanel({
   usageLoading = false,
   estimatedSplitTokens = null,
   estimatedExpandTokens = null,
+  isCollapsed = false,
 }: ProcessingSettingsPanelProps) {
   const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
   const [loadExpanded, setLoadExpanded] = useState(false);
   const [isSample, setIsSample] = useState(false);
+  // Local override: user can re-expand the panel after auto-collapse
+  const [userExpanded, setUserExpanded] = useState(false);
+
+  const panelCollapsed = isCollapsed && !userExpanded;
+
+  // When a new split completes (isCollapsed flips true), reset the user override
+  // so the panel collapses cleanly for the new result.
+  useEffect(() => {
+    if (isCollapsed) setUserExpanded(false);
+  }, [isCollapsed]);
 
   const canChoosePaidQuality = stemQualityOptions !== "speed_only";
 
@@ -172,6 +189,52 @@ export function ProcessingSettingsPanel({
 
   return (
     <div data-testid="processing-settings-panel">
+      {/* ── Collapsed bar: shown after a split completes ── */}
+      <AnimatePresence initial={false}>
+        {panelCollapsed && (
+          <motion.div
+            key="collapsed-bar"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            style={{ overflow: "hidden" }}
+          >
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
+                <Music2 className="h-3.5 w-3.5 text-amber-400" />
+              </div>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/90">
+                {uploadName || "Loaded stems"}
+              </span>
+              <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
+                {splitResultStemsLength} stems ready
+              </span>
+              <button
+                type="button"
+                onClick={() => setUserExpanded(true)}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/65 transition hover:border-white/25 hover:text-white"
+                aria-label="Edit source settings"
+              >
+                <Settings2 className="h-3 w-3" />
+                Edit Source
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Full panel: hidden when collapsed ── */}
+      <AnimatePresence initial={false}>
+        {!panelCollapsed && (
+          <motion.div
+            key="full-panel"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+            style={{ overflow: "hidden" }}
+          >
       {subscriptionInactive && sourceMode === "split" && !isSample && (
         <p className="mb-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100/95">
           <span className="font-semibold text-amber-50">
@@ -686,7 +749,7 @@ export function ProcessingSettingsPanel({
         )}
       </AnimatePresence>
 
-      {/* Loaded stems list (collapsible) */}
+      {/* Loaded stems list (collapsible) — inside full panel */}
       {sourceMode === "load" && loadExpanded && loadedStems.length > 0 && (
         <div className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3">
           <ul className="space-y-1.5">
@@ -711,28 +774,6 @@ export function ProcessingSettingsPanel({
           </ul>
         </div>
       )}
-
-      {/* Hidden file inputs */}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="audio/*"
-        className="hidden"
-        aria-label="Choose audio file"
-        onChange={(e) => onUploadFileInput(e.target.files?.[0] ?? null)}
-      />
-      <input
-        ref={loadStemsInputRef}
-        type="file"
-        accept="audio/*"
-        multiple
-        className="hidden"
-        aria-label="Load stem files"
-        onChange={(e) => {
-          onLoadStems(e.target.files);
-          e.target.value = "";
-        }}
-      />
 
       {/* Error */}
       {splitError && (
@@ -772,6 +813,31 @@ export function ProcessingSettingsPanel({
           </div>
         </motion.div>
       )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Always-present hidden file inputs (needed even when panel is collapsed) */}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        aria-label="Choose audio file"
+        onChange={(e) => onUploadFileInput(e.target.files?.[0] ?? null)}
+      />
+      <input
+        ref={loadStemsInputRef}
+        type="file"
+        accept="audio/*"
+        multiple
+        className="hidden"
+        aria-label="Load stem files"
+        onChange={(e) => {
+          onLoadStems(e.target.files);
+          e.target.value = "";
+        }}
+      />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
-import { Headphones, Volume2, VolumeX } from "lucide-react";
 import type { MixerState, StemDefinition, TrimState } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { cn } from "../../utils/cn";
@@ -273,14 +272,14 @@ export function WaveformLane({
             disabled={!audioReady}
             aria-label={isSoloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-[10px] transition sm:h-8 sm:w-8",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-bold text-[10px] tracking-wide transition-all duration-150 sm:h-8 sm:w-8",
               isSoloed
-                ? "border-[color:var(--stem-glow)]/60 bg-[color:var(--stem-glow)]/25 text-white"
-                : "border-white/10 bg-white/5 text-white/70 hover:text-white",
+                ? "border-amber-400/70 bg-amber-500/30 text-amber-100 shadow-[0_0_14px_rgba(255,172,92,0.5)]"
+                : "border-white/10 bg-white/5 text-white/60 hover:border-amber-400/40 hover:text-amber-200",
               !audioReady && "opacity-40",
             )}
           >
-            <Headphones className="h-3 w-3" aria-hidden />
+            S
           </button>
           <button
             type="button"
@@ -288,14 +287,14 @@ export function WaveformLane({
             disabled={!audioReady}
             aria-label={isMuted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border text-[10px] transition sm:h-8 sm:w-8",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-bold text-[10px] tracking-wide transition-all duration-150 sm:h-8 sm:w-8",
               isMuted
-                ? "border-red-400/50 bg-red-500/25 text-red-100"
-                : "border-white/10 bg-white/5 text-[color:var(--stem-glow)]/85 hover:text-white",
+                ? "border-red-400/60 bg-red-500/25 text-red-100 shadow-[0_0_12px_rgba(239,68,68,0.4)]"
+                : "border-white/10 bg-white/5 text-[color:var(--stem-glow)]/85 hover:border-red-400/30 hover:text-red-200",
               !audioReady && "opacity-40",
             )}
           >
-            {isMuted ? <VolumeX className="h-3 w-3" aria-hidden /> : <Volume2 className="h-3 w-3" aria-hidden />}
+            M
           </button>
           <label className="flex min-w-0 flex-1 items-center gap-0.5 px-0.5">
             <span className="sr-only">{stem.label} gain in decibels</span>

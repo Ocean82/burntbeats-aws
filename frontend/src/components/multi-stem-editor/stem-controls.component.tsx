@@ -120,13 +120,13 @@ export const StemControls = memo(function StemControls({
           disabled={!audioReady}
           aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
           className={cn(
-            "min-h-[38px] rounded-lg border px-3 py-1.5 text-xs font-medium",
+            "min-h-[38px] rounded-lg border px-3 py-1.5 text-xs font-bold tracking-wide transition-all duration-150",
             soloed
-              ? "border-amber-400/45 bg-amber-500/20 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.14)]"
-              : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:text-white"
+              ? "border-amber-400/70 bg-amber-500/30 text-amber-100 shadow-[0_0_20px_rgba(255,172,92,0.45)] scale-[1.03]"
+              : "border-white/10 bg-white/5 text-white/70 hover:border-amber-400/40 hover:text-amber-200"
           )}
         >
-          Solo
+          S
         </button>
 
         <button
@@ -135,14 +135,14 @@ export const StemControls = memo(function StemControls({
           disabled={!audioReady}
           aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
           className={cn(
-            "flex min-h-[38px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium",
+            "flex min-h-[38px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold tracking-wide transition-all duration-150",
             muted
-              ? "border-red-400/40 bg-red-500/20 text-red-200"
-              : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:text-white"
+              ? "border-red-400/60 bg-red-500/25 text-red-100 shadow-[0_0_16px_rgba(239,68,68,0.35)] scale-[1.03]"
+              : "border-white/10 bg-white/5 text-white/70 hover:border-red-400/30 hover:text-red-200"
           )}
         >
           {muted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
-          {muted ? "Unmute" : "Mute"}
+          M
         </button>
       </div>
 

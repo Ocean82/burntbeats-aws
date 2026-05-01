@@ -96,6 +96,10 @@ interface UseAudioPlaybackReturn {
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
   /** Frequency bins for spectrum (master bus). */
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
+  /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
+  masterVolume: number;
+  /** Set master output gain and update the live gain node immediately. */
+  setMasterVolume: (value: number) => void;
 }
 
 interface UseAudioPlaybackOptions {
@@ -115,6 +119,7 @@ export function useAudioPlayback(
   const [loadingPreviewStemId, setLoadingPreviewStemId] = useState<
     string | null
   >(null);
+  const [masterVolume, setMasterVolumeState] = useState(1.0);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentPreviewRuntimeRef = useRef<MixStemRuntime | null>(null);
@@ -175,6 +180,14 @@ export function useAudioPlayback(
     const buf = new Uint8Array(an.frequencyBinCount);
     an.getByteFrequencyData(buf);
     return buf;
+  }, []);
+
+  const setMasterVolume = useCallback((value: number) => {
+    const clamped = Math.max(0, Math.min(1.5, value));
+    setMasterVolumeState(clamped);
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = clamped;
+    }
   }, []);
 
   const emitPlayheadPosition = useCallback((next: number) => {
@@ -821,5 +834,7 @@ export function useAudioPlayback(
     stopPreview,
     getMasterAnalyserTimeDomainData,
     getMasterAnalyserFrequencyData,
+    masterVolume,
+    setMasterVolume,
   };
 }

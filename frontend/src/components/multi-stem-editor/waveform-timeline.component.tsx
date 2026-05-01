@@ -21,6 +21,8 @@ export interface WaveformTimelineProps {
   activeStemId: string;
   playheadVisiblePct: number;
   showPlayhead: boolean;
+  /** Ruler tick positions (0–100) used to draw time grid lines behind the lanes. */
+  tickPcts?: number[];
   /** Optional: time-domain analyser data for live waveform modulation during playback. */
   getAnalyserData?: () => Uint8Array | null;
   /** Whether audio is currently playing (gates the analyser modulation). */
@@ -44,6 +46,7 @@ export function WaveformTimeline({
   activeStemId,
   playheadVisiblePct,
   showPlayhead,
+  tickPcts,
   getAnalyserData,
   isPlaying = false,
   onTrimChange,
@@ -58,6 +61,19 @@ export function WaveformTimeline({
 
   return (
     <div className="relative flex flex-col gap-1.5">
+      {/* Time grid lines — faint vertical guides aligned to ruler ticks */}
+      {tickPcts && tickPcts.length > 0 && (
+        <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
+          {tickPcts.map((pct) => (
+            <div
+              key={pct}
+              className="absolute inset-y-0 w-px bg-white/[0.05]"
+              style={{ left: `${pct}%` }}
+            />
+          ))}
+        </div>
+      )}
+
       {stems.map((stem) => {
         const waveform = waveforms[stem.id];
         const hasWaveform = Boolean(waveform && waveform.length > 0);
