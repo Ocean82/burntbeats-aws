@@ -146,6 +146,8 @@ export function App() {
     isSplitting,
     isExpanding,
     beatGrid,
+    splitProgress,
+    queuePosition,
     setUploadState,
     setSplitError,
   } = uploadState;
@@ -499,23 +501,8 @@ export function App() {
     hasCompletedFirstExport,
   ]);
 
-  useEffect(() => {
-    if (!isSplitting) return;
-    // keep pipeline state in sync for any future status indicators
-    setUploadState((prev) => ({ ...prev, pipelineIndex: 0 }));
-    const t1 = setTimeout(
-      () => setUploadState((prev) => ({ ...prev, pipelineIndex: 1 })),
-      PIPELINE_ANIMATION_DELAYS_MS.toStep1,
-    );
-    const t2 = setTimeout(
-      () => setUploadState((prev) => ({ ...prev, pipelineIndex: 2 })),
-      PIPELINE_ANIMATION_DELAYS_MS.toStep2,
-    );
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [isSplitting]);
+  // Pipeline index is now driven by real progress from the SSE stream (useStemSplitting).
+  // The old timer-based animation has been removed to avoid conflicting with real data.
 
   // ── Cleanup on unmount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -845,6 +832,8 @@ export function App() {
                         void triggerSplit(requestedStemMode, isSample);
                       }}
                       isSplitting={isSplitting}
+                      splitProgress={splitProgress}
+                      queuePosition={queuePosition}
                       splitResultStemsLength={splitResultStems.length}
                       isExpanding={isExpanding}
                       onExpand={() => void triggerExpand()}

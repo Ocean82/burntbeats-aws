@@ -18,6 +18,8 @@ export interface AppState {
   splitProgress: number;
   pipelineIndex: number;
   beatGrid: BeatGridMetadata | null;
+  /** Queue position when job is waiting (1 = next to run, null = not queued). */
+  queuePosition: number | null;
 
   setUploadState: (update: Partial<AppState> | ((prev: AppState) => Partial<AppState>)) => void;
   setSplitError: (msg: string | null) => void;
@@ -38,6 +40,7 @@ export const useAppStore = create<AppState>((set) => ({
   splitProgress: 0,
   pipelineIndex: 0,
   beatGrid: null,
+  queuePosition: null,
 
   setUploadState: (update) =>
     set((state) =>

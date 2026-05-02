@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     import torch
@@ -448,6 +448,8 @@ def _run_mdx_onnx(
     overlap: float = 0.75,
     job_logger: "logging.Logger | None" = None,
     instrumental_output_path: Path | None = None,
+    progress_callback: "Callable[[int], None] | None" = None,
+    progress_range: "tuple[int, int] | None" = None,
 ) -> Path | None:
     """
     Core MDX-Net ONNX inference following the UVR5 / audio-separator reference exactly.
@@ -554,6 +556,24 @@ def _run_mdx_onnx(
     result = np.zeros((1, 2, total), dtype=np.float32)
     divider = np.zeros((1, 2, total), dtype=np.float32)
 
+    # ── Progress range helpers ────────────────────────────────────────────────
+    _prog_start, _prog_end = progress_range if progress_range else (0, 100)
+    _last_reported_pct: int = -1
+
+    def _emit_chunk_progress(chunk_idx: int, n_chunks: int) -> None:
+        nonlocal _last_reported_pct
+        if progress_callback is None or n_chunks == 0:
+            return
+        # Map chunk position into [_prog_start, _prog_end]
+        frac = chunk_idx / n_chunks
+        pct = int(_prog_start + frac * (_prog_end - _prog_start))
+        if pct != _last_reported_pct:
+            _last_reported_pct = pct
+            try:
+                progress_callback(pct)
+            except Exception:
+                pass  # never let a progress callback crash inference
+
     # ── Process chunks ────────────────────────────────────────────────────────
     hann_window_cache: dict[int, np.ndarray] = {}
     chunk_idx = 0
@@ -567,6 +587,7 @@ def _run_mdx_onnx(
                 n_chunks,
                 elapsed,
             )
+        _emit_chunk_progress(chunk_idx, n_chunks)
 
         start = i
         end = min(i + chunk_size, total)
@@ -672,12 +693,16 @@ def run_vocal_onnx(
     job_logger: "logging.Logger | None" = None,
     model_path_override: Path | None = None,
     instrumental_output_path: Path | None = None,
+    progress_callback: "Callable[[int], None] | None" = None,
+    progress_range: "tuple[int, int] | None" = None,
 ) -> Path | None:
     """
     Extract vocals using the best available vocal ONNX model (or model_path_override when set).
     overlap: 0.5 for speed, 0.75 for quality (smoother chunk boundaries).
     For ``mdx23c_vocal.onnx`` / ``.ort``, if ``instrumental_output_path`` is set, also writes
     instrumental = input mix minus vocal (same inference pass; MDX23C quality path).
+    progress_callback: optional callable(pct) called as chunks are processed.
+    progress_range: (start, end) to map chunk progress into a sub-range of the parent job.
     Returns output_path on success, None if no model or inference fails.
     """
     model_path = (
@@ -701,6 +726,8 @@ def run_vocal_onnx(
         overlap=overlap,
         job_logger=job_logger,
         instrumental_output_path=instrumental_output_path,
+        progress_callback=progress_callback,
+        progress_range=progress_range,
     )
 
 
@@ -710,10 +737,14 @@ def run_inst_onnx(
     overlap: float = 0.75,
     job_logger: "logging.Logger | None" = None,
     model_path_override: Path | None = None,
+    progress_callback: "Callable[[int], None] | None" = None,
+    progress_range: "tuple[int, int] | None" = None,
 ) -> Path | None:
     """
     Extract instrumental using the best available instrumental ONNX model (or model_path_override when set).
     overlap: 0.5 for speed, 0.75 for quality (smoother chunk boundaries).
+    progress_callback: optional callable(pct) called as chunks are processed.
+    progress_range: (start, end) to map chunk progress into a sub-range of the parent job.
     Returns output_path on success, None if no model or inference fails.
     This avoids phase inversion artifacts when available.
     """
@@ -726,7 +757,13 @@ def run_inst_onnx(
         logger.debug("No instrumental ONNX model found")
         return None
     return _run_mdx_onnx(
-        input_path, output_path, model_path, overlap=overlap, job_logger=job_logger
+        input_path,
+        output_path,
+        model_path,
+        overlap=overlap,
+        job_logger=job_logger,
+        progress_callback=progress_callback,
+        progress_range=progress_range,
     )
 
 

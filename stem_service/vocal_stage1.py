@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
+from typing import Callable
 import os
 import subprocess
 import sys
@@ -169,6 +170,8 @@ def _pair_vocal_with_inst_onnx(
     inst_model_override: Path | None,
     job_logger: "logging.Logger | None",
     allow_inst_onnx: bool,
+    progress_callback: "Callable[[int], None] | None" = None,
+    progress_range: "tuple[int, int] | None" = None,
 ) -> tuple[Path, Path | None, list[str], InstrumentalSource] | None:
     """Run vocal ONNX; add instrumental ONNX if available, else phase-inversion pending."""
     log = job_logger or logger
@@ -179,6 +182,8 @@ def _pair_vocal_with_inst_onnx(
         overlap=onnx_overlap,
         job_logger=job_logger,
         model_path_override=vocal_path,
+        progress_callback=progress_callback,
+        progress_range=progress_range,
     )
     if vocals_path is None:
         return None
@@ -233,12 +238,17 @@ def extract_vocals_stage1(
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,
     inst_model_override: Path | None = None,
+    progress_callback: "Callable[[int], None] | None" = None,
+    progress_range: "tuple[int, int] | None" = None,
 ) -> tuple[Path, Path | None, list[str], InstrumentalSource]:
     """
     Extract vocals and optionally instrumental.
 
     prefer_speed=True  → 50% overlap (faster, slightly more boundary artifacts)
     prefer_speed=False → 75% overlap (slower, smoother — recommended for quality)
+
+    progress_callback: optional callable(pct) forwarded to the ONNX chunk loop.
+    progress_range: (start, end) maps ONNX chunk progress into a parent job sub-range.
 
     Returns (vocals_path, instrumental_path_or_None, models_used, instrumental_source).
     When ``instrumental_source`` is ``PHASE_INVERSION_PENDING``, ``instrumental_path`` is None and
@@ -303,6 +313,8 @@ def extract_vocals_stage1(
             inst_model_override=inst_model_override,
             job_logger=job_logger,
             allow_inst_onnx=allow_inst_onnx,
+            progress_callback=progress_callback,
+            progress_range=progress_range,
         )
         if got is not None:
             return got
@@ -324,6 +336,8 @@ def extract_vocals_stage1(
             inst_model_override=inst_model_override,
             job_logger=job_logger,
             allow_inst_onnx=allow_inst_onnx,
+            progress_callback=progress_callback,
+            progress_range=progress_range,
         )
         if got is not None:
             return got

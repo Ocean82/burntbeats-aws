@@ -137,7 +137,11 @@ export function useStemSplitting({
         plan: subscription.plan ?? "none",
       });
       const res = await splitStems(file, stemsArg, splitQuality, isSample, (s) => {
-        setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
+        setUploadState((prev) => ({
+          ...prev,
+          splitProgress: s.progress,
+          queuePosition: s.status === "queued" ? (s.queue_position ?? null) : null,
+        }));
         if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
         else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState((prev) => ({ ...prev, pipelineIndex: 2 }));
         else if (s.progress > 0) setUploadState((prev) => ({ ...prev, pipelineIndex: 1 }));
@@ -149,6 +153,7 @@ export function useStemSplitting({
         splitProgress: 100,
         pipelineIndex: 3,
         beatGrid: res.beat_grid ?? null,
+        queuePosition: null,
       }));
       trackEvent("split_completed", {
         stems_count: res.stems.length,
@@ -161,6 +166,7 @@ export function useStemSplitting({
         splitError: errMsg,
         splitProgress: 0,
         pipelineIndex: 0,
+        queuePosition: null,
       }));
       trackEvent("split_failed", {
         quality: splitQuality,

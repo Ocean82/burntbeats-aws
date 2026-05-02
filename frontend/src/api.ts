@@ -212,6 +212,10 @@ export interface StemJobStatus {
   stems?: StemResult[];
   error?: string;
   beat_grid?: BeatGridMetadata;
+  /** Queue position when status is "queued" (1 = next to run). */
+  queue_position?: number;
+  /** Elapsed processing seconds (emitted during running state). */
+  elapsed_seconds?: number;
 }
 
 export type SplitQuality = SharedSplitQuality;
@@ -320,6 +324,84 @@ export async function pollStemJobUntilDone(
   throw new Error("Stem separation timed out.");
 }
 
+/**
+ * Stream job progress via SSE (fetch + ReadableStream) until completed or failed.
+ * Falls back to polling if the stream cannot be established or encounters an error.
+ *
+ * Uses fetch instead of EventSource so Authorization and x-job-token headers are sent.
+ */
+export async function streamStemJobUntilDone(
+  jobId: string,
+  onProgress: (status: StemJobStatus) => void
+): Promise<StemJobStatus> {
+  const url = `${API_BASE}/api/stems/status/${jobId}/stream`;
+  const headers: Record<string, string> = {
+    ...(await authHeaders()),
+    ...jobTokenHeader(jobId),
+    Accept: "text/event-stream",
+  };
+
+  let response: Response;
+  try {
+    response = await fetch(url, { headers });
+  } catch {
+    // Network error — fall back to polling
+    return pollStemJobUntilDone(jobId, onProgress);
+  }
+
+  if (!response.ok || !response.body) {
+    // SSE endpoint unavailable (e.g. older backend) — fall back to polling
+    return pollStemJobUntilDone(jobId, onProgress);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const start = Date.now();
+
+  try {
+    while (Date.now() - start < STATUS_POLL_MAX_MS) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE frames are separated by double newlines; each frame is "data: <json>\n"
+      const frames = buffer.split("\n\n");
+      // Keep the last (potentially incomplete) frame in the buffer
+      buffer = frames.pop() ?? "";
+
+      for (const frame of frames) {
+        const dataLine = frame
+          .split("\n")
+          .find((line) => line.startsWith("data: "));
+        if (!dataLine) continue;
+        const jsonStr = dataLine.slice("data: ".length);
+        let status: StemJobStatus;
+        try {
+          const parsed: unknown = JSON.parse(jsonStr);
+          if (!isStemJobStatusValue(parsed)) continue;
+          status = parsed;
+        } catch {
+          continue;
+        }
+        requestAnimationFrame(() => onProgress(status));
+        if (status.status === "completed" || status.status === "failed" || status.status === "cancelled") {
+          reader.cancel().catch(() => {});
+          return status;
+        }
+      }
+    }
+  } catch {
+    // Stream error — fall back to polling for the remainder
+    reader.cancel().catch(() => {});
+    return pollStemJobUntilDone(jobId, onProgress);
+  }
+
+  reader.cancel().catch(() => {});
+  throw new Error("Stem separation timed out.");
+}
+
 export async function getStemJobStatus(jobId: string): Promise<StemJobStatus> {
   const res = await fetch(`${API_BASE}/api/stems/status/${jobId}`, {
     headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
@@ -350,7 +432,7 @@ export async function splitStems(
   onProgress?: (status: StemJobStatus) => void
 ): Promise<SplitResponse> {
   const { job_id } = await startStemSplit(file, stems, quality, isSample);
-  const final = await pollStemJobUntilDone(job_id, (s) => onProgress?.(s));
+  const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s));
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };
   }
@@ -400,7 +482,7 @@ export async function expandStems(
   onProgress?: (status: StemJobStatus) => void
 ): Promise<SplitResponse> {
   const { job_id } = await startExpand(jobId, quality);
-  const final = await pollStemJobUntilDone(job_id, (s) => onProgress?.(s));
+  const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s));
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };
   }

@@ -50,6 +50,8 @@ export interface ProcessingSettingsPanelProps {
   onSplit: (requestedStemMode: 2 | 4, isSample?: boolean) => void;
   isSplitting: boolean;
   splitProgress?: number;
+  /** Queue position when job is waiting (1 = next to run). */
+  queuePosition?: number | null;
   splitResultStemsLength: number;
   isExpanding: boolean;
   onExpand: () => void;
@@ -101,6 +103,7 @@ export function ProcessingSettingsPanel({
   onSplit,
   isSplitting,
   splitProgress = 0,
+  queuePosition = null,
   splitResultStemsLength,
   isExpanding,
   onExpand,
@@ -616,6 +619,57 @@ export function ProcessingSettingsPanel({
                 60-second sample · no tokens consumed
               </p>
             )}
+            {/* ── Real-time progress bar ── */}
+            <AnimatePresence>
+              {isSplitting && (
+                <motion.div
+                  key="split-progress"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ overflow: "hidden" }}
+                  role="status"
+                  aria-live="polite"
+                  aria-label={
+                    queuePosition != null
+                      ? `Queued — position ${queuePosition}`
+                      : `Splitting: ${Math.round(splitProgress)}%`
+                  }
+                >
+                  <div className="mt-1 w-full min-w-[220px]">
+                    {queuePosition != null ? (
+                      <p className="mb-1.5 text-xs text-amber-200/80">
+                        Queue position {queuePosition} — waiting to start…
+                      </p>
+                    ) : (
+                      <div className="mb-1 flex items-center justify-between text-[11px] text-white/50">
+                        <span>
+                          {splitProgress < 5
+                            ? "Starting…"
+                            : splitProgress < 90
+                              ? "Separating vocals…"
+                              : splitProgress < 95
+                                ? "Building instrumental…"
+                                : "Finalising stems…"}
+                        </span>
+                        <span className="tabular-nums">{Math.round(splitProgress)}%</span>
+                      </div>
+                    )}
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                      <motion.div
+                        className="h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)]"
+                        initial={{ width: "0%" }}
+                        animate={{
+                          width: queuePosition != null ? "0%" : `${Math.max(2, splitProgress)}%`,
+                        }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

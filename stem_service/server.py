@@ -481,7 +481,13 @@ def _run_separation_sync(
         elapsed = time.monotonic() - t0
         job_log.info("progress=%d%%  elapsed=%.1fs", pct, elapsed)
         _write_progress(
-            out_dir, {"status": "running", "progress": pct, "quality": quality_mode}
+            out_dir,
+            {
+                "status": "running",
+                "progress": pct,
+                "quality": quality_mode,
+                "elapsed_seconds": round(elapsed, 1),
+            },
         )
 
     models_used: list[str] = []
