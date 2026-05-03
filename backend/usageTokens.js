@@ -3,9 +3,9 @@
  * Usage tokens: balance in Clerk privateMetadata.usageTokens.
  * **1 token = 1 minute of audio** (partial minutes round up). Example: 5:00 → 5 tokens.
  *
- * **Charged (when USAGE_TOKENS_ENABLED):** POST /api/stems/split, POST /api/stems/expand;
- *   future POST /api/stems/server-export when implemented.
- * **Not charged:** GET status, GET stem files, mixing, editing, scrubbing, client-side master export.
+ * **Charged (when USAGE_TOKENS_ENABLED):** POST /api/stems/split; POST /api/stems/expand;
+ *   POST /api/stems/server-export when **SERVER_EXPORT_ENABLED** (minute basis via `computeServerExportCost`; handler in `backend/server.js`).
+ * **Not charged:** GET status; GET stem files; mixer edits / scrubbing; client-side master export (**WAV** / **MP3** / **ZIP** assembly).
  *
  * Enable with USAGE_TOKENS_ENABLED=1 (requires Clerk Bearer on metered routes when enabled).
  * See docs/BILLING-AND-TOKENS.md and docs/ARCHITECTURE-FLOW.md
@@ -93,7 +93,8 @@ export function computeExpandCost(durationSec, _quality) {
 }
 
 /**
- * Reserved for server-side master export (FFmpeg / mastering pipeline). Same minute basis as split/expand.
+ * **`POST /api/stems/server-export`** when **`SERVER_EXPORT_ENABLED`** — offline render in **`stem_service/server_export.py`** (SciPy DSP chain), not metering for client-only export paths.
+ * Same minute basis as split/expand (`computeTokensFromDurationSeconds`).
  * @param {number} durationSec
  */
 export function computeServerExportCost(durationSec) {

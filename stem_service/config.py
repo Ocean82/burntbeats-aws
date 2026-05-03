@@ -169,7 +169,7 @@ DEMUCS_SPEED_4STEM_RANK29_REPO = DEMUCS_EXTRA_MODELS_DIR / "speed_4stem_rank29"
 # Tuple: (subdir under Demucs_Models, checkpoint ``.th`` filename, ``demucs -n`` short id).
 # Within-4-stem ranks: fast #28 only, quality #1 / #2 (see docs/rankings).
 DEMUCS_SPEED_4STEM_CHECKPOINTS: tuple[tuple[str, str, str], ...] = (
-    # Fast 4-stem primary only (no speed fallback): MODEL#28 from model-ranking-bigmix.csv.
+    # Fast 4-stem primary only (no speed fallback): MODEL#28 from docs/benchmarks/model-ranking-bigmix.csv.
     ("speed_4stem_rank28", "cfa93e08-61801ae1.th", "cfa93e08"),
 )
 DEMUCS_QUALITY_4STEM_RANK1_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank1"

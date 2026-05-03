@@ -29,7 +29,7 @@ onnxruntime>=1.14.0
 # Optional: Intel OpenVINO execution provider for ONNX (set USE_ONNX_OPENVINO=1 in .env). Use a build that ships the EP, e.g. onnxruntime-openvino.
 # NumPy 2.x can break older torch wheels (e.g. 2.2); keep <2.6 for scipy compatibility.
 numpy>=1.24.0,<2.6
-# server_export (fftconvolve, resample, lfilter)
+# Offline master export: server_export.py (fftconvolve, resample, lfilter) — routed from Node when SERVER_EXPORT_ENABLED
 scipy>=1.9.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0

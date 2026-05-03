@@ -79,7 +79,7 @@ fi
 
 # 5. Root-level MDX ONNX + ORT (optional; app also checks mdxnet_models/ and MDX_Net_Models/).
 #    Runtime prefers .ort when both exist — see stem_service.mdx_onnx resolve_mdx_model_path().
-#    Logical names / tiers: docs/MODEL-SELECTION-AUTHORITY.md, docs/ranked_practical_time_score.csv
+#    Logical names / tiers: docs/MODEL-SELECTION-AUTHORITY.md, docs/benchmarks/ranked_practical_time_score.csv
 #    (Whole-tree copies in §2–§3 already include any .ort files inside those dirs.)
 root_mdx_bases=(
   UVR_MDXNET_3_9662

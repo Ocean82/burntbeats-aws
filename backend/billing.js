@@ -7,6 +7,7 @@
  *
  * Product model (see docs/BILLING-AND-TOKENS.md):
  * - Monthly subscription; optional token allowance + spend by audio duration (metadata on Stripe Price).
+ * - Metered STEM work: split, expand; optionally **POST /api/stems/server-export** when SERVER_EXPORT_ENABLED (still unmetered: client-only WAV/MP3/ZIP export).
  * - Basic: 2-stem Speed only. Premium+: 2-stem + 4-stem expand, Speed + Quality (+ Ultra for Studio tier).
  * - Use Stripe CLI: `stripe prices retrieve price_xxx` to inspect Price metadata (e.g. tokens_per_month).
  *

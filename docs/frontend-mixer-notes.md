@@ -3,7 +3,7 @@
 Updated: 2026-03-22  
 Scope: Mixer/editor architecture, performance follow-ups, and UI backlog pointers.
 
-For product-level UI ideas, see [new_features.md](new_features.md).
+For product-level UI ideas and status tables, see [`roadmap/product-backlog.md`](roadmap/product-backlog.md) and [`roadmap/future-goals.md`](roadmap/future-goals.md).
 
 ---
 

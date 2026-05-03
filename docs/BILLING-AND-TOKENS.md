@@ -1,14 +1,14 @@
 # Billing, subscriptions, and usage tokens
 
-**Last updated:** 2026-03-22
+**Last updated:** 2026-05-03
 
-Burnt Beats uses **Stripe** for monthly subscriptions. This document is the **product contract**: how plans map to app features, how **tokens** are intended to work (monthly allowance + spend by audio duration), and how to wire **Stripe metadata** (including with the **Stripe CLI**).
+Burnt Beats uses **Stripe** for monthly subscriptions. This document is the **product contract**: how plans map to app features, how **tokens** work (monthly allowance + spend by audio duration), and how to wire **Stripe metadata** (including with the **Stripe CLI**).
 
-Implementation status in the repo:
+## Implementation snapshot
 
-- **Done:** Stripe Checkout, Customer Portal, Clerk-linked customers, `GET /api/billing/subscription`, `GET /api/billing/usage`, webhook credits from Price metadata (`tokens_per_month` / `token_seconds_per_month`), **usage token ledger** in Clerk `privateMetadata.usageTokens`, **debit + enforce** on `POST /api/stems/split` and `POST /api/stems/expand` when `USAGE_TOKENS_ENABLED` (1 token ≈ 1 minute of source audio; see `backend/usageTokens.js`).
-- **Not metered:** status polling, stem file downloads, mixing, editing, **client-side master export** (see `docs/ARCHITECTURE-FLOW.md`).
-- **Future:** `POST /api/stems/server-export` when a server pipeline exists (placeholder returns `404`/`501`).
+- **Done:** Stripe Checkout, Customer Portal, Clerk-linked customers, `GET /api/billing/subscription`, `GET /api/billing/usage`, webhook credits from Price metadata (`tokens_per_month` / `token_seconds_per_month`), **usage token ledger** in Clerk `privateMetadata.usageTokens`, **debit + enforce** on **`POST /api/stems/split`** and **`POST /api/stems/expand`** when `USAGE_TOKENS_ENABLED` (1 token ≈ 1 minute of source audio — see `backend/usageTokens.js`).
+- **`POST /api/stems/server-export`:** Implemented when **`SERVER_EXPORT_ENABLED`** is truthy on the backend. **Debits tokens** under the same rules when **`USAGE_TOKENS_ENABLED`** (duration-based reservation + refund on handler failure paths). When the feature flag is off, responds **404** (not billed).
+- **Not metered:** status polling; stem binary downloads (`GET /api/stems/file/...`); mixer edits; **`client-side`** master export (**WAV** / **MP3** encode / **ZIP** assembly in-browser — see [`ARCHITECTURE-FLOW.md`](ARCHITECTURE-FLOW.md)).
 
 ---
 
@@ -28,10 +28,10 @@ The app resolves the active plan from the subscription’s **price ID** (`backen
 ## Token model (implemented)
 
 1. **Grant:** Each billing period, credits are applied from Stripe Price metadata (`tokens_per_month` or `token_seconds_per_month` converted to minute-tokens) into Clerk — see `creditSubscriptionAllowance` in `backend/usageTokens.js`.
-2. **Spend:** **Split** and **expand** consume **minute-based tokens** (1 token ≈ 1 minute of source audio, partial minutes round up). **Editing and client export do not spend tokens.**
+2. **Spend:** **Split**, **expand**, and **server-export** consume **minute-based tokens** when the respective endpoints are enabled and guarded (1 token ≈ 1 minute of source audio, partial minutes round up). **Editing and purely client-side export do not spend tokens.**
 3. **Enforcement:** Insufficient balance → HTTP **402** on metered routes.
 
-Formula:
+Formula (split/expand/export cost derivation):
 
 ```text
 cost_tokens = max(1, ceil(duration_seconds / 60))
@@ -101,7 +101,7 @@ Use the same **Price IDs** as in `.env`: `STRIPE_PRICE_ID_BASIC`, `STRIPE_PRICE_
 |--------|------|--------|
 | `POST` | `/api/stems/split` | Yes (if `USAGE_TOKENS_ENABLED`) |
 | `POST` | `/api/stems/expand` | Yes (if enabled) |
-| `POST` | `/api/stems/server-export` | Future (placeholder) |
+| `POST` | `/api/stems/server-export` | Yes when **`SERVER_EXPORT_ENABLED`** and `USAGE_TOKENS_ENABLED`; otherwise unavailable (typically **404**) |
 | `GET` | `/api/stems/status/...`, `/api/stems/file/...` | No |
 
 ---
@@ -116,7 +116,7 @@ Use the same **Price IDs** as in `.env`: `STRIPE_PRICE_ID_BASIC`, `STRIPE_PRICE_
 ## Related files
 
 - `backend/billing.js` — Stripe + Clerk
-- `backend/usageTokens.js` — balance, debit, monthly credit
+- `backend/usageTokens.js` — balance, debit, monthly credit (if top-of-file comments disagree with **this doc** or **`ARCHITECTURE-FLOW.md`**, treat the markdown as current and refresh the comments when convenient)
 - `docs/ARCHITECTURE-FLOW.md` — server vs client vs billing vs ops
 - `frontend/src/hooks/useSubscription.ts` — subscription state
 - `frontend/src/components/PaywallBanner.tsx` — plan cards

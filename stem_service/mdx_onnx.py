@@ -167,7 +167,7 @@ def is_mdx23c_vocal_checkpoint(model_path: Path) -> bool:
     return _logical_onnx_name(model_path) == "mdx23c_vocal.onnx"
 
 
-# Subjective score < 9 vocal checkpoints from ranked_practical_time_score.csv — not used at runtime.
+# Subjective score < 9 vocal checkpoints from docs/benchmarks/ranked_practical_time_score.csv — not used at runtime.
 SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX: frozenset[str] = frozenset(
     {
         "UVR_MDXNET_1_9703.onnx",

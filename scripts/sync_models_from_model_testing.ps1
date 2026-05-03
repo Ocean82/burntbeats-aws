@@ -112,7 +112,7 @@ if (Test-Path $ftYaml) {
     Write-Warning "htdemucs_ft.yaml not found under $DmDst - run again after v3_v4_repo copy"
 }
 
-# Speed rank 28 only (no runtime fallback): MODEL#28 in model-ranking-bigmix.csv.
+# Speed rank 28 only (no runtime fallback): MODEL#28 in docs/benchmarks/model-ranking-bigmix.csv.
 $p28 = Join-Path $Th "cfa93e08-61801ae1.th"
 if (Test-Path $p28) {
     Copy-Item $p28 (Join-Path $DmDst "speed_4stem_rank28\cfa93e08-61801ae1.th") -Force

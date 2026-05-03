@@ -101,4 +101,4 @@
 - **Probe script:** `scripts/probe_onnx.py` (add any new ONNX path to probe input/output shapes).  
 - **MDX config:** `stem_service/mdx_onnx.py` — `_MDX_CONFIGS`, `VOCAL_MODEL_PATHS`, `INST_MODEL_PATHS`.  
 - **Quantization:** `scripts/quantize_onnx_models.py`, `docs/archive/QUANTIZATION-8BIT.md`.  
-- **Inventory:** `docs/MODELS-INVENTORY.md`, `docs/ONNX-EFFICIENCY-INVESTIGATION.md`.
+- **Inventory:** `docs/MODELS-INVENTORY.md`, [`docs/research/ONNX-EFFICIENCY-INVESTIGATION.md`](ONNX-EFFICIENCY-INVESTIGATION.md).

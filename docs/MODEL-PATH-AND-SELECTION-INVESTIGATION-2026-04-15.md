@@ -107,7 +107,7 @@ Quality 4-stem runtime mapping:
 
 ## MODEL#28 and MODEL#29 Clarification
 
-From `docs/model-ranking-bigmix.csv`:
+From `docs/benchmarks/model-ranking-bigmix.csv`:
 
 - Rank 28 model hash: `cfa93e08-61801ae1__7ae9d6de`
 - Rank 29 model hash: `cfa93e08-61801ae1__2aad324b`

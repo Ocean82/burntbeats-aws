@@ -91,6 +91,6 @@ Notes:
 
 ## 6. Related docs
 
-- [ORT-MODEL-CONVERSION.md](ORT-MODEL-CONVERSION.md) — ORT vs ONNX at runtime  
+- [`ORT-MODEL-CONVERSION.md`](research/ORT-MODEL-CONVERSION.md) — ORT vs ONNX at runtime  
 - [MODELS-INVENTORY.md](MODELS-INVENTORY.md) — historical deep audit (manual)  
 - [MODEL-INVENTORY-AUTO.md](MODEL-INVENTORY-AUTO.md) — **generated** index (current tree)  

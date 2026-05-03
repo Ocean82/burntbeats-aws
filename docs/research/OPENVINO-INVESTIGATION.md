@@ -125,4 +125,4 @@
 
 - ONNX Runtime – OpenVINO Execution Provider: https://onnxruntime.ai/docs/execution-providers/OpenVINO-ExecutionProvider.html  
 - OpenVINO docs (benchmarks, benchmark tool): https://docs.openvino.ai/  
-- Project: `docs/ONNX-EFFICIENCY-INVESTIGATION.md`, `docs/CPU-OPTIMIZATION-TIPS.md`, `stem_service/config.py` (`get_onnx_providers()`), `stem_service/requirements.txt`.
+- Project: [`docs/research/ONNX-EFFICIENCY-INVESTIGATION.md`](ONNX-EFFICIENCY-INVESTIGATION.md), `docs/CPU-OPTIMIZATION-TIPS.md`, `stem_service/config.py` (`get_onnx_providers()`), `stem_service/requirements.txt`.

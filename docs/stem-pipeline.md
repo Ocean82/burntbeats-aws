@@ -64,11 +64,11 @@ Notes:
 
 - [MODEL-PARAMS.md](MODEL-PARAMS.md) — MDX tensor params, overlap, **`InstrumentalSource`** / 4-tuple Stage 1 return
 - [MODEL-SELECTION-AUTHORITY.md](MODEL-SELECTION-AUTHORITY.md) — tier lists vs production waterfall
-- [benchmark-demucs-onnx.md](benchmark-demucs-onnx.md) — historical notes on Demucs ONNX benchmarks (ONNX path retired)
-- [ORT-MODEL-CONVERSION.md](ORT-MODEL-CONVERSION.md) — optional build-time ONNX → ORT (faster loads; `models/demucs.onnx-main` README context)
+- [benchmark-demucs-onnx.md](archive/benchmark-demucs-onnx.md) — historical notes on Demucs ONNX benchmarks (**ONNX** Demucs path retired — see routing above)
+- [ORT-MODEL-CONVERSION.md](research/ORT-MODEL-CONVERSION.md) — optional build-time ONNX → ORT (faster loads; `models/demucs.onnx-main` README context)
 - [MODELS-INVENTORY.md](MODELS-INVENTORY.md) — Files under `models/`
 - [CPU-OPTIMIZATION-TIPS.md](CPU-OPTIMIZATION-TIPS.md) — Threading and env tuning
 - [JOB-METRICS.md](JOB-METRICS.md) — `job_metrics.jsonl` and modes
-- [ONNX-EFFICIENCY-INVESTIGATION.md](ONNX-EFFICIENCY-INVESTIGATION.md) — ONNX path notes
+- [ONNX-EFFICIENCY-INVESTIGATION.md](research/ONNX-EFFICIENCY-INVESTIGATION.md) — ONNX path notes (secondary research)
 
 Historical research drafts live under [archive/](archive/README.md).

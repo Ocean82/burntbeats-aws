@@ -12,7 +12,7 @@ Default model choices are **not** “pick the highest subjective score and ignor
 
 **Why runtime dominates at scale.** Matrix rows are measured on a **30-second** clip, but users upload **full tracks**. Wall time scales roughly with audio length in the same ballpark as the benchmark’s **real-time factor** (elapsed ÷ clip length). A path that needs ~75s for 30s of audio is on the order of **2.5× real time**; a ~4-minute song is then on the order of **many minutes** for that stage alone, before expand, I/O, and contention. At **tens of tracks per day**, a slightly higher score on a 1–10 scale can translate into **hours** of extra machine time and worse perceived responsiveness, for a gain listeners often do not notice in blind comparison—e.g. a **9.5** vs **9** when faster **9**s finish in **~26–29s** on the same clip (**roughly 2–3×** faster). When marginal quality is small and marginal time is large, the slower checkpoint is a **poor default** for a service even if it “wins” a score column.
 
-**What we do instead.** [`ranked_practical_time_score.csv`](ranked_practical_time_score.csv) and the tier tables below encode **joint** judgment: the stem service uses **subjective score ≥ 9** vocal checkpoints only. Rows tagged **`recommended_8_5_fast`** in the CSV are **not** selectable at runtime (same wall-clock class as fast 9s, lower score). **Prefer low `elapsed_sec`** on the reference clip among eligible models. Legacy **blended** scores are **secondary**; see [Legacy: blended benchmark](#legacy-blended-benchmark-research-only).
+**What we do instead.** [`ranked_practical_time_score.csv`](benchmarks/ranked_practical_time_score.csv) and the tier tables below encode **joint** judgment: the stem service uses **subjective score ≥ 9** vocal checkpoints only. Rows tagged **`recommended_8_5_fast`** in the CSV are **not** selectable at runtime (same wall-clock class as fast 9s, lower score). **Prefer low `elapsed_sec`** on the reference clip among eligible models. Legacy **blended** scores are **secondary**; see [Legacy: blended benchmark](#legacy-blended-benchmark-research-only).
 
 **Quality is still tuned outside the checkpoint name.** Slower ONNX vocal models are not the only knob. End-user **speed** / **quality** / **ultra** modes (and internal MDX tier usage) still change **overlap, VAD usage, SCNet stride, Demucs bag / shifts**, and related routing—see **[`stem-pipeline.md`](stem-pipeline.md)** (*Quality tiers*). **Fast** and **quality** product modes therefore improve or preserve output through **pipeline parameters and fallbacks**, not only by selecting the slowest high-score MDX export.
 
@@ -26,7 +26,7 @@ Tier lists below are **names only**. For **`n_fft` / `dim_f` / `dim_t` / `compen
 
 ## Canonical benchmark (score + time)
 
-**File (tracked in git):** [`docs/ranked_practical_time_score.csv`](ranked_practical_time_score.csv)
+**File (tracked in git):** [`docs/benchmarks/ranked_practical_time_score.csv`](benchmarks/ranked_practical_time_score.csv)
 
 - **Clip:** 30s (same as `scripts/run_model_matrix_benchmark.py` / matrix runs).
 - **Scores:** Parsed from per-run `sound-quality.md` / `sound-qulaity.md` under `tmp/model_matrix_benchmark/<case>/` (see `scripts/rank_model_matrix.py`).
@@ -81,7 +81,7 @@ Return value includes **`InstrumentalSource`** so hybrid never relies on guessin
 
 1. Run the matrix benchmark (produces `tmp/model_matrix_benchmark/summary.csv`).
 2. Run `python scripts/rank_model_matrix.py` → updates `ranked_score_time.csv` and `ranked_blended_q80_s20.csv` under `tmp/` (if writable).
-3. Refresh **`docs/ranked_practical_time_score.csv`** by hand (or script) from scores + elapsed — this is the **human** source of truth.
+3. Refresh **`docs/benchmarks/ranked_practical_time_score.csv`** by hand (or script) from scores + elapsed — this is the **human** source of truth.
 4. Adjust `_VOCAL_TIER_NAMES` / `_INST_TIER_NAMES` in `mdx_onnx.py` and this doc so they stay aligned.
 
 ---

@@ -74,5 +74,5 @@ python scripts/benchmark_onnx_vs_ort.py --skip-convert
 
 ## Related
 
-- [benchmark-demucs-onnx.md](benchmark-demucs-onnx.md) — benchmark folders vs production paths  
-- [CPU-OPTIMIZATION-TIPS.md](CPU-OPTIMIZATION-TIPS.md) — threading / env  
+- [`archive/benchmark-demucs-onnx.md`](../archive/benchmark-demucs-onnx.md) — benchmark folders vs production paths  
+- [`CPU-OPTIMIZATION-TIPS.md`](../CPU-OPTIMIZATION-TIPS.md) — threading / env  

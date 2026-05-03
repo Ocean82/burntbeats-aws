@@ -1139,8 +1139,8 @@ app.post(
   },
 );
 
-// Optional server-side master export (FFmpeg / mastering). Default app behavior is client-side export.
-// When disabled: 404. When enabled: renders server-side master WAV via stem_service.
+// Optional server-side master WAV (`stem_service/server_export.py` via PYTHON_BIN). Client export is still the default UX.
+// SERVER_EXPORT_ENABLED off → 404 JSON; on → streamed download (+ usage debit when USAGE_TOKENS_ENABLED).
 app.post(
   "/api/stems/server-export",
   serverExportRateLimitMiddleware,

@@ -503,8 +503,8 @@ export interface ServerExportMasterRequest {
 }
 
 /**
- * Server-side master export. Returns a WAV Blob.
- * If server export is disabled, backend returns 404; callers can fall back to client export.
+ * Server-side master WAV (`POST /api/stems/server-export`). Backend must have **SERVER_EXPORT_ENABLED**; otherwise **404**.
+ * When **USAGE_TOKENS_ENABLED**, the backend debits tokens (minute basis — same contract as split/expand). Returns a WAV `Blob`; callers may fall back to client render on 404. See **`docs/BILLING-AND-TOKENS.md`** / **`ARCHITECTURE-FLOW.md`**.
  */
 export async function serverExportMasterWav(request: ServerExportMasterRequest): Promise<Blob> {
   const res = await fetch(`${API_BASE}/api/stems/server-export`, {

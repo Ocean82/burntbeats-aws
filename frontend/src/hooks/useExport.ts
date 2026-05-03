@@ -1,6 +1,6 @@
 /**
- * useExport — default **client-side** master WAV (OfflineAudioContext) and per-stem download.
- * Server-side export is optional (`POST /api/stems/server-export`); see docs/ARCHITECTURE-FLOW.md.
+ * useExport — default **client-side** master WAV (OfflineAudioContext), optional **MP3**, **ZIP** bundles, per-stem fetch.
+ * **`POST /api/stems/server-export`** (master WAV only) when **`VITE_SERVER_EXPORT_ENABLED`** matches backend **`SERVER_EXPORT_ENABLED`**; token metering on that route follows docs/BILLING-AND-TOKENS.md. See docs/ARCHITECTURE-FLOW.md.
  * Master mix stem set matches playback via `filterStemsForAudibleMix`.
  */
 import { useCallback, useRef, useState } from "react";
