@@ -66,8 +66,7 @@ test.describe("Burnt Beats app (local full app mode)", () => {
     page,
   }) => {
     await page.goto("/");
-    // Substring "load" matches "Upload a track" — require exact label for Split/Load toggle.
-    await page.getByRole("button", { name: "Load", exact: true }).click();
+    await page.getByTestId("source-mode-load").click();
     await expect(page.getByRole("button", { name: "Fast" })).toBeVisible();
     await expect(page.getByRole("slider", { name: "Number of stems" })).toBeVisible();
   });

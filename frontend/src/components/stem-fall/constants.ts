@@ -70,7 +70,7 @@ export const LINE_CLEAR_MESSAGES: Record<number, string[]> = {
     "Still not good enough to get that pony you always wanted",
   ],
   4: [
-    "STEM FALL! 🎉",
+    "WAITING GAME! 🎉",
     "BOOM! absolute legend!",
     "they said it couldn't be done",
     "somebody call the fire dept 🔥🔥🔥",

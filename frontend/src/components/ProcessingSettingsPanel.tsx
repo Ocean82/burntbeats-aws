@@ -249,8 +249,12 @@ export function ProcessingSettingsPanel({
       )}
 
       {/* ── Mode toggle ── */}
-      <div className="mb-4 flex w-fit rounded-xl border border-white/10 bg-black/20 p-0.5">
+      <div
+        data-testid="source-mode-toggle"
+        className="mb-4 flex w-fit rounded-xl border border-white/10 bg-black/20 p-0.5"
+      >
         <button
+          data-testid="source-mode-split"
           type="button"
           onClick={() => onSourceModeChange("split")}
           className={cn(
@@ -263,6 +267,7 @@ export function ProcessingSettingsPanel({
           Split
         </button>
         <button
+          data-testid="source-mode-load"
           type="button"
           onClick={() => onSourceModeChange("load")}
           className={cn(
@@ -670,6 +675,15 @@ export function ProcessingSettingsPanel({
                 </motion.div>
               )}
             </AnimatePresence>
+            {isSplitting && (
+              <p className="text-[10px] text-white/45">
+                Need a distraction? Open{" "}
+                <span className="font-semibold text-white/70">
+                  The Waiting Game
+                </span>{" "}
+                from the bottom-right tab.
+              </p>
+            )}
           </div>
         )}
 

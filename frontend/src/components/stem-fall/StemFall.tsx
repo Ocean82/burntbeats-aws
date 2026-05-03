@@ -37,7 +37,7 @@ function NextPiecePreview({ piece, cellSize }: { piece: { shape: number[][]; col
   );
 }
 
-export default function StemFall() {
+export default function WaitingGame() {
   const game = useStemFall();
   const [idleMsg, setIdleMsg] = useState('');
   const idleTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -177,7 +177,7 @@ export default function StemFall() {
           {/* Start overlay */}
           {!game.started && !game.gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-black/85 backdrop-blur-sm">
-              <div className="text-[13px] text-amber-400 animate-pulse tracking-widest">STEM FALL</div>
+              <div className="text-[13px] text-amber-400 animate-pulse tracking-widest">THE WAITING GAME</div>
               <div className="text-[10px] text-white/40">drop blocks while you wait</div>
               <button
                 onClick={game.startGame}

@@ -10,7 +10,7 @@ import {
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Gamepad2, Loader2, Sparkles } from "lucide-react";
 
-const importStemFall = () => import("./components/stem-fall/StemFall");
+const importWaitingGame = () => import("./components/stem-fall/StemFall");
 const importHelpModal = () => import("./components/HelpModal");
 const importExportOptionsModal = () =>
   import("./components/ExportOptionsModal");
@@ -18,7 +18,7 @@ const importMixerPresetsModal = () => import("./components/MixerPresetsModal");
 const importOnboardingTour = () => import("./components/OnboardingTour");
 const importBatchQueue = () => import("./components/BatchQueue");
 
-const StemFall = lazy(() => importStemFall());
+const WaitingGame = lazy(() => importWaitingGame());
 const HelpModal = lazy(() =>
   importHelpModal().then((m) => ({ default: m.HelpModal })),
 );
@@ -931,12 +931,12 @@ export function App() {
         </main>
       </div>
 
-      {/* ── STEM FALL game panel (slide up from bottom) ── */}
+      {/* ── The Waiting Game panel (slide up from bottom) ── */}
       {/* Tab button — always visible, pulses while splitting */}
       <button
         type="button"
         onClick={toggleGame}
-        aria-label={showGame ? "Close Stem Fall game" : "Open Stem Fall game"}
+        aria-label={showGame ? "Close The Waiting Game" : "Open The Waiting Game"}
         className={cn(
           "fixed bottom-0 right-2 z-50 flex items-center gap-2 rounded-t-xl border border-b-0 px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 sm:right-8 sm:px-4 sm:py-2.5 sm:text-xs",
           showGame
@@ -948,7 +948,7 @@ export function App() {
         )}
       >
         <Gamepad2 className="h-3.5 w-3.5" />
-        {showGame ? "close" : "STEM FALL"}
+        {showGame ? "close" : "THE WAITING GAME"}
         {isSplitting && !showGame && (
           <span className="ml-1 h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
         )}
@@ -957,7 +957,7 @@ export function App() {
       <AnimatePresence>
         {showGame && (
           <motion.div
-            key="stem-fall-panel"
+            key="waiting-game-panel"
             initial={{ y: reduceMotion ? 0 : "100%" }}
             animate={{ y: 0 }}
             exit={{ y: reduceMotion ? 0 : "100%" }}
@@ -972,15 +972,15 @@ export function App() {
               <div className="mb-3 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-400">
-                    Stem Fall
+                    The Waiting Game
                   </span>
                   <p
                     className="text-[9px] text-white/40 mt-0.5"
                     style={{ fontFamily: "'Press Start 2P', monospace" }}
                   >
                     {isSplitting
-                      ? "stems separating... drop some blocks!"
-                      : "play while you wait"}
+                      ? "stems separating... play while you wait"
+                      : "a quick break while tracks process"}
                   </p>
                 </div>
                 <button
@@ -999,7 +999,7 @@ export function App() {
                   </div>
                 }
               >
-                <StemFall />
+                <WaitingGame />
               </Suspense>
             </div>
           </motion.div>

@@ -225,6 +225,16 @@ export function LandingPage() {
                 plan.
               </p>
             </div>
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
+                What is The Waiting Game?
+              </p>
+              <p>
+                A lightweight mini-game inside the app to pass time while stems
+                are processing. Open it from the bottom-right tab during split
+                progress.
+              </p>
+            </div>
           </div>
         </motion.section>
 
