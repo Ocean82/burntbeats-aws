@@ -3,9 +3,11 @@
  * Presents the three plan tiers and redirects to Stripe Checkout on selection.
  */
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import { cn } from "../utils/cn";
+import { trackEvent } from "../analytics/events";
+import { BillingRules } from "./BillingRules";
 
 interface PaywallBannerProps {
   subscription: UseSubscriptionResult;
@@ -35,10 +37,25 @@ const PLANS: { id: Plan; label: string; price: string; features: string[] }[] = 
 export function PaywallBanner({ subscription }: PaywallBannerProps) {
   const [loading, setLoading] = useState<Plan | null>(null);
 
+  useEffect(() => {
+    trackEvent("paywall_impression", {
+      source: "split_gate",
+      status: subscription.status,
+      current_plan: subscription.plan ?? "none",
+    });
+  }, [subscription.plan, subscription.status]);
+
   const handleSelect = async (plan: Plan) => {
+    trackEvent("paywall_cta_clicked", {
+      source: "split_gate",
+      plan,
+    });
     setLoading(plan);
     try {
-      await subscription.startCheckout(plan);
+      await subscription.startCheckout(plan, {
+        source: "paywall_banner",
+        intent: "blocked_split_checkout",
+      });
     } finally {
       setLoading(null);
     }
@@ -48,29 +65,51 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1 text-center">
         <p className="text-sm font-semibold text-white/90">Choose a plan to get started</p>
-        <p className="text-sm text-white/55">Subscriptions renew monthly · 1 token = 1 minute of audio · cancel anytime.</p>
+        <p className="text-sm text-white/55">
+          Continue to secure Stripe checkout or start with one-time credits.
+        </p>
       </div>
 
-      <button
-        type="button"
-        onClick={() => void handleSelect("basic")}
-        disabled={loading !== null}
-        aria-label="Pay now with Stripe and start Basic plan"
-        aria-live="polite"
-        className={cn(
-          "fire-button flex min-h-[48px] w-full items-center justify-center gap-2 px-4 py-3 text-sm font-semibold",
-          "disabled:cursor-not-allowed disabled:opacity-60",
-        )}
-      >
-        {loading === "basic" ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Redirecting to secure checkout...
-          </>
-        ) : (
-          "Start Basic ($9/month) · Secure Stripe checkout"
-        )}
-      </button>
+      <BillingRules />
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => void handleSelect("basic")}
+          disabled={loading !== null}
+          aria-label="Pay now with Stripe and start Basic plan"
+          aria-live="polite"
+          className={cn(
+            "fire-button flex min-h-[48px] w-full items-center justify-center gap-2 px-4 py-3 text-sm font-semibold",
+            "disabled:cursor-not-allowed disabled:opacity-60",
+          )}
+        >
+          {loading === "basic" ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Redirecting...
+            </>
+          ) : (
+            "Continue to checkout · Basic"
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleSelect("topup")}
+          disabled={loading !== null}
+          aria-label="Buy one-time top-up credits"
+          className="ghost-button min-h-[48px] w-full px-4 py-3 text-sm font-semibold disabled:opacity-60"
+        >
+          {loading === "topup" ? (
+            <span className="inline-flex items-center justify-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Redirecting...
+            </span>
+          ) : (
+            "Continue to checkout · Top-Up"
+          )}
+        </button>
+      </div>
 
       <div className="flex flex-col gap-3">
         {PLANS.map((plan) => (
@@ -111,17 +150,8 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
         ))}
       </div>
 
-      <p className="text-center text-sm text-white/35">
-        Need a one-time top-up?{" "}
-        <button
-          type="button"
-          onClick={() => void handleSelect("topup")}
-          disabled={loading !== null}
-          aria-label="Buy one-time top-up credits"
-          className="text-white/50 underline hover:text-white/80 disabled:opacity-60"
-        >
-          Buy Top‑Up Pack ($5 one-time)
-        </button>
+      <p className="text-center text-xs text-white/45">
+        Not ready for a full plan? Start with Top-Up now and upgrade later.
       </p>
     </div>
   );

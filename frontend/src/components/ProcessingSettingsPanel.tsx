@@ -65,6 +65,8 @@ export interface ProcessingSettingsPanelProps {
 
   /** When true, show copy that splitting requires an active plan (checkout opens from Split). */
   subscriptionInactive?: boolean;
+  /** Explicit conversion CTA shown when split is blocked by inactive plan. */
+  onContinueCheckout?: () => void;
   /** Metering: remaining tokens from Clerk (null = unknown / loading). */
   usageBalance?: number | null;
   usageLoading?: boolean;
@@ -113,6 +115,7 @@ export function ProcessingSettingsPanel({
   onAddToQueue,
   onUpgradeToPremium,
   subscriptionInactive = false,
+  onContinueCheckout,
   usageBalance = null,
   usageLoading = false,
   estimatedSplitTokens = null,
@@ -239,13 +242,34 @@ export function ProcessingSettingsPanel({
             style={{ overflow: "hidden" }}
           >
       {subscriptionInactive && sourceMode === "split" && !isSample && (
-        <p className="mb-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100/95">
-          <span className="font-semibold text-amber-50">
-            Active plan required to split full tracks.
-          </span>{" "}
-          Choosing a plan opens secure Stripe checkout. Or use{" "}
-          <span className="font-semibold text-amber-200">Try for free</span> below.
-        </p>
+        <div className="mb-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100/95">
+          <p>
+            <span className="font-semibold text-amber-50">
+              Active plan required to split full tracks.
+            </span>{" "}
+            Continue to secure checkout, or use{" "}
+            <span className="font-semibold text-amber-200">Try for free</span>{" "}
+            below.
+          </p>
+          <div className="mt-2">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onContinueCheckout}
+                className="ghost-button min-h-[40px] rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-amber-200/50 hover:text-amber-50"
+              >
+                Continue to secure checkout
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSample(true)}
+                className="ghost-button min-h-[40px] rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-white/35 hover:text-white"
+              >
+                Use 60s free sample
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Mode toggle ── */}

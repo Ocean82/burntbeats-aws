@@ -17,6 +17,7 @@ import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
 import { LegalPage } from "./pages/LegalPage";
 import { LegalAcceptanceGate } from "./components/LegalAcceptanceGate";
+import { trackEvent } from "./analytics/events";
 
 /** Shown while Clerk loads session — avoids a blank screen (perceived hang). */
 function ClerkLoadingShell() {
@@ -64,6 +65,16 @@ function AuthenticatedRoot() {
   // Clean up ?checkout= query params left by Stripe redirect
   useEffect(() => {
     if (window.location.search.includes("checkout=")) {
+      if (window.location.search.includes("checkout=cancelled")) {
+        trackEvent("checkout_returned_cancelled", { source: "root_handler" });
+        window.sessionStorage.setItem(
+          "burntbeats_checkout_notice",
+          "Checkout was canceled. You can try again or use a one-time pack.",
+        );
+      }
+      if (window.location.search.includes("checkout=success")) {
+        trackEvent("checkout_returned_success", { source: "root_handler" });
+      }
       const url = new URL(window.location.href);
       url.searchParams.delete("checkout");
       url.searchParams.delete("plan");

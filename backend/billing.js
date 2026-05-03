@@ -233,6 +233,14 @@ router.post("/checkout", async (req, res) => {
         .json({ error: "Billing not configured — STRIPE_SECRET_KEY not set" });
 
     const plan = /** @type {string} */ (req.body?.plan);
+    const source =
+      typeof req.body?.source === "string" && req.body.source.trim()
+        ? req.body.source.trim().slice(0, 48)
+        : "unknown";
+    const intent =
+      typeof req.body?.intent === "string" && req.body.intent.trim()
+        ? req.body.intent.trim().slice(0, 96)
+        : "unspecified";
     const priceIds = getPriceIds();
     const priceId = priceIds[/** @type {keyof typeof priceIds} */ (plan)];
     if (!priceId) {
@@ -251,7 +259,17 @@ router.post("/checkout", async (req, res) => {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${returnBase}?checkout=success&plan=${plan}`,
       cancel_url: `${returnBase}?checkout=cancelled`,
+      metadata: {
+        clerkUserId: userId,
+        plan,
+        source,
+        intent,
+      },
     });
+
+    console.log(
+      `[billing/checkout] created user=${userId} plan=${plan} source=${source} intent=${intent} mode=${isOneTime ? "payment" : "subscription"} session=${session.id}`,
+    );
 
     return res.json({ url: session.url });
   } catch (/** @type {any} */ err) {

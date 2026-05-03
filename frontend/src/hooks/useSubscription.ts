@@ -56,8 +56,20 @@ function getStripeCustomerPortalLoginUrl(): string {
   return typeof u === "string" && u.startsWith("http") ? u.trim() : "";
 }
 
+function classifySubscriptionFetchFailure(res: Response): string {
+  if (res.status === 401 || res.status === 403) return "auth";
+  if (res.status >= 500) return "server";
+  return "other";
+}
+
 export type Plan = "basic" | "premium" | "studio" | "topup" | "single";
 export type SubscriptionStatus = "loading" | "active" | "inactive" | "error";
+type CheckoutSource =
+  | "split_gate"
+  | "paywall_banner"
+  | "pricing_page"
+  | "upgrade_prompt"
+  | "unknown";
 
 export interface UseSubscriptionResult {
   status: SubscriptionStatus;
@@ -66,7 +78,10 @@ export interface UseSubscriptionResult {
   /** Non-null when a checkout or portal action fails — display to the user. */
   billingError: string | null;
   /** Redirect to Stripe Checkout for the given plan. */
-  startCheckout: (plan: Plan) => Promise<void>;
+  startCheckout: (
+    plan: Plan,
+    context?: { source?: CheckoutSource; intent?: string },
+  ) => Promise<void>;
   /** Redirect to Stripe Customer Portal to manage billing. */
   openPortal: () => Promise<void>;
   refetch: () => void;
@@ -92,6 +107,7 @@ export function useSubscription(): UseSubscriptionResult {
     if (!isSignedIn) {
       setStatus("inactive");
       setPlan(null);
+      setBillingError(null);
       return;
     }
     try {
@@ -100,6 +116,22 @@ export function useSubscription(): UseSubscriptionResult {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
+        const category = classifySubscriptionFetchFailure(res);
+        trackEvent("subscription_fetch_failed", {
+          category,
+          http_status: res.status,
+        });
+        if (category === "auth") {
+          setBillingError(
+            "Your session expired. Please refresh and sign in again to continue checkout.",
+          );
+        } else if (category === "server") {
+          setBillingError(
+            "Billing is temporarily unavailable. Please try again in a moment.",
+          );
+        } else {
+          setBillingError("Unable to verify billing status right now.");
+        }
         setStatus("inactive");
         setPlan(null);
         return;
@@ -107,9 +139,18 @@ export function useSubscription(): UseSubscriptionResult {
       const data = (await res.json()) as { active: boolean; plan: Plan | null };
       setStatus(data.active ? "active" : "inactive");
       setPlan(data.active ? data.plan : null);
-    } catch {
+      setBillingError(null);
+    } catch (err) {
+      trackEvent("subscription_fetch_failed", {
+        category: "network_or_unknown",
+        error:
+          err instanceof Error ? err.message.slice(0, 120) : "unknown_error",
+      });
       setStatus("error");
       setPlan(null);
+      setBillingError(
+        "We could not reach billing services. Please check your connection and try again.",
+      );
     }
   }, [getToken, isSignedIn, localFullApp]);
 
@@ -123,12 +164,24 @@ export function useSubscription(): UseSubscriptionResult {
       trackEvent("checkout_returned_success");
       void fetchStatus();
     }
+    if (window.location.search.includes("checkout=cancelled")) {
+      trackEvent("checkout_returned_cancelled");
+    }
   }, [fetchStatus]);
 
   const startCheckout = useCallback(
-    async (selectedPlan: Plan) => {
+    async (
+      selectedPlan: Plan,
+      context?: { source?: CheckoutSource; intent?: string },
+    ) => {
       if (localFullApp) return;
-      trackEvent("checkout_started", { plan: selectedPlan });
+      const source = context?.source ?? "unknown";
+      trackEvent("plan_selected", {
+        plan: selectedPlan,
+        source,
+        intent: context?.intent ?? "unspecified",
+      });
+      trackEvent("checkout_started", { plan: selectedPlan, source });
       try {
         const token = await getToken();
         const res = await fetch(`${API_BASE}/api/billing/checkout`, {
@@ -140,6 +193,8 @@ export function useSubscription(): UseSubscriptionResult {
           body: JSON.stringify({
             plan: selectedPlan,
             returnUrl: checkoutReturnBase(),
+            source,
+            intent: context?.intent ?? "unspecified",
           }),
         });
         if (!res.ok) {
@@ -148,7 +203,7 @@ export function useSubscription(): UseSubscriptionResult {
         }
         const { url } = (await res.json()) as { url: string };
         if (!url) throw new Error("Checkout did not return a URL");
-        trackEvent("checkout_redirected", { plan: selectedPlan });
+        trackEvent("checkout_redirected", { plan: selectedPlan, source });
         window.location.href = url;
       } catch (err) {
         notifyBillingFailure("Checkout failed:", err);
@@ -159,6 +214,7 @@ export function useSubscription(): UseSubscriptionResult {
         );
         trackEvent("checkout_failed", {
           plan: selectedPlan,
+          source,
           error: (err instanceof Error ? err.message : "Checkout failed").slice(
             0,
             120,

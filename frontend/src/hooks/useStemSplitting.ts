@@ -103,8 +103,18 @@ export function useStemSplitting({
   const triggerSplit = useCallback(async (requestedStemMode: 2 | 4 = 2, isSample = false) => {
     const { status } = subscription;
     if (status !== "active" && !isSample) {
-      trackEvent("split_blocked_subscription_inactive", { requested_stems: requestedStemMode });
-      await subscription.startCheckout("basic");
+      trackEvent("split_blocked_subscription_inactive", {
+        requested_stems: requestedStemMode,
+      });
+      trackEvent("checkout_preprompt_shown", {
+        source: "split_gate",
+        suggested_plan: "basic",
+      });
+      setUploadState((prev) => ({
+        ...prev,
+        splitError:
+          "Full-track split requires a plan or one-time pack. Review options below, or use Try for free.",
+      }));
       return;
     }
     stopPreview();

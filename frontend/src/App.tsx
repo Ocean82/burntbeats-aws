@@ -106,6 +106,7 @@ export function App() {
   // ── Smart Sticky Header State ─────────────────────────────────────────────
   const [headerVisible, setHeaderVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let ticking = false;
@@ -129,6 +130,13 @@ export function App() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const msg = window.sessionStorage.getItem("burntbeats_checkout_notice");
+    if (!msg) return;
+    setCheckoutNotice(msg);
+    window.sessionStorage.removeItem("burntbeats_checkout_notice");
   }, []);
 
   // ── Upload / split state ──────────────────────────────────────────────────
@@ -174,6 +182,27 @@ export function App() {
     localDevFullApp,
     refetchUsage,
   ]);
+
+  useEffect(() => {
+    if (subscription.status !== "inactive") return;
+    const plan = window.sessionStorage.getItem("burntbeats_post_signup_plan");
+    if (!plan) return;
+    if (
+      plan !== "basic" &&
+      plan !== "premium" &&
+      plan !== "studio" &&
+      plan !== "topup" &&
+      plan !== "single"
+    ) {
+      window.sessionStorage.removeItem("burntbeats_post_signup_plan");
+      return;
+    }
+    window.sessionStorage.removeItem("burntbeats_post_signup_plan");
+    void subscription.startCheckout(plan, {
+      source: "pricing_page",
+      intent: "post_signup_plan_intent",
+    });
+  }, [subscription, subscription.status]);
   const isBasicPlan =
     subscription.status === "active" && subscription.plan === "basic";
   const stemQualityOptions = isBasicPlan ? "speed_only" : "full";
@@ -825,7 +854,16 @@ export function App() {
                       canExpandToFourStems={canExpandToFourStems}
                       canUseBatchQueue={canUseBatchQueue}
                       onUpgradeToPremium={() =>
-                        void subscription.startCheckout("premium")
+                        void subscription.startCheckout("premium", {
+                          source: "upgrade_prompt",
+                          intent: "four_stem_unlock",
+                        })
+                      }
+                      onContinueCheckout={() =>
+                        void subscription.startCheckout("basic", {
+                          source: "split_gate",
+                          intent: "continue_from_split_blocker",
+                        })
                       }
                       onSplit={(requestedStemMode, isSample) => {
                         startUiLatencyMark("mixer-ready-after-stems");
@@ -855,6 +893,11 @@ export function App() {
                     {subscription.billingError && (
                       <div className="mt-3 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
                         {subscription.billingError}
+                      </div>
+                    )}
+                    {checkoutNotice && (
+                      <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                        {checkoutNotice}
                       </div>
                     )}
                   </SplitErrorBoundary>

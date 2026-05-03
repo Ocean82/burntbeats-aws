@@ -3,6 +3,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import { PricingTablePreview } from "./PricingTablePreview";
+import { BillingRules } from "./BillingRules";
+import { trackEvent } from "../analytics/events";
 
 interface UsageContext {
   hasCompletedFirstExport?: boolean;
@@ -57,7 +59,7 @@ const PLANS: PlanConfig[] = [
       "Use the same high‑quality stem engine if already on monthly plans.",
       "Great for guests and collaborators.",
       "Top up again any time you run low.",
-      "No plan requred for Karaoke splits",
+      "No plan required for karaoke splits.",
     ],
     cta: "Buy Top‑Up Pack",
   },
@@ -86,7 +88,7 @@ const PLANS: PlanConfig[] = [
     description: "For active producers bouncing between projects all week.",
     details: [
       "300 tokens/month (1 token = 1 minute).",
-      "Higer-quality selections available",
+      "Higher-quality selections available.",
       "High‑quality multi‑stem options (4 stems).",
       "Priority processing and batch tools unlocked.",
       "Full mixer / editor functions and pro mixing tools.",
@@ -123,8 +125,15 @@ export function PricingPage({
     "subscriptions",
   );
   const handleSelectPlan = (plan: Plan) => {
+    trackEvent("pricing_plan_selected", {
+      source: "pricing_page",
+      plan,
+    });
     setCheckoutLoadingPlan(plan);
-    void subscription.startCheckout(plan).finally(() => {
+    void subscription.startCheckout(plan, {
+      source: "pricing_page",
+      intent: "pricing_page_cta",
+    }).finally(() => {
       setCheckoutLoadingPlan(null);
     });
   };
@@ -196,13 +205,7 @@ export function PricingPage({
               <span className="font-semibold text-amber-200">Top‑Up Pack</span>{" "}
               to try Burnt Beats with no subscription.
             </p>
-            <p className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80">
-              <span className="font-semibold text-amber-200">
-                1 token = 1 minute of audio.
-              </span>{" "}
-              Each split or expand charges tokens based on your track length — a
-              3‑min song costs 3 tokens. Partial minutes round up.
-            </p>
+            <BillingRules />
             <ul className="grid gap-2 text-sm text-white/78 sm:grid-cols-2">
               <li className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                 Top‑Up Pack: one-time credits, no subscription.

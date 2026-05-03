@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/react";
 import { LEGAL_VERSIONS } from "../legal/versions";
 import { acceptLegal } from "../api";
 import { isLocalDevFullApp } from "../config";
+import { trackEvent } from "../analytics/events";
 
 type LegalAcceptance = {
   tosVersion?: string;
@@ -40,15 +41,33 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
     return acc.tosVersion !== LEGAL_VERSIONS.tos || acc.privacyVersion !== LEGAL_VERSIONS.privacy;
   }, [isLoaded, user]);
 
+  useEffect(() => {
+    if (!needsAcceptance) return;
+    trackEvent("legal_gate_shown", {
+      tos_version: LEGAL_VERSIONS.tos,
+      privacy_version: LEGAL_VERSIONS.privacy,
+    });
+  }, [needsAcceptance]);
+
   const onAccept = useCallback(async () => {
     setError(null);
     if (!checked) return;
     setSubmitting(true);
+    trackEvent("legal_accept_submit", {
+      tos_version: LEGAL_VERSIONS.tos,
+      privacy_version: LEGAL_VERSIONS.privacy,
+    });
     try {
       await acceptLegal({ tosVersion: LEGAL_VERSIONS.tos, privacyVersion: LEGAL_VERSIONS.privacy });
       // Clerk user object should update shortly; gate will re-render and allow entry.
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to record acceptance. Please try again.");
+      const msg = e instanceof Error ? e.message : "Unable to record acceptance. Please try again.";
+      setError(
+        `${msg} If this persists, sign out/sign in and try again.`
+      );
+      trackEvent("legal_accept_failed", {
+        error: msg.slice(0, 120),
+      });
     } finally {
       setSubmitting(false);
     }

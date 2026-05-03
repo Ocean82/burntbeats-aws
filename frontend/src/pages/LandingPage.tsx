@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Zap, ShieldCheck, AudioWaveform } from "lucide-react";
 import type { PlanConfig } from "../components/PricingTablePreview";
 import { PricingTablePreview } from "../components/PricingTablePreview";
+import { BillingRules } from "../components/BillingRules";
+import { trackEvent } from "../analytics/events";
 
 /** Framer Motion fade-up preset. delay in seconds, distance in px. */
 function fadeUp(delay = 0, distance = 16) {
@@ -31,6 +33,16 @@ export function LandingPage() {
     <SignUpButton mode="modal" fallbackRedirectUrl="/app">
       <button
         type="button"
+        onClick={() => {
+          window.sessionStorage.setItem(
+            "burntbeats_post_signup_plan",
+            String(plan.id),
+          );
+          trackEvent("landing_plan_intent_captured", {
+            plan: String(plan.id),
+            source: "landing_pricing",
+          });
+        }}
         className="w-full rounded-lg border border-amber-400/30 bg-amber-500/20 px-4 py-3 font-medium text-amber-200 transition hover:border-amber-400/50 hover:bg-amber-500/30"
       >
         {plan.cta}
@@ -126,6 +138,9 @@ export function LandingPage() {
               </button>
             </SignInButton>
           </div>
+          <p className="text-xs text-white/55">
+            Secure Stripe billing · cancel anytime · one-time packs available
+          </p>
 
           <div className="flex flex-col items-center gap-6 text-xs text-white/50 sm:flex-row">
             <div className="flex items-center gap-2">
@@ -178,6 +193,7 @@ export function LandingPage() {
           </div>
 
           <div className="glass-panel rounded-2xl border border-white/10 p-4 sm:p-6">
+            <BillingRules className="mb-4" />
             <PricingTablePreview
               pricingType={pricingTab}
               ctaButtonRenderer={renderPricingCTA}
