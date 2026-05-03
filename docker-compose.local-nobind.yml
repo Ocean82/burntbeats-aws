@@ -1,3 +1,13 @@
+# Optional compose fragment — merges with docker-compose.yml when invoked explicitly:
+#   docker compose -f docker-compose.yml -f docker-compose.local-nobind.yml up -d
+#
+# Use case: Replace bind mounts for ./tmp/stems, ./models, and ./server_models with **named Docker
+# volumes** (helps some WSL2 / antivirus / slow-disk setups). Development-only extras: backend gets
+# NODE_ENV=development and DEV_BYPASS_UPLOAD_AUTH=1 (see DEPLOY docs — never for production).
+#
+# Default `docker compose up` ignores this file; production EC2 stays on root docker-compose.yml.
+#
+# Related: docs/DEPLOY-DOCKER-EC2.md § “Local Compose override (no bind mounts)”
 services:
   backend:
     environment:

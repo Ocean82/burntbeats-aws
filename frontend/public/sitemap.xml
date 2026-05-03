@@ -26,7 +26,17 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://www.burntbeats.com/privacy-policy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://burntbeats.com/terms-of-service</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://www.burntbeats.com/terms-of-service</loc>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>

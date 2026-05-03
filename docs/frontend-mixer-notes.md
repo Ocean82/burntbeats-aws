@@ -5,6 +5,8 @@ Scope: Mixer/editor architecture, performance follow-ups, and UI backlog pointer
 
 For product-level UI ideas and status tables, see [`roadmap/product-backlog.md`](roadmap/product-backlog.md) and [`roadmap/future-goals.md`](roadmap/future-goals.md).
 
+**Env cheat sheet:** [`ENVIRONMENT-MATRIX.md`](ENVIRONMENT-MATRIX.md)
+
 ---
 
 ## Architecture snapshot

@@ -179,7 +179,7 @@ Currently the waveforms are static. Adding:
 
 ### 9. **Export Options Enhancement**
 
-- Format selection (WAV, MP3, FLAC)
+- Format selection (WAV, MP3 — FLAC deferred; see export row rationale)
 - Quality/bitrate selection
 - Export individual stems vs. mixed master
 - Zip download option for all stems
@@ -227,7 +227,7 @@ Items below are verified against the current app. **Done** = implemented and wir
 | 6 | Mobile touch (pinch, swipe, haptics) | **Not done** | Responsive layout; no pinch-to-zoom, swipe nav, or haptics. |
 | 7 | Audio comparison (A/B) | **Done** | ComparisonToggle; original decoded on upload (`originalAudioBuffer`); Play mix plays original when "Original" selected in compare mode. |
 | 8 | Batch processing queue | **Done** | BatchQueue: add to queue, process next, progress; stems from last completed job applied to mixer. |
-| 9 | Export options (format, quality, target, zip) | **Partial** | Implemented: WAV + **MP3** master; **ZIP** for master ± job-backed stems (**WAV** per stem); normalize toggle. **`flac`** exists in TS types only (not in modal, no encoder). Optional **server-side master WAV** (`server_export.py`) when ops enable **`SERVER_EXPORT_ENABLED`** + **`VITE_SERVER_EXPORT_ENABLED`**. Unused modal fields (bitrate labels, etc.) may still imply future polish. |
+| 9 | Export options (format, quality, target, zip) | **Partial** | Implemented: WAV + **MP3** master; **ZIP** for master ± job-backed stems (**WAV** per stem); normalize toggle. **FLAC intentionally omitted:** encoding is comparatively **heavy on CPU**; with CPU-only inference on constrained AWS budgets, WAV (lossless) + MP3 covers shipping needs until usage/revenue justify async/GPU/export-service work. **`flac`** may remain in TS unions for guarded future UI only. Optional **server-side master WAV** when **`SERVER_EXPORT_ENABLED`** + **`VITE_SERVER_EXPORT_ENABLED`**. Unused modal fields may still imply future polish. |
 | 10 | Onboarding & help | **Done** | OnboardingTour; HelpModal (shortcuts, FAQ); tooltips on some controls (e.g. Mute/Unmute, Undo/Redo). No sample demo track. |
 
 ### Compatibility

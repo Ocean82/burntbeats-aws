@@ -94,6 +94,8 @@ services:
     ports:
       - "127.0.0.1:5000:5000"
     environment:
+      # Production EC2: set STEM_MODELS_DIR=server_models in root .env and ship only `server_models/`
+      # (built via scripts/export_server_models.py from canonical `models/`). Default `models` is OK for dev.
       STEM_MODELS_DIR: ${STEM_MODELS_DIR:-models}
       STEM_OUTPUT_DIR: /repo/tmp/stems
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}

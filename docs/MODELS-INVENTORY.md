@@ -5,6 +5,8 @@
 
 **Automated (facts on *this* tree):** Run `python scripts/scan_models_inventory.py` → `tmp/model_inventory.csv` + `docs/MODEL-INVENTORY-AUTO.md`. Full workflow (ORT conversion + 30s matrix): [MODEL-INVENTORY-RUNBOOK.md](MODEL-INVENTORY-RUNBOOK.md).
 
+**Operator layout (`models/` vs `server_models/`)**: **`scripts/copy-models.sh`** pulls from your large stem-models **bank** into canonical **`models/`** (workstation)—**do not replicate the upstream bank (~100 GiB+) to prod.** **`python scripts/export_server_models.py`** reads **`models/`** and emits **`server_models/`** (`gitignored`) for EC2 (**`STEM_MODELS_DIR=server_models`**). See root **[README.md](../README.md)** § *Models layout*.
+
 ---
 
 ## 1. Project models dir: `/path/to/burntbeats-aws/models`

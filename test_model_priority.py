@@ -37,8 +37,8 @@ def test_model_detection():
 
 
 def test_2stem_priority():
-    """Test the 2-stem priority logic as recommended in NEW-flow.md."""
-    print("=== 2-Stem Priority Logic (NEW-flow.md) ===")
+    """Rough priority narrative (sandbox script—not production waterfall). Compare stem_service/hybrid.py + vocal_stage1.py + docs/stem-pipeline.md. Archived NEW-flow CPU draft: docs/archive/research-draft-NEW-flow-scnet-t3-large.md."""
+    print("=== 2-Stem Priority Logic (sandbox / docs cross-check) ===")
     print("Priority order:")
     print("  1. MDX23C vocal ONNX + MDX23C instrumental ONNX (no phase inversion)")
     print("  2. SCNet 4-stem -> collapse to 2-stem")
@@ -69,8 +69,8 @@ def test_2stem_priority():
 
 
 def test_4stem_priority():
-    """Test the 4-stem priority logic as recommended in NEW-flow.md."""
-    print("\n=== 4-Stem Priority Logic (NEW-flow.md) ===")
+    """Same caveat as test_2stem_priority — illustrative only; routing is documented in docs/stem-pipeline.md."""
+    print("\n=== 4-Stem Priority Logic (sandbox / docs cross-check) ===")
     print("Priority order:")
     print("  1. SCNet-large ONNX (PRIMARY CHOICE)")
     print("  2. Demucs htdemucs (QUALITY FALLBACK)")
@@ -90,7 +90,7 @@ def test_4stem_priority():
 
 
 if __name__ == "__main__":
-    print("Testing NEW-flow.md model priority logic for AWS t3.large\n")
+    print("Testing illustrative model preference order (cross-check stems vs archived research)\n")
 
     test_model_detection()
 

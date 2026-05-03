@@ -9,7 +9,10 @@ interface ImportMetaEnv {
   readonly VITE_LOCAL_DEV_FULL_APP?: string;
   /** Optional: max split upload bytes; default 500MB; align with backend MAX_UPLOAD_BYTES. */
   readonly VITE_MAX_UPLOAD_BYTES?: string;
-  /** Optional: enable server-side master export endpoint (/api/stems/server-export). Default disabled. */
+  /**
+   * When **`1`** / **`true`**, the client may call **`POST /api/stems/server-export`** for an offline-rendered master **WAV** (must match **`SERVER_EXPORT_ENABLED=1`** on the backend or you get HTTP **404**, then client falls back).
+   * Renders on the stem host via **`stem_service/server_export.py`** — **token-metered** when **`USAGE_TOKENS_ENABLED`**. Omit in prod unless you deliberately enable server export (`docs/BILLING-AND-TOKENS.md`, **`docs/ARCHITECTURE-FLOW.md`**). Baked in at **frontend image build**.
+   */
   readonly VITE_SERVER_EXPORT_ENABLED?: string;
   readonly VITE_STRIPE_PUBLISHABLE_KEY?: string;
   readonly VITE_STRIPE_PRICING_TABLE_ID?: string;

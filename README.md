@@ -13,10 +13,39 @@ End users of the public site do not read this repo; this file is for **direction
 | **`frontend/`** | Upload, plan gating, polling, waveforms, mixer (Web Audio), export (**WAV**, **MP3**, **ZIP** of job stems; optional **server master** when env flags allow). Clerk + Stripe.js. |
 | **`backend/`** | Auth/usage, proxy to stem service, **`/api/stems/file`**, presigned S3 redirects, billing webhooks, malware scan hooks, rate limits, optional **`POST /api/stems/server-export`**. |
 | **`stem_service/`** | FastAPI: **2-stem** default, **expand to 4**, quality modes, SCNet / hybrid Demucs paths (**see `docs/stem-pipeline.md`** — single source of truth for routing). Optional S3 upload after job. |
-| **`docker-compose.yml`** | Production-shaped local / EC2 stack: `frontend` (nginx :5173→80), `backend`, `stem_service`, shared `tmp/stems` + `models`. |
-| **`models/` / `server_models/`** | ONNX / PyTorch artifacts mounted into `stem_service` (layout in `docs/MODELS-INVENTORY.md`). |
+| **`docker-compose.yml`** | Local / EC2: `frontend` (nginx → host **5173**), **`backend`**, **`stem_service`**, shared **`tmp/stems`**, plus bind mounts **`./models`** → `/repo/models` and **`./server_models`** → `/repo/server_models`. |
+| **`models/` vs `server_models/`** | **Weights are not baked into Docker images** (see `.dockerignore` — both dirs omitted from context). Inference reads whichever subtree **`STEM_MODELS_DIR`** names; see § **Models layout** below + `docs/MODELS-INVENTORY.md`. |
 
-**Not in the Compose path:** **`stem_api/`** (Rust) is **legacy / unused** by current deploy — see `docs/archive/IMPLEMENTATION-HYBRID.md`. **`gamer_tag/`** and **`burnt-beats-pricing-structure/`** are separate sandbox/marketing Vite apps.
+**Not in the Compose path:** **`stem_api/`** (Rust) — **archived experiment**; **`stem_api/README.md`** · **`docs/archive/IMPLEMENTATION-HYBRID.md`**.  
+
+**Satellite Vite apps** (not bundled in main Compose):
+
+- **`burnt-beats-pricing-structure/`** — standalone pricing/transparency (subscriptions, pay‑as‑you‑go, packs) for users who bounce before signup; see its **`README.md`**.
+- **`gamer_tag/`** — casual **block-dropping** mini-game (Tetris‑like; rename before broader marketing); see **`README.md`**.
+
+---
+
+## Models layout (solo maintainer mental model)
+
+1. **`models/` — canonical workstation tree**
+
+   Filled **only where you dev** via **`scripts/copy-models.sh`** from your huge upstream stem-models **bank**. That upstream tree can reach **roughly ~100 GiB**; **`copy-models.sh` copies a reduced set into `./models`** — yet **`models/` can still become very large.** **Never rsync/sync the upstream bank—or an entire bloated `./models`**—to EC2 “just because it exists”; ship a **curated** tree instead (**next bullet**).
+
+2. **`server_models/` — curated runtime tree used on Ubuntu**
+
+   Build on the workstation: **`python scripts/export_server_models.py`**. That script **always resolves exports from `./models`** (see its docstring—it pins `STEM_MODELS_DIR=models` internally), then emits **`server_models/`** with exactly what inference needs.
+
+   Typical layout on disk: **`D:\burntbeats-aws\server_models`** (Windows dev) mirrored to **`/home/ubuntu/burntbeats-aws/server_models`** on the instance. **`server_models/` is gitignored**—you maintain it per host.
+
+3. **Container selection**
+
+   **`stem_service/config.py`** resolves weights under **`REPO_ROOT / $STEM_MODELS_DIR`** (POSIX path inside Compose: **`/repo/models`** or **`/repo/server_models`**). Compose defaults **`STEM_MODELS_DIR=models`** (`docker-compose.yml`); **recommended for AWS:** set **`STEM_MODELS_DIR=server_models`** in root **`.env`** so prod never depends on workstation-only bulk.
+
+4. **Reference docs**
+
+   - [`docs/MODEL-LAYOUT.md`](docs/MODEL-LAYOUT.md) — directory / script / Docker layout
+   - [`docs/MODEL-PATH-AND-SELECTION-INVESTIGATION-2026-04-15.md`](docs/MODEL-PATH-AND-SELECTION-INVESTIGATION-2026-04-15.md) — runtime path audit
+   - [`docs/DEPLOY-DOCKER-EC2.md`](docs/DEPLOY-DOCKER-EC2.md) — EC2 Compose (§ Models)
 
 ---
 
@@ -130,6 +159,8 @@ Pre-flight: **`docs/PRODUCTION-READINESS-CHECKLIST.md`** · **`docs/SANITY-CHECK
 3. **`docs/stem-pipeline.md`** — model routing & quality modes  
 
 **Index of everything else:** **`docs/README.md`**
+
+**Env & integrations:** **`docs/ENVIRONMENT-MATRIX.md`** · **Legal / policy routing:** **`docs/LEGAL-LAYOUT.md`**
 
 **Plans & backlog (not source of truth for behavior):** **`docs/roadmap/`**
 

@@ -29,6 +29,14 @@ jobs:
       - name: Frontend critical unit tests
         working-directory: frontend
         run: npm run test:run -- src/utils/tokenCost.test.ts src/hooks/useExport.test.ts
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Playwright smoke (app + legal pages)
+        working-directory: frontend
+        run: npm run test:e2e
+        env:
+          CI: true
 
   backend:
     runs-on: ubuntu-latest

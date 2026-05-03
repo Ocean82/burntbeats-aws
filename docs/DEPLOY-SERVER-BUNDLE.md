@@ -57,29 +57,42 @@ tar xzf burntbeats-server-*.tgz
 
 ---
 
-## 2. Models (separate step — only what you need)
+## 2. Models (separate step — curated payload only)
 
-The bundle **does not** include `models/`. On **CPU-only** production (typical `t3.large`), you need at least:
+The bundle excludes large trees. **`scripts/copy-models.sh`** pulls from your stem-models **bank** **into `./models`** on whichever machine runs it—that upstream bank may be ~**100 GiB+** (do **not** upload it wholesale anywhere production touches).
 
-- **Demucs:** `htdemucs.pth` or `htdemucs.th` (see root README / `scripts/download_htdemucs_official.py`)
-- **Hybrid / MDX:** contents under `models/MDX_Net_Models/` and `models/mdxnet_models/` as produced by **`scripts/copy-models.sh`** from your stem-models bank
+### Recommended (Docker / EC2 + Compose)
 
-**Option A — on the server, copy from a mounted path or USB:**
+On the workstation:
+
+```bash
+# 1) Populate canonical models (if not already): STEM_MODELS_SOURCE=/path/to/bank bash scripts/copy-models.sh
+python scripts/export_server_models.py
+rsync -avz ./server_models/ ubuntu@YOUR_HOST:/home/ubuntu/burntbeats-aws/server_models/
+```
+
+Remote **`.env`**: **`STEM_MODELS_DIR=server_models`**. Compose already mounts `./server_models:/repo/server_models` (defaults to empty dir if absent—populate it).
+
+### Alternative — full `./models/` on the server
+
+**Option A — workstation → server `models/`**:
+
+```bash
+rsync -avz ./models/ ubuntu@YOUR_HOST:/home/ubuntu/burntbeats-aws/models/
+```
+
+Use only after `copy-models.sh` already produced a sane subset—**still avoid rsync-ing the untouched bank.**
+
+**Option B — run copy-models directly on server** (rare):
 
 ```bash
 mkdir -p models
 STEM_MODELS_SOURCE=/path/to/stem-models bash scripts/copy-models.sh
 ```
 
-**Option B — rsync only `models/` from your dev machine** (after you’ve already run `copy-models.sh` locally so `models/` is minimal):
+Do **never** expose the upstream bank publicly; Prefer **`export_server_models.py`** (**`server_models/`**) for repeatable tiny deploys.
 
-```bash
-rsync -avz --progress ./models/ ubuntu@YOUR_HOST:/opt/burntbeats/models/
-```
-
-Do **not** sync your entire multi-hundred-GB stem-models bank unless you intend to; use `copy-models.sh` locally or on the server so only required files land under `models/`.
-
-Optional / GPU-only items (RoFormer `.ckpt`, etc.) are **not** required for CPU-only; see root README *Ultra Quality Models*.
+Optional / GPU-heavy artifacts are **not** required for baseline CPU tiers—see **`docs/stem-pipeline.md`** (**Ultra**) and **`docs/MODELS-INVENTORY.md`**.
 
 ---
 

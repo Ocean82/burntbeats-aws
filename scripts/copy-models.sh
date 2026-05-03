@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+#
+# Populate **canonical repo `models/`** from your large upstream stem-models **bank**.
+#
+# ⚠ DEPLOYMENT: This script NEVER targets `server_models/`. Your bank may be ~100GiB+
+# — do **not** `rsync`/copy that bank to EC2 wholesale. Production should use only the
+# **curated subset** produced by `python scripts/export_server_models.py` → `server_models/`
+# plus `STEM_MODELS_DIR=server_models` on the stem container (see root README § Models).
+#
 # Copy stem models from your bank into project models/ (no symlinks).
 # Usage: STEM_MODELS_SOURCE=/path/to/stem-models bash scripts/copy-models.sh
 #    or: bash scripts/copy-models.sh /path/to/stem-models

@@ -4,6 +4,7 @@ import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
 import { useModalA11y } from "../hooks/useModalA11y";
 
+/** Master export codecs exposed in-product. FLAC is deliberately omitted here: FLAC encoding is comparatively CPU-heavy for an AWS **CPU-only** stack; WAV (lossless) + MP3 meet current budgets. Keeping `"flac"` in this union preserves future guarded options without implying it ships today (`docs/roadmap/product-backlog.md`). */
 export type ExportFormat = "wav" | "mp3" | "flac";
 export type ExportTarget = "master" | "stems" | "all";
 

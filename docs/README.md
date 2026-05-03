@@ -53,8 +53,11 @@ Curated map for **maintainers** (not web users). **Runtime truth** = root [`READ
 
 ## 5. Models, inventory, benchmarks
 
+**Layout:** root [`README.md`](../README.md) § *Models layout* · one page [**`MODEL-LAYOUT.md`**](MODEL-LAYOUT.md).
+
 | Doc | Purpose |
 |-----|---------|
+| [`MODEL-LAYOUT.md`](MODEL-LAYOUT.md) | **`models/`** vs **`server_models/`**, scripts, Compose, `.dockerignore`, EC2 checklist |
 | [`MODELS-INVENTORY.md`](MODELS-INVENTORY.md) | Required / optional weights |
 | [`MODEL-INVENTORY-RUNBOOK.md`](MODEL-INVENTORY-RUNBOOK.md) | Maintainer workflow |
 | [`MODEL-INVENTORY-AUTO.md`](MODEL-INVENTORY-AUTO.md) | Automated inventory outputs |
@@ -98,13 +101,30 @@ Curated map for **maintainers** (not web users). **Runtime truth** = root [`READ
 
 ---
 
-## 10. Archived history
+## 10. Environment, legal & repo satellites
+
+| Kind | Purpose |
+|------|---------|
+| [`ENVIRONMENT-MATRIX.md`](ENVIRONMENT-MATRIX.md) | All **`VITE_*`**, Compose, **`backend/`**, **`stem_service/`** env wiring |
+| [`LEGAL-LAYOUT.md`](LEGAL-LAYOUT.md) | SPA `/privacy-policy` + `/terms-of-service`, version sync, **`sitemap.xml`** |
+| Root [`legal/README.md`](../legal/README.md) | Why **`legal/*.md`** exists vs **`frontend/src/pages/legal/`** |
+
+**Standalone Vite packages** (deploy separately · not in main Compose stack):
+
+| Path | Purpose |
+|------|---------|
+| [`burnt-beats-pricing-structure/`](../burnt-beats-pricing-structure/README.md) | Transparency pricing / pay‑as‑you‑go viewers (migrate users toward subscriptions). |
+| [`gamer_tag/`](../gamer_tag/README.md) | Waiting-room block game (rename before marketing — see README ideas). |
+
+---
+
+## 11. Archived history
 
 | Path | Purpose |
 |------|---------|
 | [`archive/README.md`](archive/README.md) | Manifest of superseded investigations & agent scratchpads |
 
-Legacy **`stem_api/` Rust** notes live under **`archive/IMPLEMENTATION-HYBRID.md`** (orienteering only).
+Rust archive: **`stem_api/README.md`** + **`archive/IMPLEMENTATION-HYBRID.md`**.
 
 ---
 

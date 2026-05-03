@@ -309,8 +309,9 @@ app.use("/api/billing", billingRouter);
 app.use("/api/clerk", clerkWebhookRouter);
 
 // ── Legal acceptance (one-time gate) ─────────────────────────────────────────
-const LEGAL_TOS_VERSION = process.env.LEGAL_TOS_VERSION || "2025-01";
-const LEGAL_PRIVACY_VERSION = process.env.LEGAL_PRIVACY_VERSION || "2025-01";
+// Defaults must stay aligned with frontend/src/legal/versions.ts → LEGAL_VERSIONS.
+const LEGAL_TOS_VERSION = process.env.LEGAL_TOS_VERSION || "2026-05";
+const LEGAL_PRIVACY_VERSION = process.env.LEGAL_PRIVACY_VERSION || "2026-05";
 
 app.post("/api/legal/accept", async (req, res) => {
   try {

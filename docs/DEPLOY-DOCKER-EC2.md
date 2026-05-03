@@ -102,9 +102,27 @@ Then confirm **`sudo docker compose ps`** shows all services **healthy**. Do **n
 
 ## Models and data
 
-- **`models/`** is large and usually **not** in git. On the server it is often mounted into **`stem_service`** (see compose **`volumes:`**). Sync models with **`scripts/copy-models.sh`** or a targeted **`rsync`** (see [DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md) §2).
-- **Smaller deploy bundle:** On your dev machine, keep the authoritative ONNX/ORT under **`models/models_by_type/`** and Demucs under **`models/Demucs_Models/`**, then run **`python scripts/export_server_models.py`** to populate **`server_models/`**. That export **always reads from `models/`** (not from `server_models`), then you rsync only **`server_models/`** and set **`STEM_MODELS_DIR=server_models`** for the stem container (or mount **`./server_models:/repo/models`** and keep the default env).
-- **`tmp/stems`** (or compose **`STEM_OUTPUT_DIR`**) is runtime output; compose may mount **`./tmp/stems`**.
+- **`models/`** stays on the workstation (populate with **`scripts/copy-models.sh`** from your stem-models **bank**). That bank—and even a naive full **`models/`** tree—can be **many tens of gibibytes; never blindly rsync either to EC2**.
+- **`server_models/`** is the **usual production payload**. On the workstation run **`python scripts/export_server_models.py`** (forces resolution from **`models/`** internally; export target is `./server_models/`), then **`rsync`/`scp`/`tar` only `server_models/`**. On the server set **`STEM_MODELS_DIR=server_models`** in root **`.env`** so **`stem_service`** reads **`/repo/server_models`** (Compose already bind-mounts `./server_models` there).
+- **`copy-models.sh` is optional on the server**—only needed if you intentionally maintain a fat **`models/`** tree on-instance (bare-metal installs). Compose/Docker setups should prefer **`server_models/`** alone.
+- **Images stay small:** Repo **`.dockerignore`** skips **`models/`** and **`server_models/`** for Docker **build context**—weights arrive through **volume mounts**.
+- **`tmp/stems`** (compose **`STEM_OUTPUT_DIR`**) is runtime job output; compose mounts **`./tmp/stems`** (see **`docker-compose.yml`**).
+
+---
+
+## Local Compose override (no bind mounts)
+
+Some dev machines (**WSL2**, antivirus scanning bind mounts, slow disks) choke on `./tmp/stems`, `./models`, or `./server_models` bind mounts.
+
+Use **`docker-compose.local-nobind.yml`** as a **fragment** merged **explicitly**:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local-nobind.yml up -d
+```
+
+It replaces those paths with **named Docker volumes** and sets **`backend`** to **`NODE_ENV=development`** with **`DEV_BYPASS_UPLOAD_AUTH=1`**. **Do not** use this file on production EC2—it weakens metering/auth assumptions on the Node API.
+
+Default **`docker compose up`** on CI/production should keep using root **`docker-compose.yml`** alone.
 
 ---
 
