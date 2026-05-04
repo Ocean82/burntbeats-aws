@@ -1,52 +1,33 @@
-# Beat-Grid Validation Decision Record
+# Beat-grid validation — decision record
 
-## Scope
+Companion to **§1** in [`future-goals.md`](future-goals.md).
 
-This document closes the remaining work for beat-grid quality validation from `docs/roadmap/future-goals.md`.
+## Confidence threshold
 
-## Decision 1: Confidence threshold for rendering beat-grid
+- **Default:** hide the waveform beat-grid overlay when `confidence < 0.3`.
+- **Constant:** `BEAT_GRID_MIN_CONFIDENCE` in `frontend/src/utils/beatGrid.ts` (`shouldRenderBeatGrid`).
+- **Rationale:** values below ~0.3 correlate with unreliable tempo estimates (sparse drums, drift, noisy audio). Showing a wrong grid hurts trust more than hiding the feature; users still get the ruler-based time grid.
 
-- Default threshold: `0.30`
-- Rule: hide beat-grid overlays when `beat_grid.confidence < 0.30`
-- Rationale:
-  - Avoid showing likely wrong beat markers on sparse/noisy tracks.
-  - Keep timeline readability high for low-signal detections.
-  - Preserve user trust: no overlay is better than confidently wrong overlay.
+Gating is applied in **`MultiStemEditor`** (computing/display policy) and defensively again in **`waveform-timeline.component.tsx`** when `beatGrid` metadata is passed, so stale `beatGridPcts` cannot draw lines if confidence drops.
 
-## Decision 2: Fallback strategy
+## Backend-only vs client-side fallback
 
-- Keep BPM analysis backend-only.
-- Do **not** add a client-side fallback at this stage.
-- Rationale:
-  - Existing backend pipeline already emits `beat_grid` metadata in completion payloads.
-  - Client-side fallback would increase bundle/runtime complexity and duplicate logic.
-  - Current product priority is reliability and validation quality, not redundant implementations.
+**Decision:** stay **backend-only** for BPM / beat alignment in this product.
 
-## QA Harness
+- **Why not client `essentia.js` (or similar) now:** large bundle weight, WASM/runtime cost, and duplicate logic vs the stem pipeline. BPM is not on the hot path for waveform rendering once metadata exists.
+- **Source of truth:** `stem_service/bpm_analysis.py` → `beat_grid` on split job progress/status payloads; expand jobs preserve `beat_grid` from the source job (`stem_service/server.py`).
 
-Use the harness to evaluate real-world tracks:
+If we later need offline or instant previews before the server responds, revisit with an explicit spike (bundle budget + accuracy targets).
 
-- Script: `stem_service/scripts/bpm_qa_harness.py`
-- Example:
+## Manual QA harness
 
-```bash
-python -m stem_service.scripts.bpm_qa_harness --input-dir ./qa-audio --out-csv ./qa-output/beat-grid-report.csv --show-progress
-```
+Batch offline checks on real files:
 
-CSV fields:
+- **Script:** `stem_service/scripts/bpm_qa_harness.py`
+- **Usage:** see [`stem_service/scripts/README.md`](../../stem_service/scripts/README.md)
 
-- `filename`
-- `relative_path`
-- `bpm`
-- `beat_offset_seconds`
-- `confidence`
-- `implementation_path`
+Automated coverage: `stem_service/tests/test_bpm_analysis.py` (synthetic WAV cases).
 
-## Validation notes
+### User gate (not a CI gate)
 
-- Run QA across:
-  - steady tempo songs
-  - tempo-drift songs
-  - sparse percussion songs
-  - low-SNR/noisy recordings
-- If confidence is consistently low for a genre/category, keep the threshold and hide overlays for that class until analysis is improved.
+Running the harness against a **representative set of your tracks** remains a manual QA step before treating beat-grid UX as fully validated on production music.
