@@ -1,9 +1,10 @@
 import { type ReactNode } from "react";
+import type { Plan } from "../hooks/useSubscription";
 
 export type PricingTableType = "subscriptions" | "packs";
 
 export interface PlanConfig {
-  id: string;
+  id: Plan;
   name: string;
   priceLabel: string;
   badge?: string;
@@ -99,7 +100,7 @@ const PACK_PLANS: PlanConfig[] = [
 
 interface PlanCardProps {
   plan: PlanConfig;
-  onSelect?: (planId: string) => void;
+  onSelect?: (planId: Plan) => void;
   ctaButton?: ReactNode;
 }
 
@@ -151,7 +152,7 @@ function PlanCard({ plan, onSelect, ctaButton }: PlanCardProps) {
 
 export interface PricingTablePreviewProps {
   pricingType: PricingTableType;
-  onSelectPlan?: (planId: string) => void;
+  onSelectPlan?: (planId: Plan) => void;
   ctaButtonRenderer?: (plan: PlanConfig) => ReactNode;
 }
 

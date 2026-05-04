@@ -29,8 +29,10 @@ describe("App flow", () => {
         <App />
       </AppShell>
     );
-    expect(screen.getByTestId("split-upload-dropzone")).toBeInTheDocument();
-    expect(screen.getByTestId("source-mode-split")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /upload audio file/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^split$/i })).toBeInTheDocument();
   });
 
   it("shows upload and split pipeline copy", () => {

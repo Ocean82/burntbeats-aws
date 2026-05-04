@@ -16,7 +16,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "echo \"TypeScript-only lint check (ESLint not configured)\" && tsc --noEmit"
   },
   "dependencies": {
     "@clerk/react": "^6.4.7",

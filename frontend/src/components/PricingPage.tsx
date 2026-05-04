@@ -144,7 +144,7 @@ export function PricingPage({
 
   const renderCheckoutCTA = (plan: PricingTablePlanConfig) => (
     <button
-      onClick={() => handleSelectPlan(plan.id as Plan)}
+      onClick={() => handleSelectPlan(plan.id)}
       disabled={
         subscription.status === "loading" || checkoutLoadingPlan !== null
       }
