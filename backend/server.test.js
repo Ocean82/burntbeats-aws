@@ -60,7 +60,9 @@ const request = supertest(app);
 
 test("GET /api/health returns ok", async () => {
   const res = await request.get("/api/health").expect(200);
-  assert.equal(res.body.status, "ok");
+  // status is "ok" when DB is connected, "degraded" when DATABASE_URL is unset (test env)
+  assert.ok(["ok", "degraded"].includes(res.body.status));
+  assert.ok("database" in res.body);
 });
 
 test("GET /api/stems/status invalid job_id returns 400", async () => {

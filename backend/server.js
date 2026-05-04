@@ -48,6 +48,8 @@ import {
   sanitizedProxyClientError,
 } from "./clientSafeError.js";
 import { getAllowedOriginSet } from "./allowedOrigins.js";
+import { getPool, healthCheck as dbHealthCheck, closePool } from "./db.js";
+import { insertJob, updateJobStatus } from "./db-jobs.js";
 
 // ── Startup env validation ──────────────────────────────────────────────────
 const REQUIRED_ENV_WARNINGS = [];
@@ -804,6 +806,8 @@ app.post(
     let usageUserId = null;
     let usageCost = 0;
     let usageReserved = false;
+    /** @type {number | null} */
+    let durationSeconds = null;
     const isSample = req.body && req.body.sample === "true";
 
     if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH && !isSample) {
@@ -812,6 +816,7 @@ app.post(
           /** @type {any} */ (req)._usageUserId ||
           (await verifyClerkBearer(req));
         const durationSec = await getAudioDurationSeconds(filePath);
+        durationSeconds = durationSec;
         usageCost = computeSplitCost(durationSec, quality, stems, isSample);
         await reserveUsageTokens(usageUserId, usageCost);
         usageReserved = usageCost > 0;
@@ -854,6 +859,17 @@ app.post(
 
       if (data.statusCode === 202) {
         const jobId = data.data.job_id;
+        // Record job in database (non-blocking, best-effort)
+        insertJob({
+          jobId,
+          clerkUserId: usageUserId,
+          stems: Number(stems),
+          quality: quality || null,
+          isSample: !!isSample,
+          originalFilename: req.file?.originalname || null,
+          durationSeconds,
+          tokenCost: usageCost,
+        }).catch((err) => console.error("[split] db insertJob error:", err));
         const response = {
           job_id: jobId,
           status: data.data.status ?? "accepted",
@@ -943,6 +959,16 @@ app.get(
         url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav`,
         path: s.path,
       }));
+    }
+    // Update DB job status on terminal states (best-effort, non-blocking)
+    const terminalStatuses = ["completed", "failed", "cancelled"];
+    if (terminalStatuses.includes(data.status)) {
+      updateJobStatus(job_id, data.status, {
+        errorMessage: data.error || undefined,
+        modelName: data.model || undefined,
+      }).catch(() => {});
+    } else if (data.status === "processing") {
+      updateJobStatus(job_id, "processing").catch(() => {});
     }
     res.json(data);
   },
@@ -1035,6 +1061,41 @@ app.get(
   },
 );
 
+// ── Job history (DB-backed) ─────────────────────────────────────────────────
+import { getJobHistory } from "./db-jobs.js";
+import { getTokenHistory } from "./db-tokens.js";
+
+app.get("/api/jobs/history", async (req, res) => {
+  try {
+    const userId = await verifyClerkBearer(req);
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+    const jobs = await getJobHistory(userId, { limit, offset });
+    return res.json({ jobs });
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e && typeof e.status === "number"
+        ? e.status
+        : 401;
+    return res.status(status).json({ error: "Unauthorized" });
+  }
+});
+
+app.get("/api/billing/token-history", async (req, res) => {
+  try {
+    const userId = await verifyClerkBearer(req);
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const transactions = await getTokenHistory(userId, { limit });
+    return res.json({ transactions });
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e && typeof e.status === "number"
+        ? e.status
+        : 401;
+    return res.status(status).json({ error: "Unauthorized" });
+  }
+});
+
 app.post(
   "/api/stems/expand",
   authMiddleware,
@@ -1104,6 +1165,17 @@ app.post(
       const data = await proxyFormRequest("/expand", form);
       if (data.statusCode === 202) {
         const newJobId = data.data.job_id;
+        // Record expand job in database (non-blocking)
+        insertJob({
+          jobId: newJobId,
+          clerkUserId: usageUserId,
+          stems: 4, // expand always produces 4 stems
+          quality: quality || null,
+          isSample: false,
+          originalFilename: null,
+          durationSeconds: null,
+          tokenCost: usageCost,
+        }).catch((err) => console.error("[expand] db insertJob error:", err));
         const response = {
           job_id: newJobId,
           status: data.data.status ?? "accepted",
@@ -1497,9 +1569,18 @@ app.get("/api/stems/cleanup", authMiddleware, (req, res) => {
   });
 });
 
-app.get("/api/health", (req, res) => {
-  const payload = { status: "ok", rate_limited: !!process.env.API_KEY };
-  res.json(payload);
+app.get("/api/health", async (req, res) => {
+  const db = await dbHealthCheck();
+  const payload = {
+    status: db.ok ? "ok" : "degraded",
+    rate_limited: !!process.env.API_KEY,
+    database: {
+      connected: db.ok,
+      latencyMs: db.latencyMs,
+      ...(db.error ? { error: db.error } : {}),
+    },
+  };
+  res.status(db.ok ? 200 : 200).json(payload); // 200 even when degraded — app still serves
 });
 
 // ── Global error handler ────────────────────────────────────────────────────
@@ -1534,8 +1615,13 @@ async function main() {
   });
 }
 
-function gracefulShutdown(signal) {
+async function gracefulShutdown(signal) {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
+  try {
+    await closePool();
+  } catch (e) {
+    console.error("[shutdown] db pool close error:", e);
+  }
   if (server) {
     server.close(() => {
       console.log("HTTP server closed.");

@@ -15,6 +15,7 @@ import path from "path";
 import { parseFile } from "music-metadata";
 import { getClerkClient } from "./clerkAuth.js";
 import { getRedis } from "./stripeRedis.js";
+import { isDbTokensAvailable, reserveDbTokens, refundDbTokens, getDbBalance, creditDbSubscription, creditDbTopup, grantDbWelcomeTokens } from "./db-tokens.js";
 
 /**
  * Distributed lock for per-user token operations.
@@ -133,6 +134,15 @@ export function findJobInputPath(jobDir) {
  * @returns {Promise<{ balance: number, periodEnd: number | null }>}
  */
 export async function getUsageBalance(userId) {
+  // Prefer DB when available
+  if (isDbTokensAvailable()) {
+    const dbResult = await getDbBalance(userId);
+    if (dbResult !== null) {
+      const periodEndMs = dbResult.periodEnd ? dbResult.periodEnd.getTime() : null;
+      return { balance: dbResult.balance, periodEnd: periodEndMs };
+    }
+  }
+  // Fallback to Clerk metadata
   const clerk = getClerkClient();
   if (!clerk) return { balance: 0, periodEnd: null };
   const user = await clerk.users.getUser(userId);
@@ -153,12 +163,34 @@ export async function getUsageBalance(userId) {
 /**
  * @param {string} userId
  * @param {number} cost
+ * @param {{ jobId?: string }} [meta]
  */
-export async function reserveUsageTokens(userId, cost) {
+export async function reserveUsageTokens(userId, cost, meta = {}) {
   if (isUsageTokensDevUnlimited()) return;
+  if (!Number.isFinite(cost) || cost <= 0) return;
+
+  // Primary: DB-backed debit (transactional, with ledger)
+  if (isDbTokensAvailable()) {
+    const result = await reserveDbTokens(userId, cost, { jobId: meta.jobId, note: "split/expand debit" });
+    if (!result.success) {
+      const err = /** @type {Error & { status?: number }} */ (
+        new Error(result.error || "Token reservation failed")
+      );
+      err.status = result.error?.includes("Insufficient") ? 402 : 500;
+      throw err;
+    }
+    // Also update Clerk metadata as a cache (best-effort, don't fail if this errors)
+    try {
+      await _updateClerkBalanceCache(userId, result.balanceAfter ?? 0);
+    } catch (e) {
+      console.warn("[usageTokens] Clerk cache update failed (non-fatal):", e instanceof Error ? e.message : e);
+    }
+    return;
+  }
+
+  // Fallback: Clerk-only (original behaviour)
   const clerk = getClerkClient();
   if (!clerk) return;
-  if (!Number.isFinite(cost) || cost <= 0) return;
 
   await withUserUsageLock(userId, async () => {
     const user = await clerk.users.getUser(userId);
@@ -196,12 +228,28 @@ export async function reserveUsageTokens(userId, cost) {
  * Refund previously reserved tokens (best-effort compensating action).
  * @param {string} userId
  * @param {number} amount
+ * @param {{ jobId?: string }} [meta]
  */
-export async function refundUsageTokens(userId, amount) {
+export async function refundUsageTokens(userId, amount, meta = {}) {
   if (isUsageTokensDevUnlimited()) return;
+  if (!Number.isFinite(amount) || amount <= 0) return;
+
+  // Primary: DB refund
+  if (isDbTokensAvailable()) {
+    const result = await refundDbTokens(userId, amount, { jobId: meta.jobId, note: "job refund" });
+    if (result.success && result.balanceAfter != null) {
+      try {
+        await _updateClerkBalanceCache(userId, result.balanceAfter);
+      } catch (e) {
+        console.warn("[usageTokens] Clerk cache update failed (non-fatal):", e instanceof Error ? e.message : e);
+      }
+    }
+    return;
+  }
+
+  // Fallback: Clerk-only
   const clerk = getClerkClient();
   if (!clerk) return;
-  if (!Number.isFinite(amount) || amount <= 0) return;
   await withUserUsageLock(userId, async () => {
     const user = await clerk.users.getUser(userId);
     const prev = user.privateMetadata?.usageTokens;
@@ -221,6 +269,32 @@ export async function refundUsageTokens(userId, amount) {
         },
       },
     });
+  });
+}
+
+/**
+ * Best-effort update of Clerk privateMetadata balance cache.
+ * This keeps the Clerk-based billing/usage endpoint fast without a DB query.
+ * @param {string} userId
+ * @param {number} newBalance
+ */
+async function _updateClerkBalanceCache(userId, newBalance) {
+  const clerk = getClerkClient();
+  if (!clerk) return;
+  const user = await clerk.users.getUser(userId);
+  const prev = user.privateMetadata?.usageTokens;
+  const rec =
+    prev && typeof prev === "object"
+      ? { .../** @type {Record<string, unknown>} */ (prev) }
+      : {};
+  await clerk.users.updateUserMetadata(userId, {
+    privateMetadata: {
+      .../** @type {Record<string, unknown>} */ (user.privateMetadata || {}),
+      usageTokens: {
+        ...rec,
+        balance: newBalance,
+      },
+    },
   });
 }
 
@@ -357,6 +431,16 @@ export async function creditSubscriptionAllowance(
         },
       },
     });
+
+    // Also write to DB (primary ledger when available)
+    if (isDbTokensAvailable()) {
+      await creditDbSubscription(clerkUserId, grant, {
+        periodStart: typeof periodStart === "number" ? periodStart : undefined,
+        periodEnd: typeof periodEnd === "number" ? periodEnd : undefined,
+        stripeEventId: stripeEventId || undefined,
+      });
+    }
+
     console.log(
       `[usageTokens] credited ${grant} tokens user=${clerkUserId} period=${periodStart}`,
     );
@@ -429,9 +513,16 @@ export function tokensPerTopupFromPrice(price) {
  * @param {number} grant
  */
 export async function creditTopupTokens(clerkUserId, grant) {
+  if (!Number.isFinite(grant) || grant <= 0) return;
+
+  // Primary: DB
+  if (isDbTokensAvailable()) {
+    await creditDbTopup(clerkUserId, grant);
+  }
+
+  // Secondary: Clerk metadata cache
   const clerk = getClerkClient();
   if (!clerk) return;
-  if (!Number.isFinite(grant) || grant <= 0) return;
   await withUserUsageLock(clerkUserId, async () => {
     const user = await clerk.users.getUser(clerkUserId);
     const prev = user.privateMetadata?.usageTokens;
@@ -462,12 +553,28 @@ export async function creditTopupTokens(clerkUserId, grant) {
  * @returns {Promise<{ granted: boolean, balance: number }>}
  */
 export async function grantWelcomeSignupTokens(clerkUserId, grant) {
-  const clerk = getClerkClient();
-  if (!clerk) return { granted: false, balance: 0 };
-
   // Ensure we always grant at least 1 token even if env is missing,
   // but allow explicit 0 if that's what's intended.
   const amount = Number.isFinite(grant) ? Math.floor(grant) : 1;
+
+  // Primary: DB (idempotent)
+  if (isDbTokensAvailable()) {
+    const dbResult = await grantDbWelcomeTokens(clerkUserId, amount);
+    if (dbResult.success) {
+      // Also update Clerk cache
+      try {
+        await _updateClerkBalanceCache(clerkUserId, dbResult.balanceAfter ?? 0);
+      } catch (e) {
+        console.warn("[usageTokens] Clerk cache update failed (non-fatal):", e instanceof Error ? e.message : e);
+      }
+      return { granted: dbResult.granted, balance: dbResult.balanceAfter ?? 0 };
+    }
+    // Fall through to Clerk-only if DB failed
+  }
+
+  // Fallback: Clerk-only
+  const clerk = getClerkClient();
+  if (!clerk) return { granted: false, balance: 0 };
 
   /** @type {{ granted: boolean, balance: number }} */
   let result = { granted: false, balance: 0 };

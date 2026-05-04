@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "db:migrate": "node db-migrate.js",
     "stripe:listen": "node ../scripts/stripe-local-dev.mjs",
     "test": "node --test",
     "lint": "eslint server.js malwareScan.js",
@@ -26,6 +27,7 @@
     "multer": "^2.1.1",
     "music-metadata": "^11.0.0",
     "nodemailer": "^8.0.5",
+    "pg": "^8.20.0",
     "redis": "^4.7.1",
     "stripe": "^20.4.1",
     "svix": "^1.92.2"
