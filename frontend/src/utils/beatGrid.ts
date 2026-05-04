@@ -11,6 +11,18 @@ export interface BeatGridComputeOptions {
   zoom: number;
 }
 
+export const BEAT_GRID_MIN_CONFIDENCE = 0.3;
+
+export function shouldRenderBeatGrid(
+  beatGrid: BeatGridMetadata | null | undefined,
+  minConfidence = BEAT_GRID_MIN_CONFIDENCE,
+): boolean {
+  if (!beatGrid) return false;
+  if (!Number.isFinite(beatGrid.bpm) || beatGrid.bpm <= 0) return false;
+  if (!Number.isFinite(beatGrid.confidence)) return false;
+  return beatGrid.confidence >= minConfidence;
+}
+
 /**
  * Compute beat-grid positions as percentages (0–100) within the current visible viewport.
  * Returns an empty array if beat grid is unavailable, duration is zero, or no beats fall in view.
@@ -21,7 +33,7 @@ export function computeBeatGridPcts({
   scrollPct,
   zoom,
 }: BeatGridComputeOptions): number[] {
-  if (maxDuration <= 0) return [];
+  if (maxDuration <= 0 || zoom <= 0 || beatGrid.bpm <= 0) return [];
 
   const beatInterval = 60 / beatGrid.bpm;
   const visStart = scrollPct / 100;

@@ -64,6 +64,7 @@ export function useStemSplitting({
       splitError: null,
       splitResultStems: [],
       splitJobId: null,
+      beatGrid: null,
       loadedStems: prev.loadedStems.filter((stem) => {
         if (stem.id.startsWith("loaded_")) {
           URL.revokeObjectURL(stem.url);

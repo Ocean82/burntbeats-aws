@@ -65,7 +65,12 @@ def _estimate_bpm_librosa(audio_path: Path) -> dict[str, Any]:
     beat_times = librosa.frames_to_time(beats, sr=sr)
     beat_offset = float(beat_times[0]) if len(beat_times) > 0 else 0.0
 
-    confidence = 1.0 if bpm > 0 else 0.0
+    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+    confidence = _confidence_from_onset_env(np.asarray(onset_env, dtype=np.float64))
+    confidence_ref: dict[str, float] = {"value": confidence}
+    bpm = _normalize_bpm_range(bpm, confidence_ref=confidence_ref)
+    if confidence_ref["value"] == 0.0:
+        confidence = 0.0
 
     return {
         "bpm": round(bpm, 2),
@@ -142,25 +147,73 @@ def _estimate_bpm_numpy(audio_path: Path) -> dict[str, Any]:
     period_seconds = best_period * hop_duration
     bpm = 60.0 / period_seconds if period_seconds > 0 else 0.0
 
-    # Sanity clamp: typical music BPM range
-    if bpm < 50:
-        bpm *= 2  # Likely detected half-time
-    elif bpm > 200:
-        bpm /= 2  # Likely detected double-time
-    bpm = max(50.0, min(200.0, bpm))
+    confidence_ref: dict[str, float] = {"value": 1.0}
+    bpm = _normalize_bpm_range(bpm, confidence_ref=confidence_ref)
 
     # Find first onset as beat offset
     threshold = np.mean(onset_env) + 0.5 * np.std(onset_env)
     onset_indices = np.where(onset_env > threshold)[0]
     beat_offset = float(onset_indices[0] * hop_duration) if len(onset_indices) > 0 else 0.0
 
-    # Heuristic confidence based on peak strength
-    peak_val = search_region[peak_idx]
-    noise_floor = np.median(search_region)
-    confidence = min(1.0, (peak_val - noise_floor) / (peak_val + 1e-10))
+    confidence = _confidence_from_peak_stats(search_region[peak_idx], np.median(search_region))
+    if confidence_ref["value"] == 0.0:
+        confidence = 0.0
 
     return {
         "bpm": round(float(bpm), 2),
         "beat_offset_seconds": round(float(beat_offset), 4),
         "confidence": round(float(confidence), 2),
     }
+
+
+def _normalize_bpm_range(
+    bpm: float,
+    *,
+    confidence_ref: dict[str, float],
+    min_bpm: float = 40.0,
+    max_bpm: float = 220.0,
+) -> float:
+    """Normalize likely half/double-time errors without hard-clamping valid tempos."""
+    if bpm <= 0:
+        confidence_ref["value"] = 0.0
+        return 0.0
+
+    normalized = float(bpm)
+    if normalized < min_bpm and normalized * 2 <= max_bpm:
+        normalized *= 2
+    elif normalized > max_bpm and normalized / 2 >= min_bpm:
+        normalized /= 2
+
+    if normalized < min_bpm or normalized > max_bpm:
+        confidence_ref["value"] = 0.0
+    return normalized
+
+
+def _confidence_from_peak_stats(peak_val: float, noise_floor: float) -> float:
+    if peak_val <= 0:
+        return 0.0
+    return min(1.0, max(0.0, (peak_val - noise_floor) / (peak_val + 1e-10)))
+
+
+def _confidence_from_onset_env(onset_env: Any) -> float:
+    try:
+        import numpy as np
+    except Exception:
+        return 0.0
+    env = np.asarray(onset_env, dtype=np.float64)
+    if env.size < 4:
+        return 0.0
+    env = env - np.mean(env)
+    denom = float(np.std(env))
+    if denom <= 1e-9:
+        return 0.0
+    env = env / denom
+    autocorr = np.correlate(env, env, mode="full")
+    autocorr = autocorr[len(autocorr) // 2 :]
+    if autocorr.size < 3:
+        return 0.0
+    # Ignore lag 0 and use dominant periodic peak prominence.
+    search = autocorr[1:]
+    peak_val = float(np.max(search))
+    noise_floor = float(np.median(search))
+    return round(_confidence_from_peak_stats(peak_val, noise_floor), 2)

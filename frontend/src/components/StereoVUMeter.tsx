@@ -2,17 +2,22 @@ import { useEffect, useRef, useState, useCallback } from "react";
 
 export interface StereoVUMeterProps {
   getAnalyserData: () => Uint8Array | null;
+  getAnalyserDataLeft?: () => Uint8Array | null;
+  getAnalyserDataRight?: () => Uint8Array | null;
   isPlaying: boolean;
   height?: number;
   width?: number;
 }
 
-/** How fast the peak-hold marker decays (px per frame at 60fps). */
-const PEAK_DECAY_PX_PER_FRAME = 0.8;
+const PEAK_HOLD_MS = 1500;
+const PEAK_DECAY_DB_PER_SEC = 6;
+const CLIP_LATCH_MS = 1500;
 
 /** Stereo VU meter with peak hold/decay, dB scale, and clip light. */
 export function StereoVUMeter({
   getAnalyserData,
+  getAnalyserDataLeft,
+  getAnalyserDataRight,
   isPlaying,
   height = 120,
   width = 64,
@@ -21,6 +26,10 @@ export function StereoVUMeter({
   const animRef = useRef(0);
   const peakLeftRef = useRef(0);
   const peakRightRef = useRef(0);
+  const peakHoldLeftUntilRef = useRef(0);
+  const peakHoldRightUntilRef = useRef(0);
+  const clipUntilRef = useRef(0);
+  const lastFrameTimeRef = useRef(0);
   const [clipped, setClipped] = useState(false);
 
   const draw = useCallback(() => {
@@ -48,27 +57,42 @@ export function StereoVUMeter({
     let levelRight = 0;
 
     if (isPlaying) {
-      const data = getAnalyserData();
-      if (data) {
-        const half = Math.floor(data.length / 2);
+      const fallback = getAnalyserData();
+      const dataL = getAnalyserDataLeft?.() ?? fallback;
+      const dataR = getAnalyserDataRight?.() ?? fallback;
+      if (dataL && dataL.length > 0) {
         let sumL = 0;
-        let sumR = 0;
-        for (let i = 0; i < half; i++) {
-          const vL = data[i]! / 128.0 - 1.0;
+        for (let i = 0; i < dataL.length; i++) {
+          const vL = dataL[i]! / 128.0 - 1.0;
           sumL += vL * vL;
-          if (i < data.length - half) {
-            const vR = data[half + i]! / 128.0 - 1.0;
-            sumR += vR * vR;
-          }
         }
-        levelLeft = Math.min(1, Math.sqrt(sumL / half) * 3);
-        levelRight = Math.min(1, Math.sqrt(sumR / half) * 3);
+        levelLeft = Math.min(1, Math.sqrt(sumL / dataL.length) * 3);
+      }
+      if (dataR && dataR.length > 0) {
+        let sumR = 0;
+        for (let i = 0; i < dataR.length; i++) {
+          const vR = dataR[i]! / 128.0 - 1.0;
+          sumR += vR * vR;
+        }
+        levelRight = Math.min(1, Math.sqrt(sumR / dataR.length) * 3);
       }
     }
 
-    const newClipped = levelLeft >= 0.99 || levelRight >= 0.99;
-    if (newClipped) setClipped(true);
-    else if (!isPlaying) setClipped(false);
+    const now = performance.now();
+    const deltaMs = Math.max(
+      0,
+      lastFrameTimeRef.current > 0 ? now - lastFrameTimeRef.current : 16.67,
+    );
+    lastFrameTimeRef.current = now;
+    const decayPerSecond = Math.pow(10, -PEAK_DECAY_DB_PER_SEC / 20);
+    const decayFactor = Math.pow(decayPerSecond, deltaMs / 1000);
+
+    const clippedNow = levelLeft >= 0.99 || levelRight >= 0.99;
+    if (clippedNow) {
+      clipUntilRef.current = now + CLIP_LATCH_MS;
+    }
+    const shouldClipLight = isPlaying && clipUntilRef.current > now;
+    setClipped((prev) => (prev === shouldClipLight ? prev : shouldClipLight));
 
     for (let ch = 0; ch < 2; ch++) {
       const level = ch === 0 ? levelLeft : levelRight;
@@ -95,7 +119,14 @@ export function StereoVUMeter({
 
       const peakPx = level * height;
       const prevPeak = ch === 0 ? peakLeftRef.current : peakRightRef.current;
-      const newPeak = Math.max(peakPx, prevPeak - PEAK_DECAY_PX_PER_FRAME);
+      const peakHoldUntilRef = ch === 0 ? peakHoldLeftUntilRef : peakHoldRightUntilRef;
+      let newPeak = prevPeak;
+      if (peakPx >= prevPeak) {
+        newPeak = peakPx;
+        peakHoldUntilRef.current = now + PEAK_HOLD_MS;
+      } else if (peakHoldUntilRef.current <= now) {
+        newPeak = prevPeak * decayFactor;
+      }
       if (ch === 0) peakLeftRef.current = newPeak;
       else peakRightRef.current = newPeak;
 
@@ -104,7 +135,7 @@ export function StereoVUMeter({
     }
 
     animRef.current = requestAnimationFrame(draw);
-  }, [getAnalyserData, isPlaying, height, width]);
+  }, [getAnalyserData, getAnalyserDataLeft, getAnalyserDataRight, isPlaying, height, width]);
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw);
@@ -137,12 +168,19 @@ export function StereoVUMeter({
         <span className="text-[8px] font-semibold uppercase tracking-wider text-white/35">L</span>
         <span className="text-[8px] font-semibold uppercase tracking-wider text-white/35">R</span>
         <div
+          role="status"
+          aria-label="Master clip indicator"
           className={
             "h-2 w-2 rounded-full transition-colors " +
             (clipped ? "bg-red-500 shadow-sm shadow-red-500/60" : "bg-white/10")
           }
           title={clipped ? "Clip" : "No clip"}
         />
+        {clipped && (
+          <span className="text-[8px] font-semibold uppercase tracking-wider text-red-400">
+            Clip
+          </span>
+        )}
       </div>
     </div>
   );

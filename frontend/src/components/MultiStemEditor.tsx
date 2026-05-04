@@ -26,7 +26,7 @@ import type { BeatGridMetadata } from "../api";
 import { cn } from "../utils/cn";
 import { useTimelineViewport } from "../hooks/useTimelineViewport";
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
-import { computeBeatGridPcts } from "../utils/beatGrid";
+import { computeBeatGridPcts, shouldRenderBeatGrid } from "../utils/beatGrid";
 import { TimelineRuler } from "./multi-stem-editor/timeline-ruler.component";
 import { WaveformTimeline } from "./multi-stem-editor/waveform-timeline.component";
 import { StemTabs } from "./multi-stem-editor/stem-tabs.component";
@@ -192,8 +192,13 @@ export function MultiStemEditor({
   }, [scrollPct, zoom, maxDuration]);
 
   const beatGridPcts = useMemo(() => {
-    if (!showBeatGrid || !beatGrid) return [];
-    return computeBeatGridPcts({ beatGrid, maxDuration, scrollPct, zoom });
+    if (!showBeatGrid || !shouldRenderBeatGrid(beatGrid)) return [];
+    return computeBeatGridPcts({
+      beatGrid: beatGrid as BeatGridMetadata,
+      maxDuration,
+      scrollPct,
+      zoom,
+    });
   }, [showBeatGrid, beatGrid, maxDuration, scrollPct, zoom]);
 
   const playheadVisiblePct =
@@ -272,7 +277,7 @@ export function MultiStemEditor({
           </button>
         </div>
 
-        {beatGrid && (
+        {shouldRenderBeatGrid(beatGrid) && (
           <button
             type="button"
             onClick={() => setShowBeatGrid((v) => !v)}
@@ -374,6 +379,7 @@ export function MultiStemEditor({
             getAnalyserData={getAnalyserData}
             tickPcts={ticks.map((t) => t.pct)}
             beatGridPcts={beatGridPcts}
+            beatGrid={beatGrid}
             onTrimChange={handleTrimChange}
             onSeek={instrumentedOnSeek}
             onActivate={handleActivate}

@@ -44,16 +44,18 @@ This file tracks improvements that are valuable but too complex or wide-scoped t
 
 **Suggested first step:** Investigate whether the existing Python/Demucs backend can emit BPM metadata alongside stem files, and whether a lightweight client-side fallback is feasible.
 
-**Status (2026-05):** ✅ Mostly completed
+**Status (2026-05):** ✅ Completed
 - Backend BPM analysis exists (`stem_service/bpm_analysis.py`) and is emitted in split progress/status payloads (`beat_grid` metadata).
 - Frontend consumes and renders beat-grid metadata in the timeline (`frontend/src/api.ts`, `frontend/src/hooks/useStemSplitting.ts`, `frontend/src/components/MultiStemEditor.tsx`, `frontend/src/utils/beatGrid.ts`).
-- Remaining: validate beat-detection quality on edge cases (tempo drift, sparse percussion, low-confidence tracks) and decide whether a client-side fallback is still needed.
+- Validation/tests added for BPM analysis and beat-grid confidence gating (`stem_service/tests/test_bpm_analysis.py`, `frontend/src/utils/beatGrid.test.ts`).
+- Expand jobs now preserve `beat_grid` metadata (`stem_service/server.py`).
+- Decision record added: backend-only strategy with confidence threshold and QA harness (`docs/roadmap/beat-grid-validation.md`, `stem_service/scripts/bpm_qa_harness.py`).
 
 ---
 
 ## 2. App.tsx Decomposition
 
-**Context:** `App.tsx` is approximately 1100 lines and serves as both the hook orchestrator and the full render tree. The JSX render section alone is ~600 lines. This makes it harder to isolate bugs, reason about layout changes, and onboard new contributors.
+**Context:** `App.tsx` historically grew past ~1000 lines while acting as both hook orchestrator and full render tree. Decomposition keeps regressions rare and layout changes localized.
 
 **Why deferred:** Decomposition carries refactor risk — prop threading, import updates, and potential for subtle behavioral regressions. It should be its own focused task with a clear component boundary plan, not folded into a UI polish pass.
 
@@ -66,12 +68,21 @@ This file tracks improvements that are valuable but too complex or wide-scoped t
 
 **Files that will be affected:** `App.tsx`, new `editor-header.component.tsx`, new `mixer-workspace.component.tsx`, potentially `app-shell.component.tsx`
 
-**Status (2026-05):** 🟡 In progress
+**Status (2026-05):** ✅ Completed
 - Suggested extractions landed:
   - `frontend/src/app/editor-header.component.tsx`
   - `frontend/src/app/mixer-workspace.component.tsx`
-- `App.tsx` now delegates major UI sections to those components.
-- Remaining: continue reducing orchestration/render weight in `App.tsx` until it is a truly thin coordinator (currently still large), while preserving existing hook and prop contracts.
+- Additional extractions landed:
+  - `frontend/src/app/lazy-modal-layer.component.tsx`
+  - `frontend/src/app/waiting-game-panel.component.tsx`
+  - `frontend/src/app/dev-latency-panel.component.tsx`
+  - `frontend/src/app/editor-main-view.component.tsx` (marquee + processing + mixer section)
+  - `frontend/src/app/editor-floating-overlays.component.tsx` (export toast + quick-split CTA)
+  - `frontend/src/app/app-background-orbs.component.tsx`
+- Hook extractions landed:
+  - `frontend/src/hooks/useHeaderVisibility.ts`
+  - `frontend/src/hooks/usePostSignupPlanCheckout.ts`
+- `useAudioPlayback` now owns playback cleanup on unmount; `App.tsx` remains focused on orchestration (~760 LOC after extraction pass; target band ~700–800).
 
 ---
 
@@ -81,13 +92,18 @@ This file tracks improvements that are valuable but too complex or wide-scoped t
 
 **Why deferred:** The current implementation covers the core use case. The extended version requires rethinking the VUMeter component to support stereo channels and peak hold, which is a self-contained audio visualization task.
 
-**Status (2026-05):** ✅ Mostly completed
+**Status (2026-05):** ✅ Completed
 - Dedicated master strip UI exists in mixer panel with:
   - vertical master fader + dB readout
   - stereo VU meter (L/R)
   - peak-hold/decay behavior
   - clip indicator
-- Remaining: optional limiter toggle UX (if desired) and any final visual polish/accessibility tuning for the strip.
+- Added and wired:
+  - real stereo metering path from dual channel analysers
+  - master limiter toggle (default off)
+  - fader accessibility improvements (`aria-valuenow/min/max`) and 0 dB reset affordance
+  - responsive polish (hide spectrum on small screens)
+  - tests for limiter toggle, fader reset behavior, and VU clip behavior
 
 ---
 

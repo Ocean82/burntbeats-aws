@@ -2,7 +2,10 @@ import { motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
-import { PricingTablePreview } from "./PricingTablePreview";
+import {
+  PricingTablePreview,
+  type PlanConfig as PricingTablePlanConfig,
+} from "./PricingTablePreview";
 import { BillingRules } from "./BillingRules";
 import { trackEvent } from "../analytics/events";
 
@@ -139,7 +142,7 @@ export function PricingPage({
   };
   const showPrimaryCheckout = subscription.status !== "active";
 
-  const renderCheckoutCTA = (plan: PlanConfig) => (
+  const renderCheckoutCTA = (plan: PricingTablePlanConfig) => (
     <button
       onClick={() => handleSelectPlan(plan.id as Plan)}
       disabled={

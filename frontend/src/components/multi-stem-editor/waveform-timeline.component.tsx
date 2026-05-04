@@ -2,6 +2,8 @@ import { memo, useMemo } from "react";
 import type { StemDefinition, TrimState } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { defaultStemState } from "../../stem-editor-state";
+import type { BeatGridMetadata } from "../../api";
+import { shouldRenderBeatGrid } from "../../utils/beatGrid";
 import { WaveformLane } from "./waveform-lane.component";
 import { playheadPercentStyle } from "../../utils/playheadCssVar";
 import { generateFakeWaveform } from "../../utils/waveformCanvas";
@@ -25,6 +27,8 @@ export interface WaveformTimelineProps {
   tickPcts?: number[];
   /** Beat-grid positions (0–100) computed from backend BPM metadata. */
   beatGridPcts?: number[];
+  /** When set, beat lines are hidden if confidence is below the standard threshold (defense in depth). */
+  beatGrid?: BeatGridMetadata | null;
   /** Optional: time-domain analyser data for live waveform modulation during playback. */
   getAnalyserData?: () => Uint8Array | null;
   /** Whether audio is currently playing (gates the analyser modulation). */
@@ -50,6 +54,7 @@ export function WaveformTimeline({
   showPlayhead,
   tickPcts,
   beatGridPcts,
+  beatGrid,
   getAnalyserData,
   isPlaying = false,
   onTrimChange,
@@ -61,6 +66,12 @@ export function WaveformTimeline({
     () => Object.fromEntries(stems.map((s) => [s.id, generateFakeWaveform(s.id, WAVEFORM_BINS)])),
     [stems]
   );
+
+  const displayBeatGridPcts = useMemo(() => {
+    if (!beatGridPcts?.length) return [];
+    if (beatGrid != null && !shouldRenderBeatGrid(beatGrid)) return [];
+    return beatGridPcts;
+  }, [beatGrid, beatGridPcts]);
 
   return (
     <div className="relative flex flex-col gap-1.5">
@@ -78,9 +89,9 @@ export function WaveformTimeline({
       )}
 
       {/* Beat grid lines — amber markers from backend BPM analysis */}
-      {beatGridPcts && beatGridPcts.length > 0 && (
+      {displayBeatGridPcts.length > 0 && (
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
-          {beatGridPcts.map((pct, i) => (
+          {displayBeatGridPcts.map((pct, i) => (
             <div
               key={i}
               className="absolute inset-y-0 w-px bg-amber-400/25"

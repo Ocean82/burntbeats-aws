@@ -29,7 +29,8 @@ describe("App flow", () => {
         <App />
       </AppShell>
     );
-    expect(screen.getByRole("button", { name: /Split stems/i })).toBeInTheDocument();
+    expect(screen.getByTestId("split-upload-dropzone")).toBeInTheDocument();
+    expect(screen.getByTestId("source-mode-split")).toBeInTheDocument();
   });
 
   it("shows upload and split pipeline copy", () => {

@@ -11,8 +11,8 @@ function renderSplitPanel() {
   const props = {
     sourceMode: "split" as const,
     onSourceModeChange: vi.fn(),
-    uploadName: "",
-    uploadedFile: null,
+    uploadName: "track.wav",
+    uploadedFile: new File([], "track.wav", { type: "audio/wav" }),
     inputRef: uploadInputRef,
     onBrowseUpload: vi.fn(),
     onClearUpload: vi.fn(),
@@ -44,15 +44,15 @@ describe("ProcessingSettingsPanel layout", () => {
   it("keeps upload and quality controls in separate responsive groups", () => {
     const { container } = renderSplitPanel();
 
-    const browseButton = screen.getByRole("button", { name: /browse/i });
+    const changeFileButton = screen.getByRole("button", { name: /change/i });
     const qualityFastButton = screen.getByRole("button", { name: /fast/i });
     const uploadDropZone = screen.getByTestId("split-upload-dropzone");
     const qualityGroup = screen.getByTestId("quality-controls");
     const splitButton = screen.getByRole("button", { name: /split stems/i });
 
-    expect(uploadDropZone).toContainElement(browseButton);
+    expect(uploadDropZone).toContainElement(changeFileButton);
     expect(qualityGroup).toContainElement(qualityFastButton);
-    expect(uploadDropZone.className).toContain("basis-full");
+    expect(uploadDropZone.className).toMatch(/w-full/);
     expect(qualityGroup.className).toContain("w-full");
     expect(splitButton.className).toContain("fire-button");
     expect(container.querySelector("[data-testid='processing-settings-panel']")).toBeInTheDocument();

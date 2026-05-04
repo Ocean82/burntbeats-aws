@@ -58,9 +58,13 @@ interface MixerWorkspaceProps {
   playingStemId: string | null;
   loadingPreviewStemId: string | null;
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
   masterVolume: number;
   onMasterVolumeChange: (value: number) => void;
+  masterLimiterEnabled: boolean;
+  onMasterLimiterEnabledChange: (enabled: boolean) => void;
   /** Optional beat-grid metadata from backend BPM analysis. */
   beatGrid?: BeatGridMetadata | null;
   /* Status toasts */
@@ -113,9 +117,13 @@ export function MixerWorkspace({
   playingStemId,
   loadingPreviewStemId,
   getMasterAnalyserTimeDomainData,
+  getMasterAnalyserTimeDomainDataLeft,
+  getMasterAnalyserTimeDomainDataRight,
   getMasterAnalyserFrequencyData,
   masterVolume,
   onMasterVolumeChange,
+  masterLimiterEnabled,
+  onMasterLimiterEnabledChange,
   beatGrid,
   exportCompareSummary,
   undoToast,
@@ -368,9 +376,17 @@ export function MixerWorkspace({
           playingStemId={playingStemId}
           loadingPreviewStemId={loadingPreviewStemId}
           getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
+          getMasterAnalyserTimeDomainDataLeft={
+            getMasterAnalyserTimeDomainDataLeft
+          }
+          getMasterAnalyserTimeDomainDataRight={
+            getMasterAnalyserTimeDomainDataRight
+          }
           getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
           masterVolume={masterVolume}
           onMasterVolumeChange={onMasterVolumeChange}
+          masterLimiterEnabled={masterLimiterEnabled}
+          onMasterLimiterEnabledChange={onMasterLimiterEnabledChange}
           beatGrid={beatGrid}
         />
       </Suspense>

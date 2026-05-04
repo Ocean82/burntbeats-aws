@@ -45,11 +45,15 @@ export interface MixerPanelProps {
   playingStemId: string | null;
   loadingPreviewStemId: string | null;
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
   /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
   masterVolume: number;
   /** Callback to update master output gain. */
   onMasterVolumeChange: (value: number) => void;
+  masterLimiterEnabled: boolean;
+  onMasterLimiterEnabledChange: (enabled: boolean) => void;
   /** Optional beat-grid metadata from backend BPM analysis. */
   beatGrid?: BeatGridMetadata | null;
 }
@@ -82,9 +86,13 @@ export function MixerPanel({
   playingStemId,
   loadingPreviewStemId,
   getMasterAnalyserTimeDomainData,
+  getMasterAnalyserTimeDomainDataLeft,
+  getMasterAnalyserTimeDomainDataRight,
   getMasterAnalyserFrequencyData,
   masterVolume,
   onMasterVolumeChange,
+  masterLimiterEnabled,
+  onMasterLimiterEnabledChange,
   beatGrid,
 }: MixerPanelProps) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -124,7 +132,7 @@ export function MixerPanel({
       {/* ── Master Channel Strip ── */}
       <div className="mb-5 flex items-stretch gap-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
         {/* Spectrum analyzer — takes up most of the width */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1 border-r border-white/[0.08] px-3 py-3">
+        <div className="hidden min-w-0 flex-1 flex-col gap-1 border-r border-white/[0.08] px-3 py-3 sm:flex">
           <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
             Spectrum
           </p>
@@ -144,6 +152,8 @@ export function MixerPanel({
           </p>
           <StereoVUMeter
             getAnalyserData={getMasterAnalyserTimeDomainData}
+            getAnalyserDataLeft={getMasterAnalyserTimeDomainDataLeft}
+            getAnalyserDataRight={getMasterAnalyserTimeDomainDataRight}
             isPlaying={isPlayingMix || playingStemId !== null}
             height={120}
             width={64}
@@ -159,18 +169,26 @@ export function MixerPanel({
             {/* Vertical fader */}
             <input
               type="range"
+              role="slider"
               min={0}
               max={1.5}
               step={0.01}
+              aria-valuemin={0}
+              aria-valuemax={1.5}
+              aria-valuenow={masterMuted ? 0 : masterVolume}
               value={masterMuted ? 0 : masterVolume}
               onChange={(e) => {
                 if (masterMuted) setMasterMuted(false);
                 onMasterVolumeChange(Number(e.target.value));
               }}
+              onDoubleClick={() => {
+                setMasterMuted(false);
+                onMasterVolumeChange(1);
+              }}
               aria-label="Master output volume"
               aria-valuetext={masterMuted ? "Muted" : gainToDb(masterVolume)}
               className={cn(
-                "h-24 w-2 cursor-pointer accent-amber-500",
+                "h-24 w-6 cursor-pointer accent-amber-500",
                 masterMuted && "opacity-40",
               )}
               style={{ WebkitAppearance: "slider-vertical", writingMode: "vertical-lr", direction: "rtl" } as React.CSSProperties}
@@ -195,6 +213,17 @@ export function MixerPanel({
             <button
               type="button"
               onClick={() => {
+                setMasterMuted(false);
+                onMasterVolumeChange(1);
+              }}
+              className="rounded border border-white/10 px-2 py-0.5 text-[9px] text-white/60 hover:text-white transition"
+              aria-label="Reset master volume to 0 dB"
+            >
+              0 dB
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 if (masterMuted) {
                   setMasterMuted(false);
                   onMasterVolumeChange(preMuteVolumeRef.current);
@@ -213,6 +242,19 @@ export function MixerPanel({
               )}
             >
               {masterMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+            </button>
+            <button
+              type="button"
+              aria-label="Master limiter"
+              onClick={() => onMasterLimiterEnabledChange(!masterLimiterEnabled)}
+              className={cn(
+                "rounded border px-2 py-0.5 text-[9px] uppercase tracking-wide transition",
+                masterLimiterEnabled
+                  ? "border-amber-400/50 bg-amber-500/20 text-amber-200"
+                  : "border-white/10 text-white/60 hover:text-white",
+              )}
+            >
+              Lim
             </button>
           </div>
         </div>

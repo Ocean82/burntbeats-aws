@@ -1,11 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { computeBeatGridPcts, decayPeak } from "./beatGrid";
+import {
+  BEAT_GRID_MIN_CONFIDENCE,
+  computeBeatGridPcts,
+  decayPeak,
+  shouldRenderBeatGrid,
+} from "./beatGrid";
 
 describe("computeBeatGridPcts", () => {
   const baseGrid = { bpm: 120, beat_offset_seconds: 0, confidence: 0.9 };
 
   it("returns empty array when maxDuration is zero", () => {
     expect(computeBeatGridPcts({ beatGrid: baseGrid, maxDuration: 0, scrollPct: 0, zoom: 1 })).toEqual([]);
+  });
+
+  it("returns empty array when BPM is invalid", () => {
+    expect(
+      computeBeatGridPcts({
+        beatGrid: { ...baseGrid, bpm: 0 },
+        maxDuration: 10,
+        scrollPct: 0,
+        zoom: 1,
+      }),
+    ).toEqual([]);
   });
 
   it("returns beat positions for a 4-second track at 120 BPM, offset 0", () => {
@@ -111,5 +127,31 @@ describe("decayPeak", () => {
 
   it("handles large decay in one step", () => {
     expect(decayPeak(10, 20)).toBe(0);
+  });
+});
+
+describe("shouldRenderBeatGrid", () => {
+  it("returns false when beat-grid metadata is missing", () => {
+    expect(shouldRenderBeatGrid(null)).toBe(false);
+  });
+
+  it("returns false when confidence is below default threshold", () => {
+    expect(
+      shouldRenderBeatGrid({
+        bpm: 120,
+        beat_offset_seconds: 0,
+        confidence: BEAT_GRID_MIN_CONFIDENCE - 0.01,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns true when confidence meets default threshold", () => {
+    expect(
+      shouldRenderBeatGrid({
+        bpm: 120,
+        beat_offset_seconds: 0,
+        confidence: BEAT_GRID_MIN_CONFIDENCE,
+      }),
+    ).toBe(true);
   });
 });

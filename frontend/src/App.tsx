@@ -7,36 +7,16 @@ import {
   lazy,
   Suspense,
 } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Gamepad2, Loader2, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 
-const importWaitingGame = () => import("./components/stem-fall/StemFall");
 const importHelpModal = () => import("./components/HelpModal");
 const importExportOptionsModal = () =>
   import("./components/ExportOptionsModal");
-const importMixerPresetsModal = () => import("./components/MixerPresetsModal");
 const importOnboardingTour = () => import("./components/OnboardingTour");
-const importBatchQueue = () => import("./components/BatchQueue");
-
-const WaitingGame = lazy(() => importWaitingGame());
-const HelpModal = lazy(() =>
-  importHelpModal().then((m) => ({ default: m.HelpModal })),
-);
-const ExportOptionsModal = lazy(() =>
-  importExportOptionsModal().then((m) => ({ default: m.ExportOptionsModal })),
-);
-const MixerPresetsModal = lazy(() =>
-  importMixerPresetsModal().then((m) => ({ default: m.MixerPresetsModal })),
-);
 const OnboardingTour = lazy(() =>
   importOnboardingTour().then((m) => ({ default: m.OnboardingTour })),
 );
-const BatchQueue = lazy(() =>
-  importBatchQueue().then((m) => ({ default: m.BatchQueue })),
-);
 import { useSubscription } from "./hooks/useSubscription";
-import { PaywallBanner } from "./components/PaywallBanner";
-import { cn } from "./utils/cn";
 import type { StemDefinition, StemId, MixerState, TrimState } from "./types";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
 import { useWaveformCompute } from "./hooks/useWaveformCompute";
@@ -52,12 +32,8 @@ import {
   getLoadedStemDefinition,
 } from "./data/stemDefinitions";
 import type { MixerPreset } from "./components/MixerPresetsModal";
-import {
-  ErrorBoundary,
-  SplitErrorBoundary,
-} from "./components/ErrorBoundary";
-import { ProcessingSettingsPanel } from "./components/ProcessingSettingsPanel";
-import { PIPELINE_ANIMATION_DELAYS_MS, isLocalDevFullApp } from "./config";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { isLocalDevFullApp } from "./config";
 import type { StemEditorState } from "./stem-editor-state";
 
 import { useAppStore } from "./store/appStore";
@@ -79,7 +55,14 @@ import { useAudioFileDuration } from "./hooks/useAudioFileDuration";
 import { useUsageBalance } from "./hooks/useUsageBalance";
 import { computeTokensFromDurationSeconds } from "./utils/tokenCost";
 import { EditorHeader } from "./app/editor-header.component";
-import { MixerWorkspace } from "./app/mixer-workspace.component";
+import { WaitingGamePanel } from "./app/waiting-game-panel.component";
+import { DevLatencyPanel } from "./app/dev-latency-panel.component";
+import { LazyModalLayer } from "./app/lazy-modal-layer.component";
+import { AppBackgroundOrbs } from "./app/app-background-orbs.component";
+import { EditorFloatingOverlays } from "./app/editor-floating-overlays.component";
+import { EditorMainView } from "./app/editor-main-view.component";
+import { useHeaderVisibility } from "./hooks/useHeaderVisibility";
+import { usePostSignupPlanCheckout } from "./hooks/usePostSignupPlanCheckout";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
@@ -104,33 +87,8 @@ export function App() {
   const reduceMotion = useReducedMotion();
 
   // ── Smart Sticky Header State ─────────────────────────────────────────────
-  const [headerVisible, setHeaderVisible] = useState(true);
-  const lastScrollY = useRef(0);
+  const { headerVisible } = useHeaderVisibility();
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
-          
-          if (currentScrollY < 10) {
-            setHeaderVisible(true);
-          } else if (currentScrollY > lastScrollY.current + 5) {
-            setHeaderVisible(false);
-          } else if (currentScrollY < lastScrollY.current - 5) {
-            setHeaderVisible(true);
-          }
-          lastScrollY.current = currentScrollY;
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     const msg = window.sessionStorage.getItem("burntbeats_checkout_notice");
@@ -156,8 +114,10 @@ export function App() {
     beatGrid,
     splitProgress,
     queuePosition,
+    masterLimiterEnabled: persistedMasterLimiterEnabled,
     setUploadState,
     setSplitError,
+    setMasterLimiterEnabled: setPersistedMasterLimiterEnabled,
   } = uploadState;
 
   const uploadDurationSec = useAudioFileDuration(uploadedFile);
@@ -183,26 +143,7 @@ export function App() {
     refetchUsage,
   ]);
 
-  useEffect(() => {
-    if (subscription.status !== "inactive") return;
-    const plan = window.sessionStorage.getItem("burntbeats_post_signup_plan");
-    if (!plan) return;
-    if (
-      plan !== "basic" &&
-      plan !== "premium" &&
-      plan !== "studio" &&
-      plan !== "topup" &&
-      plan !== "single"
-    ) {
-      window.sessionStorage.removeItem("burntbeats_post_signup_plan");
-      return;
-    }
-    window.sessionStorage.removeItem("burntbeats_post_signup_plan");
-    void subscription.startCheckout(plan, {
-      source: "pricing_page",
-      intent: "post_signup_plan_intent",
-    });
-  }, [subscription, subscription.status]);
+  usePostSignupPlanCheckout(subscription);
   const isBasicPlan =
     subscription.status === "active" && subscription.plan === "basic";
   const stemQualityOptions = isBasicPlan ? "speed_only" : "full";
@@ -238,13 +179,29 @@ export function App() {
     handlePreviewStem,
     stopPreview,
     getMasterAnalyserTimeDomainData,
+    getMasterAnalyserTimeDomainDataLeft,
+    getMasterAnalyserTimeDomainDataRight,
     getMasterAnalyserFrequencyData,
     masterVolume,
     setMasterVolume,
+    masterLimiterEnabled,
+    setMasterLimiterEnabled: setRuntimeMasterLimiterEnabled,
   } = useAudioPlayback({
     onError: (message) => setSplitError(message),
     stemStates,
   });
+
+  useEffect(() => {
+    setRuntimeMasterLimiterEnabled(persistedMasterLimiterEnabled);
+  }, [persistedMasterLimiterEnabled, setRuntimeMasterLimiterEnabled]);
+
+  const handleMasterLimiterEnabledChange = useCallback(
+    (enabled: boolean) => {
+      setRuntimeMasterLimiterEnabled(enabled);
+      setPersistedMasterLimiterEnabled(enabled);
+    },
+    [setPersistedMasterLimiterEnabled, setRuntimeMasterLimiterEnabled],
+  );
 
   // ── Export hook ───────────────────────────────────────────────────────────
   const {
@@ -488,7 +445,6 @@ export function App() {
 
   const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
-  const [showDevLatencyPanel, setShowDevLatencyPanel] = useState(true);
 
   useEffect(() => {
     if (!exportNotice) return;
@@ -532,23 +488,6 @@ export function App() {
 
   // Pipeline index is now driven by real progress from the SSE stream (useStemSplitting).
   // The old timer-based animation has been removed to avoid conflicting with real data.
-
-  // ── Cleanup on unmount ────────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      stopPreview();
-      handleStopMix();
-      if (audioContextRef.current) {
-        try {
-          audioContextRef.current.close();
-        } catch {
-          /* ignore */
-        }
-        audioContextRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // ── File input handlers ───────────────────────────────────────────────────
   const handleFileFromInput = useCallback(
@@ -620,85 +559,36 @@ export function App() {
           <OnboardingTour />
         </Suspense>
       </ErrorBoundary>
-      <ErrorBoundary fallback={null}>
-        {showHelpModal ? (
-          <Suspense fallback={null}>
-            <HelpModal
-              isOpen={showHelpModal}
-              onClose={() => closeModal("help")}
-            />
-          </Suspense>
-        ) : null}
-      </ErrorBoundary>
-      <ErrorBoundary fallback={null}>
-        {showExportModal ? (
-          <Suspense fallback={null}>
-            <ExportOptionsModal
-              isOpen={showExportModal}
-              onClose={() => closeModal("export")}
-              onExport={handleExportFromModal}
-              isExporting={isExporting}
-              stemCount={mixStems.length}
-              allowStemBundleTargets={exportAllowStemBundleTargets}
-              isSample={isSample}
-            />
-          </Suspense>
-        ) : null}
-      </ErrorBoundary>
-      <ErrorBoundary fallback={null}>
-        {showPresetsModal ? (
-          <Suspense fallback={null}>
-            <MixerPresetsModal
-              isOpen={showPresetsModal}
-              onClose={() => closeModal("presets")}
-              onLoadPreset={handleLoadPreset}
-              currentMixerState={mixerState}
-              currentTrimMap={trimMap}
-              currentMutedStems={mutedStems}
-              currentPitchMap={pitchMap}
-              currentTimeStretchMap={timeStretchMap}
-            />
-          </Suspense>
-        ) : null}
-      </ErrorBoundary>
-      {batchQueue.length > 0 && (
-        <ErrorBoundary fallback={null}>
-          <Suspense fallback={null}>
-            <BatchQueue
-              items={batchQueue}
-              isExpanded={batchQueueExpanded}
-              onToggleExpand={() => setBatchQueueExpanded((e) => !e)}
-              onRemoveItem={removeFromBatchQueue}
-              onClearCompleted={clearCompletedFromQueue}
-              allowProcess={canUseBatchQueue}
-              onProcessQueue={() =>
-                void processNextInQueue(
-                  canExpandToFourStems ? 4 : 2,
-                  splitQuality,
-                  (stems) =>
-                    setUploadState((prev) => ({
-                      ...prev,
-                      splitResultStems: stems,
-                    })),
-                  setSplitError,
-                  (id) =>
-                    setUploadState((prev) => ({ ...prev, splitJobId: id })),
-                )
-              }
-            />
-          </Suspense>
-        </ErrorBoundary>
-      )}
+      <LazyModalLayer
+        showHelpModal={showHelpModal}
+        showExportModal={showExportModal}
+        showPresetsModal={showPresetsModal}
+        closeModal={closeModal}
+        handleExportFromModal={handleExportFromModal}
+        isExporting={isExporting}
+        mixStemsLength={mixStems.length}
+        exportAllowStemBundleTargets={exportAllowStemBundleTargets}
+        isSample={isSample}
+        handleLoadPreset={handleLoadPreset}
+        mixerState={mixerState}
+        trimMap={trimMap}
+        mutedStems={mutedStems}
+        pitchMap={pitchMap}
+        timeStretchMap={timeStretchMap}
+        batchQueue={batchQueue}
+        batchQueueExpanded={batchQueueExpanded}
+        setBatchQueueExpanded={setBatchQueueExpanded}
+        removeFromBatchQueue={removeFromBatchQueue}
+        clearCompletedFromQueue={clearCompletedFromQueue}
+        canUseBatchQueue={canUseBatchQueue}
+        processNextInQueue={processNextInQueue}
+        canExpandToFourStems={canExpandToFourStems}
+        splitQuality={splitQuality}
+        setUploadState={setUploadState}
+        setSplitError={setSplitError}
+      />
 
-      <div
-        className="pointer-events-none fixed inset-0 overflow-hidden"
-        aria-hidden="true"
-      >
-        <div className="fire-orb left-[-8rem] top-[-6rem] h-80 w-80" />
-        <div className="fire-orb right-[-10rem] top-20 h-[26rem] w-[26rem] opacity-75" />
-        <div className="fire-orb bottom-[-12rem] left-1/3 h-[30rem] w-[30rem] opacity-60" />
-        <div className="mesh-overlay" />
-      </div>
+      <AppBackgroundOrbs />
 
       <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
         <EditorHeader
@@ -763,409 +653,159 @@ export function App() {
               />
             </motion.section>
           ) : (
-            <>
-              {/* Marquee — static text on small screens to reduce motion noise */}
-              <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm md:hidden">
-                <p className="px-4 py-3 text-center text-[11px] uppercase leading-relaxed tracking-[0.18em] text-white/45">
-                  Drop track · Split · Mix · Export · Premium &amp; Studio
-                  unlock batch &amp; faster queues.
-                </p>
-              </div>
-              <motion.div
-                className="hidden overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm md:block"
-                {...(reduceMotion
-                  ? {
-                      initial: false,
-                      animate: { opacity: 1 },
-                      transition: { duration: 0 },
-                    }
-                  : {
-                      initial: { opacity: 0.6 },
-                      animate: { opacity: 1 },
-                      transition: { duration: 0.5 },
-                    })}
-              >
-                <div className="flex w-max animate-scroll-text gap-14 py-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
-                  <span>Drop track · Split · Mix · Export</span>
-                  <span>
-                    Hit your first finished stem in minutes — then batch the
-                    rest.
-                  </span>
-                  <span>Drop track · Split · Mix · Export</span>
-                  <span>
-                    Premium & Studio plans unlock faster queues and more stems.
-                  </span>
-                </div>
-              </motion.div>
-
-              <motion.section
-                className="flex flex-col gap-4"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  visible: {
-                    transition: { staggerChildren: reduceMotion ? 0 : 0.08 },
-                  },
-                  hidden: {},
-                }}
-              >
-                {/* Top bar: Processing Settings (horizontal) */}
-                  <motion.div
-                    onPointerDown={handleGuidancePanelInteract}
-                    className={cn(
-                      "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
-                      guidanceTarget === "source" && guidanceRingClass,
-                      isSplitting && "splitting-scan-glow"
-                    )}
-                  variants={{
-                    hidden: { opacity: 0, y: 12 },
-                    visible: { opacity: 1, y: 0 },
-                  }}
-                  transition={{ duration: reduceMotion ? 0 : 0.4 }}
-                >
-                  <SplitErrorBoundary>
-                    <ProcessingSettingsPanel
-                      sourceMode={sourceMode}
-                      onSourceModeChange={setSourceMode}
-                      uploadName={uploadName}
-                      loadedStemCount={loadedStems.length}
-                      isDragging={isDragging}
-                      onSetIsDragging={(next) =>
-                        setUploadState((prev) => ({
-                          ...prev,
-                          isDragging: next,
-                        }))
-                      }
-                      loadStemsInputRef={loadStemsInputRef}
-                      onLoadStems={handleLoadStems}
-                      loadedStems={loadedStems}
-                      onRemoveLoadedStem={removeLoadedStem}
-                      uploadedFile={uploadedFile}
-                      onBrowseUpload={handleBrowseUpload}
-                      onClearUpload={handleClearUpload}
-                      onDropUpload={(file) => handleFileFromInput(file)}
-                      inputRef={inputRef}
-                      onUploadFileInput={(file) => handleFileFromInput(file)}
-                      quality={quality}
-                      onQualityChange={(next) =>
-                        setUploadState((prev) => ({ ...prev, quality: next }))
-                      }
-                      stemQualityOptions={stemQualityOptions}
-                      canExpandToFourStems={canExpandToFourStems}
-                      canUseBatchQueue={canUseBatchQueue}
-                      onUpgradeToPremium={() =>
-                        void subscription.startCheckout("premium", {
-                          source: "upgrade_prompt",
-                          intent: "four_stem_unlock",
-                        })
-                      }
-                      onContinueCheckout={() =>
-                        void subscription.startCheckout("basic", {
-                          source: "split_gate",
-                          intent: "continue_from_split_blocker",
-                        })
-                      }
-                      onSplit={(requestedStemMode, isSample) => {
-                        startUiLatencyMark("mixer-ready-after-stems");
-                        void triggerSplit(requestedStemMode, isSample);
-                      }}
-                      isSplitting={isSplitting}
-                      splitProgress={splitProgress}
-                      queuePosition={queuePosition}
-                      splitResultStemsLength={splitResultStems.length}
-                      isExpanding={isExpanding}
-                      onExpand={() => void triggerExpand()}
-                      splitError={splitError}
-                      onDismissError={() => setSplitError(null)}
-                      onAddToQueue={() => addToBatchQueue(uploadedFile)}
-                      subscriptionInactive={subscription.status === "inactive"}
-                      usageBalance={usageBalance}
-                      usageLoading={usageLoading}
-                      estimatedSplitTokens={estimatedSplitTokens}
-                      estimatedExpandTokens={estimatedSplitTokens}
-                      isCollapsed={splitResultStems.length > 0 && !isSplitting}
-                    />
-                    {subscription.status === "inactive" && (
-                      <div className="mt-3 border-t border-white/10 pt-3">
-                        <PaywallBanner subscription={subscription} />
-                      </div>
-                    )}
-                    {subscription.billingError && (
-                      <div className="mt-3 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
-                        {subscription.billingError}
-                      </div>
-                    )}
-                    {checkoutNotice && (
-                      <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                        {checkoutNotice}
-                      </div>
-                    )}
-                  </SplitErrorBoundary>
-                </motion.div>
-
-                <MixerWorkspace
-                  mixerSectionRef={mixerSectionRef}
-                  onPointerDownMixer={handleGuidancePanelInteract}
-                  guidanceTarget={guidanceTarget}
-                  guidanceRingClass={guidanceRingClass}
-                  reduceMotion={reduceMotion ?? false}
-                  onboardingSteps={onboardingSteps}
-                  hasCompletedFirstExport={hasCompletedFirstExport}
-                  subscription={subscription}
-                  setActiveView={setActiveView}
-                  splitResultStemsLength={splitResultStems.length}
-                  mixStemsLength={mixStems.length}
-                  uploadedFile={uploadedFile}
-                  onBrowseUpload={handleBrowseUpload}
-                  mixStemCount={mixStems.length}
-                  isPlayingMix={isPlayingMix}
-                  onPlayStop={() =>
-                    void handlePlayMix(mixStems, stemStates, stemBuffers)
+            <EditorMainView
+              reduceMotion={Boolean(reduceMotion)}
+              chrome={{
+                guidanceTarget,
+                guidanceRingClass,
+                handleGuidancePanelInteract,
+                subscription,
+                checkoutNotice,
+              }}
+              processingProps={{
+                sourceMode,
+                onSourceModeChange: setSourceMode,
+                uploadName,
+                loadedStemCount: loadedStems.length,
+                isDragging,
+                onSetIsDragging: (next) =>
+                  setUploadState((prev) => ({ ...prev, isDragging: next })),
+                loadStemsInputRef,
+                onLoadStems: handleLoadStems,
+                loadedStems,
+                onRemoveLoadedStem: removeLoadedStem,
+                uploadedFile,
+                onBrowseUpload: handleBrowseUpload,
+                onClearUpload: handleClearUpload,
+                onDropUpload: (file) => handleFileFromInput(file),
+                inputRef,
+                onUploadFileInput: (file) => handleFileFromInput(file),
+                quality,
+                onQualityChange: (next) =>
+                  setUploadState((prev) => ({ ...prev, quality: next })),
+                stemQualityOptions,
+                canExpandToFourStems,
+                canUseBatchQueue,
+                onUpgradeToPremium: () =>
+                  void subscription.startCheckout("premium", {
+                    source: "upgrade_prompt",
+                    intent: "four_stem_unlock",
+                  }),
+                onContinueCheckout: () =>
+                  void subscription.startCheckout("basic", {
+                    source: "split_gate",
+                    intent: "continue_from_split_blocker",
+                  }),
+                onSplit: (requestedStemMode, sample) => {
+                  startUiLatencyMark("mixer-ready-after-stems");
+                  void triggerSplit(requestedStemMode, sample);
+                },
+                isSplitting,
+                splitProgress,
+                queuePosition,
+                splitResultStemsLength: splitResultStems.length,
+                isExpanding,
+                onExpand: () => void triggerExpand(),
+                splitError,
+                onDismissError: () => setSplitError(null),
+                onAddToQueue: () => addToBatchQueue(uploadedFile),
+                subscriptionInactive: subscription.status === "inactive",
+                usageBalance,
+                usageLoading,
+                estimatedSplitTokens,
+                estimatedExpandTokens: estimatedSplitTokens,
+                isCollapsed: splitResultStems.length > 0 && !isSplitting,
+              }}
+              mixerProps={{
+                mixerSectionRef,
+                onPointerDownMixer: handleGuidancePanelInteract,
+                guidanceTarget,
+                guidanceRingClass,
+                reduceMotion: reduceMotion ?? false,
+                onboardingSteps,
+                hasCompletedFirstExport,
+                subscription,
+                setActiveView,
+                splitResultStemsLength: splitResultStems.length,
+                mixStemsLength: mixStems.length,
+                uploadedFile,
+                onBrowseUpload: handleBrowseUpload,
+                mixStemCount: mixStems.length,
+                isPlayingMix,
+                onPlayStop: () =>
+                  void handlePlayMix(mixStems, stemStates, stemBuffers),
+                onStopMix: handleStopMix,
+                onSeekMix: handleSeekMix,
+                isExporting,
+                onExport: () => {
+                  if (isSample) {
+                    setActiveView("pricing");
+                  } else {
+                    openModal("export");
                   }
-                  onStopMix={handleStopMix}
-                  onSeekMix={handleSeekMix}
-                  isExporting={isExporting}
-                  onExport={() => {
-                    if (isSample) {
-                      setActiveView("pricing");
-                    } else {
-                      openModal("export");
-                    }
-                  }}
-                  isComparingExport={isComparingExport}
-                  onCompareExport={onCompareExport}
-                  onResetLevels={resetTrackAdjustments}
-                  hasStemBuffers={Object.keys(stemBuffers).length > 0}
-                  stems={visibleStems as StemWithOptionalUrl[]}
-                  waveforms={stemWaveforms}
-                  durations={Object.fromEntries(
-                    visibleStems.map((s) => [
-                      s.id,
-                      stemBuffers[s.id]?.duration ?? 0,
-                    ]),
-                  )}
-                  stemStates={stemStates}
-                  getPlayheadPosition={getPlayheadPosition}
-                  subscribePlayheadPosition={subscribePlayheadPosition}
-                  isLoadingStems={isLoadingStems}
-                  loadingError={loadingError}
-                  onRetryLoadStems={retryLoadStems}
-                  activeStemId={resolvedActiveStemId}
-                  onActiveStemChange={setActiveStemId}
-                  onStemStateChange={handleStemStateChange}
-                  onPreviewStem={handlePreviewStemFromMixer}
-                  playingStemId={playingStem}
-                  loadingPreviewStemId={loadingPreviewStemId}
-                  getMasterAnalyserTimeDomainData={
-                    getMasterAnalyserTimeDomainData
-                  }
-                  getMasterAnalyserFrequencyData={
-                    getMasterAnalyserFrequencyData
-                  }
-                  masterVolume={masterVolume}
-                  onMasterVolumeChange={setMasterVolume}
-                  beatGrid={beatGrid}
-                  exportCompareSummary={exportCompareSummary}
-                  undoToast={undoToast}
-                />
-              </motion.section>
-            </>
+                },
+                isComparingExport,
+                onCompareExport,
+                onResetLevels: resetTrackAdjustments,
+                hasStemBuffers: Object.keys(stemBuffers).length > 0,
+                stems: visibleStems as StemWithOptionalUrl[],
+                waveforms: stemWaveforms,
+                durations: Object.fromEntries(
+                  visibleStems.map((s) => [
+                    s.id,
+                    stemBuffers[s.id]?.duration ?? 0,
+                  ]),
+                ),
+                stemStates,
+                getPlayheadPosition,
+                subscribePlayheadPosition,
+                isLoadingStems,
+                loadingError,
+                onRetryLoadStems: retryLoadStems,
+                activeStemId: resolvedActiveStemId,
+                onActiveStemChange: setActiveStemId,
+                onStemStateChange: handleStemStateChange,
+                onPreviewStem: handlePreviewStemFromMixer,
+                playingStemId: playingStem,
+                loadingPreviewStemId,
+                getMasterAnalyserTimeDomainData,
+                getMasterAnalyserTimeDomainDataLeft,
+                getMasterAnalyserTimeDomainDataRight,
+                getMasterAnalyserFrequencyData,
+                masterVolume,
+                onMasterVolumeChange: setMasterVolume,
+                masterLimiterEnabled,
+                onMasterLimiterEnabledChange:
+                  handleMasterLimiterEnabledChange,
+                beatGrid,
+                exportCompareSummary,
+                undoToast,
+              }}
+            />
           )}
         </main>
       </div>
 
-      {/* ── The Waiting Game panel (slide up from bottom) ── */}
-      {/* Tab button — always visible, pulses while splitting */}
-      <button
-        type="button"
-        onClick={toggleGame}
-        aria-label={showGame ? "Close The Waiting Game" : "Open The Waiting Game"}
-        className={cn(
-          "fixed bottom-0 right-2 z-50 flex items-center gap-2 rounded-t-xl border border-b-0 px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 sm:right-8 sm:px-4 sm:py-2.5 sm:text-xs",
-          showGame
-            ? "border-amber-500/40 bg-amber-500/20 text-amber-200"
-            : "border-white/15 bg-black/70 text-white/60 hover:text-white backdrop-blur-md",
-          isSplitting &&
-            !showGame &&
-            "animate-pulse border-amber-500/50 text-amber-300",
-        )}
-      >
-        <Gamepad2 className="h-3.5 w-3.5" />
-        {showGame ? "close" : "THE WAITING GAME"}
-        {isSplitting && !showGame && (
-          <span className="ml-1 h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
-        )}
-      </button>
+      <WaitingGamePanel
+        showGame={showGame}
+        isSplitting={isSplitting}
+        reduceMotion={Boolean(reduceMotion)}
+        onToggle={toggleGame}
+        onClose={() => closeModal("game")}
+      />
+      <DevLatencyPanel
+        latencyStats={latencyStats}
+        onResetLatencyStats={resetLatencyStats}
+      />
 
-      <AnimatePresence>
-        {showGame && (
-          <motion.div
-            key="waiting-game-panel"
-            initial={{ y: reduceMotion ? 0 : "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: reduceMotion ? 0 : "100%" }}
-            transition={
-              reduceMotion
-                ? { duration: 0 }
-                : { type: "spring", damping: 28, stiffness: 260 }
-            }
-            className="fixed bottom-0 left-0 right-0 z-40 flex justify-center"
-          >
-            <div className="w-full max-w-2xl rounded-t-[2rem] border border-b-0 border-white/10 bg-black/90 backdrop-blur-xl shadow-[0_-20px_60px_rgba(0,0,0,0.7)] px-6 pt-5 pb-4">
-              <div className="mb-3 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-400">
-                    The Waiting Game
-                  </span>
-                  <p
-                    className="text-[9px] text-white/40 mt-0.5"
-                    style={{ fontFamily: "'Press Start 2P', monospace" }}
-                  >
-                    {isSplitting
-                      ? "stems separating... play while you wait"
-                      : "a quick break while tracks process"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => closeModal("game")}
-                  className="text-white/30 hover:text-white transition text-xs"
-                  aria-label="Close game"
-                >
-                  ✕
-                </button>
-              </div>
-              <Suspense
-                fallback={
-                  <div className="flex h-40 items-center justify-center text-xs text-white/40">
-                    Loading game...
-                  </div>
-                }
-              >
-                <WaitingGame />
-              </Suspense>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {!import.meta.env.PROD && (
-        <>
-          <button
-            type="button"
-            onClick={() => setShowDevLatencyPanel((v) => !v)}
-            className="fixed bottom-4 left-4 z-[60] rounded-lg border border-white/15 bg-black/80 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/75 backdrop-blur-md transition hover:text-white"
-            aria-label={
-              showDevLatencyPanel
-                ? "Hide dev latency panel"
-                : "Show dev latency panel"
-            }
-          >
-            {showDevLatencyPanel ? "Hide latency" : "Show latency"}
-          </button>
-          {showDevLatencyPanel && (
-            <div className="fixed bottom-14 left-4 z-50 w-72 rounded-xl border border-white/10 bg-black/75 p-3 text-[11px] text-white/80 backdrop-blur-md">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-300">
-                  UI latency (dev)
-                </p>
-                <button
-                  type="button"
-                  onClick={resetLatencyStats}
-                  className="rounded border border-white/15 px-1.5 py-0.5 text-[10px] text-white/70 transition hover:text-white"
-                  aria-label="Reset latency stats"
-                >
-                  Reset
-                </button>
-              </div>
-              {(
-                [
-                  ["help-modal-open", "Help modal"],
-                  ["export-modal-open", "Export modal"],
-                  ["presets-modal-open", "Presets modal"],
-                  ["mixer-ready-after-stems", "Mixer after split"],
-                ] as const
-              ).map(([key, label]) => {
-                const stat = latencyStats[key];
-                return (
-                  <div
-                    key={key}
-                    className="mb-1.5 flex items-center justify-between last:mb-0"
-                  >
-                    <span className="text-white/65">{label}</span>
-                    <span className="font-mono text-white/90">
-                      {stat
-                        ? `${stat.lastMs.toFixed(0)} | ${stat.avgMs.toFixed(0)} | ${stat.p50Ms.toFixed(0)} | ${stat.p95Ms.toFixed(0)} (${stat.count})`
-                        : "—"}
-                    </span>
-                  </div>
-                );
-              })}
-              <p className="mt-2 text-[10px] text-white/45">
-                last | avg | p50 | p95 (count)
-              </p>
-            </div>
-          )}
-        </>
-      )}
-
-      <AnimatePresence>
-        {exportNotice && (
-          <motion.div
-            key="export-notice"
-            role="status"
-            aria-live="polite"
-            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
-            transition={{ duration: reduceMotion ? 0 : 0.25 }}
-            className="pointer-events-none fixed bottom-20 left-1/2 z-[60] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-sm text-emerald-50 shadow-lg backdrop-blur-md sm:w-auto md:bottom-8"
-          >
-            {exportNotice}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Quick Split Floating CTA */}
-      <AnimatePresence>
-        {!headerVisible && uploadedFile && splitResultStems.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="fixed top-6 right-6 z-50 shadow-2xl"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                // If not splitting, let the user trigger it easily
-                if (!isSplitting) {
-                  // The button scrolls them back to the settings panel
-                  // We could trigger split directly, but scrolling back up
-                  // shows them the progress natively.
-                }
-              }}
-              className="group flex h-12 items-center gap-3 rounded-full border border-amber-400/40 bg-amber-500/20 px-5 pr-2 font-bold shadow-[0_0_24px_rgba(255,140,80,0.25)] backdrop-blur-md transition-all hover:border-amber-400/80 hover:bg-amber-500/30 hover:scale-105 active:scale-95"
-            >
-              <div className="flex items-center gap-2">
-                {isSplitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-amber-300" />
-                ) : (
-                  <Sparkles className="h-4 w-4 text-amber-300" />
-                )}
-                <span className="text-sm text-amber-50">
-                  {isSplitting ? "Splitting..." : "Review & Split"}
-                </span>
-              </div>
-              <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 text-amber-300 transition-colors group-hover:bg-amber-400 group-hover:text-amber-900">
-                ↑
-              </div>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <EditorFloatingOverlays
+        reduceMotion={Boolean(reduceMotion)}
+        exportNotice={exportNotice}
+        headerVisible={headerVisible}
+        uploadedFile={uploadedFile}
+        splitResultCount={splitResultStems.length}
+        isSplitting={isSplitting}
+      />
       {activeView === "editor" && <FeedbackChip />}
     </div>
   );

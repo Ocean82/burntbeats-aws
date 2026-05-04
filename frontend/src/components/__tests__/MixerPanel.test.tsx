@@ -48,6 +48,8 @@ describe("MixerPanel", () => {
     const onActiveStemChange = vi.fn();
     const onStemStateChange = vi.fn();
     const onPreviewStem = vi.fn();
+    const onMasterVolumeChange = vi.fn();
+    const onMasterLimiterEnabledChange = vi.fn();
     const getPlayheadPosition = vi.fn(() => 0);
     const subscribePlayheadPosition = vi.fn(() => () => {});
 
@@ -74,13 +76,29 @@ describe("MixerPanel", () => {
       playingStemId: null,
       loadingPreviewStemId: null,
       getMasterAnalyserTimeDomainData: () => null,
+      getMasterAnalyserTimeDomainDataLeft: () => null,
+      getMasterAnalyserTimeDomainDataRight: () => null,
       getMasterAnalyserFrequencyData: () => null,
+      masterVolume: 1,
+      onMasterVolumeChange,
+      masterLimiterEnabled: false,
+      onMasterLimiterEnabledChange,
       ...overrides,
     };
 
     return {
       ...render(<MixerPanel {...props} />),
-      handlers: { onPlayStop, onStopMix, onExport, onResetLevels, onActiveStemChange, onStemStateChange, onPreviewStem },
+      handlers: {
+        onPlayStop,
+        onStopMix,
+        onExport,
+        onResetLevels,
+        onActiveStemChange,
+        onStemStateChange,
+        onPreviewStem,
+        onMasterVolumeChange,
+        onMasterLimiterEnabledChange,
+      },
     };
   }
 
@@ -88,7 +106,7 @@ describe("MixerPanel", () => {
     renderMixer();
 
     expect(screen.getByText(/Timeline · Mix · Export/i)).toBeInTheDocument();
-    expect(screen.getByText(/Master output/i)).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: /master output volume/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Play mix/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /Export/i })).toBeInTheDocument();
   });
@@ -104,6 +122,16 @@ describe("MixerPanel", () => {
     renderMixer({ mixStemCount: 0 });
 
     expect(screen.getByText(/Split a track or load stem files above to start mixing and exporting/i)).toBeInTheDocument();
+  });
+
+  it("resets master volume on double click and toggles limiter", () => {
+    const { handlers } = renderMixer();
+    const slider = screen.getByRole("slider", { name: /master output volume/i });
+    fireEvent.doubleClick(slider);
+    expect(handlers.onMasterVolumeChange).toHaveBeenCalledWith(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /master limiter/i }));
+    expect(handlers.onMasterLimiterEnabledChange).toHaveBeenCalledWith(true);
   });
 });
 

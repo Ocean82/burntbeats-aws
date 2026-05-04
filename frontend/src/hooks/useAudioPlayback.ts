@@ -94,12 +94,19 @@ interface UseAudioPlaybackReturn {
   stopPreview: () => void;
   /** Time-domain bytes for VU / RMS (master bus). */
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
+  /** Left channel time-domain bytes for stereo meter. */
+  getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
+  /** Right channel time-domain bytes for stereo meter. */
+  getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   /** Frequency bins for spectrum (master bus). */
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
   /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
   masterVolume: number;
   /** Set master output gain and update the live gain node immediately. */
   setMasterVolume: (value: number) => void;
+  /** Master limiter state and setter (true = engaged). */
+  masterLimiterEnabled: boolean;
+  setMasterLimiterEnabled: (enabled: boolean) => void;
 }
 
 interface UseAudioPlaybackOptions {
@@ -120,6 +127,7 @@ export function useAudioPlayback(
     string | null
   >(null);
   const [masterVolume, setMasterVolumeState] = useState(1.0);
+  const [masterLimiterEnabled, setMasterLimiterEnabledState] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentPreviewRuntimeRef = useRef<MixStemRuntime | null>(null);
@@ -142,6 +150,11 @@ export function useAudioPlayback(
   const playheadListenersRef = useRef<Set<() => void>>(new Set());
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
+  const masterLimiterRef = useRef<DynamicsCompressorNode | null>(null);
+  const masterSplitterRef = useRef<ChannelSplitterNode | null>(null);
+  const masterAnalyserLeftRef = useRef<AnalyserNode | null>(null);
+  const masterAnalyserRightRef = useRef<AnalyserNode | null>(null);
+  const masterLimiterEnabledRef = useRef(false);
 
   const prevMixRoutingSigRef = useRef<string>("");
   const prevMixTrimSigRef = useRef<string>("");
@@ -150,24 +163,104 @@ export function useAudioPlayback(
   );
   const prevPreviewStructSigRef = useRef<string>("");
 
-  const ensureMasterBus = useCallback((ctx: AudioContext): GainNode => {
-    if (masterGainRef.current && masterAnalyserRef.current) {
-      return masterGainRef.current;
+  const reconnectMasterBus = useCallback((ctx: AudioContext) => {
+    const g = masterGainRef.current;
+    const an = masterAnalyserRef.current;
+    const limiter = masterLimiterRef.current;
+    const splitter = masterSplitterRef.current;
+    const left = masterAnalyserLeftRef.current;
+    const right = masterAnalyserRightRef.current;
+    if (!g || !an || !limiter || !splitter || !left || !right) return;
+
+    try {
+      g.disconnect();
+      limiter.disconnect();
+      an.disconnect();
+      splitter.disconnect();
+      left.disconnect();
+      right.disconnect();
+    } catch {
+      /* graph may already be disconnected */
     }
-    const g = ctx.createGain();
-    g.gain.value = 1;
-    const an = ctx.createAnalyser();
-    an.fftSize = 2048;
-    an.smoothingTimeConstant = 0.85;
-    g.connect(an);
+
+    const limiterEnabled = masterLimiterEnabledRef.current;
+    if (limiterEnabled) {
+      g.connect(limiter);
+      limiter.connect(an);
+      limiter.connect(splitter);
+    } else {
+      g.connect(an);
+      g.connect(splitter);
+    }
+
+    splitter.connect(left, 0);
+    splitter.connect(right, 1);
     an.connect(ctx.destination);
-    masterGainRef.current = g;
-    masterAnalyserRef.current = an;
-    return g;
   }, []);
+
+  const ensureMasterBus = useCallback(
+    (ctx: AudioContext): GainNode => {
+      if (
+        masterGainRef.current &&
+        masterAnalyserRef.current &&
+        masterLimiterRef.current &&
+        masterSplitterRef.current &&
+        masterAnalyserLeftRef.current &&
+        masterAnalyserRightRef.current
+      ) {
+        reconnectMasterBus(ctx);
+        return masterGainRef.current;
+      }
+
+      const g = ctx.createGain();
+      g.gain.value = 1;
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -1;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.05;
+      const an = ctx.createAnalyser();
+      an.fftSize = 2048;
+      an.smoothingTimeConstant = 0.85;
+      const splitter = ctx.createChannelSplitter(2);
+      const left = ctx.createAnalyser();
+      left.fftSize = 2048;
+      left.smoothingTimeConstant = 0.7;
+      const right = ctx.createAnalyser();
+      right.fftSize = 2048;
+      right.smoothingTimeConstant = 0.7;
+
+      masterGainRef.current = g;
+      masterLimiterRef.current = limiter;
+      masterAnalyserRef.current = an;
+      masterSplitterRef.current = splitter;
+      masterAnalyserLeftRef.current = left;
+      masterAnalyserRightRef.current = right;
+      reconnectMasterBus(ctx);
+      return masterGainRef.current;
+    },
+    [reconnectMasterBus],
+  );
 
   const getMasterAnalyserTimeDomainData = useCallback((): Uint8Array | null => {
     const an = masterAnalyserRef.current;
+    if (!an) return null;
+    const buf = new Uint8Array(an.fftSize);
+    an.getByteTimeDomainData(buf);
+    return buf;
+  }, []);
+
+  const getMasterAnalyserTimeDomainDataLeft = useCallback((): Uint8Array | null => {
+    const an = masterAnalyserLeftRef.current;
+    if (!an) return null;
+    const buf = new Uint8Array(an.fftSize);
+    an.getByteTimeDomainData(buf);
+    return buf;
+  }, []);
+
+  const getMasterAnalyserTimeDomainDataRight = useCallback((): Uint8Array | null => {
+    const an = masterAnalyserRightRef.current;
     if (!an) return null;
     const buf = new Uint8Array(an.fftSize);
     an.getByteTimeDomainData(buf);
@@ -189,6 +282,14 @@ export function useAudioPlayback(
       masterGainRef.current.gain.value = clamped;
     }
   }, []);
+
+  const setMasterLimiterEnabled = useCallback((enabled: boolean) => {
+    const next = Boolean(enabled);
+    masterLimiterEnabledRef.current = next;
+    setMasterLimiterEnabledState(next);
+    const ctx = audioContextRef.current;
+    if (ctx) reconnectMasterBus(ctx);
+  }, [reconnectMasterBus]);
 
   const emitPlayheadPosition = useCallback((next: number) => {
     const clamped = Math.max(0, Math.min(100, next));
@@ -220,6 +321,10 @@ export function useAudioPlayback(
       if (!existing || existing.state === "closed") {
         masterGainRef.current = null;
         masterAnalyserRef.current = null;
+        masterLimiterRef.current = null;
+        masterSplitterRef.current = null;
+        masterAnalyserLeftRef.current = null;
+        masterAnalyserRightRef.current = null;
         audioContextRef.current = new AudioContextCtor();
       }
       const ctx = audioContextRef.current!;
@@ -818,6 +923,27 @@ export function useAudioPlayback(
     ],
   );
 
+  useEffect(() => {
+    return () => {
+      stopPreview();
+      handleStopMix();
+      const ctx = audioContextRef.current;
+      if (!ctx) return;
+      try {
+        ctx.close();
+      } catch {
+        /* ignore close errors during unmount */
+      }
+      audioContextRef.current = null;
+      masterGainRef.current = null;
+      masterAnalyserRef.current = null;
+      masterLimiterRef.current = null;
+      masterSplitterRef.current = null;
+      masterAnalyserLeftRef.current = null;
+      masterAnalyserRightRef.current = null;
+    };
+  }, [handleStopMix, stopPreview]);
+
   return {
     isPlayingMix,
     isPlayingMixRef,
@@ -833,8 +959,12 @@ export function useAudioPlayback(
     handlePreviewStem,
     stopPreview,
     getMasterAnalyserTimeDomainData,
+    getMasterAnalyserTimeDomainDataLeft,
+    getMasterAnalyserTimeDomainDataRight,
     getMasterAnalyserFrequencyData,
     masterVolume,
     setMasterVolume,
+    masterLimiterEnabled,
+    setMasterLimiterEnabled,
   };
 }

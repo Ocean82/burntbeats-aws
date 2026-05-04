@@ -151,3 +151,52 @@ def test_run_separation_sync_demucs_only_2stem_calls_demucs_only_helper(monkeypa
     assert "hybrid" not in called
     progress = (out_dir / server.PROGRESS_FILENAME).read_text(encoding="utf-8")
     assert '"status": "completed"' in progress
+
+
+def test_run_expand_sync_inherits_beat_grid_from_source_progress(monkeypatch) -> None:
+    source_job_id = "00000000-0000-0000-0000-000000000010"
+    expand_job_id = "00000000-0000-0000-0000-000000000011"
+    source_dir = server.OUTPUT_BASE / source_job_id
+    source_stems = source_dir / "stems"
+    source_stems.mkdir(parents=True, exist_ok=True)
+    (source_dir / server.PROGRESS_FILENAME).write_text(
+        '{"status":"completed","progress":100,"beat_grid":{"bpm":120.0,"beat_offset_seconds":0.25,"confidence":0.91}}',
+        encoding="utf-8",
+    )
+
+    out_dir = server.OUTPUT_BASE / expand_job_id
+    stems_dir = out_dir / "stems"
+    stems_dir.mkdir(parents=True, exist_ok=True)
+    vocal_path = stems_dir / "vocals.wav"
+    drums_path = stems_dir / "drums.wav"
+    bass_path = stems_dir / "bass.wav"
+    other_path = stems_dir / "other.wav"
+    for p in (vocal_path, drums_path, bass_path, other_path):
+        p.write_bytes(b"x")
+
+    monkeypatch.setattr(
+        server,
+        "run_expand_to_4stem",
+        lambda *_args, **_kwargs: (
+            [
+                ("vocals", vocal_path),
+                ("drums", drums_path),
+                ("bass", bass_path),
+                ("other", other_path),
+            ],
+            ["fake-expand-model"],
+        ),
+    )
+    monkeypatch.setattr(server, "_schedule_s3_upload", lambda *_args, **_kwargs: None)
+
+    server._run_expand_sync(
+        expand_job_id=expand_job_id,
+        source_job_id=source_job_id,
+        out_dir=out_dir,
+        prefer_speed=True,
+    )
+
+    progress = (out_dir / server.PROGRESS_FILENAME).read_text(encoding="utf-8")
+    assert '"status": "completed"' in progress
+    assert '"beat_grid"' in progress
+    assert '"confidence": 0.91' in progress

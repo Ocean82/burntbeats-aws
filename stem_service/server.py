@@ -784,6 +784,20 @@ def _run_expand_sync(
             {"id": stem_id, "path": str(p.relative_to(OUTPUT_BASE))}
             for stem_id, p in stem_list
         ]
+        inherited_beat_grid: dict[str, Any] | None = None
+        source_progress_path = OUTPUT_BASE / source_job_id / PROGRESS_FILENAME
+        if source_progress_path.exists():
+            try:
+                source_progress = json.loads(
+                    source_progress_path.read_text(encoding="utf-8")
+                )
+                candidate = source_progress.get("beat_grid")
+                if isinstance(candidate, dict):
+                    inherited_beat_grid = candidate
+            except (json.JSONDecodeError, OSError) as err:
+                job_log.debug(
+                    "Could not read source beat_grid metadata for expand: %s", err
+                )
         expand_progress: dict[str, Any] = {
             "status": "completed",
             "progress": 100,
@@ -793,6 +807,8 @@ def _run_expand_sync(
             "expand_from": source_job_id,
             "models_used": models_used,
         }
+        if inherited_beat_grid:
+            expand_progress["beat_grid"] = inherited_beat_grid
         _write_progress(out_dir, expand_progress)
         _schedule_s3_upload(expand_job_id, out_dir / "stems", out_dir, expand_progress)
         job_log.info(

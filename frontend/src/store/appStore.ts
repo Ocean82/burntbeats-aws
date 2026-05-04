@@ -20,9 +20,12 @@ export interface AppState {
   beatGrid: BeatGridMetadata | null;
   /** Queue position when job is waiting (1 = next to run, null = not queued). */
   queuePosition: number | null;
+  /** Master limiter toggle preference (UI state). */
+  masterLimiterEnabled: boolean;
 
   setUploadState: (update: Partial<AppState> | ((prev: AppState) => Partial<AppState>)) => void;
   setSplitError: (msg: string | null) => void;
+  setMasterLimiterEnabled: (enabled: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -41,10 +44,12 @@ export const useAppStore = create<AppState>((set) => ({
   pipelineIndex: 0,
   beatGrid: null,
   queuePosition: null,
+  masterLimiterEnabled: false,
 
   setUploadState: (update) =>
     set((state) =>
       typeof update === "function" ? update(state) : update
     ),
   setSplitError: (msg) => set({ splitError: msg }),
+  setMasterLimiterEnabled: (enabled) => set({ masterLimiterEnabled: enabled }),
 }));
