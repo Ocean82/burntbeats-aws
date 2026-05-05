@@ -205,7 +205,8 @@ export async function creditDbSubscription(clerkUserId, grant, meta = {}) {
         [clerkUserId],
       );
       const row = lockRes.rows[0];
-      if (row && row.last_credited_period_start === meta.periodStart) {
+      // pg returns BIGINT as string; coerce both sides for safe comparison
+      if (row && String(row.last_credited_period_start) === String(meta.periodStart)) {
         await client.query("ROLLBACK");
         return { success: true, credited: false };
       }
