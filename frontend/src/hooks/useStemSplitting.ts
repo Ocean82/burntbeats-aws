@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 import { splitStems, expandStems, type SplitQuality } from "../api";
-import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS } from "../config";
+import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS, isAllowedAudioFile, ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
 import { useAppStore } from "../store/appStore";
 import type { UseSubscriptionResult } from "./useSubscription";
 import { trackEvent } from "../analytics/events";
@@ -50,6 +50,16 @@ export function useStemSplitting({
       trackEvent("track_upload_cleared");
       return;
     }
+    // Client-side format validation — reject unsupported files immediately
+    if (!isAllowedAudioFile(file.name)) {
+      const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "unknown" : "none";
+      setUploadState((prev) => ({
+        ...prev,
+        splitError: `Unsupported format (.${extension}). Accepted: ${ALLOWED_AUDIO_FORMATS_LABEL}.`,
+      }));
+      trackEvent("track_upload_rejected_format", { file_extension: extension });
+      return;
+    }
     const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "unknown" : "none";
     trackEvent("track_upload_selected", {
       file_extension: extension,
@@ -60,6 +70,7 @@ export function useStemSplitting({
       uploadName: file.name,
       uploadedFile: file,
       splitProgress: 0,
+      uploadProgress: 0,
       pipelineIndex: 0,
       splitError: null,
       splitResultStems: [],
@@ -135,7 +146,7 @@ export function useStemSplitting({
       });
       return;
     }
-    setUploadState((prev) => ({ ...prev, isSplitting: true, splitProgress: 0, pipelineIndex: 0, splitError: null, isSample }));
+    setUploadState((prev) => ({ ...prev, isSplitting: true, isUploading: true, uploadProgress: 0, splitProgress: 0, pipelineIndex: 0, splitError: null, isSample }));
     try {
       // Premium/Studio: one server job for 4 stems (hybrid MDX + PyTorch Demucs / SCNet per backend).
       // Basic: 2-stem only.
@@ -150,12 +161,22 @@ export function useStemSplitting({
       const res = await splitStems(file, stemsArg, splitQuality, isSample, (s) => {
         setUploadState((prev) => ({
           ...prev,
+          isUploading: false,
           splitProgress: s.progress,
           queuePosition: s.status === "queued" ? (s.queue_position ?? null) : null,
         }));
+        // Update document title for background awareness (visible in mobile tab switcher)
+        if (s.status === "queued") {
+          document.title = `(Queued) Splitting… — Burnt Beats`;
+        } else {
+          document.title = `(${Math.round(s.progress)}%) Splitting… — Burnt Beats`;
+        }
         if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
         else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState((prev) => ({ ...prev, pipelineIndex: 2 }));
         else if (s.progress > 0) setUploadState((prev) => ({ ...prev, pipelineIndex: 1 }));
+      }, (uploadEvt) => {
+        setUploadState((prev) => ({ ...prev, uploadProgress: uploadEvt.percent }));
+        document.title = `(Uploading ${uploadEvt.percent}%) — Burnt Beats`;
       });
       setUploadState((prev) => ({
         ...prev,
@@ -166,12 +187,16 @@ export function useStemSplitting({
         beatGrid: res.beat_grid ?? null,
         queuePosition: null,
       }));
+      document.title = "✓ Stems Ready — Burnt Beats";
+      // Restore original title after a few seconds
+      setTimeout(() => { document.title = "Burnt Beats — Stem Splitter"; }, 5000);
       trackEvent("split_completed", {
         stems_count: res.stems.length,
         quality: splitQuality,
       });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Split failed";
+      document.title = "Burnt Beats — Stem Splitter";
       setUploadState((prev) => ({
         ...prev,
         splitError: errMsg,
@@ -184,7 +209,7 @@ export function useStemSplitting({
         error: errMsg.slice(0, 120),
       });
     } finally {
-      setUploadState((prev) => ({ ...prev, isSplitting: false }));
+      setUploadState((prev) => ({ ...prev, isSplitting: false, isUploading: false, uploadProgress: 0 }));
     }
   }, [isBasicPlan, splitQuality, stopPreview, subscription]);
 

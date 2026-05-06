@@ -8,6 +8,7 @@ import { API_BASE, MAX_UPLOAD_BYTES } from "./config";
 import type { StemResult } from "./types";
 import { userFacingApiError, userFacingHttpError } from "./userFacingError";
 import type { StemEditorState } from "./stem-editor-state";
+import { uploadWithProgress, type UploadProgressEvent } from "./utils/uploadWithProgress";
 
 // Token provider injected at app startup by ClerkProvider — avoids importing Clerk hooks here.
 let _getToken: (() => Promise<string | null>) | null = null;
@@ -231,7 +232,8 @@ export async function startStemSplit(
   file: File,
   stems: "2" | "4",
   quality?: SplitQuality,
-  isSample?: boolean
+  isSample?: boolean,
+  onUploadProgress?: (event: UploadProgressEvent) => void
 ): Promise<{ job_id: string }> {
   if (!file || !(file instanceof File) || file.size === 0) {
     throw new Error("No file provided. Upload an audio file first.");
@@ -248,34 +250,33 @@ export async function startStemSplit(
   if (isSample) form.append("sample", "true");
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), SPLIT_ACCEPT_TIMEOUT_MS);
 
   try {
-    const res = await fetch(`${API_BASE}/api/stems/split`, {
-      method: "POST",
-      body: form,
+    const result = await uploadWithProgress({
+      url: `${API_BASE}/api/stems/split`,
+      formData: form,
       headers: await authHeaders(),
+      onProgress: onUploadProgress,
       signal: controller.signal,
+      timeoutMs: SPLIT_ACCEPT_TIMEOUT_MS,
     });
-    clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      const text = await res.text();
-      const contentType = res.headers.get("content-type") || "";
+    if (result.status < 200 || result.status >= 300) {
+      const contentType = result.headers["content-type"] || "";
       let bodyError: string | null = null;
-      if (contentType.includes("application/json") && text) {
-        bodyError = getApiErrorMessage(tryParseJson(text));
+      if (contentType.includes("application/json") && result.body) {
+        bodyError = getApiErrorMessage(tryParseJson(result.body));
       }
       const message = userFacingHttpError(
-        res.status,
+        result.status,
         bodyError,
-        text.slice(0, 800) || `Split failed: ${res.status}`,
+        result.body.slice(0, 800) || `Split failed: ${result.status}`,
       );
       throw new Error(message);
     }
 
-    const json: unknown = await res.json();
-    if (res.status === 202 && isAcceptedJobIdResponse(json)) {
+    const json: unknown = tryParseJson(result.body);
+    if (result.status === 202 && isAcceptedJobIdResponse(json)) {
       // Store job_token if backend issued one (requires JOB_TOKEN_SECRET to be set)
       if (typeof json.job_token === "string" && json.job_token) {
         setJobToken(json.job_id, json.job_token);
@@ -284,7 +285,6 @@ export async function startStemSplit(
     }
     throw new Error("Unexpected response from split");
   } catch (err) {
-    clearTimeout(timeoutId);
     if (err instanceof Error) {
       if (err.name === "AbortError") throw new Error("Stem service did not accept in time. Try again.");
       throw err;
@@ -429,9 +429,10 @@ export async function splitStems(
   stems: "2" | "4",
   quality?: SplitQuality,
   isSample?: boolean,
-  onProgress?: (status: StemJobStatus) => void
+  onProgress?: (status: StemJobStatus) => void,
+  onUploadProgress?: (event: UploadProgressEvent) => void
 ): Promise<SplitResponse> {
-  const { job_id } = await startStemSplit(file, stems, quality, isSample);
+  const { job_id } = await startStemSplit(file, stems, quality, isSample, onUploadProgress);
   const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s));
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };

@@ -15,6 +15,8 @@ import type { SplitQuality } from "../api";
 import type React from "react";
 
 import { cn } from "../utils/cn";
+import { AUDIO_INPUT_ACCEPT, ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
+import { useIsTouchDevice } from "../hooks/useIsTouchDevice";
 
 export interface LoadedStem {
   id: string;
@@ -50,6 +52,10 @@ export interface ProcessingSettingsPanelProps {
   onSplit: (requestedStemMode: 2 | 4, isSample?: boolean) => void;
   isSplitting: boolean;
   splitProgress?: number;
+  /** Upload progress (0–100) during file transfer to server. */
+  uploadProgress?: number;
+  /** Whether the file is currently being uploaded (before split processing begins). */
+  isUploading?: boolean;
   /** Queue position when job is waiting (1 = next to run). */
   queuePosition?: number | null;
   splitResultStemsLength: number;
@@ -105,6 +111,8 @@ export function ProcessingSettingsPanel({
   onSplit,
   isSplitting,
   splitProgress = 0,
+  uploadProgress = 0,
+  isUploading = false,
   queuePosition = null,
   splitResultStemsLength,
   isExpanding,
@@ -127,6 +135,7 @@ export function ProcessingSettingsPanel({
   const [isSample, setIsSample] = useState(false);
   // Local override: user can re-expand the panel after auto-collapse
   const [userExpanded, setUserExpanded] = useState(false);
+  const isTouchDevice = useIsTouchDevice();
 
   const panelCollapsed = isCollapsed && !userExpanded;
 
@@ -338,14 +347,20 @@ export function ProcessingSettingsPanel({
           </div>
           <div>
             <p className="text-lg font-bold text-white">
-              {isDragging ? "Drop it!" : "Drop your track here"}
+              {isDragging ? "Drop it!" : isTouchDevice ? "Tap to choose your track" : "Drop your track here"}
             </p>
             <p className="mt-1 text-sm text-white/55">
-              or{" "}
-              <span className="text-amber-300 underline decoration-amber-400/40 underline-offset-2">
-                click to browse
-              </span>
-              {" · MP3, WAV, FLAC, M4A"}
+              {isTouchDevice ? (
+                ALLOWED_AUDIO_FORMATS_LABEL
+              ) : (
+                <>
+                  or{" "}
+                  <span className="text-amber-300 underline decoration-amber-400/40 underline-offset-2">
+                    click to browse
+                  </span>
+                  {" · " + ALLOWED_AUDIO_FORMATS_LABEL}
+                </>
+              )}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] text-white/40">
@@ -661,13 +676,20 @@ export function ProcessingSettingsPanel({
                   role="status"
                   aria-live="polite"
                   aria-label={
-                    queuePosition != null
-                      ? `Queued — position ${queuePosition}`
-                      : `Splitting: ${Math.round(splitProgress)}%`
+                    isUploading
+                      ? `Uploading: ${Math.round(uploadProgress)}%`
+                      : queuePosition != null
+                        ? `Queued — position ${queuePosition}`
+                        : `Splitting: ${Math.round(splitProgress)}%`
                   }
                 >
                   <div className="mt-1 w-full min-w-[220px]">
-                    {queuePosition != null ? (
+                    {isUploading ? (
+                      <div className="mb-1 flex items-center justify-between text-[11px] text-white/50">
+                        <span>Uploading…</span>
+                        <span className="tabular-nums">{Math.round(uploadProgress)}%</span>
+                      </div>
+                    ) : queuePosition != null ? (
                       <p className="mb-1.5 text-xs text-amber-200/80">
                         Queue position {queuePosition} — waiting to start…
                       </p>
@@ -690,7 +712,11 @@ export function ProcessingSettingsPanel({
                         className="h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)]"
                         initial={{ width: "0%" }}
                         animate={{
-                          width: queuePosition != null ? "0%" : `${Math.max(2, splitProgress)}%`,
+                          width: isUploading
+                            ? `${Math.max(2, uploadProgress)}%`
+                            : queuePosition != null
+                              ? "0%"
+                              : `${Math.max(2, splitProgress)}%`,
                         }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
                       />
@@ -913,7 +939,7 @@ export function ProcessingSettingsPanel({
       <input
         ref={inputRef}
         type="file"
-        accept="audio/*"
+        accept={AUDIO_INPUT_ACCEPT}
         className="hidden"
         aria-label="Choose audio file"
         onChange={(e) => onUploadFileInput(e.target.files?.[0] ?? null)}
@@ -921,7 +947,7 @@ export function ProcessingSettingsPanel({
       <input
         ref={loadStemsInputRef}
         type="file"
-        accept="audio/*"
+        accept={AUDIO_INPUT_ACCEPT}
         multiple
         className="hidden"
         aria-label="Load stem files"

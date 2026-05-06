@@ -65,11 +65,16 @@
 
   body {
     min-height: 100vh;
+    min-height: 100dvh;
     margin: 0;
     overflow-x: hidden;
     font-family: "Manrope", sans-serif;
     color: var(--text);
     background: transparent;
+    /* Safe area padding for notched devices (iPhone X+) */
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
   }
 
   button,
@@ -950,6 +955,77 @@
     width: 24px;
     height: 24px;
   }
+
+  /* Enlarged trim handles for waveform lanes on touch devices */
+  .waveform-lane-handle-start,
+  .waveform-lane-handle-end {
+    min-width: 20px;
+    cursor: grab;
+  }
+
+  .waveform-lane-handle-start::after,
+  .waveform-lane-handle-end::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 28px;
+    border-radius: 2px;
+    background: rgba(255, 132, 92, 0.7);
+    box-shadow: 0 0 8px rgba(255, 132, 92, 0.4);
+  }
+
+  .waveform-lane-handle-start::after {
+    left: 6px;
+  }
+
+  .waveform-lane-handle-end::after {
+    right: 6px;
+  }
+
+  /* Larger volume slider thumb for mixer on touch */
+  .stem-accent-slider::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+
+  .stem-accent-slider {
+    height: 10px;
+  }
+
+  /* Ensure mute/solo buttons are large enough */
+  [data-stem-control="mute"],
+  [data-stem-control="solo"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Modal max-height with dvh fallback for virtual keyboard awareness */
+.modal-viewport-height {
+  max-height: calc(100vh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+}
+
+@media (min-width: 640px) {
+  .modal-viewport-height {
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+  }
+}
+
+/* Safe area utilities */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* Swipe hint animation for mobile */

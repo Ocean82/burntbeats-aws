@@ -14,6 +14,7 @@ import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "..
 import { filterStemsForAudibleMix } from "../utils/stemAudibility";
 import type { ExportOptions } from "../components";
 import { trackEvent } from "../analytics/events";
+import { downloadBlob } from "../utils/downloadHelper";
 
 export function stripFileExtension(fileName: string): string {
   return fileName.replace(/\.[^/.]+$/, "");
@@ -80,13 +81,8 @@ export function useExport(): UseExportReturn {
   const lastExportAtRef = useRef(0);
   const EXPORT_ACTION_COOLDOWN_MS = 8000;
 
-  const triggerDownload = useCallback((blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+  const triggerDownload = useCallback(async (blob: Blob, filename: string) => {
+    await downloadBlob(blob, filename);
   }, []);
 
   const encodeWavToMp3 = useCallback((wavBuffer: ArrayBuffer, kbps = 192): Blob => {
@@ -163,12 +159,7 @@ export function useExport(): UseExportReturn {
 
   const downloadStemByUrl = useCallback(async (stem: StemResult, baseName: string) => {
     const blob = await fetchStemWavAsBlob(stem.url);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${baseName}_${stem.id}.wav`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await downloadBlob(blob, `${baseName}_${stem.id}.wav`);
   }, []);
 
   const exportMasterWavServer = useCallback(async (
@@ -193,7 +184,7 @@ export function useExport(): UseExportReturn {
       normalize,
     });
 
-    triggerDownload(blob, fileName);
+    await triggerDownload(blob, fileName);
   }, [triggerDownload]);
 
   const renderClientMasterWavBlob = useCallback(async (
@@ -345,7 +336,7 @@ export function useExport(): UseExportReturn {
 
     try {
       const wavBlob = await renderClientMasterWavBlob({ normalize: options?.normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
-      triggerDownload(wavBlob, buildMasterExportFilename(uploadName, "wav"));
+      await triggerDownload(wavBlob, buildMasterExportFilename(uploadName, "wav"));
     } catch (e) {
       onError(e instanceof Error ? e.message : "Export failed");
     } finally {
@@ -370,7 +361,7 @@ export function useExport(): UseExportReturn {
     try {
       const wavBlob = await renderClientMasterWavBlob({ normalize: options?.normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
       const mp3Blob = encodeWavToMp3(await wavBlob.arrayBuffer());
-      triggerDownload(mp3Blob, buildMasterExportFilename(uploadName, "mp3"));
+      await triggerDownload(mp3Blob, buildMasterExportFilename(uploadName, "mp3"));
     } catch (e) {
       onError(e instanceof Error ? e.message : "Export failed");
     } finally {
@@ -477,7 +468,7 @@ export function useExport(): UseExportReturn {
 
         // If not zipping, just download it directly now.
         if (masterBlob && !requiresZip && !hadError) {
-          triggerDownload(masterBlob.blob, masterBlob.filename);
+          await triggerDownload(masterBlob.blob, masterBlob.filename);
         }
       }
 
@@ -509,7 +500,7 @@ export function useExport(): UseExportReturn {
         }
 
         const zipBlob = await zip.generateAsync({ type: "blob" });
-        triggerDownload(zipBlob, `${baseName}_export.zip`);
+        await triggerDownload(zipBlob, `${baseName}_export.zip`);
       }
       lastExportAtRef.current = Date.now();
       onClose();

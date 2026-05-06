@@ -16,6 +16,10 @@ export interface AppState {
   isSplitting: boolean;
   isExpanding: boolean;
   splitProgress: number;
+  /** Upload progress (0–100) during file transfer to server. */
+  uploadProgress: number;
+  /** Whether the file is currently being uploaded (before split processing begins). */
+  isUploading: boolean;
   pipelineIndex: number;
   beatGrid: BeatGridMetadata | null;
   /** Queue position when job is waiting (1 = next to run, null = not queued). */
@@ -41,6 +45,8 @@ export const useAppStore = create<AppState>((set) => ({
   isSplitting: false,
   isExpanding: false,
   splitProgress: 0,
+  uploadProgress: 0,
+  isUploading: false,
   pipelineIndex: 0,
   beatGrid: null,
   queuePosition: null,

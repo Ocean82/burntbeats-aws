@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useIsTouchDevice } from "../hooks/useIsTouchDevice";
 
 /** Master export codecs exposed in-product. FLAC is deliberately omitted here: FLAC encoding is comparatively CPU-heavy for an AWS **CPU-only** stack; WAV (lossless) + MP3 meet current budgets. Keeping `"flac"` in this union preserves future guarded options without implying it ships today (`docs/roadmap/product-backlog.md`). */
 export type ExportFormat = "wav" | "mp3" | "flac";
@@ -72,12 +73,20 @@ export function ExportOptionsModal({
 }: ExportOptionsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(isOpen, modalRef, onClose, { disableEscape: isExporting });
+  const isTouchDevice = useIsTouchDevice();
 
   const [options, setOptions] = useState<ExportOptions>({
     format: "wav",
     target: "master",
     normalize: true,
   });
+
+  // Default to MP3 on mobile devices (smaller files, less memory pressure)
+  useEffect(() => {
+    if (isOpen && isTouchDevice) {
+      setOptions((o) => o.format === "wav" ? { ...o, format: "mp3" } : o);
+    }
+  }, [isOpen, isTouchDevice]);
 
   const targetOptions = allowStemBundleTargets
     ? TARGET_OPTIONS_ALL
@@ -108,7 +117,7 @@ export function ExportOptionsModal({
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-6"
+              className="relative w-full max-w-md modal-viewport-height overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:p-6"
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -180,6 +189,11 @@ export function ExportOptionsModal({
                     </button>
                   ))}
                 </div>
+                {isTouchDevice && options.format === "wav" && (
+                  <p className="mt-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200/80">
+                    💡 MP3 is recommended on mobile — smaller file size and less memory usage.
+                  </p>
+                )}
               </div>
 
               {/* Export Target */}

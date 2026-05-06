@@ -25,6 +25,7 @@ import type { StemDefinition, TrimState } from "../types";
 import type { BeatGridMetadata } from "../api";
 import { cn } from "../utils/cn";
 import { useTimelineViewport } from "../hooks/useTimelineViewport";
+import { usePinchZoom } from "../hooks/usePinchZoom";
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 import { computeBeatGridPcts, shouldRenderBeatGrid } from "../utils/beatGrid";
 import { TimelineRuler } from "./multi-stem-editor/timeline-ruler.component";
@@ -141,6 +142,16 @@ export function MultiStemEditor({
     },
     [setScrollPctBase],
   );
+
+  // Pinch-to-zoom and two-finger pan for touch devices
+  const pinchZoomRef = usePinchZoom({
+    zoom,
+    setZoom,
+    scrollPct,
+    setScrollPct,
+    minZoom: 1,
+    maxZoom: 8,
+  });
 
   useEffect(() => {
     if (!isTimelinePerformanceEnabled()) return;
@@ -355,7 +366,8 @@ export function MultiStemEditor({
       <TimelineRuler ticks={ticks} formatTime={formatTime} />
 
       <div
-        className="relative flex gap-0 overflow-x-hidden overflow-y-visible rounded-xl"
+        ref={pinchZoomRef}
+        className="relative flex gap-0 overflow-x-hidden overflow-y-visible rounded-xl touch-none"
         style={{ minHeight: activePanel ? 320 : undefined }}
       >
         <div

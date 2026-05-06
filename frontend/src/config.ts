@@ -38,3 +38,31 @@ export const MASTER_CHAIN = { compression: 2.4, limiter: -0.8, loudness: -9 } as
 export const PIPELINE_ANIMATION_DELAYS_MS = { toStep1: 400, toStep2: 1200 } as const;
 
 export const PIPELINE_PROGRESS_THRESHOLDS = { step2: 50, step3: 100 } as const;
+
+/** Allowed audio file extensions (must stay in sync with backend ALLOWED_AUDIO_EXTS). */
+export const ALLOWED_AUDIO_EXTENSIONS = new Set([
+  ".mp3",
+  ".wav",
+  ".flac",
+  ".ogg",
+  ".m4a",
+  ".aac",
+]);
+
+/** Human-readable label for supported formats (shown in UI). */
+export const ALLOWED_AUDIO_FORMATS_LABEL = "MP3, WAV, FLAC, OGG, M4A, AAC";
+
+/**
+ * Value for `<input type="file" accept="...">` — lists specific MIME types and extensions
+ * so mobile file pickers filter to supported formats only.
+ */
+export const AUDIO_INPUT_ACCEPT =
+  ".mp3,.wav,.flac,.ogg,.m4a,.aac,audio/mpeg,audio/mp3,audio/wav,audio/wave,audio/x-wav,audio/flac,audio/x-flac,audio/ogg,audio/mp4,audio/x-m4a,audio/aac,audio/x-aac";
+
+/** Check if a filename has a supported audio extension. */
+export function isAllowedAudioFile(filename: string): boolean {
+  const ext = filename.lastIndexOf(".") !== -1
+    ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
+    : "";
+  return ALLOWED_AUDIO_EXTENSIONS.has(ext);
+}
