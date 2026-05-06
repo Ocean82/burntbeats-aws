@@ -1,10 +1,11 @@
 /**
  * PaywallBanner: shown when the user has no active subscription.
- * Presents the three plan tiers and redirects to Stripe Checkout on selection.
+ * Presents the subscription tiers and redirects to Stripe Checkout on selection.
  */
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
+import { SUBSCRIPTION_PLANS } from "../data/plans";
 import { cn } from "../utils/cn";
 import { trackEvent } from "../analytics/events";
 import { BillingRules } from "./BillingRules";
@@ -12,27 +13,6 @@ import { BillingRules } from "./BillingRules";
 interface PaywallBannerProps {
   subscription: UseSubscriptionResult;
 }
-
-const PLANS: { id: Plan; label: string; price: string; features: string[] }[] = [
-  {
-    id: "basic",
-    label: "Basic",
-    price: "$9/month",
-    features: ["Monthly token allowance (see plan)", "2-stem · Speed only", "Waveform mixer + WAV export"],
-  },
-  {
-    id: "premium",
-    label: "Premium",
-    price: "$15/month",
-    features: ["Higher token allowance", "2-stem then 4-stem expand", "Speed + Quality · waveform", "Batch queue"],
-  },
-  {
-    id: "studio",
-    label: "Studio",
-    price: "$25/month",
-    features: ["Everything in Premium", "Priority processing"],
-  },
-];
 
 export function PaywallBanner({ subscription }: PaywallBannerProps) {
   const [loading, setLoading] = useState<Plan | null>(null);
@@ -112,7 +92,7 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
       </div>
 
       <div className="flex flex-col gap-3">
-        {PLANS.map((plan) => (
+        {SUBSCRIPTION_PLANS.map((plan) => (
           <button
             key={plan.id}
             type="button"
@@ -120,30 +100,30 @@ export function PaywallBanner({ subscription }: PaywallBannerProps) {
             disabled={loading !== null || (subscription.status === "active" && subscription.plan === plan.id)}
             aria-label={
               subscription.status === "active" && subscription.plan === plan.id
-                ? `${plan.label} plan is your current plan`
-                : `Choose ${plan.label} plan`
+                ? `${plan.name} plan is your current plan`
+                : `Choose ${plan.name} plan`
             }
             className={cn(
               "flex items-center justify-between rounded-xl border px-4 py-4 text-left transition",
               "border-white/10 bg-white/5 hover:border-amber-400/40 hover:bg-amber-500/10",
               "disabled:cursor-not-allowed disabled:opacity-60",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
-              plan.id === "premium" && "border-amber-400/30 bg-amber-500/10",
+              plan.highlight && "border-amber-400/30 bg-amber-500/10",
             )}
           >
             <div className="min-w-0 flex flex-col gap-1">
               <span className="text-sm font-semibold text-white">
-                {plan.label}
-                {plan.id === "premium" && (
+                {plan.name}
+                {plan.highlight && (
                   <span className="ml-2 rounded-full bg-amber-500/30 px-2 py-0.5 text-xs text-amber-200">
                     Popular
                   </span>
                 )}
               </span>
-              <span className="break-words text-sm text-white/65">{plan.features.join(" · ")}</span>
+              <span className="break-words text-sm text-white/65">{plan.details.slice(0, 3).join(" · ")}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0 pl-4">
-              <span className="text-sm font-semibold text-amber-300">{plan.price}</span>
+              <span className="text-sm font-semibold text-amber-300">{plan.priceLabel}</span>
               {loading === plan.id && <Loader2 className="h-4 w-4 animate-spin text-amber-300" />}
             </div>
           </button>

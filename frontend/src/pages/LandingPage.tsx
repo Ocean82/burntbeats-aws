@@ -2,8 +2,9 @@ import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Zap, ShieldCheck, AudioWaveform } from "lucide-react";
-import type { PlanConfig } from "../components/PricingTablePreview";
+import type { PlanConfig, PricingTableType } from "../data/plans";
 import { PricingTablePreview } from "../components/PricingTablePreview";
+import { PricingTabToggle } from "../components/PricingTabToggle";
 import { BillingRules } from "../components/BillingRules";
 import { trackEvent } from "../analytics/events";
 
@@ -19,9 +20,7 @@ function fadeUp(delay = 0, distance = 16) {
 export function LandingPage() {
   const { isSignedIn } = useAuth();
   const reduceMotion = useReducedMotion();
-  const [pricingTab, setPricingTab] = useState<"subscriptions" | "packs">(
-    "subscriptions",
-  );
+  const [pricingTab, setPricingTab] = useState<PricingTableType>("subscriptions");
 
   /** Respects prefers-reduced-motion — skips animation when true. */
   const anim = (delay = 0, distance = 16) =>
@@ -168,28 +167,7 @@ export function LandingPage() {
           </div>
 
           <div className="mb-6 flex justify-center">
-            <div className="flex w-fit rounded-lg border border-white/10 bg-black/40 p-1">
-              <button
-                onClick={() => setPricingTab("subscriptions")}
-                className={`rounded-md px-5 py-2 text-sm font-medium transition-colors ${
-                  pricingTab === "subscriptions"
-                    ? "bg-amber-400/20 text-amber-200"
-                    : "text-white/60 hover:bg-white/5 hover:text-white/90"
-                }`}
-              >
-                Subscriptions
-              </button>
-              <button
-                onClick={() => setPricingTab("packs")}
-                className={`rounded-md px-5 py-2 text-sm font-medium transition-colors ${
-                  pricingTab === "packs"
-                    ? "bg-amber-400/20 text-amber-200"
-                    : "text-white/60 hover:bg-white/5 hover:text-white/90"
-                }`}
-              >
-                Credit Packs
-              </button>
-            </div>
+            <PricingTabToggle activeTab={pricingTab} onTabChange={setPricingTab} />
           </div>
 
           <div className="glass-panel rounded-2xl border border-white/10 p-4 sm:p-6">
