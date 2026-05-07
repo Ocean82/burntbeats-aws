@@ -17,7 +17,7 @@ import { isUsageTokensEnabled } from "./usageTokens.js";
 import { getAllowedOriginSet } from "./allowedOrigins.js";
 import { closePool } from "./db.js";
 import { rateLimitMiddleware } from "./middleware/rateLimiter.js";
-import { stemsRouter, STEM_OUTPUT_DIR } from "./routes/stems.js";
+import { stemsRouter, STEM_OUTPUT_DIR } from "./routes/stems/index.js";
 import { healthRouter } from "./routes/health.js";
 import { legalRouter } from "./routes/legal.js";
 import { historyRouter } from "./routes/history.js";
