@@ -1,0 +1,87 @@
+// @ts-check
+/**
+ * Token balance retrieval and feature gating.
+ *
+ * Reads balance from DB (primary) with Clerk metadata fallback.
+ * Also provides the distributed lock utility for token operations.
+ */
+import { getClerkClient } from "../clerkAuth.js";
+import { getRedis } from "../stripeRedis.js";
+import { isDbTokensAvailable, getDbBalance } from "../db-tokens.js";
+
+/** @returns {boolean} */
+export function isUsageTokensEnabled() {
+  return ["1", "true", "yes"].includes(
+    (process.env.USAGE_TOKENS_ENABLED || "").toLowerCase(),
+  );
+}
+
+/** Dev bypass: debit checks always pass */
+export function isUsageTokensDevUnlimited() {
+  return ["1", "true", "yes"].includes(
+    (process.env.USAGE_TOKENS_DEV_UNLIMITED || "").toLowerCase(),
+  );
+}
+
+/**
+ * @param {string} userId
+ * @returns {Promise<{ balance: number, periodEnd: number | null }>}
+ */
+export async function getUsageBalance(userId) {
+  // Prefer DB when available
+  if (isDbTokensAvailable()) {
+    const dbResult = await getDbBalance(userId);
+    if (dbResult !== null) {
+      const periodEndMs = dbResult.periodEnd ? dbResult.periodEnd.getTime() : null;
+      return { balance: dbResult.balance, periodEnd: periodEndMs };
+    }
+  }
+  // Fallback to Clerk metadata
+  const clerk = getClerkClient();
+  if (!clerk) return { balance: 0, periodEnd: null };
+  const user = await clerk.users.getUser(userId);
+  const u = user.privateMetadata?.usageTokens;
+  const rec =
+    u && typeof u === "object"
+      ? /** @type {Record<string, unknown>} */ (u)
+      : {};
+  const balance = Number(rec.balance);
+  const periodEnd = rec.periodEnd != null ? Number(rec.periodEnd) : null;
+  return {
+    balance: Number.isFinite(balance) ? balance : 0,
+    periodEnd:
+      periodEnd != null && Number.isFinite(periodEnd) ? periodEnd : null,
+  };
+}
+
+/**
+ * Distributed lock for per-user token operations.
+ * Uses Redis NX lock when available; falls back to a no-op for single-instance deployments.
+ * Prevents race conditions when concurrent requests debit/credit the same user's balance.
+ * @param {string} userId
+ * @param {() => Promise<void>} fn
+ */
+export async function withUserUsageLock(userId, fn) {
+  const redis = await getRedis();
+  if (!redis) {
+    // Single-instance: no distributed lock needed, run directly.
+    return fn();
+  }
+  const lockKey = `usage:lock:${userId}`;
+  const got = await redis.set(lockKey, "1", { NX: true, EX: 30 });
+  if (!got) {
+    throw Object.assign(
+      new Error(
+        "Another request is already in progress for this account. Please retry.",
+      ),
+      { status: 429 },
+    );
+  }
+  try {
+    return await fn();
+  } finally {
+    await redis.del(lockKey).catch(() => {
+      /* best-effort */
+    });
+  }
+}
