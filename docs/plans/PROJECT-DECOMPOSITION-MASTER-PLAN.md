@@ -1072,7 +1072,7 @@ What was done to fix it. Date resolved.
 | Phase | Description | Status | Date Started | Date Completed |
 |-------|-------------|--------|--------------|----------------|
 | 1 | Frontend: api.ts decomposition | ✅ COMPLETE | 2026-05-08 | 2026-05-08 |
-| 2 | Backend: usageTokens.js decomposition | Not Started | | |
+| 2 | Backend: usageTokens.js decomposition | ✅ COMPLETE | 2026-05-08 | 2026-05-08 |
 | 3 | Backend: email-service.js decomposition | Not Started | | |
 | 4 | Backend: billing.js decomposition | Not Started | | |
 | 5 | Stem Service: config.py decomposition | Not Started | | |

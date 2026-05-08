@@ -33,7 +33,7 @@ numpy>=1.24.0,<2.6
 scipy>=1.9.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
-python-multipart>=0.0.6
+python-multipart>=0.0.27
 # VAD pre-trim uses ONNX (models/silero_vad.onnx) via onnxruntime + PyAV; no silero-vad pip needed
 av>=16.0.0
 
