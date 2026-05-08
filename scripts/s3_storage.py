@@ -33,6 +33,11 @@ def _cfg():
         "bucket": os.environ.get("S3_BUCKET", ""),
         "region": os.environ.get("S3_REGION", "us-east-1"),
         "prefix": os.environ.get("S3_PREFIX", "stems"),
+    }
+
+
+def _credentials_cfg():
+    return {
         "access_key": os.environ.get("S3_ACCESS_KEY", ""),
         "secret_key": os.environ.get("S3_SECRET_KEY", ""),
     }
@@ -40,6 +45,7 @@ def _cfg():
 
 def get_s3_client():
     cfg = _cfg()
+    creds = _credentials_cfg()
     if not BOTO3_AVAILABLE:
         raise ImportError("boto3 not installed: pip install boto3")
     if not cfg["enabled"]:
@@ -47,9 +53,9 @@ def get_s3_client():
     if not cfg["bucket"]:
         raise ValueError("S3_BUCKET not configured.")
     kwargs = {"region_name": cfg["region"]}
-    if cfg["access_key"] and cfg["secret_key"]:
-        kwargs["aws_access_key_id"] = cfg["access_key"]
-        kwargs["aws_secret_access_key"] = cfg["secret_key"]
+    if creds["access_key"] and creds["secret_key"]:
+        kwargs["aws_access_key_id"] = creds["access_key"]
+        kwargs["aws_secret_access_key"] = creds["secret_key"]
     return boto3.client("s3", **kwargs)
 
 
@@ -85,7 +91,7 @@ def download_from_s3(job_id: str, local_dir: Path, filename: Optional[str] = Non
     key = get_s3_key(job_id, fname)
     local_dir.mkdir(parents=True, exist_ok=True)
     out = local_dir / fname
-    logger.info("Downloading s3://%s/%s to %s", cfg["bucket"], key, out)
+    logger.info("Downloading S3 object for job_id=%s to %s", job_id, out)
     try:
         s3.download_file(cfg["bucket"], key, str(out))
     except ClientError as e:
