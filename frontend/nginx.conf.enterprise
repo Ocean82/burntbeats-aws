@@ -1,0 +1,88 @@
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+
+  # Security headers — enterprise-grade hardening
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+  add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+  add_header X-XSS-Protection "1; mode=block" always;
+  # HSTS — enable only if you terminate TLS here (adjust max-age as needed)
+  # add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+  # Rate limiting — requires nginx-http-limit-req-module
+  # limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+  # limit_req_zone $binary_remote_addr zone=webhook:10m rate=5r/m;
+
+  # Stripe webhook — dedicated block for raw-body signature verification
+  # Buffering must remain ON (default) for Stripe signature verification.
+  # This block must come BEFORE the general /api/ block (longest-prefix match).
+  location ^~ /api/billing/webhook {
+    # limit_req zone=webhook burst=5 nodelay;
+    proxy_pass http://backend:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # Forward client scheme — use $scheme if nginx terminates TLS, else $http_x_forwarded_proto
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+    # proxy_request_buffering intentionally omitted (defaults to on) — required for Stripe signature verification.
+    client_max_body_size 1M;
+  }
+
+  # Clerk webhook — dedicated block for raw-body Svix signature verification
+  # Mirrors Stripe pattern for consistency and future webhook-specific rules.
+  location ^~ /api/clerk/webhook {
+    # limit_req zone=webhook burst=5 nodelay;
+    proxy_pass http://backend:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # Forward client scheme — use $scheme if nginx terminates TLS, else $http_x_forwarded_proto
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+    # proxy_request_buffering intentionally omitted (defaults to on) — required for Svix signature verification.
+    client_max_body_size 1M;
+  }
+
+  # General API proxy — for all other /api/ routes
+  location ^~ /api/ {
+    # limit_req zone=api burst=20 nodelay;
+    proxy_pass http://backend:3001;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # Forward client scheme — use $scheme if nginx terminates TLS, else $http_x_forwarded_proto
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Port $server_port;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+    proxy_request_buffering off;
+    client_max_body_size 200M;
+  }
+
+  # Static SPA — sensible defaults
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # Error pages — optional enterprise touch
+  error_page 404 /index.html;
+  error_page 500 502 503 504 /50x.html;
+  location = /50x.html {
+    root /usr/share/nginx/html;
+  }
+}
