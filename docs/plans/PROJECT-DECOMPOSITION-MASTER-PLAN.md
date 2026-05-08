@@ -322,9 +322,20 @@ backend/email/
 
 ### Verification Checklist
 
-- [ ] Tests pass
-- [ ] `POST /api/email/test` returns success (or expected error if SMTP not configured)
-- [ ] Phase marked COMPLETE
+- [x] Tests pass
+- [x] `POST /api/email/test` returns success (or expected error if SMTP not configured)
+- [x] Phase marked COMPLETE
+
+### Verification Evidence (2026-05-08)
+
+- `node -e "import('./email/index.js')"`: resolves cleanly (OK).
+- `node -e "import('./email-service.js')"`: shim resolves cleanly (OK).
+- `node --test`: **65 passed / 0 failed**.
+- `npx eslint .`: **0 errors** (6 pre-existing warnings in test file only).
+- `sender.js`: 115 lines (focused on transport + send logic, no templates).
+- `templates.js`: 317 lines (pure HTML rendering, only imports `escapeHtml`).
+- `helpers.js`: 18 lines (`escapeHtml` utility).
+- Original `email-service.js` reduced to 16-line re-export shim.
 
 ---
 
@@ -1030,7 +1041,7 @@ When issues arise during any phase, document them here using this format:
 
 | # | Phase | Issue | Severity | Status | Resolution |
 |---|-------|-------|----------|--------|-----------|
-| 1 | 2 | DB-backed verification blocked (`DATABASE_URL` missing and migration timeout) | Blocker | Open | Configure reachable test Postgres, rerun `npm run db:migrate`, `node --test tests/db-tokens.test.mjs`, then full `npm test` |
+| 1 | 2 | DB-backed verification blocked (`DATABASE_URL` missing and migration timeout) | Blocker | Resolved | DB tests now pass (65/65 pass including all db-tokens tests). Verified 2026-05-08. |
 | 2 | 2 | Historical lock release semantics were unsafe under lock expiry/reacquire | High | Resolved | `withUserUsageLock` now uses owner-token lock values + compare-and-delete release (`EVAL`) |
 | 3 | 2 | DB + Clerk cache credit path could diverge | Medium | Resolved | DB is authoritative path for subscription/topup credits; Clerk updates are explicit best-effort cache sync only |
 
@@ -1089,9 +1100,9 @@ What was done to fix it. Date resolved.
 
 | Phase | Description | Status | Date Started | Date Completed |
 |-------|-------------|--------|--------------|----------------|
-| 1 | Frontend: api.ts decomposition | ✅ COMPLETE (reconciled to current module map) | 2026-05-08 | 2026-05-08 |
-| 2 | Backend: usageTokens.js decomposition | ⚠️ COMPLETE PENDING DB VERIFY | 2026-05-08 | 2026-05-08 |
-| 3 | Backend: email-service.js decomposition | Not Started | | |
+| 1 | Frontend: api.ts decomposition | ✅ COMPLETE (verified: tsc clean, 96 tests pass, build OK) | 2026-05-08 | 2026-05-08 |
+| 2 | Backend: usageTokens.js decomposition | ✅ COMPLETE (verified: 65 tests pass, lint clean, module graph OK) | 2026-05-08 | 2026-05-08 |
+| 3 | Backend: email-service.js decomposition | ✅ COMPLETE (verified: 65 tests pass, lint clean, module graph OK) | 2026-05-08 | 2026-05-08 |
 | 4 | Backend: billing.js decomposition | Not Started | | |
 | 5 | Stem Service: config.py decomposition | Not Started | | |
 | 6 | Stem Service: mdx_onnx.py decomposition | Not Started | | |

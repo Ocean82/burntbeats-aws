@@ -412,8 +412,14 @@ test("tokensPerMonthFromPrice reads token_seconds_per_month and converts", () =>
 
 test("tokensPerMonthFromPrice returns 0 when no metadata", () => {
   const price = { metadata: {} };
-  // Falls through to USAGE_DEFAULT_TOKENS_PER_MONTH env (not set in test)
-  assert.equal(tokensPerMonthFromPrice(price), 0);
+  // Temporarily unset the default so we test the "no metadata, no env" path
+  const prev = process.env.USAGE_DEFAULT_TOKENS_PER_MONTH;
+  delete process.env.USAGE_DEFAULT_TOKENS_PER_MONTH;
+  try {
+    assert.equal(tokensPerMonthFromPrice(price), 0);
+  } finally {
+    if (prev !== undefined) process.env.USAGE_DEFAULT_TOKENS_PER_MONTH = prev;
+  }
 });
 
 test("tokensPerTopupFromPrice reads tokens_per_topup metadata", () => {
