@@ -9,6 +9,7 @@ import { getRedis } from "../stripeRedis.js";
 import { isDbTokensAvailable, creditDbSubscription, creditDbTopup } from "../db-tokens.js";
 import { withUserUsageLock } from "./tokenBalance.js";
 import { subscriptionBillingPeriod, tokensPerMonthFromPrice } from "./stripeMetadata.js";
+import { updateClerkBalanceCache } from "./clerkCache.js";
 
 /**
  * Prune processedStripeCreditEventIds to max ~40 entries (oldest by timestamp).
@@ -39,6 +40,37 @@ export async function creditSubscriptionAllowance(
   stripe,
   options = {},
 ) {
+  if (isDbTokensAvailable()) {
+    const { periodStart, periodEnd } = subscriptionBillingPeriod(sub);
+    const item = sub.items?.data?.[0];
+    const priceId = item?.price?.id;
+    if (!priceId) return;
+    const price = await stripe.prices.retrieve(priceId);
+    const grant = tokensPerMonthFromPrice(price);
+    if (!Number.isFinite(grant) || grant <= 0) return;
+    const dbResult = await creditDbSubscription(clerkUserId, grant, {
+      periodStart: typeof periodStart === "number" ? periodStart : undefined,
+      periodEnd: typeof periodEnd === "number" ? periodEnd : undefined,
+      stripeEventId:
+        typeof options.stripeEventId === "string" ? options.stripeEventId : undefined,
+    });
+    if (!dbResult.success || !dbResult.credited) return;
+    if (dbResult.balanceAfter != null) {
+      try {
+        await updateClerkBalanceCache(clerkUserId, dbResult.balanceAfter);
+      } catch (e) {
+        console.warn(
+          "[usageTokens] Clerk cache update failed (non-fatal):",
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+    console.log(
+      `[usageTokens] credited ${grant} tokens user=${clerkUserId} period=${periodStart}`,
+    );
+    return;
+  }
+
   const stripeEventId =
     typeof options.stripeEventId === "string" ? options.stripeEventId : "";
   const clerk = getClerkClient();
@@ -164,10 +196,22 @@ export async function creditTopupTokens(clerkUserId, grant) {
 
   // Primary: DB
   if (isDbTokensAvailable()) {
-    await creditDbTopup(clerkUserId, grant);
+    const dbResult = await creditDbTopup(clerkUserId, grant);
+    if (!dbResult.success) return;
+    if (dbResult.balanceAfter != null) {
+      try {
+        await updateClerkBalanceCache(clerkUserId, dbResult.balanceAfter);
+      } catch (e) {
+        console.warn(
+          "[usageTokens] Clerk cache update failed (non-fatal):",
+          e instanceof Error ? e.message : e,
+        );
+      }
+    }
+    return;
   }
 
-  // Secondary: Clerk metadata cache
+  // Fallback: Clerk metadata cache
   const clerk = getClerkClient();
   if (!clerk) return;
   await withUserUsageLock(clerkUserId, async () => {

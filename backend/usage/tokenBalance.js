@@ -8,6 +8,27 @@
 import { getClerkClient } from "../clerkAuth.js";
 import { getRedis } from "../stripeRedis.js";
 import { isDbTokensAvailable, getDbBalance } from "../db-tokens.js";
+import { randomUUID } from "crypto";
+
+const LOCK_RELEASE_LUA =
+  "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) else return 0 end";
+
+/**
+ * Best-effort lock release that only removes lock if we still own it.
+ * @param {import("redis").ReturnType<typeof import("redis").createClient>} redis
+ * @param {string} lockKey
+ * @param {string} ownerToken
+ */
+async function releaseOwnedLock(redis, lockKey, ownerToken) {
+  try {
+    await redis.sendCommand(["EVAL", LOCK_RELEASE_LUA, "1", lockKey, ownerToken]);
+  } catch (e) {
+    console.warn(
+      "[usageTokens] lock release failed (non-fatal):",
+      e instanceof Error ? e.message : e,
+    );
+  }
+}
 
 /** @returns {boolean} */
 export function isUsageTokensEnabled() {
@@ -68,7 +89,8 @@ export async function withUserUsageLock(userId, fn) {
     return fn();
   }
   const lockKey = `usage:lock:${userId}`;
-  const got = await redis.set(lockKey, "1", { NX: true, EX: 30 });
+  const ownerToken = randomUUID();
+  const got = await redis.set(lockKey, ownerToken, { NX: true, EX: 30 });
   if (!got) {
     throw Object.assign(
       new Error(
@@ -80,8 +102,6 @@ export async function withUserUsageLock(userId, fn) {
   try {
     return await fn();
   } finally {
-    await redis.del(lockKey).catch(() => {
-      /* best-effort */
-    });
+    await releaseOwnedLock(redis, lockKey, ownerToken);
   }
 }

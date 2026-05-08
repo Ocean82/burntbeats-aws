@@ -4,6 +4,13 @@
 
 Extract route handlers and shared infrastructure from `backend/server.js` (1,659 lines) into focused modules, leaving `server.js` as a slim composition root (~100–120 lines).
 
+## Scope Clarification
+
+This plan is scoped to `backend/server.js` decomposition only (routing/composition-root extraction).
+
+- Frontend Phase 1 (`frontend/src/api.ts` decomposition) and Backend Phase 2 (`backend/usageTokens.js` decomposition) are tracked in `docs/plans/PROJECT-DECOMPOSITION-MASTER-PLAN.md`.
+- Use this document for server-route decomposition verification and use the master plan for Phase 1/2 module-map and status tracking.
+
 ---
 
 ## Reference Files

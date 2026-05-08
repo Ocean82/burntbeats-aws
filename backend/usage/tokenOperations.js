@@ -11,6 +11,22 @@ import { isUsageTokensDevUnlimited, withUserUsageLock } from "./tokenBalance.js"
 import { updateClerkBalanceCache } from "./clerkCache.js";
 
 /**
+ * Update Clerk balance cache without affecting primary DB outcome.
+ * @param {string} userId
+ * @param {number} balance
+ */
+async function tryUpdateClerkCache(userId, balance) {
+  try {
+    await updateClerkBalanceCache(userId, balance);
+  } catch (e) {
+    console.warn(
+      "[usageTokens] Clerk cache update failed (non-fatal):",
+      e instanceof Error ? e.message : e,
+    );
+  }
+}
+
+/**
  * @param {string} userId
  * @param {number} cost
  * @param {{ jobId?: string }} [meta]
@@ -30,11 +46,7 @@ export async function reserveUsageTokens(userId, cost, meta = {}) {
       throw err;
     }
     // Also update Clerk metadata as a cache (best-effort, don't fail if this errors)
-    try {
-      await updateClerkBalanceCache(userId, result.balanceAfter ?? 0);
-    } catch (e) {
-      console.warn("[usageTokens] Clerk cache update failed (non-fatal):", e instanceof Error ? e.message : e);
-    }
+    await tryUpdateClerkCache(userId, result.balanceAfter ?? 0);
     return;
   }
 
@@ -88,11 +100,7 @@ export async function refundUsageTokens(userId, amount, meta = {}) {
   if (isDbTokensAvailable()) {
     const result = await refundDbTokens(userId, amount, { jobId: meta.jobId, note: "job refund" });
     if (result.success && result.balanceAfter != null) {
-      try {
-        await updateClerkBalanceCache(userId, result.balanceAfter);
-      } catch (e) {
-        console.warn("[usageTokens] Clerk cache update failed (non-fatal):", e instanceof Error ? e.message : e);
-      }
+      await tryUpdateClerkCache(userId, result.balanceAfter);
     }
     return;
   }
@@ -139,11 +147,7 @@ export async function grantWelcomeSignupTokens(clerkUserId, grant) {
     const dbResult = await grantDbWelcomeTokens(clerkUserId, amount);
     if (dbResult.success) {
       // Also update Clerk cache
-      try {
-        await updateClerkBalanceCache(clerkUserId, dbResult.balanceAfter ?? 0);
-      } catch (e) {
-        console.warn("[usageTokens] Clerk cache update failed (non-fatal):", e instanceof Error ? e.message : e);
-      }
+      await tryUpdateClerkCache(clerkUserId, dbResult.balanceAfter ?? 0);
       return { granted: dbResult.granted, balance: dbResult.balanceAfter ?? 0 };
     }
     // Fall through to Clerk-only if DB failed

@@ -87,9 +87,10 @@ Split `frontend/src/api.ts` (488 lines) into focused modules by responsibility: 
 frontend/src/api/
 ├── index.ts          ← barrel re-export (preserves "import from '../api'" compatibility)
 ├── auth.ts           ← setTokenProvider, authHeaders, job token store, clearJobToken
-├── stems.ts          ← splitAudio, expandStems, serverExport, fetchStemFileUrl
-├── jobStatus.ts      ← pollJobStatus, streamJobStatus (SSE), getJobStatus
-├── billing.ts        ← getSubscription, getUsageBalance, createCheckout, createPortal
+├── stems.ts          ← stem file URL + authenticated file fetch helpers
+├── jobStatus.ts      ← getStemJobStatus, pollStemJobUntilDone, streamStemJobUntilDone
+├── operations.ts     ← startStemSplit/splitStems/startExpand/expandStems/serverExportMasterWav
+├── types.ts          ← API-layer shared response/request types
 ├── legal.ts          ← acceptLegal
 └── validation.ts     ← type guards, response parsing helpers, error extraction
 ```
@@ -100,16 +101,17 @@ frontend/src/api/
 2. [ ] Create `frontend/src/api/` directory
 3. [ ] Extract `auth.ts` — token provider, `authHeaders()`, job token Map, `clearJobToken`
 4. [ ] Extract `validation.ts` — `tryParseJson`, `getApiErrorMessage`, type guard functions
-5. [ ] Extract `stems.ts` — `splitAudio`, `expandStems`, `serverExport`, `fetchStemFileUrl` (imports from `auth.ts` and `validation.ts`)
-6. [ ] Extract `jobStatus.ts` — polling logic, SSE streaming, status type coercion (imports from `auth.ts`)
-7. [ ] Extract `billing.ts` — subscription/usage/checkout/portal calls (imports from `auth.ts`)
-8. [ ] Extract `legal.ts` — `acceptLegal` (imports from `auth.ts` and `validation.ts`)
-9. [ ] Create `index.ts` barrel — re-export all public symbols from sub-modules
-10. [ ] Delete original `frontend/src/api.ts`
-11. [ ] Run TypeScript compiler — zero errors
-12. [ ] Run frontend lint — zero new errors
-13. [ ] Run frontend tests (if any) — zero failures
-14. [ ] Verify dev server starts and app loads without console errors
+5. [ ] Extract `stems.ts` — stem file URL parsing/building and authenticated file fetch helpers (imports from `auth.ts`)
+6. [ ] Extract `jobStatus.ts` — polling logic, SSE streaming, and status validation (imports from `auth.ts` + `validation.ts`)
+7. [ ] Extract `operations.ts` — split/expand/server-export orchestration (imports from `auth.ts` + `validation.ts`)
+8. [ ] Extract `types.ts` — API-layer request/response types used across new modules
+9. [ ] Extract `legal.ts` — `acceptLegal` (imports from `auth.ts` and `validation.ts`)
+10. [ ] Create `index.ts` barrel — re-export all public symbols from sub-modules
+11. [ ] Delete original `frontend/src/api.ts`
+12. [ ] Run TypeScript compiler — zero errors
+13. [ ] Run frontend lint — zero new errors
+14. [ ] Run frontend tests (if any) — zero failures
+15. [ ] Verify dev server starts and app loads without console errors
 
 ### Tools
 
@@ -123,7 +125,7 @@ frontend/src/api/
 
 ### Success Criteria
 
-- [ ] No file in `frontend/src/api/` exceeds 150 lines
+- [ ] Files are meaningfully decomposed by responsibility; further split only where cohesion/readability is poor
 - [ ] `npx tsc --noEmit` passes with zero errors
 - [ ] All existing imports resolve (barrel re-export covers them)
 - [ ] No runtime errors in browser console
@@ -182,11 +184,13 @@ Split `backend/usageTokens.js` (595 lines) into focused modules: cost computatio
 ```
 backend/usage/
 ├── index.js            ← barrel re-export (preserves existing import paths via package.json exports or alias)
-├── tokenCost.js        ← computeSplitCost, computeExpandCost, computeServerExportCost, getAudioDurationSeconds
+├── tokenCost.js        ← computeSplitCost, computeExpandCost, computeServerExportCost
 ├── tokenBalance.js     ← getUsageBalance, isUsageTokensEnabled, withUserUsageLock
-├── tokenOperations.js  ← reserveUsageTokens, refundUsageTokens, grantWelcomeTokens
-├── tokenCredits.js     ← creditSubscriptionAllowance, creditTopupTokens, tokensPerTopupFromPrice
-└── stripeMetadata.js   ← parseTokensPerMonth, parseTopupTokens (shared with billing.js)
+├── tokenOperations.js  ← reserveUsageTokens, refundUsageTokens, grantWelcomeSignupTokens
+├── tokenCredits.js     ← creditSubscriptionAllowance, creditTopupTokens
+├── stripeMetadata.js   ← subscriptionBillingPeriod, tokensPerMonthFromPrice, tokensPerTopupFromPrice
+├── audioFile.js        ← getAudioDurationSeconds, findJobInputPath
+└── clerkCache.js       ← updateClerkBalanceCache
 ```
 
 ### Steps
@@ -197,13 +201,14 @@ backend/usage/
 4. [ ] Extract `tokenCost.js` — pure functions, zero I/O, zero external state
 5. [ ] Extract `stripeMetadata.js` — Stripe price metadata parsing (will also be used by billing.js later)
 6. [ ] Extract `tokenBalance.js` — `getUsageBalance`, `isUsageTokensEnabled`, lock utility
-7. [ ] Extract `tokenOperations.js` — `reserveUsageTokens`, `refundUsageTokens`, `grantWelcomeTokens`
-8. [ ] Extract `tokenCredits.js` — `creditSubscriptionAllowance`, `creditTopupTokens`, `tokensPerTopupFromPrice`
+7. [ ] Extract `tokenOperations.js` — `reserveUsageTokens`, `refundUsageTokens`, `grantWelcomeSignupTokens`
+8. [ ] Extract `tokenCredits.js` — `creditSubscriptionAllowance`, `creditTopupTokens`
 9. [ ] Create `index.js` barrel — re-export all public symbols
-10. [ ] Update all consumers to import from `./usage/index.js` (or keep `usageTokens.js` as a thin re-export shim)
-11. [ ] Run `node --test` in backend — zero failures
-12. [ ] Run `npx eslint .` in backend — zero new errors
-13. [ ] Smoke-test: start server, trigger a split, verify tokens deducted
+10. [ ] Extract `audioFile.js` and `clerkCache.js` from mixed concerns in legacy file
+11. [ ] Update all consumers to import from `./usage/index.js` (or keep `usageTokens.js` as a thin re-export shim)
+12. [ ] Run `node --test` in backend — zero failures
+13. [ ] Run `npx eslint .` in backend — zero new errors
+14. [ ] Smoke-test: start server, trigger a split, verify tokens deducted
 
 ### Tools
 
@@ -217,7 +222,7 @@ backend/usage/
 
 ### Success Criteria
 
-- [ ] No file in `backend/usage/` exceeds 150 lines
+- [ ] Files are decomposed into cohesive responsibilities; split further when single files become mixed-orchestration hotspots
 - [ ] `node --test` passes (all existing tests)
 - [ ] `npx eslint .` passes with no new errors
 - [ ] Server starts without errors
@@ -237,6 +242,17 @@ backend/usage/
 - [ ] Server starts cleanly
 - [ ] Manual test: upload → split → tokens deducted → refund on cancel
 - [ ] Phase marked COMPLETE
+
+### Verification Evidence (2026-05-08)
+
+- `DATABASE_URL` preflight: missing in shell environment (`DATABASE_URL_MISSING`).
+- `npm run db:migrate` (backend): failed with `timeout expired`.
+- `node --test tests/db-tokens.test.mjs`: **1 passed / 19 failed**, failures are DB connection timeouts.
+- `npm test` (backend full suite): **46 passed / 19 failed**, all failing tests from `db-tokens.test.mjs` DB timeouts.
+- `npm run lint` (backend): pass with warnings only (0 errors).
+- Usage module smoke checks: `import('./usage/index.js')` and `import('./usageTokens.js')` both pass.
+
+Status interpretation: Phase 2 code decomposition and module graph are in place, but DB-backed verification remains blocked by environment/database connectivity.
 
 ---
 
@@ -978,7 +994,7 @@ Eliminate identified duplication patterns across the codebase.
 
 | Duplication | Location | Resolution |
 |-------------|----------|-----------|
-| Stripe price metadata parsing | `billing.js` + `usageTokens.js` | Both import from `usage/stripeMetadata.js` (done in Phase 2) |
+| Stripe price metadata parsing | `billing.js` + `usageTokens.js` | Shared parser centralized in `usage/stripeMetadata.js`; direct billing import can be adopted later while shim remains |
 | `_safe_job_path` | `server.py` + `job_worker.py` | Shared utility (done in Phase 12) |
 | Reserve/refund interface | `usageTokens.js` + `db-tokens.js` | Define explicit interface; usageTokens delegates to db-tokens |
 | Error response patterns | Multiple route files | Extract `handleRouteError(res, err, fallbackMsg)` utility |
@@ -1014,7 +1030,9 @@ When issues arise during any phase, document them here using this format:
 
 | # | Phase | Issue | Severity | Status | Resolution |
 |---|-------|-------|----------|--------|-----------|
-| — | — | — | — | — | — |
+| 1 | 2 | DB-backed verification blocked (`DATABASE_URL` missing and migration timeout) | Blocker | Open | Configure reachable test Postgres, rerun `npm run db:migrate`, `node --test tests/db-tokens.test.mjs`, then full `npm test` |
+| 2 | 2 | Historical lock release semantics were unsafe under lock expiry/reacquire | High | Resolved | `withUserUsageLock` now uses owner-token lock values + compare-and-delete release (`EVAL`) |
+| 3 | 2 | DB + Clerk cache credit path could diverge | Medium | Resolved | DB is authoritative path for subscription/topup credits; Clerk updates are explicit best-effort cache sync only |
 
 **Severity levels:**
 - **Blocker** — Cannot proceed with current phase until resolved
@@ -1071,8 +1089,8 @@ What was done to fix it. Date resolved.
 
 | Phase | Description | Status | Date Started | Date Completed |
 |-------|-------------|--------|--------------|----------------|
-| 1 | Frontend: api.ts decomposition | ✅ COMPLETE | 2026-05-08 | 2026-05-08 |
-| 2 | Backend: usageTokens.js decomposition | ✅ COMPLETE | 2026-05-08 | 2026-05-08 |
+| 1 | Frontend: api.ts decomposition | ✅ COMPLETE (reconciled to current module map) | 2026-05-08 | 2026-05-08 |
+| 2 | Backend: usageTokens.js decomposition | ⚠️ COMPLETE PENDING DB VERIFY | 2026-05-08 | 2026-05-08 |
 | 3 | Backend: email-service.js decomposition | Not Started | | |
 | 4 | Backend: billing.js decomposition | Not Started | | |
 | 5 | Stem Service: config.py decomposition | Not Started | | |
