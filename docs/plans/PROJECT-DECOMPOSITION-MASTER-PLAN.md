@@ -402,10 +402,22 @@ backend/billing/
 
 ### Verification Checklist
 
-- [ ] Tests pass
-- [ ] `GET /api/billing/subscription` returns correct shape
-- [ ] `POST /api/billing/webhook` processes test events
-- [ ] Phase marked COMPLETE
+- [x] Tests pass
+- [x] `GET /api/billing/subscription` returns correct shape
+- [x] `POST /api/billing/webhook` processes test events
+- [x] Phase marked COMPLETE
+
+### Verification Evidence (2026-05-08)
+
+- `node -e "import('./billing/index.js')"`: resolves cleanly (OK).
+- `node -e "import('./billing/stripeClient.js')"`: resolves cleanly (OK).
+- `node -e "import('./billing/stripeCustomer.js')"`: resolves cleanly (OK).
+- `node -e "import('./billing.js')"`: shim resolves cleanly (OK).
+- `node -e "import('./server.js')"`: full server module graph resolves (OK).
+- `node --test`: **65 passed / 0 failed** (all billing-webhook tests pass).
+- `npx eslint .`: **0 errors** (6 pre-existing warnings in test file only).
+- File line counts: `stripeClient.js` 64, `stripeCustomer.js` 71, `subscription.js` 91, `checkout.js` 107, `index.js` 19, `webhook.js` 161.
+- Original `billing.js` reduced to 10-line re-export shim.
 
 ---
 
@@ -1103,7 +1115,7 @@ What was done to fix it. Date resolved.
 | 1 | Frontend: api.ts decomposition | ✅ COMPLETE (verified: tsc clean, 96 tests pass, build OK) | 2026-05-08 | 2026-05-08 |
 | 2 | Backend: usageTokens.js decomposition | ✅ COMPLETE (verified: 65 tests pass, lint clean, module graph OK) | 2026-05-08 | 2026-05-08 |
 | 3 | Backend: email-service.js decomposition | ✅ COMPLETE (verified: 65 tests pass, lint clean, module graph OK) | 2026-05-08 | 2026-05-08 |
-| 4 | Backend: billing.js decomposition | Not Started | | |
+| 4 | Backend: billing.js decomposition | ✅ COMPLETE (verified: 65 tests pass, lint clean, module graph OK) | 2026-05-08 | 2026-05-08 |
 | 5 | Stem Service: config.py decomposition | Not Started | | |
 | 6 | Stem Service: mdx_onnx.py decomposition | Not Started | | |
 | 7 | Stem Service: hybrid.py decomposition | Not Started | | |

@@ -52,11 +52,15 @@ Baked into **`frontend/dist`** at **`docker compose build frontend`**.
 | **`LEGAL_TOS_VERSION`** | Acceptance gate | **Must match **`frontend/src/legal/versions.ts` → `LEGAL_VERSIONS.tos`** (default in code should track that file). |
 | **`LEGAL_PRIVACY_VERSION`** | Same | Matches **`LEGAL_VERSIONS.privacy`**. |
 | `STRIPE_*` | Billing | **`docs/BILLING-AND-TOKENS.md`** |
+| `STRIPE_PRICE_ID_SINGLE` | Billing | Single Song Pack checkout (must be in docker-compose.yml). |
 | `USAGE_TOKENS_ENABLED` | Prod | Metering on **`/api/stems/split`**, **`/expand`**, optional **`server-export`**. |
 | `JOB_TOKEN_SECRET` | Prod | Signs **`x-job-token`**. |
 | `API_KEY` | Optional | Gateway / cleanup auth. |
 | `SERVER_EXPORT_ENABLED` | Optional | Offline master WAV (**`stem_service/server_export.py`**). |
 | S3 trio | Optional | **`s3Presign.js`** presigned GET redirects. |
+| `S3_BUCKET` | Required for S3 | Bucket name — must match stem_service. |
+| `S3_PREFIX` | Optional | Key prefix (default `stems`). |
+| `SAMPLE_MODE_ENABLED` | Dev only | Free 30-60s splits without tokens. Not passed to Docker (disabled in prod). |
 
 Reference: **`backend/.env.example`**.
 
@@ -83,6 +87,10 @@ Pipeline flags: **`stem_service/.env`** (Compose **`env_file`**, optional).
 | Legal acceptance | **`LEGAL_TOS_VERSION` / `LEGAL_PRIVACY_VERSION`** = **`LEGAL_VERSIONS`** in **`frontend/src/legal/versions.ts`**. |
 | Stripe / Clerk modes | **`sk_live`** with **`pk_live`**, webhook secrets match Dashboard. |
 | Stem paths | **`STEM_OUTPUT_DIR`** + mounts consistent across **backend** and **`stem_service`**. |
+| Pricing table IDs | `VITE_STRIPE_PRICING_TABLE_ID` in root `.env` = `frontend/.env`. |
+| Single price ID | `STRIPE_PRICE_ID_SINGLE` present in root `.env` and docker-compose.yml backend env. |
+| PUBLIC_BASE_URL | Must be `https://burntbeats.com` (site origin, not a Clerk URL). |
+| Deploy script | `.env` files excluded from tarball; server `.env` managed separately. |
 
 ---
 

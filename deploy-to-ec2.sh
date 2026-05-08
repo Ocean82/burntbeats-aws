@@ -27,6 +27,9 @@ tar czf /tmp/burntbeats-deploy.tar.gz \
   --exclude='./models' \
   --exclude='./benchmark_out*' \
   --exclude='./*.tgz' \
+  --exclude='./.env' \
+  --exclude='./backend/.env' \
+  --exclude='./frontend/.env' \
   .
 
 echo "✅ Archive created"
@@ -47,6 +50,14 @@ mkdir -p $REMOTE_DIR
 tar xzf /tmp/burntbeats-deploy.tar.gz -C $REMOTE_DIR
 rm /tmp/burntbeats-deploy.tar.gz
 echo "✅ Extracted to $REMOTE_DIR"
+
+# Verify .env exists on server (must be managed separately — never shipped in tarball)
+if [ ! -f "$REMOTE_DIR/.env" ]; then
+  echo "⚠️  WARNING: $REMOTE_DIR/.env not found! Docker Compose will fail."
+  echo "   Copy production .env to the server before running docker compose."
+  echo "   Example: scp -i \$SSH_KEY .env $SERVER:$REMOTE_DIR/.env"
+  exit 1
+fi
 
 # Stop old PM2 ghost processes
 pm2 stop burntbeats 2>/dev/null || true
