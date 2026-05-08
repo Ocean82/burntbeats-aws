@@ -136,6 +136,18 @@ def _require_stem_service_api_token(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def _safe_job_path(job_id: str, *parts: str) -> Path:
+    """Construct a path under OUTPUT_BASE for a validated job_id.
+
+    Raises HTTPException(400) if the resolved path escapes OUTPUT_BASE,
+    preventing path traversal even if UUID validation is bypassed.
+    """
+    candidate = (OUTPUT_BASE / job_id / Path(*parts) if parts else OUTPUT_BASE / job_id).resolve()
+    if not str(candidate).startswith(str(OUTPUT_BASE.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid job_id")
+    return candidate
+
+
 # ── Lifespan ─────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
@@ -386,7 +398,7 @@ async def expand(
 
     if not job_id or not UUID_REGEX.fullmatch(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
-    source_stems_dir = OUTPUT_BASE / job_id / "stems"
+    source_stems_dir = _safe_job_path(job_id, "stems")
     if not source_stems_dir.is_dir():
         raise HTTPException(status_code=404, detail="Job not found")
     if (
@@ -426,7 +438,7 @@ async def get_status(job_id: str, request: Request) -> dict:
 
     if not job_id or not UUID_REGEX.fullmatch(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
-    progress_path = OUTPUT_BASE / job_id / PROGRESS_FILENAME
+    progress_path = _safe_job_path(job_id, PROGRESS_FILENAME)
     if not progress_path.exists():
         raise HTTPException(status_code=404, detail="Job not found")
     try:
@@ -435,7 +447,7 @@ async def get_status(job_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail="Job not found")
     # Do not leak internal filesystem paths in API responses.
     if os.environ.get("NODE_ENV", "development").lower() != "production":
-        log_path = OUTPUT_BASE / job_id / "job.log"
+        log_path = _safe_job_path(job_id, "job.log")
         if log_path.exists():
             data["log"] = log_path.name
     return data
@@ -449,7 +461,7 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
     if not job_id or not UUID_REGEX.fullmatch(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
 
-    progress_path = OUTPUT_BASE / job_id / PROGRESS_FILENAME
+    progress_path = _safe_job_path(job_id, PROGRESS_FILENAME)
 
     # Check if job exists
     if not progress_path.exists():
@@ -470,7 +482,7 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
 
     # Try to cancel running job
     if cancel_job(job_id):
-        write_progress(OUTPUT_BASE / job_id, {"status": "cancelled", "progress": 0})
+        write_progress(_safe_job_path(job_id), {"status": "cancelled", "progress": 0})
         logger.info("Job %s cancelled by user", job_id)
         return {
             "job_id": job_id,
