@@ -1,14 +1,12 @@
-"""
-MDX-Net ONNX inference — thin re-export shim.
+"""MDX-Net ONNX inference package — barrel re-export.
 
-All implementation has moved to stem_service/mdx/ package.
-This file preserves backward compatibility for existing consumers:
-  from stem_service.mdx_onnx import run_vocal_onnx, get_available_vocal_onnx, ...
-
-See: stem_service/mdx/__init__.py for the full module map.
+All symbols previously available via ``from stem_service.mdx_onnx import X``
+continue to work via the shim at ``stem_service/mdx_onnx.py``.
+Direct imports from sub-modules are also supported for tighter coupling.
 """
 
-from stem_service.mdx import (  # noqa: F401
+# Model registry: configs, tier lists, path resolution
+from stem_service.mdx.model_registry import (  # noqa: F401
     _MDX_CONFIGS,
     VOCAL_MODEL_PATHS,
     INST_MODEL_PATHS,
@@ -26,10 +24,22 @@ from stem_service.mdx import (  # noqa: F401
     get_available_vocal_onnx,
     get_available_inst_onnx,
     get_available_dereverb_onnx,
+)
+
+# STFT math (pure functions, torch tensors)
+from stem_service.mdx.stft import (  # noqa: F401
     _get_hann_window,
     _stft,
     _istft,
+)
+
+# ONNX session management
+from stem_service.mdx.session import (  # noqa: F401
     _onnx_session,
+)
+
+# Inference pipelines
+from stem_service.mdx.inference import (  # noqa: F401
     _run_mdx_onnx,
     run_vocal_onnx,
     run_inst_onnx,

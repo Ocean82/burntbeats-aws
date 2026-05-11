@@ -19,7 +19,7 @@ Recursive scan: **6 directories**, **54 files** (including configs). No flow-mod
 models/
 ├── .gitkeep
 ├── htdemucs.pth          # Demucs (app creates .th from this)
-├── silero_vad.jit        # VAD pre-trim
+├── silero_vad.jit        # VAD pre-trim (disabled; Silero is speech-tuned, not music-vocal-tuned)
 ├── UVR-MDX-NET-Inst_HQ_5.onnx
 ├── mdxnet_models/
 │   ├── model_data.json
@@ -47,7 +47,7 @@ models/
 | Type   | Paths |
 |--------|--------|
 | **.pth** | `models/htdemucs.pth` |
-| **.jit** | `models/silero_vad.jit` |
+| **.jit** | `models/silero_vad.jit` (VAD pre-trim — disabled in production) |
 | **.onnx** | `models/UVR-MDX-NET-Inst_HQ_5.onnx`, `models/mdxnet_models/*.onnx` (5), `models/MDX_Net_Models/*.onnx` (5) |
 | **.ckpt** | `models/MDX_Net_Models/model_bs_roformer_ep_317_sdr_12.9755.ckpt`, `model_bs_roformer_ep_368_sdr_12.9628.ckpt` |
 
@@ -125,7 +125,7 @@ stem-models/
 | `models/htdemucs.pth` + `.th` | `stem-models/htdemucs.pth` (or `stem-models/flow-models/htdemucs.pth` if root missing) |
 | `models/MDX_Net_Models/` | `stem-models/MDX_Net_Models/` (full tree) |
 | `models/mdxnet_models/` | `stem-models/all-uvr-models/mdxnet_models-onnx/` |
-| `models/silero_vad.jit` | `stem-models/silero_vad.jit` |
+| `models/silero_vad.jit` | `stem-models/silero_vad.jit` (VAD disabled — kept for potential future use) |
 
 ### 2.3 Additional items in stem-models (not copied by script yet)
 
@@ -154,7 +154,7 @@ Or:
 bash scripts/copy-models.sh "/path/to/stem-models"
 ```
 
-This copies htdemucs (→ .pth + .th), full MDX_Net_Models tree, mdxnet_models from all-uvr-models/mdxnet_models-onnx, and silero_vad.jit. Optional root ONNX and v5/flow-models extras can be added to the script if you want them under `models/`.
+This copies htdemucs (→ .pth + .th), full MDX_Net_Models tree, mdxnet_models from all-uvr-models/mdxnet_models-onnx, and silero_vad.jit (VAD is disabled but model kept for potential future use). Optional root ONNX and v5/flow-models extras can be added to the script if you want them under `models/`.
 
 ---
 

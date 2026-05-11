@@ -72,7 +72,7 @@ def main() -> int:
         "| Location | Used by |",
         "|----------|--------|",
         "| `htdemucs.pth` / `htdemucs.th` | Stem splitter (Demucs); app creates `.th` from `.pth` if needed |",
-        "| `silero_vad.jit` | VAD pre-trim (optional, `USE_VAD_PRETRIM=1`) |",
+        "| `silero_vad.jit` | VAD pre-trim (disabled; Silero is speech-tuned, not music-vocal-tuned) |",
         "| `mdxnet_models/*.onnx` + `model_data.json` | Stage 1 vocal ONNX (vocal_stage1) |",
         "| `MDX_Net_Models/*.onnx` + `model_data/` | MDX config / ONNX fallback |",
         "| `Demucs_Models/*.th` + YAMLs | Pip demucs bag (e.g. mdx_extra); optional |",

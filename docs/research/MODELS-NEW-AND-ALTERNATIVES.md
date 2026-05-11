@@ -13,7 +13,7 @@
 | **2-stem instrumental** | UVR-MDX-NET-Inst_HQ_4, Inst_HQ_5 | mdx_onnx | HQ_5 often slightly better; both same config. |
 | **4-stem** | SCNet ONNX → PyTorch `htdemucs` | `scnet_onnx.py`, `split.py` | ONNX path for Demucs 4-stem was removed; see `stem-pipeline.md`. |
 | **Dereverb** | Reverb_HQ_By_FoxJoy.onnx | mdx_onnx | Optional post-pass; not in default path list. |
-| **VAD** | silero_vad.onnx | silero_onnx_vad | Small, cheap; optional pre-trim. |
+| **VAD** | silero_vad.onnx | silero_onnx_vad | Small, cheap. **Disabled** (`USE_VAD_PRETRIM=false`): Silero is speech-tuned and trims music vocals incorrectly. Code retained for potential future use. |
 | **Ultra (2-stem)** | RoFormer .ckpt (e.g. bs_roformer_317) | ultra.py | Best quality; GPU-only in practice. |
 
 ---
@@ -24,7 +24,7 @@
 
 - **mdxnet_models/:** Kim_Vocal_2, Voc_FT, Inst_HQ_4, Inst_HQ_5, Reverb_HQ_By_FoxJoy (dereverb).
 - **MDX_Net_Models/:** Inst_HQ_5, UVR_MDXNET_*.onnx (1, 2, 3, KARA) — only Inst_HQ_5 is in the INST path; UVR_MDXNET_1/2/3 are **not** in `_MDX_CONFIGS` so they are **not used**.
-- **models/ root:** htdemucs.pth → .th (Demucs subprocess); silero_vad.onnx (if present; code also supports silero_vad.jit).
+- **models/ root:** htdemucs.pth → .th (Demucs subprocess); silero_vad.onnx (present but VAD is disabled — Silero is speech-tuned, not suitable for music vocals).
 - **Demucs ONNX files** (if still on disk): experimental / inventory only — **not** loaded for 4-stem in production.
 
 ### 2.2 Present but not wired
@@ -71,7 +71,7 @@
 | **UVR-MDX-NET-Inst_HQ_2.onnx** | Another HQ variant (~67 MB). | Between Main and HQ_4/5. | Same as above. |
 | **MDX23C ONNX (if available)** | MDX23C in ONNX form. | High quality; may be faster than RoFormer .ckpt on CPU if ONNX exists. | Would need an ONNX export (UVR/audio-separator community); then add config like MDX. |
 | **Demucs v4 hybrid ONNX** | Community experiments (e.g. Mixxx, sevagh/demucs.onnx). | Research only until a maintained export exists. | Would require a new module if reintroduced; current stack uses PyTorch Demucs for 4-stem. |
-| **Smaller VAD** | Silero VAD is already small; optional replacement with a tinier ONNX VAD if one appears. | Marginal gain; VAD is cheap. | Low; swap model path. |
+| **Smaller VAD** | Silero VAD is already small; optional replacement with a tinier ONNX VAD if one appears. | Marginal gain; VAD is cheap. **Note:** VAD is currently disabled because Silero is speech-tuned and trims music vocals incorrectly. A music-vocal-aware VAD would be needed to re-enable this feature. | Low; swap model path. |
 
 ### 3.3 What to avoid for “faster without losing quality”
 

@@ -16,14 +16,14 @@
 |-----------|----------|--------|------|
 | **MDX vocal/inst/dereverb** | `stem_service/mdx_onnx.py` | **onnxruntime** | Stage 1: 2-stem (vocals + instrumental); optional dereverb. Chunked spectrogram → `session.run()`; STFT/iSTFT via PyTorch. |
 | **Demucs 4-stem** | `stem_service/split.py` (`run_demucs`) | **PyTorch** (subprocess) | 4-stem via `demucs` CLI + `htdemucs.pth`/`.th` — not ONNX in current stack. |
-| **Silero VAD** | `stem_service/silero_onnx_vad.py` | **onnxruntime** | Pre-trim to vocal span (optional). ONNX-only. |
+| **Silero VAD** | `stem_service/silero_onnx_vad.py` | **onnxruntime** | Pre-trim to vocal span. **Disabled** (`USE_VAD_PRETRIM=false`): Silero is speech-tuned and trims music vocals incorrectly. Code retained for potential future use. |
 | **Ultra (RoFormer)** | `stem_service/ultra.py` | **PyTorch** (music_source_separation) | Best quality 2-stem; CPU allowed but very slow; effectively GPU-only. |
 | **Phase inversion** | `stem_service/phase_inversion.py` | **PyTorch** (torch/torchaudio) | No model; arithmetic (original − vocals). |
 
 ### 1.2 Deployment and tuning
 
 - **Default:** CPU-first. `requirements.txt` uses `onnxruntime` (not `onnxruntime-gpu`); optional CUDA via `get_onnx_providers()` when available.
-- **Env:** `ONNXRUNTIME_NUM_THREADS`, `OMP_NUM_THREADS`, `USE_ONNX_CPU`, `USE_DEMUCS_SHIFTS_0`, `USE_VAD_PRETRIM` (see `docs/CPU-OPTIMIZATION-TIPS.md`).
+- **Env:** `ONNXRUNTIME_NUM_THREADS`, `OMP_NUM_THREADS`, `USE_ONNX_CPU`, `USE_DEMUCS_SHIFTS_0` (see `docs/CPU-OPTIMIZATION-TIPS.md`). `USE_VAD_PRETRIM` exists but is disabled (Silero VAD is speech-tuned, not suitable for music).
 - **Optional:** INT8 quantized models (`.quant.onnx`) when `USE_INT8_ONNX=1` and file exists.
 - **Deployment:** Script-based (WSL, EC2 Ubuntu); no Docker in repo. One job per request; no batched inference.
 
@@ -54,7 +54,7 @@
 |------|----------|--------|
 | **MDX ONNX (vocal, inst, dereverb)** | Same ONNX files; swap to OpenVINO EP. Potential CPU speedup (to be benchmarked). | Low: add OpenVINO EP to provider list in `config.get_onnx_providers()` and optionally in `mdx_onnx._onnx_session()`. |
 | **SCNet ONNX (4-stem)** | Same EP idea as MDX; ONNX in `scnet_onnx.py`. | Low. |
-| **Silero VAD** | Small model; possible latency reduction. | Low. |
+| **Silero VAD** | Small model; possible latency reduction. Currently **disabled** (`USE_VAD_PRETRIM=false`); only relevant if re-enabled. | Low. |
 | **Intel CPU EC2 / on-prem** | If deployment is on Intel, OpenVINO is a natural fit. | N/A. |
 
 ### 3.2 Where OpenVINO does not apply (or is marginal)
@@ -82,13 +82,13 @@
 ### 4.1 Summary
 
 - **Yes, the project can benefit from OpenVINO** in the sense that:
-  - The main stem path is **ONNX-heavy** (MDX, optional SCNet, Silero VAD); 4-stem Demucs is **PyTorch**.
+  - The main stem path is **ONNX-heavy** (MDX, optional SCNet); 4-stem Demucs is **PyTorch**. Silero VAD is also ONNX but currently disabled.
   - The stack is **CPU-first** and already tuned for CPU; a faster CPU backend for the same models is aligned with project goals.
   - Integration can be **low-effort** by using the **OpenVINO Execution Provider** for ONNX Runtime instead of replacing the pipeline.
 
 - **Whether it actually helps** depends on:
   - **Hardware:** Intel CPU (e.g. EC2 with Intel instances) → worth trying; AMD/ARM → stick with default ORT CPU or other EPs.
-  - **Measured gain:** You must **benchmark** your actual models (Kim_Vocal_2, Inst_HQ_4/5, SCNet if used, silero_vad) on your target machine. Published 3–4× numbers are for other architectures; audio separation may differ.
+  - **Measured gain:** You must **benchmark** your actual models (Kim_Vocal_2, Inst_HQ_4/5, SCNet if used) on your target machine. Published 3–4× numbers are for other architectures; audio separation may differ.
   - **Operational cost:** Willingness to add OpenVINO dependency and version pairing (ORT + OpenVINO) and to keep a fallback (e.g. CPUExecutionProvider when OpenVINO not available or on non-Intel).
 
 ### 4.2 Suggested approach (incremental)
@@ -97,7 +97,7 @@
    On a representative Intel EC2 (or your target CPU), measure end-to-end time and, if possible, per-model time for:
    - 2-stem (MDX vocal + inst or phase inversion),
    - 4-stem (SCNet or PyTorch Demucs — benchmark separately),
-   - Optional: VAD-only.
+   - Optional: VAD-only (currently disabled; only relevant if re-enabled).
    Use current `onnxruntime` with `CPUExecutionProvider` and your existing env (e.g. `ONNXRUNTIME_NUM_THREADS`).
 
 2. **Add OpenVINO EP as an option**  
@@ -116,7 +116,7 @@
 ### 4.3 When not to prioritize OpenVINO
 
 - Deployment is mostly **AWS Graviton (ARM)** or **AMD**: focus on ORT CPU and any ARM/AMD-specific optimizations instead.
-- You cannot **benchmark** or maintain an extra dependency: stay on ORT-only and continue optimizing via existing levers (VAD pre-trim, ONNX-first, quantization, thread env vars).
+- You cannot **benchmark** or maintain an extra dependency: stay on ORT-only and continue optimizing via existing levers (ONNX-first, quantization, thread env vars).
 - **Ultra quality** is the main bottleneck: OpenVINO does not address PyTorch RoFormer; consider GPU or a different model/backend for that path.
 
 ---

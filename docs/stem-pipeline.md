@@ -12,7 +12,7 @@ This document describes the **implemented** behavior in `stem_service/`. For ins
 
 | Value | Intent | Typical behavior |
 |--------|--------|------------------|
-| **speed** | Fastest turnaround | VAD pre-trim when `USE_VAD_PRETRIM`; MDX chunk overlap 50%; coarser sliding-window stride on SCNet where applicable. |
+| **speed** | Fastest turnaround | MDX chunk overlap 50%; coarser sliding-window stride on SCNet where applicable. VAD pre-trim code exists but is **disabled** (`USE_VAD_PRETRIM=false`) — Silero VAD is speech-tuned and unsuitable for music vocals. |
 | **quality** | Default: balance of quality and time | Full-length processing; MDX overlap 75%; tighter window stride on SCNet; hybrid fallback unchanged. |
 | **ultra** | Maximum separation (premium) | RoFormer / large checkpoints via `audio-separator`; requires extra deps; very slow on CPU unless explicitly allowed. |
 

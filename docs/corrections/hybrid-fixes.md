@@ -120,6 +120,8 @@ So **any** place you treat the return as a plain list of stems will misbehave. [
 
 ## 5) Logic mismatch: `_effective_input_path()` ignores the function argument in one important case
 
+> **Note (2026-05):** VAD pre-trim is disabled in all environments (`USE_VAD_PRETRIM=false`) because Silero VAD is speech-tuned and trims music vocals incorrectly. This logic issue is moot while VAD remains disabled, but should be fixed if VAD is ever re-enabled with a music-aware model.
+
 `_effective_input_path()` accepts `use_vad_trim` but the first check is:
 
 ```python

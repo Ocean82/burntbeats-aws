@@ -1,5 +1,7 @@
 # VAD pre-trim (Stage 0) – time vs quality vs need
 
+> **Status (2026-05):** VAD pre-trim is **disabled** in all environments (`USE_VAD_PRETRIM=false`). Silero VAD is trained for speech detection, not singing/music vocals, and incorrectly trims vocal sections in songs. Users expect full-length stems for remixing. The code path remains intact for potential future use with a music-vocal-aware VAD model.
+
 **Last updated:** 2026-03-12
 
 ## What runs (Stage 0)

@@ -23,6 +23,6 @@
 |----------|--------|--------|
 | `USE_DEMUCS_SHIFTS_0` | `1` | Demucs uses shifts=0 (faster on CPU). Set `0` to use 3 shifts in Quality. |
 | `DEMUCS_QUALITY_BAG` | `mdx_extra_q` | Lighter bag. Set `mdx_extra` for heavy bag (slower, best quality). |
-| `USE_VAD_PRETRIM` | `1` | Trim to vocal span first (faster; stems are shorter). |
+| `USE_VAD_PRETRIM` | `false` | **Disabled.** Silero VAD is speech-tuned and trims music vocals incorrectly. Code path exists but should remain off for music separation. |
 | `ONNXRUNTIME_NUM_THREADS` | (unset) | ORT thread count; 0 = use physical cores. |
 | `OMP_NUM_THREADS` | `nproc` | Set by run script; tune if needed. |
