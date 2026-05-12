@@ -179,33 +179,37 @@ export const StemControls = memo(function StemControls({
 
       {/* Mixer */}
       <div>
-        <label className="text-xs">Pan</label>
-        <input
-          type="range"
-          min={-100}
-          max={100}
-          step={1}
-          value={mixer.pan}
-          disabled={!audioReady}
-          aria-label={`${stem.label} pan`}
-          onChange={(e) => updateMixer({ pan: Number(e.target.value) })}
-          className="stem-accent-slider w-full"
-        />
+        <label className="text-xs">
+          Pan
+          <input
+            type="range"
+            min={-100}
+            max={100}
+            step={1}
+            value={mixer.pan}
+            disabled={!audioReady}
+            aria-label={`${stem.label} pan`}
+            onChange={(e) => updateMixer({ pan: Number(e.target.value) })}
+            className="stem-accent-slider w-full"
+          />
+        </label>
       </div>
 
       <div>
-        <label className="text-xs">Width</label>
-        <input
-          type="range"
-          min={-100}
-          max={100}
-          step={1}
-          value={mixer.width}
-          disabled={!audioReady}
-          aria-label={`${stem.label} width`}
-          onChange={(e) => updateMixer({ width: Number(e.target.value) })}
-          className="stem-accent-slider w-full"
-        />
+        <label className="text-xs">
+          Width
+          <input
+            type="range"
+            min={-100}
+            max={100}
+            step={1}
+            value={mixer.width}
+            disabled={!audioReady}
+            aria-label={`${stem.label} width`}
+            onChange={(e) => updateMixer({ width: Number(e.target.value) })}
+            className="stem-accent-slider w-full"
+          />
+        </label>
       </div>
     </div>
   );

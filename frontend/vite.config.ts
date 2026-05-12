@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { defineConfig as defineViteConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
@@ -13,8 +14,29 @@ const __dirname = path.dirname(__filename);
 export default defineViteConfig(({ mode }) => {
   const isSingleFileMode = mode === "singlefile";
   const isProduction = mode === "production";
+
+  // Only enable Sentry source map upload for production builds when auth token is available
+  const enableSentryPlugin =
+    isProduction && !!process.env.SENTRY_AUTH_TOKEN;
+
   return {
-    plugins: [react(), tailwindcss(), ...(isSingleFileMode ? [viteSingleFile()] : [])],
+    plugins: [
+      react(),
+      tailwindcss(),
+      ...(isSingleFileMode ? [viteSingleFile()] : []),
+      ...(enableSentryPlugin
+        ? [
+            sentryVitePlugin({
+              org: process.env.SENTRY_ORG,
+              project: process.env.SENTRY_PROJECT,
+              authToken: process.env.SENTRY_AUTH_TOKEN,
+              sourcemaps: {
+                filesToDeleteAfterUpload: ["./dist/**/*.map"],
+              },
+            }),
+          ]
+        : []),
+    ],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
@@ -22,8 +44,9 @@ export default defineViteConfig(({ mode }) => {
       },
     },
     build: {
-      // Never ship source maps to production (original TS/comments visible in DevTools).
-      sourcemap: isProduction ? false : true,
+      // Enable source maps for production when Sentry plugin is active (maps are deleted after upload).
+      // Otherwise, no source maps in production to avoid exposing original source.
+      sourcemap: enableSentryPlugin ? "hidden" : !isProduction,
       rollupOptions: {
         output: {
           manualChunks: (id: string) => {

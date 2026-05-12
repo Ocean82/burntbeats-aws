@@ -4,6 +4,11 @@
  * Product flow: docs/ARCHITECTURE-FLOW.md
  */
 // @ts-check
+
+// Sentry must be initialized before any other imports for proper instrumentation.
+import { initSentry, sentryErrorHandler } from "./sentry.js";
+initSentry();
+
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -126,6 +131,16 @@ app.use("/api/stems", stemsRouter);
 app.use("/api/legal", legalRouter);
 app.use("/api/health", healthRouter);
 app.use("/api", historyRouter);
+
+// Sentry verification route — throws intentionally to confirm error capture.
+// Remove once verified in Sentry dashboard.
+app.get("/debug-sentry", function debugSentryHandler(_req, _res) {
+  throw new Error("Sentry test error from Burnt Beats backend!");
+});
+
+// ── Sentry error handler ─────────────────────────────────────────────────────
+// Must be mounted after all routes but before the generic error handler.
+app.use(sentryErrorHandler());
 
 // ── Global error handler ────────────────────────────────────────────────────
 // Must be 4-param to be recognised by Express as an error handler.

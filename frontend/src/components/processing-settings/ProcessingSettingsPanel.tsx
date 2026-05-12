@@ -66,6 +66,7 @@ export function ProcessingSettingsPanel({
   // When a new split completes (isCollapsed flips true), reset the user override
   // so the panel collapses cleanly for the new result.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset derived state on dependency change
     if (isCollapsed) setUserExpanded(false);
   }, [isCollapsed]);
 
@@ -73,11 +74,13 @@ export function ProcessingSettingsPanel({
 
   // Safety: if state ever holds "ultra" (old localStorage/session), clamp to a supported UI option.
   useEffect(() => {
+     
     if (quality === "ultra") onQualityChange("quality");
   }, [quality, onQualityChange]);
 
   useEffect(() => {
     if (!canExpandToFourStems && requestedStemMode !== 2)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp stem mode when expansion unavailable
       setRequestedStemMode(2);
   }, [canExpandToFourStems, requestedStemMode]);
 

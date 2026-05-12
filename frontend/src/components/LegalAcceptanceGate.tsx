@@ -25,10 +25,16 @@ function readAcceptance(u: unknown): LegalAcceptance | null {
   };
 }
 
+/**
+ * In local dev full-app mode, bypass the legal gate entirely.
+ * This wrapper avoids calling Clerk hooks when they aren't needed.
+ */
 export function LegalAcceptanceGate({ children }: { children: React.ReactNode }) {
-  // Local UI QA mode: bypass legal API dependency in dev full-app mode.
   if (isLocalDevFullApp()) return <>{children}</>;
+  return <LegalAcceptanceGateInner>{children}</LegalAcceptanceGateInner>;
+}
 
+function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
   const [checked, setChecked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -135,4 +141,3 @@ export function LegalAcceptanceGate({ children }: { children: React.ReactNode })
     </div>
   );
 }
-

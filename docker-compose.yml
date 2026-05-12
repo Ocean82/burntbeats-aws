@@ -15,6 +15,14 @@ services:
         VITE_GA_MEASUREMENT_ID: ${VITE_GA_MEASUREMENT_ID:-}
         VITE_FULL_PRICING_URL: ${VITE_FULL_PRICING_URL:-}
         VITE_STRIPE_PACKAGE_PRICING_TABLE_ID: ${VITE_STRIPE_PACKAGE_PRICING_TABLE_ID:-}
+        # Sentry APM (baked into the Vite bundle at build time)
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_SENTRY_ENVIRONMENT: ${VITE_SENTRY_ENVIRONMENT:-production}
+        VITE_SENTRY_RELEASE: ${VITE_SENTRY_RELEASE:-}
+        # Source map upload (requires auth token at build time)
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
+        SENTRY_ORG: ${SENTRY_ORG:-}
+        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
     ports:
       - "127.0.0.1:5173:80"
     depends_on:
@@ -80,6 +88,10 @@ services:
       USAGE_DEFAULT_TOKENS_PER_MONTH: ${USAGE_DEFAULT_TOKENS_PER_MONTH:-6000}
       USAGE_SIGNUP_WELCOME_TOKENS: ${USAGE_SIGNUP_WELCOME_TOKENS:-}
       DEV_BYPASS_UPLOAD_AUTH: ${DEV_BYPASS_UPLOAD_AUTH:-0}
+      # Sentry APM
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     volumes:
       - ./tmp/stems:/app/tmp/stems
     healthcheck:
@@ -127,6 +139,10 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      # Sentry APM (separate DSN for stem service)
+      SENTRY_DSN: ${SENTRY_DSN_STEM:-}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
     volumes:
       - ./tmp/stems:/repo/tmp/stems
       - ./models:/repo/models

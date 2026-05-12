@@ -84,6 +84,7 @@ export function ExportOptionsModal({
   // Default to MP3 on mobile devices (smaller files, less memory pressure)
   useEffect(() => {
     if (isOpen && isTouchDevice) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync state with device capability on open
       setOptions((o) => o.format === "wav" ? { ...o, format: "mp3" } : o);
     }
   }, [isOpen, isTouchDevice]);
@@ -94,6 +95,7 @@ export function ExportOptionsModal({
 
   useEffect(() => {
     if (!isOpen || allowStemBundleTargets) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp target when bundle targets unavailable
     setOptions((o) => (o.target === "master" ? o : { ...o, target: "master" }));
   }, [isOpen, allowStemBundleTargets]);
 
@@ -158,10 +160,10 @@ export function ExportOptionsModal({
               </div>
 
               {/* Format */}
-              <div className="mb-5">
-                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
+              <fieldset className="mb-5">
+                <legend className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
                   Format
-                </label>
+                </legend>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {FORMAT_OPTIONS.map((format) => (
                     <button
@@ -194,13 +196,13 @@ export function ExportOptionsModal({
                     💡 MP3 is recommended on mobile — smaller file size and less memory usage.
                   </p>
                 )}
-              </div>
+              </fieldset>
 
               {/* Export Target */}
-              <div className="mb-5">
-                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
+              <fieldset className="mb-5">
+                <legend className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
                   What to export
-                </label>
+                </legend>
                 <div className="space-y-2">
                   {targetOptions.map((target) => {
                     const Icon = target.icon;
@@ -236,7 +238,7 @@ export function ExportOptionsModal({
                     );
                   })}
                 </div>
-              </div>
+              </fieldset>
 
               {/* Normalize Toggle */}
               <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">

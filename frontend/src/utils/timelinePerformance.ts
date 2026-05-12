@@ -106,7 +106,6 @@ export function recordTimelinePerformanceSample(category: TimelinePerfCategory, 
   pushSample(category, durationMs);
   const budget = budgetFor(category);
   if (import.meta.env.DEV && durationMs > budget) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[burntbeats/timeline-perf] ${category} exceeded budget: ${durationMs.toFixed(2)}ms (budget ${budget}ms)`,
     );

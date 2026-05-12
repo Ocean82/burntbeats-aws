@@ -155,6 +155,7 @@ export function useSubscription(): UseSubscriptionResult {
   }, [getToken, isSignedIn, localFullApp]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger async fetch on mount/auth change
     void fetchStatus();
   }, [fetchStatus]);
 
@@ -162,6 +163,7 @@ export function useSubscription(): UseSubscriptionResult {
   useEffect(() => {
     if (window.location.search.includes("checkout=success")) {
       trackEvent("checkout_returned_success");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch after checkout redirect
       void fetchStatus();
     }
     if (window.location.search.includes("checkout=cancelled")) {

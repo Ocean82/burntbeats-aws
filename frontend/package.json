@@ -16,11 +16,13 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
-    "lint": "echo \"TypeScript-only lint check (ESLint not configured)\" && tsc --noEmit"
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
   },
   "dependencies": {
     "@clerk/react": "^6.4.7",
     "@clerk/shared": "^4.8.7",
+    "@sentry/react": "^10.52.0",
     "@stripe/stripe-js": "^8.11.0",
     "clsx": "2.1.1",
     "framer-motion": "^11.15.0",
@@ -34,7 +36,9 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.58.2",
+    "@sentry/vite-plugin": "^5.2.1",
     "@tailwindcss/vite": "4.1.17",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.0.1",
@@ -43,9 +47,14 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
     "dotenv": "^17.3.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0",
     "jsdom": "^25.0.1",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
+    "typescript-eslint": "^8.59.3",
     "vite": "^7.3.2",
     "vite-plugin-singlefile": "2.3.0",
     "vitest": "^4.1.0"

@@ -84,7 +84,7 @@ export function useStemSplitting({
         return true;
       }),
     }));
-  }, []);
+  }, [setUploadState]);
 
   const handleLoadStems = useCallback((files: FileList | null) => {
     if (!files?.length) return;
@@ -99,7 +99,7 @@ export function useStemSplitting({
       ...prev,
       loadedStems: [...prev.loadedStems, ...next],
     }));
-  }, []);
+  }, [setUploadState]);
 
   const removeLoadedStem = useCallback((id: string) => {
     setUploadState((prev) => {
@@ -110,7 +110,7 @@ export function useStemSplitting({
         loadedStems: prev.loadedStems.filter((stem) => stem.id !== id),
       };
     });
-  }, []);
+  }, [setUploadState]);
 
   const triggerSplit = useCallback(async (requestedStemMode: 2 | 4 = 2, isSample = false) => {
     const { status } = subscription;
@@ -211,7 +211,7 @@ export function useStemSplitting({
     } finally {
       setUploadState((prev) => ({ ...prev, isSplitting: false, isUploading: false, uploadProgress: 0 }));
     }
-  }, [isBasicPlan, splitQuality, stopPreview, subscription]);
+  }, [isBasicPlan, splitQuality, stopPreview, subscription, setUploadState]);
 
   const triggerExpand = useCallback(async () => {
     if (isBasicPlan) {
@@ -251,7 +251,7 @@ export function useStemSplitting({
     } finally {
       setUploadState((prev) => ({ ...prev, isExpanding: false }));
     }
-  }, [splitQuality, isBasicPlan, setSplitError]);
+  }, [splitQuality, isBasicPlan, setSplitError, setUploadState]);
 
   return { handleFile, handleLoadStems, removeLoadedStem, triggerSplit, triggerExpand };
 }

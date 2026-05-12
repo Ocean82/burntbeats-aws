@@ -338,6 +338,7 @@ export function useAudioPlayback(
   );
 
   const rebuildMixAtPctRef = useRef(rebuildMixAtPct);
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest callback for effects
   rebuildMixAtPctRef.current = rebuildMixAtPct;
 
   // --- Hot-swap mix when routing (mute/solo/pitch/stretch) or trim changes during playback ---
@@ -507,6 +508,7 @@ export function useAudioPlayback(
   );
 
   const seekToPreviewRef = useRef(seekToPreview);
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest callback for effects
   seekToPreviewRef.current = seekToPreview;
 
   // --- Hot-swap preview when pitch/stretch/trim change for the playing stem ---
@@ -696,11 +698,13 @@ export function useAudioPlayback(
     };
   }, [handleStopMix, stopPreview, destroyContext]);
 
+  // eslint-disable-next-line react-hooks/refs -- expose ref snapshots in return value for consumers
   return {
     isPlayingMix,
     isPlayingMixRef,
     playingStem,
     loadingPreviewStemId,
+    // eslint-disable-next-line react-hooks/refs -- expose current playhead position snapshot
     playheadPosition: playheadPositionRef.current,
     getPlayheadPosition,
     subscribePlayheadPosition,

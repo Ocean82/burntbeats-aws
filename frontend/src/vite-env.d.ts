@@ -21,6 +21,12 @@ interface ImportMetaEnv {
   readonly VITE_STRIPE_CUSTOMER_PORTAL_URL?: string;
   /** Optional: GA4 measurement ID (G-xxxxxxxxxx). Baked in at build time; set in Docker/root .env for production. */
   readonly VITE_GA_MEASUREMENT_ID?: string;
+  /** Sentry DSN for frontend error tracking and performance monitoring. */
+  readonly VITE_SENTRY_DSN?: string;
+  /** Sentry environment tag (e.g. "production", "staging"). Defaults to "production" if not set. */
+  readonly VITE_SENTRY_ENVIRONMENT?: string;
+  /** Sentry release tag (e.g. git SHA or version). Used to correlate errors with deployments. */
+  readonly VITE_SENTRY_RELEASE?: string;
 }
 
 interface Window {

@@ -105,11 +105,14 @@ export function MixerPresetsModal({
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- init from localStorage on open
         setPresets([...DEFAULT_PRESETS, ...parsed]);
       } catch {
+         
         setPresets(DEFAULT_PRESETS);
       }
     } else {
+       
       setPresets(DEFAULT_PRESETS);
     }
   }, [isOpen]);
@@ -211,6 +214,7 @@ export function MixerPresetsModal({
                     onChange={(e) => setNewPresetName(e.target.value)}
                     placeholder="Enter preset name..."
                     className="mb-3 w-full min-w-0 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-amber-400/50 focus:outline-none"
+                    // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: modal just opened, user expects focus in name field
                     autoFocus
                   />
                   <div className="flex gap-2">

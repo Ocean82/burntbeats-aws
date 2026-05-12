@@ -42,6 +42,7 @@ export function useGuidanceSystem(state: GuidanceState): UseGuidanceSystemReturn
 
   // Reset pulse when guidance target changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset derived state on dependency change
     setPulseOff({ source: false, mixer: false });
   }, [guidanceTarget]);
 

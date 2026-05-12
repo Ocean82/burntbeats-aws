@@ -165,7 +165,6 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           <p className="mb-6 text-sm text-white/40">Burnt Beats</p>
           <div
             className="prose-legal"
-            // eslint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }}
           />
         </article>

@@ -92,6 +92,8 @@ export function UploadDropZone({
   return (
     <div
       data-testid="split-upload-dropzone"
+      role="region"
+      aria-label="Upload drop zone — drag a new file here to replace"
       onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
       onDragLeave={() => onSetIsDragging(false)}
       onDrop={(e) => {

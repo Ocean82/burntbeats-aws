@@ -134,6 +134,7 @@ export function StereoVUMeter({
       ctx.fillRect(x, height - newPeak - 2, meterWidth, 2);
     }
 
+    // eslint-disable-next-line react-hooks/immutability -- recursive rAF pattern (draw schedules itself)
     animRef.current = requestAnimationFrame(draw);
   }, [getAnalyserData, getAnalyserDataLeft, getAnalyserDataRight, isPlaying, height, width]);
 

@@ -52,6 +52,7 @@ export function useTimelineViewport(
   }, [scrollPct, zoom]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp scroll when max changes
     setScrollPct((previous) => clamp(previous, 0, maxScrollPct));
   }, [maxScrollPct]);
 

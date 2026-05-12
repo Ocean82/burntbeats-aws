@@ -1,9 +1,14 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/react";
+import { initSentry } from "./lib/sentry";
+import { SentryErrorBoundary } from "./components/SentryErrorBoundary";
 import { initGoogleTag } from "./analytics/initGoogleTag";
 import "./index.css";
 import { Root } from "./Root";
+
+// Initialize Sentry before anything else renders.
+initSentry();
 
 const gaMeasurementId = String(import.meta.env.VITE_GA_MEASUREMENT_ID ?? "").trim();
 if (gaMeasurementId) {
@@ -44,6 +49,8 @@ const appTree = clerkPubKey ? (
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {appTree}
+    <SentryErrorBoundary>
+      {appTree}
+    </SentryErrorBoundary>
   </StrictMode>
 );

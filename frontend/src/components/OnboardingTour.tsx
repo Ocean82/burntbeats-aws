@@ -53,6 +53,7 @@ export function OnboardingTour({
   useEffect(() => {
     const completed = localStorage.getItem(ONBOARDING_KEY);
     if (!completed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time init from localStorage
       setIsVisible(true);
     }
   }, []);

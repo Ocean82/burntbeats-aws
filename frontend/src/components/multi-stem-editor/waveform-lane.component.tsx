@@ -87,15 +87,21 @@ export function WaveformLane({
   const visibleRangeRef = useRef(1);
   const activePointerIdRef = useRef<number | null>(null);
 
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest prop for stable callbacks
   trimRef.current = trim;
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest prop for stable callbacks
   stemIdRef.current = stem.id;
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest prop for stable callbacks
   onTrimChangeRef.current = onTrimChange;
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest prop for stable callbacks
   onSeekRef.current = onSeek;
 
   const visibleStart = scrollPct / 100;
   const visibleEnd = Math.min(1, visibleStart + 1 / zoom);
   const visibleRange = Math.max(visibleEnd - visibleStart, 1e-6);
+  // eslint-disable-next-line react-hooks/refs -- sync derived value for stable callbacks
   visibleStartRef.current = visibleStart;
+  // eslint-disable-next-line react-hooks/refs -- sync derived value for stable callbacks
   visibleRangeRef.current = visibleRange;
 
   const hitTestHandle = useCallback((clientX: number): "start" | "end" | "seek" => {
@@ -326,12 +332,21 @@ export function WaveformLane({
       </div>
       <div
         ref={laneRef}
+        role="button"
+        tabIndex={0}
+        aria-label={`${stem.label} waveform — click to select`}
         className={cn(
           "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all",
           audioReady ? "cursor-crosshair" : "cursor-default",
           isActive ? "border-white/20" : "border-white/8",
         )}
         onPointerDown={onPointerDown}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onActivate(stem.id);
+          }
+        }}
         onClick={(event) => {
           const target = event.target as HTMLElement | null;
           if (target?.closest(NO_SEEK_SELECTOR)) {

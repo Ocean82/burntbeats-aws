@@ -12,6 +12,7 @@ const MAX_SAFE_LEN = 220;
 export function isLikelySafeUserFacingErrorText(s: string): boolean {
   const t = s.trim();
   if (!t || t.length > MAX_SAFE_LEN) return false;
+  // eslint-disable-next-line no-control-regex -- intentional: reject strings with control chars
   if (/[\n\r\x00-\x08\x0b\x0c\x0e-\x1f]/.test(t)) return false;
   const lower = t.toLowerCase();
   if (

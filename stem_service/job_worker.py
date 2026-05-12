@@ -5,6 +5,7 @@ in worker threads. Writes progress, metrics, and handles cancellation.
 
 from __future__ import annotations
 
+import contextlib
 import contextvars
 import json
 import logging
@@ -38,6 +39,7 @@ from stem_service.job_utils import (
     write_progress,
 )
 from stem_service.runtime_info import get_stem_runtime_versions
+from stem_service.sentry_init import job_span
 from stem_service.split import copy_stems_to_flat_dir, run_demucs
 from stem_service.ultra import run_ultra_2stem, run_ultra_4stem
 from stem_service.vocal_stage1 import get_2stem_stage1_preview
@@ -136,6 +138,16 @@ def run_separation_sync(
     )
 
     try:
+        _span_stack = contextlib.ExitStack()
+        _span_stack.enter_context(
+            job_span(
+                job_id,
+                "stem_separation",
+                stem_count=stem_count,
+                quality_mode=quality_mode,
+            )
+        )
+
         # Ultra quality mode
         if quality_mode == QUALITY_ULTRA:
             job_log.info("Stage: ultra quality")
@@ -327,6 +339,7 @@ def run_separation_sync(
         logger.exception("Separation failed for job %s", job_id)
         write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
     finally:
+        _span_stack.close()
         unregister_running_job(job_id)
 
         # Always delete the input file once processing resolves to prevent storage leaks.
@@ -390,6 +403,16 @@ def run_expand_sync(
         write_progress(out_dir, {"status": "running", "progress": pct})
 
     try:
+        _span_stack = contextlib.ExitStack()
+        _span_stack.enter_context(
+            job_span(
+                expand_job_id,
+                "stem_expand",
+                stem_count=4,
+                quality_mode="speed" if prefer_speed else "quality",
+            )
+        )
+
         stem_list, models_used = run_expand_to_4stem(
             source_stems_dir,
             out_dir,
@@ -442,5 +465,6 @@ def run_expand_sync(
         job_log.exception("=== EXPAND FAILED  error=%s ===", e)
         write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
     finally:
+        _span_stack.close()
         CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
         unregister_running_job(expand_job_id)

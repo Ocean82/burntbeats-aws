@@ -8,6 +8,7 @@ export function useAudioFileDuration(file: File | null): number | null {
 
   useEffect(() => {
     if (!file) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on dependency change
       setDurationSec(null);
       return;
     }

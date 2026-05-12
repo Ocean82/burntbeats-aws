@@ -30,6 +30,9 @@ export function LoadStemsZone({
     <>
       <div
         data-testid="load-upload-dropzone"
+        role="button"
+        tabIndex={0}
+        aria-label="Load stem files — click or drop audio files here"
         onDragOver={(e) => {
           e.preventDefault();
           onSetIsDragging(true);
@@ -41,6 +44,12 @@ export function LoadStemsZone({
           onLoadStems(e.dataTransfer.files);
         }}
         onClick={() => loadStemsInputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            loadStemsInputRef.current?.click();
+          }
+        }}
         className={cn(
           "flex min-w-0 basis-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-4 transition-all lg:basis-auto lg:flex-1",
           "border-white/20 bg-white/[0.03] hover:border-amber-400/40 hover:bg-white/[0.05] active:scale-[0.99]",

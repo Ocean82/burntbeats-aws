@@ -135,6 +135,7 @@ export function useStemLoading({
   }, [allStemEntries, audioContextRef, setSplitError, setStemStates]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger async load when entries change
     void loadStemsIntoBuffers();
   }, [loadStemsIntoBuffers]);
 

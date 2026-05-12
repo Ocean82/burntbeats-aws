@@ -73,6 +73,7 @@ export function useStemFall() {
   });
 
   const stateRef = useRef(state);
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest state for callbacks
   stateRef.current = state;
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -204,6 +205,7 @@ export function useStemFall() {
     moveDown();
     const s = stateRef.current;
     const speed = LEVEL_SPEEDS[Math.min(s.level, LEVEL_SPEEDS.length - 1)];
+    // eslint-disable-next-line react-hooks/immutability -- recursive setTimeout pattern (tick schedules itself)
     timerRef.current = setTimeout(tick, speed);
   }, [moveDown]);
 
@@ -397,6 +399,7 @@ export function useStemFall() {
     softDrop,
     hardDrop,
     togglePause,
+    // eslint-disable-next-line react-hooks/refs -- read ref during render for return value (stable between renders)
     isKonamiActive: konamiActiveRef.current,
   };
 }

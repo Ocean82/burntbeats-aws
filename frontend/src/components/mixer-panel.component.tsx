@@ -169,7 +169,6 @@ export function MixerPanel({
             {/* Vertical fader */}
             <input
               type="range"
-              role="slider"
               min={0}
               max={1.5}
               step={0.01}

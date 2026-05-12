@@ -43,6 +43,9 @@ boto3>=1.28.0
 # Time-preserving pitch shifting via Spotify Pedalboard (phase-vocoder based)
 pedalboard>=0.9.0
 
+# APM / error tracking (Sentry with FastAPI integration for automatic request tracing)
+sentry-sdk[fastapi]>=2.0.0
+
 # Test dependencies
 pytest
 requests

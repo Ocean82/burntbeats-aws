@@ -91,6 +91,7 @@ export function App() {
   useEffect(() => {
     const msg = window.sessionStorage.getItem("burntbeats_checkout_notice");
     if (!msg) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time init from sessionStorage
     setCheckoutNotice(msg);
     window.sessionStorage.removeItem("burntbeats_checkout_notice");
   }, []);
@@ -514,7 +515,7 @@ export function App() {
       }
       return next;
     });
-  }, []);
+  }, [setStemStates]);
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useAppKeyboardShortcuts({

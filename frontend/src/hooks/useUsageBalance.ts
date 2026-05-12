@@ -53,6 +53,7 @@ export function useUsageBalance(enabled: boolean): UsageBalanceState {
   }, [enabled, getToken, isSignedIn, localDev]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger async fetch on mount/auth change
     void refetch();
   }, [refetch]);
 

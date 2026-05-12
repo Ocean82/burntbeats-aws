@@ -159,6 +159,7 @@ export function MultiStemEditor({
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset panel when playback stops
     if (!playbackReady) setActivePanel(null);
   }, [playbackReady]);
 
@@ -169,6 +170,7 @@ export function MultiStemEditor({
       activeStemId &&
       !stems.some((s) => s.id === activeStemId)
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync active stem with available stems
       setActiveStemId(stems[0].id);
     }
   }, [stems, activeStemId, setActiveStemId]);

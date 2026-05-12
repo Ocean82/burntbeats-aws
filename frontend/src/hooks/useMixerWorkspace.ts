@@ -102,6 +102,7 @@ export function useMixerWorkspace({
 
   useEffect(() => {
     if (mixStems.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync active stem with available stems
     setActiveStemId((prev) => {
       if (prev && mixStems.some((s) => s.id === prev)) return prev;
       return mixStems[0]?.id ?? "";

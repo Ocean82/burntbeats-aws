@@ -66,6 +66,7 @@ from stem_service.job_worker import (
     run_expand_sync,
     run_separation_sync,
 )
+from stem_service.sentry_init import init_sentry
 
 # Backward-compatible aliases for test monkeypatching.
 # Tests use `monkeypatch.setattr(server, "_run_separation_sync", ...)` etc.
@@ -148,6 +149,8 @@ def _safe_job_path(job_id: str, *parts: str) -> Path:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Validate required models at startup so first request fails fast instead of hanging."""
+
+    init_sentry()
 
     log_stem_runtime_versions(logger)
 

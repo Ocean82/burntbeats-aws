@@ -47,7 +47,9 @@ export function usePinchZoom({
   // Keep current values in refs for use in event handlers
   const zoomRef = useRef(zoom);
   const scrollPctRef = useRef(scrollPct);
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest state for event handlers
   zoomRef.current = zoom;
+  // eslint-disable-next-line react-hooks/refs -- sync ref with latest state for event handlers
   scrollPctRef.current = scrollPct;
 
   const getDistance = useCallback((t1: Touch, t2: Touch): number => {
