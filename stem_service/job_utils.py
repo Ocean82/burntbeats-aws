@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 
 PROGRESS_FILENAME = "progress.json"
 
+# Output base: must match Node backend STEM_OUTPUT_DIR
+OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "stems")))
+
 # Per-job metrics log: one JSON object per line for comparing models and timings
 METRICS_LOG = Path(
     os.environ.get("STEM_METRICS_LOG", str(REPO_ROOT / "job_metrics.jsonl"))
@@ -33,6 +36,17 @@ METRICS_LOG = Path(
 
 # Use validation constants from config (single source of truth)
 SUPPORTED_FORMATS = SUPPORTED_AUDIO_FORMATS
+
+
+def safe_job_path(job_id: str, *parts: str) -> Path:
+    """Construct a path under OUTPUT_BASE for a job_id with traversal protection.
+
+    Raises ValueError if the resolved path escapes OUTPUT_BASE.
+    """
+    candidate = (OUTPUT_BASE / job_id / Path(*parts) if parts else OUTPUT_BASE / job_id).resolve()
+    if not str(candidate).startswith(str(OUTPUT_BASE.resolve())):
+        raise ValueError(f"Path traversal detected for job_id: {job_id}")
+    return candidate
 
 
 def write_progress(out_dir: Path, data: dict) -> None:

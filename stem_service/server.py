@@ -53,9 +53,11 @@ from stem_service.job_queue import (
     stop_split_workers,
 )
 from stem_service.job_utils import (
+    OUTPUT_BASE,
     PROGRESS_FILENAME,
     SUPPORTED_FORMATS,
     append_metrics_log,
+    safe_job_path,
     schedule_s3_upload,
     validate_audio_file,
     write_progress,
@@ -115,9 +117,6 @@ UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
 
-# Output base: must match Node backend STEM_OUTPUT_DIR so GET /api/stems/file serves files we write here.
-OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "stems")))
-
 STEM_SERVICE_API_TOKEN = os.environ.get("STEM_SERVICE_API_TOKEN", "")
 
 FRONTEND_ORIGINS = os.environ.get(
@@ -137,15 +136,11 @@ def _require_stem_service_api_token(request: Request) -> None:
 
 
 def _safe_job_path(job_id: str, *parts: str) -> Path:
-    """Construct a path under OUTPUT_BASE for a validated job_id.
-
-    Raises HTTPException(400) if the resolved path escapes OUTPUT_BASE,
-    preventing path traversal even if UUID validation is bypassed.
-    """
-    candidate = (OUTPUT_BASE / job_id / Path(*parts) if parts else OUTPUT_BASE / job_id).resolve()
-    if not str(candidate).startswith(str(OUTPUT_BASE.resolve())):
+    """Server-facing wrapper: raises HTTPException(400) on traversal."""
+    try:
+        return safe_job_path(job_id, *parts)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid job_id")
-    return candidate
 
 
 # ── Lifespan ─────────────────────────────────────────────────────────────────

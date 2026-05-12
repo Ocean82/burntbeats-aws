@@ -16,7 +16,7 @@ const importOnboardingTour = () => import("./components/OnboardingTour");
 const OnboardingTour = lazy(() =>
   importOnboardingTour().then((m) => ({ default: m.OnboardingTour })),
 );
-import { useSubscription } from "./hooks/useSubscription";
+import { useAppSubscription } from "./hooks/useAppSubscription";
 import type { StemDefinition, StemId, MixerState, TrimState } from "./types";
 import { useAudioPlayback } from "./hooks/useAudioPlayback";
 import { useWaveformCompute } from "./hooks/useWaveformCompute";
@@ -52,7 +52,6 @@ import {
   ENABLE_ONBOARDING_QUEST,
 } from "./config/uiFlags";
 import { useAudioFileDuration } from "./hooks/useAudioFileDuration";
-import { useUsageBalance } from "./hooks/useUsageBalance";
 import { computeTokensFromDurationSeconds } from "./utils/tokenCost";
 import { EditorHeader } from "./app/editor-header.component";
 import { WaitingGamePanel } from "./app/waiting-game-panel.component";
@@ -62,7 +61,6 @@ import { AppBackgroundOrbs } from "./app/app-background-orbs.component";
 import { EditorFloatingOverlays } from "./app/editor-floating-overlays.component";
 import { EditorMainView } from "./app/editor-main-view.component";
 import { useHeaderVisibility } from "./hooks/useHeaderVisibility";
-import { usePostSignupPlanCheckout } from "./hooks/usePostSignupPlanCheckout";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
@@ -129,28 +127,18 @@ export function App() {
   );
 
   // ── Subscription / billing ────────────────────────────────────────────────
-  const subscription = useSubscription();
   const {
-    balance: usageBalance,
-    loading: usageLoading,
-    refetch: refetchUsage,
-  } = useUsageBalance(subscription.status === "active" && !localDevFullApp);
-
-  useEffect(() => {
-    void refetchUsage();
-  }, [
-    splitResultStems.length,
-    subscription.status,
+    subscription,
+    usageBalance,
+    usageLoading,
+    isBasicPlan,
+    stemQualityOptions,
+    canExpandToFourStems,
+    canUseBatchQueue,
+  } = useAppSubscription({
     localDevFullApp,
-    refetchUsage,
-  ]);
-
-  usePostSignupPlanCheckout(subscription);
-  const isBasicPlan =
-    subscription.status === "active" && subscription.plan === "basic";
-  const stemQualityOptions = isBasicPlan ? "speed_only" : "full";
-  const canExpandToFourStems = subscription.status === "active" && !isBasicPlan;
-  const canUseBatchQueue = subscription.status === "active" && !isBasicPlan;
+    splitResultStemsLength: splitResultStems.length,
+  });
   const splitQuality = useMemo(
     () => (isBasicPlan ? "speed" : quality),
     [isBasicPlan, quality],

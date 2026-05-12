@@ -8,14 +8,12 @@ from __future__ import annotations
 import contextvars
 import json
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any
 
 from stem_service.config import (
     QUALITY_ULTRA,
-    REPO_ROOT,
     STEM_BACKEND,
 )
 from stem_service.hybrid import (
@@ -31,9 +29,11 @@ from stem_service.job_queue import (
     unregister_running_job,
 )
 from stem_service.job_utils import (
+    OUTPUT_BASE,
     PROGRESS_FILENAME,
     append_metrics_log,
     make_job_logger,
+    safe_job_path,
     schedule_s3_upload,
     write_progress,
 )
@@ -47,17 +47,6 @@ logger = logging.getLogger(__name__)
 CORRELATION_ID_CONTEXT_VAR: contextvars.ContextVar[str] = contextvars.ContextVar(
     "correlation_id", default="unknown"
 )
-
-# Output base: must match Node backend STEM_OUTPUT_DIR
-OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "stems")))
-
-
-def _safe_job_path(job_id: str, *parts: str) -> Path:
-    """Construct a path under OUTPUT_BASE for a job_id with traversal protection."""
-    candidate = (OUTPUT_BASE / job_id / Path(*parts) if parts else OUTPUT_BASE / job_id).resolve()
-    if not str(candidate).startswith(str(OUTPUT_BASE.resolve())):
-        raise ValueError(f"Path traversal detected for job_id: {job_id}")
-    return candidate
 
 
 
@@ -388,7 +377,7 @@ def run_expand_sync(
 
     job_log = make_job_logger(expand_job_id, out_dir)
     t0 = time.monotonic()
-    source_stems_dir = _safe_job_path(source_job_id, "stems")
+    source_stems_dir = safe_job_path(source_job_id, "stems")
     job_log.info(
         "=== EXPAND START  expand_job=%s  source_job=%s ===",
         expand_job_id,
@@ -417,7 +406,7 @@ def run_expand_sync(
             for stem_id, p in stem_list
         ]
         inherited_beat_grid: dict[str, Any] | None = None
-        source_progress_path = _safe_job_path(source_job_id, PROGRESS_FILENAME)
+        source_progress_path = safe_job_path(source_job_id, PROGRESS_FILENAME)
         if source_progress_path.exists():
             try:
                 source_progress = json.loads(
