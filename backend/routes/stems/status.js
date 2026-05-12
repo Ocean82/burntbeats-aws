@@ -124,7 +124,18 @@ statusRouter.get(
         return true;
       }
       const terminal = ["completed", "failed", "cancelled"];
-      return terminal.includes(data.status);
+      if (terminal.includes(data.status)) {
+        // Update DB job status on terminal states (best-effort, non-blocking)
+        updateJobStatus(job_id, data.status, {
+          errorMessage: data.error || undefined,
+          modelName: data.model || undefined,
+        }).catch(() => {});
+        return true;
+      }
+      if (data.status === "processing") {
+        updateJobStatus(job_id, "processing").catch(() => {});
+      }
+      return false;
     }
 
     // Send an initial event immediately so the client sees the current state
