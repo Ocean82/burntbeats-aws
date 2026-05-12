@@ -96,6 +96,9 @@ CREATE INDEX IF NOT EXISTS idx_jobs_user   ON jobs (clerk_user_id, created_at DE
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs (status) WHERE status IN ('accepted', 'processing');
 
 -- ── Stems (individual output files per job) ─────────────────────────────────
+-- NOTE: This table is only populated when S3_ENABLED=true and stems are uploaded
+-- to S3 after job completion. When stems are served from local disk (default),
+-- this table remains empty. See backend/db-jobs.js insertStems().
 CREATE TABLE IF NOT EXISTS stems (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id           UUID NOT NULL REFERENCES jobs(job_id) ON DELETE CASCADE,

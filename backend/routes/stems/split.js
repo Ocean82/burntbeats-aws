@@ -27,7 +27,7 @@ import {
 } from "../../usageTokens.js";
 import { scanUploadedFile } from "../../malwareScan.js";
 import { verifyUploadMatchesExtension } from "../../uploadSniff.js";
-import { insertJob } from "../../db-jobs.js";
+import { insertJob, updateJobStatus } from "../../db-jobs.js";
 
 import {
   SPLIT_ACCEPT_TIMEOUT_MS,
@@ -187,6 +187,8 @@ splitRouter.post(
           durationSeconds,
           tokenCost: usageCost,
         }).catch((err) => console.error("[split] db insertJob error:", err));
+        // Mark as processing immediately (sets started_at)
+        updateJobStatus(jobId, "processing").catch(() => {});
         const response = {
           job_id: jobId,
           status: data.data.status ?? "accepted",
