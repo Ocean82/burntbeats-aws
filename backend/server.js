@@ -132,12 +132,6 @@ app.use("/api/legal", legalRouter);
 app.use("/api/health", healthRouter);
 app.use("/api", historyRouter);
 
-// Sentry verification route — throws intentionally to confirm error capture.
-// Remove once verified in Sentry dashboard.
-app.get("/debug-sentry", function debugSentryHandler(_req, _res) {
-  throw new Error("Sentry test error from Burnt Beats backend!");
-});
-
 // ── Sentry error handler ─────────────────────────────────────────────────────
 // Must be mounted after all routes but before the generic error handler.
 app.use(sentryErrorHandler());
