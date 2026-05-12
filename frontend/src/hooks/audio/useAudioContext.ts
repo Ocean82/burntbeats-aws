@@ -201,7 +201,14 @@ export function useAudioContext(): UseAudioContextReturn {
     }
     const ctx = audioContextRef.current!;
     ensureMasterBus(ctx);
-    await ctx.resume();
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+      // iOS Safari may not resume immediately — retry once after a short delay
+      if (ctx.state === "suspended") {
+        await new Promise((r) => setTimeout(r, 100));
+        await ctx.resume();
+      }
+    }
     return ctx;
   }, [ensureMasterBus]);
 

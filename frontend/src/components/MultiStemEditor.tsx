@@ -513,7 +513,7 @@ export function MultiStemEditor({
           stem={activeStem}
           state={activeState}
           duration={activeDuration}
-          audioReady={activeDuration > 0}
+          audioReady={activeDuration > 0 || !isLoadingStems}
           isPreviewPlaying={playingStemId === activeStem.id}
           isLoadingPreview={loadingPreviewStemId === activeStem.id}
           onStemStateChange={onStemStateChange}

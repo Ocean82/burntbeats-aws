@@ -11,7 +11,7 @@ import type { StemResult } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import type { ExportOptions } from "../../components";
 import { trackEvent } from "../../analytics/events";
-import { downloadBlob } from "../../utils/downloadHelper";
+import { downloadBlob, isTouchDevice } from "../../utils/downloadHelper";
 
 import { stripFileExtension, buildMasterExportFilename } from "./exportFilename";
 import { encodeWavToMp3 } from "./encodeMp3";
@@ -208,13 +208,23 @@ export function useExport(): UseExportReturn {
           zip.file(masterBlob.filename, masterBlob.blob);
         }
 
-        // Fetch all stem blobs concurrently for high performance
-        const stemResults = await Promise.all(
-          jobBacked.map(async (stem) => {
+        // On mobile, fetch stems sequentially to avoid memory pressure and network congestion.
+        // On desktop, fetch concurrently for speed.
+        let stemResults: { id: string; blob: Blob }[];
+        if (isTouchDevice()) {
+          stemResults = [];
+          for (const stem of jobBacked) {
             const blob = await fetchStemWavAsBlob(stem.url);
-            return { id: stem.id, blob };
-          })
-        );
+            stemResults.push({ id: stem.id, blob });
+          }
+        } else {
+          stemResults = await Promise.all(
+            jobBacked.map(async (stem) => {
+              const blob = await fetchStemWavAsBlob(stem.url);
+              return { id: stem.id, blob };
+            })
+          );
+        }
 
         for (const sr of stemResults) {
           zip.file(`${baseName}_${sr.id}.wav`, sr.blob);

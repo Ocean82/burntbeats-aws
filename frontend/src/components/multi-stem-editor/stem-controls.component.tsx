@@ -85,6 +85,12 @@ export const StemControls = memo(function StemControls({
         <button
           type="button"
           onClick={() => onPreviewStem(stem.id)}
+          onTouchEnd={(e) => {
+            // On mobile, preventDefault stops the synthetic click from also firing.
+            if (!audioReady || isLoadingPreview) return;
+            e.preventDefault();
+            onPreviewStem(stem.id);
+          }}
           disabled={!audioReady || isLoadingPreview}
           title={!audioReady ? "This stem is still loading." : undefined}
           aria-label={
@@ -93,7 +99,7 @@ export const StemControls = memo(function StemControls({
               : `Preview ${stem.label}`
           }
           className={cn(
-            "flex min-h-[38px] flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+            "flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
             isPreviewPlaying
               ? "border-amber-400/45 bg-amber-500/20 text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.18)]"
               : "border-white/10 bg-white/5 text-white/75 hover:border-white/20 hover:text-white",

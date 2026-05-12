@@ -271,6 +271,11 @@ export function MixerPanel({
               isPlayingMix ? "border-amber-400/50 bg-amber-500/20 text-amber-100" : "ghost-button"
             )}
             onClick={onPlayStop}
+            onTouchEnd={(e) => {
+              if (!hasStemBuffers) return;
+              e.preventDefault();
+              onPlayStop();
+            }}
             disabled={!hasStemBuffers}
           >
             {isPlayingMix ? <Square className="h-4 w-4" strokeWidth={2.5} /> : <Play className="h-4 w-4" strokeWidth={2.5} />}
@@ -280,6 +285,11 @@ export function MixerPanel({
             type="button"
             className="fire-button icon-pulse-hover flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"
             onClick={onExport}
+            onTouchEnd={(e) => {
+              if (isExporting || !hasStemBuffers) return;
+              e.preventDefault();
+              onExport();
+            }}
             disabled={isExporting || !hasStemBuffers}
           >
             <Download className="h-4 w-4" strokeWidth={2} />

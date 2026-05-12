@@ -301,9 +301,19 @@ export function ExportOptionsModal({
               ) : (
                 <button
                   type="button"
-                  onClick={() => onExport(options)}
+                  onClick={() => {
+                    if (!isExporting) void onExport(options);
+                  }}
+                  onTouchEnd={(e) => {
+                    // On mobile, preventDefault stops the synthetic click from also firing.
+                    // This ensures the export triggers exactly once from the touch event.
+                    if (!isExporting) {
+                      e.preventDefault();
+                      void onExport(options);
+                    }
+                  }}
                   disabled={isExporting}
-                  className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
+                  className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50"
                 >
                   {isExporting ? (
                     <>
