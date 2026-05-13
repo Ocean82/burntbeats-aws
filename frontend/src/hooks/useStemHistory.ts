@@ -2,7 +2,7 @@
  * Hook for fetching and managing the user's stem separation history.
  * Powers the "My Stems" page with job data, computed stats, and refetch capability.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchStemHistory,
   type StemHistoryJob,
@@ -23,24 +23,58 @@ export function useStemHistory(): UseStemHistoryReturn {
   const [totalJobs, setTotalJobs] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
-  const loadHistory = useCallback(async () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const data = await fetchStemHistory({ limit: 200 });
+        if (!cancelled) {
+          setJobs(data.jobs);
+          setTotalJobs(data.total);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load stem history");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const refetch = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const data = await fetchStemHistory({ limit: 200 });
-      setJobs(data.jobs);
-      setTotalJobs(data.total);
+      if (mountedRef.current) {
+        setJobs(data.jobs);
+        setTotalJobs(data.total);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load stem history");
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : "Failed to load stem history");
+      }
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
-
-  useEffect(() => {
-    void loadHistory();
-  }, [loadHistory]);
 
   const totalStems = useMemo(
     () => jobs.reduce((sum, job) => sum + job.stem_files.length, 0),
@@ -68,6 +102,6 @@ export function useStemHistory(): UseStemHistoryReturn {
     totalJobs,
     totalStems,
     totalStorageBytes,
-    refetch: loadHistory,
+    refetch,
   };
 }
