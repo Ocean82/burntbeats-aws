@@ -106,10 +106,18 @@ export function EditorHeader({
             Stem Splitter / Mixer / Master
             <span className="h-1 w-1 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
           </div>
-          <div className="logo-burnt">
-            <span className="logo-burnt-fire block text-4xl sm:text-5xl lg:text-6xl">
-              Burnt Beats
-            </span>
+          <div className="flex items-center gap-4">
+            <img
+              src="/logo-emblem.png"
+              alt=""
+              className="logo-emblem h-12 w-12 sm:h-14 sm:w-14 lg:h-16 lg:w-16"
+              aria-hidden="true"
+            />
+            <div className="logo-burnt">
+              <span className="logo-burnt-fire block text-4xl sm:text-5xl lg:text-6xl">
+                Burnt Beats
+              </span>
+            </div>
           </div>
           <p className="max-w-xl text-base leading-7 text-white/85">
             Split vocals, drums, bass, and melody → trim, level, pan → play

@@ -77,8 +77,16 @@ export function LandingPage() {
       <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
         {/* Nav */}
         <nav className="flex flex-wrap items-center justify-between gap-3 py-6">
-          <div className="logo-burnt">
-            <span className="logo-burnt-fire text-2xl">Burnt Beats</span>
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo-emblem.png"
+              alt=""
+              className="logo-emblem h-10 w-10 sm:h-12 sm:w-12"
+              aria-hidden="true"
+            />
+            <div className="logo-burnt">
+              <span className="logo-burnt-fire text-2xl">Burnt Beats</span>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <SignInButton mode="modal">
@@ -110,6 +118,12 @@ export function LandingPage() {
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
           </div>
 
+          <img
+            src="/logo-emblem.png"
+            alt=""
+            className="logo-emblem h-20 w-20 sm:h-24 sm:w-24"
+            aria-hidden="true"
+          />
           <h1 className="logo-burnt max-w-4xl text-6xl font-bold leading-tight sm:text-7xl lg:text-8xl">
             <span className="logo-burnt-fire">Burnt Beats</span>
           </h1>

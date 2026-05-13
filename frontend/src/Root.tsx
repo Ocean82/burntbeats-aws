@@ -28,6 +28,12 @@ function ClerkLoadingShell() {
       aria-live="polite"
       aria-busy="true"
     >
+      <img
+        src="/logo-emblem.png"
+        alt=""
+        className="logo-emblem h-14 w-14"
+        aria-hidden="true"
+      />
       <p className="logo-burnt">
         <span className="logo-burnt-fire text-2xl">Burnt Beats</span>
       </p>
