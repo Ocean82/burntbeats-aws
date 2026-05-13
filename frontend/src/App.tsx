@@ -582,7 +582,7 @@ export function App() {
 
       <AppBackgroundOrbs />
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
         <EditorHeader
           headerVisible={headerVisible}
           activeView={activeView}

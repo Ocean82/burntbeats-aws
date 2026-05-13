@@ -23,8 +23,8 @@ export const stemDefinitions: StemDefinition[] = [
     label: "Vocals",
     subtitle: "Lead and harmonies",
     flavor: "Air, presence, top-end sheen",
-    glow: "#ff845c",
-    glowSoft: "rgba(255, 132, 92, 0.36)",
+    glow: "#ff5522",
+    glowSoft: "rgba(255, 85, 34, 0.4)",
     waveform: generateWaveform(2.7, WAVEFORM_BINS, 0.54),
   },
   {
@@ -32,8 +32,8 @@ export const stemDefinitions: StemDefinition[] = [
     label: "Drums",
     subtitle: "Kick, snare, hats",
     flavor: "Transient punch and impact",
-    glow: "#ffb347",
-    glowSoft: "rgba(255, 179, 71, 0.34)",
+    glow: "#ffaa33",
+    glowSoft: "rgba(255, 170, 51, 0.38)",
     waveform: generateWaveform(4.4, WAVEFORM_BINS, 0.62),
   },
   {
@@ -41,8 +41,8 @@ export const stemDefinitions: StemDefinition[] = [
     label: "Bass",
     subtitle: "Low-end body",
     flavor: "Warmth, depth, sub control",
-    glow: "#ff5a3d",
-    glowSoft: "rgba(255, 90, 61, 0.34)",
+    glow: "#ff3300",
+    glowSoft: "rgba(255, 51, 0, 0.38)",
     waveform: generateWaveform(6.2, WAVEFORM_BINS, 0.68),
   },
   {
@@ -50,8 +50,8 @@ export const stemDefinitions: StemDefinition[] = [
     label: "Melody",
     subtitle: "Keys, synths, guitars",
     flavor: "Movement, width, sparkle",
-    glow: "#ffd36a",
-    glowSoft: "rgba(255, 211, 106, 0.32)",
+    glow: "#ffc800",
+    glowSoft: "rgba(255, 200, 0, 0.34)",
     waveform: generateWaveform(8.1, WAVEFORM_BINS, 0.56),
   },
   {
@@ -59,8 +59,8 @@ export const stemDefinitions: StemDefinition[] = [
     label: "Instrumental",
     subtitle: "All non-vocal",
     flavor: "Drums, bass, melody combined",
-    glow: "#8b9dc3",
-    glowSoft: "rgba(139, 157, 195, 0.34)",
+    glow: "#00ccff",
+    glowSoft: "rgba(0, 204, 255, 0.38)",
     waveform: generateWaveform(5.2, WAVEFORM_BINS, 0.55),
   },
   {
@@ -69,7 +69,7 @@ export const stemDefinitions: StemDefinition[] = [
     subtitle: "Remaining elements",
     flavor: "Ambient, effects, misc",
     glow: "#a78bfa",
-    glowSoft: "rgba(167, 139, 250, 0.32)",
+    glowSoft: "rgba(167, 139, 250, 0.34)",
     waveform: generateWaveform(3.5, WAVEFORM_BINS, 0.52),
   },
 ];

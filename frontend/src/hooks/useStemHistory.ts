@@ -48,7 +48,6 @@ export function useStemHistory(): UseStemHistoryReturn {
       }
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger async fetch on mount
     void load();
 
     return () => {
