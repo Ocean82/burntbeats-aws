@@ -66,11 +66,20 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-white">
-      {/* Background orbs — same as main app */}
+      {/* Background — fire/ice yin-yang duality */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        {/* Fire side — left */}
         <div className="fire-orb left-[-8rem] top-[-6rem] h-80 w-80" />
-        <div className="fire-orb right-[-10rem] top-20 h-[26rem] w-[26rem] opacity-75" />
-        <div className="fire-orb bottom-[-12rem] left-1/3 h-[30rem] w-[30rem] opacity-60" />
+        <div className="fire-orb left-[-4rem] bottom-[15%] h-[20rem] w-[20rem] opacity-50" />
+
+        {/* Ice side — right */}
+        <div className="ice-orb right-[-10rem] top-20 h-[26rem] w-[26rem] opacity-65" />
+        <div className="ice-orb right-[-6rem] bottom-[-10rem] h-[22rem] w-[22rem] opacity-45" />
+
+        {/* Purple bridge */}
+        <div className="fire-orb bottom-[-12rem] left-1/3 h-[30rem] w-[30rem] opacity-30" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.3), rgba(120, 60, 200, 0.15) 30%, transparent 65%)' }} />
+
+        <div className="circuit-mesh" />
         <div className="mesh-overlay" />
       </div>
 

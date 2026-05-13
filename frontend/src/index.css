@@ -58,11 +58,12 @@
 
   html {
     background:
-      radial-gradient(ellipse 120% 80% at 50% -20%, rgba(255, 100, 50, 0.18), transparent 45%),
-      radial-gradient(ellipse 80% 60% at 80% 30%, rgba(77, 217, 232, 0.06), transparent 40%),
-      radial-gradient(ellipse 70% 50% at 20% 60%, rgba(168, 85, 247, 0.05), transparent 35%),
-      radial-gradient(circle at 50% 50%, rgba(255, 60, 30, 0.04), transparent 60%),
-      linear-gradient(180deg, #0a0706 0%, #050303 50%, #030202 100%);
+      radial-gradient(ellipse 90% 70% at 15% -10%, rgba(255, 100, 50, 0.2), transparent 50%),
+      radial-gradient(ellipse 90% 70% at 85% 20%, rgba(77, 217, 232, 0.09), transparent 50%),
+      radial-gradient(ellipse 60% 50% at 50% 80%, rgba(168, 85, 247, 0.06), transparent 45%),
+      radial-gradient(ellipse 70% 50% at 20% 60%, rgba(255, 80, 40, 0.08), transparent 40%),
+      radial-gradient(ellipse 60% 40% at 80% 70%, rgba(77, 217, 232, 0.05), transparent 40%),
+      linear-gradient(180deg, #0a0706 0%, #040506 50%, #030203 100%);
     color: var(--text);
     min-height: 100%;
   }
@@ -88,7 +89,7 @@
   }
 
   ::selection {
-    background: rgba(255, 156, 105, 0.28);
+    background: rgba(77, 217, 232, 0.25);
     color: white;
   }
 
@@ -102,11 +103,11 @@
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: linear-gradient(180deg, rgba(255, 140, 80, 0.2), rgba(77, 217, 232, 0.15));
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: linear-gradient(180deg, rgba(255, 140, 80, 0.35), rgba(77, 217, 232, 0.25));
   }
 }
 
@@ -138,7 +139,8 @@
     border: 1px solid var(--line);
     background:
       linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 25%, transparent 50%),
-      linear-gradient(180deg, rgba(255, 140, 90, 0.06), transparent 30%),
+      linear-gradient(135deg, rgba(255, 140, 90, 0.06) 0%, transparent 40%),
+      linear-gradient(315deg, rgba(77, 217, 232, 0.03) 0%, transparent 40%),
       var(--panel);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -168,7 +170,9 @@
     transform: translateY(-4px);
     border-color: rgba(255, 180, 120, 0.15);
     background:
-      linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 200, 150, 0.06) 25%, rgba(255, 140, 80, 0.04) 50%, transparent 70%),
+      linear-gradient(135deg, rgba(255, 200, 150, 0.08) 0%, transparent 40%),
+      linear-gradient(315deg, rgba(77, 217, 232, 0.06) 0%, transparent 40%),
+      linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.02) 40%, transparent 70%),
       var(--panel);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.15),
@@ -181,8 +185,9 @@
     position: absolute;
     inset: 0;
     background:
-      linear-gradient(120deg, rgba(255, 255, 255, 0.18), transparent 18%, transparent 58%, rgba(77, 217, 232, 0.04) 78%, transparent),
-      radial-gradient(circle at top right, rgba(255, 222, 186, 0.15), transparent 24%);
+      linear-gradient(120deg, rgba(255, 180, 120, 0.12), transparent 22%, transparent 55%, rgba(77, 217, 232, 0.06) 78%, transparent),
+      radial-gradient(circle at top left, rgba(255, 140, 80, 0.1), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(77, 217, 232, 0.06), transparent 30%);
     pointer-events: none;
   }
 
@@ -266,16 +271,16 @@
   .ghost-button:hover,
   .icon-button:hover {
     transform: translateY(-2px);
-    border-color: rgba(255, 190, 132, 0.3);
+    border-color: rgba(77, 217, 232, 0.3);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 154, 105, 0.1));
-    box-shadow: 0 0 20px rgba(255, 168, 114, 0.2);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(77, 217, 232, 0.08));
+    box-shadow: 0 0 20px rgba(77, 217, 232, 0.15);
   }
 
   .ghost-button:active,
   .icon-button:active {
     transform: translateY(0) scale(0.97);
-    box-shadow: 0 0 24px rgba(255, 154, 92, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 24px rgba(77, 217, 232, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   /* Generic press feedback for key CTAs */
@@ -541,14 +546,14 @@
   .burn-slider::-webkit-slider-runnable-track {
     height: 0.5rem;
     border-radius: 9999px;
-    background: linear-gradient(90deg, rgba(255, 99, 61, 0.72), rgba(255, 208, 106, 0.72));
+    background: linear-gradient(90deg, rgba(255, 99, 61, 0.72), rgba(168, 85, 247, 0.5) 50%, rgba(77, 217, 232, 0.65));
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
 
   .burn-slider::-moz-range-track {
     height: 0.5rem;
     border-radius: 9999px;
-    background: linear-gradient(90deg, rgba(255, 99, 61, 0.72), rgba(255, 208, 106, 0.72));
+    background: linear-gradient(90deg, rgba(255, 99, 61, 0.72), rgba(168, 85, 247, 0.5) 50%, rgba(77, 217, 232, 0.65));
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
 
@@ -601,6 +606,33 @@
     animation: emberPulse 10s ease-in-out infinite alternate;
   }
 
+  /* Ice/circuit orb — the cool counterpart to fire-orb (yin-yang duality) */
+  .ice-orb {
+    position: absolute;
+    border-radius: 9999px;
+    background:
+      radial-gradient(circle at 65% 65%, rgba(200, 240, 255, 0.45), rgba(77, 217, 232, 0.35) 22%, rgba(100, 140, 220, 0.18) 48%, transparent 70%);
+    filter: blur(12px);
+    animation: icePulse 12s ease-in-out infinite alternate;
+  }
+
+  /* Circuit mesh — hexagonal/node pattern evoking the circuit board side of the logo */
+  .circuit-mesh {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle 2px at 25% 25%, rgba(77, 217, 232, 0.25), transparent 3px),
+      radial-gradient(circle 2px at 75% 35%, rgba(77, 217, 232, 0.2), transparent 3px),
+      radial-gradient(circle 2px at 60% 70%, rgba(168, 85, 247, 0.18), transparent 3px),
+      radial-gradient(circle 2px at 40% 55%, rgba(77, 217, 232, 0.15), transparent 3px),
+      radial-gradient(circle 2px at 85% 80%, rgba(168, 85, 247, 0.12), transparent 3px),
+      radial-gradient(circle 1.5px at 15% 75%, rgba(77, 217, 232, 0.12), transparent 2px);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 80% 50%, black 20%, transparent 70%);
+    mask-image: radial-gradient(ellipse 70% 60% at 80% 50%, black 20%, transparent 70%);
+    opacity: 0.6;
+    animation: circuitFlicker 8s ease-in-out infinite alternate;
+  }
+
   .mesh-overlay {
     position: absolute;
     inset: 0;
@@ -617,8 +649,8 @@
     position: relative;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      0 0 20px rgba(255, 140, 80, 0.4),
-      0 0 40px rgba(255, 100, 60, 0.2);
+      0 0 20px rgba(255, 140, 80, 0.35),
+      0 0 40px rgba(77, 217, 232, 0.15);
   }
 
   .track-status-dot {
@@ -660,8 +692,9 @@
     background: linear-gradient(
       105deg,
       transparent 0%,
-      rgba(255, 255, 255, 0.25) 40%,
-      transparent 60%
+      rgba(255, 180, 120, 0.2) 30%,
+      rgba(77, 217, 232, 0.2) 60%,
+      transparent 100%
     );
     animation: progressShimmer 2s ease-in-out infinite;
     pointer-events: none;
@@ -835,6 +868,29 @@
       0 0 20px rgba(255, 132, 92, 0.55),
       0 0 36px rgba(77, 217, 232, 0.28),
       0 0 52px rgba(168, 85, 247, 0.18);
+  }
+}
+
+@keyframes icePulse {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.94);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate3d(0, 1rem, 0) scale(1.04);
+    opacity: 0.72;
+  }
+}
+
+@keyframes circuitFlicker {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0.5;
   }
 }
 
@@ -1237,6 +1293,8 @@
 
   .animate-scroll-text,
   .fire-orb,
+  .ice-orb,
+  .circuit-mesh,
   .swipe-hint,
   .wave-bar,
   .load-to-tracks-ready,
