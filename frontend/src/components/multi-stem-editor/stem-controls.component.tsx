@@ -85,12 +85,6 @@ export const StemControls = memo(function StemControls({
         <button
           type="button"
           onClick={() => onPreviewStem(stem.id)}
-          onTouchEnd={(e) => {
-            // On mobile, preventDefault stops the synthetic click from also firing.
-            if (!audioReady || isLoadingPreview) return;
-            e.preventDefault();
-            onPreviewStem(stem.id);
-          }}
           disabled={!audioReady || isLoadingPreview}
           title={!audioReady ? "This stem is still loading." : undefined}
           aria-label={

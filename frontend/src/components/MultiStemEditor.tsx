@@ -320,7 +320,7 @@ export function MultiStemEditor({
           />
         )}
 
-        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-0.5">
+        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-0.5">
           {(
             [
               { id: "pitch" as const, icon: Waves, label: "Pitch" },
