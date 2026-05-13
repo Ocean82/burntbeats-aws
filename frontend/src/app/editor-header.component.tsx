@@ -7,8 +7,8 @@ import type { ModalKey } from "../hooks/useUiModals";
 
 interface EditorHeaderProps {
   headerVisible: boolean;
-  activeView: "editor" | "pricing";
-  setActiveView: (view: "editor" | "pricing") => void;
+  activeView: "editor" | "pricing" | "my-stems";
+  setActiveView: (view: "editor" | "pricing" | "my-stems") => void;
   uploadedFile: File | null;
   isSplitting: boolean;
   mixStemsLength: number;
@@ -77,6 +77,19 @@ export function EditorHeader({
           aria-current={activeView === "pricing" ? "page" : undefined}
         >
           Plans
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveView("my-stems")}
+          className={cn(
+            "min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+            activeView === "my-stems"
+              ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
+              : "text-white/65 hover:text-white border border-transparent",
+          )}
+          aria-current={activeView === "my-stems" ? "page" : undefined}
+        >
+          My Stems
         </button>
       </nav>
       {/* Header */}

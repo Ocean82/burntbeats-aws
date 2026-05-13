@@ -13,7 +13,7 @@ import {
 } from "../../middleware/auth.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
-import { updateJobStatus } from "../../db-jobs.js";
+import { updateJobStatus, insertStems } from "../../db-jobs.js";
 
 import { STEM_OUTPUT_DIR } from "./shared.js";
 
@@ -55,6 +55,16 @@ statusRouter.get(
         errorMessage: data.error || undefined,
         modelName: data.model || undefined,
       }).catch(() => {});
+      // Record stem metadata (including S3 keys) when job completes
+      if (data.status === "completed" && data.stems && Array.isArray(data.stems)) {
+        const s3Meta = data.s3;
+        const stemRecords = data.stems.map((s) => ({
+          stemName: s.id,
+          s3Key: s3Meta && s3Meta.keys ? s3Meta.keys[s.id] || null : null,
+          fileSizeBytes: null,
+        }));
+        insertStems(job_id, stemRecords).catch(() => {});
+      }
     } else if (data.status === "processing") {
       updateJobStatus(job_id, "processing").catch(() => {});
     }
@@ -130,6 +140,16 @@ statusRouter.get(
           errorMessage: data.error || undefined,
           modelName: data.model || undefined,
         }).catch(() => {});
+        // Record stem metadata (including S3 keys) when job completes
+        if (data.status === "completed" && data.stems && Array.isArray(data.stems)) {
+          const s3Meta = data.s3;
+          const stemRecords = data.stems.map((s) => ({
+            stemName: s.id,
+            s3Key: s3Meta && s3Meta.keys ? s3Meta.keys[s.id] || null : null,
+            fileSizeBytes: null,
+          }));
+          insertStems(job_id, stemRecords).catch(() => {});
+        }
         return true;
       }
       if (data.status === "processing") {

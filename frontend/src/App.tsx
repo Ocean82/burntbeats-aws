@@ -47,6 +47,7 @@ import {
   startUiLatencyMark,
 } from "./hooks/useUiLatencyMonitor";
 import { PricingPage } from "./components/PricingPage";
+import { MyStemsPage } from "./components/MyStemsPage";
 import { FeedbackChip } from "./components/FeedbackChip";
 import {
   ENABLE_ONBOARDING_QUEST,
@@ -409,7 +410,7 @@ export function App() {
     [activeStemId, visibleStems],
   );
 
-  const [activeView, setActiveView] = useState<"editor" | "pricing">("editor");
+  const [activeView, setActiveView] = useState<"editor" | "pricing" | "my-stems">("editor");
 
   // Ref for auto-scrolling to the mixer when a split completes
   const mixerSectionRef = useRef<HTMLDivElement | null>(null);
@@ -643,6 +644,8 @@ export function App() {
                 }}
               />
             </motion.section>
+          ) : activeView === "my-stems" ? (
+            <MyStemsPage onClose={() => setActiveView("editor")} />
           ) : (
             <EditorMainView
               reduceMotion={Boolean(reduceMotion)}

@@ -105,7 +105,8 @@ CREATE TABLE IF NOT EXISTS stems (
   stem_name        TEXT NOT NULL,                     -- vocals, drums, bass, other, instrumental
   s3_key           TEXT,                              -- S3 object key (when uploaded)
   file_size_bytes  BIGINT,
-  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (job_id, stem_name)
 );
 
 CREATE INDEX IF NOT EXISTS idx_stems_job ON stems (job_id);

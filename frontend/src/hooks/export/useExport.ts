@@ -208,26 +208,34 @@ export function useExport(): UseExportReturn {
           zip.file(masterBlob.filename, masterBlob.blob);
         }
 
-        // On mobile, fetch stems sequentially to avoid memory pressure and network congestion.
-        // On desktop, fetch concurrently for speed.
+        const stemFormat = options.format === "mp3" ? "mp3" : "wav";
+
+        // On mobile, fetch (and optionally encode) stems sequentially to avoid memory pressure.
+        // On desktop, process concurrently for speed.
         let stemResults: { id: string; blob: Blob }[];
         if (isTouchDevice()) {
           stemResults = [];
           for (const stem of jobBacked) {
-            const blob = await fetchStemWavAsBlob(stem.url);
+            let blob = await fetchStemWavAsBlob(stem.url);
+            if (stemFormat === "mp3") {
+              blob = encodeWavToMp3(await blob.arrayBuffer());
+            }
             stemResults.push({ id: stem.id, blob });
           }
         } else {
           stemResults = await Promise.all(
             jobBacked.map(async (stem) => {
-              const blob = await fetchStemWavAsBlob(stem.url);
+              let blob = await fetchStemWavAsBlob(stem.url);
+              if (stemFormat === "mp3") {
+                blob = encodeWavToMp3(await blob.arrayBuffer());
+              }
               return { id: stem.id, blob };
             })
           );
         }
 
         for (const sr of stemResults) {
-          zip.file(`${baseName}_${sr.id}.wav`, sr.blob);
+          zip.file(`${baseName}_${sr.id}.${stemFormat}`, sr.blob);
         }
 
         const zipBlob = await zip.generateAsync({ type: "blob" });

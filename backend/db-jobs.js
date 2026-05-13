@@ -131,7 +131,9 @@ export async function insertStems(jobId, stems) {
     }
     await pool.query(
       `INSERT INTO stems (job_id, stem_name, s3_key, file_size_bytes) VALUES ${values.join(", ")}
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT (job_id, stem_name) DO UPDATE SET
+         s3_key = COALESCE(EXCLUDED.s3_key, stems.s3_key),
+         file_size_bytes = COALESCE(EXCLUDED.file_size_bytes, stems.file_size_bytes)`,
       params,
     );
   } catch (err) {
@@ -165,5 +167,55 @@ export async function getJobHistory(clerkUserId, opts = {}) {
   } catch (err) {
     console.error("[db-jobs] getJobHistory failed:", err instanceof Error ? err.message : err);
     return [];
+  }
+}
+
+/**
+ * Get job history with nested stem metadata for a user.
+ * Used by the "My Stems" page to show past jobs with download links.
+ * @param {string} clerkUserId
+ * @param {{ limit?: number, offset?: number }} [opts]
+ * @returns {Promise<{ jobs: Array<Record<string, unknown>>, total: number }>}
+ */
+export async function getJobHistoryWithStems(clerkUserId, opts = {}) {
+  const pool = getPool();
+  if (!pool) return { jobs: [], total: 0 };
+  const limit = Math.min(opts.limit || 50, 200);
+  const offset = Math.max(opts.offset || 0, 0);
+  try {
+    // Get total count of completed jobs
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM jobs WHERE clerk_user_id = $1 AND status = 'completed'`,
+      [clerkUserId],
+    );
+    const total = parseInt(countResult.rows[0].count, 10);
+
+    // Get jobs with nested stem metadata
+    const result = await pool.query(
+      `SELECT 
+        j.job_id, j.status, j.stems, j.quality, j.original_filename,
+        j.duration_seconds, j.token_cost, j.model_name, j.created_at, j.completed_at,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'stem_name', s.stem_name,
+              's3_key', s.s3_key,
+              'file_size_bytes', s.file_size_bytes
+            )
+          ) FILTER (WHERE s.id IS NOT NULL),
+          '[]'::json
+        ) AS stem_files
+      FROM jobs j
+      LEFT JOIN stems s ON s.job_id = j.job_id
+      WHERE j.clerk_user_id = $1 AND j.status = 'completed'
+      GROUP BY j.job_id
+      ORDER BY j.created_at DESC
+      LIMIT $2 OFFSET $3`,
+      [clerkUserId, limit, offset],
+    );
+    return { jobs: result.rows, total };
+  } catch (err) {
+    console.error("[db-jobs] getJobHistoryWithStems failed:", err instanceof Error ? err.message : err);
+    return { jobs: [], total: 0 };
   }
 }

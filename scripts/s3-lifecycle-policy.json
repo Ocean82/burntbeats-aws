@@ -1,0 +1,17 @@
+{
+  "Rules": [
+    {
+      "ID": "TransitionStemsToIA",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "stems/"
+      },
+      "Transitions": [
+        {
+          "Days": 90,
+          "StorageClass": "STANDARD_IA"
+        }
+      ]
+    }
+  ]
+}
