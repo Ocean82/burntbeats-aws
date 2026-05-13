@@ -57,7 +57,6 @@ export function useStemLoading({
     }
     if (!audioContextRef.current) audioContextRef.current = new Ctor();
     const ctx = audioContextRef.current;
-    await ctx.resume();
 
     const existing = stemBuffersRef.current;
     const newBuffers: Record<string, AudioBuffer> = {};
