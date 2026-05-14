@@ -13,7 +13,6 @@ import {
 } from '../../stem-editor-state';
 import { stemRoutingSignature } from '../stemPlaybackUtils';
 import { PARAM_META } from 'pitch-plugin';
-import { defaultMixer, defaultTrim } from '../../types';
 
 // ─── Helper: mock AudioBuffer for Node/Vitest (no Web Audio API) ───────────
 function mockAudioBuffer(duration: number, sampleRate = 44100): AudioBuffer {

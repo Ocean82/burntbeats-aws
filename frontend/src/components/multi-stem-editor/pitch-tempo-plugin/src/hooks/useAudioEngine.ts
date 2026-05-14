@@ -52,12 +52,12 @@ export function useAudioEngine(options: UseAudioEngineOptions): PitchTempoEngine
 
   // Keep a ref to stems for use in callbacks that shouldn't re-create on every stem change
   const stemsRef = useRef<StemState[]>(stems);
-  stemsRef.current = stems;
+  useEffect(() => { stemsRef.current = stems; });
 
   // ── Initialize / re-initialize when input stems change ──────
   useEffect(() => {
     if (inputStems.length === 0) {
-      setEngineStatus('No stems provided');
+      setEngineStatus('No stems provided'); // eslint-disable-line react-hooks/set-state-in-effect
       return;
     }
 
@@ -109,7 +109,7 @@ export function useAudioEngine(options: UseAudioEngineOptions): PitchTempoEngine
         // Clean up old nodes first
         nodesRef.current.forEach(n => {
           n.plugin.destroy();
-          try { n.gainNode.disconnect(); } catch (_) {}
+          try { n.gainNode.disconnect(); } catch { /* already disconnected */ }
         });
         nodesRef.current.clear();
 
@@ -134,19 +134,22 @@ export function useAudioEngine(options: UseAudioEngineOptions): PitchTempoEngine
 
     init();
 
+    // Capture ref value for cleanup (react-hooks/exhaustive-deps)
+    const currentNodes = nodesRef.current;
+
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafRef.current);
       // Stop sources
-      nodesRef.current.forEach(n => {
+      currentNodes.forEach(n => {
         if (n.source) {
-          try { n.source.stop(); } catch (_) {}
-          try { n.source.disconnect(); } catch (_) {}
+          try { n.source.stop(); } catch { /* already stopped */ }
+          try { n.source.disconnect(); } catch { /* already disconnected */ }
         }
         n.plugin.destroy();
-        try { n.gainNode.disconnect(); } catch (_) {}
+        try { n.gainNode.disconnect(); } catch { /* already disconnected */ }
       });
-      nodesRef.current.clear();
+      currentNodes.clear();
       analyserRef.current = null;
       if (ownsContext.current && audioCtxRef.current) {
         audioCtxRef.current.close().catch(() => {});
@@ -187,8 +190,8 @@ export function useAudioEngine(options: UseAudioEngineOptions): PitchTempoEngine
   const stopAllSources = useCallback(() => {
     nodesRef.current.forEach(n => {
       if (n.source) {
-        try { n.source.stop(); } catch (_) {}
-        try { n.source.disconnect(); } catch (_) {}
+        try { n.source.stop(); } catch { /* already stopped */ }
+        try { n.source.disconnect(); } catch { /* already disconnected */ }
         n.source = null;
       }
     });

@@ -813,10 +813,11 @@ export function useAudioPlayback(
 
   // --- Cleanup on unmount ---
   useEffect(() => {
+    const pool = pluginPoolRef.current;
     return () => {
       stopPreview();
       handleStopMix();
-      destroyAllPlugins(pluginPoolRef.current);
+      destroyAllPlugins(pool);
       destroyContext();
     };
   }, [handleStopMix, stopPreview, destroyContext]);
