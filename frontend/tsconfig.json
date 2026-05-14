@@ -18,7 +18,8 @@
     /* Path mapping (relative to this file; baseUrl removed in TS 6+) */
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": ["./../shared/*"]
+      "@shared/*": ["./../shared/*"],
+      "pitch-plugin": ["./src/components/multi-stem-editor/pitch-tempo-plugin/src/index.ts"]
     },
 
     /* Linting */
