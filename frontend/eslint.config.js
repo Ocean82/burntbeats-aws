@@ -7,7 +7,7 @@ import globals from "globals";
 
 export default tseslint.config(
   // Global ignores
-  { ignores: ["dist/**", "node_modules/**", "*.config.*", "scripts/**"] },
+  { ignores: ["dist/**", "node_modules/**", "*.config.*", "scripts/**", "**/pitch-tempo-plugin/dist/**"] },
 
   // Base JS recommended rules
   eslint.configs.recommended,

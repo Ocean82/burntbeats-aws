@@ -41,6 +41,7 @@ export default defineViteConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "src"),
         "@shared": path.resolve(__dirname, "..", "shared"),
+        "pitch-plugin": path.resolve(__dirname, "src/components/multi-stem-editor/pitch-tempo-plugin/src/index.ts"),
       },
     },
     build: {
