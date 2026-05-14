@@ -14,6 +14,7 @@ import {
   createStemDspChain,
   getStemTrimWallDurationSeconds,
   maxTrimWallDurationSeconds,
+  timeStretchToTempoRatio,
   trimStartOffsetAtElapsedWall,
   type StemDspChain,
 } from "../../utils/audio";
@@ -22,8 +23,11 @@ import {
   getStemEffectiveRate,
   type StemEditorState,
 } from "../../stem-editor-state";
+import { PitchTempoPlugin } from "pitch-plugin";
 import { filterStemsForAudibleMix } from "../../utils/stemAudibility";
 import {
+  stemMuteSoloSignature,
+  stemPitchTempoSignature,
   stemPreviewStructuralSignature,
   stemRoutingSignature,
   stemTrimSignature,
@@ -40,7 +44,40 @@ export type MixStemRuntime = {
   stemId: string;
   dsp: StemDspChain;
   source: AudioBufferSourceNode;
+  plugin: PitchTempoPlugin | null;
 };
+
+async function getOrCreatePlugin(
+  ctx: AudioContext,
+  stemId: string,
+  pool: Map<string, PitchTempoPlugin>,
+  availableRef: React.MutableRefObject<boolean | null>,
+): Promise<PitchTempoPlugin | null> {
+  if (availableRef.current === false) return null;
+
+  const existing = pool.get(stemId);
+  if (existing) {
+    existing.reset();
+    return existing;
+  }
+
+  try {
+    const plugin = new PitchTempoPlugin({ audioContext: ctx });
+    await plugin.ready();
+    pool.set(stemId, plugin);
+    availableRef.current = true;
+    return plugin;
+  } catch (err) {
+    console.warn('[useAudioPlayback] PitchTempoPlugin init failed, using legacy playbackRate:', err);
+    availableRef.current = false;
+    return null;
+  }
+}
+
+function destroyAllPlugins(pool: Map<string, PitchTempoPlugin>): void {
+  pool.forEach((plugin) => plugin.destroy());
+  pool.clear();
+}
 
 function buildStemSource(
   ctx: AudioContext,
@@ -49,11 +86,25 @@ function buildStemSource(
   trimStart: number,
   trimEnd: number,
   dspInput: AudioNode,
+  plugin: PitchTempoPlugin | null,
 ): AudioBufferSourceNode {
   const source = ctx.createBufferSource();
   source.buffer = buffer;
-  source.playbackRate.value = getStemEffectiveRate(st);
-  source.connect(dspInput);
+
+  if (plugin) {
+    // Plugin handles pitch + tempo — source runs at unity rate
+    source.playbackRate.value = 1.0;
+    source.connect(plugin.inputNode);
+    plugin.outputNode.connect(dspInput);
+    // Apply current state to plugin
+    plugin.setPitchSemitones(st.pitchSemitones);
+    plugin.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
+  } else {
+    // Legacy: coupled pitch+tempo via playbackRate
+    source.playbackRate.value = getStemEffectiveRate(st);
+    source.connect(dspInput);
+  }
+
   source.start(0, trimStart, trimEnd - trimStart);
   return source;
 }
@@ -68,6 +119,9 @@ function stopMixStemRuntime(r: MixStemRuntime) {
     r.source.disconnect();
   } catch {
     /* already disconnected */
+  }
+  if (r.plugin) {
+    try { r.plugin.outputNode.disconnect(); } catch { /* already disconnected */ }
   }
   r.dsp.disconnect();
 }
@@ -175,8 +229,14 @@ export function useAudioPlayback(
 
   const prevMixRoutingSigRef = useRef<string>("");
   const prevMixTrimSigRef = useRef<string>("");
+  const prevMixPitchTempoSigRef = useRef<string>("");
+  const prevMixMuteSoloSigRef = useRef<string>("");
   const trimDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevPreviewStructSigRef = useRef<string>("");
+  const prevPreviewTrimSigRef = useRef<string>("");
+
+  const pluginPoolRef = useRef<Map<string, PitchTempoPlugin>>(new Map());
+  const pluginAvailableRef = useRef<boolean | null>(null);
 
   // --- Stop / cleanup helpers ---
 
@@ -197,6 +257,8 @@ export function useAudioPlayback(
     }
     prevMixRoutingSigRef.current = "";
     prevMixTrimSigRef.current = "";
+    prevMixPitchTempoSigRef.current = "";
+    prevMixMuteSoloSigRef.current = "";
     mixStemRuntimesRef.current.forEach(stopMixStemRuntime);
     mixStemRuntimesRef.current = [];
     setIsPlayingMix(false);
@@ -280,7 +342,7 @@ export function useAudioPlayback(
         return;
       }
 
-      const masterWall = maxTrimWallDurationSeconds(stemsToPlay, stemBuffers, stemStates);
+      const masterWall = maxTrimWallDurationSeconds(stemsToPlay, stemBuffers, stemStates, pluginAvailableRef.current === true);
       if (masterWall <= 0) return;
 
       stopMixSourcesPreservePlayhead();
@@ -295,14 +357,16 @@ export function useAudioPlayback(
         const buffer = stemBuffers[stem.id];
         if (!buffer) continue;
         const st = stemStates[stem.id] ?? defaultStemState();
-        const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, elapsedWall);
+        const plugin = await getOrCreatePlugin(context, stem.id, pluginPoolRef.current, pluginAvailableRef);
+        const usePlugin = plugin !== null;
+        const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, elapsedWall, usePlugin);
         if (trimEnd - startOffset <= 0) continue;
 
         const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-        const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input);
+        const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input, plugin);
         dsp.output.connect(ensureMasterBus(context));
 
-        const runtime: MixStemRuntime = { stemId: stem.id, dsp, source };
+        const runtime: MixStemRuntime = { stemId: stem.id, dsp, source, plugin };
         attachMixSourceEnded(source, dsp, () => {
           prevMixRoutingSigRef.current = "";
           prevMixTrimSigRef.current = "";
@@ -351,10 +415,41 @@ export function useAudioPlayback(
     const routing = stemRoutingSignature(stemStatesProp, ids);
     const trimOnly = stemTrimSignature(stemStatesProp, ids);
 
+    const pitchTempoSig = stemPitchTempoSignature(stemStatesProp, ids);
+    const muteSoloSig = stemMuteSoloSignature(stemStatesProp, ids);
+
+    const pitchTempoChanged = pitchTempoSig !== prevMixPitchTempoSigRef.current;
+    const muteSoloChanged = muteSoloSig !== prevMixMuteSoloSigRef.current;
+
     const routingChanged = routing !== prevMixRoutingSigRef.current;
     const trimChanged = trimOnly !== prevMixTrimSigRef.current;
 
     if (!routingChanged && !trimChanged) return;
+
+    // If only pitch/tempo changed and plugin is active, update in-place
+    if (pitchTempoChanged && !muteSoloChanged && pluginAvailableRef.current === true) {
+      prevMixPitchTempoSigRef.current = pitchTempoSig;
+      prevMixRoutingSigRef.current = routing; // keep routing sig in sync
+      for (const r of mixStemRuntimesRef.current) {
+        if (r.plugin) {
+          const st = stemStatesProp[r.stemId];
+          if (st) {
+            r.plugin.setPitchSemitones(st.pitchSemitones);
+            r.plugin.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
+          }
+        }
+      }
+      // Recalculate duration since tempo affects wall-clock time
+      const stemBuffers = lastStemBuffersRef.current;
+      const split2 = lastSplitResultStemsRef.current;
+      const stemsToPlay = filterStemsForAudibleMix(split2, stemStatesProp);
+      mixDurationRef.current = maxTrimWallDurationSeconds(stemsToPlay, stemBuffers, stemStatesProp, true);
+      return; // Skip full rebuild
+    }
+
+    // Update tracking refs for next comparison
+    prevMixPitchTempoSigRef.current = pitchTempoSig;
+    prevMixMuteSoloSigRef.current = muteSoloSig;
 
     if (routingChanged) {
       if (trimDebounceTimerRef.current) {
@@ -406,6 +501,8 @@ export function useAudioPlayback(
       const ids = splitResultStems.map((s) => s.id);
       prevMixRoutingSigRef.current = stemRoutingSignature(stemStates, ids);
       prevMixTrimSigRef.current = stemTrimSignature(stemStates, ids);
+      prevMixPitchTempoSigRef.current = stemPitchTempoSignature(stemStates, ids);
+      prevMixMuteSoloSigRef.current = stemMuteSoloSignature(stemStates, ids);
 
       const context = await getOrCreateContext();
       if (!context) return;
@@ -437,7 +534,11 @@ export function useAudioPlayback(
         previewStemStateRef.current ??
         lastStemStatesRef.current[stemId] ??
         defaultStemState();
-      const wallDuration = getStemTrimWallDurationSeconds(buffer, st);
+
+      const plugin = await getOrCreatePlugin(context, stemId, pluginPoolRef.current, pluginAvailableRef);
+      const usePlugin = plugin !== null;
+
+      const wallDuration = getStemTrimWallDurationSeconds(buffer, st, usePlugin);
       if (wallDuration <= 0) return;
 
       if (currentPreviewRuntimeRef.current) {
@@ -455,7 +556,7 @@ export function useAudioPlayback(
         return;
       }
 
-      const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, wallElapsed);
+      const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, wallElapsed, usePlugin);
       if (trimEnd - startOffset <= 0) {
         emitPlayheadPosition(pct);
         setPlayingStem(null);
@@ -469,10 +570,10 @@ export function useAudioPlayback(
       previewBufferRef.current = buffer;
 
       const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-      const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input);
+      const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input, plugin);
       dsp.output.connect(ensureMasterBus(context));
 
-      const runtime: MixStemRuntime = { stemId, dsp, source };
+      const runtime: MixStemRuntime = { stemId, dsp, source, plugin };
       source.onended = () => {
         dsp.disconnect();
         cancelPlayheadTracker();
@@ -522,7 +623,21 @@ export function useAudioPlayback(
     if (sig === prevPreviewStructSigRef.current) return;
     prevPreviewStructSigRef.current = sig;
 
+    const trimSig = `${st.trim.start}:${st.trim.end}`;
+    const trimChanged = trimSig !== prevPreviewTrimSigRef.current;
+    prevPreviewTrimSigRef.current = trimSig;
+
     previewStemStateRef.current = st;
+
+    // If plugin active and only pitch/tempo changed (not trim), update in-place
+    const runtime = currentPreviewRuntimeRef.current;
+    if (!trimChanged && runtime.plugin && pluginAvailableRef.current === true) {
+      runtime.plugin.setPitchSemitones(st.pitchSemitones);
+      runtime.plugin.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
+      return; // Skip expensive seek rebuild
+    }
+
+    // Trim changed or no plugin — do full seek
     const pct = playheadPositionRef.current;
     void seekToPreviewRef.current(pct);
   }, [stemStatesProp, playingStem, playheadPositionRef]);
@@ -588,6 +703,7 @@ export function useAudioPlayback(
       if (playingStem === stemId) {
         stopPreview();
         prevPreviewStructSigRef.current = "";
+        prevPreviewTrimSigRef.current = "";
         return;
       }
       handleStopMix();
@@ -616,8 +732,12 @@ export function useAudioPlayback(
         previewStemStateRef.current = st;
         previewBufferRef.current = buffer;
         prevPreviewStructSigRef.current = stemPreviewStructuralSignature(st);
+        prevPreviewTrimSigRef.current = `${st.trim.start}:${st.trim.end}`;
 
-        const wallDuration = getStemTrimWallDurationSeconds(buffer, st);
+        const plugin = await getOrCreatePlugin(context, stemId, pluginPoolRef.current, pluginAvailableRef);
+        const usePlugin = plugin !== null;
+
+        const wallDuration = getStemTrimWallDurationSeconds(buffer, st, usePlugin);
         if (wallDuration <= 0) return;
 
         const startPct = Math.max(0, Math.min(100, playheadPositionRef.current));
@@ -628,21 +748,21 @@ export function useAudioPlayback(
           return;
         }
 
-        const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, wallElapsed);
+        const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, wallElapsed, usePlugin);
         if (trimEnd - startOffset <= 0) {
           emitPlayheadPosition(startPct);
           return;
         }
 
         const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-        const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input);
+        const source = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input, plugin);
 
         dsp.output.connect(ensureMasterBus(context));
         emitPlayheadPosition(startPct);
         previewDurationRef.current = wallRemaining;
         playStartTimeRef.current = context.currentTime - wallElapsed;
 
-        const runtime: MixStemRuntime = { stemId, dsp, source };
+        const runtime: MixStemRuntime = { stemId, dsp, source, plugin };
         source.onended = () => {
           dsp.disconnect();
           cancelPlayheadTracker();
@@ -652,6 +772,7 @@ export function useAudioPlayback(
             isPlayingPreviewRef.current = false;
             setPlayingStem(null);
             prevPreviewStructSigRef.current = "";
+            prevPreviewTrimSigRef.current = "";
           }
         };
         currentPreviewRuntimeRef.current = runtime;
@@ -670,6 +791,7 @@ export function useAudioPlayback(
         onError?.("Preview failed. Please try again.");
         setPlayingStem(null);
         prevPreviewStructSigRef.current = "";
+        prevPreviewTrimSigRef.current = "";
       } finally {
         setLoadingPreviewStemId(null);
       }
@@ -694,6 +816,7 @@ export function useAudioPlayback(
     return () => {
       stopPreview();
       handleStopMix();
+      destroyAllPlugins(pluginPoolRef.current);
       destroyContext();
     };
   }, [handleStopMix, stopPreview, destroyContext]);

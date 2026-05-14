@@ -427,9 +427,9 @@ export function MultiStemEditor({
                 <div className="space-y-4">
                   <input
                     type="range"
-                    min={-12}
-                    max={12}
-                    step={1}
+                    min={-3}
+                    max={3}
+                    step={0.1}
                     value={activeState.pitchSemitones}
                     onChange={(e) =>
                       onStemStateChange(activeStem.id, {
@@ -439,6 +439,10 @@ export function MultiStemEditor({
                     className="stem-accent-slider w-full"
                     aria-label={`${activeStem.label} pitch shift`}
                   />
+                  <p className="text-center text-xs text-white/60">
+                    {activeState.pitchSemitones > 0 ? "+" : ""}
+                    {activeState.pitchSemitones.toFixed(1)} st
+                  </p>
                 </div>
               )}
               {activePanel === "eq" && (
@@ -482,20 +486,26 @@ export function MultiStemEditor({
                 />
               )}
               {activePanel === "time" && (
-                <input
-                  type="range"
-                  min={0.5}
-                  max={2}
-                  step={0.05}
-                  value={activeState.timeStretch}
-                  onChange={(e) =>
-                    onStemStateChange(activeStem.id, {
-                      timeStretch: Number(e.target.value),
-                    })
-                  }
-                  className="stem-accent-slider w-full"
-                  aria-label={`${activeStem.label} time stretch`}
-                />
+                <div className="space-y-4">
+                  <input
+                    type="range"
+                    min={0.85}
+                    max={1.15}
+                    step={0.01}
+                    value={activeState.timeStretch}
+                    onChange={(e) =>
+                      onStemStateChange(activeStem.id, {
+                        timeStretch: Number(e.target.value),
+                      })
+                    }
+                    className="stem-accent-slider w-full"
+                    aria-label={`${activeStem.label} tempo`}
+                  />
+                  <p className="text-center text-xs text-white/60">
+                    {Math.round((1 / activeState.timeStretch - 1) * 100) >= 0 ? "+" : ""}
+                    {Math.round((1 / activeState.timeStretch - 1) * 100)}%
+                  </p>
+                </div>
               )}
             </div>
           </div>

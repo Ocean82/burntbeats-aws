@@ -48,6 +48,7 @@ import {
 } from "./hooks/useUiLatencyMonitor";
 import { PricingPage } from "./components/PricingPage";
 import { MyStemsPage } from "./components/MyStemsPage";
+import { UpsellModal } from "./components/UpsellModal";
 import { FeedbackChip } from "./components/FeedbackChip";
 import {
   ENABLE_ONBOARDING_QUEST,
@@ -411,6 +412,35 @@ export function App() {
   );
 
   const [activeView, setActiveView] = useState<"editor" | "pricing" | "my-stems">("editor");
+  const [pricingInitialTab, setPricingInitialTab] = useState<"subscriptions" | "packs">("subscriptions");
+
+  // ── Upsell modal state ────────────────────────────────────────────────────
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [upsellTrigger, setUpsellTrigger] = useState<"sample_complete" | "low_balance">("sample_complete");
+
+  // Track previous splitting/sample state to detect completion
+  const prevSplittingRef = useRef(false);
+  const prevIsSampleRef = useRef(false);
+
+  useEffect(() => {
+    const wasSplitting = prevSplittingRef.current;
+    const wasSample = prevIsSampleRef.current;
+    prevSplittingRef.current = isSplitting;
+    prevIsSampleRef.current = isSample;
+
+    // Detect split just completed
+    if (wasSplitting && !isSplitting && splitResultStems.length > 0) {
+      if (wasSample) {
+        // Sample split completed — prompt to upgrade
+        setUpsellTrigger("sample_complete");
+        setUpsellOpen(true);
+      } else if (usageBalance !== null && usageBalance < 2) {
+        // Paid split completed but balance is low — prompt to add more
+        setUpsellTrigger("low_balance");
+        setUpsellOpen(true);
+      }
+    }
+  }, [isSplitting, isSample, splitResultStems.length, usageBalance]);
 
   // Ref for auto-scrolling to the mixer when a split completes
   const mixerSectionRef = useRef<HTMLDivElement | null>(null);
@@ -638,6 +668,7 @@ export function App() {
               <PricingPage
                 subscription={subscription}
                 onClose={() => setActiveView("editor")}
+                initialTab={pricingInitialTab}
                 usageContext={{
                   hasCompletedFirstExport,
                   splitsThisSession: splitResultStems.length,
@@ -803,6 +834,24 @@ export function App() {
         isSplitting={isSplitting}
       />
       {activeView === "editor" && <FeedbackChip />}
+
+      {/* Upsell modal — shown after sample split or when balance is low */}
+      <UpsellModal
+        open={upsellOpen}
+        onClose={() => setUpsellOpen(false)}
+        trigger={upsellTrigger}
+        balance={usageBalance}
+        onViewSubscriptions={() => {
+          setUpsellOpen(false);
+          setPricingInitialTab("subscriptions");
+          setActiveView("pricing");
+        }}
+        onBuyCredits={() => {
+          setUpsellOpen(false);
+          setPricingInitialTab("packs");
+          setActiveView("pricing");
+        }}
+      />
     </div>
   );
 }

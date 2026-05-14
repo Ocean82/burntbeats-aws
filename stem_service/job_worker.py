@@ -288,8 +288,8 @@ def run_separation_sync(
         }
         if bpm_meta:
             progress_data["beat_grid"] = bpm_meta
-        write_progress(out_dir, progress_data)
         schedule_s3_upload(job_id, out_dir / "stems", out_dir, progress_data)
+        write_progress(out_dir, progress_data)
 
         # Do not let metrics / logging failures overwrite a successful job
         try:
@@ -453,8 +453,8 @@ def run_expand_sync(
         }
         if inherited_beat_grid:
             expand_progress["beat_grid"] = inherited_beat_grid
-        write_progress(out_dir, expand_progress)
         schedule_s3_upload(expand_job_id, out_dir / "stems", out_dir, expand_progress)
+        write_progress(out_dir, expand_progress)
         job_log.info(
             "=== EXPAND COMPLETE  elapsed=%.1fs  models=%s ===", elapsed, models_used
         )

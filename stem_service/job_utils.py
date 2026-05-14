@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -100,24 +99,23 @@ def schedule_s3_upload(
     out_dir: Path,
     progress_data: dict[str, Any],
 ) -> None:
-    """Run S3 upload out-of-band and patch progress with S3 metadata when ready."""
+    """Upload stems to S3 synchronously and patch progress.json with S3 metadata.
 
-    def _run() -> None:
-        try:
-            s3_meta = upload_job_stems_to_s3(job_id, stems_dir)
-            if not s3_meta:
-                return
-            updated = dict(progress_data)
-            updated["s3"] = s3_meta
-            write_progress(out_dir, updated)
-        except Exception:
-            logger.exception("Async S3 upload failed for job %s", job_id)
+    Previously this ran in a background thread, but that caused a race condition:
+    the frontend would poll GET /status/:job_id, see "completed" without S3 keys,
+    and the backend would record stems with s3_key=NULL in the database.
 
-    threading.Thread(
-        target=_run,
-        name=f"s3-upload-{job_id[:8]}",
-        daemon=True,
-    ).start()
+    Now the upload runs synchronously so progress.json always contains S3 metadata
+    by the time the status is written as "completed". The upload is best-effort —
+    if it fails, the job still completes and stems are served from local disk.
+    """
+    try:
+        s3_meta = upload_job_stems_to_s3(job_id, stems_dir)
+        if s3_meta:
+            progress_data["s3"] = s3_meta
+            write_progress(out_dir, progress_data)
+    except Exception:
+        logger.exception("S3 upload failed for job %s (stems still available on disk)", job_id)
 
 
 def validate_audio_file(file_path: Path) -> tuple[bool, str]:

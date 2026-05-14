@@ -96,11 +96,46 @@ export function trimToSeconds(
   };
 }
 
-/** Wall-clock duration of the trimmed region (matches `playbackRate = getStemEffectiveRate` in Web Audio). */
-export function getStemTrimWallDurationSeconds(buffer: AudioBuffer, st: StemEditorState): number {
+/**
+ * Convert StemEditorState.timeStretch to plugin tempoRatio.
+ *
+ * timeStretch semantics: 1.0 = normal, 0.85 = 85% of original duration (faster), 1.15 = 115% (slower)
+ * tempoRatio semantics: 1.0 = normal, 1.15 = 15% faster, 0.85 = 15% slower
+ *
+ * Mapping: tempoRatio = 1 / timeStretch
+ * - timeStretch 0.85 → tempoRatio 1/0.85 ≈ 1.176 (faster playback)
+ * - timeStretch 1.15 → tempoRatio 1/1.15 ≈ 0.870 (slower playback)
+ *
+ * The plugin clamps to [0.85, 1.15] internally.
+ */
+export function timeStretchToTempoRatio(timeStretch: number): number {
+  if (timeStretch <= 0) return 1.0;
+  return 1.0 / timeStretch;
+}
+
+/**
+ * Wall-clock duration of the trimmed region.
+ * When plugin is active: duration = trimmedLength * timeStretch
+ *   (timeStretch > 1 means slower, so longer wall time)
+ * When plugin is inactive (legacy): duration = trimmedLength / effectiveRate
+ */
+export function getStemTrimWallDurationSeconds(
+  buffer: AudioBuffer,
+  st: StemEditorState,
+  usePlugin: boolean = false,
+): number {
   const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
   const len = trimEnd - trimStart;
   if (len <= 0) return 0;
+
+  if (usePlugin) {
+    // Plugin mode: source runs at 1.0, plugin handles tempo
+    // Wall duration = buffer duration * timeStretch
+    // (timeStretch=1.15 means 15% slower → 15% longer wall time)
+    return len * (st.timeStretch ?? 1.0);
+  }
+
+  // Legacy mode: playbackRate = effectiveRate
   return len / getStemEffectiveRate(st);
 }
 
@@ -109,13 +144,14 @@ export function maxTrimWallDurationSeconds(
   stems: readonly { id: string }[],
   stemBuffers: Record<string, AudioBuffer>,
   stemStates: Record<string, StemEditorState>,
+  usePlugin: boolean = false,
 ): number {
   let max = 0;
   for (const s of stems) {
     const buf = stemBuffers[s.id];
     if (!buf) continue;
     const st = stemStates[s.id] ?? defaultStemState();
-    max = Math.max(max, getStemTrimWallDurationSeconds(buf, st));
+    max = Math.max(max, getStemTrimWallDurationSeconds(buf, st, usePlugin));
   }
   return max;
 }
@@ -123,15 +159,29 @@ export function maxTrimWallDurationSeconds(
 /**
  * Where to start playback in the source buffer after `elapsedWallSeconds` on the master timeline.
  * buffer time = wall time × effective rate (capped to the trim window).
+ *
+ * When plugin is active (usePlugin=true): source runs at playbackRate=1.0,
+ * so buffer time = wall time / timeStretch.
  */
 export function trimStartOffsetAtElapsedWall(
   buffer: AudioBuffer,
   st: StemEditorState,
   elapsedWallSeconds: number,
+  usePlugin: boolean = false,
 ): { trimStart: number; trimEnd: number; startOffset: number } {
   const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
   const trimLen = trimEnd - trimStart;
   if (trimLen <= 0) return { trimStart, trimEnd, startOffset: trimStart };
+
+  if (usePlugin) {
+    // Plugin mode: buffer advances at 1/timeStretch rate relative to wall clock
+    // bufferElapsed = wallElapsed / timeStretch
+    const stretch = st.timeStretch ?? 1.0;
+    const delta = Math.min(trimLen, elapsedWallSeconds / stretch);
+    return { trimStart, trimEnd, startOffset: trimStart + delta };
+  }
+
+  // Legacy mode
   const rate = getStemEffectiveRate(st);
   const delta = Math.min(trimLen, elapsedWallSeconds * rate);
   return { trimStart, trimEnd, startOffset: trimStart + delta };

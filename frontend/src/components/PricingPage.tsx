@@ -17,18 +17,21 @@ interface PricingPageProps {
   subscription: UseSubscriptionResult;
   onClose: () => void;
   usageContext?: UsageContext;
+  /** Initial tab to show (subscriptions or packs) */
+  initialTab?: PricingTableType;
 }
 
 export function PricingPage({
   subscription,
   onClose,
   usageContext,
+  initialTab,
 }: PricingPageProps) {
   const reduceMotion = useReducedMotion();
   const [checkoutLoadingPlan, setCheckoutLoadingPlan] = useState<Plan | null>(
     null,
   );
-  const [pricingTab, setPricingTab] = useState<PricingTableType>("subscriptions");
+  const [pricingTab, setPricingTab] = useState<PricingTableType>(initialTab ?? "subscriptions");
 
   const handleSelectPlan = (plan: Plan) => {
     trackEvent("pricing_plan_selected", {

@@ -20,6 +20,26 @@ export function stemTrimSignature(states: Record<string, StemEditorState>, stemI
     .join("|");
 }
 
+/** Pitch + timeStretch only — for detecting pitch/tempo-only changes. */
+export function stemPitchTempoSignature(states: Record<string, StemEditorState>, stemIds: string[]): string {
+  return stemIds
+    .map((id) => {
+      const s = states[id] ?? defaultStemState();
+      return `${id}:p${s.pitchSemitones}ts${s.timeStretch}`;
+    })
+    .join("|");
+}
+
+/** Mute + solo only — for detecting structural routing changes. */
+export function stemMuteSoloSignature(states: Record<string, StemEditorState>, stemIds: string[]): string {
+  return stemIds
+    .map((id) => {
+      const s = states[id] ?? defaultStemState();
+      return `${id}:m${s.muted ? 1 : 0}s${s.soloed ? 1 : 0}`;
+    })
+    .join("|");
+}
+
 /** Pitch, stretch, trim for one stem (preview hot-swap). */
 export function stemPreviewStructuralSignature(st: StemEditorState): string {
   return `p${st.pitchSemitones}ts${st.timeStretch}tr${st.trim.start}-${st.trim.end}`;
