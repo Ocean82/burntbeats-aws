@@ -41,8 +41,8 @@ export const KnobControl: React.FC<KnobControlProps> = ({
   const normalize = (v: number) => (v - min) / (max - min);
   const angle     = MIN_ANGLE + normalize(value) * (MAX_ANGLE - MIN_ANGLE);
 
-  const clamp = (v: number) => Math.max(min, Math.min(max, v));
-  const snap  = (v: number) => Math.round(v / step) * step;
+  const clamp = useCallback((v: number) => Math.max(min, Math.min(max, v)), [min, max]);
+  const snap  = useCallback((v: number) => Math.round(v / step) * step, [step]);
 
   const displayValue = formatValue ? formatValue(value) :
     `${value >= 0 ? (unit === 'semitones' ? '+' : '') : ''}${value.toFixed(step < 0.1 ? 2 : 1)}${unit ? ` ${unit}` : ''}`;
@@ -75,7 +75,7 @@ export const KnobControl: React.FC<KnobControlProps> = ({
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  }, [min, max, step, onChange]);
+  }, [min, max, step, onChange, clamp, snap]);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (disabled) return;
@@ -83,7 +83,7 @@ export const KnobControl: React.FC<KnobControlProps> = ({
     const dir   = e.deltaY < 0 ? 1 : -1;
     const delta = dir * step * (e.shiftKey ? 10 : 1);
     onChange(clamp(snap(value + delta)));
-  }, [disabled, value, min, max, step, onChange]);
+  }, [disabled, value, step, onChange, clamp, snap]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (disabled) return;
@@ -104,7 +104,7 @@ export const KnobControl: React.FC<KnobControlProps> = ({
       e.preventDefault();
       onChange(defaultValue);
     }
-  }, [disabled, value, min, max, step, defaultValue, onChange]);
+  }, [disabled, value, min, max, step, defaultValue, onChange, clamp, snap]);
 
   // SVG geometry
   const cx = size / 2;

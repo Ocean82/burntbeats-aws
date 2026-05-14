@@ -78,6 +78,7 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
       stateRef.current = state;
       onStateChange?.(state);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- currentTime intentionally excluded to avoid 60fps callbacks
   }, [
     engine.engineReady, engine.engineStatus, engine.isPlaying,
     engine.duration, engine.stemMode,
@@ -106,7 +107,7 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
   const adjustedDuration = duration / globalTempo;
   const pitchRatio = semitonesToRatio(globalPitch);
 
-  const showSection = (s: string) => !hideSections.includes(s as any);
+  const showSection = (s: 'spectrum' | 'transport' | 'stems' | 'metadata') => !hideSections.includes(s);
 
   return (
     <div className={`text-white space-y-3 ${className}`}>

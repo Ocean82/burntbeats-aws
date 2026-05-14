@@ -151,10 +151,10 @@ export class PitchTempoPlugin {
   /** Disconnect a source from this plugin's input */
   disconnect(inputNode?: AudioNode): void {
     if (inputNode) {
-      try { inputNode.disconnect(this._inputNode); } catch (_) {}
+      try { inputNode.disconnect(this._inputNode); } catch { /* already disconnected */ }
     } else {
-      try { this._inputNode.disconnect(); } catch (_) {}
-      try { this.workletNode?.disconnect(); } catch (_) {}
+      try { this._inputNode.disconnect(); } catch { /* already disconnected */ }
+      try { this.workletNode?.disconnect(); } catch { /* already disconnected */ }
     }
   }
 
@@ -240,15 +240,15 @@ export class PitchTempoPlugin {
 
   /** Destroy and disconnect all nodes */
   destroy(): void {
-    try { this._inputNode.disconnect(); } catch (_) {}
-    try { this.workletNode?.disconnect(); } catch (_) {}
-    try { this._outputNode.disconnect(); } catch (_) {}
+    try { this._inputNode.disconnect(); } catch { /* already disconnected */ }
+    try { this.workletNode?.disconnect(); } catch { /* already disconnected */ }
+    try { this._outputNode.disconnect(); } catch { /* already disconnected */ }
     this.workletNode = null;
     this._ready = false;
   }
 
   // Dummy field to satisfy TypeScript (reset() in init referenced ch.reset)
-  private channels: any[] = [];
+  private channels: { reset?: () => void }[] = [];
 }
 
 // ─────────────────────────────────────────────────────────────────
