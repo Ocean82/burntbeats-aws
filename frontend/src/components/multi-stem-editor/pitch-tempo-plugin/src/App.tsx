@@ -22,21 +22,27 @@ export default function App() {
   // Simulate receiving stems from a stem splitter
   // In a real app, this would come from props or an API call
   useEffect(() => {
+    let cancelled = false;
     const ctx = new AudioContext({ sampleRate: 44100 });
-    const stemData = generateStemBuffers(ctx);
 
-    const inputs: StemInput[] = stemData.map(s => ({
-      id: s.id,
-      label: s.label,
-      emoji: s.emoji,
-      color: s.color,
-      buffer: s.buffer,
-    }));
+    // Wrap in microtask so setState is not synchronous in the effect body
+    void Promise.resolve().then(() => {
+      if (cancelled) return;
+      const stemData = generateStemBuffers(ctx);
 
-    setStemInputs(inputs);
-    setLoading(false);
+      const inputs: StemInput[] = stemData.map(s => ({
+        id: s.id,
+        label: s.label,
+        emoji: s.emoji,
+        color: s.color,
+        buffer: s.buffer,
+      }));
 
-    return () => { ctx.close().catch(() => {}); };
+      setStemInputs(inputs);
+      setLoading(false);
+    });
+
+    return () => { cancelled = true; ctx.close().catch(() => {}); };
   }, []);
 
   // Memoize to avoid re-init on every render

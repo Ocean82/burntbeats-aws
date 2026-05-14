@@ -436,6 +436,7 @@ export function App() {
         setUpsellOpen(true);
       } else if (usageBalance !== null && usageBalance < 2) {
         // Paid split completed but balance is low — prompt to add more
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: detecting state transition to trigger upsell UI
         setUpsellTrigger("low_balance");
         setUpsellOpen(true);
       }
