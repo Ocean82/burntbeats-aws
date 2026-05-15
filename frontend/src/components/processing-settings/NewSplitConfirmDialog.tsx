@@ -37,15 +37,20 @@ export function NewSplitConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-split-confirm-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
     >
-      <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/15 bg-[#1a1a1a] p-6 shadow-2xl">
+      {/* Backdrop — clickable button to dismiss */}
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onCancel}
+        aria-label="Close dialog"
+        tabIndex={-1}
+      />
+      <div className="relative mx-4 w-full max-w-sm rounded-2xl border border-white/15 bg-[#1a1a1a] p-6 shadow-2xl">
         <div className="mb-4 flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15">
             <AlertTriangle className="h-5 w-5 text-amber-400" />
