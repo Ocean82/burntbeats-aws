@@ -198,30 +198,24 @@ class PitchTempoProcessor extends AudioWorkletProcessor {
   }
 
   // ── Phase vocoder frame processing ──────────────────────────────
-  processFrame(ch, pitchRatio, timeRatio) {
-    // timeRatio here is the ratio for OLA stretching (= tempoRatio for tempo stretch, or 1/pitchRatio for pitch-only)
-    // For independent pitch+tempo: we time-stretch by timeRatio using phase vocoder,
-    // then we resample the output by (pitchRatio * timeRatio) to produce the final pitch-shifted, tempo-adjusted signal.
-    // 
-    // The fundamental relation:
-    //   pitchShiftedTempo = phasevocoder_timeStretch(1/pitchRatio) → resample_by_pitchRatio
-    //   => pitch changes, duration stays (pure pitch shift)
+  processFrame(ch, pitchRatio, tempoRatio) {
+    // Algorithm for independent pitch + tempo:
+    //   1. Time-stretch via phase vocoder OLA with stretchFactor = 1/(pitchRatio * tempoRatio)
+    //      This stretches the signal so that after resampling it will have the correct duration.
+    //   2. Resample the OLA output by pitchRatio to shift pitch back up/down.
+    //      Final duration = original / tempoRatio (tempo change achieved).
+    //      Final pitch = original * pitchRatio (pitch shift achieved).
     //
-    //   tempoChange = phasevocoder_timeStretch(tempoRatio) → no resample
-    //   => tempo changes, pitch stays
-    //
-    //   Both together: phasevocoder_timeStretch(tempoRatio/pitchRatio) → resample_by_pitchRatio
-    //
-    // We use analysisHopSize = HOP_SIZE (constant)
-    // synthesisHopSize = HOP_SIZE * stretchFactor
-    // stretchFactor = tempoRatio / pitchRatio  (> 1 = expand = slower tempo or lower pitch)
-    // After OLA, the signal is stretched by stretchFactor.
-    // We then resample by pitchRatio, giving final duration = original / tempoRatio.
+    // synthesisHop = analysisHop * stretchFactor
+    // stretchFactor = 1 / (pitchRatio * tempoRatio)
+    //   - pitchRatio > 1 (pitch up): stretch < 1 → compressed OLA → resample up → pitch up, same duration
+    //   - tempoRatio > 1 (faster): stretch < 1 → compressed OLA → shorter output → faster playback
 
     const N     = ch.fftSize;
-    const aHop  = ch.hopSize;                // analysis hop (fixed)
-    const stretchFactor = 1.0 / (pitchRatio);  // for pitch-only, tempoRatio handled separately
-    const sHop  = aHop * stretchFactor;       // synthesis hop (float)
+    const aHop  = ch.hopSize;                         // analysis hop (fixed = N/4)
+    const stretchFactor = 1.0 / (pitchRatio * tempoRatio);
+    const sHop  = aHop * stretchFactor;               // synthesis hop (float)
+    const sHopInt = Math.max(1, Math.round(sHop));
 
     const { analysisBuffer, window, fftBuf, lastPhase, synthPhase, omega } = ch;
 
@@ -242,12 +236,12 @@ class PitchTempoProcessor extends AudioWorkletProcessor {
       let dPhase = phase - lastPhase[k] - omega[k];
       // Wrap to [-π, π]
       dPhase -= TWO_PI * Math.round(dPhase / TWO_PI);
-      // True frequency
-      const trueFreq = omega[k] + dPhase / aHop;
+      // True frequency (radians per sample, scaled by analysis hop)
+      const trueFreq = omega[k] + dPhase;
       lastPhase[k] = phase;
 
-      // Accumulate synthesis phase
-      synthPhase[k] += trueFreq * sHop;
+      // Accumulate synthesis phase: advance by true frequency scaled to synthesis hop ratio
+      synthPhase[k] += trueFreq * (sHop / aHop);
 
       // Reconstruct bin
       fftBuf[2*k]   = mag * Math.cos(synthPhase[k]);
@@ -262,11 +256,10 @@ class PitchTempoProcessor extends AudioWorkletProcessor {
     // IFFT
     ifft(fftBuf);
 
-    // OLA — write into output ring
+    // OLA — write into output ring buffer
     const outRing     = ch.outputBuffer;
     const normRing    = ch.normalizeBuffer;
     const outSize     = outRing.length;
-    const sHopInt     = Math.round(sHop);
     const writeStart  = ch.outputWritePos;
 
     for (let i = 0; i < N; i++) {
@@ -278,13 +271,23 @@ class PitchTempoProcessor extends AudioWorkletProcessor {
     // Advance write pointer by synthesis hop
     ch.outputWritePos = (ch.outputWritePos + sHopInt) % outSize;
 
-    // Return the next sHopInt normalized output samples
+    // Track how many frames have been written for warmup
+    ch.filled++;
+
+    // Need at least ceil(N / sHopInt) overlapping frames before OLA is fully formed.
+    // Until then, return null to signal "not ready yet".
+    const overlapCount = Math.ceil(N / sHopInt);
+    if (ch.filled < overlapCount) {
+      return null;
+    }
+
+    // Read sHopInt normalized output samples from the OLA buffer
     const out = new Float32Array(sHopInt);
     for (let i = 0; i < sHopInt; i++) {
       const pos = (ch.outputReadPos + i) % outSize;
       const norm = normRing[pos];
-      out[i] = norm > 1e-8 ? outRing[pos] / norm : 0;
-      // Clear after reading
+      out[i] = norm > 1e-6 ? outRing[pos] / norm : 0;
+      // Clear after reading to prevent ghost data on ring wrap
       outRing[pos]  = 0;
       normRing[pos] = 0;
     }
@@ -334,10 +337,9 @@ class PitchTempoProcessor extends AudioWorkletProcessor {
     }
 
     // ── Process frames and push to output ring ───────────────────
-    // stretchFactor for OLA = 1/pitchRatio (pitch shift OLA stretch)
-    // then tempoRatio applied via resampling output
-    // Overall: stretchFactor_OLA = 1/pitchRatio
-    // Then resample output by pitchRatio * tempoRatio
+    // The OLA stretch factor is 1/(pitchRatio * tempoRatio).
+    // After OLA, we resample by pitchRatio to restore original duration / tempoRatio.
+    // This gives: pitch shifted by pitchRatio, duration = original / tempoRatio.
 
     // How many analysis hops can we process?
     const hopSize = this.FFT_SIZE >> 2;
@@ -356,13 +358,15 @@ class PitchTempoProcessor extends AudioWorkletProcessor {
         // Advance input by one analysis hop
         this.inputRead[c] = (this.inputRead[c] + hopSize) % this.ringSize;
 
-        // Process one frame
+        // Process one frame (may return null during warmup)
         const frameOut = this.processFrame(ch, pitchRatio, tempoRatio);
+        if (frameOut === null) continue; // warmup: OLA not yet fully formed
 
-        // Resample frameOut by (pitchRatio * tempoRatio) to push into output ring
-        // We need outputSamples = frameOut.length / tempoRatio samples
-        // (pitchRatio OLA already handled, tempoRatio compression = fewer output samples)
-        const outputCount = Math.round(frameOut.length / tempoRatio);
+        // Resample frameOut by pitchRatio to achieve pitch shift.
+        // frameOut has sHopInt samples from the time-stretched OLA.
+        // Output samples = sHopInt * pitchRatio (undo the 1/pitchRatio stretch, keep tempoRatio effect)
+        // This simplifies to: outputCount ≈ hopSize / tempoRatio
+        const outputCount = Math.max(1, Math.round(frameOut.length * pitchRatio));
         for (let i = 0; i < outputCount; i++) {
           // Linear interpolate from frameOut
           const srcPos = (i / outputCount) * (frameOut.length - 1);
