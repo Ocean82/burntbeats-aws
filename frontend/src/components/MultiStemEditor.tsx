@@ -13,6 +13,7 @@ import {
   Grid,
   Play,
   Sliders,
+  Sparkles,
   Square,
   Timer,
   Waves,
@@ -97,7 +98,7 @@ export function MultiStemEditor({
   getAnalyserData,
 }: MultiStemEditorProps) {
   const [activePanel, setActivePanel] = useState<
-    "pitch" | "eq" | "amplitude" | "time" | null
+    "pitch" | "eq" | "amplitude" | "time" | "fx" | null
   >(null);
   const [mixerConsoleOpen, setMixerConsoleOpen] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
@@ -327,6 +328,7 @@ export function MultiStemEditor({
               { id: "eq" as const, icon: Sliders, label: "EQ" },
               { id: "amplitude" as const, icon: Activity, label: "Amplitude" },
               { id: "time" as const, icon: Timer, label: "Time" },
+              { id: "fx" as const, icon: Sparkles, label: "FX" },
             ] as const
           ).map(({ id, icon: Icon, label }) => (
             <button
@@ -411,6 +413,7 @@ export function MultiStemEditor({
                 {activePanel === "eq" && "EQ & Filters"}
                 {activePanel === "amplitude" && "Amplitude"}
                 {activePanel === "time" && "Time Stretch"}
+                {activePanel === "fx" && "Effects"}
               </h3>
               <button
                 type="button"
@@ -446,27 +449,49 @@ export function MultiStemEditor({
                 </div>
               )}
               {activePanel === "eq" && (
-                <div className="space-y-2">
-                  {(["eqLow", "eqMid", "eqHigh"] as const).map((key) => (
-                    <input
-                      key={key}
-                      type="range"
-                      min={-12}
-                      max={12}
-                      step={0.5}
-                      value={activeState.mixer[key]}
-                      onChange={(e) =>
-                        onStemStateChange(activeStem.id, {
-                          mixer: {
-                            ...activeState.mixer,
-                            [key]: Number(e.target.value),
-                          },
-                        })
-                      }
-                      className="stem-accent-slider w-full"
-                      aria-label={`${activeStem.label} ${key}`}
-                    />
+                <div className="space-y-3">
+                  {([
+                    { key: "eqLow" as const, label: "Low", freq: "200 Hz" },
+                    { key: "eqMid" as const, label: "Mid", freq: "1 kHz" },
+                    { key: "eqHigh" as const, label: "High", freq: "6 kHz" },
+                  ]).map(({ key, label, freq }) => (
+                    <div key={key} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                          {label} <span className="text-white/30">{freq}</span>
+                        </span>
+                        <span className="font-mono text-[10px] tabular-nums text-white/50">
+                          {activeState.mixer[key] > 0 ? "+" : ""}
+                          {activeState.mixer[key].toFixed(1)} dB
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={-12}
+                        max={12}
+                        step={0.5}
+                        value={activeState.mixer[key]}
+                        onChange={(e) =>
+                          onStemStateChange(activeStem.id, {
+                            mixer: {
+                              ...activeState.mixer,
+                              [key]: Number(e.target.value),
+                            },
+                          })
+                        }
+                        onDoubleClick={() =>
+                          onStemStateChange(activeStem.id, {
+                            mixer: { ...activeState.mixer, [key]: 0 },
+                          })
+                        }
+                        className="stem-accent-slider w-full"
+                        aria-label={`${activeStem.label} ${label} EQ (${freq})`}
+                      />
+                    </div>
                   ))}
+                  <p className="text-center text-[9px] text-white/30 pt-1">
+                    Double-click to reset
+                  </p>
                 </div>
               )}
               {activePanel === "amplitude" && (
@@ -504,6 +529,137 @@ export function MultiStemEditor({
                   <p className="text-center text-xs text-white/60">
                     {Math.round((1 / activeState.timeStretch - 1) * 100) >= 0 ? "+" : ""}
                     {Math.round((1 / activeState.timeStretch - 1) * 100)}%
+                  </p>
+                </div>
+              )}
+              {activePanel === "fx" && (
+                <div className="space-y-4">
+                  {/* Reverb */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Reverb
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.reverbWet}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={activeState.mixer.reverbWet}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, reverbWet: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, reverbWet: 0 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} reverb wet`}
+                    />
+                  </div>
+
+                  {/* Delay */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Delay
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.delayWet}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={activeState.mixer.delayWet}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, delayWet: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, delayWet: 0 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} delay wet`}
+                    />
+                  </div>
+
+                  {/* Compressor Threshold */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Comp Threshold
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.compThreshold} dB
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-60}
+                      max={0}
+                      step={1}
+                      value={activeState.mixer.compThreshold}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compThreshold: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compThreshold: 0 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} compressor threshold`}
+                    />
+                  </div>
+
+                  {/* Compressor Ratio */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Comp Ratio
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.compRatio.toFixed(1)}:1
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={20}
+                      step={0.5}
+                      value={activeState.mixer.compRatio}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compRatio: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compRatio: 1 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} compressor ratio`}
+                    />
+                  </div>
+
+                  <p className="text-center text-[9px] text-white/30 pt-1">
+                    Double-click to reset
                   </p>
                 </div>
               )}

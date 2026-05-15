@@ -45,7 +45,7 @@ export const defaultTrim: TrimState = { start: 0, end: 100 };
 export const defaultMixer: MixerState = {
   gain: 0,
   pan: 0,
-  width: 80,
+  width: 100,
   eqLow: 0,
   eqMid: 0,
   eqHigh: 0,

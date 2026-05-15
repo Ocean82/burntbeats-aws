@@ -1,11 +1,15 @@
 /**
  * Client-side master WAV rendering via OfflineAudioContext.
- * Mixes audible stems with gain, pan, width, rate, and trim applied.
+ * Mixes audible stems with the **full DSP chain** (gain, EQ, compressor,
+ * reverb, delay, pan, width, rate, trim) — matching real-time playback exactly.
  */
 import type { StemResult } from "../../types";
-import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStereoWidthNode } from "../../utils/audio";
+import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStemDspChain } from "../../utils/audio";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../../stem-editor-state";
 import { filterStemsForAudibleMix } from "../../utils/stemAudibility";
+
+/** Extra seconds appended to offline render to capture reverb/delay tails. */
+const EFFECT_TAIL_SECONDS = 2.0;
 
 export async function renderClientMasterWavBlob(
   options: { normalize?: boolean },
@@ -17,7 +21,7 @@ export async function renderClientMasterWavBlob(
   const stemsToMix = filterStemsForAudibleMix(splitResultStems, stemStates);
 
   let maxDuration = 0;
-  const sources: { buffer: AudioBuffer; gain: number; pan: number; width: number; rate: number; trimStart: number; trimEnd: number }[] = [];
+  const stemData: { buffer: AudioBuffer; st: StemEditorState; rate: number; trimStart: number; trimEnd: number }[] = [];
 
   for (const stem of stemsToMix) {
     const buffer = stemBuffers[stem.id];
@@ -27,38 +31,90 @@ export async function renderClientMasterWavBlob(
     const rate = getStemEffectiveRate(st);
     const wallDuration = (trimEnd - trimStart) / rate;
     maxDuration = Math.max(maxDuration, wallDuration);
-    sources.push({
-      buffer,
-      gain: Math.pow(10, st.mixer.gain / 20),
-      pan: st.mixer.pan / 100,
-      width: st.mixer.width,
-      rate,
-      trimStart,
-      trimEnd,
-    });
+    stemData.push({ buffer, st, rate, trimStart, trimEnd });
   }
 
   if (maxDuration === 0) throw new Error("No valid stems to export (missing buffers?).");
 
-  const context = new OfflineAudioContext(2, Math.ceil(maxDuration * 44100), 44100);
-  for (const { buffer, gain, pan, width, rate, trimStart, trimEnd } of sources) {
+  // Determine if any stem uses reverb or delay — if so, extend render for tails
+  const hasEffectTails = stemData.some(
+    ({ st }) => st.mixer.reverbWet > 0 || st.mixer.delayWet > 0,
+  );
+  const renderDuration = hasEffectTails
+    ? maxDuration + EFFECT_TAIL_SECONDS
+    : maxDuration;
+
+  const sampleRate = 44100;
+  const context = new OfflineAudioContext(2, Math.ceil(renderDuration * sampleRate), sampleRate);
+
+  for (const { buffer, st, rate, trimStart, trimEnd } of stemData) {
+    const gainLinear = Math.pow(10, st.mixer.gain / 20);
+    const dsp = createStemDspChain(context, st.mixer, gainLinear);
+
     const source = context.createBufferSource();
-    const gainNode = context.createGain();
-    const panNode = context.createStereoPanner();
-    const widthNode = createStereoWidthNode(context);
     source.buffer = buffer;
     source.playbackRate.value = rate;
-    gainNode.gain.value = gain;
-    panNode.pan.value = pan;
-    widthNode.setWidth(width);
-    source.connect(gainNode);
-    gainNode.connect(panNode);
-    panNode.connect(widthNode.input);
-    widthNode.output.connect(context.destination);
+    source.connect(dsp.input);
+    dsp.output.connect(context.destination);
     source.start(0, trimStart, trimEnd - trimStart);
   }
 
   let rendered = await context.startRendering();
+
+  // If we added tail time, trim silence from the end to keep file size reasonable
+  if (hasEffectTails) {
+    rendered = trimTrailingSilence(rendered, maxDuration, sampleRate);
+  }
+
   if (options.normalize) rendered = normalizeAudioBuffer(rendered);
   return audioBufferToWav(rendered);
+}
+
+/**
+ * Trim trailing silence beyond the expected content duration.
+ * Keeps at least `minDuration` seconds, then scans backward to find
+ * where signal drops below a noise floor threshold.
+ */
+function trimTrailingSilence(
+  buffer: AudioBuffer,
+  minDuration: number,
+  sampleRate: number,
+): AudioBuffer {
+  const minSamples = Math.ceil(minDuration * sampleRate);
+  const { numberOfChannels, length } = buffer;
+  const threshold = 1e-5; // ~ -100 dBFS
+
+  let lastNonSilent = minSamples;
+  for (let ch = 0; ch < numberOfChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = length - 1; i >= minSamples; i--) {
+      if (Math.abs(data[i]) > threshold) {
+        lastNonSilent = Math.max(lastNonSilent, i + 1);
+        break;
+      }
+    }
+  }
+
+  // Add a tiny fade-out (10ms) to avoid clicks
+  const fadeOutSamples = Math.min(Math.floor(sampleRate * 0.01), lastNonSilent);
+  const trimLength = Math.min(length, lastNonSilent + fadeOutSamples);
+
+  if (trimLength >= length) return buffer;
+
+  const trimmed = new AudioBuffer({
+    numberOfChannels,
+    length: trimLength,
+    sampleRate,
+  });
+  for (let ch = 0; ch < numberOfChannels; ch++) {
+    const src = buffer.getChannelData(ch);
+    const dst = trimmed.getChannelData(ch);
+    dst.set(src.subarray(0, trimLength));
+    // Apply fade-out on the tail
+    for (let i = 0; i < fadeOutSamples; i++) {
+      const idx = trimLength - fadeOutSamples + i;
+      dst[idx] *= 1 - i / fadeOutSamples;
+    }
+  }
+  return trimmed;
 }

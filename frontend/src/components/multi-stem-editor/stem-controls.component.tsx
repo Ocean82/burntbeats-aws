@@ -200,13 +200,15 @@ export const StemControls = memo(function StemControls({
           Width
           <input
             type="range"
-            min={-100}
+            min={0}
             max={100}
             step={1}
             value={mixer.width}
             disabled={!audioReady}
-            aria-label={`${stem.label} width`}
+            aria-label={`${stem.label} stereo width`}
+            aria-valuetext={mixer.width === 100 ? "Full stereo" : mixer.width === 0 ? "Mono" : `${mixer.width}%`}
             onChange={(e) => updateMixer({ width: Number(e.target.value) })}
+            onDoubleClick={() => updateMixer({ width: 100 })}
             className="stem-accent-slider w-full"
           />
         </label>

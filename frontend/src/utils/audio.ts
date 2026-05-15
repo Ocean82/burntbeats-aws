@@ -221,9 +221,13 @@ export interface StereoWidthNode {
 
 /**
  * Create a stereo width matrix using L/R gain nodes.
- * width=0: stereo unchanged, width<0: narrower (toward mono), width>0: wider.
+ * width=100: original stereo (no processing), width=0: mono, width=-100: inverted stereo.
  * Formula: L_out = L * (1+g)/2 + R * (1-g)/2, R_out = R * (1+g)/2 + L * (1-g)/2
  * where g = width / 100, clipped to [-1, 1].
+ *
+ * At g=1 (width=100): L_out = L, R_out = R (pass-through).
+ * At g=0 (width=0):   L_out = R_out = (L+R)/2 (mono).
+ * At g=-1 (width=-100): L_out = R, R_out = L (swapped).
  */
 export function createStereoWidthNode(context: BaseAudioContext): StereoWidthNode {
   const splitter = context.createChannelSplitter(2);
@@ -350,16 +354,17 @@ export interface StemDspChain {
 
 /**
  * Build a per-stem DSP chain:
- *   gainNode → lowEQ → midEQ → highEQ → compressor → panNode → widthNode → [reverb/delay sends] → output
+ *   gainNode → lowEQ → midEQ → highEQ → [compressor] → panNode → widthNode → [reverb/delay sends] → output
  *
- * Reverb and delay are implemented as parallel wet sends summed at the output merger.
+ * Reverb, delay, and compressor are only instantiated when their values are
+ * non-default, avoiding unnecessary CPU usage for inactive effects.
  */
 export function createStemDspChain(
-  ctx: AudioContext,
+  ctx: BaseAudioContext,
   mixer: MixerState,
   gainLinear: number
 ): StemDspChain {
-  // --- Core nodes ---
+  // --- Core nodes (always created) ---
   const gainNode = ctx.createGain();
   gainNode.gain.value = gainLinear;
 
@@ -379,69 +384,103 @@ export function createStemDspChain(
   highEQ.frequency.value = 6000;
   highEQ.gain.value = mixer.eqHigh;
 
-  const compressor = ctx.createDynamicsCompressor();
-  compressor.threshold.value = mixer.compThreshold;
-  compressor.ratio.value = Math.max(1, mixer.compRatio);
-  compressor.knee.value = 6;
-  compressor.attack.value = 0.003;
-  compressor.release.value = 0.25;
-
   const panNode = ctx.createStereoPanner();
   panNode.pan.value = mixer.pan / 100;
 
   const widthNode = createStereoWidthNode(ctx);
   widthNode.setWidth(mixer.width);
 
-  // --- Reverb (convolver with synthetic IR) ---
-  const reverbConvolver = ctx.createConvolver();
-  reverbConvolver.buffer = _buildReverbIR(ctx, 1.8);
-  const reverbWetGain = ctx.createGain();
-  reverbWetGain.gain.value = mixer.reverbWet / 100;
-
-  // --- Delay ---
-  const delayNode = ctx.createDelay(1.0);
-  delayNode.delayTime.value = 0.375; // 8th note at ~80bpm
-  const delayFeedback = ctx.createGain();
-  delayFeedback.gain.value = 0.35;
-  const delayWetGain = ctx.createGain();
-  delayWetGain.gain.value = mixer.delayWet / 100;
-
   // --- Output merger ---
   const outputGain = ctx.createGain();
   outputGain.gain.value = 1;
 
+  // --- Conditionally create compressor ---
+  const compActive = mixer.compThreshold < 0 || mixer.compRatio > 1;
+  let compressor: DynamicsCompressorNode | null = null;
+  if (compActive) {
+    compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = mixer.compThreshold;
+    compressor.ratio.value = Math.max(1, mixer.compRatio);
+    compressor.knee.value = 6;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+  }
+
+  // --- Conditionally create reverb ---
+  const reverbActive = mixer.reverbWet > 0;
+  let reverbConvolver: ConvolverNode | null = null;
+  let reverbWetGain: GainNode | null = null;
+  if (reverbActive) {
+    reverbConvolver = ctx.createConvolver();
+    reverbConvolver.buffer = _buildReverbIR(ctx, 1.8);
+    reverbWetGain = ctx.createGain();
+    reverbWetGain.gain.value = mixer.reverbWet / 100;
+  }
+
+  // --- Conditionally create delay ---
+  const delayActive = mixer.delayWet > 0;
+  let delayNode: DelayNode | null = null;
+  let delayFeedback: GainNode | null = null;
+  let delayWetGain: GainNode | null = null;
+  if (delayActive) {
+    delayNode = ctx.createDelay(1.0);
+    delayNode.delayTime.value = 0.375; // 8th note at ~80bpm
+    delayFeedback = ctx.createGain();
+    delayFeedback.gain.value = 0.35;
+    delayWetGain = ctx.createGain();
+    delayWetGain.gain.value = mixer.delayWet / 100;
+  }
+
   // --- Wire dry path ---
+  // gainNode → lowEQ → midEQ → highEQ → [compressor] → panNode → widthNode → outputGain
   gainNode.connect(lowEQ);
   lowEQ.connect(midEQ);
   midEQ.connect(highEQ);
-  highEQ.connect(compressor);
-  compressor.connect(panNode);
+
+  const postEqNode: AudioNode = compressor ?? panNode;
+  highEQ.connect(postEqNode);
+  if (compressor) {
+    compressor.connect(panNode);
+  }
   panNode.connect(widthNode.input);
   widthNode.output.connect(outputGain);
 
+  // The send point for reverb/delay is after compressor (or after EQ if no compressor)
+  const sendNode: AudioNode = compressor ?? highEQ;
+
   // --- Wire reverb send ---
-  compressor.connect(reverbConvolver);
-  reverbConvolver.connect(reverbWetGain);
-  reverbWetGain.connect(outputGain);
+  if (reverbActive && reverbConvolver && reverbWetGain) {
+    sendNode.connect(reverbConvolver);
+    reverbConvolver.connect(reverbWetGain);
+    reverbWetGain.connect(outputGain);
+  }
 
   // --- Wire delay send ---
-  compressor.connect(delayNode);
-  delayNode.connect(delayFeedback);
-  delayFeedback.connect(delayNode); // feedback loop
-  delayNode.connect(delayWetGain);
-  delayWetGain.connect(outputGain);
+  if (delayActive && delayNode && delayFeedback && delayWetGain) {
+    sendNode.connect(delayNode);
+    delayNode.connect(delayFeedback);
+    delayFeedback.connect(delayNode); // feedback loop
+    delayNode.connect(delayWetGain);
+    delayWetGain.connect(outputGain);
+  }
 
   const update = (m: MixerState, g: number) => {
     gainNode.gain.value = g;
     lowEQ.gain.value = m.eqLow;
     midEQ.gain.value = m.eqMid;
     highEQ.gain.value = m.eqHigh;
-    compressor.threshold.value = m.compThreshold;
-    compressor.ratio.value = Math.max(1, m.compRatio);
+    if (compressor) {
+      compressor.threshold.value = m.compThreshold;
+      compressor.ratio.value = Math.max(1, m.compRatio);
+    }
     panNode.pan.value = m.pan / 100;
     widthNode.setWidth(m.width);
-    reverbWetGain.gain.value = m.reverbWet / 100;
-    delayWetGain.gain.value = m.delayWet / 100;
+    if (reverbWetGain) {
+      reverbWetGain.gain.value = m.reverbWet / 100;
+    }
+    if (delayWetGain) {
+      delayWetGain.gain.value = m.delayWet / 100;
+    }
   };
 
   const disconnect = () => {
@@ -449,14 +488,14 @@ export function createStemDspChain(
     lowEQ.disconnect();
     midEQ.disconnect();
     highEQ.disconnect();
-    compressor.disconnect();
+    compressor?.disconnect();
     panNode.disconnect();
     widthNode.disconnect();
-    reverbConvolver.disconnect();
-    reverbWetGain.disconnect();
-    delayNode.disconnect();
-    delayFeedback.disconnect();
-    delayWetGain.disconnect();
+    reverbConvolver?.disconnect();
+    reverbWetGain?.disconnect();
+    delayNode?.disconnect();
+    delayFeedback?.disconnect();
+    delayWetGain?.disconnect();
     outputGain.disconnect();
   };
 
@@ -464,7 +503,7 @@ export function createStemDspChain(
 }
 
 /** Synthetic exponential-decay reverb impulse response. */
-function _buildReverbIR(ctx: AudioContext, durationSec: number): AudioBuffer {
+function _buildReverbIR(ctx: BaseAudioContext, durationSec: number): AudioBuffer {
   const sr = ctx.sampleRate;
   const length = Math.floor(sr * durationSec);
   const ir = ctx.createBuffer(2, length, sr);
