@@ -13,8 +13,9 @@ from __future__ import annotations
 import importlib
 import os
 import sys
+import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
@@ -41,29 +42,30 @@ def test_bug1_quality_mode_uses_075_overlap():
     import stem_service.vocal_stage1 as vs1_mod
     importlib.reload(vs1_mod)
 
-    # Mock all dependencies so extract_vocals_stage1 can run without real models
-    with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
-         patch.object(vs1_mod, "resolve_single_vocal_onnx") as mock_resolve, \
-         patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
-         patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
-         patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fake_input = Path(tmpdir) / "input.wav"
+        fake_input.touch()
+        fake_output = Path(tmpdir) / "output"
 
-        # Make resolve return a fake model path
-        fake_model = Path("/fake/Kim_Vocal_2.onnx")
-        mock_resolve.return_value = fake_model
+        fake_model = Path(tmpdir) / "Kim_Vocal_2.onnx"
+        fake_model.touch()
 
-        fake_input = Path("/fake/input.wav")
-        fake_output = Path("/fake/output")
+        # Mock all dependencies so extract_vocals_stage1 can run without real models
+        with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
+             patch.object(vs1_mod, "resolve_single_vocal_onnx", return_value=fake_model), \
+             patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
+             patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
+             patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
 
-        try:
-            vs1_mod.extract_vocals_stage1(
-                fake_input,
-                fake_output,
-                prefer_speed=False,
-                model_tier="quality",
-            )
-        except Exception:
-            pass  # We only care about the overlap value captured
+            try:
+                vs1_mod.extract_vocals_stage1(
+                    fake_input,
+                    fake_output,
+                    prefer_speed=False,
+                    model_tier="quality",
+                )
+            except Exception:
+                pass  # We only care about the overlap value captured
 
     assert "value" in captured_overlap, "run_vocal_onnx was never called"
     assert captured_overlap["value"] == 0.75, (

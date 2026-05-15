@@ -13,6 +13,7 @@ from __future__ import annotations
 import importlib
 import os
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -35,38 +36,40 @@ def test_preservation_speed_mode_uses_05_overlap():
     import stem_service.vocal_stage1 as vs1_mod
     importlib.reload(vs1_mod)
 
-    with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
-         patch.object(vs1_mod, "resolve_single_vocal_onnx") as mock_resolve, \
-         patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
-         patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
-         patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fake_input = Path(tmpdir) / "input.wav"
+        fake_input.touch()
+        fake_output = Path(tmpdir) / "output"
 
-        fake_model = Path("/fake/UVR_MDXNET_3_9662.onnx")
-        mock_resolve.return_value = fake_model
+        fake_model = Path(tmpdir) / "UVR_MDXNET_3_9662.onnx"
+        fake_model.touch()
 
-        fake_input = Path("/fake/input.wav")
-        fake_output = Path("/fake/output")
+        with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
+             patch.object(vs1_mod, "resolve_single_vocal_onnx", return_value=fake_model), \
+             patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
+             patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
+             patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
 
-        # Test with multiple model_tier values — speed mode should always use 0.5
-        for tier in ("fast", "balanced", "quality"):
-            captured_overlap.clear()
-            try:
-                vs1_mod.extract_vocals_stage1(
-                    fake_input,
-                    fake_output,
-                    prefer_speed=True,
-                    model_tier=tier,
+            # Test with multiple model_tier values — speed mode should always use 0.5
+            for tier in ("fast", "balanced", "quality"):
+                captured_overlap.clear()
+                try:
+                    vs1_mod.extract_vocals_stage1(
+                        fake_input,
+                        fake_output,
+                        prefer_speed=True,
+                        model_tier=tier,
+                    )
+                except Exception:
+                    pass
+
+                assert "value" in captured_overlap, (
+                    f"run_vocal_onnx was never called for tier={tier}"
                 )
-            except Exception:
-                pass
-
-            assert "value" in captured_overlap, (
-                f"run_vocal_onnx was never called for tier={tier}"
-            )
-            assert captured_overlap["value"] == 0.5, (
-                f"Speed mode overlap should be 0.5 for tier={tier}, "
-                f"got {captured_overlap['value']}"
-            )
+                assert captured_overlap["value"] == 0.5, (
+                    f"Speed mode overlap should be 0.5 for tier={tier}, "
+                    f"got {captured_overlap['value']}"
+                )
 
 
 def test_preservation_explicit_shifts_0_env_var():

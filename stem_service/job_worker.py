@@ -59,7 +59,6 @@ def _finalize_stems_to_16bit(stem_list: list[tuple[str, Path]]) -> None:
     compounding quantization noise. Only the final user-facing stems are dithered
     down to 16-bit for standard playback compatibility.
     """
-    import numpy as np
     import soundfile as sf
 
     from stem_service.audio_utils import write_wav_16bit
