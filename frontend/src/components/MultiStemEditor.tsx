@@ -457,12 +457,18 @@ export function MultiStemEditor({
                         pitchSemitones: Number(e.target.value),
                       })
                     }
+                    onDoubleClick={() =>
+                      onStemStateChange(activeStem.id, { pitchSemitones: 0 })
+                    }
                     className="stem-accent-slider w-full"
                     aria-label={`${activeStem.label} pitch shift`}
                   />
                   <p className="text-center text-xs text-white/60">
                     {activeState.pitchSemitones > 0 ? "+" : ""}
                     {activeState.pitchSemitones.toFixed(1)} st
+                  </p>
+                  <p className="text-center text-[9px] text-white/30">
+                    Double-click to reset
                   </p>
                 </div>
               )}
@@ -513,20 +519,34 @@ export function MultiStemEditor({
                 </div>
               )}
               {activePanel === "amplitude" && (
-                <input
-                  type="range"
-                  min={-20}
-                  max={6}
-                  step={0.5}
-                  value={activeState.mixer.gain}
-                  onChange={(e) =>
-                    onStemStateChange(activeStem.id, {
-                      mixer: { ...activeState.mixer, gain: Number(e.target.value) },
-                    })
-                  }
-                  className="stem-accent-slider w-full"
-                  aria-label={`${activeStem.label} volume`}
-                />
+                <div className="space-y-4">
+                  <input
+                    type="range"
+                    min={-20}
+                    max={6}
+                    step={0.5}
+                    value={activeState.mixer.gain}
+                    onChange={(e) =>
+                      onStemStateChange(activeStem.id, {
+                        mixer: { ...activeState.mixer, gain: Number(e.target.value) },
+                      })
+                    }
+                    onDoubleClick={() =>
+                      onStemStateChange(activeStem.id, {
+                        mixer: { ...activeState.mixer, gain: 0 },
+                      })
+                    }
+                    className="stem-accent-slider w-full"
+                    aria-label={`${activeStem.label} volume`}
+                  />
+                  <p className="text-center text-xs text-white/60">
+                    {activeState.mixer.gain > 0 ? "+" : ""}
+                    {activeState.mixer.gain.toFixed(1)} dB
+                  </p>
+                  <p className="text-center text-[9px] text-white/30">
+                    Double-click to reset
+                  </p>
+                </div>
               )}
               {activePanel === "time" && (
                 <div className="space-y-4">
@@ -541,12 +561,18 @@ export function MultiStemEditor({
                         timeStretch: Number(e.target.value),
                       })
                     }
+                    onDoubleClick={() =>
+                      onStemStateChange(activeStem.id, { timeStretch: 1.0 })
+                    }
                     className="stem-accent-slider w-full"
                     aria-label={`${activeStem.label} tempo`}
                   />
                   <p className="text-center text-xs text-white/60">
                     {Math.round((1 / activeState.timeStretch - 1) * 100) >= 0 ? "+" : ""}
                     {Math.round((1 / activeState.timeStretch - 1) * 100)}%
+                  </p>
+                  <p className="text-center text-[9px] text-white/30">
+                    Double-click to reset
                   </p>
                 </div>
               )}

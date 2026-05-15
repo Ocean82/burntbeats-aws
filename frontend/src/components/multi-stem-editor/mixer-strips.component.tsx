@@ -29,7 +29,7 @@ export const MixerStrips = memo(function MixerStrips({
   stemStates,
   activeStemId,
   playbackReady,
-  isLoadingStems,
+  isLoadingStems: _isLoadingStems,
   playingStemId,
   loadingPreviewStemId,
   onStemStateChange,
@@ -52,7 +52,7 @@ export const MixerStrips = memo(function MixerStrips({
             stem={stem}
             state={state}
             isActive={stem.id === activeStemId}
-            audioReady={playbackReady || !isLoadingStems}
+            audioReady={playbackReady}
             isPreviewPlaying={playingStemId === stem.id}
             isLoadingPreview={loadingPreviewStemId === stem.id}
             onStemStateChange={onStemStateChange}

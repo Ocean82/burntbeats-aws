@@ -70,15 +70,23 @@ export const ChannelStrip = memo(function ChannelStrip({
   return (
     <div
       className={cn(
-        "flex w-[140px] min-w-[140px] flex-col items-stretch gap-0 rounded-xl border bg-black/40 transition-all duration-150",
+        "flex w-[140px] min-w-[140px] flex-col items-stretch gap-0 rounded-xl border bg-black/40 transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400/50",
         isActive
           ? "border-current shadow-[0_0_12px_rgba(255,255,255,0.06)]"
           : "border-white/8 hover:border-white/15",
       )}
       style={isActive ? { borderColor: stem.glow } : undefined}
       onClick={() => onActivate(stem.id)}
-      role="group"
-      aria-label={`${stem.label} channel strip`}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onActivate(stem.id);
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Select ${stem.label} channel`}
+      aria-pressed={isActive}
     >
       {/* ── Stem Label ── */}
       <div
@@ -377,6 +385,7 @@ function CollapsibleSection({
           e.stopPropagation();
           onToggle();
         }}
+        aria-expanded={open}
         className="flex w-full items-center gap-1.5 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/35 hover:text-white/50 transition"
       >
         {open ? (
