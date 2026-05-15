@@ -11,6 +11,7 @@ import {
 import {
   Activity,
   Grid,
+  LayoutList,
   Play,
   Sliders,
   Sparkles,
@@ -34,6 +35,7 @@ import { WaveformTimeline } from "./multi-stem-editor/waveform-timeline.componen
 import { StemTabs } from "./multi-stem-editor/stem-tabs.component";
 import { StemControls } from "./multi-stem-editor/stem-controls.component";
 import { MixerConsole } from "./multi-stem-editor/mixer-console.component";
+import { MixerStrips } from "./multi-stem-editor/mixer-strips.component";
 import {
   installTimelinePerformanceDebugHooks,
   isTimelinePerformanceEnabled,
@@ -102,6 +104,7 @@ export function MultiStemEditor({
   >(null);
   const [mixerConsoleOpen, setMixerConsoleOpen] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
+  const [showMixerStrips, setShowMixerStrips] = useState(false);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
     stems[0]?.id ?? null,
   );
@@ -307,6 +310,21 @@ export function MultiStemEditor({
             Beat Grid
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={() => setShowMixerStrips((v) => !v)}
+          aria-label="Toggle mixer strips view"
+          className={cn(
+            "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
+            showMixerStrips
+              ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+              : "border-white/10 bg-white/5 text-white/60 hover:text-white",
+          )}
+        >
+          <LayoutList className="h-3.5 w-3.5" />
+          Mixer
+        </button>
 
         {zoom > 1 && (
           <input
@@ -674,7 +692,7 @@ export function MultiStemEditor({
         onSelectStem={setActiveStemId}
       />
 
-      {activeStem && (
+      {activeStem && !showMixerStrips && (
         <StemControls
           stem={activeStem}
           state={activeState}
@@ -684,6 +702,22 @@ export function MultiStemEditor({
           isLoadingPreview={loadingPreviewStemId === activeStem.id}
           onStemStateChange={onStemStateChange}
           onPreviewStem={onPreviewStem}
+        />
+      )}
+
+      {/* ── Mixer Strips View ── */}
+      {showMixerStrips && (
+        <MixerStrips
+          stems={stems}
+          stemStates={stemStates}
+          activeStemId={resolvedActiveStemId}
+          playbackReady={playbackReady}
+          isLoadingStems={isLoadingStems}
+          playingStemId={playingStemId}
+          loadingPreviewStemId={loadingPreviewStemId}
+          onStemStateChange={onStemStateChange}
+          onPreviewStem={onPreviewStem}
+          onActiveStemChange={setActiveStemId}
         />
       )}
 
