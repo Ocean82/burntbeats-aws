@@ -74,6 +74,18 @@ async function getOrCreatePlugin(
   }
 }
 
+/**
+ * Determine whether a stem's current state requires the phase vocoder plugin.
+ * At default values (pitch=0, timeStretch=1.0) the plugin adds unnecessary
+ * spectral processing that introduces metallic/phasey artifacts. Only route
+ * through the plugin when the user has actually adjusted pitch or tempo.
+ */
+function stemNeedsPlugin(st: StemEditorState): boolean {
+  const pitchActive = Math.abs(st.pitchSemitones) > 0.01;
+  const tempoActive = Math.abs(st.timeStretch - 1.0) > 0.001;
+  return pitchActive || tempoActive;
+}
+
 function destroyAllPlugins(pool: Map<string, PitchTempoPlugin>): void {
   pool.forEach((plugin) => plugin.destroy());
   pool.clear();
@@ -91,7 +103,13 @@ function buildStemSource(
   const source = ctx.createBufferSource();
   source.buffer = buffer;
 
-  if (plugin) {
+  // Only route through the phase vocoder plugin when pitch or tempo are
+  // actually adjusted. At default values (pitch=0, timeStretch=1.0) the
+  // plugin's STFT/OLA pipeline introduces audible metallic artifacts from
+  // phase accumulation and spectral windowing — bypass it entirely.
+  const usePlugin = plugin !== null && stemNeedsPlugin(st);
+
+  if (usePlugin) {
     // Plugin handles pitch + tempo — source runs at unity rate
     source.playbackRate.value = 1.0;
     source.connect(plugin.inputNode);
@@ -358,7 +376,7 @@ export function useAudioPlayback(
         if (!buffer) continue;
         const st = stemStates[stem.id] ?? defaultStemState();
         const plugin = await getOrCreatePlugin(context, stem.id, pluginPoolRef.current, pluginAvailableRef);
-        const usePlugin = plugin !== null;
+        const usePlugin = plugin !== null && stemNeedsPlugin(st);
         const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(buffer, st, elapsedWall, usePlugin);
         if (trimEnd - startOffset <= 0) continue;
 
@@ -426,25 +444,43 @@ export function useAudioPlayback(
 
     if (!routingChanged && !trimChanged) return;
 
-    // If only pitch/tempo changed and plugin is active, update in-place
+    // If only pitch/tempo changed and plugin is active, try in-place update.
+    // However, if any stem transitioned from "no plugin needed" to "plugin needed"
+    // (or vice versa), we must do a full rebuild because the audio graph topology changed.
     if (pitchTempoChanged && !muteSoloChanged && pluginAvailableRef.current === true) {
-      prevMixPitchTempoSigRef.current = pitchTempoSig;
-      prevMixRoutingSigRef.current = routing; // keep routing sig in sync
-      for (const r of mixStemRuntimesRef.current) {
-        if (r.plugin) {
-          const st = stemStatesProp[r.stemId];
-          if (st) {
-            r.plugin.setPitchSemitones(st.pitchSemitones);
-            r.plugin.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
+      const needsRebuild = mixStemRuntimesRef.current.some((r) => {
+        const st = stemStatesProp[r.stemId];
+        if (!st) return false;
+        // Check if the stem's plugin-need state matches its current wiring.
+        // r.plugin is non-null if a plugin was created, but buildStemSource only
+        // wires it when stemNeedsPlugin(st) is true. If the need changed, rebuild.
+        const nowNeeds = stemNeedsPlugin(st);
+        // If plugin is wired (source → plugin → dsp), the source's playbackRate is 1.0.
+        // If plugin is bypassed (source → dsp directly), playbackRate = effectiveRate.
+        const wasWired = r.source.playbackRate.value === 1.0 && r.plugin !== null;
+        return nowNeeds !== wasWired;
+      });
+
+      if (!needsRebuild) {
+        prevMixPitchTempoSigRef.current = pitchTempoSig;
+        prevMixRoutingSigRef.current = routing; // keep routing sig in sync
+        for (const r of mixStemRuntimesRef.current) {
+          if (r.plugin) {
+            const st = stemStatesProp[r.stemId];
+            if (st) {
+              r.plugin.setPitchSemitones(st.pitchSemitones);
+              r.plugin.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
+            }
           }
         }
+        // Recalculate duration since tempo affects wall-clock time
+        const stemBuffers = lastStemBuffersRef.current;
+        const split2 = lastSplitResultStemsRef.current;
+        const stemsToPlay = filterStemsForAudibleMix(split2, stemStatesProp);
+        mixDurationRef.current = maxTrimWallDurationSeconds(stemsToPlay, stemBuffers, stemStatesProp, true);
+        return; // Skip full rebuild
       }
-      // Recalculate duration since tempo affects wall-clock time
-      const stemBuffers = lastStemBuffersRef.current;
-      const split2 = lastSplitResultStemsRef.current;
-      const stemsToPlay = filterStemsForAudibleMix(split2, stemStatesProp);
-      mixDurationRef.current = maxTrimWallDurationSeconds(stemsToPlay, stemBuffers, stemStatesProp, true);
-      return; // Skip full rebuild
+      // Fall through to full rebuild below
     }
 
     // Update tracking refs for next comparison
@@ -536,7 +572,7 @@ export function useAudioPlayback(
         defaultStemState();
 
       const plugin = await getOrCreatePlugin(context, stemId, pluginPoolRef.current, pluginAvailableRef);
-      const usePlugin = plugin !== null;
+      const usePlugin = plugin !== null && stemNeedsPlugin(st);
 
       const wallDuration = getStemTrimWallDurationSeconds(buffer, st, usePlugin);
       if (wallDuration <= 0) return;
@@ -629,15 +665,19 @@ export function useAudioPlayback(
 
     previewStemStateRef.current = st;
 
-    // If plugin active and only pitch/tempo changed (not trim), update in-place
+    // If plugin active and only pitch/tempo changed (not trim), try in-place update.
+    // Must verify the plugin is actually wired into the graph (not bypassed at defaults).
     const runtime = currentPreviewRuntimeRef.current;
-    if (!trimChanged && runtime.plugin && pluginAvailableRef.current === true) {
-      runtime.plugin.setPitchSemitones(st.pitchSemitones);
-      runtime.plugin.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
+    const pluginIsWired = runtime.plugin && runtime.source.playbackRate.value === 1.0;
+    const nowNeedsPlugin = stemNeedsPlugin(st);
+
+    if (!trimChanged && pluginIsWired && nowNeedsPlugin && pluginAvailableRef.current === true) {
+      runtime.plugin!.setPitchSemitones(st.pitchSemitones);
+      runtime.plugin!.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
       return; // Skip expensive seek rebuild
     }
 
-    // Trim changed or no plugin — do full seek
+    // Trim changed, plugin wiring mismatch, or no plugin — do full seek
     const pct = playheadPositionRef.current;
     void seekToPreviewRef.current(pct);
   }, [stemStatesProp, playingStem, playheadPositionRef]);
@@ -735,7 +775,7 @@ export function useAudioPlayback(
         prevPreviewTrimSigRef.current = `${st.trim.start}:${st.trim.end}`;
 
         const plugin = await getOrCreatePlugin(context, stemId, pluginPoolRef.current, pluginAvailableRef);
-        const usePlugin = plugin !== null;
+        const usePlugin = plugin !== null && stemNeedsPlugin(st);
 
         const wallDuration = getStemTrimWallDurationSeconds(buffer, st, usePlugin);
         if (wallDuration <= 0) return;
