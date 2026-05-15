@@ -56,6 +56,8 @@ export interface ProcessingSettingsPanelProps {
   subscriptionInactive?: boolean;
   /** Explicit conversion CTA shown when split is blocked by inactive plan. */
   onContinueCheckout?: () => void;
+  /** Called when user confirms they want to clear the current split and start fresh. */
+  onNewSplit?: () => void;
   /** Metering: remaining tokens from Clerk (null = unknown / loading). */
   usageBalance?: number | null;
   usageLoading?: boolean;

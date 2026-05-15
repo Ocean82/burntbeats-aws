@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Music2, Settings2 } from "lucide-react";
+import { Music2, Settings2, RotateCcw } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
 import type { ProcessingSettingsPanelProps } from "./types";
@@ -11,6 +11,7 @@ import { StemCountSelector } from "./StemCountSelector";
 import { SplitActions } from "./SplitActions";
 import { UsageTokenRow } from "./UsageTokenRow";
 import { SplitErrorAlert } from "./SplitErrorAlert";
+import { NewSplitConfirmDialog } from "./NewSplitConfirmDialog";
 
 export function ProcessingSettingsPanel({
   sourceMode,
@@ -54,12 +55,14 @@ export function ProcessingSettingsPanel({
   estimatedSplitTokens = null,
   estimatedExpandTokens = null,
   isCollapsed = false,
+  onNewSplit,
 }: ProcessingSettingsPanelProps) {
   const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
   const [loadExpanded, setLoadExpanded] = useState(false);
   const [isSample, setIsSample] = useState(false);
   // Local override: user can re-expand the panel after auto-collapse
   const [userExpanded, setUserExpanded] = useState(false);
+  const [showNewSplitConfirm, setShowNewSplitConfirm] = useState(false);
 
   const panelCollapsed = isCollapsed && !userExpanded;
 
@@ -114,6 +117,18 @@ export function ProcessingSettingsPanel({
               <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
                 {splitResultStemsLength} stems ready
               </span>
+              {onNewSplit && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewSplitConfirm(true)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200/90 transition hover:border-rose-400/50 hover:bg-rose-500/20 hover:text-rose-100"
+                  aria-label="Start a new split"
+                  title="Clear current split and load a new track"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  New Split
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setUserExpanded(true)}
@@ -358,6 +373,18 @@ export function ProcessingSettingsPanel({
           e.target.value = "";
         }}
       />
+
+      {/* New Split confirmation dialog */}
+      {onNewSplit && (
+        <NewSplitConfirmDialog
+          open={showNewSplitConfirm}
+          onConfirm={() => {
+            setShowNewSplitConfirm(false);
+            onNewSplit();
+          }}
+          onCancel={() => setShowNewSplitConfirm(false)}
+        />
+      )}
     </div>
   );
 }

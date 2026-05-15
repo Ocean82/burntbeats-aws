@@ -743,6 +743,7 @@ export function App() {
                 estimatedSplitTokens,
                 estimatedExpandTokens: estimatedSplitTokens,
                 isCollapsed: splitResultStems.length > 0 && !isSplitting,
+                onNewSplit: handleClearUpload,
               }}
               mixerProps={{
                 mixerSectionRef,
