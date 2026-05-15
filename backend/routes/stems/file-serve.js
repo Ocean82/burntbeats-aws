@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * GET /file/:job_id/:stemId — Serve stem WAV files (S3 presign or disk).
+ * GET /file/:job_id/:stemId — Serve stem WAV files (S3 proxy or disk).
  * DELETE /:job_id — Cancel/delete a stem separation job.
  */
 import { Router } from "express";
@@ -50,7 +50,37 @@ fileServeRouter.get(
             : null;
         if (key && s3.bucket) {
           const url = await presignStemGetUrl(s3.bucket, key, s3.region);
-          return res.redirect(302, url);
+          // Proxy the S3 response instead of redirecting to avoid CORS issues.
+          // A 302 redirect causes the browser to make a cross-origin request
+          // directly to S3, which fails without S3 bucket CORS configuration.
+          try {
+            const s3Res = await fetch(url);
+            if (!s3Res.ok) {
+              console.warn(
+                `[GET /api/stems/file] S3 fetch failed: ${s3Res.status}`,
+              );
+              return res
+                .status(s3Res.status)
+                .json({ error: "Failed to fetch stem from storage" });
+            }
+            res.setHeader("Content-Type", "audio/wav");
+            const contentLength = s3Res.headers.get("content-length");
+            if (contentLength) {
+              res.setHeader("Content-Length", contentLength);
+            }
+            // @ts-ignore — Node 18+ fetch body is a ReadableStream
+            const body = /** @type {import("stream").Readable} */ (
+              s3Res.body
+            );
+            const { Readable } = await import("stream");
+            Readable.fromWeb(/** @type {any} */ (body)).pipe(res);
+            return;
+          } catch (proxyErr) {
+            console.warn(
+              "[GET /api/stems/file] S3 proxy failed, trying disk:",
+              proxyErr instanceof Error ? proxyErr.message : proxyErr,
+            );
+          }
         }
       } catch (e) {
         console.warn(
