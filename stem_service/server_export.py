@@ -165,8 +165,7 @@ def compressor_stereo(
     attack_s: float = 0.003,
     release_s: float = 0.25,
 ) -> np.ndarray:
-    # Simplified hard/soft knee compressor approximation.
-    # WebAudio's dynamicsCompressorNode is more nuanced; this is an audible approximation.
+    """Simplified hard/soft knee compressor (vectorized envelope follower)."""
     x = stereo.astype(np.float64, copy=False)
 
     # Detector: max envelope across channels (more stable than average).
@@ -177,7 +176,6 @@ def compressor_stereo(
     knee = max(0.0, float(knee_db))
 
     # Compute static gain reduction target (in dB).
-    # Soft knee: apply curve within [thr-knee/2, thr+knee/2].
     lower = thr - knee / 2.0
     upper = thr + knee / 2.0
     gain_db = np.zeros_like(env_db)
@@ -191,16 +189,13 @@ def compressor_stereo(
     if np.any(mask_high):
         above = env_db[mask_high]
         out_db = thr + (above - thr) / r
-        gain_db[mask_high] = out_db - above  # negative or zero
+        gain_db[mask_high] = out_db - above
 
-    # Within knee: interpolate between no compression and full compression.
+    # Within knee: interpolate.
     mask_mid = (~mask_low) & (~mask_high)
     if np.any(mask_mid) and knee > 0:
         mid = env_db[mask_mid]
-        # Map mid to 0..1 within knee.
         t = (mid - lower) / knee
-        # Linear interpolation of output dB between identity and full compression.
-        # Identity: out_db=mid; Full compression: out_db=thr+(mid-thr)/r
         out_identity = mid
         out_full = thr + (mid - thr) / r
         out_db = (1.0 - t) * out_identity + t * out_full
@@ -209,22 +204,31 @@ def compressor_stereo(
     # Convert to linear target gain.
     target_gain = np.power(10.0, gain_db / 20.0)
 
-    attack_samples = max(1, int(attack_s * fs))
-    release_samples = max(1, int(release_s * fs))
+    # Vectorized envelope smoothing using scipy.signal.lfilter (IIR one-pole).
+    # Attack/release are modeled as a single smoothing pass with the slower
+    # release coefficient, then a second pass that tightens attack transients.
+    # This is a standard "decoupled peak" approximation used in many DAW compressors.
+    atk_coeff = math.exp(-1.0 / max(1, int(attack_s * fs)))
+    rel_coeff = math.exp(-1.0 / max(1, int(release_s * fs)))
 
-    # Envelope smoothing in gain domain.
-    gain = np.zeros_like(target_gain)
-    gain[0] = target_gain[0]
-    atk_coeff = math.exp(-1.0 / attack_samples)
-    rel_coeff = math.exp(-1.0 / release_samples)
+    # First pass: release envelope (slow follower)
+    # IIR: y[n] = (1-rel_coeff)*x[n] + rel_coeff*y[n-1]
+    # This is equivalent to lfilter([1-rel_coeff], [1, -rel_coeff], target_gain)
+    gain_release = lfilter(
+        [1.0 - rel_coeff], [1.0, -rel_coeff], target_gain
+    )
 
-    for i in range(1, len(target_gain)):
-        if target_gain[i] < gain[i - 1]:
-            # Need more reduction => attack (faster).
-            gain[i] = atk_coeff * gain[i - 1] + (1.0 - atk_coeff) * target_gain[i]
-        else:
-            # Release (slower).
-            gain[i] = rel_coeff * gain[i - 1] + (1.0 - rel_coeff) * target_gain[i]
+    # Second pass: attack — where target is below the release envelope, snap faster
+    # Use element-wise minimum between release envelope and attack-smoothed target
+    gain_attack = lfilter(
+        [1.0 - atk_coeff], [1.0, -atk_coeff], target_gain
+    )
+
+    # The final gain is the minimum of the two (attack is faster when reducing)
+    gain = np.minimum(gain_release, gain_attack)
+
+    # Clamp to [0, 1] — gain reduction only, never boost
+    gain = np.clip(gain, 0.0, 1.0)
 
     out = x * gain[:, None]
     return out.astype(np.float32)
@@ -373,8 +377,15 @@ def main():
             resampled = segment
         else:
             seg_tensor = torch.from_numpy(segment.T).float()  # (channels, samples)
-            in_len = segment.shape[0]
-            resampled_t = torchaudio.functional.resample(seg_tensor, in_len, out_len)
+            # Compute effective source rate: sr_in * rate gives the "perceived" rate.
+            # Resampling from (sr_in * rate) to sample_rate_out achieves both pitch
+            # shift and sample rate conversion in one pass.
+            effective_sr_in = int(round(sr_in * rate))
+            if effective_sr_in <= 0:
+                effective_sr_in = sr_in
+            resampled_t = torchaudio.functional.resample(
+                seg_tensor, effective_sr_in, sample_rate_out
+            )
             resampled = resampled_t.numpy().T.astype(np.float32, copy=False)
 
         # --- Gain ---

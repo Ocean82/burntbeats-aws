@@ -115,7 +115,6 @@ def run_demucs_only_2stem(
     """
     2-stem separation using PyTorch Demucs only (no MDX ONNX Stage 1 waterfall).
     Same flat layout as ``run_hybrid_2stem``: ``stems/vocals.wav`` and ``stems/instrumental.wav``.
-    VAD pre-trim matches hybrid when ``prefer_speed`` and ``USE_VAD_PRETRIM`` apply.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -12,7 +12,6 @@ from stem_service.config.paths import (  # noqa: F401
     MODELS_BY_TYPE_DIR,
     MDX_NET_MODELS_DIR,
     MDXNET_MODELS_DIR,
-    SILERO_VAD_ONNX,
     HTDEMUCS_PTH,
     HTDEMUCS_TH,
     SCNET_MODELS_DIR,
@@ -86,9 +85,6 @@ from stem_service.config.device import (  # noqa: F401
     MAX_QUEUE_DEPTH,
     VAD_PAD_SEC,
     VAD_MAX_GAP_TO_MERGE_SEC,
-    USE_VAD_CHUNKS,
-    VAD_CHUNK_LENGTH_S,
-    VAD_CHUNK_SILENCE_FLUSH_S,
     USE_DEMUCS_SHIFTS_0,
 )
 

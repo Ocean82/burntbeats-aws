@@ -16,9 +16,6 @@ from pathlib import Path
 from typing import Callable
 
 from stem_service.config import (
-    USE_VAD_CHUNKS,
-    VAD_CHUNK_LENGTH_S,
-    VAD_CHUNK_SILENCE_FLUSH_S,
     four_stem_skip_scnet,
     get_scnet_onnx_path,
     scnet_available,
@@ -31,80 +28,14 @@ from stem_service.scnet_onnx import (
 )
 from stem_service.scnet_torch import run_scnet_torch_4stem
 from stem_service.split import run_demucs
-from stem_service.vad import get_chunk_boundaries, is_vad_available
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
 from stem_service.hybrid.utils import (
-    _concat_stems,
     _effective_input_path,
     _materialize_stage1_instrumental,
-    _slice_audio,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _run_chunked_4stem(
-    input_path: Path,
-    output_dir: Path,
-    prefer_speed: bool = False,
-    progress_callback: Callable[[int], None] | None = None,
-    job_logger: "logging.Logger | None" = None,
-) -> tuple[list[tuple[str, Path]], list[str]] | None:
-    """
-    VAD-chunked 4-stem separation (Option B from VADSLICE doc).
-    Slices input at silence boundaries, runs separation per chunk,
-    then concatenates stems. Returns None if VAD unavailable or
-    only one chunk found (caller falls back to full-file processing).
-    Returns (stem_list, models_used) with models from first chunk.
-    """
-    if not is_vad_available():
-        return None
-
-    boundaries = get_chunk_boundaries(
-        input_path,
-        chunk_length_s=float(VAD_CHUNK_LENGTH_S),
-        silence_flush_s=VAD_CHUNK_SILENCE_FLUSH_S,
-    )
-    if boundaries is None or len(boundaries) <= 1:
-        return None
-
-    _log = job_logger or logger
-    _log.info("VAD chunking: %d chunks for %s", len(boundaries), input_path.name)
-
-    chunk_stem_lists: list[list[tuple[str, Path]]] = []
-    first_chunk_models: list[str] = []
-    chunks_dir = output_dir / "chunks"
-    chunks_dir.mkdir(parents=True, exist_ok=True)
-
-    for i, (start_s, end_s) in enumerate(boundaries):
-        if progress_callback:
-            progress_callback(int(10 + (i / len(boundaries)) * 80))
-
-        chunk_path = chunks_dir / f"chunk_{i:03d}.wav"
-        _slice_audio(input_path, start_s, end_s, chunk_path)
-
-        chunk_out = chunks_dir / f"chunk_{i:03d}_stems"
-        chunk_out.mkdir(parents=True, exist_ok=True)
-
-        stems, chunk_models = run_hybrid_4stem(
-            chunk_path,
-            chunk_out,
-            prefer_speed=prefer_speed,
-            progress_callback=None,
-            job_logger=job_logger,
-        )
-        if not first_chunk_models:
-            first_chunk_models = chunk_models
-        chunk_stem_lists.append(stems)
-
-    flat_dir = output_dir / "stems"
-    flat_dir.mkdir(parents=True, exist_ok=True)
-    result = _concat_stems(chunk_stem_lists, flat_dir)
-
-    if progress_callback:
-        progress_callback(100)
-    return result, first_chunk_models if first_chunk_models else ["chunked_4stem"]
 
 
 def run_4stem_single_pass_or_hybrid(
@@ -117,28 +48,13 @@ def run_4stem_single_pass_or_hybrid(
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Entry point for 4-stem separation.
-    - If USE_VAD_CHUNKS=1 and VAD available: slice at silence boundaries,
-      run separation per chunk, concatenate (Option B from VADSLICE doc).
-    - Otherwise: PyTorch htdemucs by default (FOUR_STEM_BACKEND=hybrid).
-      With FOUR_STEM_BACKEND=auto, try SCNet ONNX first, then hybrid.
+    - PyTorch htdemucs by default (FOUR_STEM_BACKEND=hybrid).
+    - With FOUR_STEM_BACKEND=auto, try SCNet ONNX first, then hybrid.
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     _log = job_logger or logger
-
-    # VAD chunked path
-    if USE_VAD_CHUNKS:
-        chunked = _run_chunked_4stem(
-            input_path,
-            output_dir,
-            prefer_speed=prefer_speed,
-            progress_callback=progress_callback,
-            job_logger=job_logger,
-        )
-        if chunked is not None:
-            stem_list, models_used = chunked
-            return stem_list, models_used
 
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
@@ -211,8 +127,8 @@ def run_hybrid_4stem(
     Stage 1: Extract vocals via 2-stem waterfall (MDX ranks 1–3, then Demucs htdemucs 2-stem).
     Phase inversion: instrumental = original - vocals (skip if Demucs gives instrumental).
     Stage 2: Demucs 4-stem on instrumental → drums, bass, other.
-    prefer_speed=True: VAD pre-trim when USE_VAD_PRETRIM; faster Stage 1 overlap.
-    prefer_speed=False: full-length input (same as 2-stem quality); higher Stage 1 overlap.
+    prefer_speed=True: faster Stage 1 overlap (50%).
+    prefer_speed=False: full-length input; higher Stage 1 overlap (75%).
     progress_callback: optional callable(percent) called at stage boundaries.
     Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
     """

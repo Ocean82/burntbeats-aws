@@ -34,7 +34,8 @@ def test_preservation_speed_mode_uses_05_overlap():
     with patch("stem_service.vocal_stage1.run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
          patch("stem_service.vocal_stage1.resolve_single_vocal_onnx") as mock_resolve, \
          patch("stem_service.vocal_stage1.vocal_onnx_allowed_for_service", return_value=True), \
-         patch("stem_service.vocal_stage1.audio_separator_2stem_enabled", return_value=False):
+         patch("stem_service.vocal_stage1.audio_separator_2stem_enabled", return_value=False), \
+         patch("stem_service.vocal_stage1.resolve_declared_vocal_onnx_path", return_value=None):
 
         fake_model = Path("/fake/UVR_MDXNET_3_9662.onnx")
         mock_resolve.return_value = fake_model

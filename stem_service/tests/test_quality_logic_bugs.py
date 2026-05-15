@@ -41,7 +41,8 @@ def test_bug1_quality_mode_uses_075_overlap():
     with patch("stem_service.vocal_stage1.run_vocal_onnx", side_effect=mock_run_vocal_onnx) as mock_vocal, \
          patch("stem_service.vocal_stage1.resolve_single_vocal_onnx") as mock_resolve, \
          patch("stem_service.vocal_stage1.vocal_onnx_allowed_for_service", return_value=True), \
-         patch("stem_service.vocal_stage1.audio_separator_2stem_enabled", return_value=False):
+         patch("stem_service.vocal_stage1.audio_separator_2stem_enabled", return_value=False), \
+         patch("stem_service.vocal_stage1.resolve_declared_vocal_onnx_path", return_value=None):
 
         # Make resolve return a fake model path
         fake_model = Path("/fake/Kim_Vocal_2.onnx")

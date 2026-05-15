@@ -52,7 +52,10 @@ else:
     )
 
 # Pre-trim input to vocal span with Silero VAD (Stage 0).
-USE_VAD_PRETRIM = os.environ.get("USE_VAD_PRETRIM", "true").strip().lower() in (
+# DISABLED: Silero VAD is speech-tuned and clips music vocals. Default is "false".
+# The pipeline ignores this setting (hybrid/utils._effective_input_path is a pass-through),
+# but we keep the config for potential future use with a music-aware VAD model.
+USE_VAD_PRETRIM = os.environ.get("USE_VAD_PRETRIM", "false").strip().lower() in (
     "1",
     "true",
     "yes",
@@ -68,7 +71,8 @@ DEFAULT_STEM_COUNT = 4
 ALLOWED_STEM_COUNTS = (2, 4)
 DEFAULT_QUALITY = "quality"
 
-# Quality tiers
+# Quality tiers — "balanced" is merged into "quality" (same pipeline behavior).
+# Only "speed" and "quality" are distinct tiers at runtime.
 QUALITY_SPEED = "speed"
 QUALITY_QUALITY = "quality"
 QUALITY_ULTRA = "ultra"
@@ -142,18 +146,7 @@ def get_onnx_providers() -> list[str]:
 
 
 # =======================
-# VAD Settings
+# VAD Settings (DISABLED — kept for potential future music-aware VAD)
 # =======================
 VAD_PAD_SEC = 0.3
 VAD_MAX_GAP_TO_MERGE_SEC = 0.3
-
-# =======================
-# VAD Chunking
-# =======================
-USE_VAD_CHUNKS = os.environ.get("USE_VAD_CHUNKS", "0").strip().lower() in (
-    "1",
-    "true",
-    "yes",
-)
-VAD_CHUNK_LENGTH_S = int(os.environ.get("VAD_CHUNK_LENGTH_S", "30"))
-VAD_CHUNK_SILENCE_FLUSH_S = float(os.environ.get("VAD_CHUNK_SILENCE_FLUSH_S", "5.0"))

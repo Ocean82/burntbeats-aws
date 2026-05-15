@@ -51,6 +51,34 @@ CORRELATION_ID_CONTEXT_VAR: contextvars.ContextVar[str] = contextvars.ContextVar
 )
 
 
+def _finalize_stems_to_16bit(stem_list: list[tuple[str, Path]]) -> None:
+    """Convert final output stems from float32 WAV to 16-bit PCM with TPDF dither.
+
+    This is the LAST processing step before delivery. All intermediate processing
+    (ONNX inference, phase inversion, Demucs) operates in float32 to avoid
+    compounding quantization noise. Only the final user-facing stems are dithered
+    down to 16-bit for standard playback compatibility.
+    """
+    import numpy as np
+    import soundfile as sf
+
+    from stem_service.audio_utils import write_wav_16bit
+
+    for stem_id, path in stem_list:
+        if not path.exists():
+            continue
+        try:
+            info = sf.info(str(path))
+            # Only convert if not already 16-bit PCM
+            if info.subtype == "PCM_16":
+                continue
+            audio, sr = sf.read(str(path), dtype="float32", always_2d=True)
+            write_wav_16bit(path, audio, sr, dither=True)
+        except Exception as e:
+            # Non-fatal: leave the stem as-is if conversion fails
+            logger.warning("Could not finalize %s to 16-bit: %s", stem_id, e)
+
+
 
 def run_separation_sync(
     job_id: str,
@@ -65,14 +93,13 @@ def run_separation_sync(
     correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
 
     # Tiered Stage-1 model lane used by vocal/instrumental ONNX selectors.
+    # "balanced" is merged into "quality" — both use the same model waterfall.
     if quality_mode == QUALITY_ULTRA:
         model_tier = "quality"
     elif prefer_speed:
         model_tier = "fast"
-    elif quality_mode == "quality":
-        model_tier = "quality"
     else:
-        model_tier = "balanced"
+        model_tier = "quality"
 
     # Register job for tracking (thread-safe)
     register_running_job(job_id)
@@ -234,6 +261,11 @@ def run_separation_sync(
             job_log.info("=== JOB CANCELLED ===")
             CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
             return
+
+        # Finalize: convert all output stems to 16-bit PCM with TPDF dither.
+        # This is the last processing step — all prior stages use float32 to
+        # avoid compounding quantization noise through phase inversion / Demucs.
+        _finalize_stems_to_16bit(stem_list)
 
         elapsed = time.monotonic() - t0
         realtime_factor: float | None = None
@@ -423,6 +455,10 @@ def run_expand_sync(
         if is_job_cancelled(expand_job_id):
             write_progress(out_dir, {"status": "cancelled", "progress": 0})
             return
+
+        # Finalize: convert output stems to 16-bit PCM with TPDF dither.
+        _finalize_stems_to_16bit(stem_list)
+
         elapsed = time.monotonic() - t0
         stems_payload = [
             {"id": stem_id, "path": str(p.relative_to(OUTPUT_BASE))}

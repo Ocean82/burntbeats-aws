@@ -12,63 +12,73 @@ This document describes the **implemented** behavior in `stem_service/`. For ins
 
 | Value | Intent | Typical behavior |
 |--------|--------|------------------|
-| **speed** | Fastest turnaround | MDX chunk overlap 50%; coarser sliding-window stride on SCNet where applicable. VAD pre-trim code exists but is **disabled** (`USE_VAD_PRETRIM=false`) — Silero VAD is speech-tuned and unsuitable for music vocals. |
-| **quality** | Default: balance of quality and time | Full-length processing; MDX overlap 75%; tighter window stride on SCNet; hybrid fallback unchanged. |
-| **ultra** | Maximum separation (premium) | RoFormer / large checkpoints via `audio-separator`; requires extra deps; very slow on CPU unless explicitly allowed. |
+| **speed** | Fastest turnaround | Fast ONNX models (UVR_MDXNET_3_9662); MDX chunk overlap 50%. |
+| **quality** | Default: best quality at acceptable speed | Kim_Vocal_2 ONNX models; MDX overlap 75% (smoother chunk boundaries). |
+| **ultra** | Maximum separation (premium) | RoFormer / large checkpoints via `audio-separator`; very slow on CPU. |
 
-Exact routing is in `stem_service/server.py` → `stem_service/hybrid.py`, `vocal_stage1.py`, `mdx_onnx.py`, `scnet_onnx.py`, `split.py`, `ultra.py`.
+> **Note:** "balanced" is accepted by the API for backward compatibility but is treated identically to "quality" at runtime. There is no separate "balanced" pipeline.
 
 ## `STEM_BACKEND` (`hybrid` vs `demucs_only`)
 
 | Mode | 2-stem | 4-stem |
 |------|--------|--------|
-| **`hybrid`** (default) | `run_hybrid_2stem` → `extract_vocals_stage1` (ONNX waterfall, `InstrumentalSource`, optional phase inversion) | `run_4stem_single_pass_or_hybrid` (SCNet / hybrid Demucs, etc.) |
-| **`demucs_only`** | `run_demucs_only_2stem` → PyTorch `htdemucs` `--two-stems=vocals` only (no MDX ONNX Stage 1) | `run_demucs` 4-stem only |
+| **`hybrid`** (default) | `run_hybrid_2stem` → `extract_vocals_stage1` (ONNX waterfall + phase inversion) | `run_4stem_single_pass_or_hybrid` (hybrid: Stage 1 vocals + Demucs on instrumental) |
+| **`demucs_only`** | `run_demucs_only_2stem` → PyTorch `htdemucs` `--two-stems=vocals` only (no MDX ONNX) | `run_demucs` 4-stem only |
 
-Unknown `STEM_BACKEND` values produce a **config warning** and behave as **`hybrid`**. `get_2stem_stage1_preview(..., stem_backend=STEM_BACKEND)` reflects this for server logs.
+Unknown `STEM_BACKEND` values produce a **config warning** and behave as **`hybrid`**.
 
-## 4-stem routing order
+## 4-stem routing
 
-1. **SCNet ONNX** — If `USE_SCNET=1` and `models/scnet.onnx/scnet.onnx` exists.
-2. **Hybrid** — Stage 1 vocals + instrumental, then **PyTorch Demucs** (`htdemucs.pth` / `htdemucs.th`) on the instrumental via subprocess (`run_hybrid_4stem`).
+1. **Hybrid** (default, `FOUR_STEM_BACKEND=hybrid`) — Stage 1 extracts vocals via ONNX waterfall, phase inversion produces instrumental, then **PyTorch Demucs** (`htdemucs.th`) runs 4-stem on the instrumental via subprocess. Demucs vocals output is discarded (Stage 1 vocals are higher quality).
+2. **SCNet** (optional, `FOUR_STEM_BACKEND=auto`) — Tries SCNet PyTorch or ONNX first, falls back to hybrid.
 
-Demucs **ONNX/ORT** 4-stem inference was removed; production relies on **PyTorch weights** for Demucs.
+## 2-stem Stage 1 waterfall
 
-## 2-stem Stage 1 priority
+Implemented in `stem_service/vocal_stage1.py` (`extract_vocals_stage1`). Models are tried in order until one succeeds:
 
-Implemented in `stem_service/vocal_stage1.py` (`extract_vocals_stage1`). When `prefer_speed` is false and `model_tier` is **balanced** or **quality**, **MDX23C** is attempted first (if vocal weights exist and are configured):
+### Speed tier (`prefer_speed=True`)
 
-1. **MDX23C rank 0** — **quality:** `mdx23c_vocal` only; instrumental = mix − vocal inside `mdx_onnx` (one ONNX pass). **balanced:** `mdx23c_vocal` + `mdx23c_instrumental` ONNX (two passes).
-2. **UVR_MDXNET_3_9662** (or valid `vocal_model_override`) — optional audio-separator CLI; else vocal ONNX + optional second instrumental ONNX (`USE_TWO_STEM_INST_ONNX_PASS`) or **phase inversion pending**.
-3. **UVR_MDXNET_KARA** — same pairing rules as rank 1.
-4. **MDX23C rank 3** — same quality/balanced split as step 1 if step 1 did not return.
-5. **Demucs** `htdemucs` `--two-stems=vocals` (native vocals + `no_vocals`).
+1. **UVR_MDXNET_3_9662** (.ort preferred, .onnx fallback) — score 9, ~27s/30s clip
+2. **UVR_MDXNET_KARA** (.ort preferred, .onnx fallback) — score 9, ~28s/30s clip
+3. **PyTorch htdemucs** `--two-stems=vocals` (last resort)
 
-Hybrid code does **not** infer behavior from `instrumental_path is None` alone: see **`InstrumentalSource`** and **`[MODEL-PARAMS.md](MODEL-PARAMS.md)`** (*Stage 1 return value*).
+### Quality tier (default)
 
-## 2-stem ORT model contract (consistency)
+1. **Kim_Vocal_2** (.ort preferred, .onnx fallback) — score 9, ~68s/30s clip
+2. **Kim_Vocal_1** (.ort preferred, .onnx fallback) — score 9, ~65s/30s clip
+3. **UVR_MDXNET_3_9662** (fallback) — score 9, ~27s/30s clip
+4. **UVR_MDXNET_KARA** (fallback) — score 9, ~28s/30s clip
+5. **PyTorch htdemucs** `--two-stems=vocals` (last resort)
 
-For 2-stem ONNX Runtime inference, runtime should prefer `.ort` siblings when present (`resolve_mdx_model_path()`), and teams should keep the following logical order consistent:
+### Instrumental production
 
-- **Fast 2-stem primary:** `UVR_MDXNET_3_9662.ort`
-- **Fast 2-stem fallback:** `UVR_MDXNET_KARA.ort`
-- **Quality 2-stem primary:** `Kim_Vocal_2.ort`
-- **Quality 2-stem fallback:** `Kim_Vocal_1.ort`
+- **Phase inversion** (`original − vocals`) is the default method when ONNX produces vocals only.
+- If `USE_TWO_STEM_INST_ONNX_PASS=1`, a second ONNX pass with `UVR-MDX-NET-Inst_HQ_5` produces the instrumental directly (slower but avoids subtraction artifacts).
+- When Demucs is the fallback, it produces both vocals and `no_vocals` natively (no phase inversion needed).
 
-Notes:
+### Models NOT in the waterfall
 
-- These entries are the intended vocal model contract for 2-stem selection consistency.
-- If an `.ort` file is missing, runtime may fall back to `.onnx` for the same logical model name.
+- **MDX23C** — excluded; ~122s/30s clip is too slow for production CPU.
+- **UVR_MDXNET_1/2** — excluded; score 8.5 (below the 9.0 minimum).
+- **Voc_FT** — excluded from default; ~75s and same score as Kim models which have better separation characteristics.
+
+## Audio processing pipeline (quality notes)
+
+1. **Intermediate stems** are written as **32-bit float WAV** to avoid compounding quantization noise through phase inversion and Demucs Stage 2.
+2. **Final output stems** are converted to **16-bit PCM WAV with TPDF dithering** as the last step before delivery.
+3. **Phase inversion** uses a soft limiter at threshold=0.98 (preserves 98% of dynamic range; only catches rare inter-sample peaks).
+4. **48kHz input** is resampled to 44.1kHz for ONNX inference (model training rate) with `lowpass_filter_width=64` for higher-quality anti-aliasing, then resampled back to original rate for output.
+
+## ORT model preference
+
+Runtime prefers `.ort` siblings when present (`resolve_mdx_model_path()`). ORT format loads faster and runs slightly faster than `.onnx` on CPU. Tier lists use `.onnx` logical names; resolution is automatic.
 
 ## Related docs
 
-- [MODEL-PARAMS.md](MODEL-PARAMS.md) — MDX tensor params, overlap, **`InstrumentalSource`** / 4-tuple Stage 1 return
-- [MODEL-SELECTION-AUTHORITY.md](MODEL-SELECTION-AUTHORITY.md) — tier lists vs production waterfall
-- [benchmark-demucs-onnx.md](archive/benchmark-demucs-onnx.md) — historical notes on Demucs ONNX benchmarks (**ONNX** Demucs path retired — see routing above)
-- [ORT-MODEL-CONVERSION.md](research/ORT-MODEL-CONVERSION.md) — optional build-time ONNX → ORT (faster loads; `models/demucs.onnx-main` README context)
+- [MODEL-PARAMS.md](MODEL-PARAMS.md) — MDX tensor params, overlap, `InstrumentalSource` / 4-tuple Stage 1 return
+- [MODEL-SELECTION-AUTHORITY.md](MODEL-SELECTION-AUTHORITY.md) — tier lists, benchmark CSV, decision rules
 - [MODELS-INVENTORY.md](MODELS-INVENTORY.md) — Files under `models/`
 - [CPU-OPTIMIZATION-TIPS.md](CPU-OPTIMIZATION-TIPS.md) — Threading and env tuning
 - [JOB-METRICS.md](JOB-METRICS.md) — `job_metrics.jsonl` and modes
-- [ONNX-EFFICIENCY-INVESTIGATION.md](research/ONNX-EFFICIENCY-INVESTIGATION.md) — ONNX path notes (secondary research)
 
 Historical research drafts live under [archive/](archive/README.md).

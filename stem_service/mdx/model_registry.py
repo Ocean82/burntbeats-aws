@@ -80,6 +80,7 @@ DEREVERB_MODEL_PATHS: list[Path] = [
 
 # ---------------------------------------------------------------------------
 # CPU-only single-model tier assignments — MUST match docs/MODEL-SELECTION-AUTHORITY.md.
+# "balanced" is merged into "quality" — both use the same model waterfall.
 # ---------------------------------------------------------------------------
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
     "fast": [
@@ -87,14 +88,16 @@ _VOCAL_TIER_NAMES: dict[str, list[str]] = {
         "UVR_MDXNET_KARA.onnx",
     ],
     "balanced": [
+        "Kim_Vocal_2.onnx",
+        "Kim_Vocal_1.onnx",
         "UVR_MDXNET_3_9662.onnx",
         "UVR_MDXNET_KARA.onnx",
     ],
     "quality": [
-        "UVR_MDXNET_3_9662.onnx",
-        "UVR_MDXNET_KARA.onnx",
         "Kim_Vocal_2.onnx",
         "Kim_Vocal_1.onnx",
+        "UVR_MDXNET_3_9662.onnx",
+        "UVR_MDXNET_KARA.onnx",
     ],
 }
 

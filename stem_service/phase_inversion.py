@@ -28,27 +28,32 @@ def _load_audio_tensor(path: Path) -> tuple[torch.Tensor, int]:
 
 
 def _write_wav(path: Path, ch_last: torch.Tensor, sr: int) -> None:
-    """Write stereo/mono float WAV; use soundfile if available, else torchaudio."""
+    """Write stereo/mono float32 WAV (intermediate format — no quantization loss)."""
     arr = ch_last.detach().cpu().numpy()
     try:
         import soundfile as sf
 
-        sf.write(str(path), arr, int(sr))
+        sf.write(str(path), arr, int(sr), subtype="FLOAT")
     except ImportError:
         torchaudio.save(str(path), torch.from_numpy(arr.T).float(), int(sr))
 
 
-def _soft_limit(x: torch.Tensor, threshold: float = 0.9, ceiling: float = 1.0) -> torch.Tensor:
+def _soft_limit(x: torch.Tensor, threshold: float = 0.98, ceiling: float = 1.0) -> torch.Tensor:
     """
-    Tanh-based soft limiter.
+    Tanh-based soft limiter — preserves dynamics while preventing hard clipping.
 
     Values within [-threshold, threshold] pass through unchanged.
     Values beyond threshold are smoothly compressed toward ceiling using tanh.
     This avoids the harsh distortion of hard clipping while keeping output in [-1, 1].
 
+    The threshold is set high (0.98) to preserve transient punch and dynamic range
+    in instrumental stems produced by phase inversion. Only the top 2% of headroom
+    is compressed, which is sufficient to catch rare inter-sample peaks without
+    audibly squashing drums or bass.
+
     Args:
         x: input tensor
-        threshold: level below which signal passes unchanged (default 0.9)
+        threshold: level below which signal passes unchanged (default 0.98)
         ceiling: maximum output level (default 1.0)
     """
     knee_range = ceiling - threshold

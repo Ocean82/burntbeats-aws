@@ -83,7 +83,7 @@ def run_demucs(
     input_path: Path,
     output_dir: Path,
     stems: int = 4,
-    prefer_speed: bool = True,
+    prefer_speed: bool = False,
 ) -> list[tuple[str, Path]]:
     """
     Run Demucs separation. Returns list of (stem_id, wav_path).

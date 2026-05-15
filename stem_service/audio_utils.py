@@ -34,11 +34,31 @@ def apply_tpdf_dither(audio: np.ndarray, bit_depth: int = 16) -> np.ndarray:
     return audio + dither
 
 
+def write_wav_float32(path: Path | str, audio: np.ndarray, sr: int) -> None:
+    """
+    Write audio as 32-bit float WAV (lossless intermediate format).
+
+    Use this for intermediate stems that will be further processed (e.g. phase
+    inversion input, Demucs Stage 2 input). Avoids quantization noise that would
+    compound through subsequent processing stages.
+
+    Args:
+        path: output file path
+        audio: float32 array, shape (samples, channels) or (samples,)
+        sr: sample rate
+    """
+    audio = np.clip(audio, -1.0, 1.0).astype(np.float32)
+    sf.write(str(path), audio, sr, subtype="FLOAT")
+
+
 def write_wav_16bit(
     path: Path | str, audio: np.ndarray, sr: int, dither: bool = True
 ) -> None:
     """
     Write audio to 16-bit PCM WAV with optional TPDF dithering.
+
+    Use this for FINAL output stems delivered to the user. Do NOT use for
+    intermediate stems that will be further processed (use write_wav_float32).
 
     Args:
         path: output file path

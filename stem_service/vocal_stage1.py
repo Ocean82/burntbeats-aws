@@ -60,11 +60,20 @@ logger = logging.getLogger(__name__)
 
 
 def _vocal_rank_candidates_for_tier(model_tier: str) -> list[str]:
-    """Ordered 2-stem vocal candidates by tier contract."""
-    if model_tier == "quality":
-        return ["Kim_Vocal_2.onnx", "Kim_Vocal_1.onnx"]
-    # fast + balanced share speed-first lane.
-    return ["UVR_MDXNET_3_9662.onnx", "UVR_MDXNET_KARA.onnx"]
+    """Ordered 2-stem vocal candidates by tier.
+
+    Aligned with docs/MODEL-SELECTION-AUTHORITY.md and benchmarks/ranked_practical_time_score.csv:
+    - speed: UVR_MDXNET_3_9662 (~27s) → UVR_MDXNET_KARA (~28s) — score 9, fastest
+    - quality: Kim_Vocal_2 (~68s) → Kim_Vocal_1 (~65s) — score 9, higher fidelity
+
+    "balanced" is merged into "quality" — the Kim models provide meaningfully better
+    separation at ~2.5x the time of the fast models, which is acceptable for the
+    default quality tier on CPU.
+    """
+    if model_tier == "fast":
+        return ["UVR_MDXNET_3_9662.onnx", "UVR_MDXNET_KARA.onnx"]
+    # quality (default) — Kim models first, fast models as fallback
+    return ["Kim_Vocal_2.onnx", "Kim_Vocal_1.onnx", "UVR_MDXNET_3_9662.onnx", "UVR_MDXNET_KARA.onnx"]
 
 
 class InstrumentalSource(Enum):
@@ -144,8 +153,12 @@ def _run_demucs_two_stem(
         str(MODELS_DIR),
         str(input_path),
     ]
-    # capture_output keeps full streams in memory; trim only when formatting errors
-    result = subprocess.run(cmd, capture_output=True, text=True, cwd=str(REPO_ROOT))
+    from stem_service.config import DEMUCS_TIMEOUT_SEC
+
+    result = subprocess.run(
+        cmd, capture_output=True, text=True, cwd=str(REPO_ROOT),
+        timeout=DEMUCS_TIMEOUT_SEC,
+    )
     if result.returncode != 0:
         raise RuntimeError(
             f"Demucs 2-stem failed.\n{format_demucs_subprocess_failure(result)}"

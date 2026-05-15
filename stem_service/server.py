@@ -274,14 +274,13 @@ async def split(
         )
 
     # Determine effective quality mode for pipeline
+    # "balanced" is treated as "quality" — same pipeline, same models.
     if is_ultra:
         quality_mode = QUALITY_ULTRA
     elif prefer_speed:
         quality_mode = "speed"
-    elif quality_lower == "quality":
-        quality_mode = "quality"
     else:
-        quality_mode = "balanced"
+        quality_mode = "quality"
 
     logger.info(
         "Split request: stems=%s, quality=%s, sample=%s",

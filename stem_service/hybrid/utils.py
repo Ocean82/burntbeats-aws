@@ -4,8 +4,7 @@ Shared utilities for the hybrid pipeline.
 Contains helpers used by multiple pipeline strategies:
 - _materialize_stage1_instrumental: copy or phase-invert based on InstrumentalSource
 - collapse_4stem_to_2stem: sum non-vocal stems into instrumental
-- _effective_input_path: VAD pre-trim logic
-- _slice_audio / _concat_stems: VAD chunking helpers
+- _effective_input_path: pass-through (VAD removed — unsuitable for music)
 """
 
 from __future__ import annotations
@@ -17,9 +16,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from stem_service.config import USE_VAD_PRETRIM
 from stem_service.phase_inversion import create_perfect_instrumental
-from stem_service.vad import is_vad_available, trim_audio_to_speech_span
 from stem_service.vocal_stage1 import InstrumentalSource
 
 logger = logging.getLogger(__name__)
@@ -106,57 +103,10 @@ def _effective_input_path(
     output_dir: Path,
     use_vad_trim: bool | None = None,
 ) -> Path:
-    """If VAD trim requested and VAD available, trim to speech span; else return input.
-    use_vad_trim: True = trim when VAD available; False = never trim; None = follow USE_VAD_PRETRIM env.
+    """Return input_path unchanged. VAD pre-trim is disabled (Silero VAD is speech-tuned,
+    not suitable for music vocals — causes clipping of sung passages).
+
+    This function is kept as a pass-through for API compatibility with callers that
+    still pass use_vad_trim. The parameter is ignored.
     """
-    if not USE_VAD_PRETRIM:
-        return input_path
-    if use_vad_trim is False:
-        return input_path
-    if not is_vad_available():
-        return input_path
-    trimmed = output_dir / "vad_trimmed.wav"
-    if trim_audio_to_speech_span(input_path, trimmed) is not None:
-        return trimmed
     return input_path
-
-
-def _slice_audio(
-    input_path: Path,
-    start_s: float,
-    end_s: float,
-    out_path: Path,
-) -> Path:
-    """Write a slice of input_path [start_s, end_s) to out_path."""
-    audio, sr = sf.read(str(input_path), dtype="float32", always_2d=True)
-    start_i = int(start_s * sr)
-    end_i = min(int(end_s * sr), len(audio))
-    sf.write(str(out_path), audio[start_i:end_i], sr)
-    return out_path
-
-
-def _concat_stems(
-    chunk_stem_lists: list[list[tuple[str, Path]]],
-    output_dir: Path,
-) -> list[tuple[str, Path]]:
-    """Concatenate per-chunk stem WAVs into final stems."""
-    if not chunk_stem_lists:
-        return []
-    stem_ids = [sid for sid, _ in chunk_stem_lists[0]]
-    result: list[tuple[str, Path]] = []
-    for stem_id in stem_ids:
-        chunks_for_stem: list[np.ndarray] = []
-        sr_out = 44100
-        for chunk_stems in chunk_stem_lists:
-            for sid, path in chunk_stems:
-                if sid == stem_id:
-                    audio, sr_out = sf.read(str(path), dtype="float32", always_2d=True)
-                    chunks_for_stem.append(audio)
-                    break
-        if not chunks_for_stem:
-            continue
-        combined = np.concatenate(chunks_for_stem, axis=0)
-        out_path = output_dir / f"{stem_id}.wav"
-        sf.write(str(out_path), combined, sr_out)
-        result.append((stem_id, out_path))
-    return result

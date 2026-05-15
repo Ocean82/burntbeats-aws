@@ -32,7 +32,7 @@ from stem_service.mdx.model_registry import (
 )
 from stem_service.mdx.session import _onnx_session
 from stem_service.mdx.stft import _istft, _stft
-from stem_service.audio_utils import write_wav_16bit
+from stem_service.audio_utils import write_wav_16bit, write_wav_float32
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,11 @@ def _run_mdx_onnx(
         import torchaudio
 
         mix_t = torch.from_numpy(mix.T).unsqueeze(0).float()
-        mix_t = torchaudio.functional.resample(mix_t, sr, 44100)
+        # Use higher-quality resampling (wider filter) to reduce aliasing artifacts
+        # when converting from 48kHz or other rates to the model's native 44.1kHz.
+        mix_t = torchaudio.functional.resample(
+            mix_t, sr, 44100, lowpass_filter_width=64
+        )
         mix = mix_t.squeeze(0).numpy().T
         sr = 44100
 
@@ -245,11 +249,13 @@ def _run_mdx_onnx(
         import torchaudio
 
         out_tensor = torch.from_numpy(out_wav.T).unsqueeze(0).float()
-        out_tensor = torchaudio.functional.resample(out_tensor, 44100, sr_original)
+        out_tensor = torchaudio.functional.resample(
+            out_tensor, 44100, sr_original, lowpass_filter_width=64
+        )
         out_wav = out_tensor.squeeze(0).numpy().T
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    write_wav_16bit(output_path, out_wav, sr_original)
+    write_wav_float32(output_path, out_wav, sr_original)
     _log.info("mdx_onnx: wrote %s (%s)", output_path.name, model_path.name)
 
     # MDX23C vocal checkpoint: complementary instrumental = mix minus vocal (same pass, no second ONNX).
@@ -265,11 +271,13 @@ def _run_mdx_onnx(
                 import torchaudio
 
                 inst_tensor = torch.from_numpy(inst_wav.T).unsqueeze(0).float()
-                inst_tensor = torchaudio.functional.resample(inst_tensor, 44100, sr_original)
+                inst_tensor = torchaudio.functional.resample(
+                    inst_tensor, 44100, sr_original, lowpass_filter_width=64
+                )
                 inst_wav = inst_tensor.squeeze(0).numpy().T
             instrumental_output_path = Path(instrumental_output_path)
             instrumental_output_path.parent.mkdir(parents=True, exist_ok=True)
-            write_wav_16bit(instrumental_output_path, inst_wav, sr_original)
+            write_wav_float32(instrumental_output_path, inst_wav, sr_original)
             _log.info(
                 "mdx_onnx: wrote %s (mix minus vocal, %s)",
                 instrumental_output_path.name,
