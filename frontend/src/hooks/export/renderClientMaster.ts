@@ -44,7 +44,11 @@ export async function renderClientMasterWavBlob(
     ? maxDuration + EFFECT_TAIL_SECONDS
     : maxDuration;
 
-  const sampleRate = 44100;
+  // Use the native sample rate from the source buffers to avoid unnecessary
+  // resampling. All stems from the same split share a sample rate, so we take
+  // the first buffer's rate. This matches the live AudioContext behavior and
+  // prevents subtle quality differences between playback and export.
+  const sampleRate = stemData[0]?.buffer.sampleRate ?? 44100;
   const context = new OfflineAudioContext(2, Math.ceil(renderDuration * sampleRate), sampleRate);
 
   for (const { buffer, st, rate, trimStart, trimEnd } of stemData) {

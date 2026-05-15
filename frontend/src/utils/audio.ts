@@ -237,6 +237,15 @@ export function createStereoWidthNode(context: BaseAudioContext): StereoWidthNod
   const gainRL = context.createGain();
   const gainRR = context.createGain();
 
+  // Ensure stereo processing throughout the width matrix by setting explicit
+  // channel configuration on each gain node. Without this, mono sources that
+  // were only just upmixed by the panner could be silently downmixed back to
+  // mono by the default "max" channelCountMode before the matrix processes them.
+  for (const node of [gainLL, gainLR, gainRL, gainRR]) {
+    node.channelCount = 1;
+    node.channelCountMode = "explicit";
+  }
+
   splitter.connect(gainLL, 0, 0);
   splitter.connect(gainLR, 0, 0);
   splitter.connect(gainRL, 1, 0);
@@ -253,7 +262,11 @@ export function createStereoWidthNode(context: BaseAudioContext): StereoWidthNod
     gainRL.gain.value = (1 - g) / 2;
     gainRR.gain.value = (1 + g) / 2;
   };
-  setWidth(0);
+  // Initialize to full stereo pass-through (width=100) so the node is never
+  // in an incorrect state. The caller (createStemDspChain) immediately applies
+  // the actual mixer.width value, but this avoids any transient mono collapse
+  // if audio flows through before the caller's setWidth() executes.
+  setWidth(100);
 
   return {
     input: splitter,
@@ -354,9 +367,15 @@ export interface StemDspChain {
 
 /**
  * Build a per-stem DSP chain:
- *   gainNode → lowEQ → midEQ → highEQ → [compressor] → panNode → widthNode → [reverb/delay sends] → output
+ *   gainNode → lowEQ → midEQ → highEQ → [compressor] → panNode → widthNode → outputGain
+ *                                                                              ↗ [reverb send] → outputGain
+ *                                                                              ↗ [delay send]  → outputGain
  *
- * Reverb, delay, and compressor are only instantiated when their values are
+ * Reverb and delay sends are tapped post-pan/width so wet signals inherit the
+ * stem's spatial position. This prevents the "floating center" artifact where
+ * effects sound disconnected from a panned source.
+ *
+ * Compressor, reverb, and delay are only instantiated when their values are
  * non-default, avoiding unnecessary CPU usage for inactive effects.
  */
 export function createStemDspChain(
@@ -445,8 +464,10 @@ export function createStemDspChain(
   panNode.connect(widthNode.input);
   widthNode.output.connect(outputGain);
 
-  // The send point for reverb/delay is after compressor (or after EQ if no compressor)
-  const sendNode: AudioNode = compressor ?? highEQ;
+  // Send point for reverb/delay is post-pan/width so wet signals inherit the
+  // stem's spatial position (pan + stereo width). This ensures effects don't
+  // collapse to center when a stem is panned or width-adjusted.
+  const sendNode: AudioNode = widthNode.output;
 
   // --- Wire reverb send ---
   if (reverbActive && reverbConvolver && reverbWetGain) {
