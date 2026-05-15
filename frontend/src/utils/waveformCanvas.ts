@@ -83,24 +83,49 @@ export function drawWaveformBars({
 }
 
 /**
+ * Simple seeded PRNG (mulberry32) for deterministic fake waveforms.
+ * Ensures the same stemId + bins always produces the same shape,
+ * preventing memoization busting and visual flicker.
+ */
+function seededRandom(seed: number): () => number {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function stemIdToSeed(stemId: string): number {
+  let hash = 0;
+  for (let i = 0; i < stemId.length; i++) {
+    hash = ((hash << 5) - hash + stemId.charCodeAt(i)) | 0;
+  }
+  return hash;
+}
+
+/**
  * Generate a stem-type-aware fake waveform for loading skeletons.
  * Each stem type has a characteristic shape so the skeleton looks intentional.
+ * Uses a seeded PRNG so the output is deterministic for a given stemId + bins.
  */
 export function generateFakeWaveform(stemId: string, bins = 200): number[] {
+  const rand = seededRandom(stemIdToSeed(stemId) + bins);
   const result: number[] = new Array(bins);
   switch (stemId) {
     case "drums": {
       // Spiky transients — sharp peaks at regular intervals
       for (let i = 0; i < bins; i++) {
         const beat = (i % Math.floor(bins / 16)) / Math.floor(bins / 16);
-        result[i] = beat < 0.08 ? 0.7 + Math.random() * 0.3 : 0.1 + Math.random() * 0.15;
+        result[i] = beat < 0.08 ? 0.7 + rand() * 0.3 : 0.1 + rand() * 0.15;
       }
       break;
     }
     case "bass": {
       // Slow undulation — low-frequency body
       for (let i = 0; i < bins; i++) {
-        result[i] = clamp(0.45 + 0.35 * Math.sin((i / bins) * Math.PI * 6) + Math.random() * 0.1, 0.1, 1);
+        result[i] = clamp(0.45 + 0.35 * Math.sin((i / bins) * Math.PI * 6) + rand() * 0.1, 0.1, 1);
       }
       break;
     }
@@ -108,7 +133,7 @@ export function generateFakeWaveform(stemId: string, bins = 200): number[] {
       // Phrase-like bursts with gaps (breath between phrases)
       for (let i = 0; i < bins; i++) {
         const phrase = Math.sin((i / bins) * Math.PI * 5);
-        result[i] = clamp(Math.abs(phrase) * 0.7 + Math.random() * 0.15, 0.08, 1);
+        result[i] = clamp(Math.abs(phrase) * 0.7 + rand() * 0.15, 0.08, 1);
       }
       break;
     }
@@ -116,14 +141,14 @@ export function generateFakeWaveform(stemId: string, bins = 200): number[] {
       // Mid-range with gentle variation
       for (let i = 0; i < bins; i++) {
         const wave = Math.sin((i / bins) * Math.PI * 10) * 0.3;
-        result[i] = clamp(0.4 + wave + Math.random() * 0.12, 0.12, 0.85);
+        result[i] = clamp(0.4 + wave + rand() * 0.12, 0.12, 0.85);
       }
       break;
     }
     default: {
       // Generic smooth noise for instrumental/other
       for (let i = 0; i < bins; i++) {
-        result[i] = clamp(0.35 + Math.sin((i / bins) * Math.PI * 8) * 0.2 + Math.random() * 0.15, 0.1, 0.9);
+        result[i] = clamp(0.35 + Math.sin((i / bins) * Math.PI * 8) * 0.2 + rand() * 0.15, 0.1, 0.9);
       }
     }
   }

@@ -68,6 +68,7 @@ job_metrics.jsonl
 
 # Temp
 tmp/
+tmp*/
 tmp_test*/
 temp/
 *.tmp

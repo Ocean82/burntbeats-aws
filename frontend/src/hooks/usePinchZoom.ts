@@ -101,9 +101,10 @@ export function usePinchZoom({
       const deltaX = currentMidX - state.initialMidX;
       const containerWidth = el.getBoundingClientRect().width;
       if (containerWidth > 0) {
-        // Convert pixel delta to scroll percentage
+        // Convert pixel delta to scroll percentage, clamped to valid range for current zoom
+        const maxScroll = Math.max(0, 100 - 100 / newZoom);
         const pctDelta = (deltaX / containerWidth) * (100 / newZoom) * -1;
-        const newScrollPct = Math.max(0, Math.min(100, state.initialScrollPct + pctDelta));
+        const newScrollPct = Math.max(0, Math.min(maxScroll, state.initialScrollPct + pctDelta));
         setScrollPct(() => newScrollPct);
       }
     };

@@ -114,6 +114,14 @@ export function WaveformLane({
     const mouseX = clientX - rect.left;
     const distanceStart = Math.abs(mouseX - toPixel(trim.start));
     const distanceEnd = Math.abs(mouseX - toPixel(trim.end));
+    // When both handles are within hit range, prefer the closer one.
+    // On tie, prefer the handle in the direction of the click relative to the midpoint.
+    if (distanceStart <= HANDLE_HIT_PX && distanceEnd <= HANDLE_HIT_PX) {
+      if (distanceStart < distanceEnd) return "start";
+      if (distanceEnd < distanceStart) return "end";
+      const midPx = (toPixel(trim.start) + toPixel(trim.end)) / 2;
+      return mouseX <= midPx ? "start" : "end";
+    }
     if (distanceStart <= HANDLE_HIT_PX) return "start";
     if (distanceEnd <= HANDLE_HIT_PX) return "end";
     return "seek";
@@ -191,10 +199,10 @@ export function WaveformLane({
     };
   }, []);
 
-  const { slice, startBin } = useMemo(() => {
+  const slice = useMemo(() => {
     const start = clamp(Math.floor(visibleStart * waveform.length), 0, waveform.length);
     const end = clamp(Math.ceil(visibleEnd * waveform.length), start, waveform.length);
-    return { slice: downsample(waveform.slice(start, end), BAR_BUDGET), startBin: start };
+    return downsample(waveform.slice(start, end), BAR_BUDGET);
   }, [waveform, visibleStart, visibleEnd]);
 
   const toVisible = (pct: number) => clamp((pct / 100 - visibleStart) / visibleRange, 0, 1) * 100;
@@ -363,7 +371,6 @@ export function WaveformLane({
         ref={waveformCanvasRef}
         className="absolute inset-0 h-full w-full px-0.5"
         aria-hidden="true"
-        data-start-bin={startBin}
       />
 
       {/* Loading shimmer overlay */}

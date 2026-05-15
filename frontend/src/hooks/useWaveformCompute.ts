@@ -24,11 +24,18 @@ export function useWaveformCompute(
       if (cancelled || index >= entries.length) return;
       const [id, buffer] = entries[index++];
       const url = stemEntries.find((s) => s.id === id)?.url;
-      let data: number[] | null = url ? await getStemWaveform(url, WAVEFORM_BINS) : null;
+      let data: number[] | null = null;
+      try {
+        data = url ? await getStemWaveform(url, WAVEFORM_BINS) : null;
+      } catch {
+        // IndexedDB may be unavailable (private browsing, quota exceeded) — fall through to compute
+      }
       if (cancelled) return;
       if (!data || data.length !== WAVEFORM_BINS) {
         data = computeWaveformFromBuffer(buffer, WAVEFORM_BINS);
-        if (url) void setStemWaveform(url, WAVEFORM_BINS, data);
+        if (url) {
+          try { void setStemWaveform(url, WAVEFORM_BINS, data); } catch { /* best-effort cache */ }
+        }
       }
       if (!cancelled) setStemWaveforms((prev) => ({ ...prev, [id]: data! }));
       const schedule = typeof requestIdleCallback !== "undefined"

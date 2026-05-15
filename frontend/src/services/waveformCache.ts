@@ -33,6 +33,8 @@ export async function getStemWaveform(url: string, bins: number): Promise<number
     };
     req.onerror = () => reject(req.error);
     tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
+    tx.onabort = () => db.close();
   });
 }
 
@@ -44,5 +46,7 @@ export async function setStemWaveform(url: string, bins: number, data: number[])
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
     tx.oncomplete = () => db.close();
+    tx.onerror = () => db.close();
+    tx.onabort = () => db.close();
   });
 }
