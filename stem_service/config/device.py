@@ -101,7 +101,7 @@ MAX_QUEUE_DEPTH = int(os.environ.get("MAX_QUEUE_DEPTH", "20"))
 _USE_DEMUCS_BOOTSTRAP_RAW = os.environ.get("USE_DEMUCS_BOOTSTRAP", "1").strip().lower()
 USE_DEMUCS_BOOTSTRAP = _USE_DEMUCS_BOOTSTRAP_RAW not in ("0", "false", "no", "off")
 
-USE_DEMUCS_SHIFTS_0 = os.environ.get("USE_DEMUCS_SHIFTS_0", "1").strip().lower() in (
+USE_DEMUCS_SHIFTS_0 = os.environ.get("USE_DEMUCS_SHIFTS_0", "0").strip().lower() in (
     "1",
     "true",
     "yes",

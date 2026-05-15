@@ -26,7 +26,12 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from scipy.signal import fftconvolve, lfilter, resample
+from scipy.signal import fftconvolve, lfilter
+
+import torch
+import torchaudio
+
+from stem_service.audio_utils import write_wav_16bit
 
 
 def _get_arg_list() -> argparse.ArgumentParser:
@@ -246,10 +251,17 @@ def apply_stereo_width(stereo: np.ndarray, width: float) -> np.ndarray:
     return np.stack([l_out, r_out], axis=1).astype(np.float32)
 
 
-def build_synthetic_reverb_ir(fs: int, duration_sec: float = 1.8) -> np.ndarray:
+def build_synthetic_reverb_ir(fs: int, duration_sec: float = 1.8, seed: int = 42) -> np.ndarray:
+    """
+    Generate a synthetic stereo reverb impulse response.
+
+    Uses a fixed seed for deterministic output — identical parameters
+    always produce the same IR, making exports reproducible.
+    """
     length = max(1, int(fs * duration_sec))
     decay = np.power(1.0 - (np.arange(length, dtype=np.float64) / length), 2.0)
-    ir = (np.random.rand(2, length).astype(np.float64) * 2.0 - 1.0) * decay[None, :]
+    rng = np.random.default_rng(seed=seed)
+    ir = (rng.random((2, length), dtype=np.float64) * 2.0 - 1.0) * decay[None, :]
     return ir.astype(np.float32)
 
 
@@ -355,7 +367,15 @@ def main():
         out_len = int(round(segment.shape[0] * (sample_rate_out / (sr_in * rate))))
         if out_len <= 0:
             continue
-        resampled = resample(segment, out_len, axis=0).astype(np.float32, copy=False)
+        # Use torchaudio polyphase resampler for transient-preserving pitch/time changes
+        if abs(rate - 1.0) < 1e-6 and sr_in == sample_rate_out:
+            # No pitch/time change and same sample rate — skip resampling entirely
+            resampled = segment
+        else:
+            seg_tensor = torch.from_numpy(segment.T).float()  # (channels, samples)
+            in_len = segment.shape[0]
+            resampled_t = torchaudio.functional.resample(seg_tensor, in_len, out_len)
+            resampled = resampled_t.numpy().T.astype(np.float32, copy=False)
 
         # --- Gain ---
         gain_db = float(mixer.get("gain", 0) or 0)
@@ -436,7 +456,7 @@ def main():
     if normalize:
         master = normalize_audio(master, peak_db=-1.0)
 
-    sf.write(str(out_path), master, sample_rate_out, format="WAV", subtype="PCM_16")
+    write_wav_16bit(out_path, master, sample_rate_out)
 
 
 if __name__ == "__main__":

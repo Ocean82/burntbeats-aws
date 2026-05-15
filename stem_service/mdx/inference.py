@@ -32,6 +32,7 @@ from stem_service.mdx.model_registry import (
 )
 from stem_service.mdx.session import _onnx_session
 from stem_service.mdx.stft import _istft, _stft
+from stem_service.audio_utils import write_wav_16bit
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,7 @@ def _run_mdx_onnx(
     elif mix.shape[1] > 2:
         mix = mix[:, :2]
 
+    sr_original = sr  # preserve original sample rate for output resample-back
     if sr != 44100:
         import torchaudio
 
@@ -238,8 +240,16 @@ def _run_mdx_onnx(
     out_wav = vocal_matrix.T  # (n_samples, 2)
     out_wav = np.clip(out_wav, -1.0, 1.0)
 
+    # Resample back to original rate if input was not 44.1 kHz
+    if sr_original != 44100:
+        import torchaudio
+
+        out_tensor = torch.from_numpy(out_wav.T).unsqueeze(0).float()
+        out_tensor = torchaudio.functional.resample(out_tensor, 44100, sr_original)
+        out_wav = out_tensor.squeeze(0).numpy().T
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    sf.write(str(output_path), out_wav, 44100, subtype="PCM_16")
+    write_wav_16bit(output_path, out_wav, sr_original)
     _log.info("mdx_onnx: wrote %s (%s)", output_path.name, model_path.name)
 
     # MDX23C vocal checkpoint: complementary instrumental = mix minus vocal (same pass, no second ONNX).
@@ -250,14 +260,16 @@ def _run_mdx_onnx(
         try:
             inst = mix_np[:, :n_samples].astype(np.float32) - vocal_matrix.astype(np.float32)
             inst_wav = np.clip(inst.T, -1.0, 1.0)
+            # Resample back to original rate if input was not 44.1 kHz
+            if sr_original != 44100:
+                import torchaudio
+
+                inst_tensor = torch.from_numpy(inst_wav.T).unsqueeze(0).float()
+                inst_tensor = torchaudio.functional.resample(inst_tensor, 44100, sr_original)
+                inst_wav = inst_tensor.squeeze(0).numpy().T
             instrumental_output_path = Path(instrumental_output_path)
             instrumental_output_path.parent.mkdir(parents=True, exist_ok=True)
-            sf.write(
-                str(instrumental_output_path),
-                inst_wav,
-                44100,
-                subtype="PCM_16",
-            )
+            write_wav_16bit(instrumental_output_path, inst_wav, sr_original)
             _log.info(
                 "mdx_onnx: wrote %s (mix minus vocal, %s)",
                 instrumental_output_path.name,
@@ -396,7 +408,7 @@ def run_dereverb_onnx(
         dry = np.clip(dry, -1.0, 1.0)
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        sf.write(str(output_path), dry, sr, subtype="PCM_16")
+        write_wav_16bit(output_path, dry, sr)
         _log.info("dereverb: wrote dry vocal %s", output_path.name)
 
         # Clean up intermediate file

@@ -27,6 +27,7 @@ import soundfile as sf
 from scipy import signal
 
 from stem_service.config import get_onnx_providers, resolve_models_root_file
+from stem_service.audio_utils import write_wav_16bit
 
 logger = logging.getLogger(__name__)
 
@@ -266,7 +267,7 @@ def run_spleeter_vocals_int8_2stem(
     output_dir.mkdir(parents=True, exist_ok=True)
     v_out = output_dir / "spleeter_vocals.wav"
     i_out = output_dir / "spleeter_instrumental.wav"
-    sf.write(str(v_out), vocals_mono.T, sr, subtype="PCM_16")
-    sf.write(str(i_out), inst.T, sr, subtype="PCM_16")
+    write_wav_16bit(v_out, vocals_mono.T, sr)
+    write_wav_16bit(i_out, inst.T, sr)
     _log.info("spleeter_int8_onnx: wrote %s, %s", v_out.name, i_out.name)
     return v_out, i_out

@@ -258,9 +258,6 @@ def extract_vocals_stage1(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     onnx_overlap = 0.5 if prefer_speed else 0.75
-    # Keep quality overlap practical on CPU-first hosts.
-    if model_tier == "quality" and not prefer_speed:
-        onnx_overlap = 0.5
     allow_inst_onnx = _should_run_inst_onnx_pass(prefer_speed, model_tier)
     log = job_logger or logger
 

@@ -257,6 +257,8 @@ def run_scnet_onnx_4stem(
     """
     import soundfile as sf
 
+    from stem_service.audio_utils import write_wav_16bit
+
     onnx_path = get_scnet_onnx_path()
     if onnx_path is None:
         return None
@@ -404,7 +406,7 @@ def run_scnet_onnx_4stem(
     for stem_id in RETURN_ORDER:
         wav = stem_wavs[stem_id]
         out_path = output_dir / f"{stem_id}.wav"
-        sf.write(str(out_path), wav.T, TARGET_SAMPLE_RATE, subtype="PCM_16")
+        write_wav_16bit(out_path, wav.T, TARGET_SAMPLE_RATE)
         result.append((stem_id, out_path))
 
     return result

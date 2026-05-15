@@ -38,6 +38,40 @@ def _write_wav(path: Path, ch_last: torch.Tensor, sr: int) -> None:
         torchaudio.save(str(path), torch.from_numpy(arr.T).float(), int(sr))
 
 
+def _soft_limit(x: torch.Tensor, threshold: float = 0.9, ceiling: float = 1.0) -> torch.Tensor:
+    """
+    Tanh-based soft limiter.
+
+    Values within [-threshold, threshold] pass through unchanged.
+    Values beyond threshold are smoothly compressed toward ceiling using tanh.
+    This avoids the harsh distortion of hard clipping while keeping output in [-1, 1].
+
+    Args:
+        x: input tensor
+        threshold: level below which signal passes unchanged (default 0.9)
+        ceiling: maximum output level (default 1.0)
+    """
+    knee_range = ceiling - threshold
+    if knee_range <= 0:
+        return torch.clamp(x, -ceiling, ceiling)
+
+    result = x.clone()
+
+    # Above threshold: map [threshold, inf) -> [threshold, ceiling) via tanh
+    mask_pos = x > threshold
+    if mask_pos.any():
+        excess = (x[mask_pos] - threshold) / knee_range
+        result[mask_pos] = threshold + knee_range * torch.tanh(excess)
+
+    # Below -threshold: map (-inf, -threshold] -> (-ceiling, -threshold] via tanh
+    mask_neg = x < -threshold
+    if mask_neg.any():
+        excess = (-x[mask_neg] - threshold) / knee_range
+        result[mask_neg] = -(threshold + knee_range * torch.tanh(excess))
+
+    return result
+
+
 def create_perfect_instrumental(
     original_path: Path,
     vocal_path: Path,
@@ -97,7 +131,7 @@ def create_perfect_instrumental(
     orig = orig[..., :orig_len]
 
     instrumental = orig - vocal
-    instrumental = torch.clamp(instrumental, -1.0, 1.0)
+    instrumental = _soft_limit(instrumental)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     try:
