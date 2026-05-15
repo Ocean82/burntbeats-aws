@@ -37,24 +37,26 @@ def test_bug1_quality_mode_uses_075_overlap():
         # Return a fake path to simulate success
         return output_path
 
+    # Reload the module to ensure clean state in CI where test ordering matters
+    import stem_service.vocal_stage1 as vs1_mod
+    importlib.reload(vs1_mod)
+
     # Mock all dependencies so extract_vocals_stage1 can run without real models
-    with patch("stem_service.vocal_stage1.run_vocal_onnx", side_effect=mock_run_vocal_onnx) as mock_vocal, \
-         patch("stem_service.vocal_stage1.resolve_single_vocal_onnx") as mock_resolve, \
-         patch("stem_service.vocal_stage1.vocal_onnx_allowed_for_service", return_value=True), \
-         patch("stem_service.vocal_stage1.audio_separator_2stem_enabled", return_value=False), \
-         patch("stem_service.vocal_stage1.resolve_declared_vocal_onnx_path", return_value=None):
+    with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
+         patch.object(vs1_mod, "resolve_single_vocal_onnx") as mock_resolve, \
+         patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
+         patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
+         patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
 
         # Make resolve return a fake model path
         fake_model = Path("/fake/Kim_Vocal_2.onnx")
         mock_resolve.return_value = fake_model
 
-        from stem_service.vocal_stage1 import extract_vocals_stage1
-
         fake_input = Path("/fake/input.wav")
         fake_output = Path("/fake/output")
 
         try:
-            extract_vocals_stage1(
+            vs1_mod.extract_vocals_stage1(
                 fake_input,
                 fake_output,
                 prefer_speed=False,

@@ -31,16 +31,18 @@ def test_preservation_speed_mode_uses_05_overlap():
         captured_overlap["value"] = overlap
         return output_path
 
-    with patch("stem_service.vocal_stage1.run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
-         patch("stem_service.vocal_stage1.resolve_single_vocal_onnx") as mock_resolve, \
-         patch("stem_service.vocal_stage1.vocal_onnx_allowed_for_service", return_value=True), \
-         patch("stem_service.vocal_stage1.audio_separator_2stem_enabled", return_value=False), \
-         patch("stem_service.vocal_stage1.resolve_declared_vocal_onnx_path", return_value=None):
+    # Reload the module to ensure clean state in CI where test ordering matters
+    import stem_service.vocal_stage1 as vs1_mod
+    importlib.reload(vs1_mod)
+
+    with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
+         patch.object(vs1_mod, "resolve_single_vocal_onnx") as mock_resolve, \
+         patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
+         patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
+         patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
 
         fake_model = Path("/fake/UVR_MDXNET_3_9662.onnx")
         mock_resolve.return_value = fake_model
-
-        from stem_service.vocal_stage1 import extract_vocals_stage1
 
         fake_input = Path("/fake/input.wav")
         fake_output = Path("/fake/output")
@@ -49,7 +51,7 @@ def test_preservation_speed_mode_uses_05_overlap():
         for tier in ("fast", "balanced", "quality"):
             captured_overlap.clear()
             try:
-                extract_vocals_stage1(
+                vs1_mod.extract_vocals_stage1(
                     fake_input,
                     fake_output,
                     prefer_speed=True,
