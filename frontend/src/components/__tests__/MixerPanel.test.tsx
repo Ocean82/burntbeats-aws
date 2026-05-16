@@ -81,6 +81,7 @@ describe("MixerPanel", () => {
       getMasterAnalyserTimeDomainDataLeft: () => null,
       getMasterAnalyserTimeDomainDataRight: () => null,
       getMasterAnalyserFrequencyData: () => null,
+      getStemAnalyserTimeDomainData: () => null,
       masterVolume: 1,
       onMasterVolumeChange,
       masterLimiterEnabled: false,

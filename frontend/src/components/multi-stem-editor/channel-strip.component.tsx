@@ -3,9 +3,7 @@
  *
  * Signal flow (top → bottom):
  *   Stem label → Pitch → Tempo → EQ (collapsible) → FX (collapsible)
- *   → Pan knob → Volume fader + meter → Mute / Solo
- *
- * Follows standard DAW mixer conventions for muscle memory and quick scanning.
+ *   → Pan knob → Width → Mute / Solo / Preview → Volume fader + meter
  */
 import { memo, useCallback, useState } from "react";
 import {
@@ -16,21 +14,11 @@ import {
 import type { StemDefinition } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { cn } from "../../utils/cn";
-
-// ─── Helpers ─────────────────────────────────────────────────────
-
-function formatDb(value: number): string {
-  if (value >= 0) return `+${value.toFixed(1)}`;
-  return value.toFixed(1);
-}
-
-function formatPan(value: number): string {
-  if (value === 0) return "C";
-  if (value < 0) return `L${Math.abs(value)}`;
-  return `R${value}`;
-}
-
-// ─── Props ───────────────────────────────────────────────────────
+import { formatDb } from "../../utils/mixer-format";
+import { channelMuteSoloButtonClass } from "./mixer-channel-controls";
+import { EditableDbValue } from "./editable-db-value.component";
+import { PanKnob } from "./pan-knob.component";
+import { ChannelMeter } from "./channel-meter.component";
 
 export interface ChannelStripProps {
   stem: StemDefinition;
@@ -39,12 +27,12 @@ export interface ChannelStripProps {
   audioReady: boolean;
   isPreviewPlaying: boolean;
   isLoadingPreview: boolean;
+  isMeterPlaying: boolean;
+  getStemAnalyserData?: (stemId: string) => Uint8Array | null;
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
   onActivate: (stemId: string) => void;
 }
-
-// ─── Component ───────────────────────────────────────────────────
 
 export const ChannelStrip = memo(function ChannelStrip({
   stem,
@@ -53,6 +41,8 @@ export const ChannelStrip = memo(function ChannelStrip({
   audioReady,
   isPreviewPlaying,
   isLoadingPreview,
+  isMeterPlaying,
+  getStemAnalyserData,
   onStemStateChange,
   onPreviewStem,
   onActivate,
@@ -67,10 +57,15 @@ export const ChannelStrip = memo(function ChannelStrip({
     [mixer, onStemStateChange, stem.id],
   );
 
+  const meterGetter = useCallback(
+    () => getStemAnalyserData?.(stem.id) ?? null,
+    [getStemAnalyserData, stem.id],
+  );
+
   return (
     <div
       className={cn(
-        "flex w-[140px] min-w-[140px] flex-col items-stretch gap-0 rounded-xl border bg-black/40 transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400/50",
+        "flex w-[120px] min-w-[120px] flex-col items-stretch gap-0 rounded-xl border bg-black/40 transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400/50",
         isActive
           ? "border-current shadow-[0_0_12px_rgba(255,255,255,0.06)]"
           : "border-white/8 hover:border-white/15",
@@ -89,10 +84,7 @@ export const ChannelStrip = memo(function ChannelStrip({
       aria-pressed={isActive}
     >
       {/* ── Stem Label ── */}
-      <div
-        className="flex items-center gap-2 border-b border-white/8 px-3 py-2.5"
-        style={{ background: `${stem.glow}08` }}
-      >
+      <div className="flex items-center gap-2 border-b border-white/8 px-3 py-2.5" style={{ background: `${stem.glow}08` }}>
         <span
           className="h-2.5 w-2.5 rounded-full shrink-0"
           style={{
@@ -207,20 +199,23 @@ export const ChannelStrip = memo(function ChannelStrip({
       </CollapsibleSection>
 
       {/* ── Pan ── */}
-      <ControlSection label="Pan" value={formatPan(mixer.pan)}>
-        <input
-          type="range"
-          min={-100}
-          max={100}
-          step={1}
+      <div
+        className="flex flex-col items-center gap-1 border-t border-white/5 px-3 py-2"
+        role="group"
+        aria-label={`${stem.label} pan`}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <span className="self-start text-[9px] font-semibold uppercase tracking-[0.12em] text-white/35">
+          Pan
+        </span>
+        <PanKnob
           value={mixer.pan}
           disabled={!audioReady}
-          onChange={(e) => updateMixer({ pan: Number(e.target.value) })}
-          onDoubleClick={() => updateMixer({ pan: 0 })}
-          className="stem-accent-slider w-full"
-          aria-label={`${stem.label} pan`}
+          color={stem.glow}
+          ariaLabel={`${stem.label} pan`}
+          onChange={(pan) => updateMixer({ pan })}
         />
-      </ControlSection>
+      </div>
 
       {/* ── Width ── */}
       <ControlSection label="Width" value={`${mixer.width}%`}>
@@ -238,48 +233,8 @@ export const ChannelStrip = memo(function ChannelStrip({
         />
       </ControlSection>
 
-      {/* ── Volume Fader ── */}
-      <div className="flex flex-col items-center gap-1 border-t border-white/8 px-3 py-3">
-        <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-white/35">
-          Vol
-        </span>
-        <div className="relative flex items-center justify-center">
-          <input
-            type="range"
-            min={-20}
-            max={6}
-            step={0.5}
-            value={mixer.gain}
-            disabled={!audioReady}
-            onChange={(e) => updateMixer({ gain: Number(e.target.value) })}
-            onDoubleClick={() => updateMixer({ gain: 0 })}
-            aria-label={`${stem.label} volume`}
-            aria-valuetext={`${formatDb(mixer.gain)} dB`}
-            className={cn(
-              "h-[80px] w-5 cursor-pointer accent-amber-500",
-              muted && "opacity-40",
-            )}
-            style={
-              {
-                WebkitAppearance: "slider-vertical",
-                writingMode: "vertical-lr",
-                direction: "rtl",
-              } as React.CSSProperties
-            }
-          />
-        </div>
-        <span
-          className={cn(
-            "font-mono text-[9px] font-semibold tabular-nums",
-            muted ? "text-red-400" : mixer.gain > 3 ? "text-amber-300" : "text-white/50",
-          )}
-        >
-          {muted ? "MUTE" : `${formatDb(mixer.gain)} dB`}
-        </span>
-      </div>
-
-      {/* ── Mute / Solo / Preview ── */}
-      <div className="flex items-center justify-center gap-1.5 border-t border-white/8 px-2 py-2.5">
+      {/* ── Mute / Solo / Preview (above fader) ── */}
+      <div className="flex items-center justify-center gap-1.5 border-t border-white/8 px-2 py-2">
         <button
           type="button"
           onClick={(e) => {
@@ -288,12 +243,8 @@ export const ChannelStrip = memo(function ChannelStrip({
           }}
           disabled={!audioReady}
           aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
-          className={cn(
-            "flex h-7 w-7 items-center justify-center rounded text-[10px] font-bold transition",
-            muted
-              ? "bg-red-500/25 text-red-300 shadow-[0_0_8px_rgba(239,68,68,0.3)]"
-              : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70",
-          )}
+          aria-pressed={muted}
+          className={channelMuteSoloButtonClass(muted, "mute", "compact")}
         >
           M
         </button>
@@ -305,12 +256,8 @@ export const ChannelStrip = memo(function ChannelStrip({
           }}
           disabled={!audioReady}
           aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
-          className={cn(
-            "flex h-7 w-7 items-center justify-center rounded text-[10px] font-bold transition",
-            soloed
-              ? "bg-amber-500/30 text-amber-200 shadow-[0_0_8px_rgba(251,191,36,0.3)]"
-              : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70",
-          )}
+          aria-pressed={soloed}
+          className={channelMuteSoloButtonClass(soloed, "solo", "compact")}
         >
           S
         </button>
@@ -323,7 +270,7 @@ export const ChannelStrip = memo(function ChannelStrip({
           disabled={!audioReady || isLoadingPreview}
           aria-label={isPreviewPlaying ? `Stop ${stem.label}` : `Preview ${stem.label}`}
           className={cn(
-            "flex h-7 w-7 items-center justify-center rounded transition",
+            "flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold transition ring-1 ring-transparent",
             isPreviewPlaying
               ? "bg-amber-500/20 text-amber-200"
               : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70",
@@ -336,11 +283,57 @@ export const ChannelStrip = memo(function ChannelStrip({
           )}
         </button>
       </div>
+
+      {/* ── Volume Fader + Meter ── */}
+      <div className="flex flex-col items-center gap-1 border-t border-white/8 px-3 py-3">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-white/35">
+          Vol
+        </span>
+        <div className="flex items-center justify-center gap-1">
+          {getStemAnalyserData && (
+            <ChannelMeter
+              getAnalyserData={meterGetter}
+              color={stem.glow}
+              isPlaying={isMeterPlaying}
+              height={120}
+            />
+          )}
+          <input
+            type="range"
+            min={-20}
+            max={6}
+            step={0.5}
+            value={mixer.gain}
+            disabled={!audioReady}
+            onChange={(e) => updateMixer({ gain: Number(e.target.value) })}
+            onDoubleClick={() => updateMixer({ gain: 0 })}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`${stem.label} volume`}
+            aria-valuetext={`${formatDb(mixer.gain)} dB`}
+            className={cn(
+              "h-[120px] w-5 cursor-pointer accent-amber-500",
+              muted && "opacity-40",
+            )}
+            style={
+              {
+                WebkitAppearance: "slider-vertical",
+                writingMode: "vertical-lr",
+                direction: "rtl",
+              } as React.CSSProperties
+            }
+          />
+        </div>
+        <EditableDbValue
+          value={mixer.gain}
+          muted={muted}
+          stemLabel={stem.label}
+          disabled={!audioReady}
+          onChange={(gain) => updateMixer({ gain })}
+        />
+      </div>
     </div>
   );
 });
-
-// ─── Sub-components ──────────────────────────────────────────────
 
 function ControlSection({
   label,

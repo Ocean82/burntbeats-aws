@@ -355,11 +355,19 @@ export function createStemPreviewBuffer(context: AudioContext, stemId: StemId): 
 
 import type { MixerState } from "../types";
 
+export interface CreateStemDspChainOptions {
+  /** When false, skips AnalyserNode (e.g. offline export). Default true. */
+  metering?: boolean;
+}
+
 export interface StemDspChain {
   /** Connect a source node here. */
   input: AudioNode;
-  /** Connect this to the master bus. */
+  /** Connect this to the master bus (analyser when metering is enabled). */
   output: AudioNode;
+  analyser?: AnalyserNode;
+  /** Time-domain bytes for per-stem VU metering; null when metering is disabled. */
+  getTimeDomainData: () => Uint8Array | null;
   /** Update all node params from a MixerState without rebuilding the graph. */
   update: (mixer: MixerState, gain: number) => void;
   disconnect: () => void;
@@ -381,8 +389,10 @@ export interface StemDspChain {
 export function createStemDspChain(
   ctx: BaseAudioContext,
   mixer: MixerState,
-  gainLinear: number
+  gainLinear: number,
+  options: CreateStemDspChainOptions = {},
 ): StemDspChain {
+  const metering = options.metering !== false;
   // --- Core nodes (always created) ---
   const gainNode = ctx.createGain();
   gainNode.gain.value = gainLinear;
@@ -504,6 +514,24 @@ export function createStemDspChain(
     }
   };
 
+  let analyser: AnalyserNode | undefined;
+  let chainOutput: AudioNode = outputGain;
+
+  if (metering) {
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.85;
+    outputGain.connect(analyser);
+    chainOutput = analyser;
+  }
+
+  const getTimeDomainData = (): Uint8Array | null => {
+    if (!analyser) return null;
+    const buf = new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(buf);
+    return buf;
+  };
+
   const disconnect = () => {
     gainNode.disconnect();
     lowEQ.disconnect();
@@ -518,9 +546,17 @@ export function createStemDspChain(
     delayFeedback?.disconnect();
     delayWetGain?.disconnect();
     outputGain.disconnect();
+    analyser?.disconnect();
   };
 
-  return { input: gainNode, output: outputGain, update, disconnect };
+  return {
+    input: gainNode,
+    output: chainOutput,
+    analyser,
+    getTimeDomainData,
+    update,
+    disconnect,
+  };
 }
 
 /** Synthetic exponential-decay reverb impulse response. */

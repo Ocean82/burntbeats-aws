@@ -61,6 +61,7 @@ interface MixerWorkspaceProps {
   getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
   getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
+  getStemAnalyserTimeDomainData: (stemId: string) => Uint8Array | null;
   masterVolume: number;
   onMasterVolumeChange: (value: number) => void;
   masterLimiterEnabled: boolean;
@@ -124,6 +125,7 @@ export function MixerWorkspace({
   getMasterAnalyserTimeDomainDataLeft,
   getMasterAnalyserTimeDomainDataRight,
   getMasterAnalyserFrequencyData,
+  getStemAnalyserTimeDomainData,
   masterVolume,
   onMasterVolumeChange,
   masterLimiterEnabled,
@@ -389,6 +391,7 @@ export function MixerWorkspace({
             getMasterAnalyserTimeDomainDataRight
           }
           getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
+          getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
           masterVolume={masterVolume}
           onMasterVolumeChange={onMasterVolumeChange}
           masterLimiterEnabled={masterLimiterEnabled}

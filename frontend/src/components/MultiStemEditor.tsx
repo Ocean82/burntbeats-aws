@@ -67,8 +67,10 @@ export interface MultiStemEditorProps {
   loadingPreviewStemId: string | null;
   activeStemId?: string;
   onActiveStemChange?: (stemId: string) => void;
-  /** Optional: time-domain analyser getter for live waveform modulation. */
+  /** Optional: time-domain analyser getter for live waveform modulation (master bus). */
   getAnalyserData?: () => Uint8Array | null;
+  /** Optional: per-stem time-domain analyser for lanes and channel meters. */
+  getStemAnalyserTimeDomainData?: (stemId: string) => Uint8Array | null;
   /** Whether loop playback is enabled. */
   loopEnabled?: boolean;
   /** Callback to toggle loop playback. */
@@ -102,7 +104,8 @@ export function MultiStemEditor({
   loadingPreviewStemId,
   activeStemId: controlledActiveStemId,
   onActiveStemChange,
-  getAnalyserData,
+  getAnalyserData: _getAnalyserData,
+  getStemAnalyserTimeDomainData,
   loopEnabled = false,
   onLoopToggle,
 }: MultiStemEditorProps) {
@@ -435,7 +438,7 @@ export function MultiStemEditor({
             playheadVisiblePct={playheadVisiblePct}
             showPlayhead={playheadPct > 0}
             isPlaying={isAnalyserOutputActive}
-            getAnalyserData={getAnalyserData}
+            getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
             tickPcts={ticks.map((t) => t.pct)}
             beatGridPcts={beatGridPcts}
             beatGrid={beatGrid}
@@ -764,8 +767,10 @@ export function MultiStemEditor({
           activeStemId={resolvedActiveStemId}
           playbackReady={playbackReady}
           isLoadingStems={isLoadingStems}
+          isPlayingMix={isPlaying}
           playingStemId={playingStemId}
           loadingPreviewStemId={loadingPreviewStemId}
+          getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
           onStemStateChange={onStemStateChange}
           onPreviewStem={onPreviewStem}
           onActiveStemChange={setActiveStemId}

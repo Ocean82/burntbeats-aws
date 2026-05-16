@@ -53,7 +53,7 @@ export async function renderClientMasterWavBlob(
 
   for (const { buffer, st, rate, trimStart, trimEnd } of stemData) {
     const gainLinear = Math.pow(10, st.mixer.gain / 20);
-    const dsp = createStemDspChain(context, st.mixer, gainLinear);
+    const dsp = createStemDspChain(context, st.mixer, gainLinear, { metering: false });
 
     const source = context.createBufferSource();
     source.buffer = buffer;

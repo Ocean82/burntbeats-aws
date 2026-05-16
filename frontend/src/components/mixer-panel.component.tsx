@@ -50,6 +50,7 @@ export interface MixerPanelProps {
   getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
   getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
+  getStemAnalyserTimeDomainData: (stemId: string) => Uint8Array | null;
   /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
   masterVolume: number;
   /** Callback to update master output gain. */
@@ -95,6 +96,7 @@ export function MixerPanel({
   getMasterAnalyserTimeDomainDataLeft,
   getMasterAnalyserTimeDomainDataRight,
   getMasterAnalyserFrequencyData,
+  getStemAnalyserTimeDomainData,
   masterVolume,
   onMasterVolumeChange,
   masterLimiterEnabled,
@@ -392,6 +394,7 @@ export function MixerPanel({
           playingStemId={playingStemId}
           loadingPreviewStemId={loadingPreviewStemId}
           getAnalyserData={getMasterAnalyserTimeDomainData}
+          getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
           beatGrid={beatGrid}
           loopEnabled={loopEnabled}
           onLoopToggle={onLoopToggle}
@@ -421,6 +424,7 @@ export function MixerPanel({
           playingStemId={playingStemId}
           loadingPreviewStemId={loadingPreviewStemId}
           getAnalyserData={getMasterAnalyserTimeDomainData}
+          getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
           beatGrid={beatGrid}
           loopEnabled={loopEnabled}
           onLoopToggle={onLoopToggle}

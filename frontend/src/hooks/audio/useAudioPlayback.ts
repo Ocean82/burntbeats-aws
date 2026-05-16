@@ -203,6 +203,8 @@ export interface UseAudioPlaybackReturn {
   getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   /** Frequency bins for spectrum (master bus). */
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
+  /** Per-stem time-domain bytes for channel / lane metering. */
+  getStemAnalyserTimeDomainData: (stemId: string) => Uint8Array | null;
   /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
   masterVolume: number;
   /** Set master output gain and update the live gain node immediately. */
@@ -906,6 +908,19 @@ export function useAudioPlayback(
     ],
   );
 
+  const getStemAnalyserTimeDomainData = useCallback(
+    (stemId: string): Uint8Array | null => {
+      const preview = currentPreviewRuntimeRef.current;
+      if (preview?.stemId === stemId) {
+        return preview.dsp.getTimeDomainData();
+      }
+      const runtime = mixStemRuntimesRef.current.find((r) => r.stemId === stemId);
+      if (!runtime) return null;
+      return runtime.dsp.getTimeDomainData();
+    },
+    [],
+  );
+
   // --- Cleanup on unmount ---
   useEffect(() => {
     const pool = pluginPoolRef.current;
@@ -937,6 +952,7 @@ export function useAudioPlayback(
     getMasterAnalyserTimeDomainDataLeft,
     getMasterAnalyserTimeDomainDataRight,
     getMasterAnalyserFrequencyData,
+    getStemAnalyserTimeDomainData,
     masterVolume,
     setMasterVolume,
     masterLimiterEnabled,

@@ -55,6 +55,7 @@ export interface DjModeEditorProps {
   activeStemId?: string;
   onActiveStemChange?: (stemId: string) => void;
   getAnalyserData?: () => Uint8Array | null;
+  getStemAnalyserTimeDomainData?: (stemId: string) => Uint8Array | null;
   loopEnabled?: boolean;
   onLoopToggle?: (enabled: boolean) => void;
 }
@@ -87,6 +88,7 @@ export function DjModeEditor({
   activeStemId: controlledActiveStemId,
   onActiveStemChange,
   getAnalyserData,
+  getStemAnalyserTimeDomainData,
   loopEnabled = false,
   onLoopToggle,
 }: DjModeEditorProps) {
@@ -249,7 +251,12 @@ export function DjModeEditor({
           playheadVisiblePct={playheadVisiblePct}
           showPlayhead={playheadPct > 0}
           isPlaying={isAnalyserOutputActive}
-          getAnalyserData={getAnalyserData}
+          getStemAnalyserTimeDomainData={
+            getStemAnalyserTimeDomainData ??
+            (getAnalyserData
+              ? (_stemId: string) => getAnalyserData()
+              : undefined)
+          }
           tickPcts={ticks.map((t) => t.pct)}
           beatGridPcts={beatGridPcts}
           beatGrid={beatGrid}

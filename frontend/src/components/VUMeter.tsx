@@ -5,10 +5,17 @@ export interface VUMeterProps {
   color: string;
   isPlaying: boolean;
   height?: number;
+  width?: number;
 }
 
 /** Segmented master output level meter (time-domain RMS from Web Audio Analyser). */
-export function VUMeter({ getAnalyserData, color, isPlaying, height = 80 }: VUMeterProps) {
+export function VUMeter({
+  getAnalyserData,
+  color,
+  isPlaying,
+  height = 80,
+  width = 12,
+}: VUMeterProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef(0);
 
@@ -76,7 +83,7 @@ export function VUMeter({ getAnalyserData, color, isPlaying, height = 80 }: VUMe
   return (
     <canvas
       ref={canvasRef}
-      width={12}
+      width={width}
       height={height}
       className="rounded-sm"
       style={{ imageRendering: "pixelated" }}

@@ -29,8 +29,8 @@ export interface WaveformTimelineProps {
   beatGridPcts?: number[];
   /** When set, beat lines are hidden if confidence is below the standard threshold (defense in depth). */
   beatGrid?: BeatGridMetadata | null;
-  /** Optional: time-domain analyser data for live waveform modulation during playback. */
-  getAnalyserData?: () => Uint8Array | null;
+  /** Optional: per-stem time-domain analyser for live waveform modulation. */
+  getStemAnalyserTimeDomainData?: (stemId: string) => Uint8Array | null;
   /** Whether audio is currently playing (gates the analyser modulation). */
   isPlaying?: boolean;
   onTrimChange: (stemId: string, trim: TrimState) => void;
@@ -55,7 +55,7 @@ export function WaveformTimeline({
   tickPcts,
   beatGridPcts,
   beatGrid,
-  getAnalyserData,
+  getStemAnalyserTimeDomainData,
   isPlaying = false,
   onTrimChange,
   onSeek,
@@ -123,7 +123,11 @@ export function WaveformTimeline({
             zoom={zoom}
             scrollPct={scrollPct}
             playheadFraction={playheadVisiblePct / 100}
-            getAnalyserData={isPlaying ? getAnalyserData : undefined}
+            getAnalyserData={
+              isPlaying && getStemAnalyserTimeDomainData
+                ? () => getStemAnalyserTimeDomainData(stem.id)
+                : undefined
+            }
             fadeIn={state.fadeIn ?? 0}
             fadeOut={state.fadeOut ?? 0}
             duration={durations[stem.id] ?? 0}

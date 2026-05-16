@@ -17,7 +17,9 @@ export interface MixerStripsProps {
   activeStemId: string;
   playbackReady: boolean;
   isLoadingStems: boolean;
+  isPlayingMix: boolean;
   playingStemId: string | null;
+  getStemAnalyserTimeDomainData?: (stemId: string) => Uint8Array | null;
   loadingPreviewStemId: string | null;
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
@@ -30,7 +32,9 @@ export const MixerStrips = memo(function MixerStrips({
   activeStemId,
   playbackReady,
   isLoadingStems: _isLoadingStems,
+  isPlayingMix,
   playingStemId,
+  getStemAnalyserTimeDomainData,
   loadingPreviewStemId,
   onStemStateChange,
   onPreviewStem,
@@ -55,6 +59,10 @@ export const MixerStrips = memo(function MixerStrips({
             audioReady={playbackReady}
             isPreviewPlaying={playingStemId === stem.id}
             isLoadingPreview={loadingPreviewStemId === stem.id}
+            isMeterPlaying={
+              playbackReady && (isPlayingMix || playingStemId === stem.id)
+            }
+            getStemAnalyserData={getStemAnalyserTimeDomainData}
             onStemStateChange={onStemStateChange}
             onPreviewStem={onPreviewStem}
             onActivate={onActiveStemChange}

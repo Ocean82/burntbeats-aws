@@ -95,7 +95,11 @@ backend/.env.*
 docs/deploy-reports/**
 docs/deploy-reports/*
 docs/
-
+.cursor/
+.cursorignore/
+.kiro/
+.claude
+.idea/
 
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
 benchmark_song.local.txt
