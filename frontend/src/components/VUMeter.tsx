@@ -9,12 +9,16 @@ import {
   rmsToMeterLevel,
 } from "../utils/analyser-meter";
 
+export type VUMeterColorMode = "stem" | "vu-gradient";
+
 export interface VUMeterProps {
   getAnalyserData: () => Uint8Array | null;
   color: string;
   isPlaying: boolean;
   height?: number;
   width?: number;
+  /** stem: use stem color for low segments; vu-gradient: green/amber/red hardware meter. */
+  colorMode?: VUMeterColorMode;
   /** Draw white peak-hold line with decay (channel strips). */
   showPeakHold?: boolean;
   /** Latch clip LED when peak exceeds digital full scale. */
@@ -28,6 +32,7 @@ export function VUMeter({
   isPlaying,
   height = 80,
   width = 12,
+  colorMode = "stem",
   showPeakHold = false,
   showClipIndicator = false,
 }: VUMeterProps) {
@@ -90,9 +95,17 @@ export function VUMeter({
 
       let segColor: string;
       if (active) {
-        if (isHot) segColor = "#ef4444";
-        else if (isWarm) segColor = "#f59e0b";
-        else segColor = color;
+        if (colorMode === "vu-gradient") {
+          if (isHot) segColor = "#ef4444";
+          else if (isWarm) segColor = "#f59e0b";
+          else segColor = "#22c55e";
+        } else if (isHot) {
+          segColor = "#ef4444";
+        } else if (isWarm) {
+          segColor = "#f59e0b";
+        } else {
+          segColor = color;
+        }
       } else {
         segColor = "rgba(255,255,255,0.06)";
       }
@@ -137,6 +150,7 @@ export function VUMeter({
   }, [
     getAnalyserData,
     color,
+    colorMode,
     isPlaying,
     height,
     showPeakHold,

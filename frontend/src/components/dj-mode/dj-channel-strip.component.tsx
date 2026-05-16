@@ -1,0 +1,232 @@
+/**
+ * DjChannelStrip — Hardware-inspired vertical mixer channel for DJ mode.
+ */
+import { memo, useCallback } from "react";
+import type { StemDefinition } from "../../types";
+import type { StemEditorState } from "../../stem-editor-state";
+import { cn } from "../../utils/cn";
+import { formatDb } from "../../utils/mixer-format";
+import { channelMuteSoloButtonClass } from "../multi-stem-editor/mixer-channel-controls";
+import { PanKnob } from "../multi-stem-editor/pan-knob.component";
+import { EqKnob } from "../multi-stem-editor/eq-knob.component";
+import { MixerVerticalFader } from "../multi-stem-editor/mixer-vertical-fader.component";
+import { ChannelMeter } from "../multi-stem-editor/channel-meter.component";
+
+const EQ_BANDS = [
+  { key: "eqLow" as const, label: "Lo" },
+  { key: "eqMid" as const, label: "Mid" },
+  { key: "eqHigh" as const, label: "Hi" },
+] as const;
+
+const FADER_HEIGHT = 160;
+
+export interface DjChannelStripProps {
+  stem: StemDefinition;
+  state: StemEditorState;
+  isActive: boolean;
+  playbackReady: boolean;
+  showFaders: boolean;
+  showEq: boolean;
+  showPan: boolean;
+  showMeters: boolean;
+  isMeterPlaying: boolean;
+  getStemAnalyserData?: (stemId: string) => Uint8Array | null;
+  onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
+  onActiveStemChange: (stemId: string) => void;
+}
+
+export const DjChannelStrip = memo(function DjChannelStrip({
+  stem,
+  state,
+  isActive,
+  playbackReady,
+  showFaders,
+  showEq,
+  showPan,
+  showMeters,
+  isMeterPlaying,
+  getStemAnalyserData,
+  onStemStateChange,
+  onActiveStemChange,
+}: DjChannelStripProps) {
+  const { mixer, muted, soloed } = state;
+
+  const handleActivate = useCallback(() => {
+    onActiveStemChange(stem.id);
+  }, [onActiveStemChange, stem.id]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onActiveStemChange(stem.id);
+      }
+    },
+    [onActiveStemChange, stem.id],
+  );
+
+  const updateMixer = useCallback(
+    (patch: Partial<typeof mixer>) =>
+      onStemStateChange(stem.id, { mixer: { ...mixer, ...patch } }),
+    [mixer, onStemStateChange, stem.id],
+  );
+
+  const meterGetter = useCallback(
+    () => getStemAnalyserData?.(stem.id) ?? null,
+    [getStemAnalyserData, stem.id],
+  );
+
+  const showFaderBank = showFaders || (showMeters && getStemAnalyserData);
+
+  return (
+    <div
+      className={cn(
+        "dj-channel-strip flex min-w-[5.5rem] w-[5.5rem] flex-col items-center gap-2 rounded-xl border px-2.5 py-2.5 transition-all",
+        "bg-gradient-to-b from-white/[0.06] to-black/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
+        isActive
+          ? "border-white/25 shadow-[0_0_16px_rgba(255,255,255,0.06)]"
+          : "border-white/10 hover:border-white/15",
+      )}
+      style={
+        isActive
+          ? ({ borderColor: stem.glow, boxShadow: `0 0 20px ${stem.glow}22, inset 0 1px 0 rgba(255,255,255,0.08)` } as React.CSSProperties)
+          : ({ "--stem-color": stem.glow } as React.CSSProperties)
+      }
+      onClick={handleActivate}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={0}
+      aria-label={`${stem.label} channel`}
+      aria-pressed={isActive}
+    >
+      {/* Stem label */}
+      <div
+        className="flex w-full items-center justify-center gap-1.5 border-b border-white/8 pb-2"
+        style={{ background: `${stem.glow}08` }}
+      >
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: stem.glow, boxShadow: `0 0 6px ${stem.glow}` }}
+          aria-hidden
+        />
+        <span className="truncate text-[9px] font-bold uppercase tracking-wider text-white/75">
+          {stem.label}
+        </span>
+      </div>
+
+      {/* Pan knob */}
+      {showPan && (
+        <div
+          className="flex flex-col items-center"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <PanKnob
+            variant="console"
+            value={mixer.pan}
+            disabled={!playbackReady}
+            color={stem.glow}
+            ariaLabel={`${stem.label} pan`}
+            onChange={(pan) => updateMixer({ pan })}
+          />
+        </div>
+      )}
+
+      {/* Meter + fader */}
+      {showFaderBank && (
+        <div
+          className="flex items-center justify-center gap-1"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {showMeters && getStemAnalyserData && (
+            <ChannelMeter
+              getAnalyserData={meterGetter}
+              color={stem.glow}
+              isPlaying={isMeterPlaying}
+              height={FADER_HEIGHT}
+              width={8}
+              colorMode="vu-gradient"
+            />
+          )}
+          {showFaders && (
+            <MixerVerticalFader
+              value={mixer.gain}
+              disabled={!playbackReady}
+              height={FADER_HEIGHT}
+              accentColor={stem.glow}
+              ariaLabel={`${stem.label} volume`}
+              muted={muted}
+              onChange={(gain) => updateMixer({ gain })}
+              onReset={() => updateMixer({ gain: 0 })}
+            />
+          )}
+        </div>
+      )}
+
+      {/* dB readout */}
+      {showFaders && (
+        <span
+          className={cn(
+            "font-mono text-[9px] tabular-nums",
+            muted ? "text-white/30" : "text-white/50",
+          )}
+          aria-hidden
+        >
+          {formatDb(mixer.gain)} dB
+        </span>
+      )}
+
+      {/* Mute / Solo */}
+      <div
+        className="flex w-full items-center justify-center gap-1.5"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStemStateChange(stem.id, { muted: !muted });
+          }}
+          disabled={!playbackReady}
+          aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
+          aria-pressed={muted}
+          className={channelMuteSoloButtonClass(muted, "mute", "compact")}
+        >
+          M
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onStemStateChange(stem.id, { soloed: !soloed });
+          }}
+          disabled={!playbackReady}
+          aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
+          aria-pressed={soloed}
+          className={channelMuteSoloButtonClass(soloed, "solo", "compact")}
+        >
+          S
+        </button>
+      </div>
+
+      {/* EQ mini knobs */}
+      {showEq && (
+        <div
+          className="flex w-full items-end justify-center gap-0.5 border-t border-white/8 pt-2"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {EQ_BANDS.map(({ key, label }) => (
+            <EqKnob
+              key={key}
+              value={mixer[key]}
+              label={label}
+              disabled={!playbackReady}
+              color={stem.glow}
+              ariaLabel={`${stem.label} ${label} EQ`}
+              onChange={(v) => updateMixer({ [key]: v })}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});

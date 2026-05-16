@@ -1336,13 +1336,66 @@
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.9), 0 0 16px rgba(0, 220, 255, 0.5);
   }
 
-  /* DJ mixer console fader styling */
-  .dj-mixer-console .dj-fader {
-    accent-color: var(--stem-color, rgba(255, 255, 255, 0.7));
+  /* DJ mixer console — glass panel + hardware channel strips */
+  .dj-mixer-console {
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.72) 0%,
+      rgba(0, 0, 0, 0.88) 100%
+    );
+    backdrop-filter: blur(8px);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .dj-channel-strip {
-    min-width: 4.5rem;
+    min-width: 5.5rem;
+  }
+
+  /* Vertical fader — recessed slot + tactile thumb */
+  .mixer-vertical-fader__slot {
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.85) 0%,
+      rgba(20, 20, 24, 0.6) 45%,
+      rgba(0, 0, 0, 0.85) 100%
+    );
+    box-shadow:
+      inset 2px 0 4px rgba(0, 0, 0, 0.9),
+      inset -2px 0 4px rgba(0, 0, 0, 0.9),
+      inset 0 2px 6px rgba(0, 0, 0, 0.7);
+  }
+
+  .mixer-vertical-fader__thumb {
+    position: relative;
+    height: 20px;
+    background: linear-gradient(
+      180deg,
+      rgba(220, 220, 225, 0.95) 0%,
+      rgba(140, 140, 150, 0.9) 40%,
+      rgba(80, 80, 88, 0.95) 100%
+    );
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .mixer-vertical-fader__thumb-line {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 12px;
+    height: 1px;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.55);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .dj-mixer-console .mixer-vertical-fader__thumb {
+    border-color: color-mix(in srgb, var(--fader-accent, #f59e0b) 30%, rgba(255, 255, 255, 0.2));
   }
 
   /* Responsive: on smaller screens, reduce lane height */

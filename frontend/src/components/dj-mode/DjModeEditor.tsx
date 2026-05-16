@@ -314,7 +314,10 @@ export function DjModeEditor({
             stemStates={stemStates}
             activeStemId={resolvedActiveStemId}
             playbackReady={playbackReady}
+            isPlaying={isPlaying}
+            playingStemId={playingStemId}
             visibleTools={toolbarConfig.visibleSlots}
+            getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
             onStemStateChange={onStemStateChange}
             onActiveStemChange={setActiveStemId}
           />
