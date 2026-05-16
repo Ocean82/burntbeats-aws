@@ -4,9 +4,11 @@ import type { StemDefinition } from "../types";
 import type { StemEditorState } from "../stem-editor-state";
 import type { BeatGridMetadata } from "../api";
 import { MultiStemEditor } from "./MultiStemEditor";
+import { DjModeEditor } from "./dj-mode";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { StereoVUMeter } from "./StereoVUMeter";
 import { cn } from "../utils/cn";
+import { useLayoutMode } from "../contexts/LayoutModeContext";
 import type { SeekPhase } from "../types/playbackSeek";
 
 /** Convert a linear gain value (0–1.5) to a dB string for display. */
@@ -101,6 +103,7 @@ export function MixerPanel({
   loopEnabled = false,
   onLoopToggle,
 }: MixerPanelProps) {
+  const { mode } = useLayoutMode();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [masterMuted, setMasterMuted] = useState(false);
   const preMuteVolumeRef = useRef(masterVolume);
@@ -364,34 +367,65 @@ export function MixerPanel({
         </div>
       )}
 
-      <MultiStemEditor
-        stems={stems}
-        waveforms={waveforms}
-        durations={durations}
-        stemStates={stemStates}
-        isPlaying={isPlayingMix}
-        playheadPct={playheadPct}
-        isLoadingStems={isLoadingStems}
-        playbackReady={hasStemBuffers}
-        activeStemId={activeStemId}
-        onActiveStemChange={onActiveStemChange}
-        onStemStateChange={onStemStateChange}
-        onSeek={(pct, opts) => {
-          if (onSeekMix) {
-            onSeekMix(pct, opts);
-            return;
-          }
-          if (isPlayingMix) onStopMix();
-        }}
-        onPlayPause={onPlayStop}
-        onPreviewStem={onPreviewStem}
-        playingStemId={playingStemId}
-        loadingPreviewStemId={loadingPreviewStemId}
-        getAnalyserData={getMasterAnalyserTimeDomainData}
-        beatGrid={beatGrid}
-        loopEnabled={loopEnabled}
-        onLoopToggle={onLoopToggle}
-      />
+      {mode === "dj" ? (
+        <DjModeEditor
+          stems={stems}
+          waveforms={waveforms}
+          durations={durations}
+          stemStates={stemStates}
+          isPlaying={isPlayingMix}
+          playheadPct={playheadPct}
+          isLoadingStems={isLoadingStems}
+          playbackReady={hasStemBuffers}
+          activeStemId={activeStemId}
+          onActiveStemChange={onActiveStemChange}
+          onStemStateChange={onStemStateChange}
+          onSeek={(pct, opts) => {
+            if (onSeekMix) {
+              onSeekMix(pct, opts);
+              return;
+            }
+            if (isPlayingMix) onStopMix();
+          }}
+          onPlayPause={onPlayStop}
+          onPreviewStem={onPreviewStem}
+          playingStemId={playingStemId}
+          loadingPreviewStemId={loadingPreviewStemId}
+          getAnalyserData={getMasterAnalyserTimeDomainData}
+          beatGrid={beatGrid}
+          loopEnabled={loopEnabled}
+          onLoopToggle={onLoopToggle}
+        />
+      ) : (
+        <MultiStemEditor
+          stems={stems}
+          waveforms={waveforms}
+          durations={durations}
+          stemStates={stemStates}
+          isPlaying={isPlayingMix}
+          playheadPct={playheadPct}
+          isLoadingStems={isLoadingStems}
+          playbackReady={hasStemBuffers}
+          activeStemId={activeStemId}
+          onActiveStemChange={onActiveStemChange}
+          onStemStateChange={onStemStateChange}
+          onSeek={(pct, opts) => {
+            if (onSeekMix) {
+              onSeekMix(pct, opts);
+              return;
+            }
+            if (isPlayingMix) onStopMix();
+          }}
+          onPlayPause={onPlayStop}
+          onPreviewStem={onPreviewStem}
+          playingStemId={playingStemId}
+          loadingPreviewStemId={loadingPreviewStemId}
+          getAnalyserData={getMasterAnalyserTimeDomainData}
+          beatGrid={beatGrid}
+          loopEnabled={loopEnabled}
+          onLoopToggle={onLoopToggle}
+        />
+      )}
     </>
   );
 }

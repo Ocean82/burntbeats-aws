@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { LayoutModeProvider } from "../contexts/LayoutModeContext";
 
 export interface AppShellProps {
   children: ReactNode;
@@ -11,5 +12,9 @@ export interface AppShellProps {
  * Add cross-cutting providers here (router, query client, theme) when needed.
  */
 export function AppShell({ children }: AppShellProps): ReactNode {
-  return <ErrorBoundary>{children}</ErrorBoundary>;
+  return (
+    <ErrorBoundary>
+      <LayoutModeProvider>{children}</LayoutModeProvider>
+    </ErrorBoundary>
+  );
 }

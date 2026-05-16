@@ -1,9 +1,10 @@
-import { HelpCircle, Undo2, Redo2, Save } from "lucide-react";
+import { HelpCircle, Undo2, Redo2, Save, Disc3, LayoutGrid } from "lucide-react";
 import { cn } from "../utils/cn";
 import { HeaderUserButton } from "../components/AuthGate";
 import { AppMobileMoreMenu } from "../components/AppMobileMoreMenu";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
 import type { ModalKey } from "../hooks/useUiModals";
+import { useLayoutMode } from "../contexts/LayoutModeContext";
 
 interface EditorHeaderProps {
   headerVisible: boolean;
@@ -46,6 +47,7 @@ export function EditorHeader({
   openFeedback,
   openOnboarding,
 }: EditorHeaderProps) {
+  const { mode, toggleMode } = useLayoutMode();
   return (
     <>
       <nav
@@ -215,6 +217,22 @@ export function EditorHeader({
                 <Redo2 className="h-4 w-4" />
               </button>
             </div>
+            {/* Layout mode toggle */}
+            <button
+              type="button"
+              onClick={toggleMode}
+              className={cn(
+                "flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 text-sm transition tap-feedback",
+                mode === "dj"
+                  ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-200"
+                  : "border-white/10 bg-black/20 text-white/65 hover:text-white",
+              )}
+              title={mode === "dj" ? "Switch to Classic layout" : "Switch to DJ layout"}
+              aria-label={mode === "dj" ? "Switch to Classic layout" : "Switch to DJ layout"}
+            >
+              {mode === "dj" ? <Disc3 className="h-3.5 w-3.5" /> : <LayoutGrid className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline text-xs">{mode === "dj" ? "DJ" : "Classic"}</span>
+            </button>
             <div className="hidden flex-wrap items-center gap-2 lg:flex">
               <button
                 type="button"
