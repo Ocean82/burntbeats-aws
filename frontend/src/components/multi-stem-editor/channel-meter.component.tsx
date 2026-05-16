@@ -22,6 +22,8 @@ export const ChannelMeter = memo(function ChannelMeter({
       isPlaying={isPlaying}
       height={height}
       width={8}
+      showPeakHold
+      showClipIndicator
     />
   );
 });
