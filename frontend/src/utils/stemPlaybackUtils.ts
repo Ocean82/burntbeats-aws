@@ -1,11 +1,11 @@
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
 
-/** Mute, solo, pitch, time stretch — hot-swap mix immediately when these change. */
+/** Mute, solo, pitch, time stretch, fade — hot-swap mix immediately when these change. */
 export function stemRoutingSignature(states: Record<string, StemEditorState>, stemIds: string[]): string {
   return stemIds
     .map((id) => {
       const s = states[id] ?? defaultStemState();
-      return `${id}:m${s.muted ? 1 : 0}s${s.soloed ? 1 : 0}p${s.pitchSemitones}ts${s.timeStretch}`;
+      return `${id}:m${s.muted ? 1 : 0}s${s.soloed ? 1 : 0}p${s.pitchSemitones}ts${s.timeStretch}fi${s.fadeIn ?? 0}fo${s.fadeOut ?? 0}`;
     })
     .join("|");
 }
@@ -40,7 +40,7 @@ export function stemMuteSoloSignature(states: Record<string, StemEditorState>, s
     .join("|");
 }
 
-/** Pitch, stretch, trim for one stem (preview hot-swap). */
+/** Pitch, stretch, trim, fade for one stem (preview hot-swap). */
 export function stemPreviewStructuralSignature(st: StemEditorState): string {
-  return `p${st.pitchSemitones}ts${st.timeStretch}tr${st.trim.start}-${st.trim.end}`;
+  return `p${st.pitchSemitones}ts${st.timeStretch}tr${st.trim.start}-${st.trim.end}fi${st.fadeIn ?? 0}fo${st.fadeOut ?? 0}`;
 }

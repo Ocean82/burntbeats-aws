@@ -4,7 +4,7 @@
  * reverb, delay, pan, width, rate, trim) — matching real-time playback exactly.
  */
 import type { StemResult } from "../../types";
-import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStemDspChain } from "../../utils/audio";
+import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStemDspChain, createFadeEnvelopeNode } from "../../utils/audio";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../../stem-editor-state";
 import { filterStemsForAudibleMix } from "../../utils/stemAudibility";
 
@@ -58,7 +58,25 @@ export async function renderClientMasterWavBlob(
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.playbackRate.value = rate;
-    source.connect(dsp.input);
+
+    // Apply fade envelope if configured
+    const hasFade = (st.fadeIn ?? 0) > 0 || (st.fadeOut ?? 0) > 0;
+    const wallDuration = (trimEnd - trimStart) / rate;
+    if (hasFade && wallDuration > 0) {
+      const fadeNode = createFadeEnvelopeNode(
+        context,
+        st.fadeIn ?? 0,
+        st.fadeOut ?? 0,
+        wallDuration,
+        0, // startTime = 0 for offline context
+        0, // elapsedWall = 0 (rendering from start)
+      );
+      source.connect(fadeNode);
+      fadeNode.connect(dsp.input);
+    } else {
+      source.connect(dsp.input);
+    }
+
     dsp.output.connect(context.destination);
     source.start(0, trimStart, trimEnd - trimStart);
   }

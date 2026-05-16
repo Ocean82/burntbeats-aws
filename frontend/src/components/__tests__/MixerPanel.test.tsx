@@ -26,6 +26,8 @@ const STEM_STATE: Record<string, StemEditorState> = {
     timeStretch: 1,
     muted: false,
     soloed: false,
+    fadeIn: 0,
+    fadeOut: 0,
   },
 };
 

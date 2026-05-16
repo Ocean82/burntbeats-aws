@@ -536,3 +536,79 @@ function _buildReverbIR(ctx: BaseAudioContext, durationSec: number): AudioBuffer
   }
   return ir;
 }
+
+/**
+ * Create a GainNode with fade-in/fade-out automation scheduled on the AudioParam timeline.
+ *
+ * The node starts at gain=0, ramps to 1 over `fadeInSec`, holds at 1, then ramps
+ * to 0 over `fadeOutSec` ending exactly at `wallDuration`. Uses exponential ramps
+ * for a natural-sounding fade curve.
+ *
+ * @param ctx - AudioContext (or OfflineAudioContext) to create the node on
+ * @param fadeInSec - Fade-in duration in seconds (0 = no fade-in)
+ * @param fadeOutSec - Fade-out duration in seconds (0 = no fade-out)
+ * @param wallDuration - Total wall-clock duration of the stem's playback (from trim start to trim end)
+ * @param startTime - The `ctx.currentTime` at which playback begins (for scheduling)
+ * @param elapsedWall - How far into the stem we've already seeked (0 for fresh start)
+ * @returns A GainNode with scheduled automation. Wire: source → fadeNode → dspChain.input
+ */
+export function createFadeEnvelopeNode(
+  ctx: BaseAudioContext,
+  fadeInSec: number,
+  fadeOutSec: number,
+  wallDuration: number,
+  startTime: number,
+  elapsedWall: number = 0,
+): GainNode {
+  const fadeNode = ctx.createGain();
+
+  // Use a very small value instead of 0 for exponentialRamp (can't ramp to/from 0)
+  const NEAR_ZERO = 1e-4;
+
+  const hasFadeIn = fadeInSec > 0.001;
+  const hasFadeOut = fadeOutSec > 0.001;
+
+  if (!hasFadeIn && !hasFadeOut) {
+    fadeNode.gain.value = 1;
+    return fadeNode;
+  }
+
+  // Clamp fades so they don't overlap (each gets at most half the duration)
+  const maxFadeIn = Math.min(fadeInSec, wallDuration * 0.5);
+  const maxFadeOut = Math.min(fadeOutSec, wallDuration - maxFadeIn);
+
+  // Remaining wall time from current position
+  const remainingWall = wallDuration - elapsedWall;
+
+  if (hasFadeIn && elapsedWall < maxFadeIn) {
+    // We're still within the fade-in region — compute current gain and ramp from there
+    const fadeProgress = elapsedWall / maxFadeIn; // 0–1
+    const currentGain = Math.max(NEAR_ZERO, fadeProgress);
+    const remainingFadeIn = maxFadeIn - elapsedWall;
+    fadeNode.gain.setValueAtTime(currentGain, startTime);
+    fadeNode.gain.exponentialRampToValueAtTime(1, startTime + remainingFadeIn);
+  } else {
+    // Past the fade-in region — start at full gain
+    fadeNode.gain.setValueAtTime(1, startTime);
+  }
+
+  if (hasFadeOut) {
+    const fadeOutStartWall = wallDuration - maxFadeOut; // when fade-out begins in wall time
+    const fadeOutStartFromNow = fadeOutStartWall - elapsedWall; // relative to current playback position
+
+    if (fadeOutStartFromNow > 0) {
+      // Fade-out hasn't started yet — schedule it
+      fadeNode.gain.setValueAtTime(1, startTime + fadeOutStartFromNow);
+      fadeNode.gain.exponentialRampToValueAtTime(NEAR_ZERO, startTime + remainingWall);
+    } else {
+      // We've seeked into the fade-out region — compute current gain and ramp from there
+      const fadeOutElapsed = elapsedWall - fadeOutStartWall;
+      const fadeOutProgress = fadeOutElapsed / maxFadeOut; // 0–1
+      const currentGain = Math.max(NEAR_ZERO, 1 - fadeOutProgress);
+      fadeNode.gain.setValueAtTime(currentGain, startTime);
+      fadeNode.gain.exponentialRampToValueAtTime(NEAR_ZERO, startTime + remainingWall);
+    }
+  }
+
+  return fadeNode;
+}

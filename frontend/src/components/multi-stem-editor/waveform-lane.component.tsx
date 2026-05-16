@@ -47,6 +47,12 @@ export interface WaveformLaneProps {
   playheadFraction?: number;
   /** Live analyser time-domain data for waveform modulation during playback. */
   getAnalyserData?: () => Uint8Array | null;
+  /** Fade-in duration in seconds. */
+  fadeIn?: number;
+  /** Fade-out duration in seconds. */
+  fadeOut?: number;
+  /** Total decoded buffer duration in seconds (for computing fade width). */
+  duration?: number;
   onTrimChange: (stemId: string, trim: TrimState) => void;
   /** `phase`: `move` during drag (throttled seek); `end` on pointer release (always applies). */
   onSeek: (pct: number, opts?: { phase?: SeekPhase }) => void;
@@ -68,6 +74,9 @@ export function WaveformLane({
   scrollPct,
   playheadFraction,
   getAnalyserData,
+  fadeIn = 0,
+  fadeOut = 0,
+  duration = 0,
   onTrimChange,
   onSeek,
   onActivate,
@@ -381,6 +390,53 @@ export function WaveformLane({
       <div className="waveform-lane-trim-window pointer-events-none absolute inset-y-0" />
       <div className="waveform-lane-handle-start absolute inset-y-0" />
       <div className="waveform-lane-handle-end absolute inset-y-0" />
+
+      {/* Fade-in gradient overlay */}
+      {fadeIn > 0 && duration > 0 && (() => {
+        // Compute fade-in width as percentage of the visible trim region
+        const trimDuration = duration * ((trim.end - trim.start) / 100);
+        const fadeInPct = trimDuration > 0 ? Math.min((fadeIn / trimDuration) * 100, 50) : 0;
+        // Position within the trim window (relative to visible area)
+        const trimStartVis = clamp((trim.start / 100 - visibleStart) / visibleRange, 0, 1) * 100;
+        const trimEndVis = clamp((trim.end / 100 - visibleStart) / visibleRange, 0, 1) * 100;
+        const trimWidthVis = trimEndVis - trimStartVis;
+        const fadeWidthVis = (fadeInPct / 100) * trimWidthVis;
+        if (fadeWidthVis < 0.5) return null;
+        return (
+          <div
+            className="pointer-events-none absolute inset-y-0 z-[2]"
+            style={{
+              left: `${trimStartVis}%`,
+              width: `${fadeWidthVis}%`,
+              background: `linear-gradient(to right, rgba(0,0,0,0.6), transparent)`,
+            }}
+            aria-hidden
+          />
+        );
+      })()}
+
+      {/* Fade-out gradient overlay */}
+      {fadeOut > 0 && duration > 0 && (() => {
+        const trimDuration = duration * ((trim.end - trim.start) / 100);
+        const fadeOutPct = trimDuration > 0 ? Math.min((fadeOut / trimDuration) * 100, 50) : 0;
+        const trimStartVis = clamp((trim.start / 100 - visibleStart) / visibleRange, 0, 1) * 100;
+        const trimEndVis = clamp((trim.end / 100 - visibleStart) / visibleRange, 0, 1) * 100;
+        const trimWidthVis = trimEndVis - trimStartVis;
+        const fadeWidthVis = (fadeOutPct / 100) * trimWidthVis;
+        if (fadeWidthVis < 0.5) return null;
+        return (
+          <div
+            className="pointer-events-none absolute inset-y-0 z-[2]"
+            style={{
+              right: `${100 - trimEndVis}%`,
+              width: `${fadeWidthVis}%`,
+              background: `linear-gradient(to left, rgba(0,0,0,0.6), transparent)`,
+            }}
+            aria-hidden
+          />
+        );
+      })()}
+
       <span className="waveform-lane-label pointer-events-none absolute left-2 top-1 text-[9px] font-bold uppercase tracking-wider">
         {stem.label}
       </span>

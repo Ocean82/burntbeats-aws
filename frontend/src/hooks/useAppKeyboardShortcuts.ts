@@ -34,6 +34,8 @@ interface UseAppKeyboardShortcutsArgs {
   isPlayingMix: boolean;
   undoStemStates: () => void;
   redoStemStates: () => void;
+  loopEnabled: boolean;
+  setLoopEnabled: (enabled: boolean) => void;
 }
 
 export function useAppKeyboardShortcuts({
@@ -53,6 +55,8 @@ export function useAppKeyboardShortcuts({
   isPlayingMix,
   undoStemStates,
   redoStemStates,
+  loopEnabled,
+  setLoopEnabled,
 }: UseAppKeyboardShortcutsArgs) {
   const setSoloAtIndex = useCallback(
     (index: number) => {
@@ -121,6 +125,7 @@ export function useAppKeyboardShortcuts({
       solo3: () => setSoloAtIndex(2),
       solo4: () => setSoloAtIndex(3),
       muteToggle: setMuteFirst,
+      loopToggle: () => setLoopEnabled(!loopEnabled),
       export: () => {
         if (mixStems.length > 0) {
           openModal("export");
@@ -145,10 +150,12 @@ export function useAppKeyboardShortcuts({
     handlePlayMix,
     handleStopMix,
     isPlayingMix,
+    loopEnabled,
     mixStems,
     openModal,
     redoStemStates,
     resolvedActiveStemId,
+    setLoopEnabled,
     setMuteFirst,
     setSoloAtIndex,
     setStemStates,

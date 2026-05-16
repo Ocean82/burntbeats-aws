@@ -124,6 +124,9 @@ export function WaveformTimeline({
             scrollPct={scrollPct}
             playheadFraction={playheadVisiblePct / 100}
             getAnalyserData={isPlaying ? getAnalyserData : undefined}
+            fadeIn={state.fadeIn ?? 0}
+            fadeOut={state.fadeOut ?? 0}
+            duration={durations[stem.id] ?? 0}
             onTrimChange={onTrimChange}
             onSeek={onSeek}
             onActivate={onActivate}

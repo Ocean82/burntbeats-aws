@@ -96,6 +96,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                     <ul className="mt-1.5 space-y-1 text-xs text-white/65">
                       <li>Press number keys 1-4 to quickly solo individual stems</li>
                       <li>Use Cmd/Ctrl + Z to undo mixer changes</li>
+                      <li>Press L to toggle loop playback</li>
                       <li>Press Space to play/stop the mix hands-free</li>
                     </ul>
                   </div>

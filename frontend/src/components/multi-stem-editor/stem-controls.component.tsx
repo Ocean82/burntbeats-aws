@@ -177,6 +177,44 @@ export const StemControls = memo(function StemControls({
         />
       </div>
 
+      {/* Fade In / Fade Out */}
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-xs">
+            Fade in {state.fadeIn > 0 ? `${state.fadeIn.toFixed(1)}s` : "off"}
+            <input
+              type="range"
+              min={0}
+              max={5}
+              step={0.1}
+              value={state.fadeIn ?? 0}
+              disabled={!audioReady}
+              aria-label={`${stem.label} fade in`}
+              onChange={(e) => onStemStateChange(stem.id, { fadeIn: Number(e.target.value) })}
+              onDoubleClick={() => onStemStateChange(stem.id, { fadeIn: 0 })}
+              className="stem-accent-slider w-full"
+            />
+          </label>
+        </div>
+        <div className="flex-1">
+          <label className="text-xs">
+            Fade out {state.fadeOut > 0 ? `${state.fadeOut.toFixed(1)}s` : "off"}
+            <input
+              type="range"
+              min={0}
+              max={5}
+              step={0.1}
+              value={state.fadeOut ?? 0}
+              disabled={!audioReady}
+              aria-label={`${stem.label} fade out`}
+              onChange={(e) => onStemStateChange(stem.id, { fadeOut: Number(e.target.value) })}
+              onDoubleClick={() => onStemStateChange(stem.id, { fadeOut: 0 })}
+              className="stem-accent-slider w-full"
+            />
+          </label>
+        </div>
+      </div>
+
       {/* Mixer */}
       <div>
         <label className="text-xs">

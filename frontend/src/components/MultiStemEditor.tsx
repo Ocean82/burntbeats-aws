@@ -13,6 +13,7 @@ import {
   Grid,
   LayoutList,
   Play,
+  Repeat,
   Sliders,
   Sparkles,
   Square,
@@ -68,6 +69,10 @@ export interface MultiStemEditorProps {
   onActiveStemChange?: (stemId: string) => void;
   /** Optional: time-domain analyser getter for live waveform modulation. */
   getAnalyserData?: () => Uint8Array | null;
+  /** Whether loop playback is enabled. */
+  loopEnabled?: boolean;
+  /** Callback to toggle loop playback. */
+  onLoopToggle?: (enabled: boolean) => void;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -98,6 +103,8 @@ export function MultiStemEditor({
   activeStemId: controlledActiveStemId,
   onActiveStemChange,
   getAnalyserData,
+  loopEnabled = false,
+  onLoopToggle,
 }: MultiStemEditorProps) {
   const [activePanel, setActivePanel] = useState<
     "pitch" | "eq" | "amplitude" | "time" | "fx" | null
@@ -270,6 +277,24 @@ export function MultiStemEditor({
         >
           {isPlaying ? <Square /> : <Play />}
           {isPlaying ? "Stop" : "Play mix"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onLoopToggle?.(!loopEnabled)}
+          disabled={!playbackReady}
+          aria-label={loopEnabled ? "Disable loop playback" : "Enable loop playback"}
+          aria-pressed={loopEnabled}
+          className={cn(
+            "flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition",
+            loopEnabled
+              ? "border-amber-400/50 bg-amber-500/20 text-amber-100"
+              : "border-white/15 bg-white/5 text-white/60 hover:text-white hover:bg-white/10",
+            !playbackReady && "opacity-40",
+          )}
+        >
+          <Repeat className="h-4 w-4" />
+          Loop
         </button>
 
         <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-black/20">

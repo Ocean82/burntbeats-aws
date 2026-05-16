@@ -56,6 +56,10 @@ export interface MixerPanelProps {
   onMasterLimiterEnabledChange: (enabled: boolean) => void;
   /** Optional beat-grid metadata from backend BPM analysis. */
   beatGrid?: BeatGridMetadata | null;
+  /** Whether loop playback is enabled. */
+  loopEnabled?: boolean;
+  /** Callback to toggle loop playback. */
+  onLoopToggle?: (enabled: boolean) => void;
 }
 
 export function MixerPanel({
@@ -94,6 +98,8 @@ export function MixerPanel({
   masterLimiterEnabled,
   onMasterLimiterEnabledChange,
   beatGrid,
+  loopEnabled = false,
+  onLoopToggle,
 }: MixerPanelProps) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [masterMuted, setMasterMuted] = useState(false);
@@ -383,6 +389,8 @@ export function MixerPanel({
         loadingPreviewStemId={loadingPreviewStemId}
         getAnalyserData={getMasterAnalyserTimeDomainData}
         beatGrid={beatGrid}
+        loopEnabled={loopEnabled}
+        onLoopToggle={onLoopToggle}
       />
     </>
   );

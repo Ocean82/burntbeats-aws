@@ -12,6 +12,10 @@ export interface StemEditorState {
   timeStretch: number;
   muted: boolean;
   soloed: boolean;
+  /** Fade-in duration in seconds (0 = no fade). Applied from trim start. */
+  fadeIn: number;
+  /** Fade-out duration in seconds (0 = no fade). Applied to trim end. */
+  fadeOut: number;
 }
 
 /** Effective playback rate from pitch and time stretch: rate = 2^(pitch/12) / timeStretch. Matches client + server export. */
@@ -33,5 +37,7 @@ export function defaultStemState(): StemEditorState {
     timeStretch: 1.0,
     muted: false,
     soloed: false,
+    fadeIn: 0,
+    fadeOut: 0,
   };
 }

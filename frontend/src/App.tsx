@@ -179,6 +179,8 @@ export function App() {
     setMasterVolume,
     masterLimiterEnabled,
     setMasterLimiterEnabled: setRuntimeMasterLimiterEnabled,
+    loopEnabled,
+    setLoopEnabled,
   } = useAudioPlayback({
     onError: (message) => setSplitError(message),
     stemStates,
@@ -567,6 +569,8 @@ export function App() {
     isPlayingMix,
     undoStemStates,
     redoStemStates,
+    loopEnabled,
+    setLoopEnabled,
   });
 
   return (
@@ -807,6 +811,8 @@ export function App() {
                 onMasterLimiterEnabledChange:
                   handleMasterLimiterEnabledChange,
                 beatGrid,
+                loopEnabled,
+                onLoopToggle: setLoopEnabled,
                 exportCompareSummary,
                 undoToast,
               }}

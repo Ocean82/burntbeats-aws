@@ -42,7 +42,9 @@ type ExpectedReturnKeys =
   | "masterVolume"
   | "setMasterVolume"
   | "masterLimiterEnabled"
-  | "setMasterLimiterEnabled";
+  | "setMasterLimiterEnabled"
+  | "loopEnabled"
+  | "setLoopEnabled";
 
 // Static assertion: the return type has exactly these keys (no more, no less).
 // If a key is added to UseAudioPlaybackReturn without updating this list, TS errors here.
@@ -77,10 +79,12 @@ describe("useAudioPlayback contract", () => {
       "setMasterVolume",
       "masterLimiterEnabled",
       "setMasterLimiterEnabled",
+      "loopEnabled",
+      "setLoopEnabled",
     ];
 
     // Verify count matches (catches accidental additions)
-    expect(expectedKeys.length).toBe(21);
+    expect(expectedKeys.length).toBe(23);
   });
 
   it("UseAudioPlaybackOptions accepts onError and stemStates", () => {

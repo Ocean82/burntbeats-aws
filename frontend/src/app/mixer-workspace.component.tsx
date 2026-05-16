@@ -67,6 +67,10 @@ interface MixerWorkspaceProps {
   onMasterLimiterEnabledChange: (enabled: boolean) => void;
   /** Optional beat-grid metadata from backend BPM analysis. */
   beatGrid?: BeatGridMetadata | null;
+  /** Whether loop playback is enabled. */
+  loopEnabled?: boolean;
+  /** Callback to toggle loop playback. */
+  onLoopToggle?: (enabled: boolean) => void;
   /* Status toasts */
   exportCompareSummary: string | null;
   undoToast: string | null;
@@ -125,6 +129,8 @@ export function MixerWorkspace({
   masterLimiterEnabled,
   onMasterLimiterEnabledChange,
   beatGrid,
+  loopEnabled,
+  onLoopToggle,
   exportCompareSummary,
   undoToast,
 }: MixerWorkspaceProps) {
@@ -388,6 +394,8 @@ export function MixerWorkspace({
           masterLimiterEnabled={masterLimiterEnabled}
           onMasterLimiterEnabledChange={onMasterLimiterEnabledChange}
           beatGrid={beatGrid}
+          loopEnabled={loopEnabled}
+          onLoopToggle={onLoopToggle}
         />
       </Suspense>
       {exportCompareSummary && (
