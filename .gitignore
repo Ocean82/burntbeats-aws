@@ -53,6 +53,8 @@ dist/
 
 # IDE / OS
 .cursor/
+.cursorignore/
+.kiro/
 .claude
 .idea/
 .vscode/
@@ -90,6 +92,10 @@ backend/logs/**
 # Add any additional sensitive files
 backend/.env
 backend/.env.*
+docs/deploy-reports/**
+docs/deploy-reports/*
+docs/
+
 
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
 benchmark_song.local.txt
