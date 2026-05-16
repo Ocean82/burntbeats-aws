@@ -45,8 +45,12 @@ export const MixerVerticalFader = memo(function MixerVerticalFader({
     [onChange],
   );
 
+  const stopPropagation = useCallback((e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  }, []);
+
   const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent<HTMLInputElement>) => {
       e.stopPropagation();
       if (disabled) return;
       onReset?.();
@@ -64,8 +68,6 @@ export const MixerVerticalFader = memo(function MixerVerticalFader({
         muted && "opacity-50",
       )}
       style={{ height, width: 28, "--fader-accent": accentColor } as React.CSSProperties}
-      onDoubleClick={handleDoubleClick}
-      onClick={(e) => e.stopPropagation()}
     >
       <div
         className="mixer-vertical-fader__slot absolute inset-y-1 left-1/2 w-[6px] -translate-x-1/2 rounded-sm"
@@ -86,7 +88,8 @@ export const MixerVerticalFader = memo(function MixerVerticalFader({
         value={value}
         disabled={disabled}
         onChange={handleChange}
-        onClick={(e) => e.stopPropagation()}
+        onClick={stopPropagation}
+        onDoubleClick={handleDoubleClick}
         aria-label={ariaLabel}
         aria-valuetext={`${formatDb(value)} dB`}
         className="mixer-vertical-fader__input absolute inset-0 z-[2] h-full w-full cursor-pointer opacity-0"
