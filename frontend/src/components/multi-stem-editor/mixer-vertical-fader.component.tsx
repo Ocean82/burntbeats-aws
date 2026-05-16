@@ -58,23 +58,23 @@ export const MixerVerticalFader = memo(function MixerVerticalFader({
     [disabled, onReset],
   );
 
-  const thumbBottom = `calc(${thumbPct * 100}% - 10px)`;
+  const thumbBottom = `clamp(4px, calc(${thumbPct * 100}% - 10px), calc(100% - 24px))`;
 
   return (
     <div
       className={cn(
-        "mixer-vertical-fader relative flex shrink-0 items-center justify-center",
+        "mixer-vertical-fader relative flex shrink-0 items-center justify-center overflow-visible",
         disabled && "opacity-40",
         muted && "opacity-50",
       )}
       style={{ height, width: 28, "--fader-accent": accentColor } as React.CSSProperties}
     >
       <div
-        className="mixer-vertical-fader__slot absolute inset-y-1 left-1/2 w-[6px] -translate-x-1/2 rounded-sm"
+        className="mixer-vertical-fader__slot absolute inset-y-1 left-1/2 w-[7px] -translate-x-1/2"
         aria-hidden
       />
       <div
-        className="mixer-vertical-fader__thumb pointer-events-none absolute left-1/2 z-[1] w-[18px] -translate-x-1/2 rounded-[3px]"
+        className="mixer-vertical-fader__thumb pointer-events-none absolute left-1/2 z-[1] w-[18px] -translate-x-1/2"
         style={{ bottom: thumbBottom }}
         aria-hidden
       >

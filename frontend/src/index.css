@@ -1350,36 +1350,67 @@
 
   .dj-channel-strip {
     min-width: 5.5rem;
+    overflow: visible;
+    flex-shrink: 0;
   }
 
-  /* Vertical fader — recessed slot + tactile thumb */
-  .mixer-vertical-fader__slot {
-    background: linear-gradient(
-      90deg,
-      rgba(0, 0, 0, 0.85) 0%,
-      rgba(20, 20, 24, 0.6) 45%,
-      rgba(0, 0, 0, 0.85) 100%
-    );
+  .dj-channel-strip--active {
     box-shadow:
-      inset 2px 0 4px rgba(0, 0, 0, 0.9),
-      inset -2px 0 4px rgba(0, 0, 0, 0.9),
-      inset 0 2px 6px rgba(0, 0, 0, 0.7);
+      0 0 20px color-mix(in srgb, var(--stem-glow, #f59e0b) 18%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  /* Pan knob — console readout (text only, no pill) */
+  .pan-knob__readout--console {
+    display: block;
+    min-width: 2.25rem;
+    text-align: center;
+    font-size: 9px;
+    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.6);
+    background: none;
+    border: none;
+    box-shadow: none;
+  }
+
+  /* Vertical fader — solid inset groove + premium cap */
+  .mixer-vertical-fader {
+    overflow: visible;
+  }
+
+  .mixer-vertical-fader__slot {
+    width: 7px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 
   .mixer-vertical-fader__thumb {
     position: relative;
     height: 20px;
+    border-radius: 2px;
     background: linear-gradient(
       180deg,
-      rgba(220, 220, 225, 0.95) 0%,
-      rgba(140, 140, 150, 0.9) 40%,
-      rgba(80, 80, 88, 0.95) 100%
+      rgba(235, 235, 240, 0.98) 0%,
+      rgba(160, 160, 168, 0.95) 45%,
+      rgba(90, 90, 98, 0.98) 100%
     );
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     box-shadow:
-      0 2px 4px rgba(0, 0, 0, 0.6),
+      0 2px 6px rgba(0, 0, 0, 0.55),
       inset 0 1px 0 rgba(255, 255, 255, 0.35),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+      inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+    transition:
+      bottom 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .mixer-vertical-fader:focus-within .mixer-vertical-fader__thumb {
+    box-shadow:
+      0 3px 8px rgba(0, 0, 0, 0.65),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.35);
   }
 
   .mixer-vertical-fader__thumb-line {
@@ -1392,6 +1423,14 @@
     transform: translate(-50%, -50%);
     background: rgba(0, 0, 0, 0.55);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .mixer-vertical-fader__input::-webkit-slider-runnable-track {
+    background: transparent;
+  }
+
+  .mixer-vertical-fader__input::-webkit-slider-thumb {
+    opacity: 0;
   }
 
   .dj-mixer-console .mixer-vertical-fader__thumb {

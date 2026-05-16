@@ -81,16 +81,20 @@ export const DjChannelStrip = memo(function DjChannelStrip({
   return (
     <div
       className={cn(
-        "dj-channel-strip flex min-w-[5.5rem] w-[5.5rem] flex-col items-center gap-2 rounded-xl border px-2.5 py-2.5 transition-all",
+        "dj-channel-strip flex min-w-[5.5rem] w-[5.5rem] flex-col items-center overflow-visible rounded-xl border px-2.5 py-2.5 transition-all duration-200 ease",
         "bg-gradient-to-b from-white/[0.06] to-black/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
+        showEq ? "min-h-[22rem]" : "min-h-[18rem]",
         isActive
-          ? "border-white/25 shadow-[0_0_16px_rgba(255,255,255,0.06)]"
+          ? "dj-channel-strip--active border-white/25 ring-2 ring-offset-1 ring-offset-black/80"
           : "border-white/10 hover:border-white/15",
       )}
       style={
-        isActive
-          ? ({ borderColor: stem.glow, boxShadow: `0 0 20px ${stem.glow}22, inset 0 1px 0 rgba(255,255,255,0.08)` } as React.CSSProperties)
-          : ({ "--stem-color": stem.glow } as React.CSSProperties)
+        {
+          "--stem-glow": stem.glow,
+          ...(isActive
+            ? { borderColor: stem.glow, "--tw-ring-color": stem.glow }
+            : {}),
+        } as React.CSSProperties
       }
       onClick={handleActivate}
       onKeyDown={handleKeyDown}
@@ -101,7 +105,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
     >
       {/* Stem label */}
       <div
-        className="flex w-full items-center justify-center gap-1.5 border-b border-white/8 pb-2"
+        className="dj-channel-strip__header flex w-full shrink-0 items-center justify-center gap-1.5 border-b border-white/8 pb-2"
         style={{ background: `${stem.glow}08` }}
       >
         <span
@@ -117,7 +121,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
       {/* Pan knob */}
       {showPan && (
         <div
-          className="flex flex-col items-center"
+          className="dj-channel-strip__pan flex shrink-0 flex-col items-center py-1"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <PanKnob
@@ -134,7 +138,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
       {/* Meter + fader */}
       {showFaderBank && (
         <div
-          className="flex items-center justify-center gap-1"
+          className="dj-channel-strip__fader-bank flex shrink-0 items-center justify-center gap-1 py-1"
           onPointerDown={(e) => e.stopPropagation()}
         >
           {showMeters && getStemAnalyserData && (
@@ -162,56 +166,56 @@ export const DjChannelStrip = memo(function DjChannelStrip({
         </div>
       )}
 
-      {/* dB readout */}
-      {showFaders && (
-        <span
-          className={cn(
-            "font-mono text-[9px] tabular-nums",
-            muted ? "text-white/30" : "text-white/50",
-          )}
-          aria-hidden
+      {/* Footer: dB readout + M/S */}
+      <div className="dj-channel-strip__footer mt-auto flex w-full shrink-0 flex-col items-center gap-1 pt-1">
+        {showFaders && (
+          <span
+            className={cn(
+              "font-mono text-[9px] leading-none tabular-nums",
+              muted ? "text-white/30" : "text-white/50",
+            )}
+            aria-hidden
+          >
+            {formatDb(mixer.gain)} dB
+          </span>
+        )}
+        <div
+          className="flex items-center justify-center gap-1.5"
+          onPointerDown={(e) => e.stopPropagation()}
         >
-          {formatDb(mixer.gain)} dB
-        </span>
-      )}
-
-      {/* Mute / Solo */}
-      <div
-        className="flex w-full items-center justify-center gap-1.5"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onStemStateChange(stem.id, { muted: !muted });
-          }}
-          disabled={!playbackReady}
-          aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
-          aria-pressed={muted}
-          className={channelMuteSoloButtonClass(muted, "mute", "compact")}
-        >
-          M
-        </button>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onStemStateChange(stem.id, { soloed: !soloed });
-          }}
-          disabled={!playbackReady}
-          aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
-          aria-pressed={soloed}
-          className={channelMuteSoloButtonClass(soloed, "solo", "compact")}
-        >
-          S
-        </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStemStateChange(stem.id, { muted: !muted });
+            }}
+            disabled={!playbackReady}
+            aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
+            aria-pressed={muted}
+            className={channelMuteSoloButtonClass(muted, "mute", "compact")}
+          >
+            M
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onStemStateChange(stem.id, { soloed: !soloed });
+            }}
+            disabled={!playbackReady}
+            aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
+            aria-pressed={soloed}
+            className={channelMuteSoloButtonClass(soloed, "solo", "compact")}
+          >
+            S
+          </button>
+        </div>
       </div>
 
       {/* EQ mini knobs */}
       {showEq && (
         <div
-          className="flex w-full items-end justify-center gap-0.5 border-t border-white/8 pt-2"
+          className="dj-channel-strip__eq flex w-full shrink-0 items-end justify-center gap-0.5 border-t border-white/8 pt-2"
           onPointerDown={(e) => e.stopPropagation()}
         >
           {EQ_BANDS.map(({ key, label }) => (

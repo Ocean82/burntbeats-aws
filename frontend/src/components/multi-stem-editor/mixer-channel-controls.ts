@@ -3,14 +3,14 @@ import { cn } from "../../utils/cn";
 export type ChannelButtonKind = "mute" | "solo";
 
 const COMPACT_BASE =
-  "flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold transition ring-1";
+  "flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold ring-1 transition-all duration-200 ease";
 
 const COMPACT_INACTIVE =
-  "bg-white/5 text-white/50 ring-transparent hover:bg-white/10 hover:text-white/70";
+  "bg-white/5 text-white/50 ring-transparent hover:bg-white/10 hover:text-white/70 hover:ring-white/10";
 
 const COMPACT_ACTIVE: Record<ChannelButtonKind, string> = {
-  mute: "bg-red-500/40 text-red-100 ring-2 ring-red-400/60 shadow-[0_0_12px_rgba(239,68,68,0.45)]",
-  solo: "bg-yellow-400/35 text-yellow-100 ring-2 ring-yellow-300/50 shadow-[0_0_12px_rgba(250,204,21,0.4)]",
+  mute: "bg-red-500/40 text-red-100 ring-2 ring-red-400/60 shadow-[0_0_10px_rgba(239,68,68,0.45)]",
+  solo: "bg-yellow-400/35 text-yellow-100 ring-2 ring-yellow-300/50 shadow-[0_0_10px_rgba(250,204,21,0.4)]",
 };
 
 const PANEL_BASE =

@@ -85,10 +85,8 @@ export const PanKnob = memo(function PanKnob({
   const readout = (
     <span
       className={cn(
-        "font-mono tabular-nums",
-        isConsole
-          ? "rounded-full border border-white/10 bg-black/50 px-2 py-0.5 text-[9px] text-white/55 shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]"
-          : "text-[9px] text-white/45",
+        "pan-knob__readout font-mono tabular-nums",
+        isConsole ? "pan-knob__readout--console" : "text-[9px] text-white/45",
       )}
     >
       {formatPan(value)}
@@ -97,12 +95,16 @@ export const PanKnob = memo(function PanKnob({
 
   return (
     <div
-      className={cn("flex flex-col items-center select-none", isConsole ? "gap-1" : "gap-0.5")}
+      className={cn(
+        "pan-knob flex flex-col items-center select-none",
+        isConsole ? "pan-knob--console w-[52px] gap-0.5" : "gap-0.5",
+      )}
       onPointerDown={(e) => e.stopPropagation()}
     >
       <svg
         width={KNOB_SIZE}
         height={KNOB_SIZE}
+        overflow="visible"
         tabIndex={disabled ? -1 : 0}
         role="slider"
         aria-label={ariaLabel}
@@ -158,11 +160,6 @@ export const PanKnob = memo(function PanKnob({
           fill={isConsole ? `url(#${gradientId})` : "rgba(0,0,0,0.5)"}
           stroke={focused ? color : isConsole ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.12)"}
           strokeWidth={isConsole ? 1.5 : 1}
-          style={
-            isConsole
-              ? { filter: "drop-shadow(inset 0 2px 4px rgba(0,0,0,0.6))" }
-              : undefined
-          }
         />
         <line
           x1={centerX1}

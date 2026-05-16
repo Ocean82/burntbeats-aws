@@ -43,7 +43,7 @@ export const DjMixerConsole = memo(function DjMixerConsole({
 
   return (
     <div
-      className="dj-mixer-console flex gap-2 overflow-x-auto px-4 py-3"
+      className="dj-mixer-console flex items-stretch gap-2 overflow-x-auto overflow-y-visible px-4 py-3 pb-4"
       role="region"
       aria-label="DJ mixer console"
     >

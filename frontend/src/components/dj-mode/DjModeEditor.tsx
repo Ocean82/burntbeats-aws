@@ -212,7 +212,7 @@ export function DjModeEditor({
   if (stems.length === 0) return null;
 
   return (
-    <div className="dj-mode-editor flex flex-col gap-0 rounded-2xl border border-white/[0.08] bg-black/60 overflow-hidden">
+    <div className="dj-mode-editor flex flex-col gap-0 overflow-x-hidden rounded-2xl border border-white/[0.08] bg-black/60">
       {/* ── Transport Bar ── */}
       <DjTransportBar
         isPlaying={isPlaying}
@@ -236,7 +236,7 @@ export function DjModeEditor({
       {/* ── Waveform Section (full width, taller lanes, dark bg) ── */}
       <div
         ref={pinchZoomRef}
-        className="dj-waveform-section relative flex-1 bg-black/80 px-3 py-2 touch-none"
+        className="dj-waveform-section relative min-h-0 flex-1 overflow-hidden bg-black/80 px-3 py-2 touch-none"
       >
         <TimelineRuler ticks={ticks} formatTime={formatTime} />
         <WaveformTimeline
@@ -268,7 +268,7 @@ export function DjModeEditor({
       </div>
 
       {/* ── Collapsible Mixer Console ── */}
-      <div className="dj-console-section border-t border-white/[0.08]">
+      <div className="dj-console-section overflow-visible border-t border-white/[0.08]">
         {/* Console header — always visible */}
         <div className="flex items-center justify-between px-4 py-2 bg-black/50">
           <div className="flex items-center gap-3">
