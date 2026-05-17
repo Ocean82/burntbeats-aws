@@ -19,6 +19,8 @@ import { channelMuteSoloButtonClass } from "./mixer-channel-controls";
 import { EditableDbValue } from "./editable-db-value.component";
 import { PanKnob } from "./pan-knob.component";
 import { ChannelMeter } from "./channel-meter.component";
+import { MixerVerticalFader } from "./mixer-vertical-fader.component";
+import { MixerSectionLabel } from "./mixer-section-label.component";
 
 export interface ChannelStripProps {
   stem: StemDefinition;
@@ -286,9 +288,7 @@ export const ChannelStrip = memo(function ChannelStrip({
 
       {/* ── Volume Fader + Meter ── */}
       <div className="flex flex-col items-center gap-1 border-t border-white/8 px-3 py-3">
-        <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-white/35">
-          Vol
-        </span>
+        <MixerSectionLabel className="tracking-[0.15em]">Vol</MixerSectionLabel>
         <div className="flex items-center justify-center gap-1">
           {getStemAnalyserData && (
             <ChannelMeter
@@ -298,29 +298,15 @@ export const ChannelStrip = memo(function ChannelStrip({
               height={120}
             />
           )}
-          <input
-            type="range"
-            min={-20}
-            max={6}
-            step={0.5}
+          <MixerVerticalFader
             value={mixer.gain}
             disabled={!audioReady}
-            onChange={(e) => updateMixer({ gain: Number(e.target.value) })}
-            onDoubleClick={() => updateMixer({ gain: 0 })}
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`${stem.label} volume`}
-            aria-valuetext={`${formatDb(mixer.gain)} dB`}
-            className={cn(
-              "h-[120px] w-5 cursor-pointer accent-amber-500",
-              muted && "opacity-40",
-            )}
-            style={
-              {
-                WebkitAppearance: "slider-vertical",
-                writingMode: "vertical-lr",
-                direction: "rtl",
-              } as React.CSSProperties
-            }
+            height={120}
+            accentColor={stem.glow}
+            ariaLabel={`${stem.label} volume`}
+            muted={muted}
+            onChange={(gain) => updateMixer({ gain })}
+            onReset={() => updateMixer({ gain: 0 })}
           />
         </div>
         <EditableDbValue

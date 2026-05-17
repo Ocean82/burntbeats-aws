@@ -62,7 +62,7 @@ export const EqKnob = memo(function EqKnob({
     value === 0 ? "0" : value > 0 ? `+${value.toFixed(0)}` : value.toFixed(0);
 
   return (
-    <div className="flex flex-col items-center gap-0.5 select-none">
+    <div className="eq-knob flex flex-col items-center gap-0.5 select-none">
       <span className="text-[7px] font-semibold uppercase tracking-wider text-white/35">
         {label}
       </span>

@@ -22,10 +22,25 @@ const allTools: DjToolSlot[] = [
   { id: "eq", label: "EQ", visible: true },
   { id: "pan", label: "Pan", visible: true },
   { id: "meters", label: "Meters", visible: true },
+  { id: "master", label: "Master", visible: true },
 ];
 
 /** Matches production: visibleSlots only includes visible tools. */
 const toolsWithoutMeters: DjToolSlot[] = allTools.filter((t) => t.id !== "meters");
+const toolsWithoutMaster: DjToolSlot[] = allTools.filter((t) => t.id !== "master");
+
+const masterProps = {
+  masterVolume: 1,
+  masterMuted: false,
+  masterLimiterEnabled: false,
+  onMasterVolumeChange: () => {},
+  onMasterMuteToggle: () => {},
+  onMasterReset: () => {},
+  onMasterLimiterEnabledChange: () => {},
+  getMasterAnalyserTimeDomainData: () => new Uint8Array(128),
+  getMasterAnalyserTimeDomainDataLeft: () => new Uint8Array(128),
+  getMasterAnalyserTimeDomainDataRight: () => new Uint8Array(128),
+};
 
 describe("DjMixerConsole", () => {
   it("renders pan knob, fader, and meter when tools are enabled", () => {
@@ -41,6 +56,7 @@ describe("DjMixerConsole", () => {
         getStemAnalyserTimeDomainData={() => new Uint8Array(128)}
         onStemStateChange={() => {}}
         onActiveStemChange={() => {}}
+        {...masterProps}
       />,
     );
 
@@ -62,10 +78,52 @@ describe("DjMixerConsole", () => {
         getStemAnalyserTimeDomainData={() => new Uint8Array(128)}
         onStemStateChange={() => {}}
         onActiveStemChange={() => {}}
+        {...masterProps}
       />,
     );
 
     expect(screen.queryByLabelText(/channel clipping|channel level ok/i)).not.toBeInTheDocument();
     expect(screen.getByRole("slider", { name: /vocals volume/i })).toBeInTheDocument();
+  });
+
+  it("renders MASTER column when master tool is enabled", () => {
+    render(
+      <DjMixerConsole
+        stems={stems}
+        stemStates={{ vocals: defaultStemState() }}
+        activeStemId="vocals"
+        playbackReady
+        isPlaying={false}
+        playingStemId={null}
+        visibleTools={allTools}
+        getStemAnalyserTimeDomainData={() => new Uint8Array(128)}
+        onStemStateChange={() => {}}
+        onActiveStemChange={() => {}}
+        {...masterProps}
+      />,
+    );
+
+    expect(screen.getByRole("slider", { name: /master output volume/i })).toBeInTheDocument();
+    expect(screen.getByText("Master")).toBeInTheDocument();
+  });
+
+  it("hides MASTER column when master tool is disabled", () => {
+    render(
+      <DjMixerConsole
+        stems={stems}
+        stemStates={{ vocals: defaultStemState() }}
+        activeStemId="vocals"
+        playbackReady
+        isPlaying={false}
+        playingStemId={null}
+        visibleTools={toolsWithoutMaster}
+        getStemAnalyserTimeDomainData={() => new Uint8Array(128)}
+        onStemStateChange={() => {}}
+        onActiveStemChange={() => {}}
+        {...masterProps}
+      />,
+    );
+
+    expect(screen.queryByRole("slider", { name: /master output volume/i })).not.toBeInTheDocument();
   });
 });

@@ -1,15 +1,13 @@
 /**
- * DjToolbarSettings — Panel for configuring which mixer tools are visible
- * and their order in the DJ mode console.
+ * DjToolbarSettings — Panel for configuring which mixer tools are visible in DJ mode.
  */
-import { ArrowDown, ArrowUp, Eye, EyeOff, RotateCcw, X } from "lucide-react";
+import { Eye, EyeOff, RotateCcw, X } from "lucide-react";
 import { cn } from "../../utils/cn";
 import type { DjToolId, DjToolSlot } from "../../hooks/useDjToolbarConfig";
 
 interface DjToolbarSettingsProps {
   slots: DjToolSlot[];
   onToggle: (id: DjToolId) => void;
-  onReorder: (fromIndex: number, toIndex: number) => void;
   onReset: () => void;
   onClose: () => void;
 }
@@ -17,7 +15,6 @@ interface DjToolbarSettingsProps {
 export function DjToolbarSettings({
   slots,
   onToggle,
-  onReorder,
   onReset,
   onClose,
 }: DjToolbarSettingsProps) {
@@ -25,7 +22,7 @@ export function DjToolbarSettings({
     <div className="border-t border-white/[0.06] bg-black/60 px-4 py-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
-          Visible Tools & Order
+          Visible Tools
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -49,7 +46,7 @@ export function DjToolbarSettings({
       </div>
 
       <div className="flex flex-col gap-1" role="list" aria-label="Mixer tool configuration">
-        {slots.map((slot, index) => (
+        {slots.map((slot) => (
           <div
             key={slot.id}
             role="listitem"
@@ -58,7 +55,6 @@ export function DjToolbarSettings({
               slot.visible ? "bg-white/[0.04]" : "opacity-50",
             )}
           >
-            {/* Visibility toggle */}
             <button
               type="button"
               onClick={() => onToggle(slot.id)}
@@ -67,29 +63,7 @@ export function DjToolbarSettings({
             >
               {slot.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
             </button>
-
-            {/* Label */}
             <span className="flex-1 text-xs text-white/70">{slot.label}</span>
-
-            {/* Reorder buttons */}
-            <button
-              type="button"
-              onClick={() => index > 0 && onReorder(index, index - 1)}
-              disabled={index === 0}
-              className="text-white/30 hover:text-white disabled:opacity-20 transition"
-              aria-label={`Move ${slot.label} up`}
-            >
-              <ArrowUp className="h-3 w-3" />
-            </button>
-            <button
-              type="button"
-              onClick={() => index < slots.length - 1 && onReorder(index, index + 1)}
-              disabled={index === slots.length - 1}
-              className="text-white/30 hover:text-white disabled:opacity-20 transition"
-              aria-label={`Move ${slot.label} down`}
-            >
-              <ArrowDown className="h-3 w-3" />
-            </button>
           </div>
         ))}
       </div>

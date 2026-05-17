@@ -58,6 +58,16 @@ export interface DjModeEditorProps {
   getStemAnalyserTimeDomainData?: (stemId: string) => Uint8Array | null;
   loopEnabled?: boolean;
   onLoopToggle?: (enabled: boolean) => void;
+  masterVolume: number;
+  masterMuted: boolean;
+  masterLimiterEnabled: boolean;
+  onMasterVolumeChange: (value: number) => void;
+  onMasterMuteToggle: () => void;
+  onMasterReset: () => void;
+  onMasterLimiterEnabledChange: (enabled: boolean) => void;
+  getMasterAnalyserTimeDomainData: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -91,6 +101,16 @@ export function DjModeEditor({
   getStemAnalyserTimeDomainData,
   loopEnabled = false,
   onLoopToggle,
+  masterVolume,
+  masterMuted,
+  masterLimiterEnabled,
+  onMasterVolumeChange,
+  onMasterMuteToggle,
+  onMasterReset,
+  onMasterLimiterEnabledChange,
+  getMasterAnalyserTimeDomainData,
+  getMasterAnalyserTimeDomainDataLeft,
+  getMasterAnalyserTimeDomainDataRight,
 }: DjModeEditorProps) {
   const [consoleCollapsed, setConsoleCollapsed] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
@@ -301,7 +321,6 @@ export function DjModeEditor({
           <DjToolbarSettings
             slots={toolbarConfig.slots}
             onToggle={toolbarConfig.toggleSlot}
-            onReorder={toolbarConfig.reorderSlots}
             onReset={toolbarConfig.resetSlots}
             onClose={() => setShowToolbarSettings(false)}
           />
@@ -320,6 +339,16 @@ export function DjModeEditor({
             getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
             onStemStateChange={onStemStateChange}
             onActiveStemChange={setActiveStemId}
+            masterVolume={masterVolume}
+            masterMuted={masterMuted}
+            masterLimiterEnabled={masterLimiterEnabled}
+            onMasterVolumeChange={onMasterVolumeChange}
+            onMasterMuteToggle={onMasterMuteToggle}
+            onMasterReset={onMasterReset}
+            onMasterLimiterEnabledChange={onMasterLimiterEnabledChange}
+            getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
+            getMasterAnalyserTimeDomainDataLeft={getMasterAnalyserTimeDomainDataLeft}
+            getMasterAnalyserTimeDomainDataRight={getMasterAnalyserTimeDomainDataRight}
           />
         )}
       </div>

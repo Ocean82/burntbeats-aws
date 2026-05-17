@@ -14,6 +14,15 @@ export interface DjToolSlot {
 
 const STORAGE_KEY = "burntbeats_dj_toolbar_config";
 
+/** Tools shown in Configure panel (FX hidden until implemented). */
+export const CONFIGURABLE_TOOL_IDS: DjToolId[] = [
+  "faders",
+  "eq",
+  "pan",
+  "meters",
+  "master",
+];
+
 const DEFAULT_SLOTS: DjToolSlot[] = [
   { id: "faders", label: "Faders", visible: true },
   { id: "eq", label: "EQ", visible: true },
@@ -23,11 +32,21 @@ const DEFAULT_SLOTS: DjToolSlot[] = [
   { id: "master", label: "Master", visible: true },
 ];
 
+function isMobileViewport(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 640px)").matches;
+}
+
+function applyMobileDefaults(slots: DjToolSlot[]): DjToolSlot[] {
+  if (!isMobileViewport()) return slots;
+  return slots.map((s) => (s.id === "eq" ? { ...s, visible: false } : s));
+}
+
 function loadSlots(): DjToolSlot[] {
   if (typeof window === "undefined") return DEFAULT_SLOTS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_SLOTS;
+    if (!raw) return applyMobileDefaults(DEFAULT_SLOTS);
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_SLOTS;
     // Validate structure — each entry must have a known id and boolean visible
@@ -51,9 +70,10 @@ function loadSlots(): DjToolSlot[] {
         validSlots.push(def);
       }
     }
-    return validSlots.length > 0 ? validSlots : DEFAULT_SLOTS;
+    const merged = validSlots.length > 0 ? validSlots : DEFAULT_SLOTS;
+    return applyMobileDefaults(merged);
   } catch {
-    return DEFAULT_SLOTS;
+    return applyMobileDefaults(DEFAULT_SLOTS);
   }
 }
 
@@ -83,11 +103,20 @@ export function useDjToolbarConfig() {
   }, []);
 
   const resetSlots = useCallback(() => {
-    setSlots(DEFAULT_SLOTS);
-    saveSlots(DEFAULT_SLOTS);
+    const next = applyMobileDefaults(DEFAULT_SLOTS);
+    setSlots(next);
+    saveSlots(next);
   }, []);
 
-  const visibleSlots = useMemo(() => slots.filter((s) => s.visible), [slots]);
+  const configurableSlots = useMemo(
+    () => slots.filter((s) => CONFIGURABLE_TOOL_IDS.includes(s.id)),
+    [slots],
+  );
 
-  return { slots, visibleSlots, toggleSlot, reorderSlots, resetSlots };
+  const visibleSlots = useMemo(
+    () => slots.filter((s) => s.visible && CONFIGURABLE_TOOL_IDS.includes(s.id)),
+    [slots],
+  );
+
+  return { slots: configurableSlots, visibleSlots, toggleSlot, reorderSlots, resetSlots };
 }

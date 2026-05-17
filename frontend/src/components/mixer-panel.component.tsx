@@ -1,5 +1,5 @@
 import { Download, HelpCircle, Play, RotateCcw, Square, Sliders, RefreshCw, AlertTriangle, Volume2, VolumeX } from "lucide-react";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import type { StemDefinition } from "../types";
 import type { StemEditorState } from "../stem-editor-state";
 import type { BeatGridMetadata } from "../api";
@@ -7,17 +7,11 @@ import { MultiStemEditor } from "./MultiStemEditor";
 import { DjModeEditor } from "./dj-mode";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { StereoVUMeter } from "./StereoVUMeter";
+import { MixerVerticalFader } from "./multi-stem-editor/mixer-vertical-fader.component";
+import { formatMasterGain } from "./dj-mode/dj-master-strip.component";
 import { cn } from "../utils/cn";
 import { useLayoutMode } from "../contexts/LayoutModeContext";
 import type { SeekPhase } from "../types/playbackSeek";
-
-/** Convert a linear gain value (0–1.5) to a dB string for display. */
-function gainToDb(gain: number): string {
-  if (gain <= 0) return "-∞";
-  const db = 20 * Math.log10(gain);
-  if (db >= 0) return `+${db.toFixed(1)} dB`;
-  return `${db.toFixed(1)} dB`;
-}
 
 export interface MixerPanelProps {
   mixStemCount: number;
@@ -109,6 +103,24 @@ export function MixerPanel({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [masterMuted, setMasterMuted] = useState(false);
   const preMuteVolumeRef = useRef(masterVolume);
+  const isMeterPlaying = isPlayingMix || playingStemId !== null;
+
+  const handleMasterMuteToggle = useCallback(() => {
+    if (masterMuted) {
+      setMasterMuted(false);
+      onMasterVolumeChange(preMuteVolumeRef.current);
+    } else {
+      preMuteVolumeRef.current = masterVolume;
+      setMasterMuted(true);
+      onMasterVolumeChange(0);
+    }
+  }, [masterMuted, masterVolume, onMasterVolumeChange]);
+
+  const handleMasterReset = useCallback(() => {
+    setMasterMuted(false);
+    onMasterVolumeChange(1);
+  }, [onMasterVolumeChange]);
+
   const playheadPct = useSyncExternalStore(
     subscribePlayheadPosition,
     getPlayheadPosition,
@@ -140,9 +152,22 @@ export function MixerPanel({
       <p className="eyebrow">Mixer</p>
       <h2 className="font-display text-2xl tracking-[-0.04em] text-white mb-5">Timeline · Mix · Export</h2>
 
-      {/* ── Master Channel Strip ── */}
+      {/* ── Master / spectrum band (DJ: spectrum only; classic: full master strip) ── */}
+      {mode === "dj" ? (
+        <div className="mb-5 flex overflow-hidden rounded-xl border border-white/10 bg-black/30 px-3 py-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+              Spectrum
+            </p>
+            <SpectrumAnalyzer
+              getFrequencyData={getMasterAnalyserFrequencyData}
+              isPlaying={isMeterPlaying}
+              height={56}
+            />
+          </div>
+        </div>
+      ) : (
       <div className="mb-5 flex items-stretch gap-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-        {/* Spectrum analyzer — takes up most of the width */}
         <div className="hidden min-w-0 flex-1 flex-col gap-1 border-r border-white/[0.08] px-3 py-3 sm:flex">
           <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
             Spectrum
@@ -150,7 +175,7 @@ export function MixerPanel({
           <div className="flex-1">
             <SpectrumAnalyzer
               getFrequencyData={getMasterAnalyserFrequencyData}
-              isPlaying={isPlayingMix || playingStemId !== null}
+              isPlaying={isMeterPlaying}
               height={56}
             />
           </div>
@@ -165,7 +190,7 @@ export function MixerPanel({
             getAnalyserData={getMasterAnalyserTimeDomainData}
             getAnalyserDataLeft={getMasterAnalyserTimeDomainDataLeft}
             getAnalyserDataRight={getMasterAnalyserTimeDomainDataRight}
-            isPlaying={isPlayingMix || playingStemId !== null}
+            isPlaying={isMeterPlaying}
             height={120}
             width={64}
           />
@@ -177,31 +202,22 @@ export function MixerPanel({
             Master
           </p>
           <div className="relative flex flex-1 flex-col items-center justify-center gap-1.5">
-            {/* Vertical fader */}
-            <input
-              type="range"
+            <MixerVerticalFader
+              value={masterMuted ? 0 : masterVolume}
               min={0}
               max={1.5}
               step={0.01}
-              aria-valuemin={0}
-              aria-valuemax={1.5}
-              aria-valuenow={masterMuted ? 0 : masterVolume}
-              value={masterMuted ? 0 : masterVolume}
-              onChange={(e) => {
-                if (masterMuted) setMasterMuted(false);
-                onMasterVolumeChange(Number(e.target.value));
+              height={120}
+              accentColor="#f59e0b"
+              ariaLabel="Master output volume"
+              muted={masterMuted}
+              formatValue={formatMasterGain}
+              resetValue={1}
+              onChange={(v) => {
+                if (masterMuted && v > 0) setMasterMuted(false);
+                onMasterVolumeChange(v);
               }}
-              onDoubleClick={() => {
-                setMasterMuted(false);
-                onMasterVolumeChange(1);
-              }}
-              aria-label="Master output volume"
-              aria-valuetext={masterMuted ? "Muted" : gainToDb(masterVolume)}
-              className={cn(
-                "h-24 w-6 cursor-pointer accent-amber-500",
-                masterMuted && "opacity-40",
-              )}
-              style={{ WebkitAppearance: "slider-vertical", writingMode: "vertical-lr", direction: "rtl" } as React.CSSProperties}
+              onReset={handleMasterReset}
             />
             {/* dB readout / mute indicator */}
             <span
@@ -217,15 +233,12 @@ export function MixerPanel({
               )}
               aria-hidden
             >
-              {masterMuted ? "MUTE" : gainToDb(masterVolume)}
+              {masterMuted ? "MUTE" : formatMasterGain(masterVolume)}
             </span>
             {/* Mute toggle */}
             <button
               type="button"
-              onClick={() => {
-                setMasterMuted(false);
-                onMasterVolumeChange(1);
-              }}
+              onClick={handleMasterReset}
               className="rounded border border-white/10 px-2 py-0.5 text-[9px] text-white/60 hover:text-white transition"
               aria-label="Reset master volume to 0 dB"
             >
@@ -233,16 +246,7 @@ export function MixerPanel({
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (masterMuted) {
-                  setMasterMuted(false);
-                  onMasterVolumeChange(preMuteVolumeRef.current);
-                } else {
-                  preMuteVolumeRef.current = masterVolume;
-                  setMasterMuted(true);
-                  onMasterVolumeChange(0);
-                }
-              }}
+              onClick={handleMasterMuteToggle}
               aria-label={masterMuted ? "Unmute master" : "Mute master"}
               className={cn(
                 "flex h-6 w-6 items-center justify-center rounded transition",
@@ -269,6 +273,7 @@ export function MixerPanel({
           </div>
         </div>
       </div>
+      )}
 
       <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -398,6 +403,16 @@ export function MixerPanel({
           beatGrid={beatGrid}
           loopEnabled={loopEnabled}
           onLoopToggle={onLoopToggle}
+          masterVolume={masterVolume}
+          masterMuted={masterMuted}
+          masterLimiterEnabled={masterLimiterEnabled}
+          onMasterVolumeChange={onMasterVolumeChange}
+          onMasterMuteToggle={handleMasterMuteToggle}
+          onMasterReset={handleMasterReset}
+          onMasterLimiterEnabledChange={onMasterLimiterEnabledChange}
+          getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
+          getMasterAnalyserTimeDomainDataLeft={getMasterAnalyserTimeDomainDataLeft}
+          getMasterAnalyserTimeDomainDataRight={getMasterAnalyserTimeDomainDataRight}
         />
       ) : (
         <MultiStemEditor

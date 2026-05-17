@@ -11,6 +11,7 @@ import { PanKnob } from "../multi-stem-editor/pan-knob.component";
 import { EqKnob } from "../multi-stem-editor/eq-knob.component";
 import { MixerVerticalFader } from "../multi-stem-editor/mixer-vertical-fader.component";
 import { ChannelMeter } from "../multi-stem-editor/channel-meter.component";
+import { MixerSectionLabel } from "../multi-stem-editor/mixer-section-label.component";
 
 const EQ_BANDS = [
   { key: "eqLow" as const, label: "Lo" },
@@ -55,7 +56,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
     onActiveStemChange(stem.id);
   }, [onActiveStemChange, stem.id]);
 
-  const handleKeyDown = useCallback(
+  const handleHeaderKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
@@ -83,7 +84,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
       className={cn(
         "dj-channel-strip flex min-w-[5.5rem] w-[5.5rem] flex-col items-center overflow-visible rounded-xl border px-2.5 py-2.5 transition-all duration-200 ease",
         "bg-gradient-to-b from-white/[0.06] to-black/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
-        showEq ? "min-h-[22rem]" : "min-h-[18rem]",
+        showEq ? "min-h-[20rem] sm:min-h-[22rem]" : "min-h-[16rem] sm:min-h-[18rem]",
         isActive
           ? "dj-channel-strip--active border-white/25 ring-2 ring-offset-1 ring-offset-black/80"
           : "border-white/10 hover:border-white/15",
@@ -91,39 +92,36 @@ export const DjChannelStrip = memo(function DjChannelStrip({
       style={
         {
           "--stem-glow": stem.glow,
+          "--stem-glow-soft": stem.glowSoft,
           ...(isActive
             ? { borderColor: stem.glow, "--tw-ring-color": stem.glow }
             : {}),
         } as React.CSSProperties
       }
-      onClick={handleActivate}
-      onKeyDown={handleKeyDown}
-      role="button"
-      tabIndex={0}
-      aria-label={`${stem.label} channel`}
-      aria-pressed={isActive}
     >
-      {/* Stem label */}
-      <div
-        className="dj-channel-strip__header flex w-full shrink-0 items-center justify-center gap-1.5 border-b border-white/8 pb-2"
-        style={{ background: `${stem.glow}08` }}
+      <button
+        type="button"
+        className={cn(
+          "dj-channel-strip__header flex w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 border-b border-white/8 pb-2 transition-colors",
+          isActive && "bg-white/[0.04]",
+        )}
+        onClick={handleActivate}
+        onKeyDown={handleHeaderKeyDown}
+        aria-label={`Select ${stem.label} channel`}
+        aria-pressed={isActive}
       >
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: stem.glow, boxShadow: `0 0 6px ${stem.glow}` }}
-          aria-hidden
-        />
+        <span className="dj-channel-strip__dot h-2 w-2 shrink-0 rounded-full" aria-hidden />
         <span className="truncate text-[9px] font-bold uppercase tracking-wider text-white/75">
           {stem.label}
         </span>
-      </div>
+      </button>
 
-      {/* Pan knob */}
       {showPan && (
         <div
-          className="dj-channel-strip__pan flex shrink-0 flex-col items-center py-1"
+          className="dj-channel-strip__pan flex shrink-0 flex-col items-center gap-0.5 py-1"
           onPointerDown={(e) => e.stopPropagation()}
         >
+          <MixerSectionLabel>Pan</MixerSectionLabel>
           <PanKnob
             variant="console"
             value={mixer.pan}
@@ -135,38 +133,61 @@ export const DjChannelStrip = memo(function DjChannelStrip({
         </div>
       )}
 
-      {/* Meter + fader */}
-      {showFaderBank && (
+      {showEq && (
         <div
-          className="dj-channel-strip__fader-bank flex shrink-0 items-center justify-center gap-1 py-1"
+          className="dj-channel-strip__eq flex w-full shrink-0 flex-col items-center gap-0.5 border-b border-white/5 pb-2"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          {showMeters && getStemAnalyserData && (
-            <ChannelMeter
-              getAnalyserData={meterGetter}
-              color={stem.glow}
-              isPlaying={isMeterPlaying}
-              height={FADER_HEIGHT}
-              width={8}
-              colorMode="vu-gradient"
-            />
-          )}
-          {showFaders && (
-            <MixerVerticalFader
-              value={mixer.gain}
-              disabled={!playbackReady}
-              height={FADER_HEIGHT}
-              accentColor={stem.glow}
-              ariaLabel={`${stem.label} volume`}
-              muted={muted}
-              onChange={(gain) => updateMixer({ gain })}
-              onReset={() => updateMixer({ gain: 0 })}
-            />
-          )}
+          <MixerSectionLabel>Eq</MixerSectionLabel>
+          <div className="flex items-end justify-center gap-0.5">
+            {EQ_BANDS.map(({ key, label }) => (
+              <EqKnob
+                key={key}
+                value={mixer[key]}
+                label={label}
+                disabled={!playbackReady}
+                color={stem.glow}
+                ariaLabel={`${stem.label} ${label} EQ`}
+                onChange={(v) => updateMixer({ [key]: v })}
+              />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Footer: dB readout + M/S */}
+      {showFaderBank && (
+        <div
+          className="dj-channel-strip__fader-bank flex shrink-0 flex-col items-center gap-0.5 py-1"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <MixerSectionLabel>Vol</MixerSectionLabel>
+          <div className="flex items-center justify-center gap-1">
+            {showMeters && getStemAnalyserData && (
+              <ChannelMeter
+                getAnalyserData={meterGetter}
+                color={stem.glow}
+                isPlaying={isMeterPlaying}
+                height={FADER_HEIGHT}
+                width={8}
+                colorMode="vu-gradient"
+              />
+            )}
+            {showFaders && (
+              <MixerVerticalFader
+                value={mixer.gain}
+                disabled={!playbackReady}
+                height={FADER_HEIGHT}
+                accentColor={stem.glow}
+                ariaLabel={`${stem.label} volume`}
+                muted={muted}
+                onChange={(gain) => updateMixer({ gain })}
+                onReset={() => updateMixer({ gain: 0 })}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="dj-channel-strip__footer mt-auto flex w-full shrink-0 flex-col items-center gap-1 pt-1">
         {showFaders && (
           <span
@@ -192,7 +213,10 @@ export const DjChannelStrip = memo(function DjChannelStrip({
             disabled={!playbackReady}
             aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
             aria-pressed={muted}
-            className={channelMuteSoloButtonClass(muted, "mute", "compact")}
+            className={cn(
+              channelMuteSoloButtonClass(muted, "mute", "compact"),
+              "dj-ms-btn-touch",
+            )}
           >
             M
           </button>
@@ -205,32 +229,15 @@ export const DjChannelStrip = memo(function DjChannelStrip({
             disabled={!playbackReady}
             aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
             aria-pressed={soloed}
-            className={channelMuteSoloButtonClass(soloed, "solo", "compact")}
+            className={cn(
+              channelMuteSoloButtonClass(soloed, "solo", "compact"),
+              "dj-ms-btn-touch",
+            )}
           >
             S
           </button>
         </div>
       </div>
-
-      {/* EQ mini knobs */}
-      {showEq && (
-        <div
-          className="dj-channel-strip__eq flex w-full shrink-0 items-end justify-center gap-0.5 border-t border-white/8 pt-2"
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          {EQ_BANDS.map(({ key, label }) => (
-            <EqKnob
-              key={key}
-              value={mixer[key]}
-              label={label}
-              disabled={!playbackReady}
-              color={stem.glow}
-              ariaLabel={`${stem.label} ${label} EQ`}
-              onChange={(v) => updateMixer({ [key]: v })}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 });

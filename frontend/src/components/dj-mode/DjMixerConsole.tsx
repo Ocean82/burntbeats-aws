@@ -8,6 +8,7 @@ import type { StemEditorState } from "../../stem-editor-state";
 import { defaultStemState } from "../../stem-editor-state";
 import type { DjToolSlot } from "../../hooks/useDjToolbarConfig";
 import { DjChannelStrip } from "./dj-channel-strip.component";
+import { DjMasterStrip } from "./dj-master-strip.component";
 
 export interface DjMixerConsoleProps {
   stems: StemDefinition[];
@@ -20,6 +21,16 @@ export interface DjMixerConsoleProps {
   getStemAnalyserTimeDomainData?: (stemId: string) => Uint8Array | null;
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onActiveStemChange: (stemId: string) => void;
+  masterVolume: number;
+  masterMuted: boolean;
+  masterLimiterEnabled: boolean;
+  onMasterVolumeChange: (value: number) => void;
+  onMasterMuteToggle: () => void;
+  onMasterReset: () => void;
+  onMasterLimiterEnabledChange: (enabled: boolean) => void;
+  getMasterAnalyserTimeDomainData: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
+  getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
 }
 
 export const DjMixerConsole = memo(function DjMixerConsole({
@@ -33,6 +44,16 @@ export const DjMixerConsole = memo(function DjMixerConsole({
   getStemAnalyserTimeDomainData,
   onStemStateChange,
   onActiveStemChange,
+  masterVolume,
+  masterMuted,
+  masterLimiterEnabled,
+  onMasterVolumeChange,
+  onMasterMuteToggle,
+  onMasterReset,
+  onMasterLimiterEnabledChange,
+  getMasterAnalyserTimeDomainData,
+  getMasterAnalyserTimeDomainDataLeft,
+  getMasterAnalyserTimeDomainDataRight,
 }: DjMixerConsoleProps) {
   if (stems.length === 0) return null;
 
@@ -40,6 +61,9 @@ export const DjMixerConsole = memo(function DjMixerConsole({
   const showEq = visibleTools.some((t) => t.id === "eq");
   const showPan = visibleTools.some((t) => t.id === "pan");
   const showMeters = visibleTools.some((t) => t.id === "meters");
+  const showMaster = visibleTools.some((t) => t.id === "master");
+  const isMasterMeterPlaying =
+    playbackReady && (isPlaying || playingStemId !== null);
 
   return (
     <div
@@ -71,6 +95,22 @@ export const DjMixerConsole = memo(function DjMixerConsole({
           />
         );
       })}
+      {showMaster && (
+        <DjMasterStrip
+          masterVolume={masterVolume}
+          masterMuted={masterMuted}
+          masterLimiterEnabled={masterLimiterEnabled}
+          playbackReady={playbackReady}
+          isMeterPlaying={isMasterMeterPlaying}
+          onMasterVolumeChange={onMasterVolumeChange}
+          onMasterMuteToggle={onMasterMuteToggle}
+          onMasterReset={onMasterReset}
+          onMasterLimiterEnabledChange={onMasterLimiterEnabledChange}
+          getMasterAnalyserData={getMasterAnalyserTimeDomainData}
+          getMasterAnalyserDataLeft={getMasterAnalyserTimeDomainDataLeft}
+          getMasterAnalyserDataRight={getMasterAnalyserTimeDomainDataRight}
+        />
+      )}
     </div>
   );
 });
