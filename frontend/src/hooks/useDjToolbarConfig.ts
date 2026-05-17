@@ -92,16 +92,6 @@ export function useDjToolbarConfig() {
     });
   }, []);
 
-  const reorderSlots = useCallback((fromIndex: number, toIndex: number) => {
-    setSlots((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      saveSlots(next);
-      return next;
-    });
-  }, []);
-
   const resetSlots = useCallback(() => {
     const next = applyMobileDefaults(DEFAULT_SLOTS);
     setSlots(next);
@@ -118,5 +108,5 @@ export function useDjToolbarConfig() {
     [slots],
   );
 
-  return { slots: configurableSlots, visibleSlots, toggleSlot, reorderSlots, resetSlots };
+  return { slots: configurableSlots, visibleSlots, toggleSlot, resetSlots };
 }

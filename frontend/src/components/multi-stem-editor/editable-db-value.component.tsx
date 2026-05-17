@@ -100,6 +100,7 @@ export const EditableDbValue = memo(function EditableDbValue({
       disabled={disabled}
       onDoubleClick={startEdit}
       onClick={(e) => e.stopPropagation()}
+      title="Double-click to type a value"
       className={cn(
         "font-mono text-[9px] font-semibold tabular-nums cursor-text",
         value > 3 ? "text-amber-300" : "text-white/50",

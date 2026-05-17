@@ -117,7 +117,7 @@ export const PanKnob = memo(function PanKnob({
           disabled && "cursor-not-allowed opacity-40",
           focused && !disabled && "drop-shadow-[0_0_6px_rgba(245,158,11,0.35)]",
         )}
-        onMouseDown={handleMouseDown}
+        onPointerDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
         onKeyDown={handleKeyDown}

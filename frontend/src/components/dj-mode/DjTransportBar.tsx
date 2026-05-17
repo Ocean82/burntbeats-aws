@@ -152,8 +152,9 @@ export function DjTransportBar({
           step={0.5}
           value={scrollPct}
           onChange={(e) => onScrollChange(Number(e.target.value))}
-          className="w-24 accent-cyan-400"
-          aria-label="Scroll timeline"
+          className="w-24 accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 rounded"
+          aria-label="Scroll timeline position"
+          aria-valuetext={`${Math.round(scrollPct)}% scrolled`}
         />
       )}
     </div>

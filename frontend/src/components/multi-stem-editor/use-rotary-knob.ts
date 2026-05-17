@@ -29,19 +29,21 @@ export function useRotaryKnob({
   const normalize = useCallback((v: number) => (v - min) / (max - min), [min, max]);
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.PointerEvent) => {
       if (disabled) return;
       e.preventDefault();
       e.stopPropagation();
       dragging.current = true;
       startY.current = e.clientY;
       startVal.current = value;
+      // Capture pointer for reliable drag tracking on touch
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     },
     [disabled, value],
   );
 
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (!dragging.current) return;
       const dy = startY.current - e.clientY;
       const range = max - min;
@@ -52,11 +54,13 @@ export function useRotaryKnob({
     const onUp = () => {
       dragging.current = false;
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, [min, max, onChange, clamp, snap, dragSensitivity]);
 

@@ -28,7 +28,7 @@ export function FeedbackChip() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 left-5 z-40 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[11px] font-medium text-white/75 shadow-lg backdrop-blur-md hover:text-white"
+        className="fixed bottom-5 left-5 z-40 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[11px] font-medium text-white/75 shadow-lg backdrop-blur-md hover:text-white pb-safe"
       >
         How&apos;s Burnt Beats so far?
       </button>

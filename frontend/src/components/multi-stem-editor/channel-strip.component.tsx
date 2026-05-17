@@ -67,37 +67,32 @@ export const ChannelStrip = memo(function ChannelStrip({
   return (
     <div
       className={cn(
-        "flex w-[120px] min-w-[120px] flex-col items-stretch gap-0 rounded-xl border bg-black/40 transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400/50",
+        "channel-strip flex w-[120px] min-w-[120px] flex-col items-stretch gap-0 rounded-xl border bg-black/40 transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400/50",
         isActive
-          ? "border-current shadow-[0_0_12px_rgba(255,255,255,0.06)]"
+          ? "channel-strip--active shadow-[0_0_12px_rgba(255,255,255,0.06)]"
           : "border-white/8 hover:border-white/15",
       )}
-      style={isActive ? { borderColor: stem.glow } : undefined}
-      onClick={() => onActivate(stem.id)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onActivate(stem.id);
-        }
-      }}
-      tabIndex={0}
-      role="button"
-      aria-label={`Select ${stem.label} channel`}
-      aria-pressed={isActive}
+      style={{ "--stem-glow": stem.glow } as React.CSSProperties}
     >
-      {/* ── Stem Label ── */}
-      <div className="flex items-center gap-2 border-b border-white/8 px-3 py-2.5" style={{ background: `${stem.glow}08` }}>
+      {/* ── Stem Label (click to select) ── */}
+      <button
+        type="button"
+        className="channel-strip__header flex items-center gap-2 border-b border-white/8 px-3 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.04]"
+        onClick={() => onActivate(stem.id)}
+        aria-label={`Select ${stem.label} channel`}
+        aria-pressed={isActive}
+      >
         <span
-          className="h-2.5 w-2.5 rounded-full shrink-0"
-          style={{
-            backgroundColor: stem.glow,
-            boxShadow: isActive ? `0 0 8px ${stem.glow}` : "none",
-          }}
+          className={cn(
+            "channel-strip__dot h-2.5 w-2.5 rounded-full shrink-0",
+            isActive && "channel-strip__dot--active",
+          )}
+          aria-hidden
         />
         <span className="text-xs font-semibold truncate text-white/90">
           {stem.label}
         </span>
-      </div>
+      </button>
 
       {/* ── Pitch ── */}
       <ControlSection label="Pitch" value={`${state.pitchSemitones > 0 ? "+" : ""}${state.pitchSemitones.toFixed(1)} st`}>

@@ -58,7 +58,7 @@ export function DjToolbarSettings({
             <button
               type="button"
               onClick={() => onToggle(slot.id)}
-              className="text-white/50 hover:text-white transition"
+              className="text-white/50 hover:text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 rounded"
               aria-label={slot.visible ? `Hide ${slot.label}` : `Show ${slot.label}`}
             >
               {slot.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}

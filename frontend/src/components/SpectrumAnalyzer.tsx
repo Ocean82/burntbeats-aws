@@ -92,8 +92,8 @@ export function SpectrumAnalyzer({
   }, [getFrequencyData, isPlaying, height, barCount]);
 
   return (
-    <div ref={containerRef} className="w-full min-w-[120px]" style={{ height }}>
-      <canvas ref={canvasRef} className="block w-full" />
+    <div ref={containerRef} className="w-full min-w-[120px]" style={{ height }} role="img" aria-label="Audio frequency spectrum">
+      <canvas ref={canvasRef} className="block w-full" aria-hidden />
     </div>
   );
 }

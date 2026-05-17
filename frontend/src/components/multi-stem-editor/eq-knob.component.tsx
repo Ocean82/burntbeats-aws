@@ -81,7 +81,7 @@ export const EqKnob = memo(function EqKnob({
           disabled && "cursor-not-allowed opacity-40",
           focused && !disabled && "drop-shadow-[0_0_4px_rgba(245,158,11,0.3)]",
         )}
-        onMouseDown={handleMouseDown}
+        onPointerDown={handleMouseDown}
         onDoubleClick={handleDoubleClick}
         onWheel={handleWheel}
         onKeyDown={handleKeyDown}

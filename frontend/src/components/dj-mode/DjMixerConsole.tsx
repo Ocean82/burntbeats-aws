@@ -96,7 +96,9 @@ export const DjMixerConsole = memo(function DjMixerConsole({
         );
       })}
       {showMaster && (
-        <DjMasterStrip
+        <>
+          <div className="mx-1 w-px self-stretch bg-white/10" role="separator" aria-orientation="vertical" />
+          <DjMasterStrip
           masterVolume={masterVolume}
           masterMuted={masterMuted}
           masterLimiterEnabled={masterLimiterEnabled}
@@ -110,6 +112,7 @@ export const DjMixerConsole = memo(function DjMixerConsole({
           getMasterAnalyserDataLeft={getMasterAnalyserTimeDomainDataLeft}
           getMasterAnalyserDataRight={getMasterAnalyserTimeDomainDataRight}
         />
+        </>
       )}
     </div>
   );

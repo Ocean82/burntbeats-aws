@@ -93,9 +93,6 @@ export const DjChannelStrip = memo(function DjChannelStrip({
         {
           "--stem-glow": stem.glow,
           "--stem-glow-soft": stem.glowSoft,
-          ...(isActive
-            ? { borderColor: stem.glow, "--tw-ring-color": stem.glow }
-            : {}),
         } as React.CSSProperties
       }
     >
