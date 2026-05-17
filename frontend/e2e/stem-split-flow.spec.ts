@@ -220,7 +220,7 @@ test.describe("Stem split flow", () => {
       .click();
 
     // Status should show "Splitting…" during the process
-    await expect(page.getByText(/splitting/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/splitting/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("stems appear in mixer after successful split", async ({ page }) => {
@@ -243,8 +243,8 @@ test.describe("Stem split flow", () => {
     // After split completes, the "Splitting…" status should disappear
     // and stem labels (vocals, instrumental) should appear in the UI.
     // Wait for the splitting indicator to go away first.
-    await expect(page.getByText(/splitting/i)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/splitting/i)).not.toBeVisible({
+    await expect(page.getByText(/splitting/i).first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/splitting/i).first()).not.toBeVisible({
       timeout: 20_000,
     });
 
