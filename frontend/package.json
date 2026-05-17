@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@clerk/react": "^6.4.7",
-    "pitch-plugin": "file:./src/components/multi-stem-editor/pitch-tempo-plugin",
     "@clerk/shared": "^4.8.7",
     "@sentry/react": "^10.52.0",
     "@stripe/stripe-js": "^8.11.0",
@@ -30,14 +29,17 @@
     "jszip": "^3.10.1",
     "lamejs": "^1.2.1",
     "lucide-react": "^0.468.0",
+    "pitch-plugin": "file:./src/components/multi-stem-editor/pitch-tempo-plugin",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "3.4.0",
     "tone": "^15.1.22",
+    "wouter": "^3.3.5",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@fast-check/vitest": "^0.4.1",
     "@playwright/test": "^1.58.2",
     "@sentry/vite-plugin": "^5.2.1",
     "@tailwindcss/vite": "4.1.17",
@@ -58,7 +60,6 @@
     "typescript-eslint": "^8.59.3",
     "vite": "^7.3.3",
     "vite-plugin-singlefile": "2.3.0",
-    "@fast-check/vitest": "^0.4.1",
     "vitest": "^4.1.0"
   },
   "optionalDependencies": {

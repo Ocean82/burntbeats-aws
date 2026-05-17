@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, ChevronLeft, Upload, Sliders, Music2, Download, Sparkles } from "lucide-react";
 import { cn } from "../utils/cn";
+import { useModalA11y } from "../hooks/useModalA11y";
+import { useAppEvent } from "../store/eventBus";
 
 interface OnboardingTourProps {
   onComplete?: () => void;
@@ -49,6 +51,7 @@ export function OnboardingTour({
 }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const completed = localStorage.getItem(ONBOARDING_KEY);
@@ -58,16 +61,11 @@ export function OnboardingTour({
     }
   }, []);
 
-  useEffect(() => {
-    const onOpen = () => {
-      setCurrentStep(0);
-      setIsVisible(true);
-    };
-    window.addEventListener("burntbeats:open-onboarding", onOpen);
-    return () => {
-      window.removeEventListener("burntbeats:open-onboarding", onOpen);
-    };
-  }, []);
+  // Listen for the typed event bus signal to re-open the tour
+  useAppEvent("open-onboarding", () => {
+    setCurrentStep(0);
+    setIsVisible(true);
+  });
 
   const handleComplete = () => {
     localStorage.setItem(ONBOARDING_KEY, "true");
@@ -80,6 +78,9 @@ export function OnboardingTour({
     setIsVisible(false);
     onSkip();
   };
+
+  // Focus trap: keeps Tab cycling inside the modal and Escape closes it
+  useModalA11y(isVisible, modalRef, handleSkip);
 
   const nextStep = () => {
     if (currentStep < TOUR_STEPS.length - 1) {
@@ -116,6 +117,7 @@ export function OnboardingTour({
             exit={{ opacity: 0 }}
           >
             <motion.div
+              ref={modalRef}
               className="relative w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]"
               role="dialog"
               aria-modal="true"

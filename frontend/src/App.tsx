@@ -8,6 +8,7 @@ import {
   Suspense,
 } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useLocation } from "wouter";
 
 const importHelpModal = () => import("./components/HelpModal");
 const importExportOptionsModal = () =>
@@ -37,6 +38,7 @@ import { isLocalDevFullApp } from "./config";
 import type { StemEditorState } from "./stem-editor-state";
 
 import { useAppStore } from "./store/appStore";
+import { useEventBus, useAppEvent } from "./store/eventBus";
 import { useUiModals } from "./hooks/useUiModals";
 import { useGuidanceSystem } from "./hooks/useGuidanceSystem";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts";
@@ -85,6 +87,7 @@ function canPreloadChunks(): boolean {
 export function App() {
   const localDevFullApp = isLocalDevFullApp();
   const reduceMotion = useReducedMotion();
+  const emit = useEventBus((s) => s.emit);
 
   // ── Smart Sticky Header State ─────────────────────────────────────────────
   const { headerVisible } = useHeaderVisibility();
@@ -329,6 +332,14 @@ export function App() {
   const { latencyStats, resetLatencyStats } = useUiLatencyMonitor();
   const [undoToast, setUndoToast] = useState<string | null>(null);
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
+
+  // Auto-dismiss undo/redo toast after 3 seconds
+  useEffect(() => {
+    if (!undoToast) return;
+    const t = window.setTimeout(() => setUndoToast(null), 3000);
+    return () => window.clearTimeout(t);
+  }, [undoToast]);
+
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -414,7 +425,14 @@ export function App() {
     [activeStemId, visibleStems],
   );
 
-  const [activeView, setActiveView] = useState<"editor" | "pricing" | "my-stems">("editor");
+  const [location, navigate] = useLocation();
+  const activeView: "editor" | "pricing" | "my-stems" =
+    location === "/pricing" ? "pricing" :
+    location === "/my-stems" ? "my-stems" :
+    "editor";
+  const setActiveView = useCallback((view: "editor" | "pricing" | "my-stems") => {
+    navigate(view === "editor" ? "/" : `/${view}`);
+  }, [navigate]);
   const [pricingInitialTab, setPricingInitialTab] = useState<"subscriptions" | "packs">("subscriptions");
 
   // ── Upsell modal state ────────────────────────────────────────────────────
@@ -462,12 +480,8 @@ export function App() {
     wasSplittingRef.current = isSplitting;
   }, [isSplitting, splitResultStems.length]);
 
-  useEffect(() => {
-    const handleOpenPricing = () => setActiveView("pricing");
-    window.addEventListener("burntbeats:open-pricing", handleOpenPricing);
-    return () =>
-      window.removeEventListener("burntbeats:open-pricing", handleOpenPricing);
-  }, []);
+  // Subscribe to app-wide "open-pricing" event via typed event bus
+  useAppEvent("open-pricing", () => setActiveView("pricing"));
 
   const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
@@ -642,12 +656,8 @@ export function App() {
           subscription={subscription}
           usageBalance={usageBalance}
           usageLoading={usageLoading}
-          openFeedback={() => {
-            window.dispatchEvent(new Event("burntbeats:open-feedback"));
-          }}
-          openOnboarding={() => {
-            window.dispatchEvent(new Event("burntbeats:open-onboarding"));
-          }}
+          openFeedback={() => emit("open-feedback")}
+          openOnboarding={() => emit("open-onboarding")}
         />
 
         <main

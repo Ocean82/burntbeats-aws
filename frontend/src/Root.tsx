@@ -3,12 +3,14 @@
  * - Signed out → LandingPage (sign-in/sign-up via Clerk modal)
  * - Signed in  → AppShell + App (full stem editor)
  *
+ * Uses wouter for lightweight client-side routing (back/forward, deep links).
  * Also handles ?checkout=success redirect from Stripe — cleans the URL
  * so the app doesn't re-trigger on refresh.
  */
 import { useAuth } from "@clerk/react";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { Route, Switch } from "wouter";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { AppShell } from "./app/app-shell.component";
 import { App } from "./App";
@@ -108,13 +110,17 @@ function AuthenticatedRoot() {
 }
 
 export function Root() {
-  const path =
-    typeof window !== "undefined" ? window.location.pathname : "/";
-  if (path === "/privacy-policy") return <LegalPage doc="privacy-policy" />;
-  if (path === "/terms-of-service") return <LegalPage doc="terms-of-service" />;
-
-  if (isLocalDevFullApp()) {
-    return <LocalDevRoot />;
-  }
-  return <AuthenticatedRoot />;
+  return (
+    <Switch>
+      <Route path="/privacy-policy">
+        <LegalPage doc="privacy-policy" />
+      </Route>
+      <Route path="/terms-of-service">
+        <LegalPage doc="terms-of-service" />
+      </Route>
+      <Route>
+        {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
+    </Switch>
+  );
 }

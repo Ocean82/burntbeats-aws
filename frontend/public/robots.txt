@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://burntbeats.com/sitemap.xml
+Sitemap: https://www.burntbeats.com/sitemap.xml

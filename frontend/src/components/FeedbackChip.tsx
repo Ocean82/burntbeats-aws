@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useAppEvent } from "../store/eventBus";
+import { trackEvent } from "../analytics/events";
 
 type Rating = "great" | "ok" | "confusing" | null;
 
@@ -6,22 +8,39 @@ export function FeedbackChip() {
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState<Rating>(null);
   const [comment, setComment] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
+  // Listen for the typed event bus signal instead of raw DOM events
+  useAppEvent("open-feedback", () => setOpen(true));
+
+  // Auto-dismiss the "thank you" confirmation after 4 seconds
   useEffect(() => {
-    const onOpen = () => setOpen(true);
-    window.addEventListener("burntbeats:open-feedback", onOpen);
-    return () => {
-      window.removeEventListener("burntbeats:open-feedback", onOpen);
-    };
-  }, []);
+    if (!submitted) return;
+    const t = window.setTimeout(() => setSubmitted(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [submitted]);
 
   const handleSubmit = () => {
     if (!rating && !comment.trim()) return;
-    // Placeholder: wire to analytics / backend when ready.
+    trackEvent("feedback_submitted", {
+      rating: rating ?? "none",
+      has_comment: comment.trim().length > 0,
+      comment_length: comment.trim().length,
+    });
     setOpen(false);
     setRating(null);
     setComment("");
+    setSubmitted(true);
   };
+
+  // Show "thank you" confirmation after submission
+  if (submitted) {
+    return (
+      <div className="fixed bottom-5 left-5 z-40 rounded-full border border-emerald-400/30 bg-black/80 px-4 py-2 text-[11px] font-medium text-emerald-200 shadow-lg backdrop-blur-md pb-safe">
+        Thanks for the feedback ✓
+      </div>
+    );
+  }
 
   if (!open) {
     return (
@@ -106,4 +125,3 @@ export function FeedbackChip() {
     </div>
   );
 }
-

@@ -4,6 +4,7 @@ import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { useIsTouchDevice } from "../hooks/useIsTouchDevice";
+import { useEventBus } from "../store/eventBus";
 
 /** Master export codecs exposed in-product. FLAC is deliberately omitted here: FLAC encoding is comparatively CPU-heavy for an AWS **CPU-only** stack; WAV (lossless) + MP3 meet current budgets. Keeping `"flac"` in this union preserves future guarded options without implying it ships today (`docs/roadmap/product-backlog.md`). */
 export type ExportFormat = "wav" | "mp3" | "flac";
@@ -287,11 +288,7 @@ export function ExportOptionsModal({
                     type="button"
                     onClick={() => {
                       onClose();
-                      // We need a way to switch to pricing view.
-                      // For now, let's assume we can trigger a custom event or use a callback.
-                      window.dispatchEvent(
-                        new CustomEvent("burntbeats:open-pricing"),
-                      );
+                      useEventBus.getState().emit("open-pricing");
                     }}
                     className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition"
                   >

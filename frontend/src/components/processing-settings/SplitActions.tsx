@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Lock, Sparkles } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -42,8 +43,29 @@ export function SplitActions({
   canUseBatchQueue,
   onAddToQueue,
 }: SplitActionsProps) {
+  // Announce progress at meaningful milestones to avoid spamming screen readers
+  const progressAnnouncement = useMemo(() => {
+    if (!isSplitting) return null;
+    if (isUploading) return `Uploading file: ${Math.round(uploadProgress)}% complete`;
+    if (queuePosition != null) return `Queued at position ${queuePosition}`;
+    if (splitProgress >= 100) return "Split complete!";
+    if (splitProgress >= 75) return "Splitting audio: 75% complete";
+    if (splitProgress >= 50) return "Splitting audio: 50% complete";
+    if (splitProgress >= 25) return "Splitting audio: 25% complete";
+    return "Splitting audio, please wait…";
+  }, [isSplitting, isUploading, uploadProgress, queuePosition, splitProgress]);
+
   return (
     <>
+      {/* Screen-reader milestone announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {progressAnnouncement}
+      </div>
       {/* Split / action button + Try for free pill */}
       <div className="flex shrink-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2">
