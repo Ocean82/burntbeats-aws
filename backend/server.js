@@ -118,7 +118,6 @@ app.use(
       console.warn("[cors] blocked origin:", origin);
       return callback(null, false);
     },
-    credentials: true,
   }),
 );
 app.use(express.json());

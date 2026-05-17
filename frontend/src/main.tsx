@@ -4,14 +4,18 @@ import { ClerkProvider } from "@clerk/react";
 import { initSentry } from "./lib/sentry";
 import { SentryErrorBoundary } from "./components/SentryErrorBoundary";
 import { initGoogleTag } from "./analytics/initGoogleTag";
+import { hasAnalyticsConsent } from "./store/cookieConsent";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import "./index.css";
 import { Root } from "./Root";
 
 // Initialize Sentry before anything else renders.
 initSentry();
 
+// Only initialize GA if the user has previously accepted analytics cookies.
+// First-time visitors will see the consent banner; GA loads after they accept.
 const gaMeasurementId = String(import.meta.env.VITE_GA_MEASUREMENT_ID ?? "").trim();
-if (gaMeasurementId) {
+if (gaMeasurementId && hasAnalyticsConsent()) {
   initGoogleTag(gaMeasurementId);
 }
 
@@ -51,6 +55,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <SentryErrorBoundary>
       {appTree}
+      <CookieConsentBanner />
     </SentryErrorBoundary>
   </StrictMode>
 );
