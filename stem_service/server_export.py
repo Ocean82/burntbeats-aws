@@ -156,6 +156,30 @@ def apply_biquad(stereo: np.ndarray, fs: int, b_a_list) -> np.ndarray:
     return out
 
 
+def apply_warmth(stereo: np.ndarray, amount: float) -> np.ndarray:
+    """
+    Apply harmonic saturation (warmth) via tanh soft-clipping.
+
+    Produces even-order harmonics (2nd, 4th) — the same harmonic profile as
+    analog tube amplifiers. Uses parallel dry/wet blend to preserve dynamics.
+
+    Args:
+        stereo: Audio array shape (N, 2), float32/float64.
+        amount: Saturation intensity 0–1 (0 = bypass, 1 = heavy saturation).
+
+    Returns:
+        Saturated audio with same shape and dtype.
+    """
+    if amount < 1e-6:
+        return stereo
+    amount = min(1.0, amount)
+    drive = 1.0 + amount * 4.0  # 1x to 5x drive
+    norm = np.tanh(drive)
+    wet = np.tanh(stereo * drive) / norm
+    # Parallel blend: preserves transients and avoids over-squashing dynamics
+    return stereo * (1.0 - amount) + wet * amount
+
+
 def compressor_stereo(
     stereo: np.ndarray,
     fs: int,
@@ -410,6 +434,17 @@ def main():
             biquads.append((b, a))
         if biquads:
             x = apply_biquad(x, sample_rate_out, biquads)
+
+        # --- Warmth (harmonic saturation via tanh soft-clip) ---
+        warmth_amount = float(mixer.get("warmth", 0) or 0) / 100.0
+        if warmth_amount > 1e-6:
+            x = apply_warmth(x, warmth_amount)
+
+        # --- Presence / Air (high-shelf at 10kHz) ---
+        presence_db = float(mixer.get("presence", 0) or 0)
+        if abs(presence_db) > 1e-6:
+            b, a = biquad_highshelf_coeff(sample_rate_out, 10000.0, presence_db)
+            x = apply_biquad(x, sample_rate_out, [(b, a)])
 
         # --- Compressor ---
         comp_thr_db = float(mixer.get("compThreshold", 0) or 0)

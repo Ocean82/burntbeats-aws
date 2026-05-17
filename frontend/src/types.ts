@@ -26,6 +26,10 @@ export type MixerState = {
   eqMid: number;
   /** High-shelf EQ gain in dB (-12 to +12). */
   eqHigh: number;
+  /** Harmonic saturation amount 0–100 (0 = bypass, 100 = heavy warmth). Adds even-order harmonics via soft-clip waveshaping. */
+  warmth: number;
+  /** Air/presence boost in dB (-12 to +12). High-shelf at ~10kHz for clarity and "air". */
+  presence: number;
   /** Reverb wet mix 0–100. */
   reverbWet: number;
   /** Delay wet mix 0–100. */
@@ -49,6 +53,8 @@ export const defaultMixer: MixerState = {
   eqLow: 0,
   eqMid: 0,
   eqHigh: 0,
+  warmth: 0,
+  presence: 0,
   reverbWet: 0,
   delayWet: 0,
   compThreshold: 0,

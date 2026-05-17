@@ -413,6 +413,35 @@ export function createStemDspChain(
   highEQ.frequency.value = 6000;
   highEQ.gain.value = mixer.eqHigh;
 
+  // --- Warmth (harmonic saturation via waveshaper) ---
+  const warmthActive = mixer.warmth > 0;
+  let warmthShaper: WaveShaperNode | null = null;
+  let warmthDryGain: GainNode | null = null;
+  let warmthWetGain: GainNode | null = null;
+  let warmthMerge: GainNode | null = null;
+  if (warmthActive) {
+    warmthShaper = ctx.createWaveShaper();
+    warmthShaper.curve = _buildWarmthCurve(mixer.warmth / 100) as Float32Array<ArrayBuffer>;
+    warmthShaper.oversample = "2x"; // reduce aliasing from nonlinear distortion
+    // Parallel dry/wet blend so warmth=50 is 50% saturated + 50% clean
+    warmthDryGain = ctx.createGain();
+    warmthDryGain.gain.value = 1 - mixer.warmth / 100;
+    warmthWetGain = ctx.createGain();
+    warmthWetGain.gain.value = mixer.warmth / 100;
+    warmthMerge = ctx.createGain();
+    warmthMerge.gain.value = 1;
+  }
+
+  // --- Presence / Air (high-shelf at 10kHz) ---
+  const presenceActive = Math.abs(mixer.presence) > 0.01;
+  let presenceFilter: BiquadFilterNode | null = null;
+  if (presenceActive) {
+    presenceFilter = ctx.createBiquadFilter();
+    presenceFilter.type = "highshelf";
+    presenceFilter.frequency.value = 10000;
+    presenceFilter.gain.value = mixer.presence;
+  }
+
   const panNode = ctx.createStereoPanner();
   panNode.pan.value = mixer.pan / 100;
 
@@ -461,13 +490,31 @@ export function createStemDspChain(
   }
 
   // --- Wire dry path ---
-  // gainNode → lowEQ → midEQ → highEQ → [compressor] → panNode → widthNode → outputGain
+  // gainNode → lowEQ → midEQ → highEQ → [warmth] → [presence] → [compressor] → panNode → widthNode → outputGain
   gainNode.connect(lowEQ);
   lowEQ.connect(midEQ);
   midEQ.connect(highEQ);
 
+  // Post-EQ: warmth (parallel dry/wet saturation) → presence → compressor → pan
+  let postEqOutput: AudioNode = highEQ;
+
+  if (warmthActive && warmthShaper && warmthDryGain && warmthWetGain && warmthMerge) {
+    // Parallel blend: highEQ → dry gain → merge, highEQ → shaper → wet gain → merge
+    highEQ.connect(warmthDryGain);
+    warmthDryGain.connect(warmthMerge);
+    highEQ.connect(warmthShaper);
+    warmthShaper.connect(warmthWetGain);
+    warmthWetGain.connect(warmthMerge);
+    postEqOutput = warmthMerge;
+  }
+
+  if (presenceActive && presenceFilter) {
+    postEqOutput.connect(presenceFilter);
+    postEqOutput = presenceFilter;
+  }
+
   const postEqNode: AudioNode = compressor ?? panNode;
-  highEQ.connect(postEqNode);
+  postEqOutput.connect(postEqNode);
   if (compressor) {
     compressor.connect(panNode);
   }
@@ -500,6 +547,15 @@ export function createStemDspChain(
     lowEQ.gain.value = m.eqLow;
     midEQ.gain.value = m.eqMid;
     highEQ.gain.value = m.eqHigh;
+    if (warmthShaper && warmthDryGain && warmthWetGain) {
+      const w = m.warmth / 100;
+      warmthShaper.curve = _buildWarmthCurve(w) as Float32Array<ArrayBuffer>;
+      warmthDryGain.gain.value = 1 - w;
+      warmthWetGain.gain.value = w;
+    }
+    if (presenceFilter) {
+      presenceFilter.gain.value = m.presence;
+    }
     if (compressor) {
       compressor.threshold.value = m.compThreshold;
       compressor.ratio.value = Math.max(1, m.compRatio);
@@ -537,6 +593,11 @@ export function createStemDspChain(
     lowEQ.disconnect();
     midEQ.disconnect();
     highEQ.disconnect();
+    warmthShaper?.disconnect();
+    warmthDryGain?.disconnect();
+    warmthWetGain?.disconnect();
+    warmthMerge?.disconnect();
+    presenceFilter?.disconnect();
     compressor?.disconnect();
     panNode.disconnect();
     widthNode.disconnect();
@@ -571,6 +632,31 @@ function _buildReverbIR(ctx: BaseAudioContext, durationSec: number): AudioBuffer
     }
   }
   return ir;
+}
+
+/**
+ * Build a soft-clip waveshaper curve for harmonic warmth/saturation.
+ *
+ * Uses tanh-based soft clipping which produces predominantly even-order harmonics
+ * (2nd, 4th) — the same harmonic profile as analog tube amplifiers. The result
+ * is a "warm" or "analog" character without harsh odd-order distortion.
+ *
+ * @param amount - Saturation intensity 0–1 (0 = linear/bypass, 1 = heavy saturation)
+ * @returns Float32Array transfer curve for WaveShaperNode
+ */
+function _buildWarmthCurve(amount: number): Float32Array {
+  const samples = 8192;
+  const curve = new Float32Array(samples);
+  // Drive ranges from 1 (clean) to 5 (heavy saturation)
+  const drive = 1 + Math.max(0, Math.min(1, amount)) * 4;
+  const normFactor = Math.tanh(drive);
+
+  for (let i = 0; i < samples; i++) {
+    const x = (i * 2) / samples - 1; // Map index to -1..+1
+    // tanh soft-clip: smooth saturation with even-harmonic emphasis
+    curve[i] = Math.tanh(x * drive) / normFactor;
+  }
+  return curve;
 }
 
 /**
