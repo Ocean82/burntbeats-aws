@@ -6,6 +6,10 @@ const STEM_SERVICE_URL =
   process.env.STEM_SERVICE_URL || "http://localhost:5000";
 const STEM_SERVICE_API_TOKEN = process.env.STEM_SERVICE_API_TOKEN || "";
 
+const SPEECH_SERVICE_URL =
+  process.env.SPEECH_SERVICE_URL || "http://localhost:5001";
+const SPEECH_SERVICE_API_TOKEN = process.env.SPEECH_SERVICE_API_TOKEN || "";
+
 /**
  * Attach stem-service auth header when token protection is enabled.
  * @param {Record<string, string>} headers
@@ -14,6 +18,15 @@ const STEM_SERVICE_API_TOKEN = process.env.STEM_SERVICE_API_TOKEN || "";
 export function withStemServiceAuthHeader(headers) {
   if (!STEM_SERVICE_API_TOKEN) return headers;
   return { ...headers, "X-Stem-Service-Token": STEM_SERVICE_API_TOKEN };
+}
+
+/**
+ * @param {Record<string, string>} headers
+ * @returns {Record<string, string>}
+ */
+export function withSpeechServiceAuthHeader(headers) {
+  if (!SPEECH_SERVICE_API_TOKEN) return headers;
+  return { ...headers, "X-Speech-Service-Token": SPEECH_SERVICE_API_TOKEN };
 }
 
 /**
@@ -57,9 +70,21 @@ export function extractProxyErrorMessage(body, fallback) {
  * @param {{ timeoutMs?: number }} [options]
  * @returns {Promise<{ statusCode: number, data: any }>}
  */
-export function proxyFormRequest(endpointPath, form, options = {}) {
-  const stemUrl = new URL(endpointPath, STEM_SERVICE_URL);
-  const isHttps = stemUrl.protocol === "https:";
+/**
+ * @param {string} baseUrl
+ * @param {string} endpointPath
+ * @param {import("form-data")} form
+ * @param {{ timeoutMs?: number, authHeaderFn?: (h: Record<string, string>) => Record<string, string> }} [options]
+ */
+export function proxyFormRequestTo(
+  baseUrl,
+  endpointPath,
+  form,
+  options = {},
+) {
+  const targetUrl = new URL(endpointPath, baseUrl);
+  const authHeaderFn = options.authHeaderFn || withStemServiceAuthHeader;
+  const isHttps = targetUrl.protocol === "https:";
   const client = isHttps ? https : http;
   const reqAbort = new AbortController();
 
@@ -78,11 +103,11 @@ export function proxyFormRequest(endpointPath, form, options = {}) {
     };
 
     const opts = {
-      hostname: stemUrl.hostname,
-      port: stemUrl.port || (isHttps ? 443 : 80),
-      path: stemUrl.pathname + stemUrl.search,
+      hostname: targetUrl.hostname,
+      port: targetUrl.port || (isHttps ? 443 : 80),
+      path: targetUrl.pathname + targetUrl.search,
       method: "POST",
-      headers: withStemServiceAuthHeader(form.getHeaders()),
+      headers: authHeaderFn(form.getHeaders()),
       signal: reqAbort.signal,
     };
 
@@ -121,10 +146,31 @@ export function proxyFormRequest(endpointPath, form, options = {}) {
   });
 }
 
+export function proxyFormRequest(endpointPath, form, options = {}) {
+  return proxyFormRequestTo(STEM_SERVICE_URL, endpointPath, form, {
+    ...options,
+    authHeaderFn: withStemServiceAuthHeader,
+  });
+}
+
+export function proxySpeechFormRequest(endpointPath, form, options = {}) {
+  return proxyFormRequestTo(SPEECH_SERVICE_URL, endpointPath, form, {
+    ...options,
+    authHeaderFn: withSpeechServiceAuthHeader,
+  });
+}
+
 /**
  * Get the configured stem service URL.
  * @returns {string}
  */
 export function getStemServiceUrl() {
   return process.env.STEM_SERVICE_URL || "http://localhost:5000";
+}
+
+/**
+ * @returns {string}
+ */
+export function getSpeechServiceUrl() {
+  return process.env.SPEECH_SERVICE_URL || "http://localhost:5001";
 }

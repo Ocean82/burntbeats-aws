@@ -64,6 +64,7 @@ import { LazyModalLayer } from "./app/lazy-modal-layer.component";
 import { AppBackgroundOrbs } from "./app/app-background-orbs.component";
 import { EditorFloatingOverlays } from "./app/editor-floating-overlays.component";
 import { EditorMainView } from "./app/editor-main-view.component";
+import { SpeechCleanPage } from "./pages/SpeechCleanPage";
 import { useHeaderVisibility } from "./hooks/useHeaderVisibility";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
@@ -426,11 +427,12 @@ export function App() {
   );
 
   const [location, navigate] = useLocation();
-  const activeView: "editor" | "pricing" | "my-stems" =
+  const activeView: "editor" | "speech" | "pricing" | "my-stems" =
     location === "/pricing" ? "pricing" :
     location === "/my-stems" ? "my-stems" :
+    location === "/speech" ? "speech" :
     "editor";
-  const setActiveView = useCallback((view: "editor" | "pricing" | "my-stems") => {
+  const setActiveView = useCallback((view: "editor" | "speech" | "pricing" | "my-stems") => {
     navigate(view === "editor" ? "/" : `/${view}`);
   }, [navigate]);
   const [pricingInitialTab, setPricingInitialTab] = useState<"subscriptions" | "packs">("subscriptions");
@@ -693,6 +695,14 @@ export function App() {
             </motion.section>
           ) : activeView === "my-stems" ? (
             <MyStemsPage onClose={() => setActiveView("editor")} />
+          ) : activeView === "speech" ? (
+            <SpeechCleanPage
+              reduceMotion={Boolean(reduceMotion)}
+              subscription={subscription}
+              usageBalance={usageBalance}
+              usageLoading={usageLoading}
+              checkoutNotice={checkoutNotice}
+            />
           ) : (
             <EditorMainView
               reduceMotion={Boolean(reduceMotion)}

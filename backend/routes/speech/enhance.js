@@ -1,0 +1,132 @@
+// @ts-check
+import { Router } from "express";
+import FormData from "form-data";
+import { createReadStream, unlink } from "fs";
+import { unlink as unlinkPromise } from "fs/promises";
+import path from "path";
+
+import {
+  authMiddleware,
+  requireUsageAuthPreUpload,
+  issueJobToken,
+} from "../../middleware/auth.js";
+import { proxySpeechFormRequest } from "../../middleware/proxy.js";
+import { upload, MAX_UPLOAD_MB } from "../../middleware/upload.js";
+import { getBaseUrl } from "../../helpers/baseUrl.js";
+import { scanUploadedFile } from "../../malwareScan.js";
+import { verifyUploadMatchesExtension } from "../../uploadSniff.js";
+import {
+  computeSplitCost,
+  getAudioDurationSeconds,
+  isUsageTokensEnabled,
+  reserveUsageTokens,
+} from "../../usageTokens.js";
+import { isProxyHttpError } from "../../middleware/proxy.js";
+import { publicErrorMessage, sanitizedProxyClientError } from "../../clientSafeError.js";
+
+import { SPEECH_ACCEPT_TIMEOUT_MS } from "./shared.js";
+
+export const enhanceRouter = Router();
+
+enhanceRouter.post(
+  "/",
+  authMiddleware,
+  requireUsageAuthPreUpload,
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(413).json({
+            error: `File too large. Maximum size is ${MAX_UPLOAD_MB}MB.`,
+          });
+        }
+        return res.status(400).json({ error: "Upload failed. Please try again." });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        error: "Missing file. Upload speech audio with form field 'file'.",
+      });
+    }
+
+    const filePath = req.file.path;
+    let usageReserved = false;
+    let usageUserId = null;
+    let usageCost = 0;
+
+    try {
+      const sniff = await verifyUploadMatchesExtension(filePath, req.file.originalname);
+      if (!sniff.ok) {
+        return res.status(415).json({ error: sniff.error || "Invalid audio file" });
+      }
+      await scanUploadedFile(filePath);
+
+      if (isUsageTokensEnabled()) {
+        const durationSec = await getAudioDurationSeconds(filePath);
+        usageCost = computeSplitCost(durationSec);
+        usageUserId = req.auth?.userId || null;
+        if (usageUserId && usageCost > 0) {
+          await reserveUsageTokens(usageUserId, usageCost);
+          usageReserved = true;
+        }
+      }
+
+      const denoise = (req.body?.denoise ?? "true").toString().toLowerCase();
+      const batch = (req.body?.batch ?? "false").toString().toLowerCase();
+
+      const form = new FormData();
+      form.append("file", createReadStream(filePath), {
+        filename: req.file.originalname || path.basename(filePath),
+      });
+      form.append("denoise", denoise);
+      form.append("batch", batch);
+
+      const { statusCode, data } = await proxySpeechFormRequest("/enhance", form, {
+        timeoutMs: SPEECH_ACCEPT_TIMEOUT_MS,
+      });
+
+      if (statusCode !== 202 || !data?.job_id) {
+        return res.status(502).json({ error: "Speech service did not accept the job" });
+      }
+
+      const jobToken = issueJobToken(data.job_id);
+      const baseUrl = getBaseUrl(req);
+      return res.status(202).json({
+        job_id: data.job_id,
+        status: data.status || "queued",
+        job_token: jobToken,
+        output_url: `${baseUrl}/api/speech/file/${data.job_id}/enhanced.wav`,
+        status_url: `${baseUrl}/api/speech/status/${data.job_id}`,
+      });
+    } catch (e) {
+      if (usageReserved && usageUserId && usageCost > 0) {
+        try {
+          const { refundUsageTokens } = await import("../../usageTokens.js");
+          await refundUsageTokens(usageUserId, usageCost);
+        } catch {
+          /* ignore refund errors */
+        }
+      }
+      if (isProxyHttpError(e)) {
+        return res
+          .status(e.statusCode)
+          .json({ error: sanitizedProxyClientError(e.statusCode, e.error) });
+      }
+      const message = publicErrorMessage(
+        e instanceof Error ? e.message : String(e),
+        "Speech service unavailable (ensure speech_service runs on port 5001)",
+        "[POST /api/speech/enhance]",
+      );
+      return res.status(502).json({ error: message });
+    } finally {
+      try {
+        await unlinkPromise(filePath);
+      } catch {
+        unlink(filePath, () => {});
+      }
+    }
+  },
+);

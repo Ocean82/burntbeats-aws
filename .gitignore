@@ -81,6 +81,14 @@ server_models/
 benchmark_out/
 benchmark_out_*/
 
+# Speech enhancement (LavaSR) — weights bind-mounted at runtime (see speech_models/LAYOUT.txt)
+speech_models/*
+!speech_models/LAYOUT.txt
+tmp/speech/
+speech_service/.env
+speech_service/.env.*
+!speech_service/.env.example
+
 # Temporary files and directories
 backend/tmp/
 backend/cache/

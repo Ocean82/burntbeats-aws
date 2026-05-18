@@ -1,0 +1,10 @@
+Speech model weights for LavaEnhance2 (not committed — gitignored).
+
+  speech_models/
+    enhancer_v2/
+      config.yaml          Vocos architecture config
+      model.safetensors    BWE enhancer weights (~54 MB)
+    denoiser/
+      denoiser.safetensors UL-UNAS denoiser weights (~0.7 MB)
+
+Set SPEECH_MODELS_DIR to this directory (Compose: /repo/speech_models).

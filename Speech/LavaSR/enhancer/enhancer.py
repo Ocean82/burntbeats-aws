@@ -1,14 +1,15 @@
-## Proposed work 
+## Proposed work
 ## This BWE model is based on Vocos, excellant speed with good quality.
 
+import types
+from pathlib import Path
 
 import torch
-import types
-from vocos import Vocos
 from torch.cuda.amp import autocast as autocast_func
+from vocos import Vocos
 
-## used to improve quality in end
 from LavaSR.enhancer.linkwitz_merge import FastLRMerge
+from LavaSR.weights import load_state_dict
 
 ## quick monkey patch to improve quality slightly
 def custom_forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -31,16 +32,36 @@ def custom_forward(self, x: torch.Tensor) -> torch.Tensor:
     audio = self.istft(S)
     return audio
   
+def _resolve_bwe_weights(model_dir: Path) -> Path:
+    for name in ("model.safetensors", "pytorch_model.bin"):
+        candidate = model_dir / name
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        f"No enhancer weights in {model_dir} (expected model.safetensors or pytorch_model.bin)"
+    )
+
+
 class LavaBWE:
-    def __init__(self, model_path, device='cpu'):
-      
+    def __init__(self, model_path, device="cpu"):
         self.device = device
         self.lr_refiner = FastLRMerge(device=device)
 
-        state_dict = torch.load(f"{model_path}/pytorch_model.bin", map_location="cpu")
-        self.bwe_model = Vocos.from_hparams(f"{model_path}/config.yaml")
+        model_dir = Path(model_path)
+        config_path = model_dir / "config.yaml"
+        if not config_path.is_file():
+            raise FileNotFoundError(f"Missing Vocos config: {config_path}")
 
-        self.bwe_model.load_state_dict(state_dict)
+        weights_path = _resolve_bwe_weights(model_dir)
+        state_dict = load_state_dict(weights_path, map_location="cpu")
+        self.bwe_model = Vocos.from_hparams(str(config_path))
+        missing, unexpected = self.bwe_model.load_state_dict(state_dict, strict=False)
+        if missing:
+            raise RuntimeError(f"Enhancer missing keys: {missing[:5]}… ({len(missing)} total)")
+        if unexpected:
+            raise RuntimeError(
+                f"Enhancer unexpected keys: {unexpected[:5]}… ({len(unexpected)} total)"
+            )
         self.bwe_model = self.bwe_model.eval().to(device)
     
         self.bwe_model.head.forward = types.MethodType(custom_forward, self.bwe_model.head)
