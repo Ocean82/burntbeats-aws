@@ -1,6 +1,6 @@
 import { AlertCircle, Loader2, Mic2 } from "lucide-react";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useSpeechEnhance } from "../../hooks/useSpeechEnhance";
 import { InfoPopover } from "../ui/InfoPopover";
 import { useAudioFileDuration } from "../../hooks/useAudioFileDuration";
@@ -46,17 +46,15 @@ export function SpeechCleanPanel({
   } = useSpeechEnhance();
   const durationSec = useAudioFileDuration(uploadedFile);
   const estimatedTokens = computeTokensFromDurationSeconds(durationSec);
-  const [originalBlobUrl, setOriginalBlobUrl] = useState<string | null>(null);
+  const originalBlobUrl = useMemo(() => {
+    if (!uploadedFile || !outputUrl) return null;
+    return URL.createObjectURL(uploadedFile);
+  }, [uploadedFile, outputUrl]);
 
   useEffect(() => {
-    if (!uploadedFile || !outputUrl) {
-      setOriginalBlobUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(uploadedFile);
-    setOriginalBlobUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [uploadedFile, outputUrl]);
+    if (!originalBlobUrl) return;
+    return () => URL.revokeObjectURL(originalBlobUrl);
+  }, [originalBlobUrl]);
 
   return (
     <div data-testid="speech-clean-panel" className="flex flex-col gap-4">

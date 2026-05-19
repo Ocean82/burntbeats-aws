@@ -105,19 +105,20 @@ export function OnboardingTour({
   useLayoutEffect(() => {
     const target = (step as { target?: string }).target;
     if (!isVisible || !target) {
-      setSpotlightRect(null);
-      return;
+      const id = requestAnimationFrame(() => setSpotlightRect(null));
+      return () => cancelAnimationFrame(id);
     }
     const el = document.querySelector(target);
     if (!el) {
-      setSpotlightRect(null);
-      return;
+      const id = requestAnimationFrame(() => setSpotlightRect(null));
+      return () => cancelAnimationFrame(id);
     }
     const update = () => setSpotlightRect(el.getBoundingClientRect());
-    update();
+    const id = requestAnimationFrame(update);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => {
+      cancelAnimationFrame(id);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };

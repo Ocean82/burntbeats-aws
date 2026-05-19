@@ -142,10 +142,14 @@ export function MultiStemEditor({
   >(null);
   const [mixerConsoleOpen, setMixerConsoleOpen] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
-  const [showMixerStrips, setShowMixerStrips] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(MIXER_STRIPS_KEY) === "1";
+  const [userStripsPref, setUserStripsPref] = useState<boolean | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = localStorage.getItem(MIXER_STRIPS_KEY);
+    if (stored === null) return null;
+    return stored === "1";
   });
+  const showMixerStrips =
+    userStripsPref ?? (stems.length > 0 && playbackReady);
   const [copyMenuOpen, setCopyMenuOpen] = useState(false);
   const [channelsSummaryOpen, setChannelsSummaryOpen] = useState(true);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
@@ -294,19 +298,16 @@ export function MultiStemEditor({
   );
 
   useEffect(() => {
+    if (userStripsPref !== null) return;
     if (stems.length === 0 || !playbackReady) return;
-    if (localStorage.getItem(MIXER_STRIPS_KEY) !== null) return;
-    setShowMixerStrips(true);
     localStorage.setItem(MIXER_STRIPS_KEY, "1");
-  }, [stems.length, playbackReady]);
+  }, [userStripsPref, stems.length, playbackReady]);
 
   const toggleMixerStrips = useCallback(() => {
-    setShowMixerStrips((v) => {
-      const next = !v;
-      localStorage.setItem(MIXER_STRIPS_KEY, next ? "1" : "0");
-      return next;
-    });
-  }, []);
+    const next = !showMixerStrips;
+    localStorage.setItem(MIXER_STRIPS_KEY, next ? "1" : "0");
+    setUserStripsPref(next);
+  }, [showMixerStrips]);
 
   const centerPlayhead = useCallback(() => {
     setScrollPct(scrollPctToCenterPlayhead(playheadPct, zoom, maxScrollPct));

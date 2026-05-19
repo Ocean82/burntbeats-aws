@@ -11,21 +11,21 @@ export interface SpeechResultPlayerProps {
   originalBlobUrl: string | null;
 }
 
-export function SpeechResultPlayer({
+function SpeechResultPlayerInner({
   outputUrl,
   uploadName,
   originalBlobUrl,
 }: SpeechResultPlayerProps) {
   const [enhancedBlobUrl, setEnhancedBlobUrl] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [fetchDone, setFetchDone] = useState(false);
   const [mode, setMode] = useState<SpeechPlaybackMode>("enhanced");
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  const loading = !fetchDone;
+
   useEffect(() => {
     let revoked: string | null = null;
-    setLoading(true);
-    setLoadError(null);
     void fetchSpeechWavAsBlob(outputUrl)
       .then((blob) => {
         const url = URL.createObjectURL(blob);
@@ -35,7 +35,7 @@ export function SpeechResultPlayer({
       .catch((e) => {
         setLoadError(e instanceof Error ? e.message : "Could not load enhanced audio");
       })
-      .finally(() => setLoading(false));
+      .finally(() => setFetchDone(true));
     return () => {
       if (revoked) URL.revokeObjectURL(revoked);
     };
@@ -124,7 +124,9 @@ export function SpeechResultPlayer({
             src={activeUrl}
             className="mb-3 w-full"
             preload="metadata"
+            aria-label={`${mode === "original" ? "Original" : "Enhanced"} preview of ${uploadName}`}
           >
+            <track kind="captions" label="Captions unavailable" />
             Your browser does not support audio playback.
           </audio>
           <a
@@ -139,4 +141,9 @@ export function SpeechResultPlayer({
       )}
     </div>
   );
+}
+
+/** Remount when output changes so fetch state resets without sync setState in effects. */
+export function SpeechResultPlayer(props: SpeechResultPlayerProps) {
+  return <SpeechResultPlayerInner key={props.outputUrl} {...props} />;
 }
