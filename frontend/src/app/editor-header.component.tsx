@@ -239,6 +239,11 @@ export function EditorHeader({
               </button>
             </div>
             {/* Layout mode toggle */}
+            {mode === "dj" && (
+              <span className="hidden sm:inline rounded-full border border-cyan-400/40 bg-cyan-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
+                DJ Layout
+              </span>
+            )}
             <button
               type="button"
               onClick={toggleMode}

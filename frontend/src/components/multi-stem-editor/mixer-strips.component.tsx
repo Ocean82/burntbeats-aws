@@ -5,11 +5,12 @@
  * horizontally-scrollable container. Follows standard DAW mixer layout
  * conventions for quick scanning and muscle memory.
  */
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { StemDefinition } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { defaultStemState } from "../../stem-editor-state";
 import { ChannelStrip } from "./channel-strip.component";
+import { isStemModified } from "../../utils/isStemModified";
 
 export interface MixerStripsProps {
   stems: StemDefinition[];
@@ -26,6 +27,7 @@ export interface MixerStripsProps {
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
   onActiveStemChange: (stemId: string) => void;
+  onResetSingleStem?: (stemId: string) => void;
 }
 
 const LAYOUT_LABELS: Record<2 | 4, string> = {
@@ -47,7 +49,16 @@ export const MixerStrips = memo(function MixerStrips({
   onStemStateChange,
   onPreviewStem,
   onActiveStemChange,
+  onResetSingleStem,
 }: MixerStripsProps) {
+  const modifiedById = useMemo(() => {
+    const map: Record<string, boolean> = {};
+    for (const stem of stems) {
+      map[stem.id] = isStemModified(stemStates[stem.id] ?? defaultStemState());
+    }
+    return map;
+  }, [stems, stemStates]);
+
   if (stems.length === 0) return null;
 
   return (
@@ -83,6 +94,8 @@ export const MixerStrips = memo(function MixerStrips({
             onStemStateChange={onStemStateChange}
             onPreviewStem={onPreviewStem}
             onActivate={onActiveStemChange}
+            onResetStem={onResetSingleStem}
+            isModified={modifiedById[stem.id]}
           />
         );
       })}

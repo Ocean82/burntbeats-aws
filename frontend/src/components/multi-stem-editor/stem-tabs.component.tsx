@@ -1,6 +1,7 @@
 import { cn } from "../../utils/cn";
 import type { StemDefinition } from "../../types";
 import { defaultStemState, type StemEditorState } from "../../stem-editor-state";
+import { isStemModified } from "../../utils/isStemModified";
 
 interface StemTabsProps {
   stems: StemDefinition[];
@@ -15,6 +16,7 @@ export function StemTabs({ stems, activeStemId, stemStates, onSelectStem }: Stem
       {stems.map((stem) => {
         const state = stemStates[stem.id] ?? defaultStemState();
         const selected = stem.id === activeStemId;
+        const modified = isStemModified(state);
         return (
           <button
             key={stem.id}
@@ -28,9 +30,15 @@ export function StemTabs({ stems, activeStemId, stemStates, onSelectStem }: Stem
               state.muted && "opacity-50"
             )}
             style={selected ? { borderColor: stem.glow, background: `${stem.glow}18`, color: stem.glow } : {}}
+            aria-label={
+              modified ? `${stem.label} (modified)` : stem.label
+            }
           >
             <span
-              className="h-2 w-2 rounded-full"
+              className={cn(
+                "h-2 w-2 rounded-full ring-2 ring-transparent",
+                modified && "ring-amber-400/70",
+              )}
               style={{ backgroundColor: stem.glow, boxShadow: selected ? `0 0 6px ${stem.glow}` : "none" }}
             />
             {stem.label}

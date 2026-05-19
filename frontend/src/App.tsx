@@ -312,6 +312,7 @@ export function App() {
     handleStemStateChange,
     handlePreviewStemFromMixer,
     resetTrackAdjustments,
+    resetSingleStem,
   } = useMixerWorkspace({
     playingStem,
     mixStems,
@@ -347,19 +348,21 @@ export function App() {
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
 
   // Derived shims for modals (single pass over stemStates)
-  const { trimMap, mixerState, mutedStems, pitchMap, timeStretchMap } =
+  const { trimMap, mixerState, mutedStems, pitchMap, timeStretchMap, fadeMap } =
     useMemo(() => {
       const trim: Record<string, TrimState> = {};
       const mixer: Record<string, MixerState> = {};
       const muted: Record<string, boolean> = {};
       const pitch: Record<string, number> = {};
       const stretch: Record<string, number> = {};
+      const fades: Record<string, { fadeIn: number; fadeOut: number }> = {};
       for (const [id, s] of Object.entries(stemStates)) {
         trim[id] = s.trim;
         mixer[id] = s.mixer;
         muted[id] = s.muted;
         pitch[id] = s.pitchSemitones ?? 0;
         stretch[id] = s.timeStretch ?? 1;
+        fades[id] = { fadeIn: s.fadeIn ?? 0, fadeOut: s.fadeOut ?? 0 };
       }
       return {
         trimMap: trim,
@@ -367,6 +370,7 @@ export function App() {
         mutedStems: muted,
         pitchMap: pitch,
         timeStretchMap: stretch,
+        fadeMap: fades,
       };
     }, [stemStates]);
 
@@ -599,10 +603,24 @@ export function App() {
           next[id] = { ...next[id], pitchSemitones: preset.pitchMap[id] };
         if (preset.timeStretchMap?.[id] !== undefined)
           next[id] = { ...next[id], timeStretch: preset.timeStretchMap[id] };
+        if (preset.fadeMap?.[id])
+          next[id] = {
+            ...next[id],
+            fadeIn: preset.fadeMap[id].fadeIn,
+            fadeOut: preset.fadeMap[id].fadeOut,
+          };
       }
       return next;
     });
   }, [setStemStates]);
+
+  const handleResetSingleStem = useCallback(
+    (stemId: string) => {
+      resetSingleStem(stemId);
+      setUndoToast("Channel reset");
+    },
+    [resetSingleStem, setUndoToast],
+  );
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useAppKeyboardShortcuts({
@@ -666,6 +684,7 @@ export function App() {
         mutedStems={mutedStems}
         pitchMap={pitchMap}
         timeStretchMap={timeStretchMap}
+        fadeMap={fadeMap}
         batchQueue={batchQueue}
         batchQueueExpanded={batchQueueExpanded}
         setBatchQueueExpanded={setBatchQueueExpanded}
@@ -859,6 +878,7 @@ export function App() {
                 isComparingExport,
                 onCompareExport,
                 onResetLevels: resetTrackAdjustments,
+                onResetSingleStem: handleResetSingleStem,
                 hasStemBuffers: Object.keys(stemBuffers).length > 0,
                 stems: visibleStems as StemWithOptionalUrl[],
                 waveforms: stemWaveforms,

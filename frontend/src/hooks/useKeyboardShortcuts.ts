@@ -7,6 +7,7 @@ export type ShortcutAction =
   | "solo3"
   | "solo4"
   | "muteToggle"
+  | "soloToggle"
   | "export"
   | "undo"
   | "redo"
@@ -27,7 +28,8 @@ export const KEYBOARD_SHORTCUTS: { key: string; modifier?: string; action: Short
   { key: "2", action: "solo2", label: "2", description: "Solo stem 2 (Drums)" },
   { key: "3", action: "solo3", label: "3", description: "Solo stem 3 (Bass)" },
   { key: "4", action: "solo4", label: "4", description: "Solo stem 4 (Melody)" },
-  { key: "m", action: "muteToggle", label: "M", description: "Mute/unmute selected stem" },
+  { key: "m", action: "muteToggle", label: "M", description: "Mute/unmute active stem" },
+  { key: "s", action: "soloToggle", label: "S", description: "Solo active stem (exclusive)" },
   { key: "l", action: "loopToggle", label: "L", description: "Toggle loop playback" },
   { key: "e", modifier: "meta", action: "export", label: "Cmd/Ctrl + E", description: "Export master WAV" },
   { key: "e", modifier: "ctrl", action: "export", label: "Cmd/Ctrl + E", description: "Export master WAV" },

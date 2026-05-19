@@ -10,10 +10,20 @@ import {
   ChevronDown,
   ChevronRight,
   Headphones,
+  RotateCcw,
 } from "lucide-react";
 import type { StemDefinition } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { cn } from "../../utils/cn";
+import {
+  PITCH_MIN,
+  PITCH_MAX,
+  PITCH_STEP,
+  TIME_STRETCH_MIN,
+  TIME_STRETCH_MAX,
+  TIME_STRETCH_STEP,
+  timeStretchToDisplayPercent,
+} from "../../constants/mixerRanges";
 import { formatDb } from "../../utils/mixer-format";
 import { channelMuteSoloButtonClass } from "./mixer-channel-controls";
 import { EditableDbValue } from "./editable-db-value.component";
@@ -34,6 +44,8 @@ export interface ChannelStripProps {
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
   onActivate: (stemId: string) => void;
+  onResetStem?: (stemId: string) => void;
+  isModified?: boolean;
 }
 
 export const ChannelStrip = memo(function ChannelStrip({
@@ -48,6 +60,8 @@ export const ChannelStrip = memo(function ChannelStrip({
   onStemStateChange,
   onPreviewStem,
   onActivate,
+  onResetStem,
+  isModified = false,
 }: ChannelStripProps) {
   const { mixer, muted, soloed } = state;
   const eqStorageKey = `bb-channel-${stem.id}-eq-open`;
@@ -97,32 +111,57 @@ export const ChannelStrip = memo(function ChannelStrip({
       style={{ "--stem-glow": stem.glow } as React.CSSProperties}
     >
       {/* ── Stem Label (click to select) ── */}
-      <button
-        type="button"
-        className="channel-strip__header flex items-center gap-2 border-b border-white/8 px-3 py-2.5 cursor-pointer transition-colors hover:bg-white/[0.04]"
-        onClick={() => onActivate(stem.id)}
-        aria-label={`Select ${stem.label} channel`}
-        aria-pressed={isActive}
-      >
-        <span
-          className={cn(
-            "channel-strip__dot h-2.5 w-2.5 rounded-full shrink-0",
-            isActive && "channel-strip__dot--active",
-          )}
-          aria-hidden
-        />
-        <span className="text-xs font-semibold truncate text-white/90">
-          {stem.label}
-        </span>
-      </button>
+      <div className="channel-strip__header flex items-center gap-1 border-b border-white/8 px-2 py-2">
+        <button
+          type="button"
+          className="flex min-h-[40px] flex-1 items-center gap-2 rounded-lg px-1 transition-colors hover:bg-white/[0.04]"
+          onClick={() => onActivate(stem.id)}
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            onResetStem?.(stem.id);
+          }}
+          aria-label={
+            isModified
+              ? `Select ${stem.label} channel (modified)`
+              : `Select ${stem.label} channel`
+          }
+          aria-pressed={isActive}
+        >
+          <span
+            className={cn(
+              "channel-strip__dot h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-transparent",
+              isActive && "channel-strip__dot--active",
+              isModified && "ring-amber-400/70",
+            )}
+            aria-hidden
+          />
+          <span className="text-xs font-semibold truncate text-white/90">
+            {stem.label}
+          </span>
+        </button>
+        {onResetStem && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onResetStem(stem.id);
+            }}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/40 hover:bg-white/10 hover:text-amber-200 transition"
+            aria-label={`Reset ${stem.label} channel`}
+            title="Reset channel"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       {/* ── Pitch ── */}
       <ControlSection label="Pitch" value={`${state.pitchSemitones > 0 ? "+" : ""}${state.pitchSemitones.toFixed(1)} st`}>
         <input
           type="range"
-          min={-3}
-          max={3}
-          step={0.1}
+          min={PITCH_MIN}
+          max={PITCH_MAX}
+          step={PITCH_STEP}
           value={state.pitchSemitones}
           disabled={!audioReady}
           onChange={(e) =>
@@ -137,13 +176,13 @@ export const ChannelStrip = memo(function ChannelStrip({
       {/* ── Tempo ── */}
       <ControlSection
         label="Tempo"
-        value={`${Math.round((1 / state.timeStretch - 1) * 100) >= 0 ? "+" : ""}${Math.round((1 / state.timeStretch - 1) * 100)}%`}
+        value={`${timeStretchToDisplayPercent(state.timeStretch) >= 0 ? "+" : ""}${timeStretchToDisplayPercent(state.timeStretch)}%`}
       >
         <input
           type="range"
-          min={0.85}
-          max={1.15}
-          step={0.01}
+          min={TIME_STRETCH_MIN}
+          max={TIME_STRETCH_MAX}
+          step={TIME_STRETCH_STEP}
           value={state.timeStretch}
           disabled={!audioReady}
           onChange={(e) =>
@@ -164,6 +203,7 @@ export const ChannelStrip = memo(function ChannelStrip({
       >
         {([
           { key: "eqLow" as const, label: "Lo" },
+          { key: "eqLowMid" as const, label: "LM" },
           { key: "eqMid" as const, label: "Mid" },
           { key: "eqHigh" as const, label: "Hi" },
         ]).map(({ key, label }) => (
@@ -191,10 +231,14 @@ export const ChannelStrip = memo(function ChannelStrip({
       {/* ── FX (collapsible) ── */}
       <CollapsibleSection title="FX" open={fxOpen} onToggle={() => setFxOpenPersist(!fxOpen)}>
         {([
+          { key: "warmth" as const, label: "Wrm", max: 100, unit: "%" },
+          { key: "presence" as const, label: "Pre", min: -12, max: 12, step: 0.5, unit: "dB" },
           { key: "reverbWet" as const, label: "Rev", max: 100, unit: "%" },
           { key: "delayWet" as const, label: "Dly", max: 100, unit: "%" },
           { key: "compThreshold" as const, label: "Thr", min: -60, max: 0, unit: "dB" },
           { key: "compRatio" as const, label: "Rat", min: 1, max: 20, step: 0.5, unit: ":1" },
+          { key: "compAttackMs" as const, label: "Atk", min: 1, max: 200, unit: "ms" },
+          { key: "compReleaseMs" as const, label: "Rel", min: 10, max: 1000, step: 10, unit: "ms" },
         ]).map(({ key, label, min = 0, max, step = 1, unit }) => (
           <div key={key} className="flex items-center gap-1.5">
             <span className="w-6 text-[9px] text-white/40 shrink-0">{label}</span>
@@ -207,7 +251,16 @@ export const ChannelStrip = memo(function ChannelStrip({
               disabled={!audioReady}
               onChange={(e) => updateMixer({ [key]: Number(e.target.value) })}
               onDoubleClick={() =>
-                updateMixer({ [key]: key === "compRatio" ? 1 : 0 })
+                updateMixer({
+                  [key]:
+                    key === "compRatio"
+                      ? 1
+                      : key === "compAttackMs"
+                        ? 10
+                        : key === "compReleaseMs"
+                          ? 100
+                          : 0,
+                })
               }
               className="stem-accent-slider min-w-0 flex-1"
               aria-label={`${stem.label} ${label}`}

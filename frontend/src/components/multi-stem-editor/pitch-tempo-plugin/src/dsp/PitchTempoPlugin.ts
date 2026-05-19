@@ -17,19 +17,28 @@ import { PITCH_TEMPO_PROCESSOR_CODE, PITCH_TEMPO_PROCESSOR_NAME } from './pitchT
 //  Parameter metadata (UI contract)
 // ─────────────────────────────────────────────────────────────────
 
+import {
+  PITCH_MIN,
+  PITCH_MAX,
+  PITCH_STEP,
+  TEMPO_RATIO_MIN,
+  TEMPO_RATIO_MAX,
+  TIME_STRETCH_STEP,
+} from "../../../../../constants/mixerRanges";
+
 export const PARAM_META = {
   pitchSemitones: {
-    min: -3,
-    max: 3,
-    step: 0.1,
+    min: PITCH_MIN,
+    max: PITCH_MAX,
+    step: PITCH_STEP,
     default: 0,
     units: 'semitones',
     label: 'Pitch',
   },
   tempoRatio: {
-    min: 0.85,
-    max: 1.15,
-    step: 0.01,
+    min: TEMPO_RATIO_MIN,
+    max: TEMPO_RATIO_MAX,
+    step: TIME_STRETCH_STEP,
     default: 1.0,
     units: 'ratio',
     label: 'Tempo',

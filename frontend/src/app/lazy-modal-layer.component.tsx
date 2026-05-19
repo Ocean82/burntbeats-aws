@@ -44,6 +44,7 @@ interface LazyModalLayerProps {
   mutedStems: Record<string, boolean>;
   pitchMap: Record<string, number>;
   timeStretchMap: Record<string, number>;
+  fadeMap: Record<string, { fadeIn: number; fadeOut: number }>;
   batchQueue: QueueItem[];
   batchQueueExpanded: boolean;
   setBatchQueueExpanded: React.Dispatch<React.SetStateAction<boolean>>;
@@ -80,6 +81,7 @@ export function LazyModalLayer({
   mutedStems,
   pitchMap,
   timeStretchMap,
+  fadeMap,
   batchQueue,
   batchQueueExpanded,
   setBatchQueueExpanded,
@@ -131,6 +133,7 @@ export function LazyModalLayer({
               currentMutedStems={mutedStems}
               currentPitchMap={pitchMap}
               currentTimeStretchMap={timeStretchMap}
+              currentFadeMap={fadeMap}
             />
           </Suspense>
         ) : null}

@@ -81,14 +81,14 @@ describe('pitch-tempo-plugin-integration properties', () => {
       [fc.double({ min: 0.1, max: 5.0, noNaN: true })],
       { numRuns: 100 },
     )(
-      'tempo ratio values are clamped to [0.85, 1.15]',
+      'tempo ratio values are clamped to plugin PARAM_META range',
       (value) => {
         const clamped = Math.max(
           PARAM_META.tempoRatio.min,
           Math.min(PARAM_META.tempoRatio.max, value),
         );
-        expect(clamped).toBeGreaterThanOrEqual(0.85);
-        expect(clamped).toBeLessThanOrEqual(1.15);
+        expect(clamped).toBeGreaterThanOrEqual(PARAM_META.tempoRatio.min);
+        expect(clamped).toBeLessThanOrEqual(PARAM_META.tempoRatio.max);
       },
     );
   });

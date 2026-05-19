@@ -1,6 +1,7 @@
 import type { TrimState } from "../types";
 import type { StemId } from "../types";
 import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
+import { getMaxFadeSeconds } from "./fadeLimits";
 
 export function audioBufferToWav(buffer: AudioBuffer): Blob {
   const numChannels = buffer.numberOfChannels;
@@ -99,14 +100,10 @@ export function trimToSeconds(
 /**
  * Convert StemEditorState.timeStretch to plugin tempoRatio.
  *
- * timeStretch semantics: 1.0 = normal, 0.85 = 85% of original duration (faster), 1.15 = 115% (slower)
- * tempoRatio semantics: 1.0 = normal, 1.15 = 15% faster, 0.85 = 15% slower
+ * timeStretch semantics: 1.0 = normal, 0.5 = half duration (2× faster), 1.5 = 150% duration (slower)
+ * tempoRatio semantics: 1.0 = normal; tempoRatio = 1 / timeStretch
  *
- * Mapping: tempoRatio = 1 / timeStretch
- * - timeStretch 0.85 → tempoRatio 1/0.85 ≈ 1.176 (faster playback)
- * - timeStretch 1.15 → tempoRatio 1/1.15 ≈ 0.870 (slower playback)
- *
- * The plugin clamps to [0.85, 1.15] internally.
+ * Mapping: tempoRatio = 1 / timeStretch (see mixerRanges.ts for clamp bounds).
  */
 export function timeStretchToTempoRatio(timeStretch: number): number {
   if (timeStretch <= 0) return 1.0;
@@ -402,6 +399,12 @@ export function createStemDspChain(
   lowEQ.frequency.value = 200;
   lowEQ.gain.value = mixer.eqLow;
 
+  const lowMidEQ = ctx.createBiquadFilter();
+  lowMidEQ.type = "peaking";
+  lowMidEQ.frequency.value = 400;
+  lowMidEQ.Q.value = 1.2;
+  lowMidEQ.gain.value = mixer.eqLowMid ?? 0;
+
   const midEQ = ctx.createBiquadFilter();
   midEQ.type = "peaking";
   midEQ.frequency.value = 1000;
@@ -460,8 +463,8 @@ export function createStemDspChain(
     compressor.threshold.value = mixer.compThreshold;
     compressor.ratio.value = Math.max(1, mixer.compRatio);
     compressor.knee.value = 6;
-    compressor.attack.value = 0.003;
-    compressor.release.value = 0.25;
+    compressor.attack.value = Math.max(0.001, (mixer.compAttackMs ?? 10) / 1000);
+    compressor.release.value = Math.max(0.01, (mixer.compReleaseMs ?? 100) / 1000);
   }
 
   // --- Conditionally create reverb ---
@@ -492,7 +495,8 @@ export function createStemDspChain(
   // --- Wire dry path ---
   // gainNode → lowEQ → midEQ → highEQ → [warmth] → [presence] → [compressor] → panNode → widthNode → outputGain
   gainNode.connect(lowEQ);
-  lowEQ.connect(midEQ);
+  lowEQ.connect(lowMidEQ);
+  lowMidEQ.connect(midEQ);
   midEQ.connect(highEQ);
 
   // Post-EQ: warmth (parallel dry/wet saturation) → presence → compressor → pan
@@ -545,6 +549,7 @@ export function createStemDspChain(
   const update = (m: MixerState, g: number) => {
     gainNode.gain.value = g;
     lowEQ.gain.value = m.eqLow;
+    lowMidEQ.gain.value = m.eqLowMid ?? 0;
     midEQ.gain.value = m.eqMid;
     highEQ.gain.value = m.eqHigh;
     if (warmthShaper && warmthDryGain && warmthWetGain) {
@@ -559,6 +564,8 @@ export function createStemDspChain(
     if (compressor) {
       compressor.threshold.value = m.compThreshold;
       compressor.ratio.value = Math.max(1, m.compRatio);
+      compressor.attack.value = Math.max(0.001, (m.compAttackMs ?? 10) / 1000);
+      compressor.release.value = Math.max(0.01, (m.compReleaseMs ?? 100) / 1000);
     }
     panNode.pan.value = m.pan / 100;
     widthNode.setWidth(m.width);
@@ -591,6 +598,7 @@ export function createStemDspChain(
   const disconnect = () => {
     gainNode.disconnect();
     lowEQ.disconnect();
+    lowMidEQ.disconnect();
     midEQ.disconnect();
     highEQ.disconnect();
     warmthShaper?.disconnect();
@@ -695,9 +703,9 @@ export function createFadeEnvelopeNode(
     return fadeNode;
   }
 
-  // Clamp fades so they don't overlap (each gets at most half the duration)
-  const maxFadeIn = Math.min(fadeInSec, wallDuration * 0.5);
-  const maxFadeOut = Math.min(fadeOutSec, wallDuration - maxFadeIn);
+  const fadeCap = getMaxFadeSeconds(wallDuration);
+  const maxFadeIn = Math.min(fadeInSec, fadeCap, wallDuration);
+  const maxFadeOut = Math.min(fadeOutSec, fadeCap, Math.max(0, wallDuration - maxFadeIn));
 
   // Remaining wall time from current position
   const remainingWall = wallDuration - elapsedWall;

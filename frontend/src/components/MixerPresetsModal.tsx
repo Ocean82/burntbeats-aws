@@ -13,6 +13,7 @@ export interface MixerPreset {
   mutedStems: Record<string, boolean>;
   pitchMap: Record<string, number>;
   timeStretchMap: Record<string, number>;
+  fadeMap?: Record<string, { fadeIn: number; fadeOut: number }>;
 }
 
 interface MixerPresetsModalProps {
@@ -24,6 +25,7 @@ interface MixerPresetsModalProps {
   currentMutedStems: Record<string, boolean>;
   currentPitchMap: Record<string, number>;
   currentTimeStretchMap: Record<string, number>;
+  currentFadeMap: Record<string, { fadeIn: number; fadeOut: number }>;
 }
 
 const PRESETS_STORAGE_KEY = "burnt-beats-mixer-presets";
@@ -91,6 +93,7 @@ export function MixerPresetsModal({
   currentMutedStems,
   currentPitchMap,
   currentTimeStretchMap,
+  currentFadeMap,
 }: MixerPresetsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(isOpen, modalRef, onClose);
@@ -129,6 +132,7 @@ export function MixerPresetsModal({
       mutedStems: currentMutedStems,
       pitchMap: currentPitchMap,
       timeStretchMap: currentTimeStretchMap,
+      fadeMap: currentFadeMap,
     };
 
     const customPresets = presets.filter((p) => p.id.startsWith("custom-"));

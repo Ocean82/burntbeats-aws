@@ -1,5 +1,7 @@
 import { Download, HelpCircle, Play, RotateCcw, Square, Sliders, RefreshCw, AlertTriangle, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import type { StemDefinition } from "../types";
 import type { StemEditorState } from "../stem-editor-state";
 import type { BeatGridMetadata } from "../api";
@@ -25,6 +27,7 @@ export interface MixerPanelProps {
   onCompareExport?: () => void;
   isComparingExport?: boolean;
   onResetLevels: () => void;
+  onResetSingleStem?: (stemId: string) => void;
   hasStemBuffers: boolean;
   stems: StemDefinition[];
   waveforms: Record<string, number[]>;
@@ -72,6 +75,7 @@ export function MixerPanel({
   onCompareExport,
   isComparingExport,
   onResetLevels,
+  onResetSingleStem,
   hasStemBuffers,
   stems,
   waveforms,
@@ -102,6 +106,7 @@ export function MixerPanel({
   onLoopToggle,
 }: MixerPanelProps) {
   const { mode } = useLayoutMode();
+  const reduceMotion = useReducedMotion();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [masterMuted, setMasterMuted] = useState(false);
   const preMuteVolumeRef = useRef(masterVolume);
@@ -376,7 +381,15 @@ export function MixerPanel({
         </div>
       )}
 
+      <AnimatePresence mode="wait">
       {mode === "dj" ? (
+        <motion.div
+          key="dj"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={reduceMotion ? undefined : { opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2 }}
+        >
         <DjModeEditor
           stems={stems}
           waveforms={waveforms}
@@ -416,7 +429,15 @@ export function MixerPanel({
           getMasterAnalyserTimeDomainDataLeft={getMasterAnalyserTimeDomainDataLeft}
           getMasterAnalyserTimeDomainDataRight={getMasterAnalyserTimeDomainDataRight}
         />
+        </motion.div>
       ) : (
+        <motion.div
+          key="classic"
+          initial={reduceMotion ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={reduceMotion ? undefined : { opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2 }}
+        >
         <MultiStemEditor
           stems={stems}
           splitStemCount={splitStemCount}
@@ -446,8 +467,11 @@ export function MixerPanel({
           beatGrid={beatGrid}
           loopEnabled={loopEnabled}
           onLoopToggle={onLoopToggle}
+          onResetSingleStem={onResetSingleStem}
         />
+        </motion.div>
       )}
+      </AnimatePresence>
     </>
   );
 }

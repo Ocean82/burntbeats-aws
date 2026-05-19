@@ -42,6 +42,7 @@ interface MixerWorkspaceProps {
   isComparingExport: boolean;
   onCompareExport?: () => void;
   onResetLevels: () => void;
+  onResetSingleStem?: (stemId: string) => void;
   hasStemBuffers: boolean;
   stems: StemWithOptionalUrl[];
   waveforms: Record<string, number[]>;
@@ -107,6 +108,7 @@ export function MixerWorkspace({
   isComparingExport,
   onCompareExport,
   onResetLevels,
+  onResetSingleStem,
   hasStemBuffers,
   stems,
   waveforms,
@@ -370,6 +372,7 @@ export function MixerWorkspace({
           isComparingExport={isComparingExport}
           onCompareExport={onCompareExport}
           onResetLevels={onResetLevels}
+          onResetSingleStem={onResetSingleStem}
           hasStemBuffers={hasStemBuffers}
           stems={stems}
           waveforms={waveforms}

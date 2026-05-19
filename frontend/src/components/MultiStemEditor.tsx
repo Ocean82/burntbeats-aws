@@ -8,6 +8,7 @@ import {
   useState,
   type SetStateAction,
 } from "react";
+import { motion } from "framer-motion";
 import {
   Activity,
   Grid,
@@ -22,11 +23,22 @@ import {
   X,
   ZoomIn,
   ZoomOut,
+  Copy,
+  ChevronDown,
 } from "lucide-react";
 
 import type { StemDefinition, TrimState } from "../types";
 import type { BeatGridMetadata } from "../api";
 import { cn } from "../utils/cn";
+import {
+  PITCH_MIN,
+  PITCH_MAX,
+  PITCH_STEP,
+  TIME_STRETCH_MIN,
+  TIME_STRETCH_MAX,
+  TIME_STRETCH_STEP,
+  timeStretchToDisplayPercent,
+} from "../constants/mixerRanges";
 import { useTimelineViewport } from "../hooks/useTimelineViewport";
 import { usePinchZoom } from "../hooks/usePinchZoom";
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
@@ -37,6 +49,15 @@ import { StemTabs } from "./multi-stem-editor/stem-tabs.component";
 import { StemControls } from "./multi-stem-editor/stem-controls.component";
 import { MixerConsole } from "./multi-stem-editor/mixer-console.component";
 import { MixerStrips } from "./multi-stem-editor/mixer-strips.component";
+import {
+  TimelineScrollControl,
+  scrollPctToCenterPlayhead,
+} from "./multi-stem-editor/TimelineScrollControl";
+import {
+  applyMixerToAllStems,
+  type CopySettingsScope,
+} from "../utils/copyStemSettings";
+import { isStemModified } from "../utils/isStemModified";
 import {
   installTimelinePerformanceDebugHooks,
   isTimelinePerformanceEnabled,
@@ -77,7 +98,10 @@ export interface MultiStemEditorProps {
   loopEnabled?: boolean;
   /** Callback to toggle loop playback. */
   onLoopToggle?: (enabled: boolean) => void;
+  onResetSingleStem?: (stemId: string) => void;
 }
+
+const MIXER_STRIPS_KEY = "bb-prefer-mixer-strips";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -111,13 +135,19 @@ export function MultiStemEditor({
   getStemAnalyserTimeDomainData,
   loopEnabled = false,
   onLoopToggle,
+  onResetSingleStem,
 }: MultiStemEditorProps) {
   const [activePanel, setActivePanel] = useState<
     "pitch" | "eq" | "amplitude" | "time" | "fx" | null
   >(null);
   const [mixerConsoleOpen, setMixerConsoleOpen] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
-  const [showMixerStrips, setShowMixerStrips] = useState(false);
+  const [showMixerStrips, setShowMixerStrips] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(MIXER_STRIPS_KEY) === "1";
+  });
+  const [copyMenuOpen, setCopyMenuOpen] = useState(false);
+  const [channelsSummaryOpen, setChannelsSummaryOpen] = useState(true);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
     stems[0]?.id ?? null,
   );
@@ -263,6 +293,52 @@ export function MultiStemEditor({
     [onSeek, isPlaying],
   );
 
+  useEffect(() => {
+    if (stems.length === 0 || !playbackReady) return;
+    if (localStorage.getItem(MIXER_STRIPS_KEY) !== null) return;
+    setShowMixerStrips(true);
+    localStorage.setItem(MIXER_STRIPS_KEY, "1");
+  }, [stems.length, playbackReady]);
+
+  const toggleMixerStrips = useCallback(() => {
+    setShowMixerStrips((v) => {
+      const next = !v;
+      localStorage.setItem(MIXER_STRIPS_KEY, next ? "1" : "0");
+      return next;
+    });
+  }, []);
+
+  const centerPlayhead = useCallback(() => {
+    setScrollPct(scrollPctToCenterPlayhead(playheadPct, zoom, maxScrollPct));
+  }, [playheadPct, zoom, maxScrollPct, setScrollPct]);
+
+  const handleCopySettings = useCallback(
+    (scope: CopySettingsScope) => {
+      setCopyMenuOpen(false);
+      const sourceId = resolvedActiveStemId;
+      if (!sourceId) return;
+      const ids = stems.map((s) => s.id);
+      const modifiedCount = ids.filter(
+        (id) =>
+          id !== sourceId &&
+          isStemModified(stemStates[id] ?? defaultStemState()),
+      ).length;
+      if (
+        modifiedCount > 0 &&
+        !window.confirm(`Overwrite ${modifiedCount} modified channel(s)?`)
+      ) {
+        return;
+      }
+      const next = applyMixerToAllStems(sourceId, stemStates, ids, { scope });
+      for (const id of ids) {
+        if (id === sourceId && scope !== "all") continue;
+        const patch = next[id];
+        if (patch) onStemStateChange(id, patch);
+      }
+    },
+    [resolvedActiveStemId, stems, stemStates, onStemStateChange],
+  );
+
   if (stems.length === 0) return null;
 
   return (
@@ -326,31 +402,47 @@ export function MultiStemEditor({
         </div>
 
         {shouldRenderBeatGrid(beatGrid) && (
-          <button
-            type="button"
-            onClick={() => setShowBeatGrid((v) => !v)}
-            aria-label="Toggle beat grid"
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
-              showBeatGrid
-                ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
-                : "border-white/10 bg-white/5 text-white/60 hover:text-white",
-            )}
-          >
-            <Grid className="h-3.5 w-3.5" />
-            Beat Grid
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => setShowBeatGrid((v) => !v)}
+              aria-label="Toggle beat grid"
+              className={cn(
+                "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
+                showBeatGrid
+                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
+                  : "border-white/10 bg-white/5 text-white/60 hover:text-white",
+              )}
+            >
+              <Grid className="h-3.5 w-3.5" />
+              Beat Grid
+            </button>
+            <span
+              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] tabular-nums text-white/55"
+              title={
+                beatGrid && beatGrid.confidence < 0.7
+                  ? `BPM confidence ${Math.round(beatGrid.confidence * 100)}%`
+                  : undefined
+              }
+            >
+              ♩ {Math.round(beatGrid!.bpm)} BPM
+              {beatGrid && beatGrid.confidence < 0.7 && (
+                <span className="ml-1 text-white/35">~</span>
+              )}
+            </span>
+          </>
         )}
 
         <button
           type="button"
-          onClick={() => setShowMixerStrips((v) => !v)}
+          onClick={toggleMixerStrips}
           aria-label="Toggle mixer strips view"
           className={cn(
             "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
             showMixerStrips
               ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
               : "border-white/10 bg-white/5 text-white/60 hover:text-white",
+            playbackReady && !showMixerStrips && "animate-pulse",
           )}
         >
           <LayoutList className="h-3.5 w-3.5" />
@@ -358,15 +450,13 @@ export function MultiStemEditor({
         </button>
 
         {zoom > 1 && (
-          <input
-            type="range"
-            min={0}
-            max={maxScrollPct}
-            step={0.5}
-            value={scrollPct}
-            onChange={(e) => setScrollPct(Number(e.target.value))}
-            className="w-32"
-            aria-label="Scroll timeline"
+          <TimelineScrollControl
+            scrollPct={scrollPct}
+            maxScrollPct={maxScrollPct}
+            zoom={zoom}
+            playheadPct={playheadPct}
+            onScrollChange={setScrollPct}
+            onCenterPlayhead={centerPlayhead}
           />
         )}
 
@@ -474,14 +564,50 @@ export function MultiStemEditor({
               </button>
             </div>
 
-            <div className="flex flex-col gap-5 p-4">
+            <div className="border-b border-white/10">
+              <button
+                type="button"
+                onClick={() => setChannelsSummaryOpen((o) => !o)}
+                className="flex w-full items-center justify-between px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/45"
+                aria-expanded={channelsSummaryOpen}
+              >
+                All channels
+                <ChevronDown className={cn("h-3.5 w-3.5", channelsSummaryOpen && "rotate-180")} />
+              </button>
+              {channelsSummaryOpen && (
+                <ul className="max-h-28 space-y-0.5 overflow-y-auto px-2 pb-2">
+                  {stems.map((s) => {
+                    const st = stemStates[s.id] ?? defaultStemState();
+                    return (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveStemId(s.id)}
+                          className={cn(
+                            "flex w-full gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] hover:bg-white/5",
+                            s.id === resolvedActiveStemId && "bg-amber-500/10",
+                          )}
+                        >
+                          <span className="truncate flex-1">{s.label}</span>
+                          <span className="font-mono text-[9px] text-white/40">
+                            {st.mixer.gain.toFixed(0)}dB
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <motion.div layout className="flex flex-col gap-5 p-4">
               {activePanel === "pitch" && (
                 <div className="space-y-4">
                   <input
                     type="range"
-                    min={-3}
-                    max={3}
-                    step={0.1}
+                    min={PITCH_MIN}
+                    max={PITCH_MAX}
+                    step={PITCH_STEP}
                     value={activeState.pitchSemitones}
                     onChange={(e) =>
                       onStemStateChange(activeStem.id, {
@@ -507,6 +633,7 @@ export function MultiStemEditor({
                 <div className="space-y-3">
                   {([
                     { key: "eqLow" as const, label: "Low", freq: "200 Hz" },
+                    { key: "eqLowMid" as const, label: "Low-Mid", freq: "400 Hz" },
                     { key: "eqMid" as const, label: "Mid", freq: "1 kHz" },
                     { key: "eqHigh" as const, label: "High", freq: "6 kHz" },
                   ]).map(({ key, label, freq }) => (
@@ -583,9 +710,9 @@ export function MultiStemEditor({
                 <div className="space-y-4">
                   <input
                     type="range"
-                    min={0.85}
-                    max={1.15}
-                    step={0.01}
+                    min={TIME_STRETCH_MIN}
+                    max={TIME_STRETCH_MAX}
+                    step={TIME_STRETCH_STEP}
                     value={activeState.timeStretch}
                     onChange={(e) =>
                       onStemStateChange(activeStem.id, {
@@ -599,8 +726,8 @@ export function MultiStemEditor({
                     aria-label={`${activeStem.label} tempo`}
                   />
                   <p className="text-center text-xs text-white/60">
-                    {Math.round((1 / activeState.timeStretch - 1) * 100) >= 0 ? "+" : ""}
-                    {Math.round((1 / activeState.timeStretch - 1) * 100)}%
+                    {timeStretchToDisplayPercent(activeState.timeStretch) >= 0 ? "+" : ""}
+                    {timeStretchToDisplayPercent(activeState.timeStretch)}%
                   </p>
                   <p className="text-center text-[9px] text-white/30">
                     Double-click to reset
@@ -609,6 +736,69 @@ export function MultiStemEditor({
               )}
               {activePanel === "fx" && (
                 <div className="space-y-4">
+                  <motion.div layout className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Warmth
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.warmth}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={activeState.mixer.warmth}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, warmth: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, warmth: 0 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} warmth`}
+                    />
+                    <p className="text-[9px] text-white/30">Harmonic saturation for body and glue</p>
+                  </motion.div>
+
+                  <motion.div layout className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Presence
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.presence > 0 ? "+" : ""}
+                        {activeState.mixer.presence.toFixed(1)} dB
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-12}
+                      max={12}
+                      step={0.5}
+                      value={activeState.mixer.presence}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, presence: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, presence: 0 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} presence`}
+                    />
+                    <p className="text-[9px] text-white/30">Air and clarity around 10 kHz</p>
+                  </motion.div>
+
                   {/* Reverb */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -733,9 +923,110 @@ export function MultiStemEditor({
                     />
                   </div>
 
+                  <motion.div layout className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Comp Attack
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.compAttackMs} ms
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={200}
+                      step={1}
+                      value={activeState.mixer.compAttackMs}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compAttackMs: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compAttackMs: 10 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} compressor attack`}
+                    />
+                  </motion.div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                        Comp Release
+                      </span>
+                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        {activeState.mixer.compReleaseMs} ms
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={1000}
+                      step={10}
+                      value={activeState.mixer.compReleaseMs}
+                      onChange={(e) =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compReleaseMs: Number(e.target.value) },
+                        })
+                      }
+                      onDoubleClick={() =>
+                        onStemStateChange(activeStem.id, {
+                          mixer: { ...activeState.mixer, compReleaseMs: 100 },
+                        })
+                      }
+                      className="stem-accent-slider w-full"
+                      aria-label={`${activeStem.label} compressor release`}
+                    />
+                  </div>
+
                   <p className="text-center text-[9px] text-white/30 pt-1">
                     Double-click to reset
                   </p>
+                </div>
+              )}
+            </motion.div>
+
+            <div className="relative border-t border-white/10 p-3">
+              <button
+                type="button"
+                onClick={() => setCopyMenuOpen((o) => !o)}
+                className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 hover:border-amber-400/30 hover:text-amber-100 transition"
+                aria-expanded={copyMenuOpen}
+                aria-haspopup="menu"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy settings
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5", copyMenuOpen && "rotate-180")}
+                />
+              </button>
+              {copyMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute bottom-full left-3 right-3 mb-1 rounded-lg border border-white/10 bg-black/95 py-1 shadow-lg"
+                >
+                  {(
+                    [
+                      ["all", "Apply to all"],
+                      ["eq", "Copy EQ"],
+                      ["fx", "Copy FX"],
+                      ["pitchTime", "Copy pitch/time"],
+                    ] as const
+                  ).map(([scope, label]) => (
+                    <button
+                      key={scope}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleCopySettings(scope)}
+                      className="block w-full px-3 py-2 text-left text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -765,6 +1056,7 @@ export function MultiStemEditor({
       {/* ── Mixer Strips View ── */}
       {showMixerStrips && (
         <MixerStrips
+          onResetSingleStem={onResetSingleStem}
           stems={stems}
           stemLayout={splitStemCount}
           stemStates={stemStates}

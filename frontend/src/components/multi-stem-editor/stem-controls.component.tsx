@@ -9,6 +9,7 @@ import type { StemDefinition } from "../../types";
 import { cn } from "../../utils/cn";
 import { channelMuteSoloButtonClass } from "./mixer-channel-controls";
 import type { StemEditorState } from "../../stem-editor-state";
+import { getMaxFadeSeconds } from "../../utils/fadeLimits";
 
 const MIN_TRIM_GAP_PCT = 2;
 
@@ -46,6 +47,7 @@ export const StemControls = memo(function StemControls({
 
   const trimStartSec = duration * (trim.start / 100);
   const trimEndSec = duration * (trim.end / 100);
+  const maxFadeSec = getMaxFadeSeconds(duration);
 
   const updateMixer = useCallback(
     (patch: Partial<typeof mixer>) =>
@@ -181,7 +183,7 @@ export const StemControls = memo(function StemControls({
             <input
               type="range"
               min={0}
-              max={5}
+              max={maxFadeSec}
               step={0.1}
               value={state.fadeIn ?? 0}
               disabled={!audioReady}
@@ -198,7 +200,7 @@ export const StemControls = memo(function StemControls({
             <input
               type="range"
               min={0}
-              max={5}
+              max={maxFadeSec}
               step={0.1}
               value={state.fadeOut ?? 0}
               disabled={!audioReady}

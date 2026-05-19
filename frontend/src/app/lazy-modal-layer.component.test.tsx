@@ -22,6 +22,7 @@ describe("LazyModalLayer", () => {
         mutedStems={{}}
         pitchMap={{}}
         timeStretchMap={{}}
+        fadeMap={{}}
         batchQueue={[]}
         batchQueueExpanded={false}
         setBatchQueueExpanded={vi.fn()}

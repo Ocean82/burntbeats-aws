@@ -22,6 +22,8 @@ export type MixerState = {
   width: number;
   /** Low-shelf EQ gain in dB (-12 to +12). */
   eqLow: number;
+  /** Peaking EQ gain in dB at ~400 Hz (-12 to +12). */
+  eqLowMid: number;
   /** Peaking EQ gain in dB at ~1kHz (-12 to +12). */
   eqMid: number;
   /** High-shelf EQ gain in dB (-12 to +12). */
@@ -38,6 +40,10 @@ export type MixerState = {
   compThreshold: number;
   /** Compressor ratio (1–20). */
   compRatio: number;
+  /** Compressor attack in ms (1–200). */
+  compAttackMs: number;
+  /** Compressor release in ms (10–1000). */
+  compReleaseMs: number;
 };
 
 export type TrimState = {
@@ -46,11 +52,13 @@ export type TrimState = {
 };
 
 export const defaultTrim: TrimState = { start: 0, end: 100 };
+
 export const defaultMixer: MixerState = {
   gain: 0,
   pan: 0,
   width: 100,
   eqLow: 0,
+  eqLowMid: 0,
   eqMid: 0,
   eqHigh: 0,
   warmth: 0,
@@ -59,4 +67,11 @@ export const defaultMixer: MixerState = {
   delayWet: 0,
   compThreshold: 0,
   compRatio: 1,
+  compAttackMs: 10,
+  compReleaseMs: 100,
 };
+
+/** Merge partial mixer state with defaults (backward-compatible presets/saves). */
+export function mergeMixerState(partial?: Partial<MixerState>): MixerState {
+  return { ...defaultMixer, ...partial };
+}

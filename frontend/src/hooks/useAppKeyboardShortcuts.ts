@@ -76,18 +76,31 @@ export function useAppKeyboardShortcuts({
     [visibleStems, setStemStates],
   );
 
-  const setMuteFirst = useCallback(() => {
-    const id = visibleStems[0]?.id;
-    if (id) {
-      setStemStates((current) => ({
-        ...current,
-        [id]: {
-          ...(current[id] ?? defaultStemState()),
-          muted: !current[id]?.muted,
-        },
-      }));
-    }
-  }, [visibleStems, setStemStates]);
+  const toggleMuteActive = useCallback(() => {
+    if (!resolvedActiveStemId) return;
+    setStemStates((current) => ({
+      ...current,
+      [resolvedActiveStemId]: {
+        ...(current[resolvedActiveStemId] ?? defaultStemState()),
+        muted: !current[resolvedActiveStemId]?.muted,
+      },
+    }));
+  }, [resolvedActiveStemId, setStemStates]);
+
+  const toggleSoloActive = useCallback(() => {
+    if (!resolvedActiveStemId) return;
+    setStemStates((current) => {
+      const wasSoloed = current[resolvedActiveStemId]?.soloed;
+      const next = { ...current };
+      for (const id of Object.keys(next)) {
+        next[id] = {
+          ...(next[id] ?? defaultStemState()),
+          soloed: id === resolvedActiveStemId ? !wasSoloed : false,
+        };
+      }
+      return next;
+    });
+  }, [resolvedActiveStemId, setStemStates]);
 
   const shortcutHandlers: ShortcutHandlers = useMemo(() => {
     const TRIM_STEP = 1;
@@ -126,7 +139,8 @@ export function useAppKeyboardShortcuts({
       solo2: () => setSoloAtIndex(1),
       solo3: () => setSoloAtIndex(2),
       solo4: () => setSoloAtIndex(3),
-      muteToggle: setMuteFirst,
+      muteToggle: toggleMuteActive,
+      soloToggle: toggleSoloActive,
       loopToggle: () => setLoopEnabled(!loopEnabled),
       export: () => {
         if (mixStems.length > 0) {
@@ -159,7 +173,8 @@ export function useAppKeyboardShortcuts({
     redoStemStates,
     resolvedActiveStemId,
     setLoopEnabled,
-    setMuteFirst,
+    toggleMuteActive,
+    toggleSoloActive,
     setSoloAtIndex,
     setStemStates,
     showExportModal,

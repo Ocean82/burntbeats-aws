@@ -24,6 +24,7 @@ interface UseMixerWorkspaceReturn {
   handleStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   handlePreviewStemFromMixer: (stemId: string) => void;
   resetTrackAdjustments: () => void;
+  resetSingleStem: (stemId: string) => void;
 }
 
 export function useMixerWorkspace({
@@ -81,22 +82,37 @@ export function useMixerWorkspace({
     void handlePreviewStem(stemId, stemUrl, stemBuffers, setStemBuffers, stemStates);
   }, [mixStems, stemStates, handlePreviewStem, stemBuffers, setStemBuffers]);
 
+  const resetStemProcessing = useCallback((stemId: string, current: Record<string, StemEditorState>) => {
+    const prev = current[stemId] ?? defaultStemState();
+    return {
+      ...prev,
+      trim: { ...defaultTrim },
+      mixer: { ...defaultMixer },
+      rate: 1.0,
+      pitchSemitones: 0,
+      timeStretch: 1.0,
+    };
+  }, []);
+
   const resetTrackAdjustments = useCallback(() => {
     setStemStates((current) => {
       const next = { ...current };
       for (const stemId of Object.keys(next)) {
-        next[stemId] = {
-          ...next[stemId],
-          trim: { ...defaultTrim },
-          mixer: { ...defaultMixer },
-          rate: 1.0,
-          pitchSemitones: 0,
-          timeStretch: 1.0,
-        };
+        next[stemId] = resetStemProcessing(stemId, current);
       }
       return next;
     });
-  }, [setStemStates]);
+  }, [setStemStates, resetStemProcessing]);
+
+  const resetSingleStem = useCallback(
+    (stemId: string) => {
+      setStemStates((current) => ({
+        ...current,
+        [stemId]: resetStemProcessing(stemId, current),
+      }));
+    },
+    [setStemStates, resetStemProcessing],
+  );
 
   const mixIds = useMemo(() => mixStems.map((s) => s.id).join(","), [mixStems]);
 
@@ -115,5 +131,6 @@ export function useMixerWorkspace({
     handleStemStateChange,
     handlePreviewStemFromMixer,
     resetTrackAdjustments,
+    resetSingleStem,
   };
 }
