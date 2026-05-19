@@ -1,6 +1,6 @@
 import { API_BASE, MAX_UPLOAD_BYTES } from "../config";
 import { authHeaders, setJobToken, jobTokenHeader } from "./auth";
-import { tryParseJson, getApiErrorMessage, isAcceptedJobIdResponse } from "./validation";
+import { tryParseJson, getApiErrorMessage, isAcceptedJobIdResponse, isRecord } from "./validation";
 import { userFacingApiError, userFacingHttpError } from "../userFacingError";
 import { uploadWithProgress, type UploadProgressEvent } from "../utils/uploadWithProgress";
 import { pollSpeechJobUntilDone } from "./speechJobStatus";
@@ -63,10 +63,6 @@ export async function startSpeechEnhance(
     };
   }
   throw new Error("Unexpected response from speech enhance");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 export async function enhanceSpeech(

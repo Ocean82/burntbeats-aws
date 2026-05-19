@@ -58,16 +58,30 @@ enhanceRouter.post(
     let usageCost = 0;
 
     try {
-      const sniff = await verifyUploadMatchesExtension(filePath, req.file.originalname);
+      const declaredExt =
+        path.extname(req.file.originalname || "").toLowerCase() ||
+        path.extname(filePath).toLowerCase();
+      const sniff = verifyUploadMatchesExtension(filePath, declaredExt);
       if (!sniff.ok) {
-        return res.status(415).json({ error: sniff.error || "Invalid audio file" });
+        return res.status(415).json({ error: sniff.message || "Invalid audio file" });
       }
-      await scanUploadedFile(filePath);
+
+      const scanResult = await scanUploadedFile(filePath);
+      if (!scanResult.ok) {
+        if (scanResult.threat) {
+          return res.status(422).json({
+            error: "File did not pass security screening. Please use a different audio file.",
+          });
+        }
+        return res.status(503).json({
+          error: "Security screening is temporarily unavailable. Please try again later.",
+        });
+      }
 
       if (isUsageTokensEnabled()) {
+        usageUserId = /** @type {any} */ (req)._usageUserId || null;
         const durationSec = await getAudioDurationSeconds(filePath);
         usageCost = computeSplitCost(durationSec);
-        usageUserId = req.auth?.userId || null;
         if (usageUserId && usageCost > 0) {
           await reserveUsageTokens(usageUserId, usageCost);
           usageReserved = true;
