@@ -20,6 +20,8 @@ export const ALLOWED_AUDIO_MIMES = new Set([
   "audio/x-m4a",
   "audio/aac",
   "audio/x-aac",
+  "audio/webm",
+  "video/webm", // some browsers tag webm audio as video/webm
   "video/mp4", // some encoders tag m4a as video/mp4
 ]);
 
@@ -30,6 +32,7 @@ export const ALLOWED_AUDIO_EXTS = new Set([
   ".ogg",
   ".m4a",
   ".aac",
+  ".webm",
 ]);
 
 // Stream uploads to disk (multer → UPLOAD_TMP_DIR under os.tmpdir()), not whole-file RAM buffering.
@@ -60,7 +63,7 @@ export const upload = multer({
       return cb(
         Object.assign(
           new Error(
-            "Only audio files are accepted (mp3, wav, flac, ogg, m4a, aac).",
+            "Only audio files are accepted (mp3, wav, flac, ogg, m4a, aac, webm).",
           ),
           { code: "INVALID_FILE_TYPE" },
         ),
