@@ -2,10 +2,14 @@ import { Upload, Music2, Sparkles } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { ALLOWED_AUDIO_FORMATS_LABEL } from "../../config";
 import { useIsTouchDevice } from "../../hooks/useIsTouchDevice";
+import { formatUploadMeta } from "../../utils/formatFileMeta";
 
 export interface UploadDropZoneProps {
   uploadName: string;
   uploadedFile: File | null;
+  durationSec?: number | null;
+  estimatedTokens?: number | null;
+  isSample?: boolean;
   onBrowseUpload: () => void;
   onClearUpload: () => void;
   onDropUpload: (file: File | null) => void;
@@ -17,6 +21,9 @@ export interface UploadDropZoneProps {
 export function UploadDropZone({
   uploadName,
   uploadedFile,
+  durationSec = null,
+  estimatedTokens = null,
+  isSample = false,
   onBrowseUpload,
   onClearUpload,
   onDropUpload,
@@ -24,6 +31,12 @@ export function UploadDropZone({
   onSetIsDragging,
 }: UploadDropZoneProps) {
   const isTouchDevice = useIsTouchDevice();
+  const metaLine = formatUploadMeta({
+    sizeBytes: uploadedFile?.size,
+    durationSec,
+    estimatedTokens,
+    isSample,
+  });
 
   if (!uploadedFile) {
     return (
@@ -92,6 +105,7 @@ export function UploadDropZone({
   return (
     <div
       data-testid="split-upload-dropzone"
+      data-tour="upload-dropzone"
       role="region"
       aria-label="Upload drop zone — drag a new file here to replace"
       onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
@@ -108,9 +122,23 @@ export function UploadDropZone({
       )}
     >
       <Upload className="h-4 w-4 shrink-0 text-white/50" strokeWidth={2} />
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
-        {uploadName}
-      </span>
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-white">
+          {uploadName}
+        </span>
+        {metaLine ? (
+          <span
+            className="mt-0.5 block truncate text-xs tabular-nums text-white/50"
+            aria-label={`File details: ${metaLine}`}
+          >
+            {metaLine}
+          </span>
+        ) : (
+          <span className="mt-0.5 block h-4 text-xs text-white/30" aria-hidden>
+            Reading file info…
+          </span>
+        )}
+      </div>
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <button
           type="button"

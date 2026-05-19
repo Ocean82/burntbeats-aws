@@ -46,6 +46,8 @@ import type { SeekPhase } from "../types/playbackSeek";
 
 export interface MultiStemEditorProps {
   stems: StemDefinition[];
+  /** 2 or 4 when split result is loaded (for mixer layout badge). */
+  splitStemCount?: 2 | 4 | null;
   waveforms: Record<string, number[]>;
   durations: Record<string, number>;
   stemStates: Record<string, StemEditorState>;
@@ -88,6 +90,7 @@ function formatTime(seconds: number): string {
 
 export function MultiStemEditor({
   stems,
+  splitStemCount = null,
   waveforms,
   durations,
   stemStates,
@@ -763,6 +766,7 @@ export function MultiStemEditor({
       {showMixerStrips && (
         <MixerStrips
           stems={stems}
+          stemLayout={splitStemCount}
           stemStates={stemStates}
           activeStemId={resolvedActiveStemId}
           playbackReady={playbackReady}

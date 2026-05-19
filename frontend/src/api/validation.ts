@@ -60,7 +60,15 @@ export function isStemJobStatusValue(value: unknown): value is StemJobStatus {
   return true;
 }
 
-export function isAcceptedJobIdResponse(value: unknown): value is { job_id: string; status?: string; job_token?: string } {
+export function isAcceptedJobIdResponse(
+  value: unknown,
+): value is {
+  job_id: string;
+  status?: string;
+  job_token?: string;
+  output_url?: string;
+  status_url?: string;
+} {
   if (!isRecord(value)) return false;
   if (typeof value.job_id !== "string" || value.job_id.length === 0) return false;
   if (value.status !== undefined && typeof value.status !== "string") return false;

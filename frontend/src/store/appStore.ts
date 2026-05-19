@@ -24,6 +24,8 @@ export interface AppState {
   beatGrid: BeatGridMetadata | null;
   /** Queue position when job is waiting (1 = next to run, null = not queued). */
   queuePosition: number | null;
+  /** Elapsed processing seconds from job status (running state). */
+  splitElapsedSeconds: number | null;
   /** Master limiter toggle preference (UI state). */
   masterLimiterEnabled: boolean;
 
@@ -50,6 +52,7 @@ export const useAppStore = create<AppState>((set) => ({
   pipelineIndex: 0,
   beatGrid: null,
   queuePosition: null,
+  splitElapsedSeconds: null,
   masterLimiterEnabled: false,
 
   setUploadState: (update) =>

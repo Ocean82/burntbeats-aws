@@ -13,6 +13,8 @@ import { ChannelStrip } from "./channel-strip.component";
 
 export interface MixerStripsProps {
   stems: StemDefinition[];
+  /** When set, shows a layout hint above the strip row. */
+  stemLayout?: 2 | 4 | null;
   stemStates: Record<string, StemEditorState>;
   activeStemId: string;
   playbackReady: boolean;
@@ -26,8 +28,14 @@ export interface MixerStripsProps {
   onActiveStemChange: (stemId: string) => void;
 }
 
+const LAYOUT_LABELS: Record<2 | 4, string> = {
+  2: "Vocals + Instrumental",
+  4: "Full band — Drums · Bass · Other · Vocals",
+};
+
 export const MixerStrips = memo(function MixerStrips({
   stems,
+  stemLayout = null,
   stemStates,
   activeStemId,
   playbackReady,
@@ -43,6 +51,15 @@ export const MixerStrips = memo(function MixerStrips({
   if (stems.length === 0) return null;
 
   return (
+    <div className="w-full">
+      {stemLayout != null && (
+        <p className="mb-2 flex items-center gap-2 text-xs text-white/55">
+          <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200/90">
+            {stemLayout}-stem
+          </span>
+          {LAYOUT_LABELS[stemLayout]}
+        </p>
+      )}
     <div
       className="flex gap-2 overflow-x-auto overflow-y-visible pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10"
       role="region"
@@ -69,6 +86,7 @@ export const MixerStrips = memo(function MixerStrips({
           />
         );
       })}
+    </div>
     </div>
   );
 });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Music2, Settings2, RotateCcw } from "lucide-react";
+import { Music2, Settings2, RotateCcw, Sparkles } from "lucide-react";
+import { formatUploadMeta } from "../../utils/formatFileMeta";
 import { cn } from "../../utils/cn";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
 import type { ProcessingSettingsPanelProps } from "./types";
@@ -40,6 +41,8 @@ export function ProcessingSettingsPanel({
   uploadProgress = 0,
   isUploading = false,
   queuePosition = null,
+  splitElapsedSeconds = null,
+  uploadDurationSec = null,
   splitResultStemsLength,
   isExpanding,
   onExpand,
@@ -56,6 +59,7 @@ export function ProcessingSettingsPanel({
   estimatedExpandTokens = null,
   isCollapsed = false,
   onNewSplit,
+  onOpenWaitingGame,
 }: ProcessingSettingsPanelProps) {
   const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
   const [loadExpanded, setLoadExpanded] = useState(false);
@@ -65,6 +69,12 @@ export function ProcessingSettingsPanel({
   const [showNewSplitConfirm, setShowNewSplitConfirm] = useState(false);
 
   const panelCollapsed = isCollapsed && !userExpanded;
+  const collapsedMeta = formatUploadMeta({
+    sizeBytes: uploadedFile?.size,
+    durationSec: uploadDurationSec,
+    estimatedTokens: estimatedSplitTokens,
+    isSample,
+  });
 
   // When a new split completes (isCollapsed flips true), reset the user override
   // so the panel collapses cleanly for the new result.
@@ -111,9 +121,16 @@ export function ProcessingSettingsPanel({
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
                 <Music2 className="h-3.5 w-3.5 text-amber-400" />
               </div>
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white/90">
-                {uploadName || "Loaded stems"}
-              </span>
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-white/90">
+                  {uploadName || "Loaded stems"}
+                </span>
+                {collapsedMeta ? (
+                  <span className="mt-0.5 block truncate text-xs tabular-nums text-white/45">
+                    {collapsedMeta}
+                  </span>
+                ) : null}
+              </div>
               <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
                 {splitResultStemsLength} stems ready
               </span>
@@ -223,6 +240,9 @@ export function ProcessingSettingsPanel({
         <UploadDropZone
           uploadName={uploadName}
           uploadedFile={uploadedFile}
+          durationSec={uploadDurationSec}
+          estimatedTokens={estimatedSplitTokens}
+          isSample={isSample}
           onBrowseUpload={onBrowseUpload}
           onClearUpload={onClearUpload}
           onDropUpload={onDropUpload}
@@ -280,25 +300,56 @@ export function ProcessingSettingsPanel({
 
         {/* Split actions (split mode only) */}
         {sourceMode === "split" && (
-          <SplitActions
-            uploadedFile={uploadedFile}
-            requestedStemMode={requestedStemMode}
-            isSample={isSample}
-            onToggleSample={() => setIsSample((v) => !v)}
-            onSplit={onSplit}
-            isSplitting={isSplitting}
-            splitProgress={splitProgress}
-            uploadProgress={uploadProgress}
-            isUploading={isUploading}
-            queuePosition={queuePosition}
-            splitResultStemsLength={splitResultStemsLength}
-            isExpanding={isExpanding}
-            onExpand={onExpand}
-            canExpandToFourStems={canExpandToFourStems}
-            splitError={splitError}
-            canUseBatchQueue={canUseBatchQueue}
-            onAddToQueue={onAddToQueue}
-          />
+          <>
+            {subscriptionInactive && !isSample && splitResultStemsLength === 0 && (
+              <motion.div className="mb-3 w-full rounded-xl border border-emerald-400/40 bg-gradient-to-r from-emerald-950/50 to-emerald-900/20 px-4 py-3.5 shadow-[0_0_24px_rgba(52,211,153,0.12)]">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden />
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-50">
+                        Try a 60-second preview — no plan required
+                      </p>
+                      <p className="mt-0.5 text-xs text-emerald-200/65">
+                        Hear the quality before you subscribe. Uses the first minute of your track only.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSample(true)}
+                    disabled={isSplitting}
+                    className="min-h-[40px] shrink-0 rounded-lg border border-emerald-300/50 bg-emerald-500/25 px-4 py-2 text-xs font-bold text-emerald-50 transition hover:bg-emerald-500/40 disabled:opacity-50"
+                  >
+                    Enable free sample
+                  </button>
+                </div>
+              </motion.div>
+            )}
+            <SplitActions
+              uploadedFile={uploadedFile}
+              requestedStemMode={requestedStemMode}
+              isSample={isSample}
+              onToggleSample={() => setIsSample((v) => !v)}
+              onSplit={onSplit}
+              isSplitting={isSplitting}
+              splitProgress={splitProgress}
+              uploadProgress={uploadProgress}
+              isUploading={isUploading}
+              queuePosition={queuePosition}
+              splitElapsedSeconds={splitElapsedSeconds}
+              uploadDurationSec={uploadDurationSec}
+              splitResultStemsLength={splitResultStemsLength}
+              isExpanding={isExpanding}
+              onExpand={onExpand}
+              canExpandToFourStems={canExpandToFourStems}
+              splitError={splitError}
+              canUseBatchQueue={canUseBatchQueue}
+              onAddToQueue={onAddToQueue}
+              onOpenWaitingGame={onOpenWaitingGame}
+              hideSampleToggle={subscriptionInactive}
+            />
+          </>
         )}
             </div>{/* end flex row */}
 
@@ -331,6 +382,7 @@ export function ProcessingSettingsPanel({
                 isExpanding={isExpanding}
                 isSplitting={isSplitting}
                 isSample={isSample}
+                showBalance={false}
               />
             )}
           </motion.div>

@@ -55,6 +55,7 @@ export function QualitySelector({
   return (
     <div
       data-testid="quality-controls"
+      data-tour="quality-selector"
       className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-1.5 sm:w-auto"
     >
       <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">

@@ -32,6 +32,7 @@ interface MixerWorkspaceProps {
   onBrowseUpload: () => void;
   /* MixerPanel props */
   mixStemCount: number;
+  splitStemCount?: 2 | 4 | null;
   isPlayingMix: boolean;
   onPlayStop: () => void;
   onStopMix: () => void;
@@ -96,6 +97,7 @@ export function MixerWorkspace({
   uploadedFile,
   onBrowseUpload,
   mixStemCount,
+  splitStemCount = null,
   isPlayingMix,
   onPlayStop,
   onStopMix,
@@ -358,6 +360,7 @@ export function MixerWorkspace({
       >
         <MixerPanel
           mixStemCount={mixStemCount}
+          splitStemCount={splitStemCount}
           isPlayingMix={isPlayingMix}
           onPlayStop={onPlayStop}
           onStopMix={onStopMix}

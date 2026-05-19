@@ -146,7 +146,17 @@ export function useStemSplitting({
       });
       return;
     }
-    setUploadState((prev) => ({ ...prev, isSplitting: true, isUploading: true, uploadProgress: 0, splitProgress: 0, pipelineIndex: 0, splitError: null, isSample }));
+    setUploadState((prev) => ({
+      ...prev,
+      isSplitting: true,
+      isUploading: true,
+      uploadProgress: 0,
+      splitProgress: 0,
+      pipelineIndex: 0,
+      splitError: null,
+      isSample,
+      splitElapsedSeconds: null,
+    }));
     try {
       // Premium/Studio: one server job for 4 stems (hybrid MDX + PyTorch Demucs / SCNet per backend).
       // Basic: 2-stem only.
@@ -164,6 +174,10 @@ export function useStemSplitting({
           isUploading: false,
           splitProgress: s.progress,
           queuePosition: s.status === "queued" ? (s.queue_position ?? null) : null,
+          splitElapsedSeconds:
+            s.status === "running" && s.elapsed_seconds != null
+              ? s.elapsed_seconds
+              : prev.splitElapsedSeconds,
         }));
         // Update document title for background awareness (visible in mobile tab switcher)
         if (s.status === "queued") {
@@ -186,6 +200,7 @@ export function useStemSplitting({
         pipelineIndex: 3,
         beatGrid: res.beat_grid ?? null,
         queuePosition: null,
+        splitElapsedSeconds: null,
       }));
       document.title = "✓ Stems Ready — Burnt Beats";
       // Restore original title after a few seconds
@@ -203,6 +218,7 @@ export function useStemSplitting({
         splitProgress: 0,
         pipelineIndex: 0,
         queuePosition: null,
+        splitElapsedSeconds: null,
       }));
       trackEvent("split_failed", {
         quality: splitQuality,

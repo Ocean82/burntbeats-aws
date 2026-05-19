@@ -2,10 +2,13 @@ import { Mic, Upload, Waves } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { ALLOWED_AUDIO_FORMATS_LABEL } from "../../config";
 import { useIsTouchDevice } from "../../hooks/useIsTouchDevice";
+import { formatUploadMeta } from "../../utils/formatFileMeta";
 
 export interface SpeechUploadZoneProps {
   uploadName: string;
   uploadedFile: File | null;
+  durationSec?: number | null;
+  estimatedTokens?: number | null;
   onBrowse: () => void;
   onClear: () => void;
   onDrop: (file: File | null) => void;
@@ -17,6 +20,8 @@ export interface SpeechUploadZoneProps {
 export function SpeechUploadZone({
   uploadName,
   uploadedFile,
+  durationSec = null,
+  estimatedTokens = null,
   onBrowse,
   onClear,
   onDrop,
@@ -24,6 +29,11 @@ export function SpeechUploadZone({
   onSetIsDragging,
 }: SpeechUploadZoneProps) {
   const isTouch = useIsTouchDevice();
+  const metaLine = formatUploadMeta({
+    sizeBytes: uploadedFile?.size,
+    durationSec,
+    estimatedTokens,
+  });
 
   const dragProps = {
     onDragOver: (e: React.DragEvent) => {
@@ -52,9 +62,23 @@ export function SpeechUploadZone({
         )}
       >
         <Mic className="h-4 w-4 shrink-0 text-cyan-300/80" />
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
-          {uploadName}
-        </span>
+        <div className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-white">
+            {uploadName}
+          </span>
+          {metaLine ? (
+            <span
+              className="mt-0.5 block truncate text-xs tabular-nums text-cyan-200/50"
+              aria-label={`File details: ${metaLine}`}
+            >
+              {metaLine}
+            </span>
+          ) : (
+            <span className="mt-0.5 block h-4 text-xs text-white/30" aria-hidden>
+              Reading file info…
+            </span>
+          )}
+        </div>
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"

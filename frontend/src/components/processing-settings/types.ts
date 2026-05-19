@@ -41,6 +41,7 @@ export interface ProcessingSettingsPanelProps {
   isUploading?: boolean;
   /** Queue position when job is waiting (1 = next to run). */
   queuePosition?: number | null;
+  splitElapsedSeconds?: number | null;
   splitResultStemsLength: number;
   isExpanding: boolean;
   onExpand: () => void;
@@ -61,6 +62,8 @@ export interface ProcessingSettingsPanelProps {
   /** Metering: remaining tokens from Clerk (null = unknown / loading). */
   usageBalance?: number | null;
   usageLoading?: boolean;
+  /** Duration of uploaded file in seconds (for upload bar + progress ETA). */
+  uploadDurationSec?: number | null;
   /** Estimated tokens for the current split job (~minutes, ceil). */
   estimatedSplitTokens?: number | null;
   /** Estimated tokens for expand 2→4 (same duration as split). */
@@ -70,4 +73,5 @@ export interface ProcessingSettingsPanelProps {
    * The user can expand it by clicking "Edit Source".
    */
   isCollapsed?: boolean;
+  onOpenWaitingGame?: () => void;
 }

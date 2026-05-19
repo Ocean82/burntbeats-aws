@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  estimateExportBytes,
+  formatExportBytes,
+  getExportSizeWarningLevel,
+} from "../utils/exportSizeEstimate";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -20,6 +25,8 @@ interface ExportOptionsModalProps {
   allowStemBundleTargets?: boolean;
   /** When true, the current session is a sample; block downloads and show upgrade CTA. */
   isSample?: boolean;
+  /** Longest stem duration in seconds (for size estimate). */
+  trackDurationSec?: number;
 }
 
 export interface ExportOptions {
@@ -71,6 +78,7 @@ export function ExportOptionsModal({
   stemCount,
   allowStemBundleTargets = true,
   isSample,
+  trackDurationSec = 0,
 }: ExportOptionsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   useModalA11y(isOpen, modalRef, onClose, { disableEscape: isExporting });
@@ -93,6 +101,18 @@ export function ExportOptionsModal({
   const targetOptions = allowStemBundleTargets
     ? TARGET_OPTIONS_ALL
     : TARGET_OPTIONS_ALL.filter((t) => t.value === "master");
+
+  const estimatedBytes = useMemo(
+    () =>
+      estimateExportBytes({
+        format: options.format,
+        target: options.target,
+        stemCount,
+        durationSec: trackDurationSec,
+      }),
+    [options.format, options.target, stemCount, trackDurationSec],
+  );
+  const sizeWarning = getExportSizeWarningLevel(estimatedBytes);
 
   useEffect(() => {
     if (!isOpen || allowStemBundleTargets) return;
@@ -240,6 +260,38 @@ export function ExportOptionsModal({
                   })}
                 </div>
               </fieldset>
+
+              {trackDurationSec > 0 && (
+                <div
+                  className={cn(
+                    "mb-5 rounded-xl border px-4 py-3 text-sm",
+                    sizeWarning === "large"
+                      ? "border-amber-500/45 bg-amber-500/12 text-amber-100"
+                      : sizeWarning === "medium"
+                        ? "border-amber-400/25 bg-amber-500/8 text-amber-100/90"
+                        : "border-white/10 bg-white/5 text-white/75",
+                  )}
+                  role="status"
+                >
+                  <p>
+                    Estimated download size:{" "}
+                    <span className="font-semibold tabular-nums text-white">
+                      {formatExportBytes(estimatedBytes)}
+                    </span>
+                  </p>
+                  {sizeWarning === "large" && (
+                    <p className="mt-1.5 text-xs leading-relaxed text-amber-200/85">
+                      Large download — WAV exports of long multi-stem sessions can exceed 200MB.
+                      Consider MP3 on slower connections.
+                    </p>
+                  )}
+                  {sizeWarning === "medium" && options.format === "wav" && (
+                    <p className="mt-1 text-xs text-white/55">
+                      WAV is uncompressed; MP3 yields a much smaller file.
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Normalize Toggle */}
               <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">

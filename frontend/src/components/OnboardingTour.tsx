@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, ChevronLeft, Upload, Sliders, Music2, Download, Sparkles } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -22,12 +22,14 @@ const TOUR_STEPS = [
     title: "Upload Your Track",
     description: "Drag and drop an audio file, or click to browse. We support MP3, WAV, FLAC, and more.",
     tip: "Files up to 500MB are supported",
+    target: '[data-tour="upload-dropzone"]',
   },
   {
     icon: Sliders,
     title: "Configure Your Split",
     description: "First split gives vocals + instrumental. Use \"Keep going\" to split the instrumental into drums, bass & other.",
-    tip: "Use 'Quality' mode for best results",
+    tip: "Use Quality mode for best results",
+    target: '[data-tour="quality-selector"]',
   },
   {
     icon: Music2,
@@ -51,6 +53,7 @@ export function OnboardingTour({
 }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -96,8 +99,42 @@ export function OnboardingTour({
     }
   };
 
-  const step = TOUR_STEPS[currentStep];
+  const step = TOUR_STEPS[currentStep] as (typeof TOUR_STEPS)[number] & { target?: string };
   const Icon = step.icon;
+
+  useLayoutEffect(() => {
+    const target = (step as { target?: string }).target;
+    if (!isVisible || !target) {
+      setSpotlightRect(null);
+      return;
+    }
+    const el = document.querySelector(target);
+    if (!el) {
+      setSpotlightRect(null);
+      return;
+    }
+    const update = () => setSpotlightRect(el.getBoundingClientRect());
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [isVisible, currentStep, step]);
+
+  const anchoredStyle: React.CSSProperties | undefined = spotlightRect
+    ? {
+        position: "fixed",
+        left: Math.min(
+          Math.max(16, spotlightRect.left + spotlightRect.width / 2 - 200),
+          window.innerWidth - 416,
+        ),
+        top: Math.min(spotlightRect.bottom + 12, window.innerHeight - 360),
+        width: "min(100% - 2rem, 400px)",
+        zIndex: 101,
+      }
+    : undefined;
 
   return (
     <AnimatePresence>
@@ -110,15 +147,35 @@ export function OnboardingTour({
             exit={{ opacity: 0 }}
           />
 
+          {spotlightRect && (
+            <motion.div
+              className="pointer-events-none fixed z-[100] rounded-xl ring-4 ring-amber-400/70"
+              style={{
+                left: spotlightRect.left - 6,
+                top: spotlightRect.top - 6,
+                width: spotlightRect.width + 12,
+                height: spotlightRect.height + 12,
+              }}
+              aria-hidden
+            />
+          )}
+
           <motion.div
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+            className={cn(
+              "z-[100]",
+              spotlightRect ? "fixed inset-0 pointer-events-none" : "fixed inset-0 flex items-center justify-center p-4",
+            )}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
               ref={modalRef}
-              className="relative w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]"
+              style={anchoredStyle}
+              className={cn(
+                "relative overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl pointer-events-auto",
+                spotlightRect ? "max-h-[min(70vh,400px)]" : "w-full max-w-md max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]",
+              )}
               role="dialog"
               aria-modal="true"
               aria-labelledby="onboarding-title"

@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Lock, Sparkles } from "lucide-react";
+import { Gamepad2, Loader2, Lock, Sparkles } from "lucide-react";
 import { cn } from "../../utils/cn";
+import { getSplitProgressMessage } from "../../utils/splitProgressCopy";
 
 export interface SplitActionsProps {
   uploadedFile: File | null;
@@ -14,7 +15,11 @@ export interface SplitActionsProps {
   uploadProgress: number;
   isUploading: boolean;
   queuePosition: number | null;
+  splitElapsedSeconds?: number | null;
+  uploadDurationSec?: number | null;
   splitResultStemsLength: number;
+  onOpenWaitingGame?: () => void;
+  hideSampleToggle?: boolean;
   isExpanding: boolean;
   onExpand: () => void;
   canExpandToFourStems: boolean;
@@ -35,6 +40,8 @@ export function SplitActions({
   uploadProgress,
   isUploading,
   queuePosition,
+  splitElapsedSeconds = null,
+  uploadDurationSec = null,
   splitResultStemsLength,
   isExpanding,
   onExpand,
@@ -42,7 +49,31 @@ export function SplitActions({
   splitError,
   canUseBatchQueue,
   onAddToQueue,
+  onOpenWaitingGame,
+  hideSampleToggle = false,
 }: SplitActionsProps) {
+  const stemCount: 2 | 4 = requestedStemMode;
+  const progressCopy = useMemo(
+    () =>
+      getSplitProgressMessage({
+        isUploading,
+        uploadProgress,
+        queuePosition,
+        splitProgress,
+        elapsedSeconds: splitElapsedSeconds,
+        uploadDurationSec,
+        stemCount,
+      }),
+    [
+      isUploading,
+      uploadProgress,
+      queuePosition,
+      splitProgress,
+      splitElapsedSeconds,
+      uploadDurationSec,
+      stemCount,
+    ],
+  );
   // Announce progress at meaningful milestones to avoid spamming screen readers
   const progressAnnouncement = useMemo(() => {
     if (!isSplitting) return null;
@@ -98,22 +129,24 @@ export function SplitActions({
               "Split stems"
             )}
           </button>
-          <button
-            type="button"
-            onClick={onToggleSample}
-            disabled={isSplitting || splitResultStemsLength > 0}
-            aria-pressed={isSample}
-            title="Process only the first 60 seconds — free, no tokens used"
-            className={cn(
-              "min-h-[44px] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed",
-              isSample
-                ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]"
-                : "border-white/15 bg-white/5 text-white/65 hover:border-white/30 hover:text-white",
-            )}
-          >
-            <Sparkles className={cn("h-3.5 w-3.5", isSample ? "text-emerald-300" : "text-white/40")} />
-            {isSample ? "Free sample ✓" : "Try for free"}
-          </button>
+          {!hideSampleToggle && (
+            <button
+              type="button"
+              onClick={onToggleSample}
+              disabled={isSplitting || splitResultStemsLength > 0}
+              aria-pressed={isSample}
+              title="Process only the first 60 seconds — free, no tokens used"
+              className={cn(
+                "min-h-[44px] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                isSample
+                  ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]"
+                  : "border-white/15 bg-white/5 text-white/65 hover:border-white/30 hover:text-white",
+              )}
+            >
+              <Sparkles className={cn("h-3.5 w-3.5", isSample ? "text-emerald-300" : "text-white/40")} />
+              {isSample ? "Free sample ✓" : "Try for free"}
+            </button>
+          )}
         </div>
         {isSample && (
           <p className="text-[11px] text-emerald-400/80">
@@ -141,29 +174,22 @@ export function SplitActions({
               }
             >
               <div className="mt-1 w-full min-w-[220px]">
-                {isUploading ? (
-                  <div className="mb-1 flex items-center justify-between text-[11px] text-white/50">
-                    <span>Uploading…</span>
-                    <span className="tabular-nums">{Math.round(uploadProgress)}%</span>
-                  </div>
-                ) : queuePosition != null ? (
-                  <p className="mb-1.5 text-xs text-amber-200/80">
-                    Queue position {queuePosition} — waiting to start…
-                  </p>
-                ) : (
-                  <div className="mb-1 flex items-center justify-between text-[11px] text-white/50">
-                    <span>
-                      {splitProgress < 5
-                        ? "Starting…"
-                        : splitProgress < 90
-                          ? "Separating vocals…"
-                          : splitProgress < 95
-                            ? "Building instrumental…"
-                            : "Finalising stems…"}
-                    </span>
-                    <span className="tabular-nums">{Math.round(splitProgress)}%</span>
-                  </div>
-                )}
+                <div
+                  className={cn(
+                    "mb-1 flex items-center justify-between gap-2 text-[11px]",
+                    queuePosition != null && !isUploading
+                      ? "text-amber-200/80"
+                      : "text-white/50",
+                  )}
+                >
+                  <span>{progressCopy.primary}</span>
+                  <span className="shrink-0 tabular-nums text-white/60">
+                    {progressCopy.secondary ??
+                      (!isUploading && queuePosition == null
+                        ? `${Math.round(splitProgress)}%`
+                        : "")}
+                  </span>
+                </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                   <motion.div
                     className="h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)]"
@@ -182,14 +208,15 @@ export function SplitActions({
             </motion.div>
           )}
         </AnimatePresence>
-        {isSplitting && (
-          <p className="text-[10px] text-white/45">
-            Need a distraction? Open{" "}
-            <span className="font-semibold text-white/70">
-              The Waiting Game
-            </span>{" "}
-            from the bottom-right tab.
-          </p>
+        {isSplitting && onOpenWaitingGame && (
+          <button
+            type="button"
+            onClick={onOpenWaitingGame}
+            className="inline-flex min-h-[36px] items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-white/70 transition hover:border-amber-400/35 hover:bg-amber-500/10 hover:text-amber-100"
+          >
+            <Gamepad2 className="h-3.5 w-3.5 animate-pulse text-amber-300/90" aria-hidden />
+            Play The Waiting Game while you wait
+          </button>
         )}
       </div>
 

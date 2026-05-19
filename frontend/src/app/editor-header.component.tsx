@@ -2,6 +2,7 @@ import { HelpCircle, Undo2, Redo2, Save, Disc3, LayoutGrid, Mic2 } from "lucide-
 import { cn } from "../utils/cn";
 import { HeaderUserButton } from "../components/AuthGate";
 import { AppMobileMoreMenu } from "../components/AppMobileMoreMenu";
+import { TokenBalanceBadge } from "../components/TokenBalanceBadge";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
 import type { ModalKey } from "../hooks/useUiModals";
 import { useLayoutMode } from "../contexts/LayoutModeContext";
@@ -208,6 +209,12 @@ export function EditorHeader({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">
+            <TokenBalanceBadge
+              balance={usageBalance}
+              loading={usageLoading}
+              onClick={() => setActiveView("pricing")}
+              className="hidden sm:inline-flex"
+            />
             <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
               <button
                 type="button"

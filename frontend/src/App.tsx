@@ -27,6 +27,7 @@ import { useHistory } from "./hooks/useHistory";
 import { useMixerWorkspace } from "./hooks/useMixerWorkspace";
 import { useStemSplitting } from "./hooks/useStemSplitting";
 import { useStemLoading } from "./hooks/useStemLoading";
+import { useLoadHistoryJob } from "./hooks/useLoadHistoryJob";
 import {
   stemDefinitions,
   getStemDefinition,
@@ -121,6 +122,7 @@ export function App() {
     uploadProgress,
     isUploading,
     queuePosition,
+    splitElapsedSeconds,
     masterLimiterEnabled: persistedMasterLimiterEnabled,
     setUploadState,
     setSplitError,
@@ -549,6 +551,40 @@ export function App() {
     [handleFileFromInput],
   );
 
+  const { loadHistoryJob, loadingJobId } = useLoadHistoryJob({
+    onLoaded: ({ stems, jobId, uploadName: historyName }) => {
+      clearStemLoadingState();
+      clearStemWaveforms();
+      resetStemStates({});
+      setUploadState((prev) => ({
+        ...prev,
+        uploadName: historyName,
+        uploadedFile: null,
+        splitResultStems: stems,
+        splitJobId: jobId,
+        loadedStems: [],
+        splitError: null,
+        isSplitting: false,
+        splitProgress: 100,
+        pipelineIndex: 3,
+      }));
+      setActiveView("editor");
+      window.setTimeout(() => {
+        mixerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 200);
+    },
+    onError: (msg) => setSplitError(msg),
+  });
+
+  const exportTrackDurationSec = useMemo(() => {
+    let max = 0;
+    for (const s of visibleStems) {
+      const d = stemBuffers[s.id]?.duration ?? 0;
+      if (d > max) max = d;
+    }
+    return max;
+  }, [visibleStems, stemBuffers]);
+
   const handleLoadPreset = useCallback((preset: MixerPreset) => {
     setStemStates((p) => {
       const next = { ...p };
@@ -588,6 +624,16 @@ export function App() {
     redoStemStates,
     loopEnabled,
     setLoopEnabled,
+    onTriggerSplit: () => {
+      if (
+        uploadedFile &&
+        !isSplitting &&
+        splitResultStems.length === 0 &&
+        activeView === "editor"
+      ) {
+        void triggerSplit(2, isSample);
+      }
+    },
   });
 
   return (
@@ -613,6 +659,7 @@ export function App() {
         mixStemsLength={mixStems.length}
         exportAllowStemBundleTargets={exportAllowStemBundleTargets}
         isSample={isSample}
+        exportTrackDurationSec={exportTrackDurationSec}
         handleLoadPreset={handleLoadPreset}
         mixerState={mixerState}
         trimMap={trimMap}
@@ -694,7 +741,11 @@ export function App() {
               />
             </motion.section>
           ) : activeView === "my-stems" ? (
-            <MyStemsPage onClose={() => setActiveView("editor")} />
+            <MyStemsPage
+              onClose={() => setActiveView("editor")}
+              onOpenInMixer={(job) => void loadHistoryJob(job)}
+              loadingMixerJobId={loadingJobId}
+            />
           ) : activeView === "speech" ? (
             <SpeechCleanPage
               reduceMotion={Boolean(reduceMotion)}
@@ -756,6 +807,8 @@ export function App() {
                 uploadProgress,
                 isUploading,
                 queuePosition,
+                splitElapsedSeconds,
+                onOpenWaitingGame: toggleGame,
                 splitResultStemsLength: splitResultStems.length,
                 isExpanding,
                 onExpand: () => void triggerExpand(),
@@ -765,6 +818,7 @@ export function App() {
                 subscriptionInactive: subscription.status === "inactive",
                 usageBalance,
                 usageLoading,
+                uploadDurationSec,
                 estimatedSplitTokens,
                 estimatedExpandTokens: estimatedSplitTokens,
                 isCollapsed: splitResultStems.length > 0 && !isSplitting,
@@ -785,6 +839,10 @@ export function App() {
                 uploadedFile,
                 onBrowseUpload: handleBrowseUpload,
                 mixStemCount: mixStems.length,
+                splitStemCount:
+                  splitResultStems.length === 2 || splitResultStems.length === 4
+                    ? (splitResultStems.length as 2 | 4)
+                    : null,
                 isPlayingMix,
                 onPlayStop: () =>
                   void handlePlayMix(mixStems, stemStates, stemBuffers),

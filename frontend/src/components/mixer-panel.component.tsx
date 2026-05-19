@@ -15,6 +15,7 @@ import type { SeekPhase } from "../types/playbackSeek";
 
 export interface MixerPanelProps {
   mixStemCount: number;
+  splitStemCount?: 2 | 4 | null;
   isPlayingMix: boolean;
   onPlayStop: () => void;
   onStopMix: () => void;
@@ -61,6 +62,7 @@ export interface MixerPanelProps {
 
 export function MixerPanel({
   mixStemCount,
+  splitStemCount = null,
   isPlayingMix,
   onPlayStop,
   onStopMix,
@@ -417,6 +419,7 @@ export function MixerPanel({
       ) : (
         <MultiStemEditor
           stems={stems}
+          splitStemCount={splitStemCount}
           waveforms={waveforms}
           durations={durations}
           stemStates={stemStates}

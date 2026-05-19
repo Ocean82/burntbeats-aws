@@ -12,6 +12,7 @@ export type ShortcutAction =
   | "redo"
   | "loopToggle"
   | "help"
+  | "triggerSplit"
   | "escape"
   | "trimStartLeft"
   | "trimStartRight"
@@ -39,6 +40,8 @@ export const KEYBOARD_SHORTCUTS: { key: string; modifier?: string; action: Short
   { key: "Shift+[", action: "trimEndLeft", label: "Shift + [", description: "Move trim end left (contract)" },
   { key: "Shift+]", action: "trimEndRight", label: "Shift + ]", description: "Move trim end right (expand)" },
   { key: "?", action: "help", label: "?", description: "Show keyboard shortcuts" },
+  { key: "Enter", modifier: "ctrl", action: "triggerSplit", label: "Ctrl + Enter", description: "Start stem split" },
+  { key: "Enter", modifier: "meta", action: "triggerSplit", label: "Cmd + Enter", description: "Start stem split" },
   { key: "Escape", action: "escape", label: "Esc", description: "Close modal / Stop playback" },
 ];
 

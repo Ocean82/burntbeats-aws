@@ -50,8 +50,30 @@ export const ChannelStrip = memo(function ChannelStrip({
   onActivate,
 }: ChannelStripProps) {
   const { mixer, muted, soloed } = state;
-  const [eqOpen, setEqOpen] = useState(false);
-  const [fxOpen, setFxOpen] = useState(false);
+  const eqStorageKey = `bb-channel-${stem.id}-eq-open`;
+  const fxStorageKey = `bb-channel-${stem.id}-fx-open`;
+  const [eqOpen, setEqOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const v = localStorage.getItem(eqStorageKey);
+    if (v != null) return v === "1";
+    const first = !localStorage.getItem("bb-has-opened-eq-fx");
+    if (first) localStorage.setItem("bb-has-opened-eq-fx", "1");
+    return first;
+  });
+  const [fxOpen, setFxOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const v = localStorage.getItem(fxStorageKey);
+    if (v != null) return v === "1";
+    return !localStorage.getItem("bb-has-opened-eq-fx") ? true : false;
+  });
+  const setEqOpenPersist = (open: boolean) => {
+    setEqOpen(open);
+    localStorage.setItem(eqStorageKey, open ? "1" : "0");
+  };
+  const setFxOpenPersist = (open: boolean) => {
+    setFxOpen(open);
+    localStorage.setItem(fxStorageKey, open ? "1" : "0");
+  };
 
   const updateMixer = useCallback(
     (patch: Partial<typeof mixer>) =>
@@ -134,7 +156,12 @@ export const ChannelStrip = memo(function ChannelStrip({
       </ControlSection>
 
       {/* ── EQ (collapsible) ── */}
-      <CollapsibleSection title="EQ" open={eqOpen} onToggle={() => setEqOpen(!eqOpen)}>
+      <CollapsibleSection
+        title="EQ"
+        collapsedLabel="EQ · FX"
+        open={eqOpen}
+        onToggle={() => setEqOpenPersist(!eqOpen)}
+      >
         {([
           { key: "eqLow" as const, label: "Lo" },
           { key: "eqMid" as const, label: "Mid" },
@@ -162,7 +189,7 @@ export const ChannelStrip = memo(function ChannelStrip({
       </CollapsibleSection>
 
       {/* ── FX (collapsible) ── */}
-      <CollapsibleSection title="FX" open={fxOpen} onToggle={() => setFxOpen(!fxOpen)}>
+      <CollapsibleSection title="FX" open={fxOpen} onToggle={() => setFxOpenPersist(!fxOpen)}>
         {([
           { key: "reverbWet" as const, label: "Rev", max: 100, unit: "%" },
           { key: "delayWet" as const, label: "Dly", max: 100, unit: "%" },
@@ -342,11 +369,13 @@ function ControlSection({
 
 function CollapsibleSection({
   title,
+  collapsedLabel,
   open,
   onToggle,
   children,
 }: {
   title: string;
+  collapsedLabel?: string;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
@@ -360,14 +389,14 @@ function CollapsibleSection({
           onToggle();
         }}
         aria-expanded={open}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/35 hover:text-white/50 transition"
+        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/45 hover:text-white/60 transition"
       >
         {open ? (
-          <ChevronDown className="h-3 w-3" />
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
         ) : (
-          <ChevronRight className="h-3 w-3" />
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
         )}
-        {title}
+        <span>{open ? title : (collapsedLabel ?? title)}</span>
       </button>
       {open && (
         <div className="flex flex-col gap-1.5 px-3 pb-2">

@@ -15,6 +15,7 @@ describe("LazyModalLayer", () => {
         mixStemsLength={0}
         exportAllowStemBundleTargets={false}
         isSample={false}
+        exportTrackDurationSec={0}
         handleLoadPreset={vi.fn()}
         mixerState={{}}
         trimMap={{}}

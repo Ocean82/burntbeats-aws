@@ -36,6 +36,7 @@ interface UseAppKeyboardShortcutsArgs {
   redoStemStates: () => void;
   loopEnabled: boolean;
   setLoopEnabled: (enabled: boolean) => void;
+  onTriggerSplit?: () => void;
 }
 
 export function useAppKeyboardShortcuts({
@@ -57,6 +58,7 @@ export function useAppKeyboardShortcuts({
   redoStemStates,
   loopEnabled,
   setLoopEnabled,
+  onTriggerSplit,
 }: UseAppKeyboardShortcutsArgs) {
   const setSoloAtIndex = useCallback(
     (index: number) => {
@@ -138,6 +140,7 @@ export function useAppKeyboardShortcuts({
       trimEndLeft: () => nudgeTrim("end", -TRIM_STEP),
       trimEndRight: () => nudgeTrim("end", +TRIM_STEP),
       help: () => openModal("help"),
+      triggerSplit: () => onTriggerSplit?.(),
       escape: () => {
         if (showHelpModal) closeModal("help");
         else if (showExportModal) closeModal("export");
@@ -165,6 +168,7 @@ export function useAppKeyboardShortcuts({
     stemBuffers,
     stemStates,
     undoStemStates,
+    onTriggerSplit,
   ]);
 
   useKeyboardShortcuts(shortcutHandlers);

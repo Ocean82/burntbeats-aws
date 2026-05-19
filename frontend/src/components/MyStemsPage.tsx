@@ -26,6 +26,7 @@ import {
   ArrowLeft,
   Loader2,
   AlertCircle,
+  SlidersHorizontal,
 } from "lucide-react";
 import JSZip from "jszip";
 import { useStemHistory } from "../hooks/useStemHistory";
@@ -38,6 +39,8 @@ import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
 
 interface MyStemsPageProps {
   onClose: () => void;
+  onOpenInMixer?: (job: import("../api/stemHistory").StemHistoryJob) => void;
+  loadingMixerJobId?: string | null;
 }
 
 type SortOption = "date-desc" | "date-asc" | "name-asc" | "name-desc" | "stems-desc";
@@ -87,7 +90,11 @@ function formatRelativeDate(isoDate: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function MyStemsPage({ onClose }: MyStemsPageProps) {
+export function MyStemsPage({
+  onClose,
+  onOpenInMixer,
+  loadingMixerJobId = null,
+}: MyStemsPageProps) {
   const {
     jobs,
     isLoading,
@@ -279,7 +286,7 @@ export function MyStemsPage({ onClose }: MyStemsPageProps) {
             onClick={onClose}
             className="fire-button mt-6 rounded-xl px-6 py-3 text-sm font-semibold transition"
           >
-            Split a Track
+            Go to Editor
           </button>
         </div>
       </div>
@@ -471,6 +478,27 @@ export function MyStemsPage({ onClose }: MyStemsPageProps) {
                                 );
                               })}
                             </ul>
+
+                            {onOpenInMixer && availableStems.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => onOpenInMixer(job)}
+                                disabled={loadingMixerJobId === job.job_id}
+                                className="fire-button mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
+                              >
+                                {loadingMixerJobId === job.job_id ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading into mixer…
+                                  </>
+                                ) : (
+                                  <>
+                                    <SlidersHorizontal className="h-4 w-4" />
+                                    Open in mixer
+                                  </>
+                                )}
+                              </button>
+                            )}
 
                             {/* Download All */}
                             {availableStems.length > 1 && (

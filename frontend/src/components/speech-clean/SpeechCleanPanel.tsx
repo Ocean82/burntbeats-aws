@@ -1,6 +1,8 @@
 import { AlertCircle, Loader2, Mic2 } from "lucide-react";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
+import { useEffect, useState } from "react";
 import { useSpeechEnhance } from "../../hooks/useSpeechEnhance";
+import { InfoPopover } from "../ui/InfoPopover";
 import { useAudioFileDuration } from "../../hooks/useAudioFileDuration";
 import { computeTokensFromDurationSeconds } from "../../utils/tokenCost";
 import { UsageTokenRow } from "../processing-settings/UsageTokenRow";
@@ -44,6 +46,17 @@ export function SpeechCleanPanel({
   } = useSpeechEnhance();
   const durationSec = useAudioFileDuration(uploadedFile);
   const estimatedTokens = computeTokensFromDurationSeconds(durationSec);
+  const [originalBlobUrl, setOriginalBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!uploadedFile || !outputUrl) {
+      setOriginalBlobUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(uploadedFile);
+    setOriginalBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [uploadedFile, outputUrl]);
 
   return (
     <div data-testid="speech-clean-panel" className="flex flex-col gap-4">
@@ -81,6 +94,8 @@ export function SpeechCleanPanel({
       <SpeechUploadZone
         uploadName={uploadName}
         uploadedFile={uploadedFile}
+        durationSec={durationSec}
+        estimatedTokens={estimatedTokens}
         onBrowse={handleBrowse}
         onClear={handleClear}
         onDrop={acceptFile}
@@ -99,19 +114,23 @@ export function SpeechCleanPanel({
           />
           Remove background noise
         </label>
-        <label
-          className="inline-flex cursor-pointer items-center gap-2"
-          title="Chunk long recordings for more stable processing"
-        >
-          <input
-            type="checkbox"
-            checked={batch}
-            onChange={(e) => setBatch(e.target.checked)}
-            disabled={isEnhancing}
-            className="rounded border-cyan-400/40 bg-cyan-950/40 text-cyan-400 focus:ring-cyan-400/50"
+        <span className="inline-flex items-center gap-1.5">
+          <label className="inline-flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={batch}
+              onChange={(e) => setBatch(e.target.checked)}
+              disabled={isEnhancing}
+              className="rounded border-cyan-400/40 bg-cyan-950/40 text-cyan-400 focus:ring-cyan-400/50"
+            />
+            Long recording mode
+          </label>
+          <InfoPopover
+            label="Long recording mode help"
+            title="Long recording mode"
+            body="Splits long files into chunks for more stable processing. Best for podcasts, interviews, and recordings over several minutes."
           />
-          Long recording mode
-        </label>
+        </span>
       </div>
 
       {!subscriptionInactive &&
@@ -125,6 +144,8 @@ export function SpeechCleanPanel({
             isExpanding={false}
             isSplitting={isEnhancing}
             isSample={false}
+            jobLabel="This job"
+            showBalance={false}
           />
         )}
 
@@ -184,7 +205,11 @@ export function SpeechCleanPanel({
       )}
 
       {outputUrl && !isEnhancing && (
-        <SpeechResultPlayer outputUrl={outputUrl} uploadName={uploadName} />
+        <SpeechResultPlayer
+          outputUrl={outputUrl}
+          uploadName={uploadName}
+          originalBlobUrl={originalBlobUrl}
+        />
       )}
     </div>
   );

@@ -9,6 +9,10 @@ export interface UsageTokenRowProps {
   isExpanding: boolean;
   isSplitting: boolean;
   isSample: boolean;
+  /** Label for job cost line (default "This split"). */
+  jobLabel?: string;
+  /** When false, balance is shown only in header badge. */
+  showBalance?: boolean;
 }
 
 /** Token balance + cost estimate row shown during split mode. */
@@ -21,6 +25,8 @@ export function UsageTokenRow({
   isExpanding,
   isSplitting,
   isSample,
+  jobLabel = "This split",
+  showBalance = true,
 }: UsageTokenRowProps) {
   return (
     <div
@@ -38,14 +44,15 @@ export function UsageTokenRow({
         <span className="text-white/55">Loading token balance…</span>
       ) : (
         <>
-          {usageBalance !== null && (
+          {showBalance && usageBalance !== null && (
             <span className="font-medium text-white/90">
               Balance: {Math.floor(usageBalance)} tokens
             </span>
           )}
           {estimatedSplitTokens !== null && (
-            <span className={cn(usageBalance !== null && "ml-2")}>
-              · This split:{" "}
+            <span className={cn(showBalance && usageBalance !== null && "ml-2")}>
+              {showBalance && usageBalance !== null ? "· " : ""}
+              {jobLabel}:{" "}
               {isSample ? (
                 <span className="text-emerald-400 font-bold">FREE</span>
               ) : (
