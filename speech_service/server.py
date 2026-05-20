@@ -5,7 +5,6 @@ POST /enhance → 202 + job_id; poll GET /status/{job_id}; download GET /file/{j
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os

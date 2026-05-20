@@ -1,0 +1,12 @@
+[tool.pyrefly]
+# Tell Pyrefly where to find third-party packages.
+# The .venv was created under WSL — on Windows, point to the site-packages directly.
+search_path = [
+    ".venv/lib/python3.12/site-packages",
+    ".",
+]
+
+# Project source roots so imports like `speech_service.config` resolve correctly.
+source_path = ["."]
+
+python_version = "3.12"

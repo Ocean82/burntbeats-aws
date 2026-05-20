@@ -69,9 +69,15 @@ export function MidiConvertPanel({
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-violet-400/35 bg-violet-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-200">
-          Audio → MIDI
-        </span>
+        <div className="flex flex-col items-end gap-1.5">
+          <span className="shrink-0 rounded-full border border-violet-400/35 bg-violet-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-violet-200">
+            Audio → MIDI
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200 animate-pulse">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+            Available to all paid plans — limited time
+          </span>
+        </div>
       </div>
 
       {/* Source selection */}
@@ -97,39 +103,62 @@ export function MidiConvertPanel({
       />
 
       {/* Usage info */}
-      {!subscriptionInactive && usageBalance !== null && !usageLoading && (
+      {!subscriptionInactive && !usageLoading && (
         <div className="flex items-center gap-2 text-xs text-white/50">
           <span>
-            Cost: <span className="text-violet-200 font-medium">0.5 tokens</span>
+            Cost: <span className="text-violet-200 font-medium">0.5 tokens</span> per conversion
           </span>
-          <span className="text-white/20">|</span>
-          <span>
-            Balance: <span className="text-violet-200 font-medium">{Math.floor(usageBalance)}</span>
-          </span>
+          {usageBalance !== null && (
+            <>
+              <span className="text-white/20">|</span>
+              <span>
+                Balance:{" "}
+                <span className={`font-medium ${usageBalance < 1 ? "text-red-300" : "text-violet-200"}`}>
+                  {Math.floor(usageBalance)} tokens
+                </span>
+              </span>
+              {usageBalance < 1 && (
+                <span className="text-red-300/80 text-[10px]">
+                  — not enough tokens
+                </span>
+              )}
+            </>
+          )}
         </div>
       )}
 
       {/* Convert button */}
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          data-testid="midi-convert-button"
-          onClick={() => void triggerConvert(splitJobId)}
-          disabled={!canConvert}
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-violet-300/50 bg-gradient-to-r from-violet-600/90 to-purple-600/90 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(139,92,246,0.2)] transition hover:from-violet-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
-        >
-          {isConverting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Converting…
-            </>
-          ) : result ? (
-            "Conversion complete"
-          ) : (
-            "Convert to MIDI"
-          )}
-        </button>
-        {result && (
+        {subscriptionInactive ? (
+          <div className="flex flex-col gap-2 rounded-xl border border-amber-400/20 bg-amber-500/5 px-4 py-3">
+            <p className="text-sm font-medium text-amber-100">
+              Subscribe to unlock MIDI conversion
+            </p>
+            <p className="text-xs text-amber-100/60">
+              All paid plans include access to Audio-to-MIDI. Each conversion uses 0.5 tokens from your balance.
+            </p>
+          </div>
+        ) : (
+          <button
+            type="button"
+            data-testid="midi-convert-button"
+            onClick={() => void triggerConvert(splitJobId)}
+            disabled={!canConvert}
+            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-violet-300/50 bg-gradient-to-r from-violet-600/90 to-purple-600/90 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(139,92,246,0.2)] transition hover:from-violet-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {isConverting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Converting…
+              </>
+            ) : result ? (
+              "Conversion complete"
+            ) : (
+              "Convert to MIDI"
+            )}
+          </button>
+        )}
+        {result && !subscriptionInactive && (
           <button
             type="button"
             onClick={handleClear}

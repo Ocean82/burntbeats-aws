@@ -4,7 +4,7 @@
  */
 import { Router } from "express";
 import FormData from "form-data";
-import { createReadStream, unlink } from "fs";
+import { createReadStream, existsSync, unlink } from "fs";
 import { unlink as unlinkPromise } from "fs/promises";
 import path from "path";
 
@@ -43,12 +43,18 @@ export const midiConvertRouter = Router();
  * @returns {string | null} Absolute path to the WAV file, or null if not found.
  */
 function resolveStemPath(stemJobId, stemName) {
+  // Validate inputs to prevent injection
+  if (!/^[0-9a-f-]{36}$/i.test(stemJobId)) return null;
+  if (!/^[a-z_]+$/i.test(stemName)) return null;
+
   // Stem files are stored as: STEM_OUTPUT_DIR/<jobId>/<stemName>.wav
   const candidate = path.join(STEM_OUTPUT_DIR, stemJobId, `${stemName}.wav`);
   try {
     const resolved = path.resolve(candidate);
     // Prevent path traversal
     if (!resolved.startsWith(path.resolve(STEM_OUTPUT_DIR))) return null;
+    // Verify file actually exists
+    if (!existsSync(resolved)) return null;
     return resolved;
   } catch {
     return null;

@@ -18,6 +18,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
 import { LegalPage } from "./pages/LegalPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { LegalAcceptanceGate } from "./components/LegalAcceptanceGate";
 import { trackEvent } from "./analytics/events";
 
@@ -118,8 +119,23 @@ export function Root() {
       <Route path="/terms-of-service">
         <LegalPage doc="terms-of-service" />
       </Route>
-      <Route>
+      <Route path="/" >
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
+      <Route path="/speech" >
+        {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
+      <Route path="/midi" >
+        {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
+      <Route path="/pricing" >
+        {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
+      <Route path="/my-stems" >
+        {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
+      <Route>
+        <NotFoundPage />
       </Route>
     </Switch>
   );

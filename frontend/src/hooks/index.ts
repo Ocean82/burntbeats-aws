@@ -10,4 +10,5 @@ export { useStemSplitting } from "./useStemSplitting";
 export { useStemLoading } from "./useStemLoading";
 export { useUiModals, type ModalKey } from "./useUiModals";
 export { useGuidanceSystem, type GuidanceTarget } from "./useGuidanceSystem";
+export { useMidiConvert } from "./useMidiConvert";
 export { useUiLatencyMonitor, startUiLatencyMark, finishUiLatencyMark, type UiLatencyKey, type UiLatencySnapshot } from "./useUiLatencyMonitor";

@@ -1,8 +1,9 @@
-import { Upload, Music2, Sparkles } from "lucide-react";
+import { Upload, Music2, Sparkles, Play } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { ALLOWED_AUDIO_FORMATS_LABEL } from "../../config";
 import { useIsTouchDevice } from "../../hooks/useIsTouchDevice";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
+import { DEMO_TRACK_ENABLED } from "../../data/demoTrack";
 
 export interface UploadDropZoneProps {
   uploadName: string;
@@ -15,6 +16,8 @@ export interface UploadDropZoneProps {
   onDropUpload: (file: File | null) => void;
   isDragging: boolean;
   onSetIsDragging: (isDragging: boolean) => void;
+  /** Callback to load the demo track into the mixer */
+  onLoadDemo?: () => void;
 }
 
 /** Hero drop zone (no file) + compact file bar (file selected) for split mode. */
@@ -29,6 +32,7 @@ export function UploadDropZone({
   onDropUpload,
   isDragging,
   onSetIsDragging,
+  onLoadDemo,
 }: UploadDropZoneProps) {
   const isTouchDevice = useIsTouchDevice();
   const metaLine = formatUploadMeta({
@@ -97,6 +101,19 @@ export function UploadDropZone({
           <span className="h-1 w-1 rounded-full bg-white/20" />
           <span>60s free sample available</span>
         </div>
+        {DEMO_TRACK_ENABLED && onLoadDemo && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onLoadDemo();
+            }}
+            className="mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-4 py-2 text-xs font-semibold text-cyan-200 transition hover:border-cyan-400/50 hover:bg-cyan-500/20"
+          >
+            <Play className="h-3.5 w-3.5" aria-hidden />
+            Try a demo track
+          </button>
+        )}
       </div>
     );
   }

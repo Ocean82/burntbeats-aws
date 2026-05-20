@@ -37,6 +37,7 @@ interface UseAppKeyboardShortcutsArgs {
   loopEnabled: boolean;
   setLoopEnabled: (enabled: boolean) => void;
   onTriggerSplit?: () => void;
+  setActiveView?: (view: "editor" | "speech" | "midi" | "pricing" | "my-stems") => void;
 }
 
 export function useAppKeyboardShortcuts({
@@ -59,6 +60,7 @@ export function useAppKeyboardShortcuts({
   loopEnabled,
   setLoopEnabled,
   onTriggerSplit,
+  setActiveView,
 }: UseAppKeyboardShortcutsArgs) {
   const setSoloAtIndex = useCallback(
     (index: number) => {
@@ -161,6 +163,11 @@ export function useAppKeyboardShortcuts({
         else if (showPresetsModal) closeModal("presets");
         else if (isPlayingMix) handleStopMix();
       },
+      navEditor: () => setActiveView?.("editor"),
+      navSpeech: () => setActiveView?.("speech"),
+      navMidi: () => setActiveView?.("midi"),
+      navPricing: () => setActiveView?.("pricing"),
+      navMyStems: () => setActiveView?.("my-stems"),
     };
   }, [
     closeModal,
@@ -184,6 +191,7 @@ export function useAppKeyboardShortcuts({
     stemStates,
     undoStemStates,
     onTriggerSplit,
+    setActiveView,
   ]);
 
   useKeyboardShortcuts(shortcutHandlers);

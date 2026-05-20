@@ -39,6 +39,7 @@ import { isLocalDevFullApp } from "./config";
 import type { StemEditorState } from "./stem-editor-state";
 
 import { useAppStore } from "./store/appStore";
+import { useToast } from "./store/toastStore";
 import { useEventBus, useAppEvent } from "./store/eventBus";
 import { useUiModals } from "./hooks/useUiModals";
 import { useGuidanceSystem } from "./hooks/useGuidanceSystem";
@@ -335,15 +336,8 @@ export function App() {
     toggleGame,
   } = useUiModals();
   const { latencyStats, resetLatencyStats } = useUiLatencyMonitor();
-  const [undoToast, setUndoToast] = useState<string | null>(null);
+  const { toast } = useToast();
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
-
-  // Auto-dismiss undo/redo toast after 3 seconds
-  useEffect(() => {
-    if (!undoToast) return;
-    const t = window.setTimeout(() => setUndoToast(null), 3000);
-    return () => window.clearTimeout(t);
-  }, [undoToast]);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
@@ -619,9 +613,9 @@ export function App() {
   const handleResetSingleStem = useCallback(
     (stemId: string) => {
       resetSingleStem(stemId);
-      setUndoToast("Channel reset");
+      toast("Channel reset", { type: "undo" });
     },
-    [resetSingleStem, setUndoToast],
+    [resetSingleStem, toast],
   );
 
   // ── Keyboard shortcuts ────────────────────────────────────────────────────
@@ -644,6 +638,7 @@ export function App() {
     redoStemStates,
     loopEnabled,
     setLoopEnabled,
+    setActiveView,
     onTriggerSplit: () => {
       if (
         uploadedFile &&
@@ -707,19 +702,15 @@ export function App() {
           headerVisible={headerVisible}
           activeView={activeView}
           setActiveView={setActiveView}
-          uploadedFile={uploadedFile}
-          isSplitting={isSplitting}
-          mixStemsLength={mixStems.length}
-          isExporting={isExporting}
           canUndo={canUndo}
           canRedo={canRedo}
           onUndo={() => {
             undoStemStates();
-            setUndoToast("Changes undone");
+            toast("Changes undone", { type: "undo" });
           }}
           onRedo={() => {
             redoStemStates();
-            setUndoToast("Changes redone");
+            toast("Changes redone", { type: "undo" });
           }}
           openModal={openModal}
           localDevFullApp={localDevFullApp}
@@ -774,6 +765,7 @@ export function App() {
               usageBalance={usageBalance}
               usageLoading={usageLoading}
               checkoutNotice={checkoutNotice}
+              onViewPlans={() => setActiveView("pricing")}
             />
           ) : activeView === "midi" ? (
             <MidiConvertPage
@@ -782,6 +774,7 @@ export function App() {
               usageBalance={usageBalance}
               usageLoading={usageLoading}
               checkoutNotice={checkoutNotice}
+              onViewPlans={() => setActiveView("pricing")}
             />
           ) : (
             <EditorMainView
@@ -792,6 +785,11 @@ export function App() {
                 handleGuidancePanelInteract,
                 subscription,
                 checkoutNotice,
+                uploadedFile,
+                isSplitting,
+                mixStemsLength: mixStems.length,
+                isExporting,
+                onViewPlans: () => setActiveView("pricing"),
               }}
               processingProps={{
                 sourceMode,
@@ -924,7 +922,7 @@ export function App() {
                 loopEnabled,
                 onLoopToggle: setLoopEnabled,
                 exportCompareSummary,
-                undoToast,
+                undoToast: null,
               }}
             />
           )}

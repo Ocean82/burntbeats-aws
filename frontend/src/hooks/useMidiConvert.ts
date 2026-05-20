@@ -4,6 +4,7 @@
  */
 import { useCallback, useRef, useState } from "react";
 import { authHeaders, setJobToken as storeJobToken } from "../api/auth";
+import { trackEvent } from "../analytics/events";
 
 export interface MidiConvertSettings {
   minConfidence: number;
@@ -88,6 +89,10 @@ export function useMidiConvert() {
     setError(null);
     setResult(null);
     setMidiFileUrl(null);
+    if (file) {
+      const ext = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "unknown" : "none";
+      trackEvent("midi_upload_selected", { file_extension: ext, file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)) });
+    }
   }, []);
 
   const handleBrowse = useCallback(() => {
@@ -150,10 +155,16 @@ export function useMidiConvert() {
               inferenceTimeSeconds: data.result.inference_time_seconds,
               pianoRollNotes: data.result.piano_roll_notes || [],
             });
+            trackEvent("midi_convert_completed", {
+              notes_detected: data.result.notes_detected,
+              duration_seconds: data.result.duration_seconds,
+              inference_time_seconds: data.result.inference_time_seconds,
+            });
           } else if (data.status === "failed") {
             stopPolling();
             setIsConverting(false);
             setError(data.error || "Conversion failed");
+            trackEvent("midi_convert_failed", { error: (data.error || "unknown").slice(0, 120) });
           }
         } catch (e) {
           stopPolling();
@@ -177,6 +188,13 @@ export function useMidiConvert() {
       setProgress(0);
       setStatusMessage("Submitting...");
       setIsConverting(true);
+
+      trackEvent("midi_convert_started", {
+        source_mode: sourceMode,
+        stem_name: selectedStem || "none",
+        min_confidence: settings.minConfidence,
+        include_pitch_bends: settings.includePitchBends,
+      });
 
       try {
         const headers = await authHeaders();
@@ -216,29 +234,50 @@ export function useMidiConvert() {
         const token = data.job_token;
         setJobToken(token);
         storeJobToken(data.job_id, token);
-        setMidiFileUrl(data.file_url || null);
+        // file_url may be absolute or relative — normalize to relative path for same-origin fetch
+        const fileUrl = data.file_url?.startsWith("http")
+          ? new URL(data.file_url).pathname
+          : data.file_url || null;
+        setMidiFileUrl(fileUrl);
         setStatusMessage("Queued...");
 
         // Start polling
         pollStatus(data.job_id, token);
       } catch (e) {
         setIsConverting(false);
-        setError(e instanceof Error ? e.message : "Conversion failed");
+        const msg = e instanceof Error ? e.message : "Conversion failed";
+        setError(msg);
+        trackEvent("midi_convert_failed", { error: msg.slice(0, 120) });
       }
     },
     [sourceMode, selectedStem, uploadedFile, settings, pollStatus],
   );
 
-  const downloadMidi = useCallback(() => {
+  const downloadMidi = useCallback(async () => {
     if (!midiFileUrl || !jobToken) return;
-    // Create a temporary link with auth
-    const url = `${API_BASE}${midiFileUrl}`;
-    const a = document.createElement("a");
-    a.href = `${url}?token=${encodeURIComponent(jobToken)}`;
-    a.download = "output.mid";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    trackEvent("midi_download_started");
+    try {
+      const headers = await authHeaders();
+      const res = await fetch(midiFileUrl, {
+        headers: {
+          ...headers,
+          "x-job-token": jobToken,
+        },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "output.mid";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback: open in new tab
+      window.open(midiFileUrl, "_blank");
+    }
   }, [midiFileUrl, jobToken]);
 
   return {

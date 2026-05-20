@@ -16,6 +16,12 @@ export interface EditorChromeProps {
   handleGuidancePanelInteract: React.PointerEventHandler<HTMLDivElement>;
   subscription: UseSubscriptionResult;
   checkoutNotice: string | null;
+  /** Pipeline state for breadcrumb */
+  uploadedFile: File | null;
+  isSplitting: boolean;
+  mixStemsLength: number;
+  isExporting: boolean;
+  onViewPlans?: () => void;
 }
 
 export type EditorMixerWorkspaceProps = ComponentProps<typeof MixerWorkspace>;
@@ -40,12 +46,75 @@ export function EditorMainView({
     handleGuidancePanelInteract,
     subscription,
     checkoutNotice,
+    uploadedFile,
+    isSplitting,
+    mixStemsLength,
+    isExporting,
+    onViewPlans,
   },
   processingProps,
   mixerProps,
 }: EditorMainViewProps) {
   return (
     <>
+      {/* Pipeline breadcrumb — shows current workflow step */}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-white/75 sm:text-sm">
+        <span
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+            !uploadedFile
+              ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
+              : "border-white/10 bg-white/5 text-white/65",
+          )}
+        >
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              !uploadedFile ? "bg-amber-400" : "bg-white/40",
+            )}
+          />
+          Upload
+        </span>
+        <span className="text-white/20" aria-hidden>→</span>
+        <span
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+            isSplitting
+              ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
+              : "border-white/10 bg-white/5 text-white/65",
+          )}
+        >
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              isSplitting ? "bg-amber-400 animate-pulse" : "bg-white/40",
+            )}
+          />
+          Split
+        </span>
+        <span className="text-white/20" aria-hidden>→</span>
+        <span
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+            mixStemsLength > 0 && !isExporting
+              ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
+              : "border-white/10 bg-white/5 text-white/65",
+          )}
+        >
+          <span
+            className={cn(
+              "h-1.5 w-1.5 rounded-full",
+              mixStemsLength > 0 ? "bg-amber-400" : "bg-white/40",
+            )}
+          />
+          Mix & Export
+        </span>
+        {mixStemsLength > 0 && (
+          <span className="ml-1 text-xs text-green-400/80">
+            {mixStemsLength} stems ready
+          </span>
+        )}
+      </div>
       {/* Marquee — static text on small screens to reduce motion noise */}
       <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm md:hidden">
         <p className="px-4 py-3 text-center text-[11px] uppercase leading-relaxed tracking-[0.18em] text-white/45">
@@ -105,7 +174,7 @@ export function EditorMainView({
             <ProcessingSettingsPanel {...processingProps} />
             {subscription.status === "inactive" && (
               <div className="mt-3 border-t border-white/10 pt-3">
-                <PaywallBanner subscription={subscription} />
+                <PaywallBanner subscription={subscription} variant="teaser" onViewPlans={onViewPlans} />
               </div>
             )}
             {subscription.billingError && (

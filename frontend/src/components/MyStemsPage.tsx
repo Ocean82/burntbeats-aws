@@ -32,6 +32,8 @@ import JSZip from "jszip";
 import { useStemHistory } from "../hooks/useStemHistory";
 import { fetchStemDownloadUrl } from "../api/stemHistory";
 import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
+import { MyStemsPageSkeleton } from "./MyStemsPageSkeleton";
+import { useToast } from "../store/toastStore";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,6 +97,7 @@ export function MyStemsPage({
   onOpenInMixer,
   loadingMixerJobId = null,
 }: MyStemsPageProps) {
+  const { toast } = useToast();
   const {
     jobs,
     isLoading,
@@ -163,12 +166,12 @@ export function MyStemsPage({
         await downloadBlob(blob, `${stemName}.wav`);
       } catch (err) {
         console.error("Stem download failed:", err);
-        // Could add toast notification here
+        toast(`Failed to download ${stemName}`, { type: "error" });
       } finally {
         setIsDownloading((prev) => ({ ...prev, [key]: false }));
       }
     },
-    [],
+    [toast],
   );
 
   const handleDownloadAll = useCallback(
@@ -216,11 +219,12 @@ export function MyStemsPage({
         await downloadBlob(zipBlob, filename);
       } catch (err) {
         console.error("ZIP download failed:", err);
+        toast("Failed to create ZIP bundle", { type: "error" });
       } finally {
         setIsZipping(null);
       }
     },
-    [jobs],
+    [jobs, toast],
   );
 
   // -------------------------------------------------------------------------
@@ -228,12 +232,7 @@ export function MyStemsPage({
   // -------------------------------------------------------------------------
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0d0b09] p-4">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
-        <p className="mt-3 text-sm text-white/65">Loading your stems…</p>
-      </div>
-    );
+    return <MyStemsPageSkeleton />;
   }
 
   // -------------------------------------------------------------------------

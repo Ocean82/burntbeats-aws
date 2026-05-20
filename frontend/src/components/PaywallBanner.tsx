@@ -2,7 +2,7 @@
  * PaywallBanner: shown when the user has no active subscription.
  * Presents the subscription tiers and redirects to Stripe Checkout on selection.
  */
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import { SUBSCRIPTION_PLANS } from "../data/plans";
@@ -12,19 +12,72 @@ import { BillingRules } from "./BillingRules";
 
 interface PaywallBannerProps {
   subscription: UseSubscriptionResult;
+  /** "full" shows all plan cards; "teaser" shows a compact CTA linking to Plans tab */
+  variant?: "full" | "teaser";
+  /** Callback when user clicks "View all plans" (teaser variant) */
+  onViewPlans?: () => void;
 }
 
-export function PaywallBanner({ subscription }: PaywallBannerProps) {
+export function PaywallBanner({ subscription, variant = "full", onViewPlans }: PaywallBannerProps) {
   const [loading, setLoading] = useState<Plan | null>(null);
 
   useEffect(() => {
     trackEvent("paywall_impression", {
-      source: "split_gate",
+      source: variant === "teaser" ? "teaser" : "split_gate",
       status: subscription.status,
       current_plan: subscription.plan ?? "none",
     });
-  }, [subscription.plan, subscription.status]);
+  }, [subscription.plan, subscription.status, variant]);
 
+  const handleCheckout = async (plan: Plan, source: string) => {
+    trackEvent("paywall_cta_clicked", { source, plan });
+    setLoading(plan);
+    try {
+      await subscription.startCheckout(plan, {
+        source: source === "teaser" ? "paywall_banner" : "split_gate",
+        intent: `${source}_checkout`,
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // ── Teaser variant: compact CTA ──
+  if (variant === "teaser") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-2 sm:flex-row sm:justify-between">
+        <p className="text-sm text-white/75">
+          <span className="font-semibold text-white/90">Subscribe to unlock full features.</span>{" "}
+          Plans start at $5/mo.
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleCheckout("basic", "teaser")}
+            disabled={loading !== null}
+            className="fire-button flex min-h-[40px] items-center gap-2 px-4 py-2 text-xs font-semibold disabled:opacity-60"
+          >
+            {loading === "basic" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            Start Basic
+          </button>
+          {onViewPlans && (
+            <button
+              type="button"
+              onClick={onViewPlans}
+              className="ghost-button flex min-h-[40px] items-center gap-1.5 px-4 py-2 text-xs font-semibold"
+            >
+              View all plans
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Full variant ──
   const handleSelect = async (plan: Plan) => {
     trackEvent("paywall_cta_clicked", {
       source: "split_gate",
