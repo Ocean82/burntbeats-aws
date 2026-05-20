@@ -1,4 +1,4 @@
-import { HelpCircle, Undo2, Redo2, Save, Disc3, LayoutGrid, Mic2 } from "lucide-react";
+import { HelpCircle, Undo2, Redo2, Save, Disc3, LayoutGrid, Mic2, Music } from "lucide-react";
 import { cn } from "../utils/cn";
 import { HeaderUserButton } from "../components/AuthGate";
 import { AppMobileMoreMenu } from "../components/AppMobileMoreMenu";
@@ -9,8 +9,8 @@ import { useLayoutMode } from "../contexts/LayoutModeContext";
 
 interface EditorHeaderProps {
   headerVisible: boolean;
-  activeView: "editor" | "speech" | "pricing" | "my-stems";
-  setActiveView: (view: "editor" | "speech" | "pricing" | "my-stems") => void;
+  activeView: "editor" | "speech" | "midi" | "pricing" | "my-stems";
+  setActiveView: (view: "editor" | "speech" | "midi" | "pricing" | "my-stems") => void;
   uploadedFile: File | null;
   isSplitting: boolean;
   mixStemsLength: number;
@@ -81,6 +81,20 @@ export function EditorHeader({
         >
           <Mic2 className="h-3.5 w-3.5" aria-hidden />
           Speech
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveView("midi")}
+          className={cn(
+            "min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4 inline-flex items-center gap-1.5",
+            activeView === "midi"
+              ? "bg-violet-500/20 text-violet-100 border border-violet-400/50"
+              : "text-white/65 hover:text-white border border-transparent",
+          )}
+          aria-current={activeView === "midi" ? "page" : undefined}
+        >
+          <Music className="h-3.5 w-3.5" aria-hidden />
+          MIDI
         </button>
         <button
           type="button"

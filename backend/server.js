@@ -25,6 +25,8 @@ import { rateLimitMiddleware } from "./middleware/rateLimiter.js";
 import { stemsRouter, STEM_OUTPUT_DIR } from "./routes/stems/index.js";
 import { speechRouter } from "./routes/speech/index.js";
 import { SPEECH_OUTPUT_DIR } from "./routes/speech/shared.js";
+import { midiRouter } from "./routes/midi/index.js";
+import { MIDI_OUTPUT_DIR } from "./routes/midi/shared.js";
 import { stemHistoryRouter } from "./routes/stems/history.js";
 import { healthRouter } from "./routes/health.js";
 import { legalRouter } from "./routes/legal.js";
@@ -132,6 +134,7 @@ app.use("/api/clerk", clerkWebhookRouter);
 app.use("/api/stems/history", stemHistoryRouter);
 app.use("/api/stems", stemsRouter);
 app.use("/api/speech", speechRouter);
+app.use("/api/midi", midiRouter);
 app.use("/api/legal", legalRouter);
 app.use("/api/health", healthRouter);
 app.use("/api", historyRouter);
@@ -157,6 +160,7 @@ let server;
 async function main() {
   await mkdir(STEM_OUTPUT_DIR, { recursive: true });
   await mkdir(SPEECH_OUTPUT_DIR, { recursive: true });
+  await mkdir(MIDI_OUTPUT_DIR, { recursive: true });
   await mkdir(UPLOAD_TMP_DIR, { recursive: true });
   server = app.listen(PORT, () => {
     console.log(`Backend listening on http://localhost:${PORT}`);
@@ -165,6 +169,9 @@ async function main() {
     );
     console.log(
       `SPEECH_SERVICE_URL=${process.env.SPEECH_SERVICE_URL || "http://localhost:5001"} SPEECH_OUTPUT_DIR=${SPEECH_OUTPUT_DIR}`,
+    );
+    console.log(
+      `MIDI_SERVICE_URL=${process.env.MIDI_SERVICE_URL || "http://localhost:5002"} MIDI_OUTPUT_DIR=${MIDI_OUTPUT_DIR}`,
     );
     console.log(
       `CORS allowed origins: ${[...getAllowedOriginSet()].join(", ")}`,

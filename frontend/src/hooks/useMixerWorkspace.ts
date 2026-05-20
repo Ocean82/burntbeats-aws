@@ -91,6 +91,10 @@ export function useMixerWorkspace({
       rate: 1.0,
       pitchSemitones: 0,
       timeStretch: 1.0,
+      muted: false,
+      soloed: false,
+      fadeIn: 0,
+      fadeOut: 0,
     };
   }, []);
 

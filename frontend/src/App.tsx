@@ -66,6 +66,7 @@ import { AppBackgroundOrbs } from "./app/app-background-orbs.component";
 import { EditorFloatingOverlays } from "./app/editor-floating-overlays.component";
 import { EditorMainView } from "./app/editor-main-view.component";
 import { SpeechCleanPage } from "./pages/SpeechCleanPage";
+import { MidiConvertPage } from "./pages/MidiConvertPage";
 import { useHeaderVisibility } from "./hooks/useHeaderVisibility";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
@@ -433,12 +434,13 @@ export function App() {
   );
 
   const [location, navigate] = useLocation();
-  const activeView: "editor" | "speech" | "pricing" | "my-stems" =
+  const activeView: "editor" | "speech" | "midi" | "pricing" | "my-stems" =
     location === "/pricing" ? "pricing" :
     location === "/my-stems" ? "my-stems" :
     location === "/speech" ? "speech" :
+    location === "/midi" ? "midi" :
     "editor";
-  const setActiveView = useCallback((view: "editor" | "speech" | "pricing" | "my-stems") => {
+  const setActiveView = useCallback((view: "editor" | "speech" | "midi" | "pricing" | "my-stems") => {
     navigate(view === "editor" ? "/" : `/${view}`);
   }, [navigate]);
   const [pricingInitialTab, setPricingInitialTab] = useState<"subscriptions" | "packs">("subscriptions");
@@ -767,6 +769,14 @@ export function App() {
             />
           ) : activeView === "speech" ? (
             <SpeechCleanPage
+              reduceMotion={Boolean(reduceMotion)}
+              subscription={subscription}
+              usageBalance={usageBalance}
+              usageLoading={usageLoading}
+              checkoutNotice={checkoutNotice}
+            />
+          ) : activeView === "midi" ? (
+            <MidiConvertPage
               reduceMotion={Boolean(reduceMotion)}
               subscription={subscription}
               usageBalance={usageBalance}
