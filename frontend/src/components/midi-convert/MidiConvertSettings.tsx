@@ -98,7 +98,10 @@ export function MidiConvertSettings({
       </label>
 
       {settings.normalizeVelocity && (
-        <label className="ml-5 flex flex-col gap-1.5 border-l border-violet-400/20 pl-3">
+        <label
+          htmlFor="midi-convert-target-velocity"
+          className="ml-5 flex flex-col gap-1.5 border-l border-violet-400/20 pl-3"
+        >
           <span className="flex items-center justify-between text-sm text-white/70">
             <span>Target peak velocity</span>
             <span className="font-mono text-xs text-violet-300">
@@ -106,6 +109,7 @@ export function MidiConvertSettings({
             </span>
           </span>
           <input
+            id="midi-convert-target-velocity"
             type="range"
             min={40}
             max={127}
@@ -115,6 +119,7 @@ export function MidiConvertSettings({
               onUpdate({ targetVelocity: parseInt(e.target.value, 10) })
             }
             disabled={disabled}
+            aria-label="Target peak velocity"
             className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
           />
         </label>

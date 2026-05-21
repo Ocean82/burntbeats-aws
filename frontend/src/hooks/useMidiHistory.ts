@@ -16,22 +16,57 @@ export interface MidiHistoryRecord {
   file_available: boolean;
 }
 
+async function fetchMidiHistoryRecords(): Promise<MidiHistoryRecord[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}/api/midi/history`, { headers });
+  if (!res.ok) throw new Error("Failed to load MIDI history");
+  const data = await res.json();
+  return data.conversions || [];
+}
+
 export function useMidiHistory() {
   const [records, setRecords] = useState<MidiHistoryRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
-  const fetchHistory = useCallback(async () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const conversions = await fetchMidiHistoryRecords();
+        if (!cancelled) {
+          setRecords(conversions);
+          setError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Failed to load");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const refetch = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const headers = await authHeaders();
-      const res = await fetch(`${API_BASE}/api/midi/history`, { headers });
-      if (!res.ok) throw new Error("Failed to load MIDI history");
-      const data = await res.json();
+      const conversions = await fetchMidiHistoryRecords();
       if (mountedRef.current) {
-        setRecords(data.conversions || []);
+        setRecords(conversions);
       }
     } catch (e) {
       if (mountedRef.current) {
@@ -44,13 +79,5 @@ export function useMidiHistory() {
     }
   }, []);
 
-  useEffect(() => {
-    mountedRef.current = true;
-    void fetchHistory();
-    return () => {
-      mountedRef.current = false;
-    };
-  }, [fetchHistory]);
-
-  return { records, isLoading, error, refetch: fetchHistory };
+  return { records, isLoading, error, refetch };
 }
