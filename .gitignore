@@ -47,6 +47,12 @@ google-services.json
 !.env.example
 !**/.env.example
 
+# Server-sync local env mirrors (double-underscore names are not matched by .env.*)
+.server-sync/.env
+.server-sync/*__.env
+!.server-sync/*__.env.example
+!.server-sync/.env.example
+
 # Build / env
 dist/
 *.local

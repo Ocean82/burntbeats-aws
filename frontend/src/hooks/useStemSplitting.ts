@@ -93,6 +93,7 @@ export function useStemSplitting({
       id: `loaded_${ts}_${i}`,
       label: file.name,
       url: URL.createObjectURL(file),
+      file,
     }));
     loadedUrlsRef.current.push(...next.map((s) => s.url));
     setUploadState((prev) => ({

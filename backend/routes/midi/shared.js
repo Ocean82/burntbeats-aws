@@ -42,6 +42,10 @@ export const MIDI_SERVICE_API_TOKEN =
 /** Token cost for a single MIDI conversion (half a stem split). */
 export const MIDI_TOKEN_COST = Number(process.env.MIDI_TOKEN_COST) || 0.5;
 
+/** Must match midi_service MIDI_MAX_UPLOAD_MB (default 100). */
+export const MIDI_MAX_UPLOAD_BYTES =
+  (Number(process.env.MIDI_MAX_UPLOAD_MB) || 100) * 1024 * 1024;
+
 /** Default age for cleanup endpoint when `maxAgeHours` query is omitted */
 export const MIDI_CLEANUP_DEFAULT_MAX_AGE_HOURS = (() => {
   const raw = Number(process.env.MIDI_CLEANUP_DEFAULT_MAX_AGE_HOURS);

@@ -27,6 +27,7 @@ import {
 
 import {
   MIDI_ACCEPT_TIMEOUT_MS,
+  MIDI_MAX_UPLOAD_BYTES,
   MIDI_SERVICE_URL,
   MIDI_TOKEN_COST,
   withMidiServiceAuthHeader,
@@ -105,6 +106,13 @@ midiConvertRouter.post(
       return res.status(400).json({
         error:
           "Provide either an audio file (field 'file') or stem_job_id + stem_name.",
+      });
+    }
+
+    if (!useStemFile && req.file && req.file.size > MIDI_MAX_UPLOAD_BYTES) {
+      const mb = Math.round(MIDI_MAX_UPLOAD_BYTES / (1024 * 1024));
+      return res.status(413).json({
+        error: `File too large for MIDI conversion. Maximum size is ${mb}MB.`,
       });
     }
 

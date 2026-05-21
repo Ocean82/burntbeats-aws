@@ -13,6 +13,10 @@ interface ImportMetaEnv {
   readonly VITE_MAX_UPLOAD_BYTES?: string;
   /** Optional: max speech upload bytes; default 100MB; align with speech_service SPEECH_MAX_UPLOAD_MB. */
   readonly VITE_SPEECH_MAX_UPLOAD_BYTES?: string;
+  /** Optional: max MIDI upload bytes; default 100MB; align with midi_service MIDI_MAX_UPLOAD_MB. */
+  readonly VITE_MIDI_MAX_UPLOAD_BYTES?: string;
+  /** Optional: MIDI convert accept timeout ms; default 30000. */
+  readonly VITE_MIDI_ACCEPT_TIMEOUT_MS?: string;
   /**
    * When **`1`** / **`true`**, the client may call **`POST /api/stems/server-export`** for an offline-rendered master **WAV** (must match **`SERVER_EXPORT_ENABLED=1`** on the backend or you get HTTP **404**, then client falls back).
    * Renders on the stem host via **`stem_service/server_export.py`** — **token-metered** when **`USAGE_TOKENS_ENABLED`**. Omit in prod unless you deliberately enable server export (`docs/BILLING-AND-TOKENS.md`, **`docs/ARCHITECTURE-FLOW.md`**). Baked in at **frontend image build**.

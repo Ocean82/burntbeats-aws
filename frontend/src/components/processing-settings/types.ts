@@ -5,6 +5,7 @@ export interface LoadedStem {
   id: string;
   label: string;
   url: string;
+  file: File;
 }
 
 export interface ProcessingSettingsPanelProps {

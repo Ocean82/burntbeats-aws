@@ -551,8 +551,16 @@ export function App() {
     [handleFileFromInput],
   );
 
-  const { loadHistoryJob, loadingJobId } = useLoadHistoryJob({
-    onLoaded: ({ stems, jobId, uploadName: historyName }) => {
+  const applyHistoryStemsToStore = useCallback(
+    ({
+      stems,
+      jobId,
+      uploadName: historyName,
+    }: {
+      stems: import("./types").StemResult[];
+      jobId: string;
+      uploadName: string;
+    }) => {
       clearStemLoadingState();
       clearStemWaveforms();
       resetStemStates({});
@@ -568,6 +576,13 @@ export function App() {
         splitProgress: 100,
         pipelineIndex: 3,
       }));
+    },
+    [clearStemLoadingState, clearStemWaveforms, resetStemStates, setUploadState],
+  );
+
+  const { loadHistoryJob, loadingJobId } = useLoadHistoryJob({
+    onLoaded: (payload) => {
+      applyHistoryStemsToStore(payload);
       setActiveView("editor");
       window.setTimeout(() => {
         mixerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -575,6 +590,15 @@ export function App() {
     },
     onError: (msg) => setSplitError(msg),
   });
+
+  const { loadHistoryJob: loadHistoryJobToMidi, loadingJobId: loadingMidiJobId } =
+    useLoadHistoryJob({
+      onLoaded: (payload) => {
+        applyHistoryStemsToStore(payload);
+        setActiveView("midi");
+      },
+      onError: (msg) => setSplitError(msg),
+    });
 
   const exportTrackDurationSec = useMemo(() => {
     let max = 0;
@@ -756,7 +780,9 @@ export function App() {
             <MyStemsPage
               onClose={() => setActiveView("editor")}
               onOpenInMixer={(job) => void loadHistoryJob(job)}
+              onOpenInMidi={(job) => void loadHistoryJobToMidi(job)}
               loadingMixerJobId={loadingJobId}
+              loadingMidiJobId={loadingMidiJobId}
             />
           ) : activeView === "speech" ? (
             <SpeechCleanPage

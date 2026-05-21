@@ -32,6 +32,8 @@ import JSZip from "jszip";
 import { useStemHistory } from "../hooks/useStemHistory";
 import { useMidiHistory } from "../hooks/useMidiHistory";
 import { fetchStemDownloadUrl } from "../api/stemHistory";
+import { API_BASE } from "../config";
+import { authHeaders } from "../api/auth";
 import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
 import { MyStemsPageSkeleton } from "./MyStemsPageSkeleton";
 import { useToast } from "../store/toastStore";
@@ -43,7 +45,9 @@ import { useToast } from "../store/toastStore";
 interface MyStemsPageProps {
   onClose: () => void;
   onOpenInMixer?: (job: import("../api/stemHistory").StemHistoryJob) => void;
+  onOpenInMidi?: (job: import("../api/stemHistory").StemHistoryJob) => void;
   loadingMixerJobId?: string | null;
+  loadingMidiJobId?: string | null;
 }
 
 type SortOption = "date-desc" | "date-asc" | "name-asc" | "name-desc" | "stems-desc";
@@ -96,7 +100,9 @@ function formatRelativeDate(isoDate: string): string {
 export function MyStemsPage({
   onClose,
   onOpenInMixer,
+  onOpenInMidi,
   loadingMixerJobId = null,
+  loadingMidiJobId = null,
 }: MyStemsPageProps) {
   const { toast } = useToast();
   const {
@@ -234,9 +240,8 @@ export function MyStemsPage({
       const key = `midi:${midiJobId}`;
       setIsDownloading((prev) => ({ ...prev, [key]: true }));
       try {
-        const apiBase = import.meta.env.VITE_API_URL || "";
-        const url = `${apiBase}/api/midi/file/${midiJobId}/output.mid`;
-        const response = await fetch(url);
+        const url = `${API_BASE}/api/midi/file/${midiJobId}/output.mid`;
+        const response = await fetch(url, { headers: await authHeaders() });
         if (!response.ok) throw new Error("MIDI download failed");
         const blob = await response.blob();
         const filename = stemName ? `${stemName}.mid` : `midi-${midiJobId.slice(0, 8)}.mid`;
@@ -557,25 +562,50 @@ export function MyStemsPage({
                               </div>
                             )}
 
-                            {onOpenInMixer && availableStems.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => onOpenInMixer(job)}
-                                disabled={loadingMixerJobId === job.job_id}
-                                className="fire-button mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
-                              >
-                                {loadingMixerJobId === job.job_id ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading into mixer…
-                                  </>
-                                ) : (
-                                  <>
-                                    <SlidersHorizontal className="h-4 w-4" />
-                                    Open in mixer
-                                  </>
+                            {availableStems.length > 0 && (
+                              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                {onOpenInMixer && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenInMixer(job)}
+                                    disabled={loadingMixerJobId === job.job_id}
+                                    className="fire-button flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
+                                  >
+                                    {loadingMixerJobId === job.job_id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Loading…
+                                      </>
+                                    ) : (
+                                      <>
+                                        <SlidersHorizontal className="h-4 w-4" />
+                                        Open in mixer
+                                      </>
+                                    )}
+                                  </button>
                                 )}
-                              </button>
+                                {onOpenInMidi && (
+                                  <button
+                                    type="button"
+                                    data-testid="my-stems-use-in-midi"
+                                    onClick={() => onOpenInMidi(job)}
+                                    disabled={loadingMidiJobId === job.job_id}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-violet-400/40 bg-violet-500/15 py-3 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/25 disabled:opacity-50"
+                                  >
+                                    {loadingMidiJobId === job.job_id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Loading…
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Music className="h-4 w-4" />
+                                        Use in MIDI
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
                             )}
 
                             {/* Download All */}

@@ -9,7 +9,7 @@ export interface AppState {
   uploadedFile: File | null;
   splitResultStems: StemResult[];
   splitJobId: string | null;
-  loadedStems: Array<{ id: string; label: string; url: string }>;
+  loadedStems: Array<{ id: string; label: string; url: string; file: File }>;
   splitError: string | null;
   isSample: boolean;
   isDragging: boolean;

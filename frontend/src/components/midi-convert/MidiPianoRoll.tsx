@@ -3,29 +3,74 @@
  * Lightweight, no dependencies. Renders note rectangles on a time × pitch grid.
  * Supports optional playhead and note highlighting during playback.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
 import { midiToNoteName } from "../../utils/musicTheory";
+
+const LEFT_MARGIN = 44;
+const TOP_MARGIN = 4;
+const BOTTOM_MARGIN = 20;
+const MIN_WIDTH = 280;
+const MIN_HEIGHT = 160;
+const MAX_HEIGHT = 280;
 
 interface MidiPianoRollProps {
   notes: MidiNoteEvent[];
   currentTime?: number | null;
-  width?: number;
-  height?: number;
   className?: string;
+}
+
+function computeHeightForPitchRange(pitchRange: number): number {
+  const rowHeight = Math.max(8, Math.min(14, 200 / Math.max(pitchRange, 1)));
+  return Math.round(
+    Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, TOP_MARGIN + BOTTOM_MARGIN + pitchRange * rowHeight)),
+  );
 }
 
 export function MidiPianoRoll({
   notes,
   currentTime = null,
-  width = 600,
-  height = 180,
   className = "",
 }: MidiPianoRollProps) {
-  const { rects, pitchLabels, timeLabels, minStart, totalDuration, leftMargin, drawWidth, topMargin, bottomMargin } =
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(MIN_WIDTH);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setContainerWidth(Math.max(MIN_WIDTH, w));
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const pitchRange = useMemo(() => {
+    if (!notes.length) return 1;
+    const pitches = notes.map((n) => n.pitch);
+    return Math.max(1, Math.max(...pitches) - Math.min(...pitches) + 1);
+  }, [notes]);
+
+  const height = computeHeightForPitchRange(pitchRange);
+  const width = containerWidth;
+
+  const { rects, pitchLabels, timeLabels, minStart, totalDuration, drawWidth, bottomMargin } =
     useMemo(() => {
       if (!notes.length) {
-        return { rects: [], pitchLabels: [], timeLabels: [], minStart: 0, totalDuration: 0, leftMargin: 44, drawWidth: 0, topMargin: 4, bottomMargin: 20 };
+        return {
+          rects: [],
+          pitchLabels: [],
+          timeLabels: [],
+          minStart: 0,
+          totalDuration: 0,
+          drawWidth: 0,
+          bottomMargin: BOTTOM_MARGIN,
+        };
       }
 
       const pitches = notes.map((n) => n.pitch);
@@ -34,49 +79,39 @@ export function MidiPianoRoll({
       const mStart = Math.min(...notes.map((n) => n.start));
       const maxE = Math.max(...notes.map((n) => n.start + n.duration));
 
-      const pitchRange = maxP - minP + 1;
-      const lMargin = 44;
-      const tMargin = 4;
-      const bMargin = 20;
-      const dWidth = width - lMargin;
-      const drawHeight = height - tMargin - bMargin;
+      const range = maxP - minP + 1;
+      const dWidth = width - LEFT_MARGIN;
+      const drawHeight = height - TOP_MARGIN - BOTTOM_MARGIN;
       const dur = maxE - mStart;
 
       const noteRects = notes.map((note, i) => {
-        const x =
-          lMargin +
-          ((note.start - mStart) / dur) * dWidth;
-        const w = Math.max(
-          (note.duration / dur) * dWidth,
-          2,
-        );
+        const x = LEFT_MARGIN + ((note.start - mStart) / dur) * dWidth;
+        const w = Math.max((note.duration / dur) * dWidth, 2);
         const y =
-          tMargin +
+          TOP_MARGIN +
           drawHeight -
-          ((note.pitch - minP + 1) / pitchRange) * drawHeight;
-        const h = Math.max(drawHeight / pitchRange - 1, 2);
+          ((note.pitch - minP + 1) / range) * drawHeight;
+        const h = Math.max(drawHeight / range - 1, 3);
         const opacity = 0.5 + note.velocity * 0.5;
 
         return { key: i, x, y, w, h, opacity, start: note.start, duration: note.duration };
       });
 
-      // Pitch labels (every octave C)
       const labels: Array<{ y: number; label: string }> = [];
       for (let p = minP; p <= maxP; p++) {
         if (p % 12 === 0) {
           const y =
-            tMargin +
+            TOP_MARGIN +
             drawHeight -
-            ((p - minP + 0.5) / pitchRange) * drawHeight;
+            ((p - minP + 0.5) / range) * drawHeight;
           labels.push({ y, label: midiToNoteName(p) });
         }
       }
 
-      // Time labels (every N seconds)
       const step = dur > 60 ? 15 : dur > 20 ? 5 : 1;
       const tLabels: Array<{ x: number; label: string }> = [];
       for (let t = 0; t <= dur; t += step) {
-        const x = lMargin + (t / dur) * dWidth;
+        const x = LEFT_MARGIN + (t / dur) * dWidth;
         const mins = Math.floor(t / 60);
         const secs = Math.floor(t % 60);
         tLabels.push({
@@ -91,42 +126,44 @@ export function MidiPianoRoll({
         timeLabels: tLabels,
         minStart: mStart,
         totalDuration: dur,
-        leftMargin: lMargin,
         drawWidth: dWidth,
-        topMargin: tMargin,
-        bottomMargin: bMargin,
+        bottomMargin: BOTTOM_MARGIN,
       };
     }, [notes, width, height]);
 
-  // Compute playhead x position
   const playheadX = useMemo(() => {
     if (currentTime == null || currentTime <= 0 || totalDuration <= 0) return null;
     const clampedTime = Math.min(currentTime, totalDuration);
-    return leftMargin + (clampedTime / totalDuration) * drawWidth;
-  }, [currentTime, totalDuration, leftMargin, drawWidth]);
+    return LEFT_MARGIN + (clampedTime / totalDuration) * drawWidth;
+  }, [currentTime, totalDuration, drawWidth]);
 
   if (!notes.length) {
     return (
-      <div className={`flex items-center justify-center rounded-xl border border-violet-500/20 bg-black/30 p-8 text-sm text-white/40 ${className}`}>
+      <div
+        ref={containerRef}
+        className={`flex w-full min-h-[120px] items-center justify-center rounded-xl border border-violet-500/20 bg-black/30 p-8 text-sm text-white/40 ${className}`}
+      >
         No MIDI notes to display
       </div>
     );
   }
 
   return (
-    <div className={`overflow-x-auto rounded-xl border border-violet-500/20 bg-black/40 ${className}`}>
+    <div
+      ref={containerRef}
+      className={`w-full rounded-xl border border-violet-500/20 bg-black/40 ${className}`}
+    >
       <svg
         width={width}
         height={height}
-        className="block min-w-full"
+        className="block w-full"
         role="img"
         aria-label={`Piano roll showing ${notes.length} MIDI notes`}
       >
-        {/* Grid lines for each pitch */}
         {pitchLabels.map((pl, i) => (
           <g key={`pl-${i}`}>
             <line
-              x1={44}
+              x1={LEFT_MARGIN}
               x2={width}
               y1={pl.y}
               y2={pl.y}
@@ -145,14 +182,13 @@ export function MidiPianoRoll({
           </g>
         ))}
 
-        {/* Time labels */}
         {timeLabels.map((tl, i) => (
           <g key={`tl-${i}`}>
             <line
               x1={tl.x}
               x2={tl.x}
-              y1={4}
-              y2={height - 20}
+              y1={TOP_MARGIN}
+              y2={height - bottomMargin}
               stroke="rgba(139,92,246,0.1)"
               strokeWidth={0.5}
             />
@@ -169,7 +205,6 @@ export function MidiPianoRoll({
           </g>
         ))}
 
-        {/* Note rectangles — highlighted when currently sounding */}
         {rects.map((r) => {
           const isActive =
             currentTime != null &&
@@ -199,12 +234,11 @@ export function MidiPianoRoll({
           );
         })}
 
-        {/* Playhead line */}
         {playheadX != null && (
           <line
             x1={playheadX}
             x2={playheadX}
-            y1={topMargin}
+            y1={TOP_MARGIN}
             y2={height - bottomMargin}
             stroke="rgba(251, 146, 60, 0.9)"
             strokeWidth={1.5}

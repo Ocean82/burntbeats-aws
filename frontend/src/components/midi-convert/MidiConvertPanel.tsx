@@ -9,6 +9,7 @@ import JSZip from "jszip";
 import { useMidiConvert } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
 import { MidiSourceSelector } from "./MidiSourceSelector";
+import { MidiSourcePreview } from "./MidiSourcePreview";
 import { MidiConvertSettings } from "./MidiConvertSettings";
 import { MidiConvertProgress } from "./MidiConvertProgress";
 import { MidiResultPanel } from "./MidiResultPanel";
@@ -25,22 +26,33 @@ export function MidiConvertPanel({
   usageLoading = false,
   subscriptionInactive = false,
 }: MidiConvertPanelProps) {
-  const { splitResultStems, splitJobId } = useAppStore();
+  const { splitJobId } = useAppStore();
 
   const {
     sourceMode,
     setSourceMode,
     selectedStem,
     setSelectedStem,
+    selectedLoadedStemId,
+    setSelectedLoadedStemId,
     uploadedFile,
     uploadName,
     acceptFile,
     handleBrowse,
     handleClear,
     inputRef,
+    isDragging,
+    setIsDragging,
+    splitResultStems,
+    loadedStems,
+    selectedSplitStemUrl,
+    selectedLoadedStem,
+    hasSourceSelected,
     settings,
     updateSettings,
     isConverting,
+    isUploading,
+    uploadProgress,
     progress,
     statusMessage,
     error,
@@ -48,7 +60,6 @@ export function MidiConvertPanel({
     result,
     downloadMidi,
     triggerConvert,
-    // Batch
     batchJobs,
     isBatchMode,
     batchProgress,
@@ -59,10 +70,11 @@ export function MidiConvertPanel({
 
   const canConvert =
     !isConverting &&
+    !isUploading &&
     !result &&
     !isBatchMode &&
-    ((sourceMode === "split" && selectedStem && splitJobId) ||
-      (sourceMode === "upload" && uploadedFile));
+    hasSourceSelected &&
+    (sourceMode !== "split" || !!splitJobId);
 
   // Batch conversion helpers
   const stemNames = splitResultStems.map((s) => s.id);
@@ -172,19 +184,33 @@ export function MidiConvertPanel({
         selectedStem={selectedStem}
         onSelectStem={setSelectedStem}
         splitResultStems={splitResultStems}
+        loadedStems={loadedStems}
+        selectedLoadedStemId={selectedLoadedStemId}
+        onSelectLoadedStem={setSelectedLoadedStemId}
         uploadedFile={uploadedFile}
         uploadName={uploadName}
         onBrowse={handleBrowse}
         onDrop={acceptFile}
         inputRef={inputRef}
-        disabled={isConverting}
+        isDragging={isDragging}
+        onSetIsDragging={setIsDragging}
+        disabled={isConverting || isUploading}
+      />
+
+      <MidiSourcePreview
+        sourceMode={sourceMode}
+        uploadedFile={uploadedFile}
+        splitStemUrl={selectedSplitStemUrl}
+        loadedStemUrl={selectedLoadedStem?.url ?? null}
+        loadedStemLabel={selectedLoadedStem?.label}
+        disabled={isConverting || isUploading}
       />
 
       {/* Settings */}
       <MidiConvertSettings
         settings={settings}
         onUpdate={updateSettings}
-        disabled={isConverting}
+        disabled={isConverting || isUploading}
       />
 
       {/* Usage info */}
@@ -231,25 +257,16 @@ export function MidiConvertPanel({
             disabled={!canConvert}
             className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-violet-300/50 bg-gradient-to-r from-violet-600/90 to-purple-600/90 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(139,92,246,0.2)] transition hover:from-violet-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {isConverting ? (
+            {isConverting || isUploading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Converting…
+                {isUploading ? "Uploading…" : "Converting…"}
               </>
             ) : result ? (
               "Conversion complete"
             ) : (
               "Convert to MIDI"
             )}
-          </button>
-        )}
-        {result && !subscriptionInactive && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="min-h-[44px] rounded-xl border border-white/15 px-4 py-2 text-sm text-white/70 hover:border-white/30 hover:text-white"
-          >
-            New conversion
           </button>
         )}
       </div>
@@ -311,30 +328,34 @@ export function MidiConvertPanel({
             {batchJobs.map((job, idx) => (
               <div
                 key={job.stemName}
-                className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
                   {/* Status indicator */}
                   {job.status === "pending" && (
-                    <span className="h-2.5 w-2.5 rounded-full bg-white/30" />
+                    <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-white/30 sm:mt-0" />
                   )}
                   {job.status === "converting" && (
-                    <Loader2 className="h-4 w-4 animate-spin text-violet-300" />
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-300" />
                   )}
                   {job.status === "completed" && (
-                    <Check className="h-4 w-4 text-green-400" />
+                    <Check className="h-4 w-4 shrink-0 text-green-400" />
                   )}
                   {job.status === "failed" && (
-                    <X className="h-4 w-4 text-red-400" />
+                    <X className="h-4 w-4 shrink-0 text-red-400" />
                   )}
-                  <span className="text-sm text-white/80 capitalize">{job.stemName}</span>
-                  {job.status === "failed" && job.error && (
-                    <span className="ml-1 rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] text-red-300">
-                      {job.error.slice(0, 50)}
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-sm text-white/80 capitalize">
+                      {job.stemName}
                     </span>
-                  )}
+                    {job.status === "failed" && job.error && (
+                      <span className="mt-1 block text-xs text-red-300/90 line-clamp-2">
+                        {job.error}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                   {/* Individual download button for completed stems */}
                   {job.status === "completed" && job.fileUrl && job.jobToken && (
                     <button
@@ -390,6 +411,8 @@ export function MidiConvertPanel({
       {/* Progress */}
       <MidiConvertProgress
         isConverting={isConverting}
+        isUploading={isUploading}
+        uploadProgress={uploadProgress}
         progress={progress}
         statusMessage={statusMessage}
       />

@@ -6,6 +6,16 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { authHeaders, setJobToken as storeJobToken } from "../api/auth";
 import { trackEvent } from "../analytics/events";
+import {
+  API_BASE,
+  isAllowedMidiAudioFile,
+  MIDI_ALLOWED_AUDIO_FORMATS_LABEL,
+  MIDI_MAX_UPLOAD_BYTES,
+} from "../config";
+import { useAppStore } from "../store/appStore";
+import { uploadWithProgress } from "../utils/uploadWithProgress";
+
+export type MidiSourceMode = "split" | "upload" | "loaded";
 
 export interface MidiConvertSettings {
   minConfidence: number;
@@ -80,6 +90,12 @@ interface PollResponse {
   };
 }
 
+interface ConvertJobResponse {
+  job_id: string;
+  job_token: string;
+  file_url?: string;
+}
+
 const DEFAULT_SETTINGS: MidiConvertSettings = {
   minConfidence: 0.5,
   minNoteLengthMs: 58,
@@ -93,33 +109,104 @@ const DEFAULT_SETTINGS: MidiConvertSettings = {
   maxNoteLengthMs: 0,
 };
 
-const API_BASE = import.meta.env.VITE_API_URL || "";
+const MIDI_ACCEPT_TIMEOUT_MS =
+  Number(import.meta.env.VITE_MIDI_ACCEPT_TIMEOUT_MS) || 30_000;
+
+function appendSettingsToForm(formData: FormData, settings: MidiConvertSettings) {
+  formData.append("min_confidence", settings.minConfidence.toString());
+  formData.append("min_note_length_ms", settings.minNoteLengthMs.toString());
+  formData.append(
+    "include_pitch_bends",
+    settings.includePitchBends ? "true" : "false",
+  );
+  if (settings.quantize) {
+    formData.append("quantize", "true");
+    formData.append("quantize_grid", settings.quantizeGrid);
+    formData.append("quantize_bpm", settings.quantizeBpm.toString());
+    formData.append("quantize_strength", settings.quantizeStrength.toString());
+  }
+  formData.append(
+    "normalize_velocity",
+    settings.normalizeVelocity ? "true" : "false",
+  );
+  formData.append("target_velocity", settings.targetVelocity.toString());
+  formData.append("max_note_length_ms", settings.maxNoteLengthMs.toString());
+}
+
+function normalizeFileUrl(fileUrl: string | undefined): string | null {
+  if (!fileUrl) return null;
+  return fileUrl.startsWith("http")
+    ? new URL(fileUrl).pathname
+    : fileUrl;
+}
 
 export function useMidiConvert() {
-  // Source state
-  const [sourceMode, setSourceMode] = useState<"split" | "upload">("split");
+  const splitResultStems = useAppStore((s) => s.splitResultStems);
+  const loadedStems = useAppStore((s) => s.loadedStems);
+
+  const [userSourceMode, setUserSourceMode] = useState<MidiSourceMode | null>(null);
   const [selectedStem, setSelectedStem] = useState<string | null>(null);
+  const [selectedLoadedStemId, setSelectedLoadedStemId] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadName, setUploadName] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Settings
   const [settings, setSettings] = useState<MidiConvertSettings>(DEFAULT_SETTINGS);
 
-  // Conversion state
   const [isConverting, setIsConverting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Result
   const [result, setResult] = useState<MidiConvertResult | null>(null);
   const [midiFileUrl, setMidiFileUrl] = useState<string | null>(null);
   const [jobToken, setJobToken] = useState<string | null>(null);
 
-  // Polling ref
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const sourceMode: MidiSourceMode = useMemo(() => {
+    const hasSplit = splitResultStems.length > 0;
+    const hasLoaded = loadedStems.length > 0;
+    if (userSourceMode === "split" && hasSplit) return "split";
+    if (userSourceMode === "loaded" && hasLoaded) return "loaded";
+    if (userSourceMode === "upload") return "upload";
+    if (hasSplit) return "split";
+    if (hasLoaded) return "loaded";
+    return "upload";
+  }, [userSourceMode, splitResultStems.length, loadedStems.length]);
+
+  const setSourceMode = useCallback((mode: MidiSourceMode) => {
+    setUserSourceMode(mode);
+  }, []);
+
+  const effectiveSelectedStem = useMemo(() => {
+    if (sourceMode !== "split") return null;
+    if (selectedStem && splitResultStems.some((s) => s.id === selectedStem)) {
+      return selectedStem;
+    }
+    return splitResultStems[0]?.id ?? null;
+  }, [sourceMode, selectedStem, splitResultStems]);
+
+  const effectiveSelectedLoadedStemId = useMemo(() => {
+    if (sourceMode !== "loaded") return null;
+    if (selectedLoadedStemId && loadedStems.some((s) => s.id === selectedLoadedStemId)) {
+      return selectedLoadedStemId;
+    }
+    return loadedStems[0]?.id ?? null;
+  }, [sourceMode, selectedLoadedStemId, loadedStems]);
+
+  const selectedSplitStemUrl = useMemo(() => {
+    if (!effectiveSelectedStem) return null;
+    return splitResultStems.find((s) => s.id === effectiveSelectedStem)?.url ?? null;
+  }, [effectiveSelectedStem, splitResultStems]);
+
+  const selectedLoadedStem = useMemo(() => {
+    if (!effectiveSelectedLoadedStemId) return null;
+    return loadedStems.find((s) => s.id === effectiveSelectedLoadedStemId) ?? null;
+  }, [effectiveSelectedLoadedStemId, loadedStems]);
 
   const updateSettings = useCallback(
     (partial: Partial<MidiConvertSettings>) => {
@@ -129,15 +216,39 @@ export function useMidiConvert() {
   );
 
   const acceptFile = useCallback((file: File | null) => {
+    if (!file) {
+      setUploadedFile(null);
+      setUploadName("");
+      setError(null);
+      setResult(null);
+      setMidiFileUrl(null);
+      return;
+    }
+    if (!isAllowedMidiAudioFile(file.name)) {
+      const ext = file.name.includes(".")
+        ? file.name.split(".").pop()?.toLowerCase() ?? "unknown"
+        : "none";
+      setError(
+        `Unsupported format (.${ext}). Accepted for MIDI: ${MIDI_ALLOWED_AUDIO_FORMATS_LABEL}.`,
+      );
+      trackEvent("midi_upload_rejected_format", { file_extension: ext });
+      return;
+    }
+    if (file.size > MIDI_MAX_UPLOAD_BYTES) {
+      const mb = Math.round(MIDI_MAX_UPLOAD_BYTES / (1024 * 1024));
+      setError(`File too large for MIDI conversion. Maximum size is ${mb}MB.`);
+      return;
+    }
     setUploadedFile(file);
-    setUploadName(file?.name || "");
+    setUploadName(file.name);
     setError(null);
     setResult(null);
     setMidiFileUrl(null);
-    if (file) {
-      const ext = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "unknown" : "none";
-      trackEvent("midi_upload_selected", { file_extension: ext, file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)) });
-    }
+    const ext = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "unknown" : "none";
+    trackEvent("midi_upload_selected", {
+      file_extension: ext,
+      file_size_mb: Number((file.size / (1024 * 1024)).toFixed(2)),
+    });
   }, []);
 
   const handleBrowse = useCallback(() => {
@@ -148,12 +259,15 @@ export function useMidiConvert() {
     setUploadedFile(null);
     setUploadName("");
     setSelectedStem(null);
+    setSelectedLoadedStemId(null);
     setError(null);
     setResult(null);
     setMidiFileUrl(null);
     setProgress(0);
+    setUploadProgress(0);
     setStatusMessage("");
     setIsConverting(false);
+    setIsUploading(false);
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
@@ -172,15 +286,9 @@ export function useMidiConvert() {
       const poll = async () => {
         try {
           const headers = await authHeaders();
-          const res = await fetch(
-            `${API_BASE}/api/midi/status/${jobId}`,
-            {
-              headers: {
-                ...headers,
-                "x-job-token": token,
-              },
-            },
-          );
+          const res = await fetch(`${API_BASE}/api/midi/status/${jobId}`, {
+            headers: { ...headers, "x-job-token": token },
+          });
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             throw new Error(data.error || `Status check failed (${res.status})`);
@@ -220,11 +328,69 @@ export function useMidiConvert() {
       };
 
       pollRef.current = setInterval(poll, 1500);
-      // Run immediately too
       void poll();
     },
     [stopPolling],
   );
+
+  const submitConvertJob = useCallback(
+    async (formData: FormData, usesFileUpload: boolean): Promise<ConvertJobResponse> => {
+      const headers = await authHeaders();
+
+      if (usesFileUpload) {
+        setIsUploading(true);
+        setUploadProgress(0);
+        setStatusMessage("Uploading...");
+        try {
+          const uploadResult = await uploadWithProgress({
+            url: `${API_BASE}/api/midi/convert`,
+            formData,
+            headers,
+            timeoutMs: MIDI_ACCEPT_TIMEOUT_MS,
+            onProgress: (evt) => {
+              setUploadProgress(evt.percent);
+              setStatusMessage(`Uploading… ${evt.percent}%`);
+            },
+          });
+          setIsUploading(false);
+          if (uploadResult.status < 200 || uploadResult.status >= 300) {
+            let errMsg = `Conversion request failed (${uploadResult.status})`;
+            try {
+              const parsed = JSON.parse(uploadResult.body) as { error?: string };
+              if (parsed.error) errMsg = parsed.error;
+            } catch {
+              /* use default */
+            }
+            throw new Error(errMsg);
+          }
+          return JSON.parse(uploadResult.body) as ConvertJobResponse;
+        } catch (e) {
+          setIsUploading(false);
+          throw e;
+        }
+      }
+
+      const res = await fetch(`${API_BASE}/api/midi/convert`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Conversion request failed (${res.status})`);
+      }
+      return res.json() as Promise<ConvertJobResponse>;
+    },
+    [],
+  );
+
+  const resolveFileForConvert = useCallback((): File | null => {
+    if (sourceMode === "upload") return uploadedFile;
+    if (sourceMode === "loaded" && selectedLoadedStem?.file) {
+      return selectedLoadedStem.file;
+    }
+    return null;
+  }, [sourceMode, uploadedFile, selectedLoadedStem]);
 
   const triggerConvert = useCallback(
     async (splitJobId?: string | null) => {
@@ -232,84 +398,69 @@ export function useMidiConvert() {
       setResult(null);
       setMidiFileUrl(null);
       setProgress(0);
+      setUploadProgress(0);
       setStatusMessage("Submitting...");
       setIsConverting(true);
 
       trackEvent("midi_convert_started", {
         source_mode: sourceMode,
-        stem_name: selectedStem || "none",
+        stem_name: effectiveSelectedStem || effectiveSelectedLoadedStemId || "none",
         min_confidence: settings.minConfidence,
         include_pitch_bends: settings.includePitchBends,
       });
 
       try {
-        const headers = await authHeaders();
         const formData = new FormData();
+        let usesFileUpload = false;
 
-        if (sourceMode === "split" && selectedStem && splitJobId) {
-          // Convert from a previously split stem
+        if (sourceMode === "split" && effectiveSelectedStem && splitJobId) {
           formData.append("stem_job_id", splitJobId);
-          formData.append("stem_name", selectedStem);
+          formData.append("stem_name", effectiveSelectedStem);
         } else if (sourceMode === "upload" && uploadedFile) {
           formData.append("file", uploadedFile);
+          usesFileUpload = true;
+        } else if (sourceMode === "loaded") {
+          const file = resolveFileForConvert();
+          if (!file) {
+            setError("Select a loaded stem first.");
+            setIsConverting(false);
+            return;
+          }
+          formData.append("file", file);
+          usesFileUpload = true;
         } else {
           setError("Select a stem or upload a file first.");
           setIsConverting(false);
           return;
         }
 
-        formData.append("min_confidence", settings.minConfidence.toString());
-        formData.append("min_note_length_ms", settings.minNoteLengthMs.toString());
-        formData.append(
-          "include_pitch_bends",
-          settings.includePitchBends ? "true" : "false",
-        );
+        appendSettingsToForm(formData, settings);
 
-        if (settings.quantize) {
-          formData.append("quantize", "true");
-          formData.append("quantize_grid", settings.quantizeGrid);
-          formData.append("quantize_bpm", settings.quantizeBpm.toString());
-          formData.append("quantize_strength", settings.quantizeStrength.toString());
-        }
-        formData.append(
-          "normalize_velocity",
-          settings.normalizeVelocity ? "true" : "false",
-        );
-        formData.append("target_velocity", settings.targetVelocity.toString());
-        formData.append("max_note_length_ms", settings.maxNoteLengthMs.toString());
-
-        const res = await fetch(`${API_BASE}/api/midi/convert`, {
-          method: "POST",
-          headers: headers,
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `Conversion request failed (${res.status})`);
-        }
-
-        const data = await res.json();
+        const data = await submitConvertJob(formData, usesFileUpload);
         const token = data.job_token;
         setJobToken(token);
         storeJobToken(data.job_id, token);
-        // file_url may be absolute or relative — normalize to relative path for same-origin fetch
-        const fileUrl = data.file_url?.startsWith("http")
-          ? new URL(data.file_url).pathname
-          : data.file_url || null;
-        setMidiFileUrl(fileUrl);
+        setMidiFileUrl(normalizeFileUrl(data.file_url));
         setStatusMessage("Queued...");
-
-        // Start polling
         pollStatus(data.job_id, token);
       } catch (e) {
         setIsConverting(false);
+        setIsUploading(false);
         const msg = e instanceof Error ? e.message : "Conversion failed";
         setError(msg);
         trackEvent("midi_convert_failed", { error: msg.slice(0, 120) });
       }
     },
-    [sourceMode, selectedStem, uploadedFile, settings, pollStatus],
+    [
+      sourceMode,
+      effectiveSelectedStem,
+      effectiveSelectedLoadedStemId,
+      uploadedFile,
+      settings,
+      pollStatus,
+      submitConvertJob,
+      resolveFileForConvert,
+    ],
   );
 
   const downloadMidi = useCallback(async () => {
@@ -318,10 +469,7 @@ export function useMidiConvert() {
     try {
       const headers = await authHeaders();
       const res = await fetch(midiFileUrl, {
-        headers: {
-          ...headers,
-          "x-job-token": jobToken,
-        },
+        headers: { ...headers, "x-job-token": jobToken },
       });
       if (!res.ok) throw new Error("Download failed");
       const blob = await res.blob();
@@ -334,12 +482,10 @@ export function useMidiConvert() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      // Fallback: open in new tab
       window.open(midiFileUrl, "_blank");
     }
   }, [midiFileUrl, jobToken]);
 
-  // --- Batch conversion state ---
   const [batchJobs, setBatchJobs] = useState<BatchJob[]>([]);
   const [isBatchMode, setIsBatchMode] = useState(false);
   const batchAbortRef = useRef(false);
@@ -349,14 +495,10 @@ export function useMidiConvert() {
     return { completed, total: batchJobs.length };
   }, [batchJobs]);
 
-  /**
-   * Poll a single batch job until it completes or fails.
-   * Returns the final PollResponse or throws on error.
-   */
   const pollBatchJob = useCallback(
     async (jobId: string, token: string): Promise<PollResponse> => {
       const POLL_INTERVAL = 1500;
-      const MAX_POLLS = 200; // ~5 min max per stem
+      const MAX_POLLS = 200;
       let polls = 0;
 
       while (polls < MAX_POLLS) {
@@ -370,13 +512,11 @@ export function useMidiConvert() {
         }
         const data: PollResponse = await res.json();
 
-        if (data.status === "completed" && data.result) {
-          return data;
-        } else if (data.status === "failed") {
+        if (data.status === "completed" && data.result) return data;
+        if (data.status === "failed") {
           throw new Error(data.error || "Conversion failed");
         }
 
-        // Wait before next poll
         await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
         polls++;
       }
@@ -385,53 +525,21 @@ export function useMidiConvert() {
     [],
   );
 
-  /**
-   * Submit and poll a single stem conversion for batch mode.
-   * Returns the job result or throws on failure.
-   */
   const convertSingleStem = useCallback(
-    async (splitJobId: string, stemName: string): Promise<{ jobId: string; token: string; fileUrl: string | null; result: MidiConvertResult }> => {
-      const headers = await authHeaders();
+    async (
+      splitJobId: string,
+      stemName: string,
+    ): Promise<{ jobId: string; token: string; fileUrl: string | null; result: MidiConvertResult }> => {
       const formData = new FormData();
       formData.append("stem_job_id", splitJobId);
       formData.append("stem_name", stemName);
-      formData.append("min_confidence", settings.minConfidence.toString());
-      formData.append("min_note_length_ms", settings.minNoteLengthMs.toString());
-      formData.append("include_pitch_bends", settings.includePitchBends ? "true" : "false");
+      appendSettingsToForm(formData, settings);
 
-      if (settings.quantize) {
-        formData.append("quantize", "true");
-        formData.append("quantize_grid", settings.quantizeGrid);
-        formData.append("quantize_bpm", settings.quantizeBpm.toString());
-        formData.append("quantize_strength", settings.quantizeStrength.toString());
-      }
-      formData.append(
-        "normalize_velocity",
-        settings.normalizeVelocity ? "true" : "false",
-      );
-      formData.append("target_velocity", settings.targetVelocity.toString());
-      formData.append("max_note_length_ms", settings.maxNoteLengthMs.toString());
-
-      const res = await fetch(`${API_BASE}/api/midi/convert`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Conversion request failed (${res.status})`);
-      }
-
-      const data = await res.json();
+      const data = await submitConvertJob(formData, false);
       const token = data.job_token;
       storeJobToken(data.job_id, token);
 
-      const fileUrl = data.file_url?.startsWith("http")
-        ? new URL(data.file_url).pathname
-        : data.file_url || null;
-
-      // Poll until done
+      const fileUrl = normalizeFileUrl(data.file_url);
       const pollResult = await pollBatchJob(data.job_id, token);
 
       return {
@@ -448,19 +556,15 @@ export function useMidiConvert() {
         },
       };
     },
-    [settings, pollBatchJob],
+    [settings, pollBatchJob, submitConvertJob],
   );
 
-  /**
-   * Trigger batch conversion for all provided stems sequentially.
-   */
   const triggerBatchConvert = useCallback(
     async (splitJobId: string, stemNames: string[]) => {
       setIsBatchMode(true);
       batchAbortRef.current = false;
       setError(null);
 
-      // Initialize batch jobs
       const initialJobs: BatchJob[] = stemNames.map((name) => ({
         stemName: name,
         jobId: null,
@@ -472,17 +576,12 @@ export function useMidiConvert() {
       }));
       setBatchJobs(initialJobs);
 
-      trackEvent("midi_batch_convert_started", {
-        stem_count: stemNames.length,
-      });
+      trackEvent("midi_batch_convert_started", { stem_count: stemNames.length });
 
-      // Process sequentially
       for (let i = 0; i < stemNames.length; i++) {
         if (batchAbortRef.current) break;
 
         const stemName = stemNames[i];
-
-        // Set current stem to "converting"
         setBatchJobs((prev) =>
           prev.map((job, idx) =>
             idx === i ? { ...job, status: "converting" } : job,
@@ -490,7 +589,8 @@ export function useMidiConvert() {
         );
 
         try {
-          const { jobId, token, fileUrl, result: stemResult } = await convertSingleStem(splitJobId, stemName);
+          const { jobId, token, fileUrl, result: stemResult } =
+            await convertSingleStem(splitJobId, stemName);
 
           setBatchJobs((prev) =>
             prev.map((job, idx) =>
@@ -510,20 +610,14 @@ export function useMidiConvert() {
             stem_name: stemName,
             error: errorMsg.slice(0, 120),
           });
-          // Continue with remaining stems (partial failure handling)
         }
       }
 
-      trackEvent("midi_batch_convert_finished", {
-        stem_count: stemNames.length,
-      });
+      trackEvent("midi_batch_convert_finished", { stem_count: stemNames.length });
     },
     [convertSingleStem],
   );
 
-  /**
-   * Retry a single failed batch job by index.
-   */
   const retryBatchJob = useCallback(
     async (splitJobId: string, index: number) => {
       const job = batchJobs[index];
@@ -536,7 +630,8 @@ export function useMidiConvert() {
       );
 
       try {
-        const { jobId, token, fileUrl, result: stemResult } = await convertSingleStem(splitJobId, job.stemName);
+        const { jobId, token, fileUrl, result: stemResult } =
+          await convertSingleStem(splitJobId, job.stemName);
 
         setBatchJobs((prev) =>
           prev.map((j, idx) =>
@@ -557,48 +652,50 @@ export function useMidiConvert() {
     [batchJobs, convertSingleStem],
   );
 
-  /**
-   * Clear batch state and return to single-conversion mode.
-   */
   const clearBatch = useCallback(() => {
     batchAbortRef.current = true;
     setBatchJobs([]);
     setIsBatchMode(false);
   }, []);
 
+  const hasSourceSelected =
+    (sourceMode === "split" && !!effectiveSelectedStem) ||
+    (sourceMode === "upload" && !!uploadedFile) ||
+    (sourceMode === "loaded" && !!effectiveSelectedLoadedStemId && !!selectedLoadedStem?.file);
+
   return {
-    // Source
     sourceMode,
     setSourceMode,
-    selectedStem,
+    selectedStem: effectiveSelectedStem,
     setSelectedStem,
+    selectedLoadedStemId: effectiveSelectedLoadedStemId,
+    setSelectedLoadedStemId,
     uploadedFile,
     uploadName,
     acceptFile,
     handleBrowse,
     handleClear,
     inputRef,
-
-    // Settings
+    isDragging,
+    setIsDragging,
+    splitResultStems,
+    loadedStems,
+    selectedSplitStemUrl,
+    selectedLoadedStem,
+    hasSourceSelected,
     settings,
     updateSettings,
-
-    // Conversion state
     isConverting,
+    isUploading,
+    uploadProgress,
     progress,
     statusMessage,
     error,
     setError,
-
-    // Result
     result,
     midiFileUrl,
     downloadMidi,
-
-    // Actions
     triggerConvert,
-
-    // Batch conversion
     batchJobs,
     isBatchMode,
     batchProgress,

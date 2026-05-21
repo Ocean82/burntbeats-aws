@@ -55,13 +55,13 @@ export function EditorHeader({
       {/* ── Navigation Tabs ── */}
       <nav
         aria-label="Workspace tabs"
-        className="glass-panel mirror-sheen inline-flex w-fit max-w-full items-center gap-1 self-start rounded-xl border border-white/10 p-1"
+        className="glass-panel mirror-sheen flex w-full max-w-full items-center gap-1 self-stretch overflow-x-auto rounded-xl border border-white/10 p-1 sm:inline-flex sm:w-fit sm:self-start [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
       >
         <button
           type="button"
           onClick={() => handleTabClick("editor")}
           className={cn(
-            "relative min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
             activeView === "editor"
               ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
               : "text-white/65 hover:text-white border border-transparent",
@@ -75,7 +75,7 @@ export function EditorHeader({
           type="button"
           onClick={() => handleTabClick("speech")}
           className={cn(
-            "relative min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4 inline-flex items-center gap-1.5",
+            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4 inline-flex items-center gap-1.5",
             activeView === "speech"
               ? "bg-cyan-500/20 text-cyan-100 border border-cyan-400/50"
               : "text-white/65 hover:text-white border border-transparent",
@@ -90,7 +90,7 @@ export function EditorHeader({
           type="button"
           onClick={() => handleTabClick("midi")}
           className={cn(
-            "relative min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4 inline-flex items-center gap-1.5",
+            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4 inline-flex items-center gap-1.5",
             activeView === "midi"
               ? "bg-violet-500/20 text-violet-100 border border-violet-400/50"
               : "text-white/65 hover:text-white border border-transparent",
@@ -105,7 +105,7 @@ export function EditorHeader({
           type="button"
           onClick={() => handleTabClick("pricing")}
           className={cn(
-            "min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+            "shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
             activeView === "pricing"
               ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
               : "text-white/65 hover:text-white border border-transparent",
@@ -118,7 +118,7 @@ export function EditorHeader({
           type="button"
           onClick={() => handleTabClick("my-stems")}
           className={cn(
-            "relative min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
             activeView === "my-stems"
               ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
               : "text-white/65 hover:text-white border border-transparent",

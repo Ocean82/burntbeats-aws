@@ -66,3 +66,31 @@ export function isAllowedAudioFile(filename: string): boolean {
     : "";
   return ALLOWED_AUDIO_EXTENSIONS.has(ext);
 }
+
+/** Must match midi_service MIDI_MAX_UPLOAD_MB (default 100). */
+export const MIDI_MAX_UPLOAD_BYTES =
+  Number(import.meta.env.VITE_MIDI_MAX_UPLOAD_BYTES) > 0
+    ? Number(import.meta.env.VITE_MIDI_MAX_UPLOAD_BYTES)
+    : 100 * 1024 * 1024;
+
+/** MIDI conversion formats (must match midi_service SUPPORTED_AUDIO_FORMATS; no AAC). */
+export const MIDI_ALLOWED_AUDIO_EXTENSIONS = new Set([
+  ".mp3",
+  ".wav",
+  ".flac",
+  ".ogg",
+  ".m4a",
+  ".webm",
+]);
+
+export const MIDI_ALLOWED_AUDIO_FORMATS_LABEL = "MP3, WAV, FLAC, OGG, M4A, WebM";
+
+export const MIDI_AUDIO_INPUT_ACCEPT =
+  ".mp3,.wav,.flac,.ogg,.m4a,.webm,audio/mpeg,audio/mp3,audio/wav,audio/wave,audio/x-wav,audio/flac,audio/x-flac,audio/ogg,audio/mp4,audio/x-m4a,audio/webm,video/webm";
+
+export function isAllowedMidiAudioFile(filename: string): boolean {
+  const ext = filename.lastIndexOf(".") !== -1
+    ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
+    : "";
+  return MIDI_ALLOWED_AUDIO_EXTENSIONS.has(ext);
+}

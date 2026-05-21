@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authHeaders } from "../api/auth";
+import { API_BASE } from "../config";
 
 export interface MidiHistoryRecord {
   job_id: string;
@@ -14,8 +15,6 @@ export interface MidiHistoryRecord {
   created_at: string | null;
   file_available: boolean;
 }
-
-const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export function useMidiHistory() {
   const [records, setRecords] = useState<MidiHistoryRecord[]>([]);
