@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 _queued: deque[dict[str, Any]] = deque()
 _condition: asyncio.Condition | None = None
-_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="midi-worker")
+_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="midi-worker")
 _worker_task: asyncio.Task[Any] | None = None
 
 
@@ -64,13 +64,18 @@ async def _worker_loop(run_fn: Callable[..., None]) -> None:
         job_id: str = item["job_id"]
         try:
             loop = asyncio.get_running_loop()
+            options = {
+                "min_confidence": item.get("min_confidence", 0.5),
+                "min_note_length_ms": item.get("min_note_length_ms", 58),
+                "include_pitch_bends": item.get("include_pitch_bends", True),
+            }
             await loop.run_in_executor(
                 _executor,
                 run_fn,
                 job_id,
                 Path(item["input_path"]),
                 out_dir,
-                item.get("options", {}),
+                options,
             )
         except Exception as e:
             logger.exception("MIDI job %s failed", job_id)

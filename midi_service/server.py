@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import shutil
 import uuid
@@ -18,7 +17,11 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from midi_service.config import MIDI_OUTPUT_DIR
+from midi_service.config import (
+    FRONTEND_ORIGINS,
+    MIDI_OUTPUT_DIR,
+    MIDI_SERVICE_API_TOKEN,
+)
 from midi_service.job_queue import enqueue_job, get_queue_depth, start_worker, stop_worker
 from midi_service.job_utils import (
     OUTPUT_FILENAME,
@@ -27,7 +30,7 @@ from midi_service.job_utils import (
     validate_audio_file,
     write_progress,
 )
-from midi_service.pipeline import run_midi_convert_sync
+from midi_service.pipeline import preload_model, run_midi_convert_sync
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +38,8 @@ UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
 
-MIDI_SERVICE_API_TOKEN = os.environ.get("MIDI_SERVICE_API_TOKEN", "")
-FRONTEND_ORIGINS = os.environ.get(
-    "FRONTEND_ORIGINS", "http://localhost:5173,http://localhost:3000"
-).split(",")
-
 
 def _require_api_token(request: Request) -> None:
-    """Validate the service-to-service API token if configured."""
     if not MIDI_SERVICE_API_TOKEN:
         return
     provided = request.headers.get("X-Midi-Service-Token")
@@ -52,9 +49,9 @@ def _require_api_token(request: Request) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: create output dir, start worker. Shutdown: stop worker."""
     MIDI_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    logger.info("MIDI output directory: %s", MIDI_OUTPUT_DIR)
+    preload_model()
+    logger.info("Basic Pitch model preloaded")
     await start_worker(_run_job)
     yield
     await stop_worker()
@@ -66,8 +63,7 @@ def _run_job(
     out_dir: Path,
     options: dict,
 ) -> None:
-    """Worker callback — runs MIDI conversion synchronously in thread pool."""
-    run_midi_convert_sync(job_id, input_path, out_dir, options=options)
+    run_midi_convert_sync(job_id, input_path, out_dir, options)
 
 
 app = FastAPI(title="MIDI Conversion Service", version="1.0.0", lifespan=lifespan)
@@ -82,8 +78,13 @@ app.add_middleware(
 
 @app.get("/health")
 async def health() -> dict:
-    """Health check endpoint."""
-    return {"status": "ok", "queue_depth": get_queue_depth()}
+    import basic_pitch
+
+    return {
+        "status": "ok",
+        "queue_depth": get_queue_depth(),
+        "basic_pitch_version": basic_pitch.__version__,
+    }
 
 
 @app.post("/convert")
@@ -94,17 +95,12 @@ async def convert(
     min_note_length_ms: str = Form("58"),
     include_pitch_bends: str = Form("true"),
 ) -> JSONResponse:
-    """
-    Accept an audio file and queue it for MIDI conversion.
-    Returns 202 with a job_id for polling.
-    """
     _require_api_token(request)
 
     job_id = str(uuid.uuid4())
     out_dir = safe_job_path(job_id)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save uploaded file
     suffix = Path(file.filename or "upload.wav").suffix.lower() or ".wav"
     input_path = out_dir / f"input{suffix}"
     try:
@@ -122,11 +118,11 @@ async def convert(
         shutil.rmtree(out_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail="Failed to save upload") from e
 
-    # Parse conversion options
     options = {
         "min_confidence": float(min_confidence),
         "min_note_length_ms": int(min_note_length_ms),
-        "include_pitch_bends": include_pitch_bends.strip().lower() in ("true", "1", "yes"),
+        "include_pitch_bends": (include_pitch_bends or "").strip().lower()
+        in ("true", "1", "yes"),
     }
 
     write_progress(
@@ -145,7 +141,9 @@ async def convert(
                 "job_id": job_id,
                 "out_dir": out_dir,
                 "input_path": str(input_path),
-                "options": options,
+                "min_confidence": options["min_confidence"],
+                "min_note_length_ms": options["min_note_length_ms"],
+                "include_pitch_bends": options["include_pitch_bends"],
             }
         )
     except RuntimeError:
@@ -160,7 +158,6 @@ async def convert(
 
 @app.get("/status/{job_id}")
 async def status(request: Request, job_id: str) -> dict:
-    """Poll conversion progress. Returns progress.json contents."""
     _require_api_token(request)
     if not UUID_REGEX.match(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
@@ -174,7 +171,6 @@ async def status(request: Request, job_id: str) -> dict:
 
 @app.get("/file/{job_id}/{filename}")
 async def get_file(request: Request, job_id: str, filename: str) -> FileResponse:
-    """Download the generated MIDI file."""
     _require_api_token(request)
     if not UUID_REGEX.match(job_id):
         raise HTTPException(status_code=400, detail="Invalid job_id")
@@ -185,9 +181,4 @@ async def get_file(request: Request, job_id: str, filename: str) -> FileResponse
     if not path.is_file():
         raise HTTPException(status_code=404, detail="File not ready")
 
-    return FileResponse(
-        path,
-        media_type="audio/midi",
-        filename=filename,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    return FileResponse(path, media_type="audio/midi", filename=filename)
