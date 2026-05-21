@@ -54,7 +54,7 @@ End users of the public site do not read this repo; this file is for **direction
 1. Browser → **`POST /api/stems/split`** (Node: auth, metering, upload verify) → **`stem_service`**.
 2. Stem service returns **202** + `job_id`; work runs asynchronously (queued concurrency configurable).
 3. Browser polls **`GET /api/stems/status/:job_id`**.
-4. Stems load via **`GET /api/stems/file/:job_id/:stemId.wav`** (disk stream or **302** to S3 presigned URL when `progress.json` has `s3` metadata).
+4. Stems load via **`GET /api/stems/file/:job_id/:stemId.wav`** (disk stream or S3 proxy when `progress.json` has `s3` metadata). See **[`docs/STEM-S3-AND-CPU.md`](docs/STEM-S3-AND-CPU.md)**.
 5. Mix / export in browser; see **`docs/ARCHITECTURE-FLOW.md`** for **client vs optional server** export.
 
 ---

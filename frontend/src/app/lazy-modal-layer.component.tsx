@@ -62,6 +62,8 @@ interface LazyModalLayerProps {
   splitQuality: SplitQuality;
   setUploadState: AppState["setUploadState"];
   setSplitError: (msg: string | null) => void;
+  /** Clear decoded buffers and waveforms before batch replaces split results. */
+  onResetStemMediaState?: () => void;
 }
 
 export function LazyModalLayer({
@@ -93,6 +95,7 @@ export function LazyModalLayer({
   splitQuality,
   setUploadState,
   setSplitError,
+  onResetStemMediaState,
 }: LazyModalLayerProps) {
   return (
     <>
@@ -153,11 +156,13 @@ export function LazyModalLayer({
                 void processNextInQueue(
                   canExpandToFourStems ? 4 : 2,
                   splitQuality,
-                  (stems) =>
+                  (stems) => {
+                    onResetStemMediaState?.();
                     setUploadState((prev) => ({
                       ...prev,
                       splitResultStems: stems,
-                    })),
+                    }));
+                  },
                   setSplitError,
                   (id) =>
                     setUploadState((prev) => ({ ...prev, splitJobId: id })),

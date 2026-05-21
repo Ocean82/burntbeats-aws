@@ -243,7 +243,7 @@ export function App() {
   const allStemEntries = useMemo(
     () => [
       ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-      ...loadedStems.map((s) => ({ id: s.id, url: s.url })),
+      ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
     ],
     [splitResultStems, loadedStems],
   );
@@ -401,6 +401,25 @@ export function App() {
     setStemWaveformsState({});
   }, []);
 
+  const resetStemMediaState = useCallback(() => {
+    clearStemLoadingState();
+    clearStemWaveforms();
+    resetStemStates({});
+  }, [clearStemLoadingState, clearStemWaveforms, resetStemStates]);
+
+  const prevSplitJobIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (splitJobId && splitJobId !== prevSplitJobIdRef.current) {
+      if (prevSplitJobIdRef.current != null) {
+        resetStemMediaState();
+      }
+      prevSplitJobIdRef.current = splitJobId;
+    }
+    if (!splitJobId) {
+      prevSplitJobIdRef.current = null;
+    }
+  }, [splitJobId, resetStemMediaState]);
+
   useWaveformCompute(stemBuffers, allStemEntries, setStemWaveformsState);
 
   const visibleStems = useMemo(() => {
@@ -538,11 +557,9 @@ export function App() {
     (file: File | null) => {
       handleFile(file);
       if (!file) return;
-      clearStemLoadingState();
-      clearStemWaveforms();
-      resetStemStates({});
+      resetStemMediaState();
     },
-    [handleFile, clearStemLoadingState, clearStemWaveforms, resetStemStates],
+    [handleFile, resetStemMediaState],
   );
 
   const handleBrowseUpload = useCallback(() => inputRef.current?.click(), []);
@@ -561,9 +578,8 @@ export function App() {
       jobId: string;
       uploadName: string;
     }) => {
-      clearStemLoadingState();
-      clearStemWaveforms();
-      resetStemStates({});
+      resetStemMediaState();
+      prevSplitJobIdRef.current = jobId;
       setUploadState((prev) => ({
         ...prev,
         uploadName: historyName,
@@ -577,7 +593,7 @@ export function App() {
         pipelineIndex: 3,
       }));
     },
-    [clearStemLoadingState, clearStemWaveforms, resetStemStates, setUploadState],
+    [resetStemMediaState, setUploadState],
   );
 
   const { loadHistoryJob, loadingJobId } = useLoadHistoryJob({
@@ -717,6 +733,7 @@ export function App() {
         splitQuality={splitQuality}
         setUploadState={setUploadState}
         setSplitError={setSplitError}
+        onResetStemMediaState={resetStemMediaState}
       />
 
       <AppBackgroundOrbs />

@@ -93,7 +93,10 @@ def upload_job_stems_to_s3(job_id: str, stems_dir: Path) -> dict[str, Any] | Non
             )
             keys[stem_id] = key
             logger.info("Uploaded s3://%s/%s", bucket, key)
-        except ClientError as e:
+        except (ClientError, OSError) as e:
+            logger.exception("S3 upload failed for %s: %s", wav, e)
+            errors.append(f"{stem_id}: {e}")
+        except Exception as e:
             logger.exception("S3 upload failed for %s: %s", wav, e)
             errors.append(f"{stem_id}: {e}")
 

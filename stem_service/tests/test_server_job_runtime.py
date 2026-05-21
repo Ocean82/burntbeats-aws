@@ -114,6 +114,50 @@ def test_run_separation_sync_schedules_s3_upload_async(monkeypatch) -> None:
     assert '"status": "completed"' in progress
 
 
+def test_completed_progress_includes_s3_before_status_written(monkeypatch) -> None:
+    """Regression: S3 metadata must be in progress.json when job completes (sync upload)."""
+    import json
+
+    from stem_service.job_utils import PROGRESS_FILENAME, schedule_s3_upload, write_progress
+
+    job_id = "00000000-0000-0000-0000-000000000099"
+    out_dir = job_worker.OUTPUT_BASE / job_id
+    stems_dir = out_dir / "stems"
+    stems_dir.mkdir(parents=True, exist_ok=True)
+    (stems_dir / "vocals.wav").write_bytes(b"v")
+    (stems_dir / "instrumental.wav").write_bytes(b"i")
+
+    progress_data = {
+        "status": "completed",
+        "progress": 100,
+        "stems": [
+            {"id": "vocals", "path": "stems/vocals.wav"},
+            {"id": "instrumental", "path": "stems/instrumental.wav"},
+        ],
+    }
+
+    s3_meta = {
+        "bucket": "test-bucket",
+        "region": "us-east-1",
+        "keys": {
+            "vocals": f"stems/{job_id}/stems/vocals.wav",
+            "instrumental": f"stems/{job_id}/stems/instrumental.wav",
+        },
+    }
+
+    monkeypatch.setattr(
+        "stem_service.job_utils.upload_job_stems_to_s3",
+        lambda _jid, _dir: s3_meta,
+    )
+    schedule_s3_upload(job_id, stems_dir, out_dir, progress_data)
+    write_progress(out_dir, progress_data)
+
+    data = json.loads((out_dir / PROGRESS_FILENAME).read_text(encoding="utf-8"))
+    assert data["status"] == "completed"
+    assert data["s3"]["keys"]["vocals"] == s3_meta["keys"]["vocals"]
+    assert data["s3"]["keys"]["instrumental"] == s3_meta["keys"]["instrumental"]
+
+
 def test_run_separation_sync_demucs_only_2stem_calls_demucs_only_helper(monkeypatch) -> None:
     job_id = "00000000-0000-0000-0000-000000000003"
     out_dir = job_worker.OUTPUT_BASE / job_id

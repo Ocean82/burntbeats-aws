@@ -105,8 +105,8 @@ export function WaveformTimeline({
         const waveform = waveforms[stem.id];
         const hasWaveform = Boolean(waveform && waveform.length > 0);
         const state = stemStates[stem.id] ?? defaultStemState();
-        const isWaveformLoading = isLoadingStems || !hasWaveform;
         const audioReady = (durations[stem.id] ?? 0) > 0;
+        const isWaveformLoading = !hasWaveform || !audioReady;
 
         return (
           <WaveformLaneMemo
