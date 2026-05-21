@@ -46,7 +46,7 @@ export function WaveformTimeline({
   waveforms,
   durations,
   stemStates,
-  isLoadingStems,
+  isLoadingStems: _isLoadingStems,
   zoom,
   scrollPct,
   activeStemId,

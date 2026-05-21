@@ -21,6 +21,10 @@ export interface MidiEditorState {
   bpm: number;
   drawVelocity: number;
   isModified: boolean;
+  /** Current position in the undo history stack. */
+  historyIndex: number;
+  /** Total entries in the undo history stack. */
+  historyLength: number;
 }
 
 interface HistoryEntry {
@@ -63,6 +67,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
     bpm: initialBpm || 120,
     drawVelocity: 80,
     isModified: false,
+    historyIndex: 0,
+    historyLength: 1,
   }));
 
   const historyRef = useRef<HistoryEntry[]>([
@@ -70,12 +76,13 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
   ]);
   const historyIndexRef = useRef(0);
 
-  const pushHistory = useCallback((notes: EditableNote[], selectedIds: Set<string>) => {
+  const pushHistory = useCallback((notes: EditableNote[], selectedIds: Set<string>): { historyIndex: number; historyLength: number } => {
     const newHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
     newHistory.push({ notes: notes.map((n) => ({ ...n })), selectedIds: new Set(selectedIds) });
     if (newHistory.length > MAX_HISTORY) newHistory.shift();
     historyRef.current = newHistory;
     historyIndexRef.current = newHistory.length - 1;
+    return { historyIndex: historyIndexRef.current, historyLength: newHistory.length };
   }, []);
 
   // --- Tool selection ---
@@ -134,8 +141,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
     setState((s) => {
       if (s.selectedIds.size === 0) return s;
       const notes = s.notes.filter((n) => !s.selectedIds.has(n.id));
-      pushHistory(notes, new Set());
-      return { ...s, notes, selectedIds: new Set(), isModified: true };
+      const h = pushHistory(notes, new Set());
+      return { ...s, notes, selectedIds: new Set(), isModified: true, ...h };
     });
   }, [pushHistory]);
 
@@ -144,8 +151,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
       const notes = s.notes.filter((n) => n.id !== noteId);
       const selectedIds = new Set(s.selectedIds);
       selectedIds.delete(noteId);
-      pushHistory(notes, selectedIds);
-      return { ...s, notes, selectedIds, isModified: true };
+      const h = pushHistory(notes, selectedIds);
+      return { ...s, notes, selectedIds, isModified: true, ...h };
     });
   }, [pushHistory]);
 
@@ -164,8 +171,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
       };
       const notes = [...s.notes, newNote];
       const selectedIds = new Set([newNote.id]);
-      pushHistory(notes, selectedIds);
-      return { ...s, notes, selectedIds, isModified: true };
+      const h = pushHistory(notes, selectedIds);
+      return { ...s, notes, selectedIds, isModified: true, ...h };
     });
   }, [pushHistory]);
 
@@ -181,8 +188,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
           : Math.max(0, snapToGrid(rawStart, s.bpm, s.snapGrid));
         return { ...n, pitch: newPitch, start: newStart };
       });
-      pushHistory(notes, s.selectedIds);
-      return { ...s, notes, isModified: true };
+      const h = pushHistory(notes, s.selectedIds);
+      return { ...s, notes, isModified: true, ...h };
     });
   }, [pushHistory]);
 
@@ -193,8 +200,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
         const snapped = snapDuration(newDuration, s.bpm, s.snapGrid);
         return { ...n, duration: Math.max(0.01, snapped) };
       });
-      pushHistory(notes, s.selectedIds);
-      return { ...s, notes, isModified: true };
+      const h = pushHistory(notes, s.selectedIds);
+      return { ...s, notes, isModified: true, ...h };
     });
   }, [pushHistory]);
 
@@ -205,8 +212,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
       const notes = s.notes.map((n) =>
         s.selectedIds.has(n.id) ? { ...n, velocity: vel } : n,
       );
-      pushHistory(notes, s.selectedIds);
-      return { ...s, notes, isModified: true };
+      const h = pushHistory(notes, s.selectedIds);
+      return { ...s, notes, isModified: true, ...h };
     });
   }, [pushHistory]);
 
@@ -217,14 +224,15 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
         if (!s.selectedIds.has(n.id)) return n;
         return { ...n, pitch: Math.max(0, Math.min(127, n.pitch + semitones)) };
       });
-      pushHistory(notes, s.selectedIds);
-      return { ...s, notes, isModified: true };
+      const h = pushHistory(notes, s.selectedIds);
+      return { ...s, notes, isModified: true, ...h };
     });
   }, [pushHistory]);
 
   // --- Undo / Redo ---
-  const canUndo = historyIndexRef.current > 0;
-  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+  // Derive canUndo/canRedo from state fields (not refs) to avoid reading refs during render.
+  const canUndo = state.historyIndex > 0;
+  const canRedo = state.historyIndex < state.historyLength - 1;
 
   const undo = useCallback(() => {
     if (historyIndexRef.current <= 0) return;
@@ -235,6 +243,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
       notes: entry.notes.map((n) => ({ ...n })),
       selectedIds: new Set(entry.selectedIds),
       isModified: historyIndexRef.current > 0,
+      historyIndex: historyIndexRef.current,
+      historyLength: historyRef.current.length,
     }));
   }, []);
 
@@ -247,6 +257,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
       notes: entry.notes.map((n) => ({ ...n })),
       selectedIds: new Set(entry.selectedIds),
       isModified: true,
+      historyIndex: historyIndexRef.current,
+      historyLength: historyRef.current.length,
     }));
   }, []);
 
@@ -260,6 +272,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
       notes,
       selectedIds: new Set(),
       isModified: false,
+      historyIndex: 0,
+      historyLength: 1,
     }));
   }, []);
 
