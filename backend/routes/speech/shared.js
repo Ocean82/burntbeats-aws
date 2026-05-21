@@ -14,4 +14,8 @@ export const SPEECH_OUTPUT_DIR = path.resolve(
 export const SPEECH_ACCEPT_TIMEOUT_MS =
   Number(process.env.SPEECH_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 
+/** Must match speech_service SPEECH_MAX_UPLOAD_MB (default 100). */
+export const SPEECH_MAX_UPLOAD_BYTES =
+  (Number(process.env.SPEECH_MAX_UPLOAD_MB) || 100) * 1024 * 1024;
+
 export const UPLOAD_TMP_DIR = path.join(os.tmpdir(), "burntbeats-speech-upload");

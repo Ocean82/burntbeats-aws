@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import JSZip from "jszip";
 import { useStemHistory } from "../hooks/useStemHistory";
+import { useMidiHistory } from "../hooks/useMidiHistory";
 import { fetchStemDownloadUrl } from "../api/stemHistory";
 import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
 import { MyStemsPageSkeleton } from "./MyStemsPageSkeleton";
@@ -107,6 +108,7 @@ export function MyStemsPage({
     totalStorageBytes,
     refetch,
   } = useStemHistory();
+  const { records: midiRecords } = useMidiHistory();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
@@ -225,6 +227,28 @@ export function MyStemsPage({
       }
     },
     [jobs, toast],
+  );
+
+  const handleDownloadMidi = useCallback(
+    async (midiJobId: string, stemName: string | null) => {
+      const key = `midi:${midiJobId}`;
+      setIsDownloading((prev) => ({ ...prev, [key]: true }));
+      try {
+        const apiBase = import.meta.env.VITE_API_URL || "";
+        const url = `${apiBase}/api/midi/file/${midiJobId}/output.mid`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("MIDI download failed");
+        const blob = await response.blob();
+        const filename = stemName ? `${stemName}.mid` : `midi-${midiJobId.slice(0, 8)}.mid`;
+        await downloadBlob(blob, filename);
+      } catch (err) {
+        console.error("MIDI download failed:", err);
+        toast("Failed to download MIDI file", { type: "error" });
+      } finally {
+        setIsDownloading((prev) => ({ ...prev, [key]: false }));
+      }
+    },
+    [toast],
   );
 
   // -------------------------------------------------------------------------
@@ -377,6 +401,10 @@ export function MyStemsPage({
                 const isExpanded = expandedJobId === job.job_id;
                 const availableStems = job.stem_files.filter((s) => s.s3_key !== null);
                 const jobZipping = isZipping === job.job_id;
+                const jobMidiRecords = midiRecords.filter(
+                  (r) => r.stem_job_id === job.job_id,
+                );
+                const hasMidi = jobMidiRecords.length > 0;
 
                 return (
                   <div
@@ -407,6 +435,11 @@ export function MyStemsPage({
                           {job.quality && (
                             <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60">
                               {job.quality}
+                            </span>
+                          )}
+                          {hasMidi && (
+                            <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-xs font-medium text-purple-400">
+                              MIDI
                             </span>
                           )}
                         </div>
@@ -477,6 +510,52 @@ export function MyStemsPage({
                                 );
                               })}
                             </ul>
+
+                            {/* MIDI Files Section */}
+                            {hasMidi && (
+                              <div className="mt-3">
+                                <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-purple-400">
+                                  <Music className="h-3.5 w-3.5" />
+                                  MIDI Files
+                                </h4>
+                                <ul className="space-y-2" aria-label="MIDI files">
+                                  {jobMidiRecords.map((midi) => {
+                                    const midiKey = `midi:${midi.job_id}`;
+                                    const midiDownloading = isDownloading[midiKey] ?? false;
+                                    return (
+                                      <li
+                                        key={midi.job_id}
+                                        className="flex items-center justify-between gap-3 rounded-xl bg-purple-500/5 px-3 py-2.5 sm:px-4"
+                                      >
+                                        <div className="min-w-0 flex-1">
+                                          <span className="block truncate text-sm text-white capitalize">
+                                            {midi.stem_name || "audio"}.mid
+                                          </span>
+                                          <span className="text-xs text-white/40">
+                                            {midi.notes_detected} notes
+                                          </span>
+                                        </div>
+                                        <button
+                                          onClick={() =>
+                                            handleDownloadMidi(midi.job_id, midi.stem_name)
+                                          }
+                                          disabled={midiDownloading}
+                                          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-purple-500/20 px-3 text-xs font-medium text-purple-400 transition hover:bg-purple-500/30 disabled:opacity-50"
+                                          aria-label={`Download MIDI for ${midi.stem_name || "audio"}`}
+                                        >
+                                          {midiDownloading ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            <Download className="h-3.5 w-3.5" />
+                                          )}
+                                          {midiDownloading ? "…" : "MIDI"}
+                                        </button>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            )}
 
                             {onOpenInMixer && availableStems.length > 0 && (
                               <button

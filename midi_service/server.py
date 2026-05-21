@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse
 
 from midi_service.config import (
     FRONTEND_ORIGINS,
+    MIDI_DEVICE,
     MIDI_OUTPUT_DIR,
     MIDI_SERVICE_API_TOKEN,
 )
@@ -50,8 +51,13 @@ def _require_api_token(request: Request) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     MIDI_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    if MIDI_DEVICE != "cpu":
+        logger.warning(
+            "MIDI_DEVICE=%s is ignored; this service runs CPU-only inference",
+            MIDI_DEVICE,
+        )
     preload_model()
-    logger.info("Basic Pitch model preloaded")
+    logger.info("Basic Pitch model preloaded (CPU)")
     await start_worker(_run_job)
     yield
     await stop_worker()
@@ -94,6 +100,16 @@ async def convert(
     min_confidence: str = Form("0.5"),
     min_note_length_ms: str = Form("58"),
     include_pitch_bends: str = Form("true"),
+    quantize: str = Form("false"),
+    quantize_grid: str = Form("1/16"),
+    quantize_bpm: str = Form("120"),
+    quantize_strength: str = Form("1.0"),
+    normalize_velocity: str = Form("true"),
+    target_velocity: str = Form("90"),
+    max_note_length_ms: str = Form("0"),
+    stem_job_id: str = Form(""),
+    stem_name: str = Form(""),
+    user_id: str = Form(""),
 ) -> JSONResponse:
     _require_api_token(request)
 
@@ -123,6 +139,17 @@ async def convert(
         "min_note_length_ms": int(min_note_length_ms),
         "include_pitch_bends": (include_pitch_bends or "").strip().lower()
         in ("true", "1", "yes"),
+        "quantize": quantize.strip().lower() in ("true", "1", "yes"),
+        "quantize_grid": quantize_grid,
+        "quantize_bpm": int(quantize_bpm),
+        "quantize_strength": float(quantize_strength),
+        "normalize_velocity": (normalize_velocity or "").strip().lower()
+        in ("true", "1", "yes"),
+        "target_velocity": int(target_velocity),
+        "max_note_length_ms": int(max_note_length_ms),
+        "stem_job_id": stem_job_id or None,
+        "stem_name": stem_name or None,
+        "user_id": user_id or None,
     }
 
     write_progress(
@@ -144,6 +171,16 @@ async def convert(
                 "min_confidence": options["min_confidence"],
                 "min_note_length_ms": options["min_note_length_ms"],
                 "include_pitch_bends": options["include_pitch_bends"],
+                "quantize": options["quantize"],
+                "quantize_grid": options["quantize_grid"],
+                "quantize_bpm": options["quantize_bpm"],
+                "quantize_strength": options["quantize_strength"],
+                "normalize_velocity": options["normalize_velocity"],
+                "target_velocity": options["target_velocity"],
+                "max_note_length_ms": options["max_note_length_ms"],
+                "stem_job_id": options["stem_job_id"],
+                "stem_name": options["stem_name"],
+                "user_id": options["user_id"],
             }
         )
     except RuntimeError:

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from midi_service.config import MAX_QUEUE_DEPTH
+from midi_service.job_options import options_from_job_item
 from midi_service.job_utils import write_progress
 
 logger = logging.getLogger(__name__)
@@ -64,11 +65,7 @@ async def _worker_loop(run_fn: Callable[..., None]) -> None:
         job_id: str = item["job_id"]
         try:
             loop = asyncio.get_running_loop()
-            options = {
-                "min_confidence": item.get("min_confidence", 0.5),
-                "min_note_length_ms": item.get("min_note_length_ms", 58),
-                "include_pitch_bends": item.get("include_pitch_bends", True),
-            }
+            options = options_from_job_item(item)
             await loop.run_in_executor(
                 _executor,
                 run_fn,

@@ -32,9 +32,20 @@ def write_progress(out_dir: Path, data: dict) -> None:
     (out_dir / PROGRESS_FILENAME).write_text(json.dumps(data), encoding="utf-8")
 
 
-def validate_audio_file(path: Path) -> None:
+def _probe_sample_rate(path: Path) -> int:
+    """Return native sample rate; soundfile first, librosa fallback for AAC/MP3/M4A."""
     import soundfile as sf
 
+    try:
+        return int(sf.info(str(path)).samplerate)
+    except Exception:
+        import librosa
+
+        _, sr = librosa.load(str(path), sr=None, mono=True, duration=1.0)
+        return int(sr)
+
+
+def validate_audio_file(path: Path) -> None:
     if not path.is_file():
         raise ValueError("Uploaded file missing")
     size_mb = path.stat().st_size / (1024 * 1024)
@@ -45,9 +56,9 @@ def validate_audio_file(path: Path) -> None:
     if ext not in SUPPORTED_AUDIO_FORMATS:
         raise ValueError(f"Unsupported format {ext}")
 
-    info = sf.info(str(path))
-    if info.samplerate < MIN_SAMPLE_RATE or info.samplerate > MAX_SAMPLE_RATE:
+    samplerate = _probe_sample_rate(path)
+    if samplerate < MIN_SAMPLE_RATE or samplerate > MAX_SAMPLE_RATE:
         raise ValueError(
-            f"Sample rate {info.samplerate}Hz not in supported range "
+            f"Sample rate {samplerate}Hz not in supported range "
             f"({MIN_SAMPLE_RATE}–{MAX_SAMPLE_RATE}Hz)"
         )

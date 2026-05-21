@@ -1,14 +1,17 @@
 /**
  * MidiResultPanel — shows conversion results: piano roll, stats, download button.
  */
-import { Download, RotateCcw, Music } from "lucide-react";
+import { Download, RotateCcw, Music, Play, Square } from "lucide-react";
 import type { MidiConvertResult } from "../../hooks/useMidiConvert";
+import { useMidiPlayback } from "../../hooks/useMidiPlayback";
+import { MidiAnalysisPanel } from "./MidiAnalysisPanel";
 import { MidiPianoRoll } from "./MidiPianoRoll";
 
 interface MidiResultPanelProps {
   result: MidiConvertResult;
   onDownload: () => void;
   onNewConversion: () => void;
+  onApplySuggestedBpm?: (bpm: number) => void;
 }
 
 function formatDuration(seconds: number): string {
@@ -21,7 +24,10 @@ export function MidiResultPanel({
   result,
   onDownload,
   onNewConversion,
+  onApplySuggestedBpm,
 }: MidiResultPanelProps) {
+  const { isPlaying, currentTime, play, stop, isSupported } = useMidiPlayback();
+
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-violet-400/20 bg-violet-500/5 px-4 py-4">
       <div className="flex items-center gap-2">
@@ -29,8 +35,18 @@ export function MidiResultPanel({
         <h3 className="text-sm font-semibold text-white">Conversion Complete</h3>
       </div>
 
-      {/* Piano roll visualization */}
-      <MidiPianoRoll notes={result.pianoRollNotes} />
+      {/* Piano roll visualization with playhead */}
+      <MidiPianoRoll
+        notes={result.pianoRollNotes}
+        currentTime={isPlaying ? currentTime : null}
+      />
+
+      {result.analysis && (
+        <MidiAnalysisPanel
+          analysis={result.analysis}
+          onApplySuggestedBpm={onApplySuggestedBpm}
+        />
+      )}
 
       {/* Stats row */}
       <div className="flex flex-wrap gap-4 text-xs text-white/60">
@@ -58,6 +74,26 @@ export function MidiResultPanel({
 
       {/* Action buttons */}
       <div className="flex flex-wrap items-center gap-3">
+        {isSupported && result.pianoRollNotes.length > 0 && (
+          <button
+            type="button"
+            onClick={() => (isPlaying ? stop() : play(result.pianoRollNotes))}
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-violet-300/50 bg-gradient-to-r from-violet-600/90 to-purple-600/90 px-5 py-2 text-sm font-bold text-white shadow-[0_0_20px_rgba(139,92,246,0.2)] transition hover:from-violet-500 hover:to-purple-500"
+            aria-label={isPlaying ? "Stop playback" : "Play MIDI"}
+          >
+            {isPlaying ? (
+              <>
+                <Square className="h-4 w-4" aria-hidden />
+                Stop
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" aria-hidden />
+                Play
+              </>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={onDownload}

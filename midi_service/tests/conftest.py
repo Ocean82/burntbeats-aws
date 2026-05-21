@@ -73,6 +73,25 @@ def _make_fake_progress(out_dir: Path, job_id: str) -> None:
                 {"pitch": 65, "start": 3.0, "duration": 1.0, "velocity": 87},
                 {"pitch": 67, "start": 4.0, "duration": 1.0, "velocity": 91},
             ],
+            "analysis": {
+                "estimated_key": "C major",
+                "scale": "major",
+                "pitch_range": {
+                    "min": 60,
+                    "max": 67,
+                    "min_name": "C4",
+                    "max_name": "G4",
+                },
+                "note_density": 1.0,
+                "suggested_bpm": 120,
+                "complexity_score": 0.25,
+                "total_notes": 5,
+            },
+            "post_process": {
+                "notes_before": 5,
+                "notes_after": 5,
+                "velocity_normalized": True,
+            },
         },
     }
     (out_dir / "progress.json").write_text(json.dumps(progress), encoding="utf-8")

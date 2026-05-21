@@ -7,7 +7,7 @@ RUN npm ci --omit=dev
 
 COPY . ./
 
-RUN mkdir -p /app/tmp/stems
+RUN mkdir -p /app/tmp/stems /app/tmp/speech /app/tmp/midi
 
 EXPOSE 3001
 CMD ["node", "server.js"]

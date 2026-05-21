@@ -80,6 +80,7 @@ async def _worker_loop(run_fn: Callable[..., None]) -> None:
                 {
                     "status": "failed",
                     "job_id": job_id,
+                    "progress": 0,
                     "error": str(e),
                 },
             )

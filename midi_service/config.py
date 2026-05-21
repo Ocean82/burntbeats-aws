@@ -17,6 +17,7 @@ SUPPORTED_AUDIO_FORMATS = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".webm"}
 MAX_FILE_SIZE_MB = int(os.environ.get("MIDI_MAX_UPLOAD_MB", "100"))
 MAX_QUEUE_DEPTH = int(os.environ.get("MIDI_MAX_QUEUE_DEPTH", "8"))
 
+# CPU-only deployment; GPU values are ignored (Basic Pitch uses ONNX CPU).
 MIDI_DEVICE = os.environ.get("MIDI_DEVICE", "cpu").strip().lower()
 
 FRONTEND_ORIGINS: list[str] = [

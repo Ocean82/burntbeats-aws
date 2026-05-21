@@ -14,6 +14,8 @@ PROGRESS_FILENAME = "progress.json"
 OUTPUT_FILENAME = "output.mid"
 MIN_SAMPLE_RATE = 8000
 MAX_SAMPLE_RATE = 48000
+# Formats that libsndfile often cannot parse; validated via librosa + ffmpeg instead.
+_LIBROSA_VALIDATED_EXTS = {".mp3", ".m4a", ".webm", ".aac"}
 
 
 def safe_job_path(job_id: str, *parts: str) -> Path:
@@ -47,9 +49,21 @@ def validate_audio_file(path: Path) -> None:
     if ext not in SUPPORTED_AUDIO_FORMATS:
         raise ValueError(f"Unsupported format {ext}")
 
-    info = sf.info(str(path))
-    if info.samplerate < MIN_SAMPLE_RATE or info.samplerate > MAX_SAMPLE_RATE:
-        raise ValueError(
-            f"Sample rate {info.samplerate}Hz not in supported range "
-            f"({MIN_SAMPLE_RATE}\u2013{MAX_SAMPLE_RATE}Hz)"
-        )
+    try:
+        info = sf.info(str(path))
+        if info.samplerate < MIN_SAMPLE_RATE or info.samplerate > MAX_SAMPLE_RATE:
+            raise ValueError(
+                f"Sample rate {info.samplerate}Hz not in supported range "
+                f"({MIN_SAMPLE_RATE}\u2013{MAX_SAMPLE_RATE}Hz)"
+            )
+    except Exception as sf_err:
+        if ext not in _LIBROSA_VALIDATED_EXTS:
+            raise ValueError(f"Cannot read audio file: {sf_err}") from sf_err
+        import librosa
+
+        try:
+            duration = float(librosa.get_duration(path=str(path)))
+        except Exception as lib_err:
+            raise ValueError(f"Cannot read audio file: {lib_err}") from lib_err
+        if duration <= 0:
+            raise ValueError("Audio file has no duration")

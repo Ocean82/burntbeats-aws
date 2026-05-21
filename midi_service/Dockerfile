@@ -4,9 +4,10 @@ FROM python:3.12-slim
 
 WORKDIR /repo
 
-# Install system dependencies for soundfile (libsndfile)
+# libsndfile for WAV/FLAC/OGG; ffmpeg for MP3/M4A/WebM (librosa / Basic Pitch)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY midi_service/requirements.txt ./midi_service/requirements.txt

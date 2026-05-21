@@ -47,8 +47,8 @@ function resolveStemPath(stemJobId, stemName) {
   if (!/^[0-9a-f-]{36}$/i.test(stemJobId)) return null;
   if (!/^[a-z_]+$/i.test(stemName)) return null;
 
-  // Stem files are stored as: STEM_OUTPUT_DIR/<jobId>/<stemName>.wav
-  const candidate = path.join(STEM_OUTPUT_DIR, stemJobId, `${stemName}.wav`);
+  // Stem files are stored as: STEM_OUTPUT_DIR/<jobId>/stems/<stemName>.wav
+  const candidate = path.join(STEM_OUTPUT_DIR, stemJobId, "stems", `${stemName}.wav`);
   try {
     const resolved = path.resolve(candidate);
     // Prevent path traversal
@@ -160,6 +160,35 @@ midiConvertRouter.post(
       form.append("min_confidence", minConfidence);
       form.append("min_note_length_ms", minNoteLengthMs);
       form.append("include_pitch_bends", includePitchBends);
+
+      // Quantization parameters
+      const quantize = req.body?.quantize || "false";
+      const quantizeGrid = req.body?.quantize_grid || "1/16";
+      const quantizeBpm = req.body?.quantize_bpm || "120";
+      const quantizeStrength = req.body?.quantize_strength ?? "1.0";
+      const normalizeVelocity = req.body?.normalize_velocity ?? "true";
+      const targetVelocity = req.body?.target_velocity ?? "90";
+      const maxNoteLengthMs = req.body?.max_note_length_ms ?? "0";
+      form.append("quantize", quantize);
+      form.append("quantize_grid", quantizeGrid);
+      form.append("quantize_bpm", quantizeBpm);
+      form.append("quantize_strength", String(quantizeStrength));
+      form.append("normalize_velocity", normalizeVelocity);
+      form.append("target_velocity", String(targetVelocity));
+      form.append("max_note_length_ms", String(maxNoteLengthMs));
+
+      // Forward metadata fields for history tracking
+      if (stemJobId) form.append("stem_job_id", stemJobId);
+      if (stemName) form.append("stem_name", stemName);
+      // Forward user_id from Clerk auth (resolve if not already set by usage token flow)
+      if (!usageUserId) {
+        try {
+          usageUserId = await verifyClerkBearer(req);
+        } catch {
+          // Non-fatal: history just won't be associated with a user
+        }
+      }
+      if (usageUserId) form.append("user_id", usageUserId);
 
       const { statusCode, data } = await proxyFormRequestTo(
         MIDI_SERVICE_URL,

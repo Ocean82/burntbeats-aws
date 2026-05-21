@@ -14,7 +14,7 @@ SPEECH_OUTPUT_DIR = Path(
     os.environ.get("SPEECH_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "speech"))
 )
 
-SUPPORTED_AUDIO_FORMATS = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".webm"}
+SUPPORTED_AUDIO_FORMATS = {".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg", ".webm"}
 MAX_FILE_SIZE_MB = int(os.environ.get("SPEECH_MAX_UPLOAD_MB", "100"))
 MAX_QUEUE_DEPTH = int(os.environ.get("SPEECH_MAX_QUEUE_DEPTH", "8"))
 

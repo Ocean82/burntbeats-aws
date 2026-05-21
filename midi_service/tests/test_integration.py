@@ -108,6 +108,8 @@ class TestConversionLifecycle:
         assert "tracks" in result
         assert "inference_time_seconds" in result
         assert "piano_roll_notes" in result
+        assert "analysis" in result
+        assert result["analysis"]["estimated_key"]
 
 
 # ---------------------------------------------------------------------------

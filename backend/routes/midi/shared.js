@@ -42,6 +42,13 @@ export const MIDI_SERVICE_API_TOKEN =
 /** Token cost for a single MIDI conversion (half a stem split). */
 export const MIDI_TOKEN_COST = Number(process.env.MIDI_TOKEN_COST) || 0.5;
 
+/** Default age for cleanup endpoint when `maxAgeHours` query is omitted */
+export const MIDI_CLEANUP_DEFAULT_MAX_AGE_HOURS = (() => {
+  const raw = Number(process.env.MIDI_CLEANUP_DEFAULT_MAX_AGE_HOURS);
+  if (Number.isFinite(raw) && raw >= 0) return raw;
+  return 24;
+})();
+
 /**
  * Attach MIDI service auth header when token protection is enabled.
  * @param {Record<string, string>} headers

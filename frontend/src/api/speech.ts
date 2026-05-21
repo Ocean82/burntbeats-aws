@@ -1,4 +1,10 @@
-import { API_BASE, MAX_UPLOAD_BYTES } from "../config";
+import { API_BASE } from "../config";
+
+/** Must match speech_service SPEECH_MAX_UPLOAD_MB (default 100). */
+const SPEECH_MAX_UPLOAD_BYTES =
+  Number(import.meta.env.VITE_SPEECH_MAX_UPLOAD_BYTES) > 0
+    ? Number(import.meta.env.VITE_SPEECH_MAX_UPLOAD_BYTES)
+    : 100 * 1024 * 1024;
 import { authHeaders, setJobToken, jobTokenHeader } from "./auth";
 import { tryParseJson, getApiErrorMessage, isAcceptedJobIdResponse, isRecord } from "./validation";
 import { userFacingApiError, userFacingHttpError } from "../userFacingError";
@@ -15,9 +21,9 @@ export async function startSpeechEnhance(
   onUploadProgress?: (event: UploadProgressEvent) => void,
 ): Promise<SpeechEnhanceResponse> {
   if (!file?.size) throw new Error("No file provided. Upload a speech recording first.");
-  if (file.size > MAX_UPLOAD_BYTES) {
-    const mb = Math.round(MAX_UPLOAD_BYTES / (1024 * 1024));
-    throw new Error(`File too large. Maximum size is ${mb}MB.`);
+  if (file.size > SPEECH_MAX_UPLOAD_BYTES) {
+    const mb = Math.round(SPEECH_MAX_UPLOAD_BYTES / (1024 * 1024));
+    throw new Error(`File too large for speech enhancement. Maximum size is ${mb}MB.`);
   }
 
   const form = new FormData();

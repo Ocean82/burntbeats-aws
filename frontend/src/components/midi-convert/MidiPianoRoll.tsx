@@ -1,6 +1,7 @@
 /**
  * MidiPianoRoll — SVG piano roll visualization for MIDI note events.
  * Lightweight, no dependencies. Renders note rectangles on a time × pitch grid.
+ * Supports optional playhead and note highlighting during playback.
  */
 import { useMemo } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
@@ -8,6 +9,7 @@ import { midiToNoteName } from "../../utils/musicTheory";
 
 interface MidiPianoRollProps {
   notes: MidiNoteEvent[];
+  currentTime?: number | null;
   width?: number;
   height?: number;
   className?: string;
@@ -15,45 +17,47 @@ interface MidiPianoRollProps {
 
 export function MidiPianoRoll({
   notes,
+  currentTime = null,
   width = 600,
   height = 180,
   className = "",
 }: MidiPianoRollProps) {
-  const { rects, pitchLabels, timeLabels } =
+  const { rects, pitchLabels, timeLabels, minStart, totalDuration, leftMargin, drawWidth, topMargin, bottomMargin } =
     useMemo(() => {
       if (!notes.length) {
-        return { rects: [], pitchLabels: [], timeLabels: [] };
+        return { rects: [], pitchLabels: [], timeLabels: [], minStart: 0, totalDuration: 0, leftMargin: 44, drawWidth: 0, topMargin: 4, bottomMargin: 20 };
       }
 
       const pitches = notes.map((n) => n.pitch);
       const minP = Math.min(...pitches);
       const maxP = Math.max(...pitches);
-      const minStart = Math.min(...notes.map((n) => n.start));
+      const mStart = Math.min(...notes.map((n) => n.start));
       const maxE = Math.max(...notes.map((n) => n.start + n.duration));
 
       const pitchRange = maxP - minP + 1;
-      const leftMargin = 44;
-      const topMargin = 4;
-      const bottomMargin = 20;
-      const drawWidth = width - leftMargin;
-      const drawHeight = height - topMargin - bottomMargin;
+      const lMargin = 44;
+      const tMargin = 4;
+      const bMargin = 20;
+      const dWidth = width - lMargin;
+      const drawHeight = height - tMargin - bMargin;
+      const dur = maxE - mStart;
 
       const noteRects = notes.map((note, i) => {
         const x =
-          leftMargin +
-          ((note.start - minStart) / (maxE - minStart)) * drawWidth;
+          lMargin +
+          ((note.start - mStart) / dur) * dWidth;
         const w = Math.max(
-          (note.duration / (maxE - minStart)) * drawWidth,
+          (note.duration / dur) * dWidth,
           2,
         );
         const y =
-          topMargin +
+          tMargin +
           drawHeight -
           ((note.pitch - minP + 1) / pitchRange) * drawHeight;
         const h = Math.max(drawHeight / pitchRange - 1, 2);
         const opacity = 0.5 + note.velocity * 0.5;
 
-        return { key: i, x, y, w, h, opacity };
+        return { key: i, x, y, w, h, opacity, start: note.start, duration: note.duration };
       });
 
       // Pitch labels (every octave C)
@@ -61,7 +65,7 @@ export function MidiPianoRoll({
       for (let p = minP; p <= maxP; p++) {
         if (p % 12 === 0) {
           const y =
-            topMargin +
+            tMargin +
             drawHeight -
             ((p - minP + 0.5) / pitchRange) * drawHeight;
           labels.push({ y, label: midiToNoteName(p) });
@@ -69,11 +73,10 @@ export function MidiPianoRoll({
       }
 
       // Time labels (every N seconds)
-      const duration = maxE - minStart;
-      const step = duration > 60 ? 15 : duration > 20 ? 5 : 1;
+      const step = dur > 60 ? 15 : dur > 20 ? 5 : 1;
       const tLabels: Array<{ x: number; label: string }> = [];
-      for (let t = 0; t <= duration; t += step) {
-        const x = leftMargin + (t / duration) * drawWidth;
+      for (let t = 0; t <= dur; t += step) {
+        const x = lMargin + (t / dur) * dWidth;
         const mins = Math.floor(t / 60);
         const secs = Math.floor(t % 60);
         tLabels.push({
@@ -86,8 +89,21 @@ export function MidiPianoRoll({
         rects: noteRects,
         pitchLabels: labels,
         timeLabels: tLabels,
+        minStart: mStart,
+        totalDuration: dur,
+        leftMargin: lMargin,
+        drawWidth: dWidth,
+        topMargin: tMargin,
+        bottomMargin: bMargin,
       };
     }, [notes, width, height]);
+
+  // Compute playhead x position
+  const playheadX = useMemo(() => {
+    if (currentTime == null || currentTime <= 0 || totalDuration <= 0) return null;
+    const clampedTime = Math.min(currentTime, totalDuration);
+    return leftMargin + (clampedTime / totalDuration) * drawWidth;
+  }, [currentTime, totalDuration, leftMargin, drawWidth]);
 
   if (!notes.length) {
     return (
@@ -153,20 +169,48 @@ export function MidiPianoRoll({
           </g>
         ))}
 
-        {/* Note rectangles */}
-        {rects.map((r) => (
-          <rect
-            key={r.key}
-            x={r.x}
-            y={r.y}
-            width={r.w}
-            height={r.h}
-            rx={1.5}
-            fill={`rgba(167, 139, 250, ${r.opacity})`}
-            stroke="rgba(139, 92, 246, 0.6)"
-            strokeWidth={0.5}
+        {/* Note rectangles — highlighted when currently sounding */}
+        {rects.map((r) => {
+          const isActive =
+            currentTime != null &&
+            currentTime > 0 &&
+            currentTime >= r.start - minStart &&
+            currentTime < r.start - minStart + r.duration;
+          const fillOpacity = isActive ? 1.0 : r.opacity;
+          const strokeColor = isActive
+            ? "rgba(251, 191, 36, 0.9)"
+            : "rgba(139, 92, 246, 0.6)";
+          const fillColor = isActive
+            ? `rgba(251, 191, 36, ${fillOpacity})`
+            : `rgba(167, 139, 250, ${fillOpacity})`;
+
+          return (
+            <rect
+              key={r.key}
+              x={r.x}
+              y={r.y}
+              width={r.w}
+              height={r.h}
+              rx={1.5}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={isActive ? 1 : 0.5}
+            />
+          );
+        })}
+
+        {/* Playhead line */}
+        {playheadX != null && (
+          <line
+            x1={playheadX}
+            x2={playheadX}
+            y1={topMargin}
+            y2={height - bottomMargin}
+            stroke="rgba(251, 146, 60, 0.9)"
+            strokeWidth={1.5}
+            strokeLinecap="round"
           />
-        ))}
+        )}
       </svg>
     </div>
   );

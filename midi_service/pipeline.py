@@ -13,12 +13,20 @@ from pathlib import Path
 
 import numpy as np
 
+from midi_service.analysis import analyze_notes
 from midi_service.job_utils import OUTPUT_FILENAME, write_progress
+from midi_service.midi_io import write_notes_to_midi
+from midi_service.post_process import apply_post_process, quantize_notes_with_strength
 
 logger = logging.getLogger(__name__)
 
 # Lazy-loaded model reference (loaded once at startup, reused across jobs)
 _model_path = None
+
+
+def quantize_notes(notes: list[dict], bpm: int, grid: str) -> list[dict]:
+    """Snap notes to grid at full strength (backward-compatible helper)."""
+    return quantize_notes_with_strength(notes, bpm, grid, strength=1.0)
 
 
 def preload_model() -> None:
@@ -39,7 +47,6 @@ def preload_model() -> None:
     _model_path = ICASSP_2022_MODEL_PATH
     logger.info("Basic Pitch model path loaded: %s", _model_path)
 
-    # Warmup: write 1 second of silence to a temp WAV file (predict expects a file path)
     silence = np.zeros(22050, dtype=np.float32)
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         sf.write(tmp.name, silence, 22050)
@@ -51,7 +58,6 @@ def preload_model() -> None:
     elapsed = time.perf_counter() - t0
     logger.info("Warmup inference completed in %.2fs", elapsed)
 
-    # Clean up temp file
     Path(warmup_path).unlink(missing_ok=True)
 
 
@@ -84,16 +90,13 @@ def run_midi_convert_sync(
     out_dir : Path
         Directory to write output.mid and progress.json.
     options : dict
-        Conversion options:
-        - min_confidence (float): Note confidence threshold (0.0-1.0, default 0.5)
-        - min_note_length_ms (int): Minimum note duration in ms (default 58)
-        - include_pitch_bends (bool): Include pitch bend data (default True)
+        Conversion options (confidence, note length, pitch bends, quantization,
+        post-processing, and metadata fields).
     """
     from basic_pitch.inference import predict
 
     job_log = logging.getLogger(f"midi.job.{job_id}")
 
-    # --- Progress: processing at start (progress=10) ---
     write_progress(out_dir, {
         "status": "processing",
         "job_id": job_id,
@@ -103,18 +106,27 @@ def run_midi_convert_sync(
 
     model_path = _get_model_path()
 
-    # Parse and clamp options
+    write_progress(out_dir, {
+        "status": "processing",
+        "job_id": job_id,
+        "progress": 25,
+        "message": "Running pitch detection",
+    })
+
     min_confidence = float(options.get("min_confidence", 0.5))
     min_note_length_ms = int(options.get("min_note_length_ms", 58))
     include_pitch_bends = bool(options.get("include_pitch_bends", True))
+    quantize_enabled = bool(options.get("quantize", False))
+    quantize_bpm = int(options.get("quantize_bpm", 120))
+    quantize_grid = str(options.get("quantize_grid", "1/16"))
 
     min_confidence = max(0.05, min(0.95, min_confidence))
     min_note_length_ms = max(10, min(500, min_note_length_ms))
+    quantize_bpm = max(40, min(300, quantize_bpm))
 
-    # --- Run Basic Pitch inference ---
     t_start = time.perf_counter()
 
-    model_output, midi_data, note_events = predict(
+    _model_output, midi_data, note_events = predict(
         str(input_path),
         model_or_model_path=model_path,
         onset_threshold=min_confidence,
@@ -131,12 +143,13 @@ def run_midi_convert_sync(
         len(note_events),
     )
 
-    # --- Write MIDI file to out_dir/output.mid ---
-    output_path = out_dir / OUTPUT_FILENAME
-    midi_data.write(str(output_path))
+    write_progress(out_dir, {
+        "status": "processing",
+        "job_id": job_id,
+        "progress": 65,
+        "message": "Building note list",
+    })
 
-    # --- Extract and filter note events into piano_roll_notes ---
-    # note_events format: list of (start_time_s, end_time_s, pitch, velocity, confidence)
     min_duration_s = min_note_length_ms / 1000.0
     piano_roll_notes: list[dict] = []
 
@@ -144,20 +157,17 @@ def run_midi_convert_sync(
         start_s = float(event[0])
         end_s = float(event[1])
         pitch = int(event[2])
-        velocity = int(round(float(event[3]) * 127)) if float(event[3]) <= 1.0 else int(event[3])
-        confidence = float(event[4]) if len(event) > 4 else 1.0
-
+        amplitude = float(event[3])
+        velocity = (
+            int(round(amplitude * 127))
+            if amplitude <= 1.0
+            else int(amplitude)
+        )
         duration = end_s - start_s
 
-        # Filter by confidence threshold
-        if confidence < min_confidence:
-            continue
-
-        # Filter by minimum note duration
         if duration < min_duration_s:
             continue
 
-        # Clamp velocity to valid MIDI range
         velocity = max(0, min(127, velocity))
 
         piano_roll_notes.append({
@@ -167,15 +177,60 @@ def run_midi_convert_sync(
             "velocity": velocity,
         })
 
-    # --- Handle zero-note results gracefully ---
-    notes_detected = len(piano_roll_notes)
+    write_progress(out_dir, {
+        "status": "processing",
+        "job_id": job_id,
+        "progress": 80,
+        "message": "Refining notes",
+    })
+
+    piano_roll_notes, post_metrics = apply_post_process(
+        piano_roll_notes,
+        options,
+        quantize=quantize_enabled,
+        quantize_bpm=quantize_bpm,
+        quantize_grid=quantize_grid,
+    )
+
     duration_seconds = midi_data.get_end_time() if midi_data.instruments else 0.0
-    tracks = len(midi_data.instruments)
+    if piano_roll_notes:
+        duration_seconds = max(
+            duration_seconds,
+            max(n["start"] + n["duration"] for n in piano_roll_notes),
+        )
+
+    write_progress(out_dir, {
+        "status": "processing",
+        "job_id": job_id,
+        "progress": 90,
+        "message": "Writing MIDI file",
+    })
+
+    analysis = analyze_notes(piano_roll_notes, duration_seconds)
+
+    output_path = out_dir / OUTPUT_FILENAME
+    export_bpm = quantize_bpm if quantize_enabled else (analysis.get("suggested_bpm") or 120)
+    write_notes_to_midi(
+        piano_roll_notes,
+        output_path,
+        bpm=int(export_bpm),
+    )
+
+    if post_metrics.get("quantization_applied"):
+        job_log.info(
+            "Quantization applied: grid=%s, bpm=%d, strength=%.2f, %d notes",
+            quantize_grid,
+            quantize_bpm,
+            post_metrics.get("quantize_strength", 1.0),
+            len(piano_roll_notes),
+        )
+
+    notes_detected = len(piano_roll_notes)
+    tracks = 1 if piano_roll_notes else 0
 
     if notes_detected == 0:
         job_log.info("Zero notes detected for job %s (completed with empty result)", job_id)
 
-    # --- Progress: completed with full result dict ---
     write_progress(out_dir, {
         "status": "completed",
         "job_id": job_id,
@@ -187,13 +242,43 @@ def run_midi_convert_sync(
             "tracks": tracks,
             "inference_time_seconds": inference_time_seconds,
             "piano_roll_notes": piano_roll_notes,
+            "analysis": analysis,
+            "post_process": post_metrics,
         },
     })
 
+    import json as _json
+    from datetime import datetime, timezone
+
+    metadata = {
+        "job_id": job_id,
+        "stem_job_id": options.get("stem_job_id"),
+        "stem_name": options.get("stem_name"),
+        "user_id": options.get("user_id"),
+        "notes_detected": notes_detected,
+        "duration_seconds": round(duration_seconds, 2),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "settings": {
+            "min_confidence": min_confidence,
+            "min_note_length_ms": min_note_length_ms,
+            "include_pitch_bends": include_pitch_bends,
+            "quantize": quantize_enabled,
+            "quantize_grid": quantize_grid,
+            "quantize_bpm": quantize_bpm,
+            "normalize_velocity": options.get("normalize_velocity", True),
+            "target_velocity": options.get("target_velocity", 90),
+            "max_note_length_ms": options.get("max_note_length_ms", 0),
+            "quantize_strength": options.get("quantize_strength", 1.0),
+        },
+        "analysis": analysis,
+    }
+    (out_dir / "metadata.json").write_text(_json.dumps(metadata), encoding="utf-8")
+
     job_log.info(
-        "Job %s completed: %d notes, %.2fs inference, output at %s",
+        "Job %s completed: %d notes, %.2fs inference, key=%s, output at %s",
         job_id,
         notes_detected,
         inference_time_seconds,
+        analysis.get("estimated_key"),
         output_path,
     )

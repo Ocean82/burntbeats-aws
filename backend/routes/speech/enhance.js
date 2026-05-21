@@ -24,7 +24,7 @@ import {
 import { isProxyHttpError } from "../../middleware/proxy.js";
 import { publicErrorMessage, sanitizedProxyClientError } from "../../clientSafeError.js";
 
-import { SPEECH_ACCEPT_TIMEOUT_MS } from "./shared.js";
+import { SPEECH_ACCEPT_TIMEOUT_MS, SPEECH_MAX_UPLOAD_BYTES } from "./shared.js";
 
 export const enhanceRouter = Router();
 
@@ -49,6 +49,13 @@ enhanceRouter.post(
     if (!req.file) {
       return res.status(400).json({
         error: "Missing file. Upload speech audio with form field 'file'.",
+      });
+    }
+
+    if (req.file.size > SPEECH_MAX_UPLOAD_BYTES) {
+      const mb = Math.round(SPEECH_MAX_UPLOAD_BYTES / (1024 * 1024));
+      return res.status(413).json({
+        error: `File too large for speech enhancement. Maximum size is ${mb}MB.`,
       });
     }
 
