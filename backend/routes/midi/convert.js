@@ -177,6 +177,7 @@ midiConvertRouter.post(
       const normalizeVelocity = req.body?.normalize_velocity ?? "true";
       const targetVelocity = req.body?.target_velocity ?? "90";
       const maxNoteLengthMs = req.body?.max_note_length_ms ?? "0";
+      const transpose = req.body?.transpose ?? "0";
       form.append("quantize", quantize);
       form.append("quantize_grid", quantizeGrid);
       form.append("quantize_bpm", quantizeBpm);
@@ -184,6 +185,7 @@ midiConvertRouter.post(
       form.append("normalize_velocity", normalizeVelocity);
       form.append("target_velocity", String(targetVelocity));
       form.append("max_note_length_ms", String(maxNoteLengthMs));
+      form.append("transpose", String(transpose));
 
       // Forward metadata fields for history tracking
       if (stemJobId) form.append("stem_job_id", stemJobId);

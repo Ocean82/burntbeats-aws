@@ -31,6 +31,7 @@ from midi_service.job_utils import (
     validate_audio_file,
     write_progress,
 )
+from midi_service.multi_track import merge_jobs_to_multitrack
 from midi_service.pipeline import preload_model, run_midi_convert_sync
 
 logger = logging.getLogger(__name__)
@@ -107,6 +108,7 @@ async def convert(
     normalize_velocity: str = Form("true"),
     target_velocity: str = Form("90"),
     max_note_length_ms: str = Form("0"),
+    transpose: str = Form("0"),
     stem_job_id: str = Form(""),
     stem_name: str = Form(""),
     user_id: str = Form(""),
@@ -147,6 +149,7 @@ async def convert(
         in ("true", "1", "yes"),
         "target_velocity": int(target_velocity),
         "max_note_length_ms": int(max_note_length_ms),
+        "transpose": int(transpose),
         "stem_job_id": stem_job_id or None,
         "stem_name": stem_name or None,
         "user_id": user_id or None,
@@ -178,6 +181,7 @@ async def convert(
                 "normalize_velocity": options["normalize_velocity"],
                 "target_velocity": options["target_velocity"],
                 "max_note_length_ms": options["max_note_length_ms"],
+                "transpose": options["transpose"],
                 "stem_job_id": options["stem_job_id"],
                 "stem_name": options["stem_name"],
                 "user_id": options["user_id"],
@@ -219,3 +223,96 @@ async def get_file(request: Request, job_id: str, filename: str) -> FileResponse
         raise HTTPException(status_code=404, detail="File not ready")
 
     return FileResponse(path, media_type="audio/midi", filename=filename)
+
+
+@app.post("/merge")
+async def merge_tracks(request: Request) -> FileResponse:
+    """
+    Merge multiple completed conversion jobs into a single multi-track MIDI file.
+
+    Expects JSON body:
+    {
+      "jobs": [
+        {"job_id": "...", "stem_name": "vocals", "program": 52, "transpose": 0, "is_drum": false},
+        {"job_id": "...", "stem_name": "bass", "program": 33, "transpose": 0},
+        ...
+      ],
+      "bpm": 120
+    }
+    """
+    _require_api_token(request)
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    job_specs = body.get("jobs", [])
+    if not job_specs or not isinstance(job_specs, list):
+        raise HTTPException(status_code=400, detail="'jobs' must be a non-empty array")
+    if len(job_specs) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 tracks per merge")
+
+    bpm = int(body.get("bpm", 120))
+    bpm = max(40, min(300, bpm))
+
+    # Collect notes from each completed job's progress.json
+    merge_input: list[dict] = []
+    for spec in job_specs:
+        job_id = spec.get("job_id", "")
+        if not UUID_REGEX.match(job_id):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid job_id: {job_id}",
+            )
+
+        progress_path = safe_job_path(job_id, PROGRESS_FILENAME)
+        if not progress_path.is_file():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Job not found: {job_id}",
+            )
+
+        progress_data = json.loads(progress_path.read_text(encoding="utf-8"))
+        if progress_data.get("status") != "completed":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Job not completed: {job_id}",
+            )
+
+        notes = progress_data.get("result", {}).get("piano_roll_notes", [])
+        merge_input.append({
+            "stem_name": spec.get("stem_name", f"Track {len(merge_input) + 1}"),
+            "notes": notes,
+            "program": int(spec.get("program", -1)),
+            "transpose": int(spec.get("transpose", 0)),
+            "is_drum": bool(spec.get("is_drum", False)),
+        })
+
+        # If program is -1, let multi_track.py auto-suggest from stem_name
+        if merge_input[-1]["program"] < 0:
+            from midi_service.multi_track import suggest_program
+            merge_input[-1]["program"] = suggest_program(
+                merge_input[-1]["stem_name"]
+            )
+
+    # Write merged file to a temporary location
+    merge_id = str(uuid.uuid4())
+    merge_dir = MIDI_OUTPUT_DIR / merge_id
+    merge_dir.mkdir(parents=True, exist_ok=True)
+    output_path = merge_dir / "multitrack.mid"
+
+    result = merge_jobs_to_multitrack(merge_input, output_path, bpm=bpm)
+    logger.info(
+        "Multi-track merge complete: %d tracks, %d notes, %.1fs",
+        result["track_count"],
+        result["total_notes"],
+        result["duration_seconds"],
+    )
+
+    return FileResponse(
+        output_path,
+        media_type="audio/midi",
+        filename="multitrack.mid",
+        headers={"X-Merge-Tracks": str(result["track_count"])},
+    )

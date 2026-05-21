@@ -3,7 +3,7 @@
  * Pattern matches SpeechCleanPanel: source → settings → action → progress → result.
  * Includes batch conversion support for converting all stems at once.
  */
-import { AlertCircle, Check, Download, Loader2, Music, RefreshCw, X } from "lucide-react";
+import { AlertCircle, Check, Download, Layers, Loader2, Music, RefreshCw, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import JSZip from "jszip";
 import { useMidiConvert } from "../../hooks/useMidiConvert";
@@ -14,6 +14,7 @@ import { MidiConvertSettings } from "./MidiConvertSettings";
 import { MidiConvertProgress } from "./MidiConvertProgress";
 import { MidiResultPanel } from "./MidiResultPanel";
 import { authHeaders } from "../../api/auth";
+import { API_BASE } from "../../config";
 
 export interface MidiConvertPanelProps {
   usageBalance?: number | null;
@@ -148,6 +149,52 @@ export function MidiConvertPanel({
       window.open(fileUrl, "_blank");
     }
   }, []);
+
+  // Multi-track export state
+  const [isMerging, setIsMerging] = useState(false);
+
+  const downloadMultiTrack = useCallback(async () => {
+    const completedJobs = batchJobs.filter((j) => j.status === "completed" && j.jobId);
+    if (completedJobs.length < 2) return;
+
+    setIsMerging(true);
+    try {
+      const headers = await authHeaders();
+      const mergePayload = {
+        jobs: completedJobs.map((j) => ({
+          job_id: j.jobId,
+          stem_name: j.stemName,
+        })),
+        bpm: settings.quantizeBpm || 120,
+      };
+
+      const res = await fetch(`${API_BASE}/api/midi/merge`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(mergePayload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Multi-track merge failed");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "multitrack.mid";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Multi-track export failed";
+      setError(msg);
+    } finally {
+      setIsMerging(false);
+    }
+  }, [batchJobs, settings.quantizeBpm, setError]);
 
   return (
     <div data-testid="midi-convert-panel" className="flex flex-col gap-4">
@@ -385,25 +432,50 @@ export function MidiConvertPanel({
 
           {/* Download All as ZIP button */}
           {batchJobs.some((j) => j.status === "completed") && !isBatchInProgress && (
-            <button
-              type="button"
-              data-testid="midi-batch-download-zip"
-              onClick={() => void downloadAllAsZip()}
-              disabled={isZipping}
-              className="inline-flex min-h-[40px] items-center justify-center gap-2 self-start rounded-xl border border-violet-300/40 bg-violet-600/30 px-5 py-2 text-sm font-semibold text-white transition hover:bg-violet-600/50 disabled:opacity-50"
-            >
-              {isZipping ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Zipping…
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Download All as ZIP
-                </>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                data-testid="midi-batch-download-zip"
+                onClick={() => void downloadAllAsZip()}
+                disabled={isZipping}
+                className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-violet-300/40 bg-violet-600/30 px-5 py-2 text-sm font-semibold text-white transition hover:bg-violet-600/50 disabled:opacity-50"
+              >
+                {isZipping ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Zipping…
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Download All as ZIP
+                  </>
+                )}
+              </button>
+
+              {/* Multi-track MIDI export (single .mid with all stems as separate tracks) */}
+              {batchJobs.filter((j) => j.status === "completed").length >= 2 && (
+                <button
+                  type="button"
+                  data-testid="midi-batch-multitrack"
+                  onClick={() => void downloadMultiTrack()}
+                  disabled={isMerging}
+                  className="inline-flex min-h-[40px] items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-amber-600/20 px-5 py-2 text-sm font-semibold text-white transition hover:bg-amber-600/35 disabled:opacity-50"
+                >
+                  {isMerging ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Merging…
+                    </>
+                  ) : (
+                    <>
+                      <Layers className="h-4 w-4" />
+                      Export Multi-Track MIDI
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           )}
         </div>
       )}

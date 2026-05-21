@@ -151,6 +151,36 @@ export function MidiConvertSettings({
         </span>
       </label>
 
+      {/* Transpose control */}
+      <label className="flex flex-col gap-1.5">
+        <span className="flex items-center justify-between text-sm text-white/70">
+          <span>Transpose</span>
+          <span className="font-mono text-xs text-violet-300">
+            {settings.transpose === 0
+              ? "0"
+              : settings.transpose > 0
+                ? `+${settings.transpose}`
+                : `${settings.transpose}`}{" "}
+            semitones
+          </span>
+        </span>
+        <input
+          type="range"
+          min={-12}
+          max={12}
+          step={1}
+          value={settings.transpose}
+          onChange={(e) =>
+            onUpdate({ transpose: parseInt(e.target.value, 10) })
+          }
+          disabled={disabled}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
+        />
+        <span className="text-[10px] text-white/35">
+          Shift all notes up or down. Useful for key matching in your DAW.
+        </span>
+      </label>
+
       {/* Quantize output checkbox */}
       <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-white/70">
         <input

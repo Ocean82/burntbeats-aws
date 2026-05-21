@@ -31,6 +31,8 @@ export interface MidiConvertSettings {
   targetVelocity: number;
   /** Cap note length in ms (0 = no cap beyond min note length). */
   maxNoteLengthMs: number;
+  /** Transpose output by N semitones (-48 to +48). */
+  transpose: number;
 }
 
 export interface MidiAnalysis {
@@ -107,6 +109,7 @@ const DEFAULT_SETTINGS: MidiConvertSettings = {
   normalizeVelocity: true,
   targetVelocity: 90,
   maxNoteLengthMs: 0,
+  transpose: 0,
 };
 
 const MIDI_ACCEPT_TIMEOUT_MS =
@@ -131,6 +134,7 @@ function appendSettingsToForm(formData: FormData, settings: MidiConvertSettings)
   );
   formData.append("target_velocity", settings.targetVelocity.toString());
   formData.append("max_note_length_ms", settings.maxNoteLengthMs.toString());
+  formData.append("transpose", settings.transpose.toString());
 }
 
 function normalizeFileUrl(fileUrl: string | undefined): string | null {

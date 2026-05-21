@@ -140,6 +140,22 @@ def quantize_notes_with_strength(
     return merged
 
 
+def transpose_notes(notes: list[dict], semitones: int) -> list[dict]:
+    """
+    Shift all note pitches by the given number of semitones.
+
+    Notes that would go out of MIDI range (0-127) are clamped.
+    """
+    if not notes or semitones == 0:
+        return notes
+    semitones = max(-48, min(48, semitones))
+    out: list[dict] = []
+    for note in notes:
+        pitch = max(0, min(127, int(note["pitch"]) + semitones))
+        out.append({**note, "pitch": pitch})
+    return out
+
+
 def apply_post_process(
     notes: list[dict],
     options: dict[str, Any],
@@ -159,6 +175,7 @@ def apply_post_process(
         "notes_removed_max_length": 0,
         "velocity_normalized": False,
         "quantization_applied": False,
+        "transpose_applied": 0,
     }
 
     if not notes:
@@ -175,6 +192,12 @@ def apply_post_process(
     if cfg["normalize_velocity"]:
         working = normalize_velocities(working, cfg["target_velocity"])
         metrics["velocity_normalized"] = True
+
+    # Transpose (shift pitch by semitones)
+    transpose_semitones = int(options.get("transpose", 0))
+    if transpose_semitones != 0:
+        working = transpose_notes(working, transpose_semitones)
+        metrics["transpose_applied"] = transpose_semitones
 
     if quantize and cfg["quantize_strength"] > 0:
         working = quantize_notes_with_strength(
