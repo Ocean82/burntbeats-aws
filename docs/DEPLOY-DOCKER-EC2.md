@@ -8,11 +8,20 @@
 
 ## What runs where
 
+| Service | Port (host) | Role |
+|---------|-------------|------|
+| **frontend** | `127.0.0.1:5173` → container 80 | nginx + Vite SPA; proxies **`/api/`** → backend |
+| **backend** | `127.0.0.1:3001` | Node API (auth, stems, speech, midi, billing) |
+| **stem_service** | `127.0.0.1:5000` | CPU stem separation (Demucs / MDX / hybrid) |
+| **speech_service** | `127.0.0.1:5001` | LavaEnhance2 speech clean/enhance |
+| **midi_service** | `127.0.0.1:5002` | Audio → MIDI (Basic Pitch) |
+
+**Startup order:** `speech_service` and `midi_service` must become **healthy** before **backend** starts; **frontend** waits on **backend**. If speech models are missing, the whole public site can stay down even when stem code is fine.
+
 | Piece | Role |
 |-------|------|
-| **Compose stack** | **`frontend`** (nginx + static SPA on container port 80), **`backend`** (Node `server.js`, port 3001), **`stem_service`** (Python, port 5000). |
-| **Host nginx** | Often **`location /`** → **`http://127.0.0.1:5173`** (publish mapping from compose: host **5173** → frontend container **80**). HTTPS and large uploads are configured on the host. |
-| **API from the browser** | The **frontend image** proxies **`/api/`** to **`http://backend:3001`** (see **`frontend/nginx.conf`**). The browser only talks to **https://your-domain** on **443**; no separate public port for the API is required. |
+| **Host nginx** | Often **`location /`** → **`http://127.0.0.1:5173`**. HTTPS and large uploads are configured on the host. |
+| **API from the browser** | The browser only talks to **https://your-domain** on **443**; no separate public API port is required. |
 
 **Important:** Rebuilding **`frontend/dist/`** on the host with **`npm run build`** alone does **not** update the live site if traffic goes to the **frontend container**. You must **rebuild the frontend image** and **recreate the container** (or change nginx to serve static files from disk, which this doc does not assume).
 
@@ -47,14 +56,20 @@ If the working tree has local edits, **stash or commit** before pulling.
 Then rebuild only what changed:
 
 ```bash
-# Typical: UI / Vite env → rebuild frontend
+# UI / Vite env → rebuild frontend
 sudo docker compose build frontend
 
-# API changes
+# Node API routes / deps
 sudo docker compose build backend
 
-# Python stem pipeline / requirements
+# Stem separation (CPU PyTorch — slowest cold build)
 sudo docker compose build stem_service
+
+# Speech clean (LavaSR)
+sudo docker compose build speech_service
+
+# MIDI convert
+sudo docker compose build midi_service
 ```
 
 Apply (recreate containers that use the images you just built):
@@ -100,13 +115,56 @@ Then confirm **`sudo docker compose ps`** shows all services **healthy**. Do **n
 
 ---
 
-## Models and data
+## Manual setup on the server (only these are not in git)
 
-- **`models/`** stays on the workstation (populate with **`scripts/copy-models.sh`** from your stem-models **bank**). That bank—and even a naive full **`models/`** tree—can be **many tens of gibibytes; never blindly rsync either to EC2**.
-- **`server_models/`** is the **usual production payload**. On the workstation run **`python scripts/export_server_models.py`** (forces resolution from **`models/`** internally; export target is `./server_models/`), then **`rsync`/`scp`/`tar` only `server_models/`**. On the server set **`STEM_MODELS_DIR=server_models`** in root **`.env`** so **`stem_service`** reads **`/repo/server_models`** (Compose already bind-mounts `./server_models` there).
-- **`copy-models.sh` is optional on the server**—only needed if you intentionally maintain a fat **`models/`** tree on-instance (bare-metal installs). Compose/Docker setups should prefer **`server_models/`** alone.
-- **Images stay small:** Repo **`.dockerignore`** skips **`models/`** and **`server_models/`** for Docker **build context**—weights arrive through **volume mounts**.
-- **`tmp/stems`** (compose **`STEM_OUTPUT_DIR`**) is runtime job output; compose mounts **`./tmp/stems`** (see **`docker-compose.yml`**).
+Everything else deploys via **`git pull`** + **`docker compose build`**. You should only maintain these by hand:
+
+### 1. Repo-root `.env`
+
+Copy from **`.env.example`** / **`.server-sync/`** templates. Must include at least:
+
+- **Auth / billing:** `CLERK_*`, `STRIPE_*`, `JOB_TOKEN_SECRET`
+- **Stem:** `STEM_MODELS_DIR=server_models`, optional `S3_ENABLED`, `S3_BUCKET`, …
+- **Frontend build args:** `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_STRIPE_*`, … (baked into the **frontend image** at build time)
+- **Speech / MIDI tokens:** `SPEECH_SERVICE_API_TOKEN`, `MIDI_SERVICE_API_TOKEN` (must match between backend and services)
+
+Never commit production `.env` to git.
+
+### 2. Stem weights — `server_models/`
+
+- **`models/`** stays on the workstation (populate with **`scripts/copy-models.sh`**). Never rsync the full bank to EC2.
+- **`server_models/`** is the production payload: on the workstation run **`python scripts/export_server_models.py`**, then **`rsync -avz ./server_models/ ubuntu@HOST:/home/ubuntu/burntbeats-aws/server_models/`**.
+- Root **`.env`:** **`STEM_MODELS_DIR=server_models`**. Compose bind-mounts **`./server_models`** → **`/repo/server_models`** (or **`/repo/models`** when unset).
+
+### 3. Speech weights — `speech_models/` (LavaSR)
+
+Gitignored. Layout: **`speech_models/LAYOUT.txt`**. Required files:
+
+- `speech_models/enhancer_v2/config.yaml`
+- `speech_models/enhancer_v2/model.safetensors` **or** `pytorch_model.bin`
+- `speech_models/denoiser/denoiser.safetensors` **or** `denoiser.bin`
+
+**One-time download on EC2** (from repo root, ~60 MB):
+
+```bash
+python3 -m pip install --user huggingface_hub
+export PATH="$HOME/.local/bin:$PATH"
+hf download YatharthS/LavaSR --local-dir speech_models
+test -f speech_models/enhancer_v2/config.yaml && echo OK
+sudo docker compose up -d --force-recreate speech_service
+```
+
+Or on a workstation with bash: **`bash scripts/fetch-speech-models.sh`** then rsync **`speech_models/`** to the server.
+
+**If speech weights are missing:** `speech_service` stays unhealthy → **backend** and **frontend** never start. Symptom: **`curl http://127.0.0.1:5173/`** connection refused.
+
+Optional overlay **`docker-compose.speech-optional.yml`** relaxes the speech health gate (stems work; `/speech` routes fail until weights exist). Prefer fixing **`speech_models/`** on production.
+
+### 4. Runtime dirs (auto-created)
+
+- **`tmp/stems`**, **`tmp/speech`**, **`tmp/midi`** — job output; compose mounts them. No manual seeding.
+
+**Images stay small:** **`.dockerignore`** omits **`models/`**, **`server_models/`**, **`speech_models/`** from build context—weights use **volume mounts** only.
 
 ---
 
@@ -142,9 +200,29 @@ Use **[DEPLOY-SERVER-BUNDLE.md](DEPLOY-SERVER-BUNDLE.md)** when you are **copyin
 
 ## Quick verification
 
-- **`sudo docker compose ps`** — services **healthy**.
-- **`curl -fsS http://127.0.0.1:5173/`** (or your mapped host port) — HTML from the frontend container.
-- **`curl -fsS http://127.0.0.1:5173/api/health`** — proxied backend health (through the frontend container’s nginx).
-- **`python scripts/post_deploy_smoke.py`** — checks prod URLs (`/sitemap.xml`, `/robots.txt`, `/pricing`, legal pages) and writes a timestamped report under **`docs/deploy-reports/`**.
+```bash
+sudo docker compose ps    # all five services: healthy
+
+curl -fsS http://127.0.0.1:5173/              # frontend HTML
+curl -fsS http://127.0.0.1:5173/api/health    # backend via frontend proxy
+curl -fsS http://127.0.0.1:5000/health        # stem_service
+curl -fsS http://127.0.0.1:5001/health        # speech_service
+curl -fsS http://127.0.0.1:5002/health        # midi_service
+```
+
+From your laptop: **`python scripts/post_deploy_smoke.py`** — public URLs (`/pricing`, legal pages, etc.) → report under **`docs/deploy-reports/`**.
+
+## Airport / quick redeploy cheat sheet
+
+```bash
+ssh -i ~/.ssh/server_saver_key ubuntu@52.0.207.242
+cd /home/ubuntu/burntbeats-aws
+git pull --ff-only origin main
+sudo docker compose build frontend backend stem_service speech_service midi_service
+sudo docker compose up -d
+sudo docker compose ps
+```
+
+Rebuild **only** what you changed to save time. After **`VITE_*`** edits: **`sudo docker compose build --no-cache frontend`**.
 
 Adjust host/port if your **`docker-compose.yml` port mappings differ.

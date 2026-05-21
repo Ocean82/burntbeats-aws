@@ -90,7 +90,7 @@ async def health() -> dict:
     return {
         "status": "ok",
         "queue_depth": get_queue_depth(),
-        "basic_pitch_version": basic_pitch.__version__,
+        "basic_pitch_version": getattr(basic_pitch, "__version__", "unknown"),
     }
 
 

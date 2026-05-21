@@ -1,0 +1,14 @@
+# Optional overlay when speech_models/ weights are not installed yet.
+# Backend + frontend can start; /speech routes fail until models are present.
+#
+#   sudo docker compose -f docker-compose.yml -f docker-compose.speech-optional.yml up -d
+#
+# After copying speech_models/ per speech_models/LAYOUT.txt, use compose without this file.
+
+services:
+  backend:
+    depends_on:
+      speech_service:
+        condition: service_started
+      midi_service:
+        condition: service_healthy
