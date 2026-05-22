@@ -28,7 +28,7 @@ export function SpeechEnhanceProgress({
           exit={{ opacity: 0, height: 0 }}
           transition={{ duration: 0.2 }}
           style={{ overflow: "hidden" }}
-          className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-950/30 px-4 py-3"
+          className="mt-md rounded-xl border border-info-400/20 bg-info-950/30 px-md py-sm"
           role="status"
           aria-live="polite"
           aria-label={
@@ -38,8 +38,8 @@ export function SpeechEnhanceProgress({
           }
           data-testid="speech-enhance-progress"
         >
-          <div className="mb-2 flex items-center gap-2 text-sm font-medium text-cyan-100">
-            <Loader2 className="h-4 w-4 animate-spin text-cyan-300" aria-hidden />
+          <div className="mb-xs flex items-center gap-xs text-sm font-medium text-info-100">
+            <Loader2 className="h-4 w-4 animate-spin text-info-300" aria-hidden />
             {isUploading ? "Uploading recording…" : statusMessage || "Cleaning speech…"}
           </div>
           <ProgressBarInner
@@ -64,7 +64,7 @@ function ProgressBarInner({
 }) {
   return (
     <>
-      <div className="mb-1 flex items-center justify-between text-[11px] text-cyan-200/60">
+      <div className="mb-1 flex items-center justify-between text-[11px] text-info-200/60">
         <span>
           {isUploading
             ? "Sending to speech service"
@@ -76,9 +76,9 @@ function ProgressBarInner({
         </span>
         <span className="tabular-nums">{Math.round(pct)}%</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-cyan-950/50">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-info-950/50">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-sky-400 to-teal-300"
+          className="h-full rounded-full bg-gradient-to-r from-info-500 via-sky-400 to-teal-300"
           initial={{ width: "0%" }}
           animate={{ width: `${Math.max(3, pct)}%` }}
           transition={{ duration: 0.3, ease: "easeOut" }}

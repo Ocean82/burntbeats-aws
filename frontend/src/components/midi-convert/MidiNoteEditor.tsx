@@ -118,24 +118,24 @@ export function MidiNoteEditor({ initialNotes, bpm, className = "" }: MidiNoteEd
   const shortcuts = (
     <>
       <span>
-        <kbd className="rounded bg-white/10 px-1">Space</kbd> Play / Stop
+        <kbd className="rounded bg-muted px-1">Space</kbd> Play / Stop
       </span>
       <span>
-        <kbd className="rounded bg-white/10 px-1">1</kbd>
-        <kbd className="rounded bg-white/10 px-1">2</kbd>
-        <kbd className="rounded bg-white/10 px-1">3</kbd> Tools
+        <kbd className="rounded bg-muted px-1">1</kbd>
+        <kbd className="rounded bg-muted px-1">2</kbd>
+        <kbd className="rounded bg-muted px-1">3</kbd> Tools
       </span>
       <span>
-        <kbd className="rounded bg-white/10 px-1">Del</kbd> Delete
+        <kbd className="rounded bg-muted px-1">Del</kbd> Delete
       </span>
       <span>
-        <kbd className="rounded bg-white/10 px-1">↑↓</kbd> ±1 st
+        <kbd className="rounded bg-muted px-1">↑↓</kbd> ±1 st
       </span>
       <span>
-        <kbd className="rounded bg-white/10 px-1">Shift+↑↓</kbd> ±1 oct
+        <kbd className="rounded bg-muted px-1">Shift+↑↓</kbd> ±1 oct
       </span>
       <span>
-        <kbd className="rounded bg-white/10 px-1">Ctrl+Z</kbd> Undo
+        <kbd className="rounded bg-muted px-1">Ctrl+Z</kbd> Undo
       </span>
     </>
   );

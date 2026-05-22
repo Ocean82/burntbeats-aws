@@ -12,29 +12,29 @@ export function PipelineStep({ title, children, active, done }: PipelineStepProp
   return (
     <motion.div
       className={cn(
-        "glass-card rounded-xl border px-4 py-4 transition-colors duration-300",
+        "glass-card rounded-xl border px-md py-md transition-colors duration-300",
         active &&
-          "border-amber-300/28 bg-[rgba(255,146,88,0.12)] shadow-[0_0_0_1px_rgba(255,157,94,0.12),0_12px_28px_rgba(255,116,56,0.1)]",
-        done && !active && "border-white/12 bg-white/5",
-        !done && !active && "border-white/8 bg-black/20",
+          "border-primary-300/28 bg-[rgba(255,146,88,0.12)] shadow-[0_0_0_1px_rgba(255,157,94,0.12),0_12px_28px_rgba(255,116,56,0.1)]",
+        done && !active && "border-border bg-muted",
+        !done && !active && "border-border bg-muted",
       )}
       initial={false}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.25 }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-sm">
         <span
           className={cn(
-            "inline-flex h-3 w-3 rounded-full border border-white/20 bg-white/10",
+            "inline-flex h-3 w-3 rounded-full border border-border bg-muted",
             active && "bg-[var(--accent)] shadow-[0_0_18px_var(--accent)]",
-            done && !active && "bg-white/60",
+            done && !active && "bg-secondary",
           )}
         />
-        <div className="font-display text-xl tracking-[-0.03em] text-white">
+        <div className="font-display text-xl tracking-[-0.03em] text-foreground">
           {title}
         </div>
       </div>
-      <div className="mt-2 pl-6 text-sm leading-6 text-white/60">
+      <div className="mt-xs pl-6 text-sm leading-6 text-muted-foreground">
         {children}
       </div>
     </motion.div>

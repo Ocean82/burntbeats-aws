@@ -39,17 +39,17 @@ export function StatusPanel({
   return (
     <>
       <p className="eyebrow">What&apos;s happening</p>
-      <h2 className="font-display text-2xl tracking-[-0.04em] text-white mb-5">Status · Tracks · Master</h2>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/25 px-4 py-3" role="status" aria-live="polite">
-          <span className="text-xs uppercase tracking-wider text-white/65">Status</span>
-          <span className="font-semibold text-white">{isSplitting ? "Splitting…" : hasMixStems ? "Stems ready" : "Ready"}</span>
+      <h2 className="font-display text-2xl tracking-[-0.04em] text-foreground mb-5">Status · Tracks · Master</h2>
+      <div className="space-y-md">
+        <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-md py-sm" role="status" aria-live="polite">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">Status</span>
+          <span className="font-semibold text-foreground">{isSplitting ? "Splitting…" : hasMixStems ? "Stems ready" : "Ready"}</span>
         </div>
         <div>
-          <div className="flex items-center justify-between text-xs uppercase tracking-wider text-white/65 mb-2">
+          <div className="flex items-center justify-between text-xs uppercase tracking-wider text-muted-foreground mb-xs">
             <span>Split progress</span><span>{clampedProgress}%</span>
           </div>
-          <div className="progress-shimmer h-2 overflow-hidden rounded-full bg-white/10">
+          <div className="progress-shimmer h-2 overflow-hidden rounded-full bg-muted">
             <motion.div
               className="progress-glow h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)]"
               initial={{ width: "0%" }}
@@ -57,46 +57,46 @@ export function StatusPanel({
               transition={{ duration: 0.25, ease: "easeOut" }}
             />
           </div>
-          <p className="mt-2 text-sm text-white/64">{activeStageBlurb}</p>
+          <p className="mt-xs text-sm text-muted-foreground">{activeStageBlurb}</p>
         </div>
       </div>
-      <div className="mt-4 space-y-2">
+      <div className="mt-md space-y-xs">
         {pipelineSteps.map((step, i) => (
           <PipelineStep key={step.title} title={step.title} active={i === pipelineIndex} done={i < pipelineIndex}>
             {step.blurb}
           </PipelineStep>
         ))}
       </div>
-      <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <FolderOpen className="h-5 w-5 text-white/70" strokeWidth={1.8} />
-          <span className="text-xs font-semibold uppercase tracking-wider text-white/65">
+      <div className="mt-lg rounded-xl border border-border bg-muted p-md">
+        <div className="flex items-center gap-xs mb-sm">
+          <FolderOpen className="h-5 w-5 text-secondary-foreground" strokeWidth={1.8} />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Track status · {uploadName.replace(/\.[^/.]+$/, "")}
           </span>
-          {isLoadingStems && <span className="text-xs text-amber-200/90">Loading stems…</span>}
+          {isLoadingStems && <span className="text-xs text-primary-200/90">Loading stems…</span>}
         </div>
-        <div className="space-y-2">
+        <div className="space-y-xs">
           {visibleStems.map((stem) => (
-            <div key={stem.id} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <div key={stem.id} className="flex items-center gap-xs rounded-xl border border-border bg-muted px-sm py-xs">
               <span className={cn("track-status-dot h-2 w-2 rounded-full", `track-status-dot-${stem.id}`)} />
-              <span className="text-sm text-white">{stem.label}</span>
-              <span className="text-xs text-white/65">
+              <span className="text-sm text-foreground">{stem.label}</span>
+              <span className="text-xs text-muted-foreground">
                 {loadedTracks[stem.id] ? "Ready" : stemBuffers[stem.id] ? "Buffered" : isLoadingStems ? "Loading…" : "Pending"}
               </span>
             </div>
           ))}
         </div>
       </div>
-      <div className="mt-5 rounded-xl border border-white/10 bg-black/25 p-4">
-        <div className="text-xs font-semibold uppercase tracking-wider text-white/65 mb-3">Master chain</div>
-        <div className="space-y-2 text-sm text-white/68">
-          <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Glue compression</span><span>{masterChain.compression} dB GR</span></div>
-          <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Limiter ceiling</span><span>{masterChain.limiter} dB</span></div>
-          <div className="flex justify-between rounded-lg bg-white/5 px-3 py-2"><span>Loudness target</span><span>{masterChain.loudness} LUFS</span></div>
+      <div className="mt-lg rounded-xl border border-border bg-muted p-md">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-sm">Master chain</div>
+        <div className="space-y-xs text-sm text-muted-foreground">
+          <div className="flex justify-between rounded-lg bg-muted px-sm py-xs"><span>Glue compression</span><span>{masterChain.compression} dB GR</span></div>
+          <div className="flex justify-between rounded-lg bg-muted px-sm py-xs"><span>Limiter ceiling</span><span>{masterChain.limiter} dB</span></div>
+          <div className="flex justify-between rounded-lg bg-muted px-sm py-xs"><span>Loudness target</span><span>{masterChain.loudness} LUFS</span></div>
         </div>
       </div>
-      <p className="mt-5 text-xs text-white/65">
-        Tip: Use <strong className="text-white/70">Play mix</strong> to hear everything together, then <strong className="text-white/70">Export WAV</strong> to download.
+      <p className="mt-lg text-xs text-muted-foreground">
+        Tip: Use <strong className="text-secondary-foreground">Play mix</strong> to hear everything together, then <strong className="text-secondary-foreground">Export WAV</strong> to download.
       </p>
     </>
   );

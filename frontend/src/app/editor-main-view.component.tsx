@@ -58,53 +58,53 @@ export function EditorMainView({
   return (
     <>
       {/* Pipeline breadcrumb — shows current workflow step */}
-      <div className="flex flex-wrap items-center gap-2 text-xs text-white/75 sm:text-sm">
+      <div className="flex flex-wrap items-center gap-xs text-xs text-secondary-foreground sm:text-sm">
         <span
           className={cn(
-            "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+            "flex items-center gap-xs rounded-full px-sm py-1.5 border transition-all",
             !uploadedFile
-              ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
-              : "border-white/10 bg-white/5 text-white/65",
+              ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
+              : "border-border bg-muted text-muted-foreground",
           )}
         >
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              !uploadedFile ? "bg-amber-400" : "bg-white/40",
+              !uploadedFile ? "bg-primary-400" : "bg-secondary",
             )}
           />
           Upload
         </span>
-        <span className="text-white/20" aria-hidden>→</span>
+        <span className="text-muted-foreground" aria-hidden>→</span>
         <span
           className={cn(
-            "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+            "flex items-center gap-xs rounded-full px-sm py-1.5 border transition-all",
             isSplitting
-              ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
-              : "border-white/10 bg-white/5 text-white/65",
+              ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
+              : "border-border bg-muted text-muted-foreground",
           )}
         >
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              isSplitting ? "bg-amber-400 animate-pulse" : "bg-white/40",
+              isSplitting ? "bg-primary-400 animate-pulse" : "bg-secondary",
             )}
           />
           Split
         </span>
-        <span className="text-white/20" aria-hidden>→</span>
+        <span className="text-muted-foreground" aria-hidden>→</span>
         <span
           className={cn(
-            "flex items-center gap-1.5 rounded-full px-3 py-1.5 border transition-all",
+            "flex items-center gap-xs rounded-full px-sm py-1.5 border transition-all",
             mixStemsLength > 0 && !isExporting
-              ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
-              : "border-white/10 bg-white/5 text-white/65",
+              ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
+              : "border-border bg-muted text-muted-foreground",
           )}
         >
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              mixStemsLength > 0 ? "bg-amber-400" : "bg-white/40",
+              mixStemsLength > 0 ? "bg-primary-400" : "bg-secondary",
             )}
           />
           Mix & Export
@@ -116,14 +116,14 @@ export function EditorMainView({
         )}
       </div>
       {/* Marquee — static text on small screens to reduce motion noise */}
-      <div className="overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm md:hidden">
-        <p className="px-4 py-3 text-center text-[11px] uppercase leading-relaxed tracking-[0.18em] text-white/45">
+      <div className="overflow-hidden rounded-2xl border border-border bg-muted/[0.03] backdrop-blur-sm md:hidden">
+        <p className="px-md py-sm text-center text-[11px] uppercase leading-relaxed tracking-[0.18em] text-muted-foreground">
           Drop track · Split · Mix · Export · Premium &amp; Studio unlock batch
           &amp; faster queues.
         </p>
       </div>
       <motion.div
-        className="hidden overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-sm md:block"
+        className="hidden overflow-hidden rounded-2xl border border-border bg-muted/[0.03] backdrop-blur-sm md:block"
         {...(reduceMotion
           ? {
               initial: false,
@@ -136,7 +136,7 @@ export function EditorMainView({
               transition: { duration: 0.5 },
             })}
       >
-        <div className="flex w-max animate-scroll-text gap-14 py-2 text-[11px] uppercase tracking-[0.22em] text-white/45">
+        <div className="flex w-max animate-scroll-text gap-3xl py-xs text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
           <span>Drop track · Split · Mix · Export</span>
           <span>
             Hit your first finished stem in minutes — then batch the rest.
@@ -147,7 +147,7 @@ export function EditorMainView({
       </motion.div>
 
       <motion.section
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-md"
         initial="hidden"
         animate="visible"
         variants={{
@@ -160,7 +160,7 @@ export function EditorMainView({
         <motion.div
           onPointerDown={handleGuidancePanelInteract}
           className={cn(
-            "glass-panel mirror-sheen rounded-[2rem] px-5 py-4 sm:px-6",
+            "glass-panel mirror-sheen rounded-[2rem] px-lg py-md sm:px-lg",
             guidanceTarget === "source" && guidanceRingClass,
             processingProps.isSplitting && "splitting-scan-glow",
           )}
@@ -173,17 +173,17 @@ export function EditorMainView({
           <SplitErrorBoundary>
             <ProcessingSettingsPanel {...processingProps} />
             {subscription.status === "inactive" && (
-              <div className="mt-3 border-t border-white/10 pt-3">
+              <div className="mt-sm border-t border-border pt-sm">
                 <PaywallBanner subscription={subscription} variant="teaser" onViewPlans={onViewPlans} />
               </div>
             )}
             {subscription.billingError && (
-              <div className="mt-3 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+              <div className="mt-sm rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300">
                 {subscription.billingError}
               </div>
             )}
             {checkoutNotice && (
-              <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              <div className="mt-sm rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100">
                 {checkoutNotice}
               </div>
             )}

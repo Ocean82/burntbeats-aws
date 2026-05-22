@@ -270,12 +270,12 @@ export function MyStemsPage({
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0d0b09] p-4">
-        <AlertCircle className="h-10 w-10 text-red-400" />
-        <p className="mt-3 text-sm text-white/80">{error}</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-popover p-md">
+        <AlertCircle className="h-10 w-10 text-destructive-400" />
+        <p className="mt-sm text-sm text-secondary-foreground">{error}</p>
         <button
           onClick={refetch}
-          className="mt-4 flex items-center gap-2 rounded-xl bg-amber-500/20 px-4 py-2.5 text-sm font-medium text-amber-400 transition hover:bg-amber-500/30"
+          className="mt-md flex items-center gap-xs rounded-xl bg-primary-500/20 px-md py-sm text-sm font-medium text-primary-400 transition hover:bg-primary-500/30"
           aria-label="Retry loading stems"
         >
           <RefreshCw className="h-4 w-4" />
@@ -291,28 +291,28 @@ export function MyStemsPage({
 
   if (totalJobs === 0) {
     return (
-      <div className="flex min-h-screen flex-col bg-[#0d0b09]">
-        <header className="flex items-center gap-3 border-b border-white/10 p-4 sm:p-6">
+      <div className="flex min-h-screen flex-col bg-popover">
+        <header className="flex items-center gap-sm border-b border-border p-md sm:p-lg">
           <button
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
             aria-label="Back to editor"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold text-white">My Stems</h1>
+          <h1 className="text-lg font-semibold text-foreground">My Stems</h1>
         </header>
-        <div className="flex flex-1 flex-col items-center justify-center p-4 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10">
-            <Music className="h-8 w-8 text-amber-400" />
+        <div className="flex flex-1 flex-col items-center justify-center p-md text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-500/10">
+            <Music className="h-8 w-8 text-primary-400" />
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-white">No stems yet</h2>
-          <p className="mt-2 max-w-xs text-sm text-white/65">
+          <h2 className="mt-md text-lg font-semibold text-foreground">No stems yet</h2>
+          <p className="mt-xs max-w-xs text-sm text-muted-foreground">
             Split your first track! Your separated stems will appear here for easy re-download.
           </p>
           <button
             onClick={onClose}
-            className="fire-button mt-6 rounded-xl px-6 py-3 text-sm font-semibold transition"
+            className="fire-button mt-lg rounded-xl px-lg py-sm text-sm font-semibold transition"
           >
             Go to Editor
           </button>
@@ -326,65 +326,65 @@ export function MyStemsPage({
   // -------------------------------------------------------------------------
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#0d0b09]">
+    <div className="flex min-h-screen flex-col bg-popover">
       {/* Header */}
-      <header className="flex items-center gap-3 border-b border-white/10 p-4 sm:p-6">
+      <header className="flex items-center gap-sm border-b border-border p-md sm:p-lg">
         <button
           onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
           aria-label="Back to editor"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-lg font-semibold text-white">My Stems</h1>
+        <h1 className="text-lg font-semibold text-foreground">My Stems</h1>
       </header>
 
-      <main className="flex-1 p-4 sm:p-6">
+      <main className="flex-1 p-md sm:p-lg">
         {/* Storage Overview */}
-        <section aria-label="Storage overview" className="mb-6 grid grid-cols-3 gap-3">
-          <div className="rounded-2xl border border-white/10 bg-[#1a1412]/95 p-3 sm:p-4">
-            <div className="flex items-center gap-2 text-white/50">
+        <section aria-label="Storage overview" className="mb-lg grid grid-cols-3 gap-sm">
+          <div className="rounded-2xl border border-border bg-popover/95 p-sm sm:p-md">
+            <div className="flex items-center gap-xs text-muted-foreground">
               <Package className="h-4 w-4" />
               <span className="text-xs">Jobs</span>
             </div>
-            <p className="mt-1 text-lg font-semibold text-white">{totalJobs}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{totalJobs}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#1a1412]/95 p-3 sm:p-4">
-            <div className="flex items-center gap-2 text-white/50">
+          <div className="rounded-2xl border border-border bg-popover/95 p-sm sm:p-md">
+            <div className="flex items-center gap-xs text-muted-foreground">
               <Music className="h-4 w-4" />
               <span className="text-xs">Stems</span>
             </div>
-            <p className="mt-1 text-lg font-semibold text-white">{totalStems}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">{totalStems}</p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#1a1412]/95 p-3 sm:p-4">
-            <div className="flex items-center gap-2 text-white/50">
+          <div className="rounded-2xl border border-border bg-popover/95 p-sm sm:p-md">
+            <div className="flex items-center gap-xs text-muted-foreground">
               <HardDrive className="h-4 w-4" />
               <span className="text-xs">Storage</span>
             </div>
-            <p className="mt-1 text-lg font-semibold text-white">
+            <p className="mt-1 text-lg font-semibold text-foreground">
               {formatBytes(totalStorageBytes)}
             </p>
           </div>
         </section>
 
         {/* Search & Sort Controls */}
-        <section className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <section className="mb-md flex flex-col gap-sm sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by filename…"
               aria-label="Search stems by filename"
-              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-white/40 outline-none transition focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/30"
+              className="w-full rounded-xl border border-border bg-muted py-sm pl-10 pr-md text-sm text-foreground placeholder-white/40 outline-none transition focus:border-primary-400/50 focus:ring-1 focus:ring-primary-400/30"
             />
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
             aria-label="Sort stems"
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/30"
+            className="rounded-xl border border-border bg-muted px-sm py-sm text-sm text-foreground outline-none transition focus:border-primary-400/50 focus:ring-1 focus:ring-primary-400/30"
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -398,10 +398,10 @@ export function MyStemsPage({
         <section aria-label="Stem separation jobs">
           {filteredAndSortedJobs.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-sm text-white/50">No jobs match your search.</p>
+              <p className="text-sm text-muted-foreground">No jobs match your search.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-sm">
               {filteredAndSortedJobs.map((job) => {
                 const isExpanded = expandedJobId === job.job_id;
                 const availableStems = job.stem_files.filter((s) => s.s3_key !== null);
@@ -414,45 +414,45 @@ export function MyStemsPage({
                 return (
                   <div
                     key={job.job_id}
-                    className="overflow-hidden rounded-3xl border border-white/10 bg-[#1a1412]/95"
+                    className="overflow-hidden rounded-3xl border border-border bg-popover/95"
                   >
                     {/* Card Header (clickable) */}
                     <button
                       onClick={() =>
                         setExpandedJobId(isExpanded ? null : job.job_id)
                       }
-                      className="flex w-full items-center justify-between gap-3 p-4 text-left transition hover:bg-white/5 sm:p-5"
+                      className="flex w-full items-center justify-between gap-sm p-md text-left transition hover:bg-muted sm:p-lg"
                       aria-expanded={isExpanded}
                       aria-controls={`job-details-${job.job_id}`}
                     >
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-medium text-white">
+                        <h3 className="truncate text-sm font-medium text-foreground">
                           {job.original_filename || "Untitled"}
                         </h3>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <span className="flex items-center gap-1 text-xs text-white/50">
+                        <div className="mt-1 flex flex-wrap items-center gap-xs">
+                          <span className="flex items-center gap-2xs text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />
                             {formatRelativeDate(job.created_at)}
                           </span>
-                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-400">
+                          <span className="rounded-full bg-primary-500/15 px-xs py-0.5 text-xs font-medium text-primary-400">
                             {job.stem_files.length} stem{job.stem_files.length !== 1 ? "s" : ""}
                           </span>
                           {job.quality && (
-                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60">
+                            <span className="rounded-full bg-muted px-xs py-0.5 text-xs text-muted-foreground">
                               {job.quality}
                             </span>
                           )}
                           {hasMidi && (
-                            <span className="rounded-full bg-purple-500/15 px-2 py-0.5 text-xs font-medium text-purple-400">
+                            <span className="rounded-full bg-purple-500/15 px-xs py-0.5 text-xs font-medium text-purple-400">
                               MIDI
                             </span>
                           )}
                         </div>
                       </div>
                       {isExpanded ? (
-                        <ChevronUp className="h-5 w-5 shrink-0 text-white/40" />
+                        <ChevronUp className="h-5 w-5 shrink-0 text-muted-foreground" />
                       ) : (
-                        <ChevronDown className="h-5 w-5 shrink-0 text-white/40" />
+                        <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />
                       )}
                     </button>
 
@@ -467,9 +467,9 @@ export function MyStemsPage({
                           transition={{ duration: 0.25, ease: "easeInOut" }}
                           className="overflow-hidden"
                         >
-                          <div className="border-t border-white/5 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+                          <div className="border-t border-border px-md pb-md pt-sm sm:px-lg sm:pb-5">
                             {/* Stem Rows */}
-                            <ul className="space-y-2" aria-label="Stem files">
+                            <ul className="space-y-xs" aria-label="Stem files">
                               {job.stem_files.map((stem) => {
                                 const downloadKey = `${job.job_id}:${stem.stem_name}`;
                                 const downloading = isDownloading[downloadKey] ?? false;
@@ -478,20 +478,20 @@ export function MyStemsPage({
                                 return (
                                   <li
                                     key={stem.stem_name}
-                                    className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2.5 sm:px-4"
+                                    className="flex items-center justify-between gap-sm rounded-xl bg-muted px-sm py-sm sm:px-md"
                                   >
                                     <div className="min-w-0 flex-1">
-                                      <span className="block truncate text-sm text-white capitalize">
+                                      <span className="block truncate text-sm text-foreground capitalize">
                                         {stem.stem_name}
                                       </span>
                                       {stem.file_size_bytes != null && (
-                                        <span className="text-xs text-white/40">
+                                        <span className="text-xs text-muted-foreground">
                                           {formatBytes(stem.file_size_bytes)}
                                         </span>
                                       )}
                                     </div>
                                     {unavailable ? (
-                                      <span className="shrink-0 rounded-lg bg-white/5 px-3 py-1.5 text-xs text-white/40">
+                                      <span className="shrink-0 rounded-lg bg-muted px-sm py-1.5 text-xs text-muted-foreground">
                                         Unavailable
                                       </span>
                                     ) : (
@@ -500,7 +500,7 @@ export function MyStemsPage({
                                           handleDownloadStem(job.job_id, stem.stem_name)
                                         }
                                         disabled={downloading}
-                                        className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-amber-500/20 px-3 text-xs font-medium text-amber-400 transition hover:bg-amber-500/30 disabled:opacity-50"
+                                        className="flex h-9 shrink-0 items-center gap-xs rounded-lg bg-primary-500/20 px-sm text-xs font-medium text-primary-400 transition hover:bg-primary-500/30 disabled:opacity-50"
                                         aria-label={`Download ${stem.stem_name}`}
                                       >
                                         {downloading ? (
@@ -518,25 +518,25 @@ export function MyStemsPage({
 
                             {/* MIDI Files Section */}
                             {hasMidi && (
-                              <div className="mt-3">
-                                <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-purple-400">
+                              <div className="mt-sm">
+                                <h4 className="mb-xs flex items-center gap-xs text-xs font-medium text-purple-400">
                                   <Music className="h-3.5 w-3.5" />
                                   MIDI Files
                                 </h4>
-                                <ul className="space-y-2" aria-label="MIDI files">
+                                <ul className="space-y-xs" aria-label="MIDI files">
                                   {jobMidiRecords.map((midi) => {
                                     const midiKey = `midi:${midi.job_id}`;
                                     const midiDownloading = isDownloading[midiKey] ?? false;
                                     return (
                                       <li
                                         key={midi.job_id}
-                                        className="flex items-center justify-between gap-3 rounded-xl bg-purple-500/5 px-3 py-2.5 sm:px-4"
+                                        className="flex items-center justify-between gap-sm rounded-xl bg-purple-500/5 px-sm py-sm sm:px-md"
                                       >
                                         <div className="min-w-0 flex-1">
-                                          <span className="block truncate text-sm text-white capitalize">
+                                          <span className="block truncate text-sm text-foreground capitalize">
                                             {midi.stem_name || "audio"}.mid
                                           </span>
-                                          <span className="text-xs text-white/40">
+                                          <span className="text-xs text-muted-foreground">
                                             {midi.notes_detected} notes
                                           </span>
                                         </div>
@@ -545,7 +545,7 @@ export function MyStemsPage({
                                             handleDownloadMidi(midi.job_id, midi.stem_name)
                                           }
                                           disabled={midiDownloading}
-                                          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-purple-500/20 px-3 text-xs font-medium text-purple-400 transition hover:bg-purple-500/30 disabled:opacity-50"
+                                          className="flex h-9 shrink-0 items-center gap-xs rounded-lg bg-purple-500/20 px-sm text-xs font-medium text-purple-400 transition hover:bg-purple-500/30 disabled:opacity-50"
                                           aria-label={`Download MIDI for ${midi.stem_name || "audio"}`}
                                         >
                                           {midiDownloading ? (
@@ -563,13 +563,13 @@ export function MyStemsPage({
                             )}
 
                             {availableStems.length > 0 && (
-                              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                              <div className="mt-sm flex flex-col gap-xs sm:flex-row">
                                 {onOpenInMixer && (
                                   <button
                                     type="button"
                                     onClick={() => onOpenInMixer(job)}
                                     disabled={loadingMixerJobId === job.job_id}
-                                    className="fire-button flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
+                                    className="fire-button flex flex-1 items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:opacity-50"
                                   >
                                     {loadingMixerJobId === job.job_id ? (
                                       <>
@@ -590,7 +590,7 @@ export function MyStemsPage({
                                     data-testid="my-stems-use-in-midi"
                                     onClick={() => onOpenInMidi(job)}
                                     disabled={loadingMidiJobId === job.job_id}
-                                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-violet-400/40 bg-violet-500/15 py-3 text-sm font-semibold text-violet-100 transition hover:bg-violet-500/25 disabled:opacity-50"
+                                    className="flex flex-1 items-center justify-center gap-xs rounded-xl border border-accent-midi-400/40 bg-accent-midi-500/15 py-sm text-sm font-semibold text-accent-midi-100 transition hover:bg-accent-midi-500/25 disabled:opacity-50"
                                   >
                                     {loadingMidiJobId === job.job_id ? (
                                       <>
@@ -613,7 +613,7 @@ export function MyStemsPage({
                               <button
                                 onClick={() => handleDownloadAll(job.job_id)}
                                 disabled={jobZipping}
-                                className="fire-button mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:opacity-50"
+                                className="fire-button mt-sm flex w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:opacity-50"
                                 aria-label="Download all stems as ZIP"
                               >
                                 {jobZipping ? (

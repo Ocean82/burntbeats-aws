@@ -72,19 +72,19 @@ export const StemControls = memo(function StemControls({
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <Headphones className="h-4 w-4 text-white/60" />
+    <div className="flex flex-col gap-sm">
+      <div className="flex items-center gap-xs">
+        <Headphones className="h-4 w-4 text-muted-foreground" />
         <div className="flex flex-col">
           <span className="text-sm font-medium">{stem.label}</span>
           {stem.subtitle && (
-            <span className="text-xs text-white/50">{stem.subtitle}</span>
+            <span className="text-xs text-muted-foreground">{stem.subtitle}</span>
           )}
         </div>
       </div>
 
       {/* Quick actions */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-xs">
         <button
           type="button"
           onClick={() => onPreviewStem(stem.id)}
@@ -96,15 +96,15 @@ export const StemControls = memo(function StemControls({
               : `Preview ${stem.label}`
           }
           className={cn(
-            "flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+            "flex min-h-[44px] flex-1 items-center justify-center gap-xs rounded-lg border px-sm py-1.5 text-xs font-medium transition",
             isPreviewPlaying
-              ? "border-amber-400/45 bg-amber-500/20 text-amber-100 shadow-[0_0_16px_rgba(251,191,36,0.18)]"
-              : "border-white/10 bg-white/5 text-white/75 hover:border-white/20 hover:text-white",
+              ? "border-primary-400/45 bg-primary-500/20 text-primary-100 shadow-[0_0_16px_rgba(251,191,36,0.18)]"
+              : "border-border bg-muted text-secondary-foreground hover:border-border hover:text-foreground",
             isLoadingPreview && "cursor-not-allowed opacity-50",
           )}
         >
           {isLoadingPreview ? (
-            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-white" />
           ) : isPreviewPlaying ? (
             <Square className="h-3.5 w-3.5" />
           ) : (
@@ -135,7 +135,7 @@ export const StemControls = memo(function StemControls({
           aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
           aria-pressed={muted}
           className={cn(
-            "flex items-center gap-1.5",
+            "flex items-center gap-xs",
             channelMuteSoloButtonClass(muted, "mute", "panel"),
           )}
         >
@@ -176,7 +176,7 @@ export const StemControls = memo(function StemControls({
       </div>
 
       {/* Fade In / Fade Out */}
-      <div className="flex gap-3">
+      <div className="flex gap-sm">
         <div className="flex-1">
           <label className="text-xs">
             Fade in {state.fadeIn > 0 ? `${state.fadeIn.toFixed(1)}s` : "off"}

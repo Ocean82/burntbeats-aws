@@ -81,9 +81,9 @@ export function SettingsMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white tap-feedback",
+          "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground transition hover:text-foreground tap-feedback",
           (open || pricingActive) &&
-            "border-amber-400/45 bg-amber-500/12 text-amber-100",
+            "border-primary-400/45 bg-primary-500/12 text-primary-100",
         )}
         aria-haspopup="true"
         aria-controls={menuId}
@@ -97,24 +97,24 @@ export function SettingsMenu({
       {open && (
         <div
           id={menuId}
-          className="absolute right-0 top-full z-dropdown mt-2 w-56 max-h-[80vh] overflow-y-auto rounded-2xl border border-white/15 bg-[#14100e]/98 py-1 shadow-2xl backdrop-blur-md"
+          className="absolute right-0 top-full z-dropdown mt-xs w-56 max-h-[80vh] overflow-y-auto rounded-2xl border border-border bg-popover/98 py-1 shadow-elevation-xl backdrop-blur-md"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <span className="text-xs font-semibold uppercase tracking-wide text-white/50">
+          <div className="flex items-center justify-between px-md py-sm border-b border-border">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Settings
             </span>
             <button
               type="button"
               onClick={close}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-white/40 transition hover:bg-white/10 hover:text-white/80"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-secondary-foreground"
               aria-label="Close settings menu"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="px-3 py-2">
-            <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/35">
+          <div className="px-sm py-xs">
+            <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Plans & billing
             </p>
             <SettingsMenuItem
@@ -158,10 +158,10 @@ export function SettingsMenu({
             />
           </div>
 
-          <div className="mx-3 border-t border-white/10" />
+          <div className="mx-3 border-t border-border" />
 
-          <div className="px-3 py-2">
-            <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/35">
+          <div className="px-sm py-xs">
+            <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               App
             </p>
             <SettingsMenuItem
@@ -227,14 +227,14 @@ function SettingsMenuItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-white/8",
-        active ? "bg-amber-500/15 text-amber-100" : "text-white/85",
+        "flex w-full items-center gap-sm rounded-lg px-sm py-sm text-left text-sm transition hover:bg-muted",
+        active ? "bg-primary-500/15 text-primary-100" : "text-secondary-foreground",
       )}
     >
       <span className="opacity-70">{icon}</span>
       <span className="flex-1">{label}</span>
       {active && (
-        <span className="text-[10px] font-medium uppercase tracking-wide text-amber-300/80">
+        <span className="text-[10px] font-medium uppercase tracking-wide text-primary-300/80">
           Open
         </span>
       )}

@@ -63,7 +63,7 @@ export const EqKnob = memo(function EqKnob({
 
   return (
     <div className="eq-knob flex flex-col items-center gap-0.5 select-none">
-      <span className="text-[7px] font-semibold uppercase tracking-wider text-white/35">
+      <span className="text-[7px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       <svg
@@ -131,7 +131,7 @@ export const EqKnob = memo(function EqKnob({
           strokeLinecap="round"
         />
       </svg>
-      <span className="font-mono text-[7px] tabular-nums text-white/40">{displayDb}</span>
+      <span className="font-mono text-[7px] tabular-nums text-muted-foreground">{displayDb}</span>
     </div>
   );
 });

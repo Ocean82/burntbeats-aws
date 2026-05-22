@@ -32,13 +32,13 @@ function formatFileSize(bytes: number): string {
 function StatusIcon({ status }: { status: QueueItemStatus }) {
   switch (status) {
     case "queued":
-      return <div className="h-3 w-3 rounded-full bg-white/30" />;
+      return <div className="h-3 w-3 rounded-full bg-secondary" />;
     case "processing":
-      return <Loader2 className="h-4 w-4 animate-spin text-amber-400" />;
+      return <Loader2 className="h-4 w-4 animate-spin text-primary-400" />;
     case "complete":
       return <Check className="h-4 w-4 text-green-400" />;
     case "error":
-      return <AlertCircle className="h-4 w-4 text-red-400" />;
+      return <AlertCircle className="h-4 w-4 text-destructive-400" />;
   }
 }
 
@@ -60,7 +60,7 @@ export function BatchQueue({
 
   return (
     <motion.div
-      className="fixed bottom-4 right-4 z-40 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-2xl border border-white/10 bg-[#1a1412]/95 shadow-2xl backdrop-blur-xl"
+      className="fixed bottom-4 right-4 z-40 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-2xl border border-border bg-popover/95 shadow-elevation-xl backdrop-blur-xl"
       initial={{ y: 100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 100, opacity: 0 }}
@@ -71,17 +71,17 @@ export function BatchQueue({
         type="button"
         onClick={onToggleExpand}
         aria-controls="batch-queue-items"
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-white/5"
+        className="flex w-full items-center justify-between px-md py-sm text-left transition hover:bg-muted"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/20">
-            <Music2 className="h-4 w-4 text-amber-400" />
+        <div className="flex items-center gap-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500/20">
+            <Music2 className="h-4 w-4 text-primary-400" />
           </div>
           <div>
-            <span className="block text-sm font-medium text-white">
+            <span className="block text-sm font-medium text-foreground">
               Batch Queue
             </span>
-            <span className="text-xs text-white/65" role="status" aria-live="polite">
+            <span className="text-xs text-muted-foreground" role="status" aria-live="polite">
               {processingCount > 0
                 ? `Processing ${processingCount} of ${items.length}`
                 : queuedCount > 0
@@ -91,9 +91,9 @@ export function BatchQueue({
           </div>
         </div>
         {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-white/40" />
+          <ChevronUp className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="h-4 w-4 text-white/40" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         )}
       </button>
 
@@ -106,7 +106,7 @@ export function BatchQueue({
             exit={{ height: 0 }}
             className="overflow-hidden"
           >
-            <div id="batch-queue-items" className="max-h-64 overflow-y-auto border-t border-white/10">
+            <div id="batch-queue-items" className="max-h-64 overflow-y-auto border-t border-border">
               {items.map((item) => (
                 <motion.div
                   key={item.id}
@@ -114,17 +114,17 @@ export function BatchQueue({
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  className="group relative border-b border-white/5 px-4 py-3 last:border-b-0"
+                  className="group relative border-b border-border px-md py-sm last:border-b-0"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-sm">
                     <StatusIcon status={item.status} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-white">{item.fileName}</p>
-                      <p className="text-xs text-white/40">
+                      <p className="truncate text-sm text-foreground">{item.fileName}</p>
+                      <p className="text-xs text-muted-foreground">
                         {formatFileSize(item.fileSize)}
                         {item.status === "processing" && ` • ${item.progress}%`}
                         {item.error && (
-                          <span className="break-words text-red-400"> • {item.error}</span>
+                          <span className="break-words text-destructive-400"> • {item.error}</span>
                         )}
                       </p>
                     </div>
@@ -133,7 +133,7 @@ export function BatchQueue({
                       onClick={() => onRemoveItem(item.id)}
                       title="Remove from queue"
                       aria-label={`Remove ${item.fileName} from queue`}
-                      className="flex h-8 w-8 items-center justify-center rounded text-white/45 opacity-80 transition hover:bg-white/10 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60 group-hover:opacity-100"
+                      className="flex h-8 w-8 items-center justify-center rounded text-muted-foreground opacity-80 transition hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 group-hover:opacity-100"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -142,13 +142,13 @@ export function BatchQueue({
                   {/* Progress bar */}
                   {item.status === "processing" && (
                     <div
-                      className="mt-2 h-1 overflow-hidden rounded-full bg-white/10"
+                      className="mt-xs h-1 overflow-hidden rounded-full bg-muted"
                       role="progressbar"
                       aria-label={`${item.fileName} progress`}
                       aria-valuetext={`${item.fileName}: ${Math.max(0, Math.min(100, Math.round(Number(item.progress) || 0)))}% complete`}
                     >
                       <motion.div
-                        className="h-full bg-amber-400"
+                        className="h-full bg-primary-400"
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.max(0, Math.min(100, Number(item.progress) || 0))}%` }}
                       />
@@ -159,7 +159,7 @@ export function BatchQueue({
             </div>
 
             {/* Footer Actions */}
-            <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-2">
+            <div className="flex flex-wrap items-center gap-xs border-t border-border px-md py-xs">
               {onProcessQueue && (
                 <button
                   type="button"
@@ -167,11 +167,11 @@ export function BatchQueue({
                   disabled={!canProcess}
                   title={allowProcess ? "Process all queued files" : "Requires Premium or Studio"}
                   aria-label="Process all queued files"
-                  className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/30 disabled:opacity-50"
+                  className="rounded-lg bg-primary-500/20 px-sm py-1.5 text-xs font-medium text-primary-200 transition hover:bg-primary-500/30 disabled:opacity-50"
                 >
-                  <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-2xs">
                     Process queue
-                    {!allowProcess && <Lock className="h-3 w-3 text-amber-200/70" aria-hidden="true" />}
+                    {!allowProcess && <Lock className="h-3 w-3 text-primary-200/70" aria-hidden="true" />}
                   </span>
                 </button>
               )}
@@ -179,14 +179,14 @@ export function BatchQueue({
                 <button
                   type="button"
                   onClick={onClearCompleted}
-                  className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-white/60 transition hover:bg-white/5 hover:text-white"
+                  className="flex items-center gap-xs rounded-lg px-xs py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
                   <Trash2 className="h-4 w-4" />
                   Clear completed
                 </button>
               )}
               {!allowProcess && (
-                <p className="w-full text-[10px] leading-4 text-amber-100/85">
+                <p className="w-full text-[10px] leading-4 text-primary-100/85">
                   Upgrade to Premium or Studio to process all queued tracks in one go.
                 </p>
               )}

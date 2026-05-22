@@ -9,7 +9,7 @@ import type { UseSubscriptionResult } from "../hooks/useSubscription";
 
 export interface ToolPageShellProps {
   children: ReactNode;
-  /** Tailwind border color class, e.g. "border-cyan-400/10" */
+  /** Tailwind border color class, e.g. "border-info-400/10" */
   borderColorClass: string;
   reduceMotion: boolean;
   subscription: UseSubscriptionResult;
@@ -30,7 +30,7 @@ export function ToolPageShell({
 }: ToolPageShellProps) {
   return (
     <motion.section
-      className="flex flex-col gap-4"
+      className="stack-md"
       {...(reduceMotion
         ? { initial: false, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
         : {
@@ -40,12 +40,12 @@ export function ToolPageShell({
           })}
     >
       <div
-        className={`glass-panel mirror-sheen rounded-[2rem] border ${borderColorClass} px-5 py-5 sm:px-6`}
+        className={`glass-panel mirror-sheen rounded-[2rem] border ${borderColorClass} px-lg py-lg sm:px-lg`}
         data-testid={testId}
       >
         {children}
         {subscription.status === "inactive" && (
-          <div className={`mt-4 border-t ${borderColorClass} pt-4`}>
+          <div className={`mt-md border-t ${borderColorClass} pt-md`}>
             <PaywallBanner
               subscription={subscription}
               variant="teaser"
@@ -54,12 +54,12 @@ export function ToolPageShell({
           </div>
         )}
         {subscription.billingError && (
-          <div className="mt-3 rounded-xl border border-red-500/30 bg-red-950/20 px-4 py-3 text-sm text-red-300">
+          <div className="mt-sm rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300">
             {subscription.billingError}
           </div>
         )}
         {checkoutNotice && (
-          <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="mt-sm rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100">
             {checkoutNotice}
           </div>
         )}

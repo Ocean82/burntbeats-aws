@@ -82,6 +82,7 @@ Curated map for **maintainers** (not web users). **Runtime truth** = root [`READ
 | Doc | Purpose |
 |-----|---------|
 | [`../frontend/SPATIAL-DESIGN.md`](../frontend/SPATIAL-DESIGN.md) | 4pt spacing tokens, elevation, grids, container queries, touch targets |
+| [`../frontend/COLOR-CONTRAST.md`](../frontend/COLOR-CONTRAST.md) | OKLCH palette, ember neutrals, WCAG contrast, 60-30-10 |
 | [`frontend-mixer-notes.md`](frontend-mixer-notes.md) | Mixer-centric dev notes; backlog cross-links live under [`roadmap/`](roadmap/) |
 
 ---

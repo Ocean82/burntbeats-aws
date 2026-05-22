@@ -42,7 +42,7 @@ export function LandingPage() {
             source: "landing_pricing",
           });
         }}
-        className="w-full rounded-lg border border-amber-400/30 bg-amber-500/20 px-4 py-3 font-medium text-amber-200 transition hover:border-amber-400/50 hover:bg-amber-500/30"
+        className="w-full rounded-lg border border-primary-400/30 bg-primary-500/20 px-md py-sm font-medium text-primary-200 transition hover:border-primary-400/50 hover:bg-primary-500/30"
       >
         {plan.cta}
       </button>
@@ -65,7 +65,7 @@ export function LandingPage() {
   if (isSignedIn) return null;
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-white">
+    <div className="min-h-screen bg-[var(--bg)] text-foreground">
       {/* Background — fire/ice duality */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         {/* Viewport thermal edges */}
@@ -88,10 +88,10 @@ export function LandingPage() {
         <div className="mesh-overlay" />
       </div>
 
-      <div className="relative mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-5xl px-md sm:px-lg lg:px-xl">
         {/* Nav */}
-        <nav className="flex flex-wrap items-center justify-between gap-3 py-6">
-          <div className="flex items-center gap-3">
+        <nav className="flex flex-wrap items-center justify-between gap-sm py-lg">
+          <div className="flex items-center gap-sm">
             <img
               src="/logo-emblem.png"
               alt=""
@@ -102,11 +102,11 @@ export function LandingPage() {
               <span className="logo-burnt-fire text-2xl">Burnt Beats</span>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-xs sm:gap-sm">
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="ghost-button px-4 py-2 text-xs sm:px-5 sm:text-sm"
+                className="ghost-button px-md py-xs text-xs sm:px-lg sm:text-sm"
               >
                 Sign in
               </button>
@@ -114,7 +114,7 @@ export function LandingPage() {
             <SignUpButton mode="modal">
               <button
                 type="button"
-                className="fire-button px-4 py-2 text-xs sm:px-5 sm:text-sm"
+                className="fire-button px-md py-xs text-xs sm:px-lg sm:text-sm"
               >
                 Get started
               </button>
@@ -124,10 +124,10 @@ export function LandingPage() {
 
         {/* Hero */}
         <motion.section
-          className="flex flex-col items-center gap-6 py-12 text-center"
+          className="flex flex-col items-center gap-lg py-12 text-center"
           {...anim(0, 20)}
         >
-          <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-white/15 bg-white/6 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/90 sm:text-xs sm:tracking-[0.3em]">
+          <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-xs rounded-full border border-border bg-muted px-md py-xs text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-100/90 sm:text-xs sm:tracking-[0.3em]">
             Stem Splitter · Mixer · Master
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
           </div>
@@ -142,16 +142,16 @@ export function LandingPage() {
             <span className="logo-burnt-fire">Burnt Beats</span>
           </h1>
 
-          <p className="max-w-xl break-words text-lg leading-relaxed text-white/90 sm:text-xl">
+          <p className="max-w-xl break-words text-lg leading-relaxed text-secondary-foreground sm:text-xl">
             High-fidelity stem separation for producers. Level, trim, and export
             radio-ready mixes in minutes.
           </p>
 
-          <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row">
+          <div className="mt-md flex flex-col items-center gap-md sm:flex-row">
             <SignUpButton mode="modal">
               <button
                 type="button"
-                className="fire-button tap-feedback text-xl px-12 py-5 font-bold"
+                className="fire-button tap-feedback text-xl px-12 py-lg font-bold"
               >
                 Try for Free
               </button>
@@ -159,26 +159,26 @@ export function LandingPage() {
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="ghost-button tap-feedback text-sm px-6 py-4"
+                className="ghost-button tap-feedback text-sm px-lg py-md"
               >
                 Sign In
               </button>
             </SignInButton>
           </div>
-          <p className="text-xs text-white/55">
+          <p className="text-xs text-muted-foreground">
             Secure Stripe billing · cancel anytime · one-time packs available
           </p>
 
-          <div className="flex flex-col items-center gap-6 text-xs text-white/50 sm:flex-row">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500/70" />
+          <div className="flex flex-col items-center gap-lg text-xs text-muted-foreground sm:flex-row">
+            <div className="flex items-center gap-xs">
+              <ShieldCheck className="h-3.5 w-3.5 text-success-500/70" />
               No Install Required
             </div>
-            <div className="flex items-center gap-2">
-              <Zap className="h-3.5 w-3.5 text-amber-500/70" />
+            <div className="flex items-center gap-xs">
+              <Zap className="h-3.5 w-3.5 text-primary-500/70" />
               60s Free Sample
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-xs">
               <AudioWaveform className="h-3.5 w-3.5 text-blue-500/70" />
               Pro Mixer & Editor
             </div>
@@ -188,27 +188,27 @@ export function LandingPage() {
         {/* Pricing — Stripe hosted pricing table */}
         <motion.section id="pricing" className="py-12" {...anim(0.15)}>
           <div className="mb-8 text-center">
-            <p className="eyebrow mb-2">Simple Pricing</p>
-            <p className="text-base leading-relaxed text-white/75">
+            <p className="eyebrow mb-xs">Simple Pricing</p>
+            <p className="text-base leading-relaxed text-secondary-foreground">
               Choose a plan or buy a one-time pack. Cancel anytime.
             </p>
           </div>
 
-          <div className="mb-6 flex justify-center">
+          <div className="mb-lg flex justify-center">
             <PricingTabToggle activeTab={pricingTab} onTabChange={setPricingTab} />
           </div>
 
-          <div className="glass-panel rounded-2xl border border-white/10 p-4 sm:p-6">
-            <BillingRules className="mb-4" />
+          <div className="glass-panel rounded-2xl border border-border p-md sm:p-lg">
+            <BillingRules className="mb-md" />
             <PricingTablePreview
               pricingType={pricingTab}
               ctaButtonRenderer={renderPricingCTA}
             />
           </div>
 
-          <div className="mt-10 grid gap-4 text-left text-base leading-relaxed text-white/80 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
+          <div className="mt-10 grid gap-md text-left text-base leading-relaxed text-secondary-foreground sm:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-secondary p-md">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
                 Will this work on my laptop?
               </p>
               <p>
@@ -217,8 +217,8 @@ export function LandingPage() {
                 split stems.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
+            <div className="rounded-2xl border border-border bg-secondary p-md">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
                 How do tokens map to songs?
               </p>
               <p className="break-words">
@@ -227,8 +227,8 @@ export function LandingPage() {
                 round up, so you always know the cost upfront.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
+            <div className="rounded-2xl border border-border bg-secondary p-md">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
                 Can I cancel or change plans?
               </p>
               <p>
@@ -237,8 +237,8 @@ export function LandingPage() {
                 calls required.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
+            <div className="rounded-2xl border border-border bg-secondary p-md">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
                 Do I have to subscribe?
               </p>
               <p>
@@ -247,8 +247,8 @@ export function LandingPage() {
                 plan.
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-white/80">
+            <div className="rounded-2xl border border-border bg-secondary p-md">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
                 What is The Waiting Game?
               </p>
               <p>
@@ -262,19 +262,19 @@ export function LandingPage() {
 
         {/* Footer CTA */}
         <motion.section
-          className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-4 py-10 text-center sm:px-8 sm:py-12"
+          className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-md py-10 text-center sm:px-xl sm:py-12"
           {...anim(0.35)}
         >
-          <p className="mb-2 text-2xl font-bold text-white/90">
+          <p className="mb-xs text-2xl font-bold text-secondary-foreground">
             Ready to split?
           </p>
-          <p className="mb-8 text-base text-white/80">
+          <p className="mb-8 text-base text-secondary-foreground">
             Create an account and start separating stems in seconds.
           </p>
           <SignUpButton mode="modal">
             <button
               type="button"
-              className="fire-button tap-feedback text-base px-8 py-4"
+              className="fire-button tap-feedback text-base px-xl py-md"
             >
               Create free account
             </button>
@@ -282,19 +282,19 @@ export function LandingPage() {
         </motion.section>
 
         {/* Footer */}
-        <footer className="border-t border-white/5 py-8 text-center text-sm text-white/30">
+        <footer className="border-t border-border py-xl text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} Burnt Beats. All rights reserved.</p>
-          <nav aria-label="Footer links" className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <nav aria-label="Footer links" className="mt-sm flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <a
               href="/terms-of-service"
-              className="text-white/45 underline decoration-white/20 underline-offset-2 transition hover:text-amber-200/90"
+              className="text-muted-foreground underline decoration-white/20 underline-offset-2 transition hover:text-primary-200/90"
             >
               Terms of Service
             </a>
             <span aria-hidden="true">·</span>
             <a
               href="/privacy-policy"
-              className="text-white/45 underline decoration-white/20 underline-offset-2 transition hover:text-amber-200/90"
+              className="text-muted-foreground underline decoration-white/20 underline-offset-2 transition hover:text-primary-200/90"
             >
               Privacy Policy
             </a>
@@ -309,7 +309,7 @@ export function LandingPage() {
                     href={import.meta.env.VITE_STRIPE_CUSTOMER_PORTAL_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-white/45 underline decoration-white/20 underline-offset-2 transition hover:text-amber-200/90"
+                    className="text-muted-foreground underline decoration-white/20 underline-offset-2 transition hover:text-primary-200/90"
                   >
                     Manage billing
                   </a>

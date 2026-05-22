@@ -59,12 +59,12 @@ export function MidiTransportBar({
 
       <span className="midi-time-display" aria-live="polite" aria-label="Playhead position">
         {formatTransportTime(currentTime)}
-        <span className="text-white/35"> / </span>
+        <span className="text-muted-foreground"> / </span>
         {formatTransportTime(duration)}
       </span>
 
       <span
-        className="rounded px-2 py-1 font-mono text-xs text-white/55"
+        className="rounded px-xs py-1 font-mono text-xs text-muted-foreground"
         style={{ background: "var(--midi-surface-inset)" }}
         title="Tempo"
       >
@@ -72,7 +72,7 @@ export function MidiTransportBar({
       </span>
 
       {!isSupported && (
-        <span className="text-[10px] text-amber-300/80">Web Audio unavailable</span>
+        <span className="text-[10px] text-primary-300/80">Web Audio unavailable</span>
       )}
     </div>
   );

@@ -74,14 +74,14 @@ export function WaveformTimeline({
   }, [beatGrid, beatGridPcts]);
 
   return (
-    <div className="relative flex flex-col gap-1.5">
+    <div className="relative flex flex-col gap-xs">
       {/* Time grid lines — faint vertical guides aligned to ruler ticks */}
       {tickPcts && tickPcts.length > 0 && (
         <div className="pointer-events-none absolute inset-0 z-0" aria-hidden>
           {tickPcts.map((pct) => (
             <div
               key={pct}
-              className="absolute inset-y-0 w-px bg-white/[0.05]"
+              className="absolute inset-y-0 w-px bg-muted/[0.05]"
               style={{ left: `${pct}%` }}
             />
           ))}
@@ -94,7 +94,7 @@ export function WaveformTimeline({
           {displayBeatGridPcts.map((pct, i) => (
             <div
               key={i}
-              className="absolute inset-y-0 w-px bg-amber-400/25"
+              className="absolute inset-y-0 w-px bg-primary-400/25"
               style={{ left: `${pct}%` }}
             />
           ))}
@@ -141,7 +141,7 @@ export function WaveformTimeline({
 
       {showPlayhead && (
         <div
-          className="waveform-global-playhead-line pointer-events-none absolute inset-y-0 w-0.5 bg-white/90"
+          className="waveform-global-playhead-line pointer-events-none absolute inset-y-0 w-0.5 bg-secondary"
           style={playheadPercentStyle(playheadVisiblePct)}
         />
       )}

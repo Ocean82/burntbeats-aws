@@ -65,19 +65,19 @@ export const DjMasterStrip = memo(function DjMasterStrip({
   return (
     <div
       className={cn(
-        "dj-master-strip dj-channel-strip flex min-w-[6.5rem] w-[6.5rem] flex-col items-center overflow-visible rounded-xl border border-white/15 px-2.5 py-2.5",
+        "dj-master-strip dj-channel-strip flex min-w-[6.5rem] w-[6.5rem] flex-col items-center overflow-visible rounded-xl border border-border px-sm py-sm",
         "bg-gradient-to-b from-white/[0.08] to-black/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]",
         "min-h-[18rem] sm:min-h-[22rem]",
       )}
     >
-      <div className="dj-channel-strip__header flex w-full shrink-0 items-center justify-center border-b border-white/8 pb-2">
-        <span className="text-[9px] font-bold uppercase tracking-wider text-amber-200/90">
+      <div className="dj-channel-strip__header flex w-full shrink-0 items-center justify-center border-b border-border pb-2">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-primary-200/90">
           Master
         </span>
       </div>
 
       <div
-        className="flex w-full shrink-0 flex-col items-center gap-1 py-1"
+        className="flex w-full shrink-0 flex-col items-center gap-2xs py-1"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <MixerSectionLabel>Level</MixerSectionLabel>
@@ -92,7 +92,7 @@ export const DjMasterStrip = memo(function DjMasterStrip({
       </div>
 
       <div
-        className="flex shrink-0 flex-col items-center gap-1 py-1"
+        className="flex shrink-0 flex-col items-center gap-2xs py-1"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <MixerSectionLabel>Vol</MixerSectionLabel>
@@ -113,21 +113,21 @@ export const DjMasterStrip = memo(function DjMasterStrip({
         />
       </div>
 
-      <div className="mt-auto flex w-full shrink-0 flex-col items-center gap-1.5 pt-1">
+      <div className="mt-auto flex w-full shrink-0 flex-col items-center gap-xs pt-1">
         <span
           className={cn(
             "font-mono text-[9px] leading-none tabular-nums",
             masterMuted
-              ? "text-red-400"
+              ? "text-destructive-400"
               : masterVolume > 1.05
-                ? "text-amber-300"
-                : "text-white/50",
+                ? "text-primary-300"
+                : "text-muted-foreground",
           )}
           aria-hidden
         >
           {masterMuted ? "MUTE" : formatMasterGain(masterVolume)}
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-xs">
           <button
             type="button"
             onClick={(e) => {
@@ -139,8 +139,8 @@ export const DjMasterStrip = memo(function DjMasterStrip({
             className={cn(
               "dj-ms-btn-touch flex h-8 w-8 items-center justify-center rounded transition-all duration-200 ease",
               masterMuted
-                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
+                ? "bg-destructive-500/20 text-destructive-400 hover:bg-destructive-500/30"
+                : "bg-muted text-muted-foreground hover:bg-muted hover:text-muted-foreground",
             )}
           >
             {masterMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
@@ -155,10 +155,10 @@ export const DjMasterStrip = memo(function DjMasterStrip({
             aria-label="Master limiter"
             aria-pressed={masterLimiterEnabled}
             className={cn(
-              "dj-ms-btn-touch rounded border px-2 py-1 text-[9px] font-bold uppercase tracking-wide transition-all duration-200 ease",
+              "dj-ms-btn-touch rounded border px-xs py-1 text-[9px] font-bold uppercase tracking-wide transition-all duration-200 ease",
               masterLimiterEnabled
-                ? "border-amber-400/50 bg-amber-500/20 text-amber-200"
-                : "border-white/10 text-white/60 hover:text-white",
+                ? "border-primary-400/50 bg-primary-500/20 text-primary-200"
+                : "border-border text-muted-foreground hover:text-foreground",
             )}
           >
             Lim

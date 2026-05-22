@@ -43,7 +43,7 @@ export function UpsellModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center p-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -51,7 +51,7 @@ export function UpsellModal({
         >
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-secondary backdrop-blur-sm"
             onClick={onClose}
             aria-hidden="true"
           />
@@ -63,7 +63,7 @@ export function UpsellModal({
             aria-modal="true"
             aria-labelledby="upsell-title"
             tabIndex={-1}
-            className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#1a1412]/95 p-6 shadow-2xl outline-none"
+            className="relative w-full max-w-md rounded-2xl border border-border bg-popover/95 p-lg shadow-elevation-xl outline-none"
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -73,7 +73,7 @@ export function UpsellModal({
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-4 top-4 rounded-lg p-1.5 text-white/50 transition hover:bg-white/10 hover:text-white"
+              className="absolute right-4 top-4 rounded-lg p-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -81,18 +81,18 @@ export function UpsellModal({
 
             {/* Header */}
             <div className="mb-5 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/20">
-                <Zap className="h-6 w-6 text-amber-400" />
+              <div className="mx-auto mb-sm flex h-12 w-12 items-center justify-center rounded-full bg-primary-500/20">
+                <Zap className="h-6 w-6 text-primary-400" />
               </div>
               <h2
                 id="upsell-title"
-                className="text-lg font-semibold text-white"
+                className="text-lg font-semibold text-foreground"
               >
                 {trigger === "sample_complete"
                   ? "Like what you hear?"
                   : "Running low on tokens"}
               </h2>
-              <p className="mt-2 text-sm text-white/70">
+              <p className="mt-xs text-sm text-secondary-foreground">
                 {trigger === "sample_complete"
                   ? "Unlock full-length splits and downloads with a plan or credit pack."
                   : `You have ${balance ?? 0} token${balance === 1 ? "" : "s"} remaining. Add more to keep splitting.`}
@@ -100,11 +100,11 @@ export function UpsellModal({
             </div>
 
             {/* Action buttons */}
-            <div className="space-y-3">
+            <div className="space-y-sm">
               <button
                 type="button"
                 onClick={onViewSubscriptions}
-                className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-4 py-3.5 text-sm font-semibold text-amber-100 transition hover:border-amber-400/60 hover:from-amber-500/30 hover:to-orange-500/30"
+                className="flex w-full items-center justify-center gap-sm rounded-xl border border-primary-400/40 bg-gradient-to-r from-primary-500/20 to-orange-500/20 px-md py-sm text-sm font-semibold text-primary-100 transition hover:border-primary-400/60 hover:from-primary-500/30 hover:to-orange-500/30"
               >
                 <Zap className="h-4 w-4" />
                 View Subscription Plans
@@ -113,7 +113,7 @@ export function UpsellModal({
               <button
                 type="button"
                 onClick={onBuyCredits}
-                className="flex w-full items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/5 px-4 py-3.5 text-sm font-semibold text-white/85 transition hover:border-white/25 hover:bg-white/10 hover:text-white"
+                className="flex w-full items-center justify-center gap-sm rounded-xl border border-border bg-muted px-md py-sm text-sm font-semibold text-secondary-foreground transition hover:border-border hover:bg-muted hover:text-foreground"
               >
                 <CreditCard className="h-4 w-4" />
                 Buy Credits (Pay As You Go)
@@ -121,11 +121,11 @@ export function UpsellModal({
             </div>
 
             {/* Dismiss link */}
-            <p className="mt-4 text-center">
+            <p className="mt-md text-center">
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-white/40 transition hover:text-white/60"
+                className="text-xs text-muted-foreground transition hover:text-muted-foreground"
               >
                 Maybe later
               </button>

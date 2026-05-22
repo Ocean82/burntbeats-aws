@@ -159,7 +159,7 @@ export function MixerPresetsModal({
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 z-modal-backdrop bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-modal-backdrop bg-secondary backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -167,13 +167,13 @@ export function MixerPresetsModal({
           />
 
           <motion.div
-            className="fixed inset-0 z-modal flex items-center justify-center p-3 sm:p-4"
+            className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-6"
+              className="relative w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-lg"
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -186,20 +186,20 @@ export function MixerPresetsModal({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="mb-6 flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-                    <Sliders className="h-5 w-5 text-amber-400" />
+              <div className="mb-lg flex items-start justify-between gap-sm">
+                <div className="flex min-w-0 items-center gap-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/20">
+                    <Sliders className="h-5 w-5 text-primary-400" />
                   </div>
                   <div className="min-w-0">
-                    <h2 id="mixer-presets-title" className="break-words text-lg font-semibold text-white">Mixer Presets</h2>
-                    <p className="break-words text-xs text-white/65">Save and load your mix settings</p>
+                    <h2 id="mixer-presets-title" className="break-words text-lg font-semibold text-foreground">Mixer Presets</h2>
+                    <p className="break-words text-xs text-muted-foreground">Save and load your mix settings</p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
                   aria-label="Close mixer presets"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -207,8 +207,8 @@ export function MixerPresetsModal({
 
               {/* Save New Preset */}
               {showSaveForm ? (
-                <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4">
-                  <label htmlFor="preset-name" className="mb-2 block text-sm font-medium text-amber-200">
+                <div className="mb-md rounded-xl border border-primary-400/30 bg-primary-500/10 p-md">
+                  <label htmlFor="preset-name" className="mb-xs block text-sm font-medium text-primary-200">
                     Preset Name
                   </label>
                   <input
@@ -217,22 +217,22 @@ export function MixerPresetsModal({
                     value={newPresetName}
                     onChange={(e) => setNewPresetName(e.target.value)}
                     placeholder="Enter preset name..."
-                    className="mb-3 w-full min-w-0 rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder-white/40 focus:border-amber-400/50 focus:outline-none"
+                    className="mb-sm w-full min-w-0 rounded-lg border border-border bg-muted px-sm py-xs text-sm text-foreground placeholder-white/40 focus:border-primary-400/50 focus:outline-none"
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: modal just opened, user expects focus in name field
                     autoFocus
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-xs">
                     <button
                       onClick={savePreset}
                       disabled={!newPresetName.trim()}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-black transition hover:bg-amber-400 disabled:opacity-50"
+                      className="flex flex-1 items-center justify-center gap-xs rounded-lg bg-primary-500 px-md py-xs text-sm font-medium text-black transition hover:bg-primary-400 disabled:opacity-50"
                     >
                       <Check className="h-4 w-4" />
                       Save Preset
                     </button>
                     <button
                       onClick={() => setShowSaveForm(false)}
-                      className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/70 transition hover:bg-white/10"
+                      className="rounded-lg border border-border px-md py-xs text-sm text-secondary-foreground transition hover:bg-muted"
                     >
                       Cancel
                     </button>
@@ -241,7 +241,7 @@ export function MixerPresetsModal({
               ) : (
                 <button
                   onClick={() => setShowSaveForm(true)}
-                  className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-white/[0.02] py-3 text-sm text-white/60 transition hover:border-white/30 hover:bg-white/[0.05] hover:text-white"
+                  className="mb-md flex w-full items-center justify-center gap-xs rounded-xl border border-dashed border-border bg-muted/[0.02] py-sm text-sm text-muted-foreground transition hover:border-border hover:bg-muted/[0.05] hover:text-foreground"
                 >
                   <Save className="h-4 w-4" />
                   Save Current Mix as Preset
@@ -249,32 +249,32 @@ export function MixerPresetsModal({
               )}
 
               {/* Preset List */}
-              <div className="max-h-[300px] space-y-2 overflow-y-auto">
+              <div className="max-h-[300px] space-y-xs overflow-y-auto">
                 {presets.map((preset) => (
                   <div
                     key={preset.id}
-                    className="group flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]"
+                    className="group flex items-center justify-between gap-xs rounded-xl border border-border bg-muted/[0.03] px-md py-sm transition hover:bg-muted/[0.06]"
                   >
                     <div className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-white">{preset.name}</span>
-                      <span className="block break-words text-xs text-white/40">
+                      <span className="block truncate text-sm font-medium text-foreground">{preset.name}</span>
+                      <span className="block break-words text-xs text-muted-foreground">
                         {preset.id.startsWith("custom-") ? "Custom" : "Default"} preset
                       </span>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-xs">
                       {preset.id.startsWith("custom-") && (
                         <button
                           onClick={() => deletePreset(preset.id)}
                           aria-label={`Delete preset ${preset.name}`}
                           title={`Delete preset ${preset.name}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-white/30 opacity-0 transition hover:bg-red-500/20 hover:text-red-400 group-hover:opacity-100"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition hover:bg-destructive-500/20 hover:text-destructive-400 group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                       <button
                         onClick={() => handleLoadPreset(preset)}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/10"
+                        className="rounded-lg border border-border bg-muted px-sm py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
                       >
                         Load
                       </button>

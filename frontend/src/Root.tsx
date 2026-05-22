@@ -26,7 +26,7 @@ import { trackEvent } from "./analytics/events";
 function ClerkLoadingShell() {
   return (
     <div
-      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[var(--bg)] text-white"
+      className="flex min-h-screen flex-col items-center justify-center gap-md bg-[var(--bg)] text-foreground"
       role="status"
       aria-live="polite"
       aria-busy="true"
@@ -40,8 +40,8 @@ function ClerkLoadingShell() {
       <p className="logo-burnt">
         <span className="logo-burnt-fire text-2xl">Burnt Beats</span>
       </p>
-      <Loader2 className="h-8 w-8 animate-spin text-amber-400/90" aria-hidden />
-      <p className="text-sm text-white/55">Loading…</p>
+      <Loader2 className="h-8 w-8 animate-spin text-primary-400/90" aria-hidden />
+      <p className="text-sm text-muted-foreground">Loading…</p>
     </div>
   );
 }

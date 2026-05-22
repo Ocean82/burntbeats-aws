@@ -11,14 +11,14 @@ interface PricingTabToggleProps {
 
 export function PricingTabToggle({ activeTab, onTabChange }: PricingTabToggleProps) {
   return (
-    <div className="flex w-fit rounded-lg border border-white/10 bg-black/40 p-1">
+    <div className="flex w-fit rounded-lg border border-border bg-secondary p-2xs">
       <button
         type="button"
         onClick={() => onTabChange("subscriptions")}
-        className={`rounded-md px-5 py-2 text-sm font-medium transition-colors ${
+        className={`rounded-md px-lg py-xs text-sm font-medium transition-colors ${
           activeTab === "subscriptions"
-            ? "bg-amber-400/20 text-amber-200"
-            : "text-white/60 hover:bg-white/5 hover:text-white/90"
+            ? "bg-primary-400/20 text-primary-200"
+            : "text-muted-foreground hover:bg-muted hover:text-secondary-foreground"
         }`}
       >
         Subscriptions
@@ -26,10 +26,10 @@ export function PricingTabToggle({ activeTab, onTabChange }: PricingTabTogglePro
       <button
         type="button"
         onClick={() => onTabChange("packs")}
-        className={`rounded-md px-5 py-2 text-sm font-medium transition-colors ${
+        className={`rounded-md px-lg py-xs text-sm font-medium transition-colors ${
           activeTab === "packs"
-            ? "bg-amber-400/20 text-amber-200"
-            : "text-white/60 hover:bg-white/5 hover:text-white/90"
+            ? "bg-primary-400/20 text-primary-200"
+            : "text-muted-foreground hover:bg-muted hover:text-secondary-foreground"
         }`}
       >
         Credit Packs

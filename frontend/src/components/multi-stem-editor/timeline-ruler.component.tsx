@@ -5,7 +5,7 @@ interface TimelineRulerProps {
 
 export function TimelineRuler({ ticks, formatTime }: TimelineRulerProps) {
   return (
-    <div className="flex h-5 items-start justify-between overflow-hidden border-b border-white/10">
+    <div className="flex h-5 items-start justify-between overflow-hidden border-b border-border">
       {ticks.map(({ pct, time }, index) => {
         const isFirst = index === 0;
         const isLast = index === ticks.length - 1;
@@ -20,8 +20,8 @@ export function TimelineRuler({ ticks, formatTime }: TimelineRulerProps) {
                   : "flex min-w-0 flex-col items-center"
             }
           >
-          <div className="h-2 w-px bg-white/20" />
-          <span className="text-[9px] text-white/40">{formatTime(time)}</span>
+          <div className="h-2 w-px bg-secondary" />
+          <span className="text-[9px] text-muted-foreground">{formatTime(time)}</span>
         </div>
         );
       })}

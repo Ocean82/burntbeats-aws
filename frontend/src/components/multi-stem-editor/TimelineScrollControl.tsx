@@ -34,11 +34,11 @@ export const TimelineScrollControl = memo(function TimelineScrollControl({
 
   return (
     <div
-      className={cn("flex flex-wrap items-center gap-2", className)}
+      className={cn("flex flex-wrap items-center gap-xs", className)}
       role="group"
       aria-label="Timeline scroll"
     >
-      <span className="text-[10px] font-medium uppercase tracking-wider text-white/45">
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         Scroll timeline
       </span>
       <input
@@ -51,11 +51,11 @@ export const TimelineScrollControl = memo(function TimelineScrollControl({
         className="stem-accent-slider w-28 min-w-[7rem]"
         aria-label="Scroll timeline"
       />
-      <span className="font-mono text-[10px] tabular-nums text-white/50">{readout}%</span>
+      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{readout}%</span>
       <button
         type="button"
         onClick={onCenterPlayhead}
-        className="flex min-h-[40px] items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-medium text-white/60 hover:border-amber-400/30 hover:text-amber-100 transition"
+        className="flex min-h-[40px] items-center gap-2xs rounded-lg border border-border bg-muted px-xs py-1 text-[10px] font-medium text-muted-foreground hover:border-primary-400/30 hover:text-primary-100 transition"
         aria-label="Center playhead in timeline view"
         title="Center playhead"
       >

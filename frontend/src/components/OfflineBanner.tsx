@@ -19,22 +19,22 @@ export function OfflineBanner() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -40 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className={`fixed inset-x-0 top-0 z-[250] flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium backdrop-blur-md ${
+          className={`fixed inset-x-0 top-0 z-[250] flex items-center justify-center gap-xs px-md py-sm text-sm font-medium backdrop-blur-md ${
             isOnline
-              ? "border-b border-emerald-400/30 bg-emerald-950/90 text-emerald-100"
-              : "border-b border-amber-400/30 bg-amber-950/90 text-amber-100"
+              ? "border-b border-success-400/30 bg-success-950/90 text-success-100"
+              : "border-b border-primary-400/30 bg-primary-950/90 text-primary-100"
           }`}
           role="alert"
           aria-live="assertive"
         >
           {isOnline ? (
             <>
-              <Wifi className="h-4 w-4 text-emerald-400" aria-hidden />
+              <Wifi className="h-4 w-4 text-success-400" aria-hidden />
               Back online
             </>
           ) : (
             <>
-              <WifiOff className="h-4 w-4 text-amber-400" aria-hidden />
+              <WifiOff className="h-4 w-4 text-primary-400" aria-hidden />
               You're offline. Some features may not work until connection is restored.
             </>
           )}

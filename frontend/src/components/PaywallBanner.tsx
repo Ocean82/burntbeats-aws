@@ -45,17 +45,17 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
   // ── Teaser variant: compact CTA ──
   if (variant === "teaser") {
     return (
-      <div className="flex flex-col items-center gap-3 py-2 sm:flex-row sm:justify-between">
-        <p className="text-sm text-white/75">
-          <span className="font-semibold text-white/90">Subscribe to unlock full features.</span>{" "}
+      <div className="flex flex-col items-center gap-sm py-xs sm:flex-row sm:justify-between">
+        <p className="text-sm text-secondary-foreground">
+          <span className="font-semibold text-secondary-foreground">Subscribe to unlock full features.</span>{" "}
           Plans start at $5/mo.
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-xs">
           <button
             type="button"
             onClick={() => void handleCheckout("basic", "teaser")}
             disabled={loading !== null}
-            className="fire-button flex min-h-[40px] items-center gap-2 px-4 py-2 text-xs font-semibold disabled:opacity-60"
+            className="fire-button flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold disabled:opacity-60"
           >
             {loading === "basic" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -66,7 +66,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
             <button
               type="button"
               onClick={onViewPlans}
-              className="ghost-button flex min-h-[40px] items-center gap-1.5 px-4 py-2 text-xs font-semibold"
+              className="ghost-button flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold"
             >
               View all plans
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -95,17 +95,17 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-1 text-center">
-        <p className="text-sm font-semibold text-white/90">Choose a plan to get started</p>
-        <p className="text-sm text-white/55">
+    <div className="flex flex-col gap-lg">
+      <div className="flex flex-col gap-2xs text-center">
+        <p className="text-sm font-semibold text-secondary-foreground">Choose a plan to get started</p>
+        <p className="text-sm text-muted-foreground">
           Continue to secure Stripe checkout or start with one-time credits.
         </p>
       </div>
 
       <BillingRules />
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-xs sm:grid-cols-2">
         <button
           type="button"
           onClick={() => void handleSelect("basic")}
@@ -113,7 +113,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
           aria-label="Pay now with Stripe and start Basic plan"
           aria-live="polite"
           className={cn(
-            "fire-button flex min-h-[48px] w-full items-center justify-center gap-2 px-4 py-3 text-sm font-semibold",
+            "fire-button flex min-h-[48px] w-full items-center justify-center gap-xs px-md py-sm text-sm font-semibold",
             "disabled:cursor-not-allowed disabled:opacity-60",
           )}
         >
@@ -131,10 +131,10 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
           onClick={() => void handleSelect("topup")}
           disabled={loading !== null}
           aria-label="Buy one-time top-up credits"
-          className="ghost-button min-h-[48px] w-full px-4 py-3 text-sm font-semibold disabled:opacity-60"
+          className="ghost-button min-h-[48px] w-full px-md py-sm text-sm font-semibold disabled:opacity-60"
         >
           {loading === "topup" ? (
-            <span className="inline-flex items-center justify-center gap-2">
+            <span className="inline-flex items-center justify-center gap-xs">
               <Loader2 className="h-4 w-4 animate-spin" />
               Redirecting...
             </span>
@@ -144,7 +144,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-sm">
         {SUBSCRIPTION_PLANS.map((plan) => (
           <button
             key={plan.id}
@@ -157,33 +157,33 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
                 : `Choose ${plan.name} plan`
             }
             className={cn(
-              "flex items-center justify-between rounded-xl border px-4 py-4 text-left transition",
-              "border-white/10 bg-white/5 hover:border-amber-400/40 hover:bg-amber-500/10",
+              "flex items-center justify-between rounded-xl border px-md py-md text-left transition",
+              "border-border bg-muted hover:border-primary-400/40 hover:bg-primary-500/10",
               "disabled:cursor-not-allowed disabled:opacity-60",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
-              plan.highlight && "border-amber-400/30 bg-amber-500/10",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60",
+              plan.highlight && "border-primary-400/30 bg-primary-500/10",
             )}
           >
-            <div className="min-w-0 flex flex-col gap-1">
-              <span className="text-sm font-semibold text-white">
+            <div className="min-w-0 flex flex-col gap-2xs">
+              <span className="text-sm font-semibold text-foreground">
                 {plan.name}
                 {plan.highlight && (
-                  <span className="ml-2 rounded-full bg-amber-500/30 px-2 py-0.5 text-xs text-amber-200">
+                  <span className="ml-2 rounded-full bg-primary-500/30 px-xs py-0.5 text-xs text-primary-200">
                     Popular
                   </span>
                 )}
               </span>
-              <span className="break-words text-sm text-white/65">{plan.details.slice(0, 3).join(" · ")}</span>
+              <span className="break-words text-sm text-muted-foreground">{plan.details.slice(0, 3).join(" · ")}</span>
             </div>
-            <div className="flex items-center gap-2 shrink-0 pl-4">
-              <span className="text-sm font-semibold text-amber-300">{plan.priceLabel}</span>
-              {loading === plan.id && <Loader2 className="h-4 w-4 animate-spin text-amber-300" />}
+            <div className="flex items-center gap-xs shrink-0 pl-md">
+              <span className="text-sm font-semibold text-primary-300">{plan.priceLabel}</span>
+              {loading === plan.id && <Loader2 className="h-4 w-4 animate-spin text-primary-300" />}
             </div>
           </button>
         ))}
       </div>
 
-      <p className="text-center text-xs text-white/45">
+      <p className="text-center text-xs text-muted-foreground">
         Not ready for a full plan? Start with Top-Up now and upgrade later.
       </p>
     </div>

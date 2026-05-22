@@ -82,7 +82,7 @@ function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
   if (!needsAcceptance) return <>{children}</>;
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-white">
+    <div className="min-h-screen bg-[var(--bg)] text-foreground">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="fire-orb left-[-8rem] top-[-6rem] h-80 w-80" />
         <div className="fire-orb right-[-10rem] top-20 h-[26rem] w-[26rem] opacity-75" />
@@ -90,36 +90,36 @@ function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
         <div className="mesh-overlay" />
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">
-        <div className="rounded-3xl border border-white/10 bg-black/25 p-5 shadow-2xl backdrop-blur sm:p-6">
+      <div className="relative mx-auto flex w-full max-w-xl flex-col gap-lg px-md py-10 sm:px-lg sm:py-14">
+        <div className="rounded-3xl border border-border bg-muted p-lg shadow-elevation-xl backdrop-blur sm:p-lg">
           <h1 className="text-2xl font-semibold leading-tight sm:text-4xl">Before you continue</h1>
-          <p className="mt-2 break-words text-sm leading-6 text-white/75">
+          <p className="mt-xs break-words text-sm leading-6 text-secondary-foreground">
             Please review and accept the{" "}
-            <a className="text-amber-300 hover:text-amber-200 underline underline-offset-4" href="/terms-of-service" target="_blank" rel="noreferrer">
+            <a className="text-primary-300 hover:text-primary-200 underline underline-offset-4" href="/terms-of-service" target="_blank" rel="noreferrer">
               Terms of Service
             </a>{" "}
             and{" "}
-            <a className="text-amber-300 hover:text-amber-200 underline underline-offset-4" href="/privacy-policy" target="_blank" rel="noreferrer">
+            <a className="text-primary-300 hover:text-primary-200 underline underline-offset-4" href="/privacy-policy" target="_blank" rel="noreferrer">
               Privacy Policy
             </a>
             .
           </p>
 
-          <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+          <label className="mt-lg flex cursor-pointer items-start gap-sm rounded-2xl border border-border bg-muted p-md sm:p-lg">
             <input
               type="checkbox"
-              className="mt-1 h-4 w-4 accent-amber-400"
+              className="mt-1 h-4 w-4 accent-primary-400"
               checked={checked}
               onChange={(e) => setChecked(e.target.checked)}
               disabled={submitting}
             />
-            <span className="break-words text-sm text-white/85">
+            <span className="break-words text-sm text-secondary-foreground">
               I agree to the Terms of Service and Privacy Policy.
             </span>
           </label>
 
           {error && (
-            <p className="mt-3 rounded-xl border border-red-400/25 bg-red-500/10 px-4 py-2 text-sm text-red-100">
+            <p className="mt-sm rounded-xl border border-destructive-400/25 bg-destructive-500/10 px-md py-xs text-sm text-destructive-100">
               {error}
             </p>
           )}
@@ -128,12 +128,12 @@ function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={onAccept}
             disabled={!checked || submitting}
-            className="fire-button mt-5 w-full rounded-xl px-4 py-3 text-sm font-semibold transition disabled:opacity-50"
+            className="fire-button mt-lg w-full rounded-xl px-md py-sm text-sm font-semibold transition disabled:opacity-50"
           >
             {submitting ? "Saving…" : "Agree and continue"}
           </button>
 
-          <p className="mt-3 text-xs text-white/50">
+          <p className="mt-sm text-xs text-muted-foreground">
             Version: Terms {LEGAL_VERSIONS.tos} · Privacy {LEGAL_VERSIONS.privacy}
           </p>
         </div>

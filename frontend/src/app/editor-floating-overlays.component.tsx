@@ -33,7 +33,7 @@ export function EditorFloatingOverlays({
             animate={{ opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
             transition={{ duration: reduceMotion ? 0 : 0.25 }}
-            className="pointer-events-none fixed bottom-20 left-1/2 z-[60] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-emerald-400/40 bg-emerald-950/95 px-4 py-3 text-center text-sm text-emerald-50 shadow-lg backdrop-blur-md sm:w-auto md:bottom-8"
+            className="pointer-events-none fixed bottom-20 left-1/2 z-[60] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-success-400/40 bg-success-950/95 px-md py-sm text-center text-sm text-success-50 shadow-elevation-md backdrop-blur-md sm:w-auto md:bottom-8"
           >
             {exportNotice}
           </motion.div>
@@ -47,26 +47,26 @@ export function EditorFloatingOverlays({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-6 right-6 z-50 shadow-2xl"
+            className="fixed top-6 right-6 z-50 shadow-elevation-xl"
           >
             <button
               type="button"
               onClick={() => {
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              className="group flex h-12 items-center gap-3 rounded-full border border-amber-400/40 bg-amber-500/20 px-5 pr-2 font-bold shadow-[0_0_24px_rgba(255,140,80,0.25)] backdrop-blur-md transition-all hover:border-amber-400/80 hover:bg-amber-500/30 hover:scale-105 active:scale-95"
+              className="group flex h-12 items-center gap-sm rounded-full border border-primary-400/40 bg-primary-500/20 px-lg pr-2 font-bold shadow-[0_0_24px_rgba(255,140,80,0.25)] backdrop-blur-md transition-all hover:border-primary-400/80 hover:bg-primary-500/30 hover:scale-105 active:scale-95"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-xs">
                 {isSplitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-amber-300" />
+                  <Loader2 className="h-4 w-4 animate-spin text-primary-300" />
                 ) : (
-                  <Sparkles className="h-4 w-4 text-amber-300" />
+                  <Sparkles className="h-4 w-4 text-primary-300" />
                 )}
-                <span className="text-sm text-amber-50">
+                <span className="text-sm text-primary-50">
                   {isSplitting ? "Splitting..." : "Review & Split"}
                 </span>
               </div>
-              <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-amber-400/20 text-amber-300 transition-colors group-hover:bg-amber-400 group-hover:text-amber-900">
+              <div className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-primary-400/20 text-primary-300 transition-colors group-hover:bg-primary-400 group-hover:text-primary-900">
                 ↑
               </div>
             </button>

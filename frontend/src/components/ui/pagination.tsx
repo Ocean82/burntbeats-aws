@@ -129,7 +129,7 @@ const PaginationContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ul
     ref={ref}
-    className={cn("flex flex-row items-center gap-1", className)}
+    className={cn("flex flex-row items-center gap-2xs", className)}
     {...props}
   />
 ));
@@ -211,7 +211,7 @@ const PaginationControl = React.forwardRef<
           variant: "ghost",
           size: "default",
         }),
-        "gap-1 px-2.5",
+        "gap-2xs px-sm",
         disabled && "opacity-50 pointer-events-none",
         className
       )}

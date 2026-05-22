@@ -64,15 +64,15 @@ export const MixerStrips = memo(function MixerStrips({
   return (
     <div className="w-full">
       {stemLayout != null && (
-        <p className="mb-2 flex items-center gap-2 text-xs text-white/55">
-          <span className="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200/90">
+        <p className="mb-xs flex items-center gap-xs text-xs text-muted-foreground">
+          <span className="rounded-full border border-primary-400/30 bg-primary-500/10 px-xs py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-200/90">
             {stemLayout}-stem
           </span>
           {LAYOUT_LABELS[stemLayout]}
         </p>
       )}
     <div
-      className="flex gap-2 overflow-x-auto overflow-y-visible pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10"
+      className="flex gap-xs overflow-x-auto overflow-y-visible pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10"
       role="region"
       aria-label="Mixer channel strips"
     >

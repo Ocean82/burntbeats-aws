@@ -97,25 +97,25 @@ export function MidiSourcePreview({
   return (
     <div
       data-testid="midi-source-preview"
-      className="flex flex-col gap-2 rounded-xl border border-violet-400/15 bg-violet-950/20 px-4 py-3"
+      className="flex flex-col gap-xs rounded-xl border border-accent-midi-400/15 bg-accent-midi-950/20 px-md py-sm"
     >
-      <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-violet-200/70">
+      <div className="flex items-center gap-xs text-xs font-medium uppercase tracking-wide text-accent-midi-200/70">
         <Volume2 className="h-3.5 w-3.5" aria-hidden />
         Source preview
         {metaLine && (
-          <span className="normal-case font-normal text-white/45 truncate">{metaLine}</span>
+          <span className="normal-case font-normal text-muted-foreground truncate">{metaLine}</span>
         )}
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-sm text-white/50">
+        <div className="flex items-center gap-xs text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Loading audio…
         </div>
       )}
 
       {loadError && (
-        <p className="text-sm text-red-300/90" role="alert">
+        <p className="text-sm text-destructive-300/90" role="alert">
           {loadError}
         </p>
       )}

@@ -146,7 +146,7 @@ export function StereoVUMeter({
   const dbLabels = [0, -6, -12, -18, -24, -30, -36, -42, -48, -60];
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-2xs">
       <div className="relative flex items-end gap-0.5">
         <canvas
           ref={canvasRef}
@@ -158,27 +158,27 @@ export function StereoVUMeter({
           {dbLabels.map((db) => (
             <span
               key={db}
-              className="font-mono text-[7px] text-white/30 tabular-nums leading-none"
+              className="font-mono text-[7px] text-muted-foreground tabular-nums leading-none"
             >
               {db === 0 ? "0" : db}
             </span>
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="text-[8px] font-semibold uppercase tracking-wider text-white/35">L</span>
-        <span className="text-[8px] font-semibold uppercase tracking-wider text-white/35">R</span>
+      <div className="flex items-center gap-xs">
+        <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">L</span>
+        <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">R</span>
         <div
           role="status"
           aria-label="Master clip indicator"
           className={
             "h-2 w-2 rounded-full transition-colors " +
-            (clipped ? "bg-red-500 shadow-sm shadow-red-500/60" : "bg-white/10")
+            (clipped ? "bg-destructive-500 shadow-sm shadow-destructive-500/60" : "bg-muted")
           }
           title={clipped ? "Clip" : "No clip"}
         />
         {clipped && (
-          <span className="text-[8px] font-semibold uppercase tracking-wider text-red-400">
+          <span className="text-[8px] font-semibold uppercase tracking-wider text-destructive-400">
             Clip
           </span>
         )}

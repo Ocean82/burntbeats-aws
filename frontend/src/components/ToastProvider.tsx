@@ -16,17 +16,17 @@ const ICON_MAP: Record<ToastType, typeof CheckCircle2> = {
 };
 
 const COLOR_MAP: Record<ToastType, string> = {
-  success: "border-emerald-400/40 bg-emerald-950/90 text-emerald-100",
-  error: "border-red-400/40 bg-red-950/90 text-red-100",
-  info: "border-white/15 bg-[#1a1412]/95 text-white/90",
-  undo: "border-amber-400/40 bg-amber-950/90 text-amber-100",
+  success: "border-success-400/40 bg-success-950/90 text-success-100",
+  error: "border-destructive-400/40 bg-destructive-950/90 text-destructive-100",
+  info: "border-border bg-popover/95 text-secondary-foreground",
+  undo: "border-primary-400/40 bg-primary-950/90 text-primary-100",
 };
 
 const ICON_COLOR_MAP: Record<ToastType, string> = {
-  success: "text-emerald-400",
-  error: "text-red-400",
-  info: "text-white/60",
-  undo: "text-amber-400",
+  success: "text-success-400",
+  error: "text-destructive-400",
+  info: "text-muted-foreground",
+  undo: "text-primary-400",
 };
 
 function ToastItem({ toast }: { toast: Toast }) {
@@ -49,7 +49,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 80, scale: 0.95 }}
       transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeOut" }}
       className={cn(
-        "pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 shadow-2xl backdrop-blur-xl",
+        "pointer-events-auto flex items-center gap-sm rounded-xl border px-md py-sm shadow-elevation-xl backdrop-blur-xl",
         COLOR_MAP[toast.type],
       )}
       role="status"
@@ -64,7 +64,7 @@ function ToastItem({ toast }: { toast: Toast }) {
             toast.action!.onClick();
             removeToast(toast.id);
           }}
-          className="shrink-0 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1 text-xs font-semibold transition hover:bg-white/20"
+          className="shrink-0 rounded-lg border border-border bg-muted px-sm py-1 text-xs font-semibold transition hover:bg-secondary"
         >
           {toast.action.label}
         </button>
@@ -72,7 +72,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       <button
         type="button"
         onClick={() => removeToast(toast.id)}
-        className="shrink-0 rounded-md p-1 text-white/40 transition hover:text-white"
+        className="shrink-0 rounded-md p-2xs text-muted-foreground transition hover:text-foreground"
         aria-label="Dismiss notification"
       >
         <X className="h-3.5 w-3.5" />
@@ -87,7 +87,7 @@ export function ToastProvider() {
   return (
     <div
       aria-label="Notifications"
-      className="pointer-events-none fixed bottom-5 right-5 z-toast flex max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed bottom-5 right-5 z-toast flex max-w-sm flex-col gap-xs"
     >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (

@@ -4,49 +4,49 @@
  */
 
 function SkeletonPulse({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-lg bg-white/8 ${className ?? ""}`} />;
+  return <div className={`animate-pulse rounded-lg bg-muted ${className ?? ""}`} />;
 }
 
 export function MyStemsPageSkeleton() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#0d0b09]">
+    <div className="flex min-h-screen flex-col bg-popover">
       {/* Header skeleton */}
-      <header className="flex items-center gap-3 border-b border-white/10 p-4 sm:p-6">
+      <header className="flex items-center gap-sm border-b border-border p-md sm:p-lg">
         <SkeletonPulse className="h-10 w-10 rounded-xl" />
         <SkeletonPulse className="h-5 w-28" />
       </header>
 
-      <main className="flex-1 p-4 sm:p-6">
+      <main className="flex-1 p-md sm:p-lg">
         {/* Storage overview skeleton */}
-        <section className="mb-6 grid grid-cols-3 gap-3">
+        <section className="mb-lg grid grid-cols-3 gap-sm">
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="rounded-2xl border border-white/10 bg-[#1a1412]/95 p-3 sm:p-4"
+              className="rounded-2xl border border-border bg-popover/95 p-sm sm:p-md"
             >
-              <SkeletonPulse className="mb-2 h-3 w-12" />
+              <SkeletonPulse className="mb-xs h-3 w-12" />
               <SkeletonPulse className="h-6 w-10" />
             </div>
           ))}
         </section>
 
         {/* Search & sort skeleton */}
-        <section className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <section className="mb-md flex flex-col gap-sm sm:flex-row sm:items-center">
           <SkeletonPulse className="h-10 flex-1 rounded-xl" />
           <SkeletonPulse className="h-10 w-36 rounded-xl" />
         </section>
 
         {/* Job card skeletons */}
-        <section className="space-y-3">
+        <section className="space-y-sm">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="overflow-hidden rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 sm:p-5"
+              className="overflow-hidden rounded-3xl border border-border bg-popover/95 p-md sm:p-lg"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-center justify-between gap-sm">
+                <div className="min-w-0 flex-1 space-y-xs">
                   <SkeletonPulse className="h-4 w-48 max-w-full" />
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-xs">
                     <SkeletonPulse className="h-3 w-20" />
                     <SkeletonPulse className="h-5 w-16 rounded-full" />
                   </div>

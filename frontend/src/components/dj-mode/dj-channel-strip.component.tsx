@@ -82,12 +82,12 @@ export const DjChannelStrip = memo(function DjChannelStrip({
   return (
     <div
       className={cn(
-        "dj-channel-strip flex min-w-[5.5rem] w-[5.5rem] flex-col items-center overflow-visible rounded-xl border px-2.5 py-2.5 transition-all duration-200 ease",
+        "dj-channel-strip flex min-w-[5.5rem] w-[5.5rem] flex-col items-center overflow-visible rounded-xl border px-sm py-sm transition-all duration-200 ease",
         "bg-gradient-to-b from-white/[0.06] to-black/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
         showEq ? "min-h-[20rem] sm:min-h-[22rem]" : "min-h-[16rem] sm:min-h-[18rem]",
         isActive
-          ? "dj-channel-strip--active border-white/25 ring-2 ring-offset-1 ring-offset-black/80"
-          : "border-white/10 hover:border-white/15",
+          ? "dj-channel-strip--active border-border ring-2 ring-offset-1 ring-offset-black/80"
+          : "border-border hover:border-border",
       )}
       style={
         {
@@ -99,8 +99,8 @@ export const DjChannelStrip = memo(function DjChannelStrip({
       <button
         type="button"
         className={cn(
-          "dj-channel-strip__header flex w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 border-b border-white/8 pb-2 transition-colors",
-          isActive && "bg-white/[0.04]",
+          "dj-channel-strip__header flex w-full shrink-0 cursor-pointer items-center justify-center gap-xs border-b border-border pb-2 transition-colors",
+          isActive && "bg-muted/[0.04]",
         )}
         onClick={handleActivate}
         onKeyDown={handleHeaderKeyDown}
@@ -108,7 +108,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
         aria-pressed={isActive}
       >
         <span className="dj-channel-strip__dot h-2 w-2 shrink-0 rounded-full" aria-hidden />
-        <span className="truncate text-[9px] font-bold uppercase tracking-wider text-white/75">
+        <span className="truncate text-[9px] font-bold uppercase tracking-wider text-secondary-foreground">
           {stem.label}
         </span>
       </button>
@@ -132,7 +132,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
 
       {showEq && (
         <div
-          className="dj-channel-strip__eq flex w-full shrink-0 flex-col items-center gap-0.5 border-b border-white/5 pb-2"
+          className="dj-channel-strip__eq flex w-full shrink-0 flex-col items-center gap-0.5 border-b border-border pb-2"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <MixerSectionLabel>Eq</MixerSectionLabel>
@@ -158,7 +158,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
           onPointerDown={(e) => e.stopPropagation()}
         >
           <MixerSectionLabel>Vol</MixerSectionLabel>
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center justify-center gap-2xs">
             {showMeters && getStemAnalyserData && (
               <ChannelMeter
                 getAnalyserData={meterGetter}
@@ -185,12 +185,12 @@ export const DjChannelStrip = memo(function DjChannelStrip({
         </div>
       )}
 
-      <div className="dj-channel-strip__footer mt-auto flex w-full shrink-0 flex-col items-center gap-1 pt-1">
+      <div className="dj-channel-strip__footer mt-auto flex w-full shrink-0 flex-col items-center gap-2xs pt-1">
         {showFaders && (
           <span
             className={cn(
               "font-mono text-[9px] leading-none tabular-nums",
-              muted ? "text-white/30" : "text-white/50",
+              muted ? "text-muted-foreground" : "text-muted-foreground",
             )}
             aria-hidden
           >
@@ -198,7 +198,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
           </span>
         )}
         <div
-          className="flex items-center justify-center gap-1.5"
+          className="flex items-center justify-center gap-xs"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <button

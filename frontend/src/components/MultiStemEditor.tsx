@@ -343,18 +343,18 @@ export function MultiStemEditor({
   if (stems.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-black/25 p-4">
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex flex-col gap-md rounded-2xl border border-border bg-muted p-md">
+      <div className="flex items-center gap-xs flex-wrap">
         <button
           type="button"
           onClick={onPlayPause}
           disabled={!playbackReady}
           aria-label={isPlaying ? "Stop mix" : "Play mix"}
           className={cn(
-            "flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition",
+            "flex items-center gap-xs rounded-xl border px-md py-xs text-sm font-medium transition",
             isPlaying
-              ? "border-amber-400/50 bg-amber-500/20 text-amber-100"
-              : "border-white/15 bg-white/5 text-white/80 hover:bg-white/10",
+              ? "border-primary-400/50 bg-primary-500/20 text-primary-100"
+              : "border-border bg-muted text-secondary-foreground hover:bg-muted",
             !playbackReady && "opacity-40",
           )}
         >
@@ -369,10 +369,10 @@ export function MultiStemEditor({
           aria-label={loopEnabled ? "Disable loop playback" : "Enable loop playback"}
           aria-pressed={loopEnabled}
           className={cn(
-            "flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition",
+            "flex items-center gap-xs rounded-xl border px-sm py-xs text-sm font-medium transition",
             loopEnabled
-              ? "border-amber-400/50 bg-amber-500/20 text-amber-100"
-              : "border-white/15 bg-white/5 text-white/60 hover:text-white hover:bg-white/10",
+              ? "border-primary-400/50 bg-primary-500/20 text-primary-100"
+              : "border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted",
             !playbackReady && "opacity-40",
           )}
         >
@@ -380,23 +380,23 @@ export function MultiStemEditor({
           Loop
         </button>
 
-        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-black/20">
+        <div className="flex items-center gap-2xs rounded-xl border border-border bg-muted">
           <button
             type="button"
             onClick={() => setZoom((z) => Math.max(1, z / 1.5))}
             disabled={zoom <= 1}
             aria-label="Zoom out"
-            className="flex h-8 w-8 items-center justify-center text-white/60 hover:text-white disabled:opacity-30 transition"
+            className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
           >
             <ZoomOut className="h-4 w-4" />
           </button>
-          <span className="px-1 text-xs text-white/50">{Math.round(zoom * 100)}%</span>
+          <span className="px-1 text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
           <button
             type="button"
             onClick={() => setZoom((z) => Math.min(8, z * 1.5))}
             disabled={zoom >= 8}
             aria-label="Zoom in"
-            className="flex h-8 w-8 items-center justify-center text-white/60 hover:text-white disabled:opacity-30 transition"
+            className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
           >
             <ZoomIn className="h-4 w-4" />
           </button>
@@ -409,17 +409,17 @@ export function MultiStemEditor({
               onClick={() => setShowBeatGrid((v) => !v)}
               aria-label="Toggle beat grid"
               className={cn(
-                "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
+                "flex items-center gap-xs rounded-xl border px-sm py-1.5 text-xs transition",
                 showBeatGrid
-                  ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
-                  : "border-white/10 bg-white/5 text-white/60 hover:text-white",
+                  ? "border-primary-400/40 bg-primary-500/15 text-primary-100"
+                  : "border-border bg-muted text-muted-foreground hover:text-foreground",
               )}
             >
               <Grid className="h-3.5 w-3.5" />
               Beat Grid
             </button>
             <span
-              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] tabular-nums text-white/55"
+              className="rounded-lg border border-border bg-muted px-xs py-1 font-mono text-[10px] tabular-nums text-muted-foreground"
               title={
                 beatGrid && beatGrid.confidence < 0.7
                   ? `BPM confidence ${Math.round(beatGrid.confidence * 100)}%`
@@ -428,7 +428,7 @@ export function MultiStemEditor({
             >
               ♩ {Math.round(beatGrid!.bpm)} BPM
               {beatGrid && beatGrid.confidence < 0.7 && (
-                <span className="ml-1 text-white/35">~</span>
+                <span className="ml-1 text-muted-foreground">~</span>
               )}
             </span>
           </>
@@ -439,10 +439,10 @@ export function MultiStemEditor({
           onClick={toggleMixerStrips}
           aria-label="Toggle mixer strips view"
           className={cn(
-            "flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
+            "flex items-center gap-xs rounded-xl border px-sm py-1.5 text-xs transition",
             showMixerStrips
-              ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
-              : "border-white/10 bg-white/5 text-white/60 hover:text-white",
+              ? "border-primary-400/40 bg-primary-500/15 text-primary-100"
+              : "border-border bg-muted text-muted-foreground hover:text-foreground",
             playbackReady && !showMixerStrips && "animate-pulse",
           )}
         >
@@ -461,7 +461,7 @@ export function MultiStemEditor({
           />
         )}
 
-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-black/20 p-0.5">
+        <div className="flex flex-wrap items-center gap-2xs rounded-xl border border-border bg-muted p-0.5">
           {(
             [
               { id: "pitch" as const, icon: Waves, label: "Pitch" },
@@ -477,10 +477,10 @@ export function MultiStemEditor({
               onClick={() => setActivePanel((p) => (p === id ? null : id))}
               disabled={!playbackReady}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                "flex items-center gap-xs rounded-lg px-sm py-1.5 text-xs font-medium transition",
                 activePanel === id
-                  ? "bg-amber-500/20 text-amber-200"
-                  : "text-white/60 hover:text-white",
+                  ? "bg-primary-500/20 text-primary-200"
+                  : "text-muted-foreground hover:text-foreground",
                 !playbackReady && "cursor-not-allowed opacity-40",
               )}
             >
@@ -496,10 +496,10 @@ export function MultiStemEditor({
             onClick={() => setMixerConsoleOpen((open) => !open)}
             aria-controls="mixer-console-panel"
             className={cn(
-              "ml-auto flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs transition",
+              "ml-auto flex items-center gap-xs rounded-xl border px-sm py-1.5 text-xs transition",
               mixerConsoleOpen
-                ? "border-amber-400/40 bg-amber-500/15 text-amber-100"
-                : "border-white/10 bg-white/5 text-white/60 hover:text-white",
+                ? "border-primary-400/40 bg-primary-500/15 text-primary-100"
+                : "border-border bg-muted text-muted-foreground hover:text-foreground",
             )}
           >
             {mixerConsoleOpen ? "Hide Console" : "Show Console"}
@@ -545,10 +545,10 @@ export function MultiStemEditor({
 
         {activePanel && activeStem && (
           <div
-            className="absolute inset-x-0 top-0 z-20 flex max-h-[320px] flex-col overflow-y-auto rounded-xl border border-white/10 bg-black/90 backdrop-blur-md shadow-[-8px_0_24px_rgba(0,0,0,0.5)] animate-in slide-in-from-right duration-300 md:inset-x-auto md:right-0 md:w-72 md:bg-black/80"
+            className="absolute inset-x-0 top-0 z-20 flex max-h-[320px] flex-col overflow-y-auto rounded-xl border border-border bg-chrome backdrop-blur-md shadow-[-8px_0_24px_rgba(0,0,0,0.5)] animate-in slide-in-from-right duration-300 md:inset-x-auto md:right-0 md:w-72 md:bg-chrome"
           >
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 bg-black/40">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300">
+            <div className="flex items-center justify-between border-b border-border px-md py-sm bg-secondary">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-primary-300">
                 {activePanel === "pitch" && "Pitch Shift"}
                 {activePanel === "eq" && "EQ & Filters"}
                 {activePanel === "amplitude" && "Amplitude"}
@@ -558,25 +558,25 @@ export function MultiStemEditor({
               <button
                 type="button"
                 onClick={() => setActivePanel(null)}
-                className="text-white/40 hover:text-white transition"
+                className="text-muted-foreground hover:text-foreground transition"
                 aria-label="Close panel"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="border-b border-white/10">
+            <div className="border-b border-border">
               <button
                 type="button"
                 onClick={() => setChannelsSummaryOpen((o) => !o)}
-                className="flex w-full items-center justify-between px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/45"
+                className="flex w-full items-center justify-between px-md py-xs text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
                 aria-expanded={channelsSummaryOpen}
               >
                 All channels
                 <ChevronDown className={cn("h-3.5 w-3.5", channelsSummaryOpen && "rotate-180")} />
               </button>
               {channelsSummaryOpen && (
-                <ul className="max-h-28 space-y-0.5 overflow-y-auto px-2 pb-2">
+                <ul className="max-h-28 space-y-0.5 overflow-y-auto px-xs pb-2">
                   {stems.map((s) => {
                     const st = stemStates[s.id] ?? defaultStemState();
                     return (
@@ -585,12 +585,12 @@ export function MultiStemEditor({
                           type="button"
                           onClick={() => setActiveStemId(s.id)}
                           className={cn(
-                            "flex w-full gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] hover:bg-white/5",
-                            s.id === resolvedActiveStemId && "bg-amber-500/10",
+                            "flex w-full gap-xs rounded-lg px-xs py-1.5 text-left text-[11px] hover:bg-muted",
+                            s.id === resolvedActiveStemId && "bg-primary-500/10",
                           )}
                         >
                           <span className="truncate flex-1">{s.label}</span>
-                          <span className="font-mono text-[9px] text-white/40">
+                          <span className="font-mono text-[9px] text-muted-foreground">
                             {st.mixer.gain.toFixed(0)}dB
                           </span>
                         </button>
@@ -601,9 +601,9 @@ export function MultiStemEditor({
               )}
             </div>
 
-            <motion.div layout className="flex flex-col gap-5 p-4">
+            <motion.div layout className="flex flex-col gap-lg p-md">
               {activePanel === "pitch" && (
-                <div className="space-y-4">
+                <div className="space-y-md">
                   <input
                     type="range"
                     min={PITCH_MIN}
@@ -621,17 +621,17 @@ export function MultiStemEditor({
                     className="stem-accent-slider w-full"
                     aria-label={`${activeStem.label} pitch shift`}
                   />
-                  <p className="text-center text-xs text-white/60">
+                  <p className="text-center text-xs text-muted-foreground">
                     {activeState.pitchSemitones > 0 ? "+" : ""}
                     {activeState.pitchSemitones.toFixed(1)} st
                   </p>
-                  <p className="text-center text-[9px] text-white/30">
+                  <p className="text-center text-[9px] text-muted-foreground">
                     Double-click to reset
                   </p>
                 </div>
               )}
               {activePanel === "eq" && (
-                <div className="space-y-3">
+                <div className="space-y-sm">
                   {([
                     { key: "eqLow" as const, label: "Low", freq: "200 Hz" },
                     { key: "eqLowMid" as const, label: "Low-Mid", freq: "400 Hz" },
@@ -640,10 +640,10 @@ export function MultiStemEditor({
                   ]).map(({ key, label, freq }) => (
                     <div key={key} className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
-                          {label} <span className="text-white/30">{freq}</span>
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                          {label} <span className="text-muted-foreground">{freq}</span>
                         </span>
-                        <span className="font-mono text-[10px] tabular-nums text-white/50">
+                        <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                           {activeState.mixer[key] > 0 ? "+" : ""}
                           {activeState.mixer[key].toFixed(1)} dB
                         </span>
@@ -672,13 +672,13 @@ export function MultiStemEditor({
                       />
                     </div>
                   ))}
-                  <p className="text-center text-[9px] text-white/30 pt-1">
+                  <p className="text-center text-[9px] text-muted-foreground pt-1">
                     Double-click to reset
                   </p>
                 </div>
               )}
               {activePanel === "amplitude" && (
-                <div className="space-y-4">
+                <div className="space-y-md">
                   <input
                     type="range"
                     min={-20}
@@ -698,17 +698,17 @@ export function MultiStemEditor({
                     className="stem-accent-slider w-full"
                     aria-label={`${activeStem.label} volume`}
                   />
-                  <p className="text-center text-xs text-white/60">
+                  <p className="text-center text-xs text-muted-foreground">
                     {activeState.mixer.gain > 0 ? "+" : ""}
                     {activeState.mixer.gain.toFixed(1)} dB
                   </p>
-                  <p className="text-center text-[9px] text-white/30">
+                  <p className="text-center text-[9px] text-muted-foreground">
                     Double-click to reset
                   </p>
                 </div>
               )}
               {activePanel === "time" && (
-                <div className="space-y-4">
+                <div className="space-y-md">
                   <input
                     type="range"
                     min={TIME_STRETCH_MIN}
@@ -726,23 +726,23 @@ export function MultiStemEditor({
                     className="stem-accent-slider w-full"
                     aria-label={`${activeStem.label} tempo`}
                   />
-                  <p className="text-center text-xs text-white/60">
+                  <p className="text-center text-xs text-muted-foreground">
                     {timeStretchToDisplayPercent(activeState.timeStretch) >= 0 ? "+" : ""}
                     {timeStretchToDisplayPercent(activeState.timeStretch)}%
                   </p>
-                  <p className="text-center text-[9px] text-white/30">
+                  <p className="text-center text-[9px] text-muted-foreground">
                     Double-click to reset
                   </p>
                 </div>
               )}
               {activePanel === "fx" && (
-                <div className="space-y-4">
+                <div className="space-y-md">
                   <motion.div layout className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Warmth
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.warmth}%
                       </span>
                     </div>
@@ -765,15 +765,15 @@ export function MultiStemEditor({
                       className="stem-accent-slider w-full"
                       aria-label={`${activeStem.label} warmth`}
                     />
-                    <p className="text-[9px] text-white/30">Harmonic saturation for body and glue</p>
+                    <p className="text-[9px] text-muted-foreground">Harmonic saturation for body and glue</p>
                   </motion.div>
 
                   <motion.div layout className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Presence
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.presence > 0 ? "+" : ""}
                         {activeState.mixer.presence.toFixed(1)} dB
                       </span>
@@ -797,16 +797,16 @@ export function MultiStemEditor({
                       className="stem-accent-slider w-full"
                       aria-label={`${activeStem.label} presence`}
                     />
-                    <p className="text-[9px] text-white/30">Air and clarity around 10 kHz</p>
+                    <p className="text-[9px] text-muted-foreground">Air and clarity around 10 kHz</p>
                   </motion.div>
 
                   {/* Reverb */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Reverb
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.reverbWet}%
                       </span>
                     </div>
@@ -834,10 +834,10 @@ export function MultiStemEditor({
                   {/* Delay */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Delay
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.delayWet}%
                       </span>
                     </div>
@@ -865,10 +865,10 @@ export function MultiStemEditor({
                   {/* Compressor Threshold */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Threshold
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.compThreshold} dB
                       </span>
                     </div>
@@ -896,10 +896,10 @@ export function MultiStemEditor({
                   {/* Compressor Ratio */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Ratio
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.compRatio.toFixed(1)}:1
                       </span>
                     </div>
@@ -926,10 +926,10 @@ export function MultiStemEditor({
 
                   <motion.div layout className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Attack
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.compAttackMs} ms
                       </span>
                     </div>
@@ -956,10 +956,10 @@ export function MultiStemEditor({
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Release
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-white/50">
+                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
                         {activeState.mixer.compReleaseMs} ms
                       </span>
                     </div>
@@ -984,18 +984,18 @@ export function MultiStemEditor({
                     />
                   </div>
 
-                  <p className="text-center text-[9px] text-white/30 pt-1">
+                  <p className="text-center text-[9px] text-muted-foreground pt-1">
                     Double-click to reset
                   </p>
                 </div>
               )}
             </motion.div>
 
-            <div className="relative border-t border-white/10 p-3">
+            <div className="relative border-t border-border p-sm">
               <button
                 type="button"
                 onClick={() => setCopyMenuOpen((o) => !o)}
-                className="flex min-h-[40px] w-full items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white/70 hover:border-amber-400/30 hover:text-amber-100 transition"
+                className="flex min-h-[40px] w-full items-center justify-center gap-xs rounded-lg border border-border bg-muted px-sm py-xs text-xs font-medium text-secondary-foreground hover:border-primary-400/30 hover:text-primary-100 transition"
                 aria-expanded={copyMenuOpen}
                 aria-haspopup="menu"
               >
@@ -1008,7 +1008,7 @@ export function MultiStemEditor({
               {copyMenuOpen && (
                 <div
                   role="menu"
-                  className="absolute bottom-full left-3 right-3 mb-1 rounded-lg border border-white/10 bg-black/95 py-1 shadow-lg"
+                  className="absolute bottom-full left-3 right-3 mb-1 rounded-lg border border-border bg-chrome py-1 shadow-elevation-md"
                 >
                   {(
                     [
@@ -1023,7 +1023,7 @@ export function MultiStemEditor({
                       type="button"
                       role="menuitem"
                       onClick={() => handleCopySettings(scope)}
-                      className="block w-full px-3 py-2 text-left text-xs text-white/75 hover:bg-white/10 hover:text-white"
+                      className="block w-full px-sm py-xs text-left text-xs text-secondary-foreground hover:bg-muted hover:text-foreground"
                     >
                       {label}
                     </button>

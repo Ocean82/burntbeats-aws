@@ -157,19 +157,19 @@ export default function WaitingGame() {
   const previewCellSize = Math.max(12, Math.round(cellSize * 0.7));
 
   return (
-    <div className="flex flex-col items-center gap-3 select-none py-2" style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
+    <div className="flex flex-col items-center gap-sm select-none py-xs" style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
 
       {/* Idle message */}
-      <div className="h-4 text-center text-[11px] text-white/35 max-w-xs px-2">
+      <div className="h-4 text-center text-[11px] text-muted-foreground max-w-xs px-xs">
         {idleMsg}
       </div>
 
-      <div className="flex gap-4 items-start">
+      <div className="flex gap-md items-start">
         {/* Board */}
         <div className="relative" style={{ width: boardW, height: boardH }}>
           <canvas
             ref={canvasRef}
-            className="rounded-lg border border-white/10"
+            className="rounded-lg border border-border"
             style={{ width: boardW, height: boardH }}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
@@ -177,16 +177,16 @@ export default function WaitingGame() {
 
           {/* Start overlay */}
           {!game.started && !game.gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-black/85 backdrop-blur-sm">
-              <div className="text-[13px] text-amber-400 animate-pulse tracking-widest">THE WAITING GAME</div>
-              <div className="text-[10px] text-white/40">drop blocks while you wait</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-sm rounded-lg bg-chrome backdrop-blur-sm">
+              <div className="text-[13px] text-primary-400 animate-pulse tracking-widest">THE WAITING GAME</div>
+              <div className="text-[10px] text-muted-foreground">drop blocks while you wait</div>
               <button
                 onClick={game.startGame}
-                className="mt-1 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-[11px] text-amber-200 transition hover:bg-amber-500/25"
+                className="mt-1 rounded-lg border border-primary-500/40 bg-primary-500/15 px-md py-xs text-[11px] text-primary-200 transition hover:bg-primary-500/25"
               >
                 START / ENTER
               </button>
-              <div className="text-[9px] text-white/25 text-center leading-relaxed mt-2">
+              <div className="text-[9px] text-muted-foreground text-center leading-relaxed mt-xs">
                 ← → move &nbsp;·&nbsp; ↑ rotate<br />
                 ↓ soft drop &nbsp;·&nbsp; SPACE hard drop<br />
                 P pause
@@ -196,14 +196,14 @@ export default function WaitingGame() {
 
           {/* Game over overlay */}
           {game.gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/90 backdrop-blur-sm">
-              <div className="text-[15px] text-red-400 tracking-widest">GAME OVER</div>
-              <div className="text-[10px] text-white/50 text-center px-4">{game.message}</div>
-              <div className="text-[11px] text-white mt-1">{game.score.toLocaleString()}</div>
-              <div className="text-[9px] text-white/40">lines {game.lines} · lvl {game.level}</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-xs rounded-lg bg-chrome backdrop-blur-sm">
+              <div className="text-[15px] text-destructive-400 tracking-widest">GAME OVER</div>
+              <div className="text-[10px] text-muted-foreground text-center px-md">{game.message}</div>
+              <div className="text-[11px] text-foreground mt-1">{game.score.toLocaleString()}</div>
+              <div className="text-[9px] text-muted-foreground">lines {game.lines} · lvl {game.level}</div>
               <button
                 onClick={game.startGame}
-                className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2 text-[11px] text-amber-200 transition hover:bg-amber-500/25"
+                className="mt-xs rounded-lg border border-primary-500/40 bg-primary-500/15 px-md py-xs text-[11px] text-primary-200 transition hover:bg-primary-500/25"
               >
                 PLAY AGAIN
               </button>
@@ -212,37 +212,37 @@ export default function WaitingGame() {
 
           {/* Paused overlay */}
           {game.paused && !game.gameOver && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg bg-black/80 backdrop-blur-sm">
-              <div className="text-[14px] text-amber-300 animate-pulse">PAUSED</div>
-              <div className="text-[9px] text-white/40">press P to resume</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-xs rounded-lg bg-chrome backdrop-blur-sm">
+              <div className="text-[14px] text-primary-300 animate-pulse">PAUSED</div>
+              <div className="text-[9px] text-muted-foreground">press P to resume</div>
             </div>
           )}
 
           {/* Toast message */}
           {game.message && !game.gameOver && !game.paused && game.started && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-amber-500/30 bg-black/80 px-3 py-1.5 text-[10px] text-amber-200 animate-bounce">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-primary-500/30 bg-chrome px-sm py-1.5 text-[10px] text-primary-200 animate-bounce">
               {game.message}
             </div>
           )}
         </div>
 
         {/* Side panel */}
-        <div className="flex flex-col gap-3" style={{ minWidth: SIDE_PANEL_W }}>
+        <div className="flex flex-col gap-sm" style={{ minWidth: SIDE_PANEL_W }}>
           <div>
-            <div className="text-[9px] text-white/40 mb-1 tracking-widest">SCORE</div>
-            <div className="text-[12px] text-white tabular-nums">{game.score.toLocaleString()}</div>
+            <div className="text-[9px] text-muted-foreground mb-1 tracking-widest">SCORE</div>
+            <div className="text-[12px] text-foreground tabular-nums">{game.score.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-[9px] text-white/40 mb-1 tracking-widest">LEVEL</div>
-            <div className="text-[12px] text-amber-300">{game.level}</div>
+            <div className="text-[9px] text-muted-foreground mb-1 tracking-widest">LEVEL</div>
+            <div className="text-[12px] text-primary-300">{game.level}</div>
           </div>
           <div>
-            <div className="text-[9px] text-white/40 mb-1 tracking-widest">LINES</div>
-            <div className="text-[12px] text-white">{game.lines}</div>
+            <div className="text-[9px] text-muted-foreground mb-1 tracking-widest">LINES</div>
+            <div className="text-[12px] text-foreground">{game.lines}</div>
           </div>
           <div>
-            <div className="text-[9px] text-white/40 mb-2 tracking-widest">NEXT</div>
-            <div className="flex items-center justify-center rounded-lg border border-white/10 bg-black/40 p-2" style={{ minHeight: 56 }}>
+            <div className="text-[9px] text-muted-foreground mb-xs tracking-widest">NEXT</div>
+            <div className="flex items-center justify-center rounded-lg border border-border bg-secondary p-xs" style={{ minHeight: 56 }}>
               <NextPiecePreview piece={game.nextPiece} cellSize={previewCellSize} />
             </div>
           </div>
@@ -251,29 +251,29 @@ export default function WaitingGame() {
           {game.started && !game.gameOver && (
             <button
               onClick={game.togglePause}
-              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-[9px] text-white/60 transition hover:text-white"
+              className="rounded-lg border border-border bg-muted px-xs py-1.5 text-[9px] text-muted-foreground transition hover:text-foreground"
             >
               {game.paused ? 'RESUME' : 'PAUSE'}
             </button>
           )}
 
           {/* Mobile d-pad */}
-          <div className="flex flex-col gap-1 mt-1 md:hidden">
+          <div className="flex flex-col gap-2xs mt-1 md:hidden">
             <div className="flex justify-center">
-              <button onPointerDown={game.rotatePiece} className="h-9 w-9 rounded bg-white/10 text-sm active:bg-white/20">↑</button>
+              <button onPointerDown={game.rotatePiece} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">↑</button>
             </div>
-            <div className="flex gap-1 justify-center">
-              <button onPointerDown={game.moveLeft} className="h-9 w-9 rounded bg-white/10 text-sm active:bg-white/20">←</button>
-              <button onPointerDown={game.softDrop} className="h-9 w-9 rounded bg-white/10 text-sm active:bg-white/20">↓</button>
-              <button onPointerDown={game.moveRight} className="h-9 w-9 rounded bg-white/10 text-sm active:bg-white/20">→</button>
+            <div className="flex gap-2xs justify-center">
+              <button onPointerDown={game.moveLeft} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">←</button>
+              <button onPointerDown={game.softDrop} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">↓</button>
+              <button onPointerDown={game.moveRight} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">→</button>
             </div>
-            <button onPointerDown={game.hardDrop} className="mt-1 h-8 w-full rounded bg-white/10 text-[10px] active:bg-white/20">DROP</button>
+            <button onPointerDown={game.hardDrop} className="mt-1 h-8 w-full rounded bg-muted text-[10px] active:bg-secondary">DROP</button>
           </div>
         </div>
       </div>
 
       {game.started && (
-        <div className="text-[9px] text-white/20 text-center">
+        <div className="text-[9px] text-muted-foreground text-center">
           👀 there might be a secret code hidden somewhere
         </div>
       )}

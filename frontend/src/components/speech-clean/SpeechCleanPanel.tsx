@@ -57,22 +57,22 @@ export function SpeechCleanPanel({
   }, [originalBlobUrl]);
 
   return (
-    <div data-testid="speech-clean-panel" className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-cyan-400/15 pb-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-400/35 bg-cyan-500/15">
-            <Mic2 className="h-5 w-5 text-cyan-300" aria-hidden />
+    <div data-testid="speech-clean-panel" className="flex flex-col gap-md">
+      <div className="flex flex-wrap items-start justify-between gap-sm border-b border-info-400/15 pb-md">
+        <div className="flex items-start gap-sm">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-info-400/35 bg-info-500/15">
+            <Mic2 className="h-5 w-5 text-info-300" aria-hidden />
           </div>
           <div>
-            <h2 className="text-lg font-bold tracking-tight text-white">
+            <h2 className="text-lg font-bold tracking-tight text-foreground">
               Speech Clean
             </h2>
-            <p className="mt-0.5 max-w-xl text-sm text-cyan-100/55">
+            <p className="mt-0.5 max-w-xl text-sm text-info-100/55">
               Denoise and restore voice recordings. This tool is tuned for speech — not music stem separation.
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-cyan-400/35 bg-cyan-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-cyan-200">
+        <span className="shrink-0 rounded-full border border-info-400/35 bg-info-500/10 px-sm py-1 text-[10px] font-bold uppercase tracking-wider text-info-200">
           Speech only
         </span>
       </div>
@@ -101,25 +101,25 @@ export function SpeechCleanPanel({
         onSetIsDragging={setIsDragging}
       />
 
-      <div className="flex flex-wrap items-center gap-4 text-sm text-white/70">
-        <label className="inline-flex cursor-pointer items-center gap-2">
+      <div className="flex flex-wrap items-center gap-md text-sm text-secondary-foreground">
+        <label className="inline-flex cursor-pointer items-center gap-xs">
           <input
             type="checkbox"
             checked={denoise}
             onChange={(e) => setDenoise(e.target.checked)}
             disabled={isEnhancing}
-            className="rounded border-cyan-400/40 bg-cyan-950/40 text-cyan-400 focus:ring-cyan-400/50"
+            className="rounded border-info-400/40 bg-info-950/40 text-info-400 focus:ring-info-400/50"
           />
           Remove background noise
         </label>
-        <span className="inline-flex items-center gap-1.5">
-          <label className="inline-flex cursor-pointer items-center gap-2">
+        <span className="inline-flex items-center gap-xs">
+          <label className="inline-flex cursor-pointer items-center gap-xs">
             <input
               type="checkbox"
               checked={batch}
               onChange={(e) => setBatch(e.target.checked)}
               disabled={isEnhancing}
-              className="rounded border-cyan-400/40 bg-cyan-950/40 text-cyan-400 focus:ring-cyan-400/50"
+              className="rounded border-info-400/40 bg-info-950/40 text-info-400 focus:ring-info-400/50"
             />
             Long recording mode
           </label>
@@ -147,13 +147,13 @@ export function SpeechCleanPanel({
           />
         )}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-sm">
         <button
           type="button"
           data-testid="speech-enhance-button"
           onClick={() => void triggerEnhance()}
           disabled={!uploadedFile || isEnhancing || !!outputUrl}
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-cyan-300/50 bg-gradient-to-r from-cyan-600/90 to-sky-600/90 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(34,211,238,0.2)] transition hover:from-cyan-500 hover:to-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
+          className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-info-300/50 bg-gradient-to-r from-info-600/90 to-sky-600/90 px-lg py-sm text-sm font-bold text-foreground shadow-[0_0_24px_rgba(34,211,238,0.2)] transition hover:from-info-500 hover:to-sky-500 disabled:cursor-not-allowed disabled:opacity-45"
         >
           {isEnhancing ? (
             <>
@@ -170,7 +170,7 @@ export function SpeechCleanPanel({
           <button
             type="button"
             onClick={handleClear}
-            className="min-h-[44px] rounded-xl border border-white/15 px-4 py-2 text-sm text-white/70 hover:border-white/30 hover:text-white"
+            className="min-h-[44px] rounded-xl border border-border px-md py-xs text-sm text-secondary-foreground hover:border-border hover:text-foreground"
           >
             New recording
           </button>
@@ -188,14 +188,14 @@ export function SpeechCleanPanel({
       {error && (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-red-500/35 bg-red-950/25 px-4 py-3 text-sm text-red-200"
+          className="flex items-start gap-xs rounded-xl border border-destructive-500/35 bg-destructive-950/25 px-md py-sm text-sm text-destructive-200"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>{error}</p>
           <button
             type="button"
             onClick={() => setError(null)}
-            className="ml-auto shrink-0 text-xs text-red-300/80 underline"
+            className="ml-auto shrink-0 text-xs text-destructive-300/80 underline"
           >
             Dismiss
           </button>

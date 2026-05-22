@@ -493,7 +493,7 @@ export function MidiEditorCanvas({
   return (
     <div
       ref={containerRef}
-      className="w-full overflow-hidden rounded-lg border border-white/10"
+      className="w-full overflow-hidden rounded-lg border border-border"
       style={{ backgroundColor: PIANO_ROLL.surface }}
     >
       <div className="flex">
@@ -662,7 +662,7 @@ export function MidiEditorCanvas({
 
       {isScrollable && (
         <p
-          className="border-t border-white/8 px-3 py-1.5 text-[10px] text-white/35"
+          className="border-t border-border px-sm py-1.5 text-[10px] text-muted-foreground"
           style={{ backgroundColor: PIANO_ROLL.ruler }}
         >
           Scroll timeline horizontally · {Math.round(totalDuration)}s

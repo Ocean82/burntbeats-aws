@@ -125,7 +125,7 @@ export function ExportOptionsModal({
       {isOpen && (
         <>
           <motion.div
-            className="fixed inset-0 z-modal-backdrop bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-modal-backdrop bg-secondary backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -134,13 +134,13 @@ export function ExportOptionsModal({
             }}
           />
           <motion.div
-            className="fixed inset-0 z-modal flex items-center justify-center p-3 sm:p-4"
+            className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-md modal-viewport-height overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:p-6"
+              className="relative w-full max-w-md modal-viewport-height overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:p-lg"
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -153,19 +153,19 @@ export function ExportOptionsModal({
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="mb-6 flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-                    <Download className="h-5 w-5 text-amber-400" />
+              <div className="mb-lg flex items-start justify-between gap-sm">
+                <div className="flex min-w-0 items-center gap-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/20">
+                    <Download className="h-5 w-5 text-primary-400" />
                   </div>
                   <div className="min-w-0">
                     <h2
                       id="export-options-title"
-                      className="break-words text-lg font-semibold text-white"
+                      className="break-words text-lg font-semibold text-foreground"
                     >
                       Export Options
                     </h2>
-                    <p className="break-words text-xs text-white/65">
+                    <p className="break-words text-xs text-muted-foreground">
                       Configure your export settings
                     </p>
                   </div>
@@ -174,7 +174,7 @@ export function ExportOptionsModal({
                   onClick={onClose}
                   disabled={isExporting}
                   aria-label="Close export options"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -182,10 +182,10 @@ export function ExportOptionsModal({
 
               {/* Format */}
               <fieldset className="mb-5">
-                <legend className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
+                <legend className="mb-xs block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Format
                 </legend>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-xs sm:grid-cols-2">
                   {FORMAT_OPTIONS.map((format) => (
                     <button
                       key={format.value}
@@ -194,26 +194,26 @@ export function ExportOptionsModal({
                         setOptions((o) => ({ ...o, format: format.value }))
                       }
                       className={cn(
-                        "rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
+                        "rounded-xl border px-sm py-sm text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60",
                         options.format === format.value
-                          ? "border-amber-400/50 bg-amber-500/15 text-white"
-                          : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10",
+                          ? "border-primary-400/50 bg-primary-500/15 text-foreground"
+                          : "border-border bg-muted text-secondary-foreground hover:border-border hover:bg-muted",
                       )}
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{format.label}</span>
                         {options.format === format.value && (
-                          <Check className="h-3.5 w-3.5 text-amber-400" />
+                          <Check className="h-3.5 w-3.5 text-primary-400" />
                         )}
                       </div>
-                      <p className="mt-0.5 text-[10px] text-white/65">
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
                         {format.description}
                       </p>
                     </button>
                   ))}
                 </div>
                 {isTouchDevice && options.format === "wav" && (
-                  <p className="mt-2 rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200/80">
+                  <p className="mt-xs rounded-lg border border-primary-400/20 bg-primary-500/10 px-sm py-xs text-[11px] text-primary-200/80">
                     💡 MP3 is recommended on mobile — smaller file size and less memory usage.
                   </p>
                 )}
@@ -221,10 +221,10 @@ export function ExportOptionsModal({
 
               {/* Export Target */}
               <fieldset className="mb-5">
-                <legend className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/60">
+                <legend className="mb-xs block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   What to export
                 </legend>
-                <div className="space-y-2">
+                <div className="space-y-xs">
                   {targetOptions.map((target) => {
                     const Icon = target.icon;
                     return (
@@ -235,25 +235,25 @@ export function ExportOptionsModal({
                           setOptions((o) => ({ ...o, target: target.value }))
                         }
                         className={cn(
-                          "flex w-full items-center justify-between rounded-xl border px-4 py-3 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
+                          "flex w-full items-center justify-between rounded-xl border px-md py-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60",
                           options.target === target.value
-                            ? "border-amber-400/50 bg-amber-500/15 text-white"
-                            : "border-white/10 bg-white/5 text-white/70 hover:border-white/20 hover:bg-white/10",
+                            ? "border-primary-400/50 bg-primary-500/15 text-foreground"
+                            : "border-border bg-muted text-secondary-foreground hover:border-border hover:bg-muted",
                         )}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-sm">
                           <Icon className="h-4 w-4" />
                           <div className="min-w-0 text-left">
                             <span className="block break-words font-medium">
                               {target.label}
                             </span>
-                            <span className="block break-words text-[10px] text-white/50">
+                            <span className="block break-words text-[10px] text-muted-foreground">
                               {target.description}
                             </span>
                           </div>
                         </div>
                         {options.target === target.value && (
-                          <Check className="h-4 w-4 text-amber-400" />
+                          <Check className="h-4 w-4 text-primary-400" />
                         )}
                       </button>
                     );
@@ -264,29 +264,29 @@ export function ExportOptionsModal({
               {trackDurationSec > 0 && (
                 <div
                   className={cn(
-                    "mb-5 rounded-xl border px-4 py-3 text-sm",
+                    "mb-5 rounded-xl border px-md py-sm text-sm",
                     sizeWarning === "large"
-                      ? "border-amber-500/45 bg-amber-500/12 text-amber-100"
+                      ? "border-primary-500/45 bg-primary-500/12 text-primary-100"
                       : sizeWarning === "medium"
-                        ? "border-amber-400/25 bg-amber-500/8 text-amber-100/90"
-                        : "border-white/10 bg-white/5 text-white/75",
+                        ? "border-primary-400/25 bg-primary-500/8 text-primary-100/90"
+                        : "border-border bg-muted text-secondary-foreground",
                   )}
                   role="status"
                 >
                   <p>
                     Estimated download size:{" "}
-                    <span className="font-semibold tabular-nums text-white">
+                    <span className="font-semibold tabular-nums text-foreground">
                       {formatExportBytes(estimatedBytes)}
                     </span>
                   </p>
                   {sizeWarning === "large" && (
-                    <p className="mt-1.5 text-xs leading-relaxed text-amber-200/85">
+                    <p className="mt-1.5 text-xs leading-relaxed text-primary-200/85">
                       Large download — WAV exports of long multi-stem sessions can exceed 200MB.
                       Consider MP3 on slower connections.
                     </p>
                   )}
                   {sizeWarning === "medium" && options.format === "wav" && (
-                    <p className="mt-1 text-xs text-white/55">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       WAV is uncompressed; MP3 yields a much smaller file.
                     </p>
                   )}
@@ -294,12 +294,12 @@ export function ExportOptionsModal({
               )}
 
               {/* Normalize Toggle */}
-              <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+              <div className="mb-lg flex items-center justify-between gap-sm rounded-xl border border-border bg-muted px-md py-sm">
                 <div className="min-w-0">
-                  <span className="block break-words text-sm font-medium text-white">
+                  <span className="block break-words text-sm font-medium text-foreground">
                     Normalize Audio
                   </span>
-                  <span className="block break-words text-xs text-white/65">
+                  <span className="block break-words text-xs text-muted-foreground">
                     Boost quiet mixes to a consistent loudness
                   </span>
                 </div>
@@ -312,12 +312,12 @@ export function ExportOptionsModal({
                   }
                   className={cn(
                     "relative h-6 w-11 rounded-full transition-colors",
-                    options.normalize ? "bg-amber-500" : "bg-white/20",
+                    options.normalize ? "bg-primary-500" : "bg-secondary",
                   )}
                 >
                   <span
                     className={cn(
-                      "absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all",
+                      "absolute top-1 h-4 w-4 rounded-full bg-muted shadow transition-all",
                       options.normalize ? "left-6" : "left-1",
                     )}
                   />
@@ -326,12 +326,12 @@ export function ExportOptionsModal({
 
               {/* Export Button or Sample CTA */}
               {isSample ? (
-                <div className="space-y-4">
-                  <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-center">
-                    <p className="text-sm font-medium text-amber-200">
+                <div className="space-y-md">
+                  <div className="rounded-xl border border-primary-400/30 bg-primary-500/10 p-md text-center">
+                    <p className="text-sm font-medium text-primary-200">
                       Export is disabled for free samples
                     </p>
-                    <p className="mt-1 text-xs text-white/70">
+                    <p className="mt-1 text-xs text-secondary-foreground">
                       Upgrade to a plan to download full tracks and individual
                       stems.
                     </p>
@@ -342,7 +342,7 @@ export function ExportOptionsModal({
                       onClose();
                       useEventBus.getState().emit("open-pricing");
                     }}
-                    className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition"
+                    className="fire-button flex w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition"
                   >
                     View Plans & Pricing
                   </button>
@@ -354,11 +354,11 @@ export function ExportOptionsModal({
                     if (!isExporting) void onExport(options);
                   }}
                   disabled={isExporting}
-                  className="fire-button flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50"
+                  className="fire-button flex w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50"
                 >
                   {isExporting ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-white" />
                       Exporting...
                     </>
                   ) : (

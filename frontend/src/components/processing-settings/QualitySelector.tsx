@@ -56,12 +56,12 @@ export function QualitySelector({
     <div
       data-testid="quality-controls"
       data-tour="quality-selector"
-      className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-1.5 sm:w-auto"
+      className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-xs sm:w-auto"
     >
-      <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-white/50 sm:block">
+      <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:block">
         Quality
       </span>
-      <div className="flex w-full overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-0.5 sm:w-auto scrollbar-hide">
+      <div className="flex w-full overflow-x-auto rounded-xl border border-border bg-muted p-0.5 sm:w-auto scrollbar-hide">
         {qualityOptions.map((opt) => (
           <button
             key={opt.value}
@@ -76,19 +76,19 @@ export function QualitySelector({
             }
             onClick={() => onQualityChange(opt.value)}
             className={cn(
-              "min-h-[36px] whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition",
+              "min-h-[36px] whitespace-nowrap rounded-lg px-sm py-1.5 text-xs font-medium transition",
               !opt.enabled
-                ? "cursor-not-allowed text-white/25"
+                ? "cursor-not-allowed text-muted-foreground"
                 : opt.value === quality
-                  ? "bg-amber-500/20 text-amber-200"
-                  : "text-white/60 hover:text-white",
+                  ? "bg-primary-500/20 text-primary-200"
+                  : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-2xs">
               {opt.label}
               {!opt.enabled && (
                 <Lock
-                  className="h-3 w-3 text-white/35"
+                  className="h-3 w-3 text-muted-foreground"
                   aria-hidden="true"
                 />
               )}
@@ -97,7 +97,7 @@ export function QualitySelector({
         ))}
       </div>
       {!canChoosePaidQuality && (
-        <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-white/45">
+        <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           Premium/Studio to unlock
         </span>
       )}

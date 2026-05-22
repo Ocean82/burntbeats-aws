@@ -26,14 +26,14 @@ export function MidiConvertProgress({
     : statusMessage || "Processing...";
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-violet-400/15 bg-violet-500/5 px-4 py-3">
-      <div className="flex items-center gap-2 text-sm text-violet-100/80">
-        <Loader2 className="h-4 w-4 animate-spin text-violet-400" aria-hidden />
+    <div className="flex flex-col gap-xs rounded-xl border border-accent-midi-400/15 bg-accent-midi-500/5 px-md py-sm">
+      <div className="flex items-center gap-xs text-sm text-accent-midi-100/80">
+        <Loader2 className="h-4 w-4 animate-spin text-accent-midi-400" aria-hidden />
         <span>{label}</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-violet-900/30">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-accent-midi-900/30">
         <div
-          className="h-full rounded-full bg-violet-500 transition-all duration-300"
+          className="h-full rounded-full bg-accent-midi-500 transition-all duration-300"
           style={{ width: `${Math.max(barPercent, 2)}%` }}
           role="progressbar"
           aria-valuenow={barPercent}
@@ -42,7 +42,7 @@ export function MidiConvertProgress({
           aria-label={isUploading ? "MIDI upload progress" : "MIDI conversion progress"}
         />
       </div>
-      <p className="text-right text-xs text-white/40">{barPercent}%</p>
+      <p className="text-right text-xs text-muted-foreground">{barPercent}%</p>
     </div>
   );
 }

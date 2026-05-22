@@ -117,28 +117,28 @@ export function ProcessingSettingsPanel({
             transition={{ duration: 0.25, ease: "easeOut" }}
             style={{ overflow: "hidden" }}
           >
-            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2.5">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
-                <Music2 className="h-3.5 w-3.5 text-amber-400" />
+            <div className="flex items-center gap-sm rounded-xl border border-border bg-muted px-md py-sm">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-500/15">
+                <Music2 className="h-3.5 w-3.5 text-primary-400" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-white/90">
+                <span className="block truncate text-sm font-semibold text-secondary-foreground">
                   {uploadName || "Loaded stems"}
                 </span>
                 {collapsedMeta ? (
-                  <span className="mt-0.5 block truncate text-xs tabular-nums text-white/45">
+                  <span className="mt-0.5 block truncate text-xs tabular-nums text-muted-foreground">
                     {collapsedMeta}
                   </span>
                 ) : null}
               </div>
-              <span className="shrink-0 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200">
+              <span className="shrink-0 rounded-full border border-success-400/40 bg-success-500/15 px-sm py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success-200">
                 {splitResultStemsLength} stems ready
               </span>
               {onNewSplit && (
                 <button
                   type="button"
                   onClick={() => setShowNewSplitConfirm(true)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-200/90 transition hover:border-rose-400/50 hover:bg-rose-500/20 hover:text-rose-100"
+                  className="flex shrink-0 items-center gap-xs rounded-lg border border-destructive-400/30 bg-destructive-500/10 px-sm py-1.5 text-xs font-medium text-destructive-200/90 transition hover:border-destructive-400/50 hover:bg-destructive-500/20 hover:text-destructive-100"
                   aria-label="Start a new split"
                   title="Clear current split and load a new track"
                 >
@@ -149,7 +149,7 @@ export function ProcessingSettingsPanel({
               <button
                 type="button"
                 onClick={() => setUserExpanded(true)}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/65 transition hover:border-white/25 hover:text-white"
+                className="flex shrink-0 items-center gap-xs rounded-lg border border-border bg-muted px-sm py-1.5 text-xs font-medium text-muted-foreground transition hover:border-border hover:text-foreground"
                 aria-label="Edit source settings"
               >
                 <Settings2 className="h-3 w-3" />
@@ -172,28 +172,28 @@ export function ProcessingSettingsPanel({
             style={{ overflow: "hidden" }}
           >
       {subscriptionInactive && sourceMode === "split" && !isSample && (
-        <div className="mb-3 rounded-xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm leading-relaxed text-amber-100/95">
+        <div className="mb-sm rounded-xl border border-primary-400/35 bg-primary-500/10 px-md py-sm text-sm leading-relaxed text-primary-100/95">
           <p>
-            <span className="font-semibold text-amber-50">
+            <span className="font-semibold text-primary-50">
               Active plan required to split full tracks.
             </span>{" "}
             Continue to secure checkout, or use{" "}
-            <span className="font-semibold text-amber-200">Try for free</span>{" "}
+            <span className="font-semibold text-primary-200">Try for free</span>{" "}
             below.
           </p>
-          <div className="mt-2">
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-xs">
+            <div className="flex flex-wrap gap-xs">
               <button
                 type="button"
                 onClick={onContinueCheckout}
-                className="ghost-button min-h-[40px] rounded-lg border border-amber-300/30 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:border-amber-200/50 hover:text-amber-50"
+                className="ghost-button min-h-[40px] rounded-lg border border-primary-300/30 px-sm py-1.5 text-xs font-semibold text-primary-100 hover:border-primary-200/50 hover:text-primary-50"
               >
                 Continue to secure checkout
               </button>
               <button
                 type="button"
                 onClick={() => setIsSample(true)}
-                className="ghost-button min-h-[40px] rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold text-white/80 hover:border-white/35 hover:text-white"
+                className="ghost-button min-h-[40px] rounded-lg border border-border px-sm py-1.5 text-xs font-semibold text-secondary-foreground hover:border-border hover:text-foreground"
               >
                 Use 60s free sample
               </button>
@@ -205,17 +205,17 @@ export function ProcessingSettingsPanel({
       {/* ── Mode toggle ── */}
       <div
         data-testid="source-mode-toggle"
-        className="mb-4 flex w-fit rounded-xl border border-white/10 bg-black/20 p-0.5"
+        className="mb-md flex w-fit rounded-xl border border-border bg-muted p-0.5"
       >
         <button
           data-testid="source-mode-split"
           type="button"
           onClick={() => onSourceModeChange("split")}
           className={cn(
-            "rounded-lg px-4 py-1.5 text-xs font-medium transition",
+            "rounded-lg px-md py-1.5 text-xs font-medium transition",
             sourceMode === "split"
-              ? "bg-amber-500/20 text-amber-200"
-              : "text-white/60 hover:text-white",
+              ? "bg-primary-500/20 text-primary-200"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           Split
@@ -225,10 +225,10 @@ export function ProcessingSettingsPanel({
           type="button"
           onClick={() => onSourceModeChange("load")}
           className={cn(
-            "rounded-lg px-4 py-1.5 text-xs font-medium transition",
+            "rounded-lg px-md py-1.5 text-xs font-medium transition",
             sourceMode === "load"
-              ? "bg-amber-500/20 text-amber-200"
-              : "text-white/60 hover:text-white",
+              ? "bg-primary-500/20 text-primary-200"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           Load
@@ -262,7 +262,7 @@ export function ProcessingSettingsPanel({
             transition={{ duration: 0.28, ease: "easeOut" }}
             style={{ overflow: "hidden" }}
           >
-            <div className="flex flex-wrap items-center gap-3 lg:flex-nowrap">
+            <div className="flex flex-wrap items-center gap-sm lg:flex-nowrap">
 
         {/* Load mode zone */}
         {sourceMode === "load" && (
@@ -302,15 +302,15 @@ export function ProcessingSettingsPanel({
         {sourceMode === "split" && (
           <>
             {subscriptionInactive && !isSample && splitResultStemsLength === 0 && (
-              <motion.div className="mb-3 w-full rounded-xl border border-emerald-400/40 bg-gradient-to-r from-emerald-950/50 to-emerald-900/20 px-4 py-3.5 shadow-[0_0_24px_rgba(52,211,153,0.12)]">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-2.5">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" aria-hidden />
+              <motion.div className="mb-sm w-full rounded-xl border border-success-400/40 bg-gradient-to-r from-success-950/50 to-success-900/20 px-md py-sm shadow-[0_0_24px_rgba(52,211,153,0.12)]">
+                <div className="flex flex-wrap items-center justify-between gap-sm">
+                  <div className="flex min-w-0 items-start gap-sm">
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-success-300" aria-hidden />
                     <div>
-                      <p className="text-sm font-semibold text-emerald-50">
+                      <p className="text-sm font-semibold text-success-50">
                         Try a 60-second preview — no plan required
                       </p>
-                      <p className="mt-0.5 text-xs text-emerald-200/65">
+                      <p className="mt-0.5 text-xs text-success-200/65">
                         Hear the quality before you subscribe. Uses the first minute of your track only.
                       </p>
                     </div>
@@ -319,7 +319,7 @@ export function ProcessingSettingsPanel({
                     type="button"
                     onClick={() => setIsSample(true)}
                     disabled={isSplitting}
-                    className="min-h-[40px] shrink-0 rounded-lg border border-emerald-300/50 bg-emerald-500/25 px-4 py-2 text-xs font-bold text-emerald-50 transition hover:bg-emerald-500/40 disabled:opacity-50"
+                    className="min-h-[40px] shrink-0 rounded-lg border border-success-300/50 bg-success-500/25 px-md py-xs text-xs font-bold text-success-50 transition hover:bg-success-500/40 disabled:opacity-50"
                   >
                     Enable free sample
                   </button>
@@ -354,18 +354,18 @@ export function ProcessingSettingsPanel({
             </div>{/* end flex row */}
 
             {sourceMode === "split" && splitResultStemsLength > 0 && (
-              <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-xs leading-relaxed text-white/65">
-          <span className="font-medium text-white/85">
+              <p className="mt-sm rounded-xl border border-border bg-muted px-md py-sm text-xs leading-relaxed text-muted-foreground">
+          <span className="font-medium text-secondary-foreground">
             This upload is finished.
           </span>{" "}
           To separate a different track, use{" "}
-          <span className="text-white/90">Change</span> or{" "}
-          <span className="text-white/90">Clear</span> above and upload a new
+          <span className="text-secondary-foreground">Change</span> or{" "}
+          <span className="text-secondary-foreground">Clear</span> above and upload a new
           file — that starts a new job.
           {splitResultStemsLength === 2 && canExpandToFourStems ? (
             <>
               {" "}
-              Use <span className="text-amber-200/90">Expand → 4 stems</span> if
+              Use <span className="text-primary-200/90">Expand → 4 stems</span> if
               you want four parts from this same separation.
             </>
           ) : null}

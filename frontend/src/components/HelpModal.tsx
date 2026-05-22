@@ -25,7 +25,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 z-modal-backdrop bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-modal-backdrop bg-secondary backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -34,13 +34,13 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
           {/* Modal */}
           <motion.div
-            className="fixed inset-0 z-modal flex items-center justify-center p-3 sm:p-4"
+            className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="relative w-full max-w-lg max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 p-4 shadow-2xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-6"
+              className="relative w-full max-w-lg max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-lg"
               ref={modalRef}
               role="dialog"
               aria-modal="true"
@@ -53,34 +53,34 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="mb-6 flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20">
-                    <Keyboard className="h-5 w-5 text-amber-400" />
+              <div className="mb-lg flex items-start justify-between gap-sm">
+                <div className="flex min-w-0 items-center gap-sm">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-500/20">
+                    <Keyboard className="h-5 w-5 text-primary-400" />
                   </div>
                   <div className="min-w-0">
-                    <h2 id="help-modal-title" className="break-words text-lg font-semibold text-white">Keyboard Shortcuts</h2>
-                    <p className="break-words text-xs text-white/65">Quick actions for power users</p>
+                    <h2 id="help-modal-title" className="break-words text-lg font-semibold text-foreground">Keyboard Shortcuts</h2>
+                    <p className="break-words text-xs text-muted-foreground">Quick actions for power users</p>
                   </div>
                 </div>
                 <button
                   onClick={onClose}
                   aria-label="Close help"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               {/* Shortcuts List */}
-              <div className="space-y-2">
+              <div className="space-y-xs">
                 {uniqueShortcuts.map((shortcut) => (
                   <div
                     key={shortcut.action}
-                    className="flex items-start justify-between gap-3 rounded-xl bg-white/[0.03] px-4 py-3 transition hover:bg-white/[0.06]"
+                    className="flex items-start justify-between gap-sm rounded-xl bg-muted/[0.03] px-md py-sm transition hover:bg-muted/[0.06]"
                   >
-                    <span className="min-w-0 break-words text-sm text-white/80">{shortcut.description}</span>
-                    <kbd className="max-w-[45%] shrink-0 break-all rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-xs text-amber-200">
+                    <span className="min-w-0 break-words text-sm text-secondary-foreground">{shortcut.description}</span>
+                    <kbd className="max-w-[45%] shrink-0 break-all rounded-lg border border-border bg-muted px-sm py-1 font-mono text-xs text-primary-200">
                       {shortcut.label}
                     </kbd>
                   </div>
@@ -88,12 +88,12 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               </div>
 
               {/* Tips Section */}
-              <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
-                <div className="flex items-start gap-3">
-                  <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400/60" />
+              <div className="mt-lg rounded-xl border border-border bg-muted/[0.02] p-md">
+                <div className="flex items-start gap-sm">
+                  <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary-400/60" />
                   <div>
-                    <p className="text-xs font-medium text-white/70">Pro Tips</p>
-                    <ul className="mt-1.5 space-y-1 text-xs text-white/65">
+                    <p className="text-xs font-medium text-secondary-foreground">Pro Tips</p>
+                    <ul className="mt-1.5 space-y-1 text-xs text-muted-foreground">
                       <li>Press number keys 1-4 to quickly solo individual stems</li>
                       <li>Use Cmd/Ctrl + Z to undo mixer changes</li>
                       <li>Press L to toggle loop playback</li>
@@ -104,9 +104,9 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               </div>
 
               {/* Footer */}
-              <div className="mt-4 text-center">
-                <p className="break-words text-xs text-white/40">
-                  Press <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px]">?</kbd> anytime to show this help
+              <div className="mt-md text-center">
+                <p className="break-words text-xs text-muted-foreground">
+                  Press <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">?</kbd> anytime to show this help
                 </p>
               </div>
             </motion.div>

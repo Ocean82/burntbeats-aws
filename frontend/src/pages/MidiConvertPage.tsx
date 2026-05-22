@@ -24,7 +24,7 @@ export function MidiConvertPage({
 }: MidiConvertPageProps) {
   return (
     <ToolPageShell
-      borderColorClass="border-violet-400/10"
+      borderColorClass="border-accent-midi/25"
       reduceMotion={reduceMotion}
       subscription={subscription}
       checkoutNotice={checkoutNotice}

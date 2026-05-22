@@ -22,7 +22,7 @@ export function InfoPopover({ label, title, body, className }: InfoPopoverProps)
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-8 w-8 items-center justify-center rounded-full text-white/45 transition hover:bg-white/10 hover:text-cyan-200"
+        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-info-200"
         aria-label={label}
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -41,12 +41,12 @@ export function InfoPopover({ label, title, body, className }: InfoPopoverProps)
             ref={panelRef}
             role="dialog"
             aria-labelledby={titleId}
-            className="absolute left-1/2 top-full z-50 mt-2 w-64 -translate-x-1/2 rounded-xl border border-cyan-400/30 bg-[#0d1218] px-3 py-2.5 text-left shadow-xl sm:left-full sm:top-1/2 sm:mt-0 sm:ml-2 sm:w-72 sm:translate-x-0 sm:-translate-y-1/2"
+            className="absolute left-1/2 top-full z-tooltip mt-xs w-64 -translate-x-1/2 rounded-xl border border-info-400/30 bg-popover px-sm py-sm text-left shadow-elevation-lg sm:left-full sm:top-1/2 sm:mt-0 sm:ml-2 sm:w-72 sm:translate-x-0 sm:-translate-y-1/2"
           >
-            <p id={titleId} className="text-xs font-semibold text-cyan-100">
+            <p id={titleId} className="text-xs font-semibold text-info-100">
               {title}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-white/65">{body}</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{body}</p>
           </div>
         </>
       )}

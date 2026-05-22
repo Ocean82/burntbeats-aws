@@ -39,28 +39,28 @@ export function MidiEditorSelectionInfo({
   const sliderValue = velocityOverride ?? (allSameVelocity ? velocities[0] : avgVelocity);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
-      <span className="font-medium text-white/80">
+    <div className="flex flex-wrap items-center gap-sm px-sm py-xs text-xs">
+      <span className="font-medium text-secondary-foreground">
         {selectedNotes.length} selected
       </span>
 
-      <span className="text-white/25">|</span>
+      <span className="text-muted-foreground">|</span>
 
-      <span className="text-white/55" title="Pitch range">
+      <span className="text-muted-foreground" title="Pitch range">
         {minPitch === maxPitch
           ? midiToNoteName(minPitch)
           : `${midiToNoteName(minPitch)} – ${midiToNoteName(maxPitch)}`}
       </span>
 
-      <span className="text-white/25">|</span>
+      <span className="text-muted-foreground">|</span>
 
-      <div className="flex items-center gap-1.5" title="Transpose in semitones">
-        <span className="text-[10px] uppercase tracking-wide text-white/40">Transpose</span>
+      <div className="flex items-center gap-xs" title="Transpose in semitones">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Transpose</span>
         <button
           type="button"
           onClick={() => onTranspose(-1)}
           aria-label="Down 1 semitone"
-          className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10"
+          className="flex h-7 w-7 items-center justify-center rounded border border-border bg-muted text-secondary-foreground transition hover:bg-muted"
         >
           <Minus className="h-3 w-3" />
         </button>
@@ -68,17 +68,17 @@ export function MidiEditorSelectionInfo({
           type="button"
           onClick={() => onTranspose(1)}
           aria-label="Up 1 semitone"
-          className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10"
+          className="flex h-7 w-7 items-center justify-center rounded border border-border bg-muted text-secondary-foreground transition hover:bg-muted"
         >
           <Plus className="h-3 w-3" />
         </button>
-        <span className="text-[10px] text-white/35">st</span>
+        <span className="text-[10px] text-muted-foreground">st</span>
       </div>
 
-      <span className="text-white/25">|</span>
+      <span className="text-muted-foreground">|</span>
 
-      <div className="flex items-center gap-1.5" title="Note velocity (1–127)">
-        <span className="text-[10px] uppercase tracking-wide text-white/40">Velocity</span>
+      <div className="flex items-center gap-xs" title="Note velocity (1–127)">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Velocity</span>
         <input
           type="range"
           min={1}
@@ -89,14 +89,14 @@ export function MidiEditorSelectionInfo({
             setVelocityOverride(vel);
             onSetVelocity(vel);
           }}
-          className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-white/10 accent-emerald-500"
+          className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-muted accent-success-500"
           aria-label={
             allSameVelocity
               ? "Set velocity for selected notes"
               : "Set velocity (selection has mixed values; starts at average)"
           }
         />
-        <span className="min-w-[2.5rem] font-mono text-[10px] text-white/50">
+        <span className="min-w-[2.5rem] font-mono text-[10px] text-muted-foreground">
           {allSameVelocity ? velocities[0] : `${avgVelocity}*`}
         </span>
       </div>
@@ -108,7 +108,7 @@ export function MidiEditorSelectionInfo({
         onClick={onDelete}
         title="Delete selected notes (Del)"
         aria-label="Delete selected notes"
-        className="flex h-7 items-center gap-1 rounded border border-red-400/30 bg-red-500/10 px-2 text-red-200 transition hover:bg-red-500/20"
+        className="flex h-7 items-center gap-2xs rounded border border-destructive-400/30 bg-destructive-500/10 px-xs text-destructive-200 transition hover:bg-destructive-500/20"
       >
         <Trash2 className="h-3 w-3" />
         Delete

@@ -232,7 +232,7 @@ export function DjModeEditor({
   if (stems.length === 0) return null;
 
   return (
-    <div className="dj-mode-editor flex flex-col gap-0 overflow-x-hidden rounded-2xl border border-white/[0.08] bg-black/60">
+    <div className="dj-mode-editor flex flex-col gap-0 overflow-x-hidden rounded-2xl border border-border/[0.08] bg-secondary">
       {/* ── Transport Bar ── */}
       <DjTransportBar
         isPlaying={isPlaying}
@@ -256,7 +256,7 @@ export function DjModeEditor({
       {/* ── Waveform Section (full width, taller lanes, dark bg) ── */}
       <div
         ref={pinchZoomRef}
-        className="dj-waveform-section relative min-h-0 flex-1 overflow-hidden bg-black/80 px-3 py-2 touch-none"
+        className="dj-waveform-section relative min-h-0 flex-1 overflow-hidden bg-chrome px-sm py-xs touch-none"
       >
         <TimelineRuler ticks={ticks} formatTime={formatTime} />
         <WaveformTimeline
@@ -288,14 +288,14 @@ export function DjModeEditor({
       </div>
 
       {/* ── Collapsible Mixer Console ── */}
-      <div className="dj-console-section overflow-visible border-t border-white/[0.08]">
+      <div className="dj-console-section overflow-visible border-t border-border/[0.08]">
         {/* Console header — always visible */}
-        <div className="flex items-center justify-between px-4 py-2 bg-black/50">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-md py-xs bg-secondary">
+          <div className="flex items-center gap-sm">
             <button
               type="button"
               onClick={() => setConsoleCollapsed((v) => !v)}
-              className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-white/50 hover:text-white transition"
+              className="flex items-center gap-xs text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition"
               aria-label={consoleCollapsed ? "Expand mixer console" : "Collapse mixer console"}
             >
               {consoleCollapsed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -306,8 +306,8 @@ export function DjModeEditor({
             type="button"
             onClick={() => setShowToolbarSettings((v) => !v)}
             className={cn(
-              "flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-white/40 hover:text-white transition",
-              showToolbarSettings && "bg-white/10 text-white/70",
+              "flex items-center gap-2xs rounded-md px-xs py-1 text-[10px] text-muted-foreground hover:text-foreground transition",
+              showToolbarSettings && "bg-muted text-secondary-foreground",
             )}
             aria-label="Configure mixer tools"
           >

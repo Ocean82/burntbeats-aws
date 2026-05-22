@@ -54,7 +54,7 @@ export function DjTransportBar({
   const currentTime = (playheadPct / 100) * maxDuration;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 bg-black/70 border-b border-white/[0.06]" role="toolbar" aria-label="Transport controls">
+    <div className="flex items-center gap-sm px-md py-sm bg-chrome border-b border-border/[0.06]" role="toolbar" aria-label="Transport controls">
       {/* Play / Stop */}
       <button
         type="button"
@@ -64,8 +64,8 @@ export function DjTransportBar({
         className={cn(
           "flex h-9 w-9 items-center justify-center rounded-full border transition",
           isPlaying
-            ? "border-cyan-400/60 bg-cyan-500/20 text-cyan-200 shadow-[0_0_12px_rgba(0,220,255,0.3)]"
-            : "border-white/20 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/30",
+            ? "border-info-400/60 bg-info-500/20 text-info-200 shadow-[0_0_12px_rgba(0,220,255,0.3)]"
+            : "border-border bg-muted text-secondary-foreground hover:bg-muted hover:border-border",
           !playbackReady && "opacity-40",
         )}
       >
@@ -82,8 +82,8 @@ export function DjTransportBar({
         className={cn(
           "flex h-8 w-8 items-center justify-center rounded-lg border transition",
           loopEnabled
-            ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
-            : "border-white/15 bg-white/5 text-white/50 hover:text-white",
+            ? "border-info-400/50 bg-info-500/15 text-info-200"
+            : "border-border bg-muted text-muted-foreground hover:text-foreground",
           !playbackReady && "opacity-40",
         )}
       >
@@ -92,7 +92,7 @@ export function DjTransportBar({
 
       {/* Timecode */}
       <time
-        className="font-mono text-lg font-light tracking-wider text-cyan-300/90 tabular-nums min-w-[7rem] text-center"
+        className="font-mono text-lg font-light tracking-wider text-info-300/90 tabular-nums min-w-[7rem] text-center"
         aria-label="Current playback time"
         aria-live="off"
       >
@@ -109,10 +109,10 @@ export function DjTransportBar({
           onClick={onBeatGridToggle}
           aria-label="Toggle beat grid"
           className={cn(
-            "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wider transition",
+            "flex items-center gap-2xs rounded-lg border px-sm py-1.5 text-[10px] font-medium uppercase tracking-wider transition",
             showBeatGrid
-              ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
-              : "border-white/10 bg-white/5 text-white/50 hover:text-white",
+              ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
+              : "border-border bg-muted text-muted-foreground hover:text-foreground",
           )}
         >
           <Grid className="h-3 w-3" />
@@ -121,23 +121,23 @@ export function DjTransportBar({
       )}
 
       {/* Zoom */}
-      <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-black/30">
+      <div className="flex items-center gap-2xs rounded-lg border border-border bg-muted">
         <button
           type="button"
           onClick={onZoomOut}
           disabled={zoom <= 1}
           aria-label="Zoom out"
-          className="flex h-7 w-7 items-center justify-center text-white/50 hover:text-white disabled:opacity-30 transition"
+          className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
         >
           <ZoomOut className="h-3.5 w-3.5" />
         </button>
-        <span className="px-1 text-[10px] text-white/40 tabular-nums">{Math.round(zoom * 100)}%</span>
+        <span className="px-1 text-[10px] text-muted-foreground tabular-nums">{Math.round(zoom * 100)}%</span>
         <button
           type="button"
           onClick={onZoomIn}
           disabled={zoom >= 8}
           aria-label="Zoom in"
-          className="flex h-7 w-7 items-center justify-center text-white/50 hover:text-white disabled:opacity-30 transition"
+          className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
         >
           <ZoomIn className="h-3.5 w-3.5" />
         </button>
@@ -152,7 +152,7 @@ export function DjTransportBar({
           step={0.5}
           value={scrollPct}
           onChange={(e) => onScrollChange(Number(e.target.value))}
-          className="w-24 accent-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 rounded"
+          className="w-24 accent-info-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info-400/50 rounded"
           aria-label="Scroll timeline position"
           aria-valuetext={`${Math.round(scrollPct)}% scrolled`}
         />

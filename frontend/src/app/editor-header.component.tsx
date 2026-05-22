@@ -56,16 +56,16 @@ export function EditorHeader({
       {/* ── Navigation Tabs ── */}
       <nav
         aria-label="Workspace tabs"
-        className="glass-panel mirror-sheen flex w-full max-w-full items-center gap-1 self-stretch overflow-x-auto rounded-xl border border-white/10 p-1 sm:inline-flex sm:w-fit sm:self-start [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
+        className="glass-panel mirror-sheen flex w-full max-w-full items-center gap-2xs self-stretch overflow-x-auto rounded-xl border border-border p-2xs sm:inline-flex sm:w-fit sm:self-start [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
       >
         <button
           type="button"
           onClick={() => handleTabClick("editor")}
           className={cn(
-            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+            "relative shrink-0 min-h-[40px] rounded-lg px-sm text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-md",
             activeView === "editor"
-              ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
-              : "text-white/65 hover:text-white border border-transparent",
+              ? "bg-primary-500/20 text-primary-100 border border-primary-400/50"
+              : "text-muted-foreground hover:text-foreground border border-transparent",
           )}
           aria-current={activeView === "editor" ? "page" : undefined}
         >
@@ -76,10 +76,10 @@ export function EditorHeader({
           type="button"
           onClick={() => handleTabClick("speech")}
           className={cn(
-            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4 inline-flex items-center gap-1.5",
+            "relative shrink-0 min-h-[40px] rounded-lg px-sm text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-md inline-flex items-center gap-xs",
             activeView === "speech"
-              ? "bg-cyan-500/20 text-cyan-100 border border-cyan-400/50"
-              : "text-white/65 hover:text-white border border-transparent",
+              ? "bg-info-500/20 text-info-100 border border-info-400/50"
+              : "text-muted-foreground hover:text-foreground border border-transparent",
           )}
           aria-current={activeView === "speech" ? "page" : undefined}
         >
@@ -91,10 +91,10 @@ export function EditorHeader({
           type="button"
           onClick={() => handleTabClick("midi")}
           className={cn(
-            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4 inline-flex items-center gap-1.5",
+            "relative shrink-0 min-h-[40px] rounded-lg px-sm text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-md inline-flex items-center gap-xs",
             activeView === "midi"
-              ? "bg-violet-500/20 text-violet-100 border border-violet-400/50"
-              : "text-white/65 hover:text-white border border-transparent",
+              ? "bg-accent-midi-500/20 text-accent-midi-100 border border-accent-midi-400/50"
+              : "text-muted-foreground hover:text-foreground border border-transparent",
           )}
           aria-current={activeView === "midi" ? "page" : undefined}
         >
@@ -106,10 +106,10 @@ export function EditorHeader({
           type="button"
           onClick={() => handleTabClick("my-stems")}
           className={cn(
-            "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
+            "relative shrink-0 min-h-[40px] rounded-lg px-sm text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-md",
             activeView === "my-stems"
-              ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
-              : "text-white/65 hover:text-white border border-transparent",
+              ? "bg-primary-500/20 text-primary-100 border border-primary-400/50"
+              : "text-muted-foreground hover:text-foreground border border-transparent",
           )}
           aria-current={activeView === "my-stems" ? "page" : undefined}
         >
@@ -121,14 +121,14 @@ export function EditorHeader({
       {/* ── Header ── */}
       <header
         className={cn(
-          "glass-panel mirror-sheen flex flex-col gap-5 rounded-[2rem] px-4 py-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8",
+          "glass-panel mirror-sheen flex flex-col gap-lg rounded-[2rem] px-md py-md sm:px-lg sm:py-lg lg:flex-row lg:items-center lg:justify-between lg:px-xl",
           "header-sticky",
           !headerVisible && "header-sticky-hidden"
         )}
         aria-label="Burnt Beats"
       >
         {/* Left: Logo + tagline */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-md">
           <img
             src="/logo-emblem.png"
             alt=""
@@ -141,32 +141,32 @@ export function EditorHeader({
                 Burnt Beats
               </span>
             </div>
-            <p className="mt-0.5 text-xs text-white/55 sm:text-sm">
+            <p className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
               Split · Mix · Master · Export
             </p>
           </div>
         </div>
 
         {/* Right: Actions toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-xs">
           {/* Undo / Redo */}
-          <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
+          <div className="flex items-center rounded-xl border border-border bg-muted">
             <button
               type="button"
               onClick={onUndo}
               disabled={!canUndo}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center text-muted-foreground disabled:opacity-30 transition hover:text-foreground"
               title="Undo (Ctrl+Z)"
               aria-label="Undo"
             >
               <Undo2 className="h-4 w-4" />
             </button>
-            <div className="h-4 w-px bg-white/10" />
+            <div className="h-4 w-px bg-muted" />
             <button
               type="button"
               onClick={onRedo}
               disabled={!canRedo}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center text-white/65 disabled:opacity-30 transition hover:text-white"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center text-muted-foreground disabled:opacity-30 transition hover:text-foreground"
               title="Redo (Ctrl+Y)"
               aria-label="Redo"
             >
@@ -179,10 +179,10 @@ export function EditorHeader({
             type="button"
             onClick={toggleMode}
             className={cn(
-              "flex min-h-[44px] items-center gap-1.5 rounded-xl border px-3 text-sm transition tap-feedback",
+              "flex min-h-[44px] items-center gap-xs rounded-xl border px-sm text-sm transition tap-feedback",
               mode === "dj"
-                ? "border-cyan-400/40 bg-cyan-500/15 text-cyan-200"
-                : "border-white/10 bg-black/20 text-white/65 hover:text-white",
+                ? "border-info-400/40 bg-info-500/15 text-info-200"
+                : "border-border bg-muted text-muted-foreground hover:text-foreground",
             )}
             title={mode === "dj" ? "Switch to Classic layout" : "Switch to DJ layout"}
             aria-label={mode === "dj" ? "Switch to Classic layout" : "Switch to DJ layout"}

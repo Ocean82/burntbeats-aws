@@ -70,25 +70,25 @@ export function MidiSourceSelector({
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-xs text-violet-100/50 leading-relaxed">
-        <span className="font-medium text-violet-200/80">From recent split</span> uses stems from your last server split.
+    <div className="flex flex-col gap-sm">
+      <p className="text-xs text-accent-midi-100/50 leading-relaxed">
+        <span className="font-medium text-accent-midi-200/80">From recent split</span> uses stems from your last server split.
         {" "}
-        <span className="font-medium text-violet-200/80">From loaded stems</span> uses files you loaded in the stem editor.
+        <span className="font-medium text-accent-midi-200/80">From loaded stems</span> uses files you loaded in the stem editor.
         {" "}
-        <span className="font-medium text-violet-200/80">Upload file</span> is for any local audio.
+        <span className="font-medium text-accent-midi-200/80">Upload file</span> is for any local audio.
       </p>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-xs">
         <button
           type="button"
           onClick={() => onSourceModeChange("split")}
           disabled={disabled || !hasSplitStems}
           className={cn(
-            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition",
+            "inline-flex items-center gap-xs rounded-lg border px-sm py-xs text-sm font-medium transition",
             sourceMode === "split"
-              ? "border-violet-400/50 bg-violet-500/15 text-violet-100"
-              : "border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20",
+              ? "border-accent-midi-400/50 bg-accent-midi-500/15 text-accent-midi-100"
+              : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border",
             (disabled || !hasSplitStems) && "opacity-40 cursor-not-allowed",
           )}
         >
@@ -100,10 +100,10 @@ export function MidiSourceSelector({
           onClick={() => onSourceModeChange("loaded")}
           disabled={disabled || !hasLoadedStems}
           className={cn(
-            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition",
+            "inline-flex items-center gap-xs rounded-lg border px-sm py-xs text-sm font-medium transition",
             sourceMode === "loaded"
-              ? "border-violet-400/50 bg-violet-500/15 text-violet-100"
-              : "border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20",
+              ? "border-accent-midi-400/50 bg-accent-midi-500/15 text-accent-midi-100"
+              : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border",
             (disabled || !hasLoadedStems) && "opacity-40 cursor-not-allowed",
           )}
         >
@@ -115,10 +115,10 @@ export function MidiSourceSelector({
           onClick={() => onSourceModeChange("upload")}
           disabled={disabled}
           className={cn(
-            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition",
+            "inline-flex items-center gap-xs rounded-lg border px-sm py-xs text-sm font-medium transition",
             sourceMode === "upload"
-              ? "border-violet-400/50 bg-violet-500/15 text-violet-100"
-              : "border-white/10 bg-white/5 text-white/60 hover:text-white hover:border-white/20",
+              ? "border-accent-midi-400/50 bg-accent-midi-500/15 text-accent-midi-100"
+              : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border",
             disabled && "opacity-40 cursor-not-allowed",
           )}
         >
@@ -128,7 +128,7 @@ export function MidiSourceSelector({
       </div>
 
       {sourceMode === "split" && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-xs">
           {hasSplitStems ? (
             splitResultStems.map((stem) => (
               <button
@@ -137,10 +137,10 @@ export function MidiSourceSelector({
                 onClick={() => onSelectStem(stem.id)}
                 disabled={disabled}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition",
+                  "rounded-full border px-sm py-1.5 text-xs font-medium capitalize transition",
                   selectedStem === stem.id
-                    ? "border-violet-400/60 bg-violet-500/25 text-violet-100"
-                    : "border-white/15 bg-white/5 text-white/60 hover:text-white hover:border-white/25",
+                    ? "border-accent-midi-400/60 bg-accent-midi-500/25 text-accent-midi-100"
+                    : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border",
                   disabled && "opacity-40 cursor-not-allowed",
                 )}
               >
@@ -148,7 +148,7 @@ export function MidiSourceSelector({
               </button>
             ))
           ) : (
-            <p className="text-sm text-white/40">
+            <p className="text-sm text-muted-foreground">
               No split stems yet. Split a track in the stem editor, or use Upload file.
             </p>
           )}
@@ -156,7 +156,7 @@ export function MidiSourceSelector({
       )}
 
       {sourceMode === "loaded" && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-xs">
           {hasLoadedStems ? (
             loadedStems.map((stem) => (
               <button
@@ -165,10 +165,10 @@ export function MidiSourceSelector({
                 onClick={() => onSelectLoadedStem(stem.id)}
                 disabled={disabled}
                 className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition max-w-[200px] truncate",
+                  "rounded-full border px-sm py-1.5 text-xs font-medium transition max-w-[200px] truncate",
                   selectedLoadedStemId === stem.id
-                    ? "border-violet-400/60 bg-violet-500/25 text-violet-100"
-                    : "border-white/15 bg-white/5 text-white/60 hover:text-white hover:border-white/25",
+                    ? "border-accent-midi-400/60 bg-accent-midi-500/25 text-accent-midi-100"
+                    : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border",
                   disabled && "opacity-40 cursor-not-allowed",
                 )}
                 title={stem.label}
@@ -177,7 +177,7 @@ export function MidiSourceSelector({
               </button>
             ))
           ) : (
-            <p className="text-sm text-white/40">
+            <p className="text-sm text-muted-foreground">
               Load stem files in the stem editor first (Load stems), then return here.
             </p>
           )}
@@ -199,16 +199,16 @@ export function MidiSourceSelector({
           />
           {uploadedFile ? (
             <div
-              className="flex items-center gap-3 rounded-xl border border-violet-400/20 bg-violet-500/5 px-4 py-3"
+              className="flex items-center gap-sm rounded-xl border border-accent-midi-400/20 bg-accent-midi-500/5 px-md py-sm"
               {...dragProps}
             >
-              <Music className="h-4 w-4 text-violet-300" aria-hidden />
-              <span className="text-sm text-white/80 truncate">{uploadName}</span>
+              <Music className="h-4 w-4 text-accent-midi-300" aria-hidden />
+              <span className="text-sm text-secondary-foreground truncate">{uploadName}</span>
               <button
                 type="button"
                 onClick={() => onDrop(null)}
                 disabled={disabled}
-                className="ml-auto text-xs text-white/50 hover:text-white"
+                className="ml-auto text-xs text-muted-foreground hover:text-foreground"
               >
                 Remove
               </button>
@@ -221,13 +221,13 @@ export function MidiSourceSelector({
               disabled={disabled}
               {...dragProps}
               className={cn(
-                "w-full rounded-xl border-2 border-dashed px-6 py-8 text-center text-sm transition",
-                "border-violet-400/20 bg-violet-500/5 text-white/50 hover:border-violet-400/40 hover:text-white/70",
-                isDragging && "scale-[1.01] border-violet-300/50 bg-violet-500/10 text-white/70",
+                "w-full rounded-xl border-2 border-dashed px-lg py-xl text-center text-sm transition",
+                "border-accent-midi-400/20 bg-accent-midi-500/5 text-muted-foreground hover:border-accent-midi-400/40 hover:text-secondary-foreground",
+                isDragging && "scale-[1.01] border-accent-midi-300/50 bg-accent-midi-500/10 text-secondary-foreground",
                 disabled && "opacity-40 cursor-not-allowed",
               )}
             >
-              <Upload className="mx-auto mb-2 h-6 w-6 text-violet-300/50" aria-hidden />
+              <Upload className="mx-auto mb-xs h-6 w-6 text-accent-midi-300/50" aria-hidden />
               Drop audio file here or click to browse
             </button>
           )}

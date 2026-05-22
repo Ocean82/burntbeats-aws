@@ -103,18 +103,18 @@ export const ChannelStrip = memo(function ChannelStrip({
   return (
     <div
       className={cn(
-        "channel-strip flex w-[120px] min-w-[120px] flex-col items-stretch gap-0 rounded-xl border bg-black/40 transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400/50",
+        "channel-strip flex w-[120px] min-w-[120px] flex-col items-stretch gap-0 rounded-xl border bg-secondary transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-400/50",
         isActive
           ? "channel-strip--active shadow-[0_0_12px_rgba(255,255,255,0.06)]"
-          : "border-white/8 hover:border-white/15",
+          : "border-border hover:border-border",
       )}
       style={{ "--stem-glow": stem.glow } as React.CSSProperties}
     >
       {/* ── Stem Label (click to select) ── */}
-      <div className="channel-strip__header flex items-center gap-1 border-b border-white/8 px-2 py-2">
+      <div className="channel-strip__header flex items-center gap-2xs border-b border-border px-xs py-xs">
         <button
           type="button"
-          className="flex min-h-[40px] flex-1 items-center gap-2 rounded-lg px-1 transition-colors hover:bg-white/[0.04]"
+          className="flex min-h-[40px] flex-1 items-center gap-xs rounded-lg px-1 transition-colors hover:bg-muted/[0.04]"
           onClick={() => onActivate(stem.id)}
           onDoubleClick={(e) => {
             e.preventDefault();
@@ -131,11 +131,11 @@ export const ChannelStrip = memo(function ChannelStrip({
             className={cn(
               "channel-strip__dot h-2.5 w-2.5 rounded-full shrink-0 ring-2 ring-transparent",
               isActive && "channel-strip__dot--active",
-              isModified && "ring-amber-400/70",
+              isModified && "ring-primary-400/70",
             )}
             aria-hidden
           />
-          <span className="text-xs font-semibold truncate text-white/90">
+          <span className="text-xs font-semibold truncate text-secondary-foreground">
             {stem.label}
           </span>
         </button>
@@ -146,7 +146,7 @@ export const ChannelStrip = memo(function ChannelStrip({
               e.stopPropagation();
               onResetStem(stem.id);
             }}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white/40 hover:bg-white/10 hover:text-amber-200 transition"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-primary-200 transition"
             aria-label={`Reset ${stem.label} channel`}
             title="Reset channel"
           >
@@ -207,8 +207,8 @@ export const ChannelStrip = memo(function ChannelStrip({
           { key: "eqMid" as const, label: "Mid" },
           { key: "eqHigh" as const, label: "Hi" },
         ]).map(({ key, label }) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <span className="w-6 text-[9px] text-white/40 shrink-0">{label}</span>
+          <div key={key} className="flex items-center gap-xs">
+            <span className="w-6 text-[9px] text-muted-foreground shrink-0">{label}</span>
             <input
               type="range"
               min={-12}
@@ -221,7 +221,7 @@ export const ChannelStrip = memo(function ChannelStrip({
               className="stem-accent-slider min-w-0 flex-1"
               aria-label={`${stem.label} ${label} EQ`}
             />
-            <span className="w-8 text-right font-mono text-[8px] text-white/35 tabular-nums shrink-0">
+            <span className="w-8 text-right font-mono text-[8px] text-muted-foreground tabular-nums shrink-0">
               {formatDb(mixer[key])}
             </span>
           </div>
@@ -240,8 +240,8 @@ export const ChannelStrip = memo(function ChannelStrip({
           { key: "compAttackMs" as const, label: "Atk", min: 1, max: 200, unit: "ms" },
           { key: "compReleaseMs" as const, label: "Rel", min: 10, max: 1000, step: 10, unit: "ms" },
         ]).map(({ key, label, min = 0, max, step = 1, unit }) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <span className="w-6 text-[9px] text-white/40 shrink-0">{label}</span>
+          <div key={key} className="flex items-center gap-xs">
+            <span className="w-6 text-[9px] text-muted-foreground shrink-0">{label}</span>
             <input
               type="range"
               min={min}
@@ -265,11 +265,11 @@ export const ChannelStrip = memo(function ChannelStrip({
               className="stem-accent-slider min-w-0 flex-1"
               aria-label={`${stem.label} ${label}`}
             />
-            <span className="w-8 text-right font-mono text-[8px] text-white/35 tabular-nums shrink-0">
+            <span className="w-8 text-right font-mono text-[8px] text-muted-foreground tabular-nums shrink-0">
               {key === "compRatio"
                 ? `${mixer[key].toFixed(1)}`
                 : `${mixer[key]}`}
-              <span className="text-white/20">{unit}</span>
+              <span className="text-muted-foreground">{unit}</span>
             </span>
           </div>
         ))}
@@ -277,12 +277,12 @@ export const ChannelStrip = memo(function ChannelStrip({
 
       {/* ── Pan ── */}
       <div
-        className="flex flex-col items-center gap-1 border-t border-white/5 px-3 py-2"
+        className="flex flex-col items-center gap-2xs border-t border-border px-sm py-xs"
         role="group"
         aria-label={`${stem.label} pan`}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <span className="self-start text-[9px] font-semibold uppercase tracking-[0.12em] text-white/35">
+        <span className="self-start text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Pan
         </span>
         <PanKnob
@@ -311,7 +311,7 @@ export const ChannelStrip = memo(function ChannelStrip({
       </ControlSection>
 
       {/* ── Mute / Solo / Preview (above fader) ── */}
-      <div className="flex items-center justify-center gap-1.5 border-t border-white/8 px-2 py-2">
+      <div className="flex items-center justify-center gap-xs border-t border-border px-xs py-xs">
         <button
           type="button"
           onClick={(e) => {
@@ -349,12 +349,12 @@ export const ChannelStrip = memo(function ChannelStrip({
           className={cn(
             "flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold transition ring-1 ring-transparent",
             isPreviewPlaying
-              ? "bg-amber-500/20 text-amber-200"
-              : "bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70",
+              ? "bg-primary-500/20 text-primary-200"
+              : "bg-muted text-muted-foreground hover:bg-muted hover:text-secondary-foreground",
           )}
         >
           {isLoadingPreview ? (
-            <span className="h-3 w-3 animate-spin rounded-full border border-white/30 border-t-white" />
+            <span className="h-3 w-3 animate-spin rounded-full border border-border border-t-white" />
           ) : (
             <Headphones className="h-3.5 w-3.5" />
           )}
@@ -362,9 +362,9 @@ export const ChannelStrip = memo(function ChannelStrip({
       </div>
 
       {/* ── Volume Fader + Meter ── */}
-      <div className="flex flex-col items-center gap-1 border-t border-white/8 px-3 py-3">
+      <div className="flex flex-col items-center gap-2xs border-t border-border px-sm py-sm">
         <MixerSectionLabel className="tracking-[0.15em]">Vol</MixerSectionLabel>
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-2xs">
           {getStemAnalyserData && (
             <ChannelMeter
               getAnalyserData={meterGetter}
@@ -406,12 +406,12 @@ function ControlSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1 border-t border-white/5 px-3 py-2">
+    <div className="flex flex-col gap-2xs border-t border-border px-sm py-xs">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-white/35">
+        <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {label}
         </span>
-        <span className="font-mono text-[9px] tabular-nums text-white/45">
+        <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
           {value}
         </span>
       </div>
@@ -434,7 +434,7 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-t border-white/5">
+    <div className="border-t border-border">
       <button
         type="button"
         onClick={(e) => {
@@ -442,7 +442,7 @@ function CollapsibleSection({
           onToggle();
         }}
         aria-expanded={open}
-        className="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-white/45 hover:text-white/60 transition"
+        className="flex w-full items-center gap-xs px-sm py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground hover:text-muted-foreground transition"
       >
         {open ? (
           <ChevronDown className="h-3.5 w-3.5 shrink-0" />
@@ -452,7 +452,7 @@ function CollapsibleSection({
         <span>{open ? title : (collapsedLabel ?? title)}</span>
       </button>
       {open && (
-        <div className="flex flex-col gap-1.5 px-3 pb-2">
+        <div className="flex flex-col gap-xs px-sm pb-2">
           {children}
         </div>
       )}

@@ -67,7 +67,7 @@ export const DjMixerConsole = memo(function DjMixerConsole({
 
   return (
     <div
-      className="dj-mixer-console flex items-stretch gap-2 overflow-x-auto overflow-y-visible px-4 py-3 pb-4"
+      className="dj-mixer-console flex items-stretch gap-xs overflow-x-auto overflow-y-visible px-md py-sm pb-md"
       role="region"
       aria-label="DJ mixer console"
     >
@@ -97,7 +97,7 @@ export const DjMixerConsole = memo(function DjMixerConsole({
       })}
       {showMaster && (
         <>
-          <div className="mx-1 w-px self-stretch bg-white/10" role="separator" aria-orientation="vertical" />
+          <div className="mx-1 w-px self-stretch bg-muted" role="separator" aria-orientation="vertical" />
           <DjMasterStrip
           masterVolume={masterVolume}
           masterMuted={masterMuted}

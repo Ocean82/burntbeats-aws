@@ -1,0 +1,215 @@
+/**
+ * Burnt Beats — OKLCH color system
+ * Brand hue: ember ~38 (burnt orange). Ice accent ~205. Neutrals tinted to ember, not pure gray.
+ */
+
+:root {
+  /* ── Neutral scale (11 steps) — ember-tinted, never chroma 0 ── */
+  --neutral-50: oklch(97.5% 0.006 38);
+  --neutral-100: oklch(94% 0.008 38);
+  --neutral-200: oklch(88% 0.01 40);
+  --neutral-300: oklch(78% 0.012 42);
+  --neutral-400: oklch(66% 0.013 44);
+  --neutral-500: oklch(54% 0.014 42);
+  --neutral-600: oklch(42% 0.014 40);
+  --neutral-700: oklch(32% 0.014 39);
+  --neutral-800: oklch(22% 0.014 38);
+  --neutral-900: oklch(14% 0.013 38);
+  --neutral-950: oklch(7% 0.012 38);
+
+  /* ── Primary (fire / CTA) — hold hue 38, reduce chroma toward white/black ── */
+  --primary-50: oklch(97% 0.03 38);
+  --primary-100: oklch(92% 0.06 38);
+  --primary-200: oklch(84% 0.1 38);
+  --primary-300: oklch(76% 0.14 38);
+  --primary-400: oklch(69% 0.18 38);
+  --primary-500: oklch(63% 0.21 38);
+  --primary-600: oklch(55% 0.19 38);
+  --primary-700: oklch(46% 0.16 38);
+  --primary-800: oklch(36% 0.12 38);
+  --primary-900: oklch(26% 0.08 38);
+
+  /* ── Ice accent (secondary brand — tool chrome, not default blue) ── */
+  --ice-400: oklch(78% 0.1 205);
+  --ice-500: oklch(72% 0.12 205);
+  --ice-600: oklch(62% 0.11 205);
+
+  /* ── Semantic ── */
+  --success: oklch(62% 0.14 155);
+  --success-foreground: oklch(98% 0.01 155);
+  --success-muted: oklch(22% 0.04 155);
+
+  --warning: oklch(78% 0.14 78);
+  --warning-foreground: oklch(18% 0.03 78);
+  --warning-muted: oklch(24% 0.05 78);
+
+  --error: oklch(58% 0.2 25);
+  --error-foreground: oklch(98% 0.01 25);
+  --error-muted: oklch(22% 0.05 25);
+
+  --info: oklch(68% 0.11 205);
+  --info-foreground: oklch(98% 0.01 205);
+  --info-muted: oklch(20% 0.04 205);
+  /* Aliases for migrated utility names */
+  --info-100: var(--info-foreground);
+  --info-400: var(--info);
+  --info-500: var(--ice-500);
+  --info-600: var(--ice-600);
+  --info-950: var(--info-muted);
+
+  /* ── Surfaces (60-30-10: mostly neutral base) ── */
+  --surface-base: var(--neutral-950);
+  --surface-raised: oklch(11% 0.014 38);
+  --surface-overlay: oklch(15% 0.016 38 / 92%);
+
+  /* ── shadcn semantic roles ── */
+  --background: var(--surface-base);
+  --foreground: oklch(96% 0.012 75);
+  --card: var(--surface-raised);
+  --card-foreground: var(--foreground);
+  --popover: oklch(13% 0.015 38);
+  --popover-foreground: var(--foreground);
+  --primary: var(--primary-500);
+  --primary-foreground: oklch(98% 0.01 38);
+  --secondary: oklch(16% 0.013 38);
+  --secondary-foreground: oklch(88% 0.012 55);
+  --muted: oklch(18% 0.014 38);
+  --muted-foreground: oklch(72% 0.014 48);
+  --accent: oklch(20% 0.02 38);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--error);
+  --destructive-foreground: var(--error-foreground);
+  --border: oklch(32% 0.016 42 / 55%);
+  --input: oklch(20% 0.015 40);
+  --ring: var(--primary-500);
+  /* WCAG AA body on background (~4.5:1+) */
+  --placeholder-foreground: oklch(70% 0.013 50);
+
+  --sidebar-background: oklch(9% 0.013 38);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-border: oklch(28% 0.016 42 / 40%);
+  --sidebar-accent: oklch(16% 0.015 38);
+  --sidebar-ring: var(--ring);
+
+  /* ── Legacy app tokens (bridge existing CSS) ── */
+  --bg: var(--background);
+  --panel: oklch(11% 0.014 38 / 74%);
+  --panel-strong: oklch(14% 0.014 38 / 86%);
+  --line: oklch(96% 0.01 75 / 8%);
+  --text: var(--foreground);
+  --muted-legacy: var(--muted-foreground);
+  /* Legacy orange — keep separate from shadcn --accent hover surface */
+  --brand-accent: var(--primary-500);
+  --brand-accent-soft: oklch(63% 0.21 38 / 36%);
+  --accent-cyan: var(--ice-500);
+  --accent-info-soft: oklch(72% 0.12 205 / 30%);
+
+  /* Tool accents (speech = info, midi = purple) */
+  --accent-midi: oklch(62% 0.18 310);
+  --accent-midi-muted: oklch(20% 0.06 310);
+  --accent-midi-foreground: oklch(86% 0.1 310);
+
+  --chrome: oklch(5% 0.01 38 / 80%);
+  --chrome-strong: oklch(8% 0.012 38 / 92%);
+
+  /* Fire–ice thermal (edge glows) */
+  --fire-core: oklch(58% 0.24 35);
+  --fire-hot: oklch(65% 0.22 45);
+  --fire-ember: oklch(72% 0.16 55);
+  --ice-core: oklch(68% 0.12 205);
+  --ice-cold: oklch(78% 0.11 205);
+  --ice-frost: oklch(92% 0.04 205);
+
+  /* Stem lanes (distinct hues — avoid red/green-only pairs) */
+  --stem-vocals: oklch(65% 0.24 350);
+  --stem-vocals-soft: oklch(65% 0.24 350 / 44%);
+  --stem-drums: oklch(72% 0.12 205);
+  --stem-drums-soft: oklch(72% 0.12 205 / 42%);
+  --stem-bass: oklch(78% 0.22 135);
+  --stem-bass-soft: oklch(78% 0.22 135 / 38%);
+  --stem-melody: oklch(78% 0.16 75);
+  --stem-melody-soft: oklch(78% 0.16 75 / 38%);
+  --stem-instrumental: var(--ice-cold);
+  --stem-instrumental-soft: oklch(78% 0.11 205 / 42%);
+}
+
+@theme {
+  /* Neutrals */
+  --color-neutral-50: var(--neutral-50);
+  --color-neutral-100: var(--neutral-100);
+  --color-neutral-200: var(--neutral-200);
+  --color-neutral-300: var(--neutral-300);
+  --color-neutral-400: var(--neutral-400);
+  --color-neutral-500: var(--neutral-500);
+  --color-neutral-600: var(--neutral-600);
+  --color-neutral-700: var(--neutral-700);
+  --color-neutral-800: var(--neutral-800);
+  --color-neutral-900: var(--neutral-900);
+  --color-neutral-950: var(--neutral-950);
+
+  /* Primary scale */
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+
+  /* shadcn / Tailwind semantic colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-muted: var(--info-muted);
+  --color-info-100: var(--info-100);
+  --color-info-400: var(--info-400);
+  --color-info-500: var(--info-500);
+  --color-info-600: var(--info-600);
+  --color-info-950: var(--info-950);
+
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-overlay: var(--surface-overlay);
+
+  --color-sidebar: var(--sidebar-background);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-placeholder-foreground: var(--placeholder-foreground);
+  --color-ice-500: var(--ice-500);
+  --color-brand-accent: var(--brand-accent);
+  --color-accent-midi: var(--accent-midi);
+  --color-accent-midi-muted: var(--accent-midi-muted);
+  --color-accent-midi-foreground: var(--accent-midi-foreground);
+  --color-chrome: var(--chrome);
+  --color-chrome-strong: var(--chrome-strong);
+}

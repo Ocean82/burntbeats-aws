@@ -67,9 +67,9 @@ export function MidiEditorToolbar({
   onReset,
 }: MidiEditorToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-xs">
       <div
-        className="inline-flex rounded-md border border-white/10 p-0.5"
+        className="inline-flex rounded-md border border-border p-0.5"
         style={{ background: "var(--midi-surface-inset)" }}
         role="toolbar"
         aria-label="Editor tools"
@@ -84,7 +84,7 @@ export function MidiEditorToolbar({
               onClick={() => onToolChange(id)}
               title={`${meta.label} (${meta.shortcut}) — ${meta.hint}`}
               aria-label={meta.label}
-              className="!min-w-[2rem] !px-2"
+              className="!min-w-[2rem] !px-xs"
             >
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <span className="hidden sm:inline">{meta.label}</span>
@@ -93,7 +93,7 @@ export function MidiEditorToolbar({
         })}
       </div>
 
-      <div className="h-5 w-px bg-white/10" aria-hidden />
+      <div className="h-5 w-px bg-muted" aria-hidden />
 
       <MidiPhysicalButton
         variant="icon"
@@ -114,13 +114,13 @@ export function MidiEditorToolbar({
         <Redo2 className="h-3.5 w-3.5" />
       </MidiPhysicalButton>
 
-      <div className="h-5 w-px bg-white/10" aria-hidden />
+      <div className="h-5 w-px bg-muted" aria-hidden />
 
-      <div className="flex items-center gap-1.5" title="Grid snap">
+      <div className="flex items-center gap-xs" title="Grid snap">
         <Magnet
           className={cn(
             "h-3.5 w-3.5 shrink-0",
-            snapGrid === "free" ? "text-white/25" : "text-emerald-400/90",
+            snapGrid === "free" ? "text-muted-foreground" : "text-success-400/90",
           )}
           aria-hidden
         />
@@ -138,7 +138,7 @@ export function MidiEditorToolbar({
         </select>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-xs">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
           BPM
         </span>

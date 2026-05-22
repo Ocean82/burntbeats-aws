@@ -30,7 +30,7 @@ function renderMarkdown(md: string): string {
       // inline code
       .replace(/`(.+?)`/g, "<code>$1</code>")
       // links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-amber-300 underline underline-offset-2 hover:text-amber-200">$1</a>');
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary-300 underline underline-offset-2 hover:text-primary-200">$1</a>');
 
   const closeList = () => {
     if (inList) { out.push("</ul>"); inList = false; }
@@ -45,7 +45,7 @@ function renderMarkdown(md: string): string {
     // Horizontal rule
     if (/^---+$/.test(line)) {
       closeList(); closeTable();
-      out.push('<hr class="border-white/10 my-6" />');
+      out.push('<hr class="border-border my-6" />');
       continue;
     }
 
@@ -56,11 +56,11 @@ function renderMarkdown(md: string): string {
       const level = h[1].length;
       const text = inlineFormat(h[2]);
       const cls = [
-        "text-2xl font-bold text-white mt-8 mb-3",
-        "text-xl font-semibold text-white/95 mt-6 mb-2",
-        "text-base font-semibold text-amber-200/90 mt-5 mb-1 uppercase tracking-wide",
-        "text-sm font-semibold text-white/80 mt-4 mb-1",
-      ][level - 1] ?? "text-base font-semibold text-white mt-4 mb-1";
+        "text-2xl font-bold text-foreground mt-8 mb-sm",
+        "text-xl font-semibold text-secondary-foreground mt-lg mb-xs",
+        "text-base font-semibold text-primary-200/90 mt-lg mb-1 uppercase tracking-wide",
+        "text-sm font-semibold text-secondary-foreground mt-md mb-1",
+      ][level - 1] ?? "text-base font-semibold text-foreground mt-md mb-1";
       out.push(`<h${level} class="${cls}">${text}</h${level}>`);
       continue;
     }
@@ -87,8 +87,8 @@ function renderMarkdown(md: string): string {
       }
       const tag = tableHeaderDone ? "td" : "th";
       const cellCls = tableHeaderDone
-        ? "border border-white/10 px-3 py-2 text-white/80"
-        : "border border-white/10 px-3 py-2 text-left text-white/60 font-semibold bg-white/5";
+        ? "border border-border px-sm py-xs text-secondary-foreground"
+        : "border border-border px-sm py-xs text-left text-muted-foreground font-semibold bg-muted";
       cells.forEach((c) => out.push(`<${tag} class="${cellCls}">${inlineFormat(c)}</${tag}>`));
       if (tableHeaderDone) out.push("</tr>");
       continue;
@@ -99,7 +99,7 @@ function renderMarkdown(md: string): string {
     if (/^[-*]\s+/.test(line)) {
       if (!inList) { out.push('<ul class="list-none space-y-1.5 my-3 ml-1">'); inList = true; }
       const text = inlineFormat(line.replace(/^[-*]\s+/, ""));
-      out.push(`<li class="flex gap-2 text-white/80"><span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-400/70"></span><span>${text}</span></li>`);
+      out.push(`<li class="flex gap-xs text-secondary-foreground"><span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-400/70"></span><span>${text}</span></li>`);
       continue;
     }
     closeList();
@@ -111,7 +111,7 @@ function renderMarkdown(md: string): string {
     }
 
     // Paragraph
-    out.push(`<p class="text-white/80 leading-7">${inlineFormat(line)}</p>`);
+    out.push(`<p class="text-secondary-foreground leading-7">${inlineFormat(line)}</p>`);
   }
 
   closeList();
@@ -125,7 +125,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
   const otherTitle = doc === "privacy-policy" ? "Terms of Service" : "Privacy Policy";
 
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-white">
+    <div className="min-h-screen bg-[var(--bg)] text-foreground">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="fire-orb left-[-8rem] top-[-6rem] h-80 w-80" />
         <div className="fire-orb right-[-10rem] top-20 h-[26rem] w-[26rem] opacity-75" />
@@ -133,9 +133,9 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
         <div className="mesh-overlay" />
       </div>
 
-      <div className="relative mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-3xl px-md py-10 sm:px-lg lg:px-xl">
         {/* Nav bar */}
-        <nav className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <nav className="mb-8 flex flex-wrap items-center justify-between gap-sm">
           <a
             href="/"
             className="logo-burnt text-lg"
@@ -143,16 +143,16 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           >
             <span className="logo-burnt-fire">Burnt Beats</span>
           </a>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-xs">
             <a
               href={`/${otherDoc}`}
-              className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition"
+              className="rounded-lg border border-border bg-muted px-sm py-xs text-sm text-secondary-foreground hover:bg-muted hover:text-foreground transition"
             >
               {otherTitle}
             </a>
             <a
               href="/"
-              className="rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200 hover:bg-amber-500/20 transition"
+              className="rounded-lg border border-primary-400/30 bg-primary-500/10 px-sm py-xs text-sm text-primary-200 hover:bg-primary-500/20 transition"
             >
               ← Back to app
             </a>
@@ -160,9 +160,9 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
         </nav>
 
         {/* Document */}
-        <article className="rounded-2xl border border-white/10 bg-black/20 px-6 py-8 sm:px-10">
-          <h1 className="mb-1 text-3xl font-bold text-white">{title}</h1>
-          <p className="mb-6 text-sm text-white/40">Burnt Beats</p>
+        <article className="rounded-2xl border border-border bg-muted px-lg py-xl sm:px-10">
+          <h1 className="mb-1 text-3xl font-bold text-foreground">{title}</h1>
+          <p className="mb-lg text-sm text-muted-foreground">Burnt Beats</p>
           <div
             className="prose-legal"
             dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }}
@@ -170,12 +170,12 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
         </article>
 
         {/* Footer links */}
-        <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm text-white/40">
-          <a href="/terms-of-service" className="hover:text-white/70 transition">Terms of Service</a>
+        <div className="mt-8 flex flex-wrap justify-center gap-md text-sm text-muted-foreground">
+          <a href="/terms-of-service" className="hover:text-secondary-foreground transition">Terms of Service</a>
           <span aria-hidden>·</span>
-          <a href="/privacy-policy" className="hover:text-white/70 transition">Privacy Policy</a>
+          <a href="/privacy-policy" className="hover:text-secondary-foreground transition">Privacy Policy</a>
           <span aria-hidden>·</span>
-          <a href="/" className="hover:text-white/70 transition">Home</a>
+          <a href="/" className="hover:text-secondary-foreground transition">Home</a>
         </div>
       </div>
     </div>

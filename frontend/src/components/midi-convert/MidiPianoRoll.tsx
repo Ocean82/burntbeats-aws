@@ -165,7 +165,7 @@ export function MidiPianoRoll({
     return (
       <div
         ref={containerRef}
-        className={`flex w-full min-h-[120px] items-center justify-center rounded-lg border border-white/10 p-8 text-sm text-white/40 ${className}`}
+        className={`flex w-full min-h-[120px] items-center justify-center rounded-lg border border-border p-xl text-sm text-muted-foreground ${className}`}
         style={{ backgroundColor: PIANO_ROLL.surface }}
       >
         No MIDI notes to display
@@ -176,7 +176,7 @@ export function MidiPianoRoll({
   return (
     <div
       ref={containerRef}
-      className={`w-full rounded-lg border border-white/10 ${className}`}
+      className={`w-full rounded-lg border border-border ${className}`}
       style={{ backgroundColor: PIANO_ROLL.surface }}
     >
       <svg

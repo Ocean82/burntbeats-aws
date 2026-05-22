@@ -15,16 +15,16 @@ export function MidiConvertSettings({
   disabled = false,
 }: MidiConvertSettingsProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/3 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
+    <div className="flex flex-col gap-sm rounded-xl border border-border bg-muted px-md py-sm">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Conversion settings
       </p>
 
       {/* Min confidence slider */}
-      <label className="flex flex-col gap-1.5">
-        <span className="flex items-center justify-between text-sm text-white/70">
+      <label className="flex flex-col gap-xs">
+        <span className="flex items-center justify-between text-sm text-secondary-foreground">
           <span>Note confidence threshold</span>
-          <span className="font-mono text-xs text-violet-300">
+          <span className="font-mono text-xs text-accent-midi-300">
             {settings.minConfidence.toFixed(2)}
           </span>
         </span>
@@ -38,18 +38,18 @@ export function MidiConvertSettings({
             onUpdate({ minConfidence: parseFloat(e.target.value) })
           }
           disabled={disabled}
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-white/35">
+        <span className="text-[10px] text-muted-foreground">
           Higher = fewer notes but more accurate. Lower = more notes but may include noise.
         </span>
       </label>
 
       {/* Min note length slider */}
-      <label className="flex flex-col gap-1.5">
-        <span className="flex items-center justify-between text-sm text-white/70">
+      <label className="flex flex-col gap-xs">
+        <span className="flex items-center justify-between text-sm text-secondary-foreground">
           <span>Minimum note length</span>
-          <span className="font-mono text-xs text-violet-300">
+          <span className="font-mono text-xs text-accent-midi-300">
             {settings.minNoteLengthMs}ms
           </span>
         </span>
@@ -63,36 +63,36 @@ export function MidiConvertSettings({
             onUpdate({ minNoteLengthMs: parseInt(e.target.value, 10) })
           }
           disabled={disabled}
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-white/35">
+        <span className="text-[10px] text-muted-foreground">
           Filters out very short notes. Increase for cleaner output.
         </span>
       </label>
 
       {/* Pitch bends checkbox */}
-      <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-white/70">
+      <label className="inline-flex cursor-pointer items-center gap-xs text-sm text-secondary-foreground">
         <input
           type="checkbox"
           checked={settings.includePitchBends}
           onChange={(e) => onUpdate({ includePitchBends: e.target.checked })}
           disabled={disabled}
-          className="rounded border-violet-400/40 bg-violet-950/40 text-violet-400 focus:ring-violet-400/50"
+          className="rounded border-accent-midi-400/40 bg-accent-midi-950/40 text-accent-midi-400 focus:ring-accent-midi-400/50"
         />
         Include pitch bends
       </label>
 
-      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-white/45">
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Post-processing
       </p>
 
-      <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-white/70">
+      <label className="inline-flex cursor-pointer items-center gap-xs text-sm text-secondary-foreground">
         <input
           type="checkbox"
           checked={settings.normalizeVelocity}
           onChange={(e) => onUpdate({ normalizeVelocity: e.target.checked })}
           disabled={disabled}
-          className="rounded border-violet-400/40 bg-violet-950/40 text-violet-400 focus:ring-violet-400/50"
+          className="rounded border-accent-midi-400/40 bg-accent-midi-950/40 text-accent-midi-400 focus:ring-accent-midi-400/50"
         />
         Normalize velocity dynamics
       </label>
@@ -100,11 +100,11 @@ export function MidiConvertSettings({
       {settings.normalizeVelocity && (
         <label
           htmlFor="midi-convert-target-velocity"
-          className="ml-5 flex flex-col gap-1.5 border-l border-violet-400/20 pl-3"
+          className="ml-5 flex flex-col gap-xs border-l border-accent-midi-400/20 pl-3"
         >
-          <span className="flex items-center justify-between text-sm text-white/70">
+          <span className="flex items-center justify-between text-sm text-secondary-foreground">
             <span>Target peak velocity</span>
-            <span className="font-mono text-xs text-violet-300">
+            <span className="font-mono text-xs text-accent-midi-300">
               {settings.targetVelocity}
             </span>
           </span>
@@ -120,15 +120,15 @@ export function MidiConvertSettings({
             }
             disabled={disabled}
             aria-label="Target peak velocity"
-            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
+            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
           />
         </label>
       )}
 
-      <label className="flex flex-col gap-1.5">
-        <span className="flex items-center justify-between text-sm text-white/70">
+      <label className="flex flex-col gap-xs">
+        <span className="flex items-center justify-between text-sm text-secondary-foreground">
           <span>Max note length</span>
-          <span className="font-mono text-xs text-violet-300">
+          <span className="font-mono text-xs text-accent-midi-300">
             {settings.maxNoteLengthMs === 0
               ? "off"
               : `${settings.maxNoteLengthMs}ms`}
@@ -144,18 +144,18 @@ export function MidiConvertSettings({
             onUpdate({ maxNoteLengthMs: parseInt(e.target.value, 10) })
           }
           disabled={disabled}
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-white/35">
+        <span className="text-[10px] text-muted-foreground">
           Removes sustained false notes. 0 = disabled.
         </span>
       </label>
 
       {/* Transpose control */}
-      <label className="flex flex-col gap-1.5">
-        <span className="flex items-center justify-between text-sm text-white/70">
+      <label className="flex flex-col gap-xs">
+        <span className="flex items-center justify-between text-sm text-secondary-foreground">
           <span>Transpose</span>
-          <span className="font-mono text-xs text-violet-300">
+          <span className="font-mono text-xs text-accent-midi-300">
             {settings.transpose === 0
               ? "0"
               : settings.transpose > 0
@@ -174,36 +174,36 @@ export function MidiConvertSettings({
             onUpdate({ transpose: parseInt(e.target.value, 10) })
           }
           disabled={disabled}
-          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-white/35">
+        <span className="text-[10px] text-muted-foreground">
           Shift all notes up or down. Useful for key matching in your DAW.
         </span>
       </label>
 
       {/* Quantize output checkbox */}
-      <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-white/70">
+      <label className="inline-flex cursor-pointer items-center gap-xs text-sm text-secondary-foreground">
         <input
           type="checkbox"
           checked={settings.quantize}
           onChange={(e) => onUpdate({ quantize: e.target.checked })}
           disabled={disabled}
-          className="rounded border-violet-400/40 bg-violet-950/40 text-violet-400 focus:ring-violet-400/50"
+          className="rounded border-accent-midi-400/40 bg-accent-midi-950/40 text-accent-midi-400 focus:ring-accent-midi-400/50"
         />
         Quantize output
       </label>
 
       {/* Conditional quantization settings */}
       {settings.quantize && (
-        <div className="ml-5 flex flex-col gap-3 border-l border-violet-400/20 pl-3">
+        <div className="ml-5 flex flex-col gap-sm border-l border-accent-midi-400/20 pl-3">
           {/* Grid division selector */}
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-white/70">Grid division</span>
+          <label className="flex flex-col gap-xs">
+            <span className="text-sm text-secondary-foreground">Grid division</span>
             <select
               value={settings.quantizeGrid}
               onChange={(e) => onUpdate({ quantizeGrid: e.target.value })}
               disabled={disabled}
-              className="rounded border border-violet-400/30 bg-violet-950/40 px-2 py-1.5 text-sm text-white/90 accent-violet-400 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400/50 disabled:opacity-40"
+              className="rounded border border-accent-midi-400/30 bg-accent-midi-950/40 px-xs py-1.5 text-sm text-secondary-foreground accent-accent-midi-400 focus:border-accent-midi-400 focus:outline-none focus:ring-1 focus:ring-accent-midi-400/50 disabled:opacity-40"
             >
               <option value="1/4">1/4</option>
               <option value="1/8">1/8</option>
@@ -213,10 +213,10 @@ export function MidiConvertSettings({
           </label>
 
           {/* BPM input */}
-          <label className="flex flex-col gap-1.5">
-            <span className="flex items-center justify-between text-sm text-white/70">
+          <label className="flex flex-col gap-xs">
+            <span className="flex items-center justify-between text-sm text-secondary-foreground">
               <span>BPM</span>
-              <span className="font-mono text-xs text-violet-300">
+              <span className="font-mono text-xs text-accent-midi-300">
                 {settings.quantizeBpm}
               </span>
             </span>
@@ -232,17 +232,17 @@ export function MidiConvertSettings({
                 }
               }}
               disabled={disabled}
-              className="rounded border border-violet-400/30 bg-violet-950/40 px-2 py-1.5 text-sm text-white/90 focus:border-violet-400 focus:outline-none focus:ring-1 focus:ring-violet-400/50 disabled:opacity-40"
+              className="rounded border border-accent-midi-400/30 bg-accent-midi-950/40 px-xs py-1.5 text-sm text-secondary-foreground focus:border-accent-midi-400 focus:outline-none focus:ring-1 focus:ring-accent-midi-400/50 disabled:opacity-40"
             />
-            <span className="text-[10px] text-white/35">
+            <span className="text-[10px] text-muted-foreground">
               Tempo for grid alignment (40–300 BPM)
             </span>
           </label>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="flex items-center justify-between text-sm text-white/70">
+          <label className="flex flex-col gap-xs">
+            <span className="flex items-center justify-between text-sm text-secondary-foreground">
               <span>Quantize strength</span>
-              <span className="font-mono text-xs text-violet-300">
+              <span className="font-mono text-xs text-accent-midi-300">
                 {Math.round(settings.quantizeStrength * 100)}%
               </span>
             </span>
@@ -256,9 +256,9 @@ export function MidiConvertSettings({
                 onUpdate({ quantizeStrength: parseFloat(e.target.value) })
               }
               disabled={disabled}
-              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400 disabled:opacity-40"
+              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
             />
-            <span className="text-[10px] text-white/35">
+            <span className="text-[10px] text-muted-foreground">
               Lower values keep more of the original timing.
             </span>
           </label>

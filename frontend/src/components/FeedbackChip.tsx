@@ -36,7 +36,7 @@ export function FeedbackChip() {
   // Show "thank you" confirmation after submission
   if (submitted) {
     return (
-      <div className="fixed bottom-5 left-5 z-40 rounded-full border border-emerald-400/30 bg-black/80 px-4 py-2 text-[11px] font-medium text-emerald-200 shadow-lg backdrop-blur-md pb-safe">
+      <div className="fixed bottom-5 left-5 z-40 rounded-full border border-success-400/30 bg-chrome px-md py-xs text-[11px] font-medium text-success-200 shadow-elevation-md backdrop-blur-md pb-safe">
         Thanks for the feedback ✓
       </div>
     );
@@ -47,7 +47,7 @@ export function FeedbackChip() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 left-5 z-40 rounded-full border border-white/15 bg-black/80 px-4 py-2 text-[11px] font-medium text-white/75 shadow-lg backdrop-blur-md hover:text-white pb-safe"
+        className="fixed bottom-5 left-5 z-40 rounded-full border border-border bg-chrome px-md py-xs text-[11px] font-medium text-secondary-foreground shadow-elevation-md backdrop-blur-md hover:text-foreground pb-safe"
       >
         How&apos;s Burnt Beats so far?
       </button>
@@ -55,31 +55,31 @@ export function FeedbackChip() {
   }
 
   return (
-    <div className="fixed bottom-5 left-5 z-40 w-72 rounded-2xl border border-white/15 bg-black/90 p-3 text-[11px] text-white/80 shadow-xl backdrop-blur-md">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="font-semibold uppercase tracking-[0.18em] text-white/55">
+    <div className="fixed bottom-5 left-5 z-40 w-72 rounded-2xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-lg backdrop-blur-md">
+      <div className="mb-xs flex items-center justify-between gap-xs">
+        <p className="font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Quick feedback
         </p>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-white/35 hover:text-white"
+          className="text-muted-foreground hover:text-foreground"
           aria-label="Close feedback"
         >
           ✕
         </button>
       </div>
-      <p className="mb-2 text-[11px] text-white/65">
+      <p className="mb-xs text-[11px] text-muted-foreground">
         Help us make Burnt Beats better. Pick one and (optionally) add a note.
       </p>
-      <div className="mb-2 flex gap-1.5">
+      <div className="mb-xs flex gap-xs">
         <button
           type="button"
           onClick={() => setRating("great")}
-          className={`flex-1 rounded-full px-2 py-1 text-[11px] ${
+          className={`flex-1 rounded-full px-xs py-1 text-[11px] ${
             rating === "great"
-              ? "bg-emerald-500/30 text-emerald-100 border border-emerald-400/60"
-              : "bg-white/5 text-white/70 border border-white/10"
+              ? "bg-success-500/30 text-success-100 border border-success-400/60"
+              : "bg-muted text-secondary-foreground border border-border"
           }`}
         >
           Great
@@ -87,10 +87,10 @@ export function FeedbackChip() {
         <button
           type="button"
           onClick={() => setRating("ok")}
-          className={`flex-1 rounded-full px-2 py-1 text-[11px] ${
+          className={`flex-1 rounded-full px-xs py-1 text-[11px] ${
             rating === "ok"
-              ? "bg-amber-500/25 text-amber-100 border border-amber-400/60"
-              : "bg-white/5 text-white/70 border border-white/10"
+              ? "bg-primary-500/25 text-primary-100 border border-primary-400/60"
+              : "bg-muted text-secondary-foreground border border-border"
           }`}
         >
           OK
@@ -98,10 +98,10 @@ export function FeedbackChip() {
         <button
           type="button"
           onClick={() => setRating("confusing")}
-          className={`flex-1 rounded-full px-2 py-1 text-[11px] ${
+          className={`flex-1 rounded-full px-xs py-1 text-[11px] ${
             rating === "confusing"
-              ? "bg-rose-500/30 text-rose-100 border border-rose-400/60"
-              : "bg-white/5 text-white/70 border border-white/10"
+              ? "bg-destructive-500/30 text-destructive-100 border border-destructive-400/60"
+              : "bg-muted text-secondary-foreground border border-border"
           }`}
         >
           Confusing
@@ -111,13 +111,13 @@ export function FeedbackChip() {
         rows={2}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        className="mb-2 w-full rounded-md border border-white/15 bg-black/40 px-2 py-1 text-[11px] text-white/90 placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-amber-400/70"
+        className="mb-xs w-full rounded-md border border-border bg-secondary px-xs py-1 text-[11px] text-secondary-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary-400/70"
         placeholder="Optional: what&apos;s working or not?"
       />
       <button
         type="button"
         onClick={handleSubmit}
-        className="w-full rounded-full bg-amber-500/80 py-1.5 text-[11px] font-semibold text-black hover:bg-amber-400 disabled:opacity-40"
+        className="w-full rounded-full bg-primary-500/80 py-1.5 text-[11px] font-semibold text-black hover:bg-primary-400 disabled:opacity-40"
         disabled={!rating && !comment.trim()}
       >
         Send

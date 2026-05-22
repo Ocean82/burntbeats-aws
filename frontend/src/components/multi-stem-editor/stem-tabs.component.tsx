@@ -12,7 +12,7 @@ interface StemTabsProps {
 
 export function StemTabs({ stems, activeStemId, stemStates, onSelectStem }: StemTabsProps) {
   return (
-    <div className="flex gap-1.5 flex-wrap border-t border-white/10 pt-3">
+    <div className="flex gap-xs flex-wrap border-t border-border pt-sm">
       {stems.map((stem) => {
         const state = stemStates[stem.id] ?? defaultStemState();
         const selected = stem.id === activeStemId;
@@ -23,10 +23,10 @@ export function StemTabs({ stems, activeStemId, stemStates, onSelectStem }: Stem
             type="button"
             onClick={() => onSelectStem(stem.id)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition",
+              "flex items-center gap-xs rounded-lg border px-sm py-1.5 text-xs font-medium transition",
               selected
-                ? "border-current text-white"
-                : "border-white/10 bg-white/5 text-white/60 hover:text-white/80",
+                ? "border-current text-foreground"
+                : "border-border bg-muted text-muted-foreground hover:text-secondary-foreground",
               state.muted && "opacity-50"
             )}
             style={selected ? { borderColor: stem.glow, background: `${stem.glow}18`, color: stem.glow } : {}}
@@ -37,13 +37,13 @@ export function StemTabs({ stems, activeStemId, stemStates, onSelectStem }: Stem
             <span
               className={cn(
                 "h-2 w-2 rounded-full ring-2 ring-transparent",
-                modified && "ring-amber-400/70",
+                modified && "ring-primary-400/70",
               )}
               style={{ backgroundColor: stem.glow, boxShadow: selected ? `0 0 6px ${stem.glow}` : "none" }}
             />
             {stem.label}
             {state.muted && <span className="text-[9px] opacity-60">M</span>}
-            {state.soloed && <span className="text-[9px] text-amber-300">S</span>}
+            {state.soloed && <span className="text-[9px] text-primary-300">S</span>}
           </button>
         );
       })}

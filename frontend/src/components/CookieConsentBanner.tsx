@@ -33,37 +33,37 @@ export function CookieConsentBanner() {
       role="dialog"
       aria-label="Cookie consent"
       aria-describedby="cookie-consent-description"
-      className="fixed inset-x-0 bottom-0 z-[200] p-4 sm:p-6"
+      className="fixed inset-x-0 bottom-0 z-[200] p-md sm:p-lg"
     >
-      <div className="mx-auto max-w-2xl rounded-2xl border border-white/15 bg-[#0a0608]/95 px-5 py-4 shadow-2xl backdrop-blur-xl sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-popover/95 px-lg py-md shadow-elevation-xl backdrop-blur-xl sm:px-lg sm:py-lg">
+        <div className="flex flex-col gap-md sm:flex-row sm:items-center sm:justify-between sm:gap-lg">
           <div className="flex-1">
             <p
               id="cookie-consent-description"
-              className="text-sm leading-relaxed text-white/80"
+              className="text-sm leading-relaxed text-secondary-foreground"
             >
               We use cookies to analyze site usage and improve your experience.
               Essential cookies for authentication are always active.{" "}
               <a
                 href="/privacy-policy"
-                className="text-amber-300/90 underline underline-offset-2 hover:text-amber-200"
+                className="text-primary-300/90 underline underline-offset-2 hover:text-primary-200"
               >
                 Privacy Policy
               </a>
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-xs">
             <button
               type="button"
               onClick={declineAnalytics}
-              className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-medium text-white/70 transition hover:bg-white/10 hover:text-white"
+              className="rounded-full border border-border bg-muted px-md py-xs text-xs font-medium text-secondary-foreground transition hover:bg-muted hover:text-foreground"
             >
               Decline
             </button>
             <button
               type="button"
               onClick={acceptAnalytics}
-              className="rounded-full border border-amber-400/40 bg-amber-500/20 px-4 py-2 text-xs font-medium text-amber-100 transition hover:bg-amber-500/30"
+              className="rounded-full border border-primary-400/40 bg-primary-500/20 px-md py-xs text-xs font-medium text-primary-100 transition hover:bg-primary-500/30"
             >
               Accept cookies
             </button>

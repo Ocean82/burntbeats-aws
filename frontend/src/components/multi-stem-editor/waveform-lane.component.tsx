@@ -287,7 +287,7 @@ export function WaveformLane({
         aria-label={`${stem.label} quick mixer`}
       >
         <div
-          className="pointer-events-auto flex max-w-[min(100%,11rem)] items-center gap-0.5 rounded-md border border-white/10 bg-black/55 px-0.5 py-0.5 backdrop-blur-sm"
+          className="pointer-events-auto flex max-w-[min(100%,11rem)] items-center gap-0.5 rounded-md border border-border bg-secondary px-0.5 py-0.5 backdrop-blur-sm"
         >
           <button
             type="button"
@@ -297,8 +297,8 @@ export function WaveformLane({
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-bold text-[10px] tracking-wide transition-all duration-150 sm:h-8 sm:w-8",
               isSoloed
-                ? "border-amber-400/70 bg-amber-500/30 text-amber-100 shadow-[0_0_14px_rgba(255,172,92,0.5)]"
-                : "border-white/10 bg-white/5 text-white/60 hover:border-amber-400/40 hover:text-amber-200",
+                ? "border-primary-400/70 bg-primary-500/30 text-primary-100 shadow-[0_0_14px_rgba(255,172,92,0.5)]"
+                : "border-border bg-muted text-muted-foreground hover:border-primary-400/40 hover:text-primary-200",
               !audioReady && "opacity-40",
             )}
           >
@@ -312,8 +312,8 @@ export function WaveformLane({
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-bold text-[10px] tracking-wide transition-all duration-150 sm:h-8 sm:w-8",
               isMuted
-                ? "border-red-400/60 bg-red-500/25 text-red-100 shadow-[0_0_12px_rgba(239,68,68,0.4)]"
-                : "border-white/10 bg-white/5 text-[color:var(--stem-glow)]/85 hover:border-red-400/30 hover:text-red-200",
+                ? "border-destructive-400/60 bg-destructive-500/25 text-destructive-100 shadow-[0_0_12px_rgba(239,68,68,0.4)]"
+                : "border-border bg-muted text-[color:var(--stem-glow)]/85 hover:border-destructive-400/30 hover:text-destructive-200",
               !audioReady && "opacity-40",
             )}
           >
@@ -338,7 +338,7 @@ export function WaveformLane({
               )}
             />
             <span
-              className="w-7 shrink-0 text-center font-mono text-[8px] leading-none text-white/70"
+              className="w-7 shrink-0 text-center font-mono text-[8px] leading-none text-secondary-foreground"
               aria-hidden
             >
               {mixer.gain > 0 ? "+" : ""}
@@ -355,7 +355,7 @@ export function WaveformLane({
         className={cn(
           "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all",
           audioReady ? "cursor-crosshair" : "cursor-default",
-          isActive ? "border-white/20" : "border-white/8",
+          isActive ? "border-border" : "border-border",
         )}
         onPointerDown={onPointerDown}
         onKeyDown={(event) => {
@@ -384,7 +384,7 @@ export function WaveformLane({
 
       {/* Loading shimmer overlay */}
       {isLoading && (
-        <div className="pointer-events-none absolute inset-0 animate-pulse rounded-lg bg-white/10" />
+        <div className="pointer-events-none absolute inset-0 animate-pulse rounded-lg bg-muted" />
       )}
 
       <div className="waveform-lane-trim-window pointer-events-none absolute inset-y-0" />

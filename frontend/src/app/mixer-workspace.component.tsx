@@ -145,7 +145,7 @@ export function MixerWorkspace({
       ref={mixerSectionRef}
       onPointerDown={onPointerDownMixer}
       className={cn(
-        "glass-panel mirror-sheen rounded-[2rem] p-5 sm:p-6 overflow-visible",
+        "glass-panel mirror-sheen rounded-[2rem] p-lg sm:p-lg overflow-visible",
         guidanceTarget === "mixer" && guidanceRingClass,
       )}
       variants={{
@@ -155,17 +155,17 @@ export function MixerWorkspace({
       transition={{ duration: reduceMotion ? 0 : 0.4 }}
     >
       {/* Onboarding checklist */}
-      <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-[11px] text-white/70">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/45">
+      <div className="mb-md flex flex-col gap-xs rounded-2xl border border-border bg-muted px-sm py-xs text-[11px] text-secondary-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-xs">
+          <div className="flex items-center gap-xs">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               {ENABLE_ONBOARDING_QUEST
                 ? "First project quest"
                 : "Getting started"}
             </span>
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/10">
+            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-amber-400 transition-[width]"
+                className="h-full rounded-full bg-primary-400 transition-[width]"
                 style={{
                   width: `${
                     (onboardingSteps.filter((s) => s.done).length /
@@ -177,35 +177,35 @@ export function MixerWorkspace({
             </div>
           </div>
           {ENABLE_ONBOARDING_QUEST && (
-            <span className="text-[10px] text-white/45">
+            <span className="text-[10px] text-muted-foreground">
               Step {onboardingSteps.filter((s) => s.done).length}{" "}
               of {onboardingSteps.length}
             </span>
           )}
         </div>
-        <p className="text-[10px] text-white/45">
+        <p className="text-[10px] text-muted-foreground">
           Press{" "}
-          <kbd className="rounded border border-white/15 bg-white/10 px-1.5 py-0.5 font-mono text-white/70">
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-secondary-foreground">
             ?
           </kbd>{" "}
-          or <span className="text-white/55">Help</span> in the
+          or <span className="text-muted-foreground">Help</span> in the
           header for keyboard shortcuts.
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-xs">
           {onboardingSteps.map((step) => (
             <span
               key={step.id}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
+                "inline-flex items-center gap-2xs rounded-full border px-sm py-1",
                 step.done
-                  ? "border-emerald-400/40 bg-emerald-500/15 text-emerald-100"
-                  : "border-white/10 bg-white/5 text-white/60",
+                  ? "border-success-400/40 bg-success-500/15 text-success-100"
+                  : "border-border bg-muted text-muted-foreground",
               )}
             >
               <span
                 className={cn(
                   "h-1.5 w-1.5 rounded-full",
-                  step.done ? "bg-emerald-300" : "bg-white/35",
+                  step.done ? "bg-success-300" : "bg-secondary",
                 )}
               />
               {step.label}
@@ -215,7 +215,7 @@ export function MixerWorkspace({
       </div>
 
       {ENABLE_PROGRESS_WIDGET && (
-        <div className="mb-4">
+        <div className="mb-md">
           <ProgressWidget
             milestones={[
               {
@@ -246,18 +246,18 @@ export function MixerWorkspace({
       {ENABLE_ONBOARDING_QUEST &&
         hasCompletedFirstExport &&
         subscription.status === "inactive" && (
-          <div className="mb-4 rounded-2xl border border-amber-400/50 bg-amber-500/15 px-3 py-2 text-sm text-amber-100">
+          <div className="mb-md rounded-2xl border border-primary-400/50 bg-primary-500/15 px-sm py-xs text-sm text-primary-100">
             <p className="mb-1 font-semibold">
               Nice — you just finished your first stem.
             </p>
-            <p className="mb-2 text-amber-100/85">
+            <p className="mb-xs text-primary-100/85">
               If you&apos;ll be doing this more than a couple of
               times a month, a plan usually pays for itself.
             </p>
             <button
               type="button"
               onClick={() => setActiveView("pricing")}
-              className="rounded-full bg-amber-400 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-300"
+              className="rounded-full bg-primary-400 px-sm py-1.5 text-xs font-semibold text-black hover:bg-primary-300"
             >
               See which plan fits you
             </button>
@@ -265,20 +265,20 @@ export function MixerWorkspace({
         )}
 
       {uploadedFile == null && mixStemsLength === 0 && (
-        <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40 relative">
+        <div className="mb-md overflow-hidden rounded-2xl border border-border bg-secondary relative">
           {/* Overlay to blur and block interaction while providing CTA */}
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-[2px]">
-            <div className="rounded-[2rem] border border-amber-400/30 bg-amber-500/10 px-8 py-6 text-center shadow-[0_0_40px_rgba(255,140,80,0.15)] backdrop-blur-md">
-              <h3 className="mb-2 text-xl font-bold text-white">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-secondary backdrop-blur-[2px]">
+            <div className="rounded-[2rem] border border-primary-400/30 bg-primary-500/10 px-xl py-lg text-center shadow-[0_0_40px_rgba(255,140,80,0.15)] backdrop-blur-md">
+              <h3 className="mb-xs text-xl font-bold text-foreground">
                 Your studio awaits
               </h3>
-              <p className="mb-6 max-w-xs text-sm text-amber-50/70">
+              <p className="mb-lg max-w-xs text-sm text-primary-50/70">
                 Upload a track to automatically split it into stems, then mix and master your creation.
               </p>
               <button
                 type="button"
                 onClick={onBrowseUpload}
-                className="fire-button inline-flex h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold shadow-lg transition-transform hover:scale-105 active:scale-95"
+                className="fire-button inline-flex h-12 w-full items-center justify-center rounded-xl px-lg text-sm font-bold shadow-elevation-md transition-transform hover:scale-105 active:scale-95"
               >
                 Upload a track
               </button>
@@ -286,22 +286,22 @@ export function MixerWorkspace({
           </div>
 
           {/* Ghost UI Content */}
-          <div className="px-6 py-5 opacity-40 pointer-events-none select-none filter grayscale-[30%]">
-            <div className="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-white/10" />
-                <div className="space-y-2">
-                  <div className="h-3 w-32 rounded bg-white/20" />
-                  <div className="h-2 w-24 rounded bg-white/10" />
+          <div className="px-lg py-lg opacity-40 pointer-events-none select-none filter grayscale-[30%]">
+            <div className="mb-lg flex items-center justify-between border-b border-border pb-md">
+              <div className="flex items-center gap-sm">
+                <div className="h-10 w-10 rounded-full bg-muted" />
+                <div className="space-y-xs">
+                  <div className="h-3 w-32 rounded bg-secondary" />
+                  <div className="h-2 w-24 rounded bg-muted" />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <div className="h-8 w-8 rounded-lg border border-white/10 bg-white/5" />
-                <div className="h-8 w-24 rounded-lg border border-white/10 bg-white/5" />
+              <div className="flex gap-xs">
+                <div className="h-8 w-8 rounded-lg border border-border bg-muted" />
+                <div className="h-8 w-24 rounded-lg border border-border bg-muted" />
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-md md:grid-cols-2 xl:grid-cols-4">
               {[
                 { color: "amber", delay: "0s", hideClass: "" },
                 { color: "sky", delay: "0.1s", hideClass: "hidden md:flex" },
@@ -311,22 +311,22 @@ export function MixerWorkspace({
                 <div
                   key={idx}
                   className={cn(
-                    "ghost-mixer-strip flex flex-col gap-4 rounded-xl border border-white/5 bg-white/5 p-4",
+                    "ghost-mixer-strip flex flex-col gap-md rounded-xl border border-border bg-muted p-md",
                     strip.hideClass
                   )}
                   style={{ animationDelay: strip.delay }}
                 >
                   <div className="flex justify-between items-center">
                     <div className={`h-4 w-16 rounded bg-${strip.color}-400/40`} />
-                    <div className="h-4 w-4 rounded-full bg-white/20" />
+                    <div className="h-4 w-4 rounded-full bg-secondary" />
                   </div>
-                  <div className="h-24 w-full rounded bg-white/10" />
-                  <div className="space-y-2">
+                  <div className="h-24 w-full rounded bg-muted" />
+                  <div className="space-y-xs">
                     <div className="flex justify-between">
-                      <div className="h-2 w-6 rounded bg-white/20" />
-                      <div className="h-2 w-6 rounded bg-white/20" />
+                      <div className="h-2 w-6 rounded bg-secondary" />
+                      <div className="h-2 w-6 rounded bg-secondary" />
                     </div>
-                    <div className="h-1.5 w-full rounded bg-white/10" />
+                    <div className="h-1.5 w-full rounded bg-muted" />
                   </div>
                 </div>
               ))}
@@ -337,23 +337,23 @@ export function MixerWorkspace({
 
       <Suspense
         fallback={
-          <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-6">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div className="space-y-2">
-                <Skeleton className="h-3 w-32 bg-white/10" />
-                <Skeleton className="h-4 w-40 bg-white/10" />
+          <div className="rounded-2xl border border-border bg-secondary px-md py-lg">
+            <div className="mb-md flex items-center justify-between gap-md">
+              <div className="space-y-xs">
+                <Skeleton className="h-3 w-32 bg-muted" />
+                <Skeleton className="h-4 w-40 bg-muted" />
               </div>
-              <Skeleton className="h-9 w-24 bg-white/10" />
+              <Skeleton className="h-9 w-24 bg-muted" />
             </div>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-sm md:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, idx) => (
                 <div
                   key={idx}
-                  className="space-y-2 rounded-xl border border-white/5 bg-white/[0.03] p-3"
+                  className="space-y-xs rounded-xl border border-border bg-muted/[0.03] p-sm"
                 >
-                  <Skeleton className="h-3 w-24 bg-white/10" />
-                  <Skeleton className="h-24 w-full bg-white/5" />
-                  <Skeleton className="h-2 w-20 bg-white/10" />
+                  <Skeleton className="h-3 w-24 bg-muted" />
+                  <Skeleton className="h-24 w-full bg-muted" />
+                  <Skeleton className="h-2 w-20 bg-muted" />
                 </div>
               ))}
             </div>
@@ -409,7 +409,7 @@ export function MixerWorkspace({
       </Suspense>
       {exportCompareSummary && (
         <p
-          className="mt-3 text-xs text-white/70"
+          className="mt-sm text-xs text-secondary-foreground"
           role="status"
           aria-live="polite"
         >
@@ -418,7 +418,7 @@ export function MixerWorkspace({
       )}
       {undoToast && (
         <p
-          className="mt-2 text-xs text-amber-300/80"
+          className="mt-xs text-xs text-primary-300/80"
           role="status"
           aria-live="polite"
         >

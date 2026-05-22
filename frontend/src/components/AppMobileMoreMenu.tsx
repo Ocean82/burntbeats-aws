@@ -62,8 +62,8 @@ export function AppMobileMoreMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/15 bg-black/20 text-white/75 transition hover:text-white tap-feedback",
-          open && "border-amber-400/50 bg-amber-500/15 text-amber-100",
+          "flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-border bg-muted text-secondary-foreground transition hover:text-foreground tap-feedback",
+          open && "border-primary-400/50 bg-primary-500/15 text-primary-100",
         )}
         aria-haspopup="true"
         aria-controls={menuId}
@@ -74,13 +74,13 @@ export function AppMobileMoreMenu({
       {open && (
         <div
           id={menuId}
-          className="absolute right-0 top-full z-dropdown mt-2 w-56 max-h-[80vh] overflow-y-auto rounded-xl border border-white/15 bg-[#14100e]/98 py-1 shadow-xl backdrop-blur-md"
+          className="absolute right-0 top-full z-dropdown mt-xs w-56 max-h-[80vh] overflow-y-auto rounded-xl border border-border bg-popover/98 py-1 shadow-elevation-lg backdrop-blur-md"
           role="menu"
         >
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onOpenFullPricingTab();
               setOpen(false);
@@ -91,7 +91,7 @@ export function AppMobileMoreMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onOpenPricing();
               setOpen(false);
@@ -103,7 +103,7 @@ export function AppMobileMoreMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onOpenUsage();
               setOpen(false);
@@ -116,7 +116,7 @@ export function AppMobileMoreMenu({
             <button
               type="button"
               role="menuitem"
-              className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+              className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
               onClick={() => {
                 void onOpenPortal();
                 setOpen(false);
@@ -128,7 +128,7 @@ export function AppMobileMoreMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onOpenPresets();
               setOpen(false);
@@ -140,7 +140,7 @@ export function AppMobileMoreMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onOpenHelp();
               setOpen(false);
@@ -152,7 +152,7 @@ export function AppMobileMoreMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onRestartTour();
               setOpen(false);
@@ -164,7 +164,7 @@ export function AppMobileMoreMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onOpenFeedback();
               setOpen(false);
@@ -176,7 +176,7 @@ export function AppMobileMoreMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-white/85 hover:bg-white/10"
+            className="flex w-full items-center gap-xs px-md py-sm text-left text-sm text-secondary-foreground hover:bg-muted"
             onClick={() => {
               onOpenLegal();
               setOpen(false);

@@ -63,16 +63,16 @@ function SpeechResultPlayerInner({
   return (
     <div
       data-testid="speech-result-player"
-      className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-950/20 px-4 py-4"
+      className="mt-md rounded-xl border border-success-400/30 bg-success-950/20 px-md py-md"
     >
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Headphones className="h-4 w-4 text-emerald-300" aria-hidden />
-          <span className="text-sm font-semibold text-emerald-100">Enhanced speech ready</span>
+      <div className="mb-sm flex flex-wrap items-center justify-between gap-sm">
+        <div className="flex items-center gap-xs">
+          <Headphones className="h-4 w-4 text-success-300" aria-hidden />
+          <span className="text-sm font-semibold text-success-100">Enhanced speech ready</span>
         </div>
         {originalBlobUrl && enhancedBlobUrl && !loadError && (
           <div
-            className="inline-flex rounded-lg border border-emerald-400/30 bg-black/25 p-0.5"
+            className="inline-flex rounded-lg border border-success-400/30 bg-muted p-0.5"
             role="group"
             aria-label="Compare original and enhanced"
           >
@@ -81,10 +81,10 @@ function SpeechResultPlayerInner({
               onClick={() => switchMode("original")}
               aria-pressed={mode === "original"}
               className={cn(
-                "min-h-[36px] rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                "min-h-[36px] rounded-md px-sm py-1.5 text-xs font-semibold transition",
                 mode === "original"
-                  ? "bg-emerald-500/30 text-emerald-50"
-                  : "text-white/55 hover:text-white/80",
+                  ? "bg-success-500/30 text-success-50"
+                  : "text-muted-foreground hover:text-secondary-foreground",
               )}
             >
               Original
@@ -94,10 +94,10 @@ function SpeechResultPlayerInner({
               onClick={() => switchMode("enhanced")}
               aria-pressed={mode === "enhanced"}
               className={cn(
-                "min-h-[36px] rounded-md px-3 py-1.5 text-xs font-semibold transition",
+                "min-h-[36px] rounded-md px-sm py-1.5 text-xs font-semibold transition",
                 mode === "enhanced"
-                  ? "bg-emerald-500/30 text-emerald-50"
-                  : "text-white/55 hover:text-white/80",
+                  ? "bg-success-500/30 text-success-50"
+                  : "text-muted-foreground hover:text-secondary-foreground",
               )}
             >
               Enhanced
@@ -106,12 +106,12 @@ function SpeechResultPlayerInner({
         )}
       </div>
       {loading && (
-        <p className="text-sm text-white/50" role="status">
+        <p className="text-sm text-muted-foreground" role="status">
           Loading preview…
         </p>
       )}
       {loadError && (
-        <p className="text-sm text-red-300" role="alert">
+        <p className="text-sm text-destructive-300" role="alert">
           {loadError}
         </p>
       )}
@@ -122,7 +122,7 @@ function SpeechResultPlayerInner({
             key={mode}
             controls
             src={activeUrl}
-            className="mb-3 w-full"
+            className="mb-sm w-full"
             preload="metadata"
             aria-label={`${mode === "original" ? "Original" : "Enhanced"} preview of ${uploadName}`}
           >
@@ -132,7 +132,7 @@ function SpeechResultPlayerInner({
           <a
             href={enhancedBlobUrl ?? activeUrl}
             download={downloadName}
-            className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-emerald-400/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-100 hover:bg-emerald-500/25"
+            className="inline-flex min-h-[40px] items-center gap-xs rounded-lg border border-success-400/40 bg-success-500/15 px-md py-xs text-sm font-semibold text-success-100 hover:bg-success-500/25"
           >
             <Download className="h-4 w-4" aria-hidden />
             Download enhanced WAV

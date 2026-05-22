@@ -185,7 +185,7 @@ export function VUMeter({
         title={clipped ? "Clip" : "No clip"}
         className={
           "h-1.5 w-1.5 shrink-0 rounded-full transition-colors " +
-          (clipped ? "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.7)]" : "bg-white/10")
+          (clipped ? "bg-destructive-500 shadow-[0_0_6px_rgba(239,68,68,0.7)]" : "bg-muted")
         }
       />
       {meter}

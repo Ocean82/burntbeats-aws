@@ -692,10 +692,10 @@ export function App() {
   });
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-foreground">
       <a
         href="#main-content"
-        className="fixed left-4 top-4 z-sticky -translate-y-[130%] rounded-xl border border-amber-400/50 bg-[#1a1412]/95 px-4 py-2.5 text-sm font-medium text-white shadow-lg outline-none transition-transform duration-200 focus-visible:translate-y-0 focus-visible:ring-2 focus-visible:ring-amber-400/50"
+        className="fixed left-4 top-4 z-sticky -translate-y-[130%] rounded-xl border border-primary-400/50 bg-popover/95 px-md py-sm text-sm font-medium text-foreground shadow-elevation-md outline-none transition-transform duration-200 focus-visible:translate-y-0 focus-visible:ring-2 focus-visible:ring-primary-400/50"
       >
         Skip to main content
       </a>
@@ -738,7 +738,7 @@ export function App() {
 
       <AppBackgroundOrbs />
 
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1600px] flex-col gap-6 px-4 py-4 sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto flex min-h-screen max-w-[1600px] flex-col gap-lg px-md py-md sm:px-lg lg:px-xl">
         <EditorHeader
           headerVisible={headerVisible}
           activeView={activeView}
@@ -766,7 +766,7 @@ export function App() {
           id="main-content"
           tabIndex={-1}
           aria-label="Main content"
-          className="outline-none focus-visible:ring-2 focus-visible:ring-amber-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] rounded-[2rem]"
+          className="outline-none focus-visible:ring-2 focus-visible:ring-primary-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] rounded-[2rem]"
         >
           {/* Either show the main editor view or the dedicated pricing page */}
           {activeView === "pricing" ? (

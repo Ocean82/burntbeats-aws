@@ -138,15 +138,15 @@ export function MixerPanel({
     return (
       <>
         <p className="eyebrow">Mixer</p>
-        <h2 className="font-display text-2xl tracking-[-0.04em] text-white mb-5">Timeline · Mix · Export</h2>
+        <h2 className="font-display text-2xl tracking-[-0.04em] text-foreground mb-5">Timeline · Mix · Export</h2>
         <div 
-          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-12 text-center"
+          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/[0.02] py-12 text-center"
           role="region"
           aria-label="Empty mixer - no stems loaded"
         >
-          <Sliders className="h-10 w-10 text-white/25 mb-4" strokeWidth={1.5} />
-          <p className="text-white/65 text-sm font-medium mb-1">Mixer</p>
-          <p className="text-white/60 text-xs max-w-xs">
+          <Sliders className="h-10 w-10 text-muted-foreground mb-md" strokeWidth={1.5} />
+          <p className="text-muted-foreground text-sm font-medium mb-1">Mixer</p>
+          <p className="text-muted-foreground text-xs max-w-xs">
             Split a track or load stem files above to start mixing and exporting.
           </p>
         </div>
@@ -157,13 +157,13 @@ export function MixerPanel({
   return (
     <>
       <p className="eyebrow">Mixer</p>
-      <h2 className="font-display text-2xl tracking-[-0.04em] text-white mb-5">Timeline · Mix · Export</h2>
+      <h2 className="font-display text-2xl tracking-[-0.04em] text-foreground mb-5">Timeline · Mix · Export</h2>
 
       {/* ── Master / spectrum band (DJ: spectrum only; classic: full master strip) ── */}
       {mode === "dj" ? (
-        <div className="mb-5 flex overflow-hidden rounded-xl border border-white/10 bg-black/30 px-3 py-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+        <div className="mb-5 flex overflow-hidden rounded-xl border border-border bg-muted px-sm py-sm">
+          <div className="flex min-w-0 flex-1 flex-col gap-2xs">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Spectrum
             </p>
             <SpectrumAnalyzer
@@ -174,9 +174,9 @@ export function MixerPanel({
           </div>
         </div>
       ) : (
-      <div className="mb-5 flex items-stretch gap-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-        <div className="hidden min-w-0 flex-1 flex-col gap-1 border-r border-white/[0.08] px-3 py-3 sm:flex">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+      <div className="mb-5 flex items-stretch gap-0 overflow-hidden rounded-xl border border-border bg-muted">
+        <div className="hidden min-w-0 flex-1 flex-col gap-2xs border-r border-border/[0.08] px-sm py-sm sm:flex">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Spectrum
           </p>
           <div className="flex-1">
@@ -189,8 +189,8 @@ export function MixerPanel({
         </div>
 
         {/* Stereo VU meters with peak hold/decay */}
-        <div className="flex flex-col items-center gap-1 border-r border-white/[0.08] px-3 py-3">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+        <div className="flex flex-col items-center gap-2xs border-r border-border/[0.08] px-sm py-sm">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Level
           </p>
           <StereoVUMeter
@@ -204,11 +204,11 @@ export function MixerPanel({
         </div>
 
         {/* Master fader column */}
-        <div className="flex flex-col items-center gap-1 px-4 py-3">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-white/35">
+        <div className="flex flex-col items-center gap-2xs px-md py-sm">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Master
           </p>
-          <div className="relative flex flex-1 flex-col items-center justify-center gap-1.5">
+          <div className="relative flex flex-1 flex-col items-center justify-center gap-xs">
             <MixerVerticalFader
               value={masterMuted ? 0 : masterVolume}
               min={0}
@@ -231,12 +231,12 @@ export function MixerPanel({
               className={cn(
                 "font-mono text-[9px] font-semibold tabular-nums",
                 masterMuted
-                  ? "text-red-400"
+                  ? "text-destructive-400"
                   : masterVolume > 1.05
-                    ? "text-amber-300"
+                    ? "text-primary-300"
                     : masterVolume < 0.05
-                      ? "text-white/30"
-                      : "text-white/60",
+                      ? "text-muted-foreground"
+                      : "text-muted-foreground",
               )}
               aria-hidden
             >
@@ -246,7 +246,7 @@ export function MixerPanel({
             <button
               type="button"
               onClick={handleMasterReset}
-              className="rounded border border-white/10 px-2 py-0.5 text-[9px] text-white/60 hover:text-white transition"
+              className="rounded border border-border px-xs py-0.5 text-[9px] text-muted-foreground hover:text-foreground transition"
               aria-label="Reset master volume to 0 dB"
             >
               0 dB
@@ -258,8 +258,8 @@ export function MixerPanel({
               className={cn(
                 "flex h-6 w-6 items-center justify-center rounded transition",
                 masterMuted
-                  ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/60",
+                  ? "bg-destructive-500/20 text-destructive-400 hover:bg-destructive-500/30"
+                  : "bg-muted text-muted-foreground hover:bg-muted hover:text-muted-foreground",
               )}
             >
               {masterMuted ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
@@ -269,10 +269,10 @@ export function MixerPanel({
               aria-label="Master limiter"
               onClick={() => onMasterLimiterEnabledChange(!masterLimiterEnabled)}
               className={cn(
-                "rounded border px-2 py-0.5 text-[9px] uppercase tracking-wide transition",
+                "rounded border px-xs py-0.5 text-[9px] uppercase tracking-wide transition",
                 masterLimiterEnabled
-                  ? "border-amber-400/50 bg-amber-500/20 text-amber-200"
-                  : "border-white/10 text-white/60 hover:text-white",
+                  ? "border-primary-400/50 bg-primary-500/20 text-primary-200"
+                  : "border-border text-muted-foreground hover:text-foreground",
               )}
             >
               Lim
@@ -282,16 +282,16 @@ export function MixerPanel({
       </div>
       )}
 
-      <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-md flex flex-col gap-md sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm text-white/70">Trim, level, pan. Play mix, then export.</p>
+          <p className="text-sm text-secondary-foreground">Trim, level, pan. Play mix, then export.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-xs">
           <button
             type="button"
             className={cn(
-              "icon-pulse-hover flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
-              isPlayingMix ? "border-amber-400/50 bg-amber-500/20 text-amber-100" : "ghost-button"
+              "icon-pulse-hover flex items-center gap-xs rounded-xl border px-md py-sm text-sm font-medium transition",
+              isPlayingMix ? "border-primary-400/50 bg-primary-500/20 text-primary-100" : "ghost-button"
             )}
             onClick={onPlayStop}
             disabled={!hasStemBuffers}
@@ -301,7 +301,7 @@ export function MixerPanel({
           </button>
           <button
             type="button"
-            className="fire-button icon-pulse-hover flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"
+            className="fire-button icon-pulse-hover flex items-center gap-xs rounded-xl px-md py-sm text-sm"
             onClick={onExport}
             disabled={isExporting || !hasStemBuffers}
           >
@@ -311,30 +311,30 @@ export function MixerPanel({
           {onCompareExport && (
             <button
               type="button"
-              className="group relative ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white"
+              className="group relative ghost-button flex items-center gap-xs rounded-xl border border-border px-md py-sm text-sm text-secondary-foreground transition hover:text-foreground"
               onClick={onCompareExport}
               disabled={isComparingExport || !hasStemBuffers}
               title="Exports master twice (client & server) to compare accuracy"
             >
               {isComparingExport ? "Comparing..." : "Export diagnostics"}
-              <HelpCircle className="h-3.5 w-3.5 text-white/40 group-hover:text-white/60" strokeWidth={1.5} />
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground group-hover:text-muted-foreground" strokeWidth={1.5} />
             </button>
           )}
           {showResetConfirm ? (
-            <div className="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2">
-              <AlertTriangle className="h-4 w-4 text-amber-400" />
-              <span className="text-xs text-amber-200">Reset all levels?</span>
+            <div className="flex items-center gap-xs rounded-xl border border-primary-400/30 bg-primary-500/10 px-sm py-xs">
+              <AlertTriangle className="h-4 w-4 text-primary-400" />
+              <span className="text-xs text-primary-200">Reset all levels?</span>
               <button
                 type="button"
                 onClick={() => { onResetLevels(); setShowResetConfirm(false); }}
-                className="rounded bg-amber-500 px-2 py-1 text-xs font-medium text-black transition hover:bg-amber-400"
+                className="rounded bg-primary-500 px-xs py-1 text-xs font-medium text-black transition hover:bg-primary-400"
               >
                 Yes
               </button>
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
-                className="rounded border border-white/20 px-2 py-1 text-xs text-white/70 transition hover:bg-white/10"
+                className="rounded border border-border px-xs py-1 text-xs text-secondary-foreground transition hover:bg-muted"
               >
                 No
               </button>
@@ -342,7 +342,7 @@ export function MixerPanel({
           ) : (
             <button
               type="button"
-              className="ghost-button flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/70 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              className="ghost-button flex items-center gap-xs rounded-xl border border-border px-md py-sm text-sm text-secondary-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
               onClick={() => setShowResetConfirm(true)}
               disabled={!hasStemBuffers}
               title={
@@ -360,17 +360,17 @@ export function MixerPanel({
 
       {/* Loading error with retry */}
       {loadingError && (
-        <div className="mb-4 rounded-xl border border-red-400/30 bg-red-950/30 px-4 py-3" role="alert">
-          <div className="flex items-center justify-between gap-3">
+        <div className="mb-md rounded-xl border border-destructive-400/30 bg-destructive-950/30 px-md py-sm" role="alert">
+          <div className="flex items-center justify-between gap-sm">
             <div>
-              <p className="text-sm font-medium text-red-200">Failed to load stems</p>
-              <p className="mt-0.5 text-xs text-red-300/90">{loadingError}</p>
+              <p className="text-sm font-medium text-destructive-200">Failed to load stems</p>
+              <p className="mt-0.5 text-xs text-destructive-300/90">{loadingError}</p>
             </div>
             {onRetryLoadStems && (
               <button
                 type="button"
                 onClick={onRetryLoadStems}
-                className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-black transition hover:bg-amber-400"
+                className="flex items-center gap-xs rounded-lg bg-primary-500 px-sm py-1.5 text-xs font-medium text-black transition hover:bg-primary-400"
                 aria-label="Retry loading stems"
               >
                 <RefreshCw className="h-3.5 w-3.5" />

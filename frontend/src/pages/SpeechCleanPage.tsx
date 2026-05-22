@@ -21,7 +21,7 @@ export function SpeechCleanPage({
 }: SpeechCleanPageProps) {
   return (
     <ToolPageShell
-      borderColorClass="border-cyan-400/10"
+      borderColorClass="border-info/25"
       reduceMotion={reduceMotion}
       subscription={subscription}
       checkoutNotice={checkoutNotice}

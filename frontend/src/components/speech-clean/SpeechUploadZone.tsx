@@ -56,41 +56,41 @@ export function SpeechUploadZone({
         aria-label="Speech upload"
         {...dragProps}
         className={cn(
-          "mb-3 flex w-full items-center justify-between gap-3 rounded-xl border px-4 py-3 transition-all",
-          "border-cyan-400/25 bg-cyan-950/20 hover:border-cyan-400/40",
-          isDragging && "scale-[1.01] border-cyan-300/60 bg-cyan-950/35",
+          "mb-sm flex w-full items-center justify-between gap-sm rounded-xl border px-md py-sm transition-all",
+          "border-info-400/25 bg-info-950/20 hover:border-info-400/40",
+          isDragging && "scale-[1.01] border-info-300/60 bg-info-950/35",
         )}
       >
-        <Mic className="h-4 w-4 shrink-0 text-cyan-300/80" />
+        <Mic className="h-4 w-4 shrink-0 text-info-300/80" />
         <div className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-white">
+          <span className="block truncate text-sm font-semibold text-foreground">
             {uploadName}
           </span>
           {metaLine ? (
             <span
-              className="mt-0.5 block truncate text-xs tabular-nums text-cyan-200/50"
+              className="mt-0.5 block truncate text-xs tabular-nums text-info-200/50"
               aria-label={`File details: ${metaLine}`}
             >
               {metaLine}
             </span>
           ) : (
-            <span className="mt-0.5 block h-4 text-xs text-white/30" aria-hidden>
+            <span className="mt-0.5 block h-4 text-xs text-muted-foreground" aria-hidden>
               Reading file info…
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-xs">
           <button
             type="button"
             onClick={onClear}
-            className="min-h-[32px] rounded-lg border border-white/10 px-3 py-1 text-xs text-white/60 hover:border-white/30 hover:text-white"
+            className="min-h-[32px] rounded-lg border border-border px-sm py-1 text-xs text-muted-foreground hover:border-border hover:text-foreground"
           >
             Clear
           </button>
           <button
             type="button"
             onClick={onBrowse}
-            className="min-h-[32px] rounded-lg border border-cyan-400/30 px-3 py-1 text-xs font-semibold text-cyan-100/90 hover:border-cyan-300/50"
+            className="min-h-[32px] rounded-lg border border-info-400/30 px-sm py-1 text-xs font-semibold text-info-100/90 hover:border-info-300/50"
           >
             Change
           </button>
@@ -105,10 +105,10 @@ export function SpeechUploadZone({
       {...dragProps}
       onClick={onBrowse}
       className={cn(
-        "flex w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-all",
+        "flex w-full cursor-pointer flex-col items-center justify-center gap-md rounded-2xl border-2 border-dashed px-lg py-12 text-center transition-all",
         isDragging
-          ? "border-cyan-300/70 bg-cyan-500/15 shadow-[0_0_32px_rgba(34,211,238,0.25)]"
-          : "border-cyan-500/35 bg-cyan-950/25 hover:border-cyan-400/55",
+          ? "border-info-300/70 bg-info-500/15 shadow-[0_0_32px_rgba(34,211,238,0.25)]"
+          : "border-info-500/35 bg-info-950/25 hover:border-info-400/55",
       )}
       role="button"
       aria-label="Upload speech recording"
@@ -119,31 +119,31 @@ export function SpeechUploadZone({
         className={cn(
           "flex h-16 w-16 items-center justify-center rounded-full border transition-all",
           isDragging
-            ? "border-cyan-300/80 bg-cyan-500/25 shadow-[0_0_28px_rgba(34,211,238,0.45)]"
-            : "border-cyan-400/45 bg-cyan-500/10",
+            ? "border-info-300/80 bg-info-500/25 shadow-[0_0_28px_rgba(34,211,238,0.45)]"
+            : "border-info-400/45 bg-info-500/10",
         )}
       >
         {isDragging ? (
-          <Waves className="h-8 w-8 text-cyan-200" />
+          <Waves className="h-8 w-8 text-info-200" />
         ) : (
-          <Upload className="h-8 w-8 text-cyan-300" strokeWidth={1.5} />
+          <Upload className="h-8 w-8 text-info-300" strokeWidth={1.5} />
         )}
       </div>
       <div>
-        <p className="text-lg font-bold text-white">
+        <p className="text-lg font-bold text-foreground">
           {isDragging
             ? "Drop your recording"
             : isTouch
               ? "Tap to upload speech"
               : "Drop voice / podcast / dialogue"}
         </p>
-        <p className="mt-1 text-sm text-white/55">
+        <p className="mt-1 text-sm text-muted-foreground">
           {isTouch ? (
             ALLOWED_AUDIO_FORMATS_LABEL
           ) : (
             <>
               or{" "}
-              <span className="text-cyan-300 underline decoration-cyan-400/40 underline-offset-2">
+              <span className="text-info-300 underline decoration-info-400/40 underline-offset-2">
                 browse files
               </span>
               {" · " + ALLOWED_AUDIO_FORMATS_LABEL}
@@ -151,9 +151,9 @@ export function SpeechUploadZone({
           )}
         </p>
       </div>
-      <p className="max-w-md text-[11px] leading-relaxed text-cyan-200/55">
+      <p className="max-w-md text-[11px] leading-relaxed text-info-200/55">
         For podcasts, voice memos, calls, and dialogue —{" "}
-        <span className="font-semibold text-cyan-100/80">not for songs or full mixes</span>.
+        <span className="font-semibold text-info-100/80">not for songs or full mixes</span>.
       </p>
     </div>
   );

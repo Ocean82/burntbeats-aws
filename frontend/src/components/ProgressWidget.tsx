@@ -11,39 +11,39 @@ export function ProgressWidget({ milestones, onViewPlans }: ProgressWidgetProps)
   const progressPct = total === 0 ? 0 : (doneCount / total) * 100;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-[11px] text-white/70">
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <p className="font-semibold uppercase tracking-[0.2em] text-white/55">
+    <div className="rounded-2xl border border-border bg-muted px-sm py-sm text-[11px] text-secondary-foreground">
+      <div className="mb-1 flex items-center justify-between gap-xs">
+        <p className="font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Progress &amp; rewards
         </p>
-        <span className="text-[10px] text-white/45">
+        <span className="text-[10px] text-muted-foreground">
           {doneCount}/{total} steps
         </span>
       </div>
-      <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+      <div className="mb-xs h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={cn(
-            "h-full rounded-full bg-amber-400 transition-[width]",
+            "h-full rounded-full bg-primary-400 transition-[width]",
             doneCount === total && "shadow-[0_0_18px_rgba(251,191,36,0.8)]"
           )}
           style={{ width: `${progressPct}%` }}
         />
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-xs">
         {milestones.map((m) => (
           <span
             key={m.id}
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5",
+              "inline-flex items-center gap-2xs rounded-full border px-xs py-0.5",
               m.done
-                ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100"
-                : "border-white/10 bg-white/5 text-white/60",
+                ? "border-success-400/50 bg-success-500/15 text-success-100"
+                : "border-border bg-muted text-muted-foreground",
             )}
           >
             <span
               className={cn(
                 "h-1.5 w-1.5 rounded-full",
-                m.done ? "bg-emerald-300" : "bg-white/35",
+                m.done ? "bg-success-300" : "bg-secondary",
               )}
             />
             {m.label}
@@ -53,7 +53,7 @@ export function ProgressWidget({ milestones, onViewPlans }: ProgressWidgetProps)
       {onViewPlans && doneCount === total && (
         <button
           type="button"
-          className="mt-2 text-[10px] font-semibold text-amber-200 underline underline-offset-2 hover:text-amber-100"
+          className="mt-xs text-[10px] font-semibold text-primary-200 underline underline-offset-2 hover:text-primary-100"
           onClick={onViewPlans}
         >
           See plans that match how you use Burnt Beats

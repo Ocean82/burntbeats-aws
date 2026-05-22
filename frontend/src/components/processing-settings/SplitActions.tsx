@@ -98,8 +98,8 @@ export function SplitActions({
         {progressAnnouncement}
       </div>
       {/* Split / action button + Try for free pill */}
-      <div className="flex shrink-0 flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex shrink-0 flex-col gap-xs">
+        <div className="flex flex-wrap items-center gap-xs">
           <button
             type="button"
             onClick={() => onSplit(requestedStemMode, isSample)}
@@ -111,7 +111,7 @@ export function SplitActions({
                 ? "Upload a new file to run separation again. Each upload is a new job."
                 : undefined
             }
-            className="fire-button min-h-[44px] shrink-0 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            className="fire-button min-h-[44px] shrink-0 inline-flex items-center justify-center gap-xs px-lg py-sm text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSplitting ? (
               <>
@@ -137,19 +137,19 @@ export function SplitActions({
               aria-pressed={isSample}
               title="Process only the first 60 seconds — free, no tokens used"
               className={cn(
-                "min-h-[44px] inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                "min-h-[44px] inline-flex items-center gap-xs rounded-full border px-md py-xs text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed",
                 isSample
-                  ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]"
-                  : "border-white/15 bg-white/5 text-white/65 hover:border-white/30 hover:text-white",
+                  ? "border-success-400/60 bg-success-500/20 text-success-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]"
+                  : "border-border bg-muted text-muted-foreground hover:border-border hover:text-foreground",
               )}
             >
-              <Sparkles className={cn("h-3.5 w-3.5", isSample ? "text-emerald-300" : "text-white/40")} />
+              <Sparkles className={cn("h-3.5 w-3.5", isSample ? "text-success-300" : "text-muted-foreground")} />
               {isSample ? "Free sample ✓" : "Try for free"}
             </button>
           )}
         </div>
         {isSample && (
-          <p className="text-[11px] text-emerald-400/80">
+          <p className="text-[11px] text-success-400/80">
             60-second sample · no tokens consumed
           </p>
         )}
@@ -176,21 +176,21 @@ export function SplitActions({
               <div className="mt-1 w-full min-w-[220px]">
                 <div
                   className={cn(
-                    "mb-1 flex items-center justify-between gap-2 text-[11px]",
+                    "mb-1 flex items-center justify-between gap-xs text-[11px]",
                     queuePosition != null && !isUploading
-                      ? "text-amber-200/80"
-                      : "text-white/50",
+                      ? "text-primary-200/80"
+                      : "text-muted-foreground",
                   )}
                 >
                   <span>{progressCopy.primary}</span>
-                  <span className="shrink-0 tabular-nums text-white/60">
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
                     {progressCopy.secondary ??
                       (!isUploading && queuePosition == null
                         ? `${Math.round(splitProgress)}%`
                         : "")}
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <motion.div
                     className="h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)]"
                     initial={{ width: "0%" }}
@@ -212,16 +212,16 @@ export function SplitActions({
           <button
             type="button"
             onClick={onOpenWaitingGame}
-            className="inline-flex min-h-[36px] items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-medium text-white/70 transition hover:border-amber-400/35 hover:bg-amber-500/10 hover:text-amber-100"
+            className="inline-flex min-h-[36px] items-center gap-xs rounded-lg border border-border bg-muted px-sm py-1.5 text-[11px] font-medium text-secondary-foreground transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-100"
           >
-            <Gamepad2 className="h-3.5 w-3.5 animate-pulse text-amber-300/90" aria-hidden />
+            <Gamepad2 className="h-3.5 w-3.5 animate-pulse text-primary-300/90" aria-hidden />
             Play The Waiting Game while you wait
           </button>
         )}
       </div>
 
       {/* Queue button */}
-      <div className="flex shrink-0 flex-col items-start gap-1">
+      <div className="flex shrink-0 flex-col items-start gap-2xs">
         <button
           type="button"
           onClick={onAddToQueue}
@@ -238,17 +238,17 @@ export function SplitActions({
                 ? "Add to batch queue"
                 : "Requires Premium or Studio"
           }
-          className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2.5 text-xs text-white/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className="ghost-button shrink-0 rounded-xl border border-border px-sm py-sm text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex items-center gap-2xs">
             + Queue
             {!canUseBatchQueue && (
-              <Lock className="h-3 w-3 text-white/35" aria-hidden="true" />
+              <Lock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
             )}
           </span>
         </button>
         {!canUseBatchQueue && (
-          <span className="max-w-[12rem] text-[10px] text-white/45">
+          <span className="max-w-[12rem] text-[10px] text-muted-foreground">
             Premium &amp; Studio plans let you run whole queues
             automatically while you work.
           </span>
@@ -257,7 +257,7 @@ export function SplitActions({
 
       {/* Expanding indicator */}
       {isExpanding && (
-        <span className="shrink-0 text-xs text-amber-200/80">
+        <span className="shrink-0 text-xs text-primary-200/80">
           Expanding to 4 stems…
         </span>
       )}
@@ -271,7 +271,7 @@ export function SplitActions({
           <button
             type="button"
             onClick={() => onExpand()}
-            className="ghost-button shrink-0 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/60 hover:text-white"
+            className="ghost-button shrink-0 rounded-xl border border-border px-sm py-xs text-xs text-muted-foreground hover:text-foreground"
           >
             Expand → 4 stems
           </button>

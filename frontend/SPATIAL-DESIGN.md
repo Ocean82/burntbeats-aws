@@ -116,4 +116,10 @@ Coarse-pointer media rules in `index.css` still enlarge `.icon-button` / `.ghost
 
 ## Migration notes
 
-Legacy Tailwind defaults (`gap-4`, `p-5`, `z-50`) are often on-scale but unnamed. Prefer semantic utilities (`gap-md`, `z-dropdown`) in new code. Existing screens can migrate incrementally.
+App shells and feature components under `frontend/src` (excluding `components/ui/` shadcn and `pitch-tempo-plugin/`) use semantic spacing and `shadow-elevation-*` utilities. **`glass-panel` / `glass-card` / `stem-panel`** lift comes from `--shadow-elevation-*`; fire/ice rims use `--shadow-glass-*` at low opacity.
+
+**Off-scale Tailwind halves** (`p-2.5`, `gap-1.5`): map to the nearest token (`p-sm` / `gap-xs`), not `p-xs.5`.
+
+**`components/ui/`** (shadcn) uses the same tokens: `gap-md`, `p-lg`, `shadow-elevation-sm`, `z-modal`, `z-dropdown`, `z-tooltip`, etc. Modal overlays use `z-modal-backdrop` + `z-modal`; menus/popovers use `z-dropdown`; tooltips use `z-tooltip`.
+
+**Colors:** see [`COLOR-CONTRAST.md`](COLOR-CONTRAST.md) and [`src/design-tokens-oklch.css`](src/design-tokens-oklch.css).

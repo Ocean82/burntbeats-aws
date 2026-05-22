@@ -30,9 +30,9 @@ export const Button: React.FC<ButtonProps> = (allProps) => {
   };
 
   const sizeClasses = {
-    default: "h-10 py-2 px-4",
-    sm: "h-9 px-3 rounded-md",
-    lg: "h-11 px-8 rounded-md",
+    default: "h-10 py-xs px-md",
+    sm: "h-9 px-sm rounded-md",
+    lg: "h-11 px-xl rounded-md",
     icon: "h-10 w-10"
   };
 
@@ -61,13 +61,13 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const Card: React.FC<CardProps> = ({ children, className = "", ...props }) => (
-  <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`} {...props}>
+  <div className={`rounded-lg border bg-card text-card-foreground shadow-elevation-sm ${className}`} {...props}>
     {children}
   </div>
 );
 
 export const CardHeader: React.FC<CardProps> = ({ children, className = "", ...props }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 ${className}`} {...props}>
+  <div className={`flex flex-col space-y-sm p-lg ${className}`} {...props}>
     {children}
   </div>
 );
@@ -79,7 +79,7 @@ export const CardTitle: React.FC<CardProps> = ({ children, className = "", ...pr
 );
 
 export const CardContent: React.FC<CardProps> = ({ children, className = "", ...props }) => (
-  <div className={`p-6 pt-0 ${className}`} {...props}>
+  <div className={`p-lg pt-0 ${className}`} {...props}>
     {children}
   </div>
 );
@@ -94,8 +94,7 @@ export const Input: React.FC<InputProps> = ({
 }) => (
   <input
     type={type}
-    className={`flex h-10 w-full rounded-md border border-input bg-gray-800 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-white ${className}`}
-    style={{ color: 'white', backgroundColor: 'rgb(31, 41, 55)' }}
+    className={`flex h-10 w-full rounded-md border border-input bg-background px-sm py-xs text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-placeholder-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     {...props}
   />
 );
@@ -108,7 +107,7 @@ export const Textarea: React.FC<TextareaProps> = ({
   ...props 
 }) => (
   <textarea
-    className={`flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    className={`flex min-h-[80px] w-full rounded-md border border-input bg-background px-sm py-xs text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     {...props}
   />
 );
@@ -128,7 +127,7 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
 
 export const Select: React.FC<SelectProps> = ({ className = "", ...props }) => (
   <select
-    className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+    className={`flex h-10 w-full rounded-md border border-input bg-background px-sm py-xs text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     {...props}
   />
 );

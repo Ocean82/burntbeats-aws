@@ -46,10 +46,10 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-2xl border border-red-500/30 bg-red-950/20 p-8 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10">
+        <div className="flex min-h-[400px] flex-col items-center justify-center gap-md rounded-2xl border border-destructive-500/30 bg-destructive-950/20 p-xl text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-destructive-500/30 bg-destructive-500/10">
             <svg
-              className="h-8 w-8 text-red-400"
+              className="h-8 w-8 text-destructive-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -63,8 +63,8 @@ export class ErrorBoundary extends Component<Props, State> {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-red-200">Something went wrong</h2>
-            <p className="mt-2 max-w-md text-sm text-red-300/70">
+            <h2 className="text-xl font-semibold text-destructive-200">Something went wrong</h2>
+            <p className="mt-xs max-w-md text-sm text-destructive-300/70">
               {import.meta.env.DEV
                 ? (this.state.error?.message || "An unexpected error occurred")
                 : "Something went wrong. Please refresh the page or try again."}
@@ -72,7 +72,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </div>
           <button
             onClick={this.handleReset}
-            className="mt-2 rounded-xl border border-red-500/30 bg-red-500/20 px-6 py-2 text-sm font-medium text-red-200 transition hover:bg-red-500/30"
+            className="mt-xs rounded-xl border border-destructive-500/30 bg-destructive-500/20 px-lg py-xs text-sm font-medium text-destructive-200 transition hover:bg-destructive-500/30"
           >
             Try again
           </button>
@@ -108,10 +108,10 @@ export function SplitErrorBoundary({ children }: SplitErrorBoundaryProps) {
   return (
     <ErrorBoundary
       fallback={
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-amber-500/30 bg-amber-950/20 p-8 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-amber-500/30 bg-amber-500/10">
+        <div className="flex flex-col items-center gap-md rounded-2xl border border-primary-500/30 bg-primary-950/20 p-xl text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-primary-500/30 bg-primary-500/10">
             <svg
-              className="h-8 w-8 text-amber-400"
+              className="h-8 w-8 text-primary-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -125,8 +125,8 @@ export function SplitErrorBoundary({ children }: SplitErrorBoundaryProps) {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-amber-200">Split failed</h2>
-            <p className="mt-2 max-w-md text-sm text-amber-300/70">
+            <h2 className="text-xl font-semibold text-primary-200">Split failed</h2>
+            <p className="mt-xs max-w-md text-sm text-primary-300/70">
               There was an issue processing your audio file. Please try again.
             </p>
           </div>

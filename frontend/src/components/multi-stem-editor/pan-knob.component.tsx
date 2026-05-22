@@ -86,7 +86,7 @@ export const PanKnob = memo(function PanKnob({
     <span
       className={cn(
         "pan-knob__readout font-mono tabular-nums",
-        isConsole ? "pan-knob__readout--console" : "text-[9px] text-white/45",
+        isConsole ? "pan-knob__readout--console" : "text-[9px] text-muted-foreground",
       )}
     >
       {formatPan(value)}
