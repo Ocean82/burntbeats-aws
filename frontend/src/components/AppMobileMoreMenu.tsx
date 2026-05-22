@@ -74,7 +74,7 @@ export function AppMobileMoreMenu({
       {open && (
         <div
           id={menuId}
-          className="absolute right-0 top-full z-50 mt-2 w-56 max-h-[80vh] overflow-y-auto rounded-xl border border-white/15 bg-[#14100e]/98 py-1 shadow-xl backdrop-blur-md"
+          className="absolute right-0 top-full z-dropdown mt-2 w-56 max-h-[80vh] overflow-y-auto rounded-xl border border-white/15 bg-[#14100e]/98 py-1 shadow-xl backdrop-blur-md"
           role="menu"
         >
           <button

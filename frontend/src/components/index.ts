@@ -9,6 +9,8 @@ export { ErrorBoundary, AudioErrorBoundary, SplitErrorBoundary } from "./ErrorBo
 export { MixerPanel } from "./mixer-panel.component";
 export { ProcessingSettingsPanel, type ProcessingSettingsPanelProps } from "./ProcessingSettingsPanel";
 export { AuthGate, HeaderUserButton } from "./AuthGate";
+export { AccountMenu } from "./AccountMenu";
+export { SettingsMenu } from "./SettingsMenu";
 export { PaywallBanner } from "./PaywallBanner";
 export { VUMeter } from "./VUMeter";
 export { SpectrumAnalyzer } from "./SpectrumAnalyzer";

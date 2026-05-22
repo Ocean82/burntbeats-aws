@@ -1,8 +1,7 @@
-import { HelpCircle, Undo2, Redo2, Save, Disc3, LayoutGrid, Mic2, Music } from "lucide-react";
+import { Undo2, Redo2, Disc3, LayoutGrid, Mic2, Music } from "lucide-react";
 import { cn } from "../utils/cn";
-import { HeaderUserButton } from "../components/AuthGate";
-import { AppMobileMoreMenu } from "../components/AppMobileMoreMenu";
-import { TokenBalanceBadge } from "../components/TokenBalanceBadge";
+import { AccountMenu } from "../components/AccountMenu";
+import { SettingsMenu } from "../components/SettingsMenu";
 import { WhatsNewBadge } from "../components/WhatsNewBadge";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
 import type { ModalKey } from "../hooks/useUiModals";
@@ -45,7 +44,9 @@ export function EditorHeader({
   const { mode, toggleMode } = useLayoutMode();
   const { tabsWithNews, markTabSeen } = useWhatsNew();
 
-  const handleTabClick = (view: "editor" | "speech" | "midi" | "pricing" | "my-stems") => {
+  const handleTabClick = (
+    view: "editor" | "speech" | "midi" | "my-stems",
+  ) => {
     setActiveView(view);
     markTabSeen(view);
   };
@@ -103,19 +104,6 @@ export function EditorHeader({
         </button>
         <button
           type="button"
-          onClick={() => handleTabClick("pricing")}
-          className={cn(
-            "shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
-            activeView === "pricing"
-              ? "bg-amber-500/20 text-amber-100 border border-amber-400/50"
-              : "text-white/65 hover:text-white border border-transparent",
-          )}
-          aria-current={activeView === "pricing" ? "page" : undefined}
-        >
-          Plans
-        </button>
-        <button
-          type="button"
           onClick={() => handleTabClick("my-stems")}
           className={cn(
             "relative shrink-0 min-h-[40px] rounded-lg px-3 text-xs font-semibold uppercase tracking-wide transition tap-feedback sm:px-4",
@@ -161,21 +149,6 @@ export function EditorHeader({
 
         {/* Right: Actions toolbar */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Token balance */}
-          <TokenBalanceBadge
-            balance={usageBalance}
-            loading={usageLoading}
-            onClick={() => setActiveView("pricing")}
-            className="hidden sm:inline-flex"
-          />
-
-          {/* Plan badge */}
-          {subscription.status === "active" && subscription.plan && (
-            <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-emerald-200/90">
-              {subscription.plan}
-            </span>
-          )}
-
           {/* Undo / Redo */}
           <div className="flex items-center rounded-xl border border-white/10 bg-black/20">
             <button
@@ -218,52 +191,12 @@ export function EditorHeader({
             <span className="hidden sm:inline text-xs">{mode === "dj" ? "DJ" : "Classic"}</span>
           </button>
 
-          {/* Presets + Help (desktop only) */}
-          <div className="hidden items-center gap-1.5 lg:flex">
-            <button
-              type="button"
-              onClick={() => openModal("presets")}
-              className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white/75 transition hover:text-white tap-feedback"
-              title="Presets"
-              aria-label="Open mixer presets"
-            >
-              <Save className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline">Presets</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => openModal("help")}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-white/10 bg-black/20 text-white/65 transition hover:text-white tap-feedback"
-              title="Help (?)"
-              aria-label="Open help"
-            >
-              <HelpCircle className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Billing (desktop, active subscription only) */}
-          {subscription.status === "active" && !localDevFullApp && (
-            <button
-              type="button"
-              onClick={() => void subscription.openPortal()}
-              className="hidden min-h-[44px] items-center gap-1.5 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60 transition hover:text-white tap-feedback lg:flex"
-              title="Manage billing"
-            >
-              Billing
-            </button>
-          )}
-
-          {/* User avatar / local dev badge */}
-          {localDevFullApp ? (
-            <span className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200/90">
-              Local dev
-            </span>
-          ) : (
-            <HeaderUserButton />
-          )}
-
-          {/* Mobile more menu */}
-          <AppMobileMoreMenu
+          {/* Settings (plans, billing, app utilities) */}
+          <SettingsMenu
+            pricingActive={activeView === "pricing"}
+            showBilling={subscription.status === "active" && !localDevFullApp}
+            usageBalance={usageBalance}
+            usageLoading={usageLoading}
             onOpenFullPricingTab={() => {
               const url =
                 import.meta.env.VITE_FULL_PRICING_URL ??
@@ -271,7 +204,6 @@ export function EditorHeader({
               window.open(url, "_blank", "noopener,noreferrer");
             }}
             onOpenPricing={() => setActiveView("pricing")}
-            onOpenUsage={() => setActiveView("pricing")}
             onOpenPortal={() => void subscription.openPortal()}
             onOpenPresets={() => openModal("presets")}
             onOpenHelp={() => openModal("help")}
@@ -280,16 +212,15 @@ export function EditorHeader({
             onOpenLegal={() => {
               window.open("/terms-of-service", "_blank", "noopener,noreferrer");
             }}
-            pricingLabel="Plans & subscriptions"
-            pricingTitle="View and select subscriptions"
-            showBilling={subscription.status === "active" && !localDevFullApp}
-            usageSummary={
-              usageLoading
-                ? "loading"
-                : usageBalance != null
-                  ? `${Math.floor(usageBalance)} left`
-                  : undefined
-            }
+          />
+
+          {/* Account popout — profile & sign out */}
+          <AccountMenu
+            localDevFullApp={localDevFullApp}
+            subscriptionPlan={subscription.plan}
+            subscriptionActive={subscription.status === "active"}
+            usageBalance={usageBalance}
+            usageLoading={usageLoading}
           />
         </div>
       </header>

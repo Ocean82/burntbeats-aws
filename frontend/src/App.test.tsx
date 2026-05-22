@@ -6,6 +6,19 @@ import { App } from "./App";
 // Mock Clerk so App can render without ClerkProvider in tests
 vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: () => Promise.resolve(null) }),
+  useUser: () => ({
+    isLoaded: true,
+    isSignedIn: true,
+    user: {
+      fullName: "Test User",
+      imageUrl: null,
+      primaryEmailAddress: { emailAddress: "test@example.com" },
+    },
+  }),
+  useClerk: () => ({
+    openUserProfile: vi.fn(),
+    signOut: vi.fn(),
+  }),
   ClerkProvider: ({ children }: { children: React.ReactNode }) => children,
   UserButton: () => <button type="button">Account</button>,
 }));

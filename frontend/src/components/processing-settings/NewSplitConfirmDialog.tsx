@@ -37,7 +37,7 @@ export function NewSplitConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-modal flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-split-confirm-title"

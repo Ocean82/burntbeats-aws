@@ -35,10 +35,57 @@
   --ice-core: #00ccff;
   --ice-cold: #00e5ff;
   --ice-frost: #b8f4ff;
+
+  /* Spatial scale — 4pt base (4, 8, 12, 16, 24, 32, 48, 64, 96) */
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* Semantic stacking (avoid arbitrary z-index) */
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-modal-backdrop: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+  --z-tooltip: 500;
+
+  /* Subtle elevation — if the shadow reads loud, dial it down */
+  --shadow-elevation-sm: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-elevation-md: 0 4px 12px rgba(0, 0, 0, 0.26);
+  --shadow-elevation-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-elevation-xl: 0 16px 40px rgba(0, 0, 0, 0.34);
 }
 
 @theme {
   --font-sans: "Manrope", sans-serif;
+
+  --spacing-2xs: var(--space-2xs);
+  --spacing-xs: var(--space-xs);
+  --spacing-sm: var(--space-sm);
+  --spacing-md: var(--space-md);
+  --spacing-lg: var(--space-lg);
+  --spacing-xl: var(--space-xl);
+  --spacing-2xl: var(--space-2xl);
+  --spacing-3xl: var(--space-3xl);
+  --spacing-4xl: var(--space-4xl);
+
+  --z-index-dropdown: var(--z-dropdown);
+  --z-index-sticky: var(--z-sticky);
+  --z-index-modal-backdrop: var(--z-modal-backdrop);
+  --z-index-modal: var(--z-modal);
+  --z-index-toast: var(--z-toast);
+  --z-index-tooltip: var(--z-tooltip);
+
+  --shadow-elevation-sm: var(--shadow-elevation-sm);
+  --shadow-elevation-md: var(--shadow-elevation-md);
+  --shadow-elevation-lg: var(--shadow-elevation-lg);
+  --shadow-elevation-xl: var(--shadow-elevation-xl);
 }
 
 @layer base {
@@ -429,6 +476,102 @@
   .tap-feedback:active {
     transform: translateY(1px) scale(0.97);
     box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* 44px hit area without changing visual size (pair with compact icon markup) */
+  .tap-target-expand {
+    position: relative;
+  }
+
+  .tap-target-expand::before {
+    content: "";
+    position: absolute;
+    inset: -10px;
+  }
+
+  /* Optical alignment — letterform side-bearing at flush edges */
+  .optical-align-start {
+    margin-inline-start: -0.05em;
+  }
+
+  .optical-align-play {
+    transform: translateX(0.08em);
+  }
+
+  .optical-align-arrow-forward {
+    transform: translateX(0.06em);
+  }
+
+  .optical-align-arrow-back {
+    transform: translateX(-0.06em);
+  }
+
+  /* Sibling spacing via gap (prefer over margin stacks) */
+  .stack-2xs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+  }
+
+  .stack-xs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .stack-sm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .stack-md {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .stack-lg {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .inline-cluster-sm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .inline-cluster-md {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  /* Self-adjusting responsive grid — min 280px columns, no breakpoint soup */
+  .auto-grid {
+    display: grid;
+    gap: var(--space-md);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  /* Container queries: component layout follows parent width, not viewport */
+  .container-inline {
+    container-type: inline-size;
+  }
+
+  .card-adaptive {
+    display: grid;
+    gap: var(--space-md);
+  }
+
+  @container (min-width: 400px) {
+    .card-adaptive {
+      grid-template-columns: 120px 1fr;
+    }
   }
 
   /* Load to tracks: prominent pulsating state when stems are ready */
