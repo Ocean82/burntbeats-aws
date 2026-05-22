@@ -1,9 +1,10 @@
 /**
- * MidiEditorToolbar — tool selection, snap grid, velocity, undo/redo, export.
+ * MIDI editor tool row — tools, snap, undo, draw velocity, export.
  */
 import {
   Download,
   Eraser,
+  Magnet,
   MousePointer2,
   Pencil,
   Redo2,
@@ -12,6 +13,9 @@ import {
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import type { EditorTool, SnapGrid } from "../../hooks/useMidiEditor";
+import { EDITOR_TOOLS } from "./pianoRollTheme";
+import { MidiPhysicalButton } from "./controls/MidiPhysicalButton";
+import { MidiPhysicalFader } from "./controls/MidiPhysicalFader";
 
 interface MidiEditorToolbarProps {
   tool: EditorTool;
@@ -31,10 +35,10 @@ interface MidiEditorToolbarProps {
   onReset: () => void;
 }
 
-const TOOLS: { id: EditorTool; label: string; icon: typeof MousePointer2 }[] = [
-  { id: "select", label: "Select", icon: MousePointer2 },
-  { id: "draw", label: "Draw", icon: Pencil },
-  { id: "erase", label: "Erase", icon: Eraser },
+const TOOLS: { id: EditorTool; icon: typeof MousePointer2 }[] = [
+  { id: "select", icon: MousePointer2 },
+  { id: "draw", icon: Pencil },
+  { id: "erase", icon: Eraser },
 ];
 
 const GRIDS: { value: SnapGrid; label: string }[] = [
@@ -42,7 +46,7 @@ const GRIDS: { value: SnapGrid; label: string }[] = [
   { value: "1/8", label: "1/8" },
   { value: "1/16", label: "1/16" },
   { value: "1/32", label: "1/32" },
-  { value: "free", label: "Free" },
+  { value: "free", label: "Off" },
 ];
 
 export function MidiEditorToolbar({
@@ -63,64 +67,68 @@ export function MidiEditorToolbar({
   onReset,
 }: MidiEditorToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-violet-400/20 bg-violet-950/30 px-3 py-2">
-      {/* Tool buttons */}
-      <div className="flex items-center gap-1" role="toolbar" aria-label="Editor tools">
-        {TOOLS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onToolChange(id)}
-            aria-label={label}
-            aria-pressed={tool === id}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md border text-xs transition",
-              tool === id
-                ? "border-violet-400/60 bg-violet-500/25 text-violet-100"
-                : "border-white/10 bg-white/5 text-white/50 hover:border-white/20 hover:text-white/80",
-            )}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
+    <div className="flex flex-wrap items-center gap-2">
+      <div
+        className="inline-flex rounded-md border border-white/10 p-0.5"
+        style={{ background: "var(--midi-surface-inset)" }}
+        role="toolbar"
+        aria-label="Editor tools"
+      >
+        {TOOLS.map(({ id, icon: Icon }) => {
+          const meta = EDITOR_TOOLS[id];
+          return (
+            <MidiPhysicalButton
+              key={id}
+              variant="tool"
+              pressed={tool === id}
+              onClick={() => onToolChange(id)}
+              title={`${meta.label} (${meta.shortcut}) — ${meta.hint}`}
+              aria-label={meta.label}
+              className="!min-w-[2rem] !px-2"
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="hidden sm:inline">{meta.label}</span>
+            </MidiPhysicalButton>
+          );
+        })}
       </div>
 
       <div className="h-5 w-px bg-white/10" aria-hidden />
 
-      {/* Undo / Redo */}
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={onUndo}
-          disabled={!canUndo}
-          aria-label="Undo"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/50 transition hover:border-white/20 hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Undo2 className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onRedo}
-          disabled={!canRedo}
-          aria-label="Redo"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/50 transition hover:border-white/20 hover:text-white/80 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <Redo2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
+      <MidiPhysicalButton
+        variant="icon"
+        onClick={onUndo}
+        disabled={!canUndo}
+        title="Undo (Ctrl+Z)"
+        aria-label="Undo"
+      >
+        <Undo2 className="h-3.5 w-3.5" />
+      </MidiPhysicalButton>
+      <MidiPhysicalButton
+        variant="icon"
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Redo (Ctrl+Y)"
+        aria-label="Redo"
+      >
+        <Redo2 className="h-3.5 w-3.5" />
+      </MidiPhysicalButton>
 
       <div className="h-5 w-px bg-white/10" aria-hidden />
 
-      {/* Snap grid */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
-          Snap
-        </span>
+      <div className="flex items-center gap-1.5" title="Grid snap">
+        <Magnet
+          className={cn(
+            "h-3.5 w-3.5 shrink-0",
+            snapGrid === "free" ? "text-white/25" : "text-emerald-400/90",
+          )}
+          aria-hidden
+        />
         <select
           value={snapGrid}
           onChange={(e) => onSnapGridChange(e.target.value as SnapGrid)}
-          className="h-7 rounded border border-violet-400/30 bg-violet-950/50 px-1.5 text-xs text-white/80 focus:border-violet-400 focus:outline-none"
-          aria-label="Snap grid"
+          className="midi-select"
+          aria-label="Snap to grid"
         >
           {GRIDS.map(({ value, label }) => (
             <option key={value} value={value}>
@@ -130,9 +138,8 @@ export function MidiEditorToolbar({
         </select>
       </div>
 
-      {/* BPM */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
           BPM
         </span>
         <input
@@ -144,58 +151,42 @@ export function MidiEditorToolbar({
             const val = parseInt(e.target.value, 10);
             if (!isNaN(val)) onBpmChange(val);
           }}
-          className="h-7 w-14 rounded border border-violet-400/30 bg-violet-950/50 px-1.5 text-center text-xs text-white/80 focus:border-violet-400 focus:outline-none"
+          className="midi-input-num"
           aria-label="BPM"
         />
       </div>
 
-      <div className="h-5 w-px bg-white/10" aria-hidden />
+      <MidiPhysicalFader
+        label="Draw"
+        min={1}
+        max={127}
+        value={drawVelocity}
+        onChange={onDrawVelocityChange}
+        ariaLabel="Draw velocity for new notes"
+      />
 
-      {/* Velocity slider */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
-          Vel
-        </span>
-        <input
-          type="range"
-          min={1}
-          max={127}
-          value={drawVelocity}
-          onChange={(e) => onDrawVelocityChange(parseInt(e.target.value, 10))}
-          className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400"
-          aria-label="Draw velocity"
-        />
-        <span className="w-6 text-center font-mono text-[10px] text-white/50">
-          {drawVelocity}
-        </span>
-      </div>
-
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Reset */}
       {isModified && (
-        <button
-          type="button"
+        <MidiPhysicalButton
           onClick={onReset}
-          className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 text-xs text-white/50 transition hover:border-white/20 hover:text-white/80"
-          aria-label="Reset to original"
+          title="Discard edits and restore converted notes"
+          aria-label="Revert to original"
         >
           <RotateCcw className="h-3 w-3" />
-          Reset
-        </button>
+          Revert
+        </MidiPhysicalButton>
       )}
 
-      {/* Export */}
-      <button
-        type="button"
+      <MidiPhysicalButton
+        variant="play"
         onClick={onExport}
-        className="flex h-8 items-center gap-1.5 rounded-md border border-violet-300/40 bg-violet-600/25 px-3 text-xs font-semibold text-white transition hover:bg-violet-600/40"
+        title="Download edited MIDI file"
         aria-label="Export edited MIDI"
       >
         <Download className="h-3.5 w-3.5" />
         Export .mid
-      </button>
+      </MidiPhysicalButton>
     </div>
   );
 }

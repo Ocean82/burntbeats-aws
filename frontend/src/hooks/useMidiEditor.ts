@@ -4,6 +4,12 @@
  * Entirely client-side — no server calls for editing operations.
  */
 import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  getGridSizeSeconds,
+  snapDeltaTime,
+  snapDuration,
+  snapToGrid,
+} from "../utils/midiEditorSnap";
 import type { MidiNoteEvent } from "./useMidiConvert";
 
 export type EditorTool = "select" | "draw" | "erase";
@@ -41,21 +47,6 @@ function generateNoteId(): string {
 
 export function notesFromConversion(notes: MidiNoteEvent[]): EditableNote[] {
   return notes.map((n) => ({ ...n, id: generateNoteId() }));
-}
-
-function snapToGrid(time: number, bpm: number, grid: SnapGrid): number {
-  if (grid === "free") return time;
-  const gridDivision = parseInt(grid.split("/")[1]);
-  const gridSizeSeconds = (4 / gridDivision) * (60 / bpm);
-  return Math.round(time / gridSizeSeconds) * gridSizeSeconds;
-}
-
-function snapDuration(duration: number, bpm: number, grid: SnapGrid): number {
-  if (grid === "free") return Math.max(duration, 0.01);
-  const gridDivision = parseInt(grid.split("/")[1]);
-  const gridSizeSeconds = (4 / gridDivision) * (60 / bpm);
-  const snapped = Math.max(Math.round(duration / gridSizeSeconds) * gridSizeSeconds, gridSizeSeconds);
-  return snapped;
 }
 
 export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number) {
@@ -182,10 +173,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
       const notes = s.notes.map((n) => {
         if (!idSet.has(n.id)) return n;
         const newPitch = Math.max(0, Math.min(127, n.pitch + deltaPitch));
-        const rawStart = n.start + deltaTime;
-        const newStart = s.snapGrid === "free"
-          ? Math.max(0, rawStart)
-          : Math.max(0, snapToGrid(rawStart, s.bpm, s.snapGrid));
+        const snappedDelta = snapDeltaTime(deltaTime, s.bpm, s.snapGrid);
+        const newStart = Math.max(0, n.start + snappedDelta);
         return { ...n, pitch: newPitch, start: newStart };
       });
       const h = pushHistory(notes, s.selectedIds);
@@ -283,11 +272,10 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
     [state.notes, state.selectedIds],
   );
 
-  const gridSizeSeconds = useMemo(() => {
-    if (state.snapGrid === "free") return 0;
-    const div = parseInt(state.snapGrid.split("/")[1]);
-    return (4 / div) * (60 / state.bpm);
-  }, [state.snapGrid, state.bpm]);
+  const gridSizeSeconds = useMemo(
+    () => getGridSizeSeconds(state.bpm, state.snapGrid),
+    [state.snapGrid, state.bpm],
+  );
 
   return {
     ...state,

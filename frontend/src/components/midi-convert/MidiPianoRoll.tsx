@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
 import { midiToNoteName } from "../../utils/musicTheory";
+import { isBlackKeyPitch, PIANO_ROLL } from "./pianoRollTheme";
 
 const LEFT_MARGIN = 44;
 const TOP_MARGIN = 4;
@@ -59,11 +60,12 @@ export function MidiPianoRoll({
   const height = computeHeightForPitchRange(pitchRange);
   const width = containerWidth;
 
-  const { rects, pitchLabels, timeLabels, minStart, totalDuration, drawWidth, bottomMargin } =
+  const { rects, pitchRows, pitchLabels, timeLabels, minStart, totalDuration, drawWidth, bottomMargin } =
     useMemo(() => {
       if (!notes.length) {
         return {
           rects: [],
+          pitchRows: [],
           pitchLabels: [],
           timeLabels: [],
           minStart: 0,
@@ -84,6 +86,19 @@ export function MidiPianoRoll({
       const drawHeight = height - TOP_MARGIN - BOTTOM_MARGIN;
       const dur = maxE - mStart;
 
+      const rowH = Math.max(drawHeight / range - 1, 3);
+      const pitchRows: Array<{ pitch: number; y: number; h: number; isBlack: boolean }> = [];
+      for (let p = minP; p <= maxP; p++) {
+        const centerY =
+          TOP_MARGIN + drawHeight - ((p - minP + 0.5) / range) * drawHeight;
+        pitchRows.push({
+          pitch: p,
+          y: centerY - rowH / 2,
+          h: rowH,
+          isBlack: isBlackKeyPitch(p),
+        });
+      }
+
       const noteRects = notes.map((note, i) => {
         const x = LEFT_MARGIN + ((note.start - mStart) / dur) * dWidth;
         const w = Math.max((note.duration / dur) * dWidth, 2);
@@ -91,10 +106,18 @@ export function MidiPianoRoll({
           TOP_MARGIN +
           drawHeight -
           ((note.pitch - minP + 1) / range) * drawHeight;
-        const h = Math.max(drawHeight / range - 1, 3);
-        const opacity = 0.5 + note.velocity * 0.5;
+        const h = rowH;
 
-        return { key: i, x, y, w, h, opacity, start: note.start, duration: note.duration };
+        return {
+          key: i,
+          x,
+          y: y - h / 2,
+          w,
+          h,
+          velocity: note.velocity,
+          start: note.start,
+          duration: note.duration,
+        };
       });
 
       const labels: Array<{ y: number; label: string }> = [];
@@ -122,6 +145,7 @@ export function MidiPianoRoll({
 
       return {
         rects: noteRects,
+        pitchRows,
         pitchLabels: labels,
         timeLabels: tLabels,
         minStart: mStart,
@@ -141,7 +165,8 @@ export function MidiPianoRoll({
     return (
       <div
         ref={containerRef}
-        className={`flex w-full min-h-[120px] items-center justify-center rounded-xl border border-violet-500/20 bg-black/30 p-8 text-sm text-white/40 ${className}`}
+        className={`flex w-full min-h-[120px] items-center justify-center rounded-lg border border-white/10 p-8 text-sm text-white/40 ${className}`}
+        style={{ backgroundColor: PIANO_ROLL.surface }}
       >
         No MIDI notes to display
       </div>
@@ -151,7 +176,8 @@ export function MidiPianoRoll({
   return (
     <div
       ref={containerRef}
-      className={`w-full rounded-xl border border-violet-500/20 bg-black/40 ${className}`}
+      className={`w-full rounded-lg border border-white/10 ${className}`}
+      style={{ backgroundColor: PIANO_ROLL.surface }}
     >
       <svg
         width={width}
@@ -160,26 +186,28 @@ export function MidiPianoRoll({
         role="img"
         aria-label={`Piano roll showing ${notes.length} MIDI notes`}
       >
+        {pitchRows.map((row) => (
+          <rect
+            key={`row-${row.pitch}`}
+            x={LEFT_MARGIN}
+            y={row.y}
+            width={width - LEFT_MARGIN}
+            height={row.h}
+            fill={row.isBlack ? PIANO_ROLL.blackKeyRow : PIANO_ROLL.whiteKeyRow}
+          />
+        ))}
+
         {pitchLabels.map((pl, i) => (
-          <g key={`pl-${i}`}>
-            <line
-              x1={LEFT_MARGIN}
-              x2={width}
-              y1={pl.y}
-              y2={pl.y}
-              stroke="rgba(139,92,246,0.15)"
-              strokeWidth={0.5}
-            />
-            <text
-              x={2}
-              y={pl.y + 3}
-              fontSize={9}
-              fill="rgba(255,255,255,0.4)"
-              fontFamily="monospace"
-            >
-              {pl.label}
-            </text>
-          </g>
+          <text
+            key={`pl-${i}`}
+            x={4}
+            y={pl.y + 3}
+            fontSize={9}
+            fill={PIANO_ROLL.rulerText}
+            fontFamily="monospace"
+          >
+            {pl.label}
+          </text>
         ))}
 
         {timeLabels.map((tl, i) => (
@@ -189,14 +217,14 @@ export function MidiPianoRoll({
               x2={tl.x}
               y1={TOP_MARGIN}
               y2={height - bottomMargin}
-              stroke="rgba(139,92,246,0.1)"
+              stroke={PIANO_ROLL.gridBeat}
               strokeWidth={0.5}
             />
             <text
               x={tl.x}
               y={height - 6}
               fontSize={8}
-              fill="rgba(255,255,255,0.35)"
+              fill={PIANO_ROLL.rulerText}
               textAnchor="middle"
               fontFamily="monospace"
             >
@@ -211,13 +239,6 @@ export function MidiPianoRoll({
             currentTime > 0 &&
             currentTime >= r.start - minStart &&
             currentTime < r.start - minStart + r.duration;
-          const fillOpacity = isActive ? 1.0 : r.opacity;
-          const strokeColor = isActive
-            ? "rgba(251, 191, 36, 0.9)"
-            : "rgba(139, 92, 246, 0.6)";
-          const fillColor = isActive
-            ? `rgba(251, 191, 36, ${fillOpacity})`
-            : `rgba(167, 139, 250, ${fillOpacity})`;
 
           return (
             <rect
@@ -227,8 +248,12 @@ export function MidiPianoRoll({
               width={r.w}
               height={r.h}
               rx={1.5}
-              fill={fillColor}
-              stroke={strokeColor}
+              fill={
+                isActive
+                  ? PIANO_ROLL.noteSelectedFill(r.velocity)
+                  : PIANO_ROLL.noteFill(r.velocity)
+              }
+              stroke={isActive ? PIANO_ROLL.noteSelectedStroke : PIANO_ROLL.noteStroke}
               strokeWidth={isActive ? 1 : 0.5}
             />
           );
@@ -240,7 +265,7 @@ export function MidiPianoRoll({
             x2={playheadX}
             y1={TOP_MARGIN}
             y2={height - bottomMargin}
-            stroke="rgba(251, 146, 60, 0.9)"
+            stroke={PIANO_ROLL.playhead}
             strokeWidth={1.5}
             strokeLinecap="round"
           />

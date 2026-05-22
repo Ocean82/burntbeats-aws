@@ -1,17 +1,25 @@
 /**
  * MidiEditorCanvas — interactive SVG piano roll with click/drag editing.
- * Supports select, draw, and erase tools with grid snapping.
+ * Scrollable timeline (fixed px/sec) with live snap preview while dragging.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EditableNote, EditorTool, SnapGrid } from "../../hooks/useMidiEditor";
 import { midiToNoteName } from "../../utils/musicTheory";
+import { snapDuration, snapDeltaTime, snapToGrid } from "../../utils/midiEditorSnap";
 import { cn } from "../../utils/cn";
+import {
+  isBlackKeyPitch,
+  PIANO_ROLL,
+  secondsPerBar,
+} from "./pianoRollTheme";
 
 const LEFT_MARGIN = 48;
-const TOP_MARGIN = 4;
+const RULER_HEIGHT = 22;
+const CONTENT_TOP = RULER_HEIGHT + 2;
 const BOTTOM_MARGIN = 24;
 const MIN_HEIGHT = 300;
 const MAX_HEIGHT = 500;
+const PIXELS_PER_SECOND = 80;
 const NOTE_BORDER_RADIUS = 2;
 const RESIZE_HANDLE_WIDTH = 6;
 
@@ -30,6 +38,8 @@ interface MidiEditorCanvasProps {
   onAddNote: (pitch: number, start: number) => void;
   onMoveNotes: (noteIds: string[], deltaPitch: number, deltaTime: number) => void;
   onResizeNote: (noteId: string, newDuration: number) => void;
+  /** Absolute timeline seconds for playhead (null = hidden). */
+  playheadTime?: number | null;
 }
 
 interface NoteRect {
@@ -40,12 +50,46 @@ interface NoteRect {
   h: number;
 }
 
+type DragState =
+  | {
+      type: "move";
+      startX: number;
+      startY: number;
+      currentX: number;
+      currentY: number;
+      noteId: string;
+      noteIds: string[];
+      originals: { id: string; start: number; pitch: number }[];
+    }
+  | {
+      type: "resize";
+      startX: number;
+      startY: number;
+      currentX: number;
+      currentY: number;
+      noteId: string;
+      originalDuration: number;
+    }
+  | {
+      type: "lasso";
+      startX: number;
+      startY: number;
+      currentX: number;
+      currentY: number;
+    };
+
+function formatTimeLabel(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return mins > 0 ? `${mins}:${secs.toString().padStart(2, "0")}` : `${secs}s`;
+}
+
 export function MidiEditorCanvas({
   notes,
   selectedIds,
   tool,
-  snapGrid: _snapGrid,
-  bpm: _bpm,
+  snapGrid,
+  bpm,
   gridSizeSeconds,
   drawVelocity: _drawVelocity,
   onSelectNote,
@@ -55,28 +99,19 @@ export function MidiEditorCanvas({
   onAddNote,
   onMoveNotes,
   onResizeNote,
+  playheadTime = null,
 }: MidiEditorCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(600);
-  const [dragState, setDragState] = useState<{
-    type: "move" | "resize" | "lasso";
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
-    noteId?: string;
-    originalStart?: number;
-    originalDuration?: number;
-    originalPitch?: number;
-  } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [viewportWidth, setViewportWidth] = useState(600);
+  const [dragState, setDragState] = useState<DragState | null>(null);
 
-  // Responsive width
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const update = () => {
       const w = el.clientWidth;
-      if (w > 0) setContainerWidth(w);
+      if (w > 0) setViewportWidth(w);
     };
     update();
     const ro = new ResizeObserver(update);
@@ -84,106 +119,102 @@ export function MidiEditorCanvas({
     return () => ro.disconnect();
   }, []);
 
-  // Compute pitch range and dimensions
   const { minPitch, maxPitch, pitchRange, totalDuration, height } = useMemo(() => {
     if (!notes.length) {
       return { minPitch: 60, maxPitch: 72, pitchRange: 13, totalDuration: 10, height: MIN_HEIGHT };
     }
     const pitches = notes.map((n) => n.pitch);
-    const minP = Math.min(...pitches) - 2; // Padding
+    const minP = Math.min(...pitches) - 2;
     const maxP = Math.max(...pitches) + 2;
     const range = maxP - minP + 1;
     const maxEnd = Math.max(...notes.map((n) => n.start + n.duration));
-    const dur = Math.max(maxEnd * 1.1, 4); // 10% padding + minimum 4s
-    const h = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, TOP_MARGIN + BOTTOM_MARGIN + range * 12));
+    const dur = Math.max(maxEnd * 1.1, 4);
+    const h = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, CONTENT_TOP + BOTTOM_MARGIN + range * 12));
     return { minPitch: minP, maxPitch: maxP, pitchRange: range, totalDuration: dur, height: h };
   }, [notes]);
 
-  const drawWidth = containerWidth - LEFT_MARGIN;
-  const drawHeight = height - TOP_MARGIN - BOTTOM_MARGIN;
-
-  // Convert between screen coordinates and music coordinates
-  const screenToTime = useCallback(
-    (x: number) => ((x - LEFT_MARGIN) / drawWidth) * totalDuration,
-    [drawWidth, totalDuration],
+  const timelineWidth = Math.max(
+    viewportWidth - LEFT_MARGIN,
+    Math.ceil(totalDuration * PIXELS_PER_SECOND),
   );
+  const drawHeight = height - CONTENT_TOP - BOTTOM_MARGIN;
+  const rowHeight = drawHeight / pitchRange;
+  const noteHeight = Math.max(6, Math.min(16, rowHeight - 1));
+  const isScrollable = timelineWidth > viewportWidth - LEFT_MARGIN;
+
+  const timeToScreen = useCallback((time: number) => time * PIXELS_PER_SECOND, []);
+
+  const playheadX = useMemo(() => {
+    if (playheadTime == null || playheadTime < 0) return null;
+    return timeToScreen(playheadTime);
+  }, [playheadTime, timeToScreen]);
+
+  const screenToTime = useCallback((x: number) => x / PIXELS_PER_SECOND, []);
 
   const screenToPitch = useCallback(
     (y: number) => {
-      const fraction = 1 - (y - TOP_MARGIN) / drawHeight;
+      const fraction = 1 - (y - CONTENT_TOP) / drawHeight;
       return Math.round(minPitch + fraction * pitchRange);
     },
     [drawHeight, minPitch, pitchRange],
   );
 
-  const timeToScreen = useCallback(
-    (time: number) => LEFT_MARGIN + (time / totalDuration) * drawWidth,
-    [drawWidth, totalDuration],
-  );
-
   const pitchToScreen = useCallback(
     (pitch: number) =>
-      TOP_MARGIN + drawHeight - ((pitch - minPitch + 0.5) / pitchRange) * drawHeight,
+      CONTENT_TOP + drawHeight - ((pitch - minPitch + 0.5) / pitchRange) * drawHeight,
     [drawHeight, minPitch, pitchRange],
   );
 
-  // Compute note rectangles
-  const noteRects: NoteRect[] = useMemo(() => {
-    const noteHeight = Math.max(6, Math.min(16, drawHeight / pitchRange - 1));
-    return notes.map((note) => ({
-      note,
-      x: timeToScreen(note.start),
-      y: pitchToScreen(note.pitch) - noteHeight / 2,
-      w: Math.max(4, (note.duration / totalDuration) * drawWidth),
-      h: noteHeight,
-    }));
-  }, [notes, timeToScreen, pitchToScreen, drawWidth, totalDuration, drawHeight, pitchRange]);
-
-  // Grid lines
-  const gridLines = useMemo(() => {
-    if (gridSizeSeconds <= 0) return [];
-    const lines: number[] = [];
-    for (let t = 0; t <= totalDuration; t += gridSizeSeconds) {
-      lines.push(timeToScreen(t));
-    }
-    return lines;
-  }, [gridSizeSeconds, totalDuration, timeToScreen]);
-
-  // Pitch labels
-  const pitchLabels = useMemo(() => {
-    const labels: { y: number; label: string; isC: boolean }[] = [];
+  const pitchRows = useMemo(() => {
+    const rows: { pitch: number; y: number; h: number; isBlack: boolean }[] = [];
     for (let p = minPitch; p <= maxPitch; p++) {
-      if (p % 12 === 0 || pitchRange <= 24) {
-        if (pitchRange > 24 && p % 12 !== 0) continue;
-        labels.push({
-          y: pitchToScreen(p),
-          label: midiToNoteName(p),
-          isC: p % 12 === 0,
-        });
-      }
-    }
-    return labels;
-  }, [minPitch, maxPitch, pitchRange, pitchToScreen]);
-
-  // Time labels
-  const timeLabels = useMemo(() => {
-    const step = totalDuration > 60 ? 15 : totalDuration > 20 ? 5 : totalDuration > 8 ? 2 : 1;
-    const labels: { x: number; label: string }[] = [];
-    for (let t = 0; t <= totalDuration; t += step) {
-      const mins = Math.floor(t / 60);
-      const secs = Math.floor(t % 60);
-      labels.push({
-        x: timeToScreen(t),
-        label: mins > 0 ? `${mins}:${secs.toString().padStart(2, "0")}` : `${secs}s`,
+      const centerY = pitchToScreen(p);
+      rows.push({
+        pitch: p,
+        y: centerY - rowHeight / 2,
+        h: rowHeight,
+        isBlack: isBlackKeyPitch(p),
       });
     }
-    return labels;
-  }, [totalDuration, timeToScreen]);
+    return rows;
+  }, [minPitch, maxPitch, pitchToScreen, rowHeight]);
 
-  // Hit test: find note at screen position
+  const noteRects: NoteRect[] = useMemo(
+    () =>
+      notes.map((note) => ({
+        note,
+        x: timeToScreen(note.start),
+        y: pitchToScreen(note.pitch) - noteHeight / 2,
+        w: Math.max(4, note.duration * PIXELS_PER_SECOND),
+        h: noteHeight,
+      })),
+    [notes, timeToScreen, pitchToScreen, noteHeight],
+  );
+
+  const gridLines = useMemo(() => {
+    const barSec = secondsPerBar(bpm);
+    const lines: { x: number; isBar: boolean }[] = [];
+    const step = gridSizeSeconds > 0 ? gridSizeSeconds : barSec;
+    for (let t = 0; t <= totalDuration + step * 0.01; t += step) {
+      const isBar = Math.abs(t % barSec) < step * 0.25 || t === 0;
+      lines.push({ x: timeToScreen(t), isBar });
+    }
+    return lines;
+  }, [gridSizeSeconds, totalDuration, timeToScreen, bpm]);
+
+  const timeLabels = useMemo(() => {
+    const visibleSeconds = timelineWidth / PIXELS_PER_SECOND;
+    const step =
+      visibleSeconds > 120 ? 30 : visibleSeconds > 60 ? 15 : visibleSeconds > 20 ? 5 : visibleSeconds > 8 ? 2 : 1;
+    const labels: { x: number; label: string }[] = [];
+    for (let t = 0; t <= totalDuration; t += step) {
+      labels.push({ x: timeToScreen(t), label: formatTimeLabel(t) });
+    }
+    return labels;
+  }, [timelineWidth, totalDuration, timeToScreen]);
+
   const hitTestNote = useCallback(
     (x: number, y: number): { noteRect: NoteRect; isResizeHandle: boolean } | null => {
-      // Check in reverse order (top-most first)
       for (let i = noteRects.length - 1; i >= 0; i--) {
         const r = noteRects[i];
         if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
@@ -196,15 +227,78 @@ export function MidiEditorCanvas({
     [noteRects],
   );
 
-  // Pointer handlers
+  const getMoveDelta = useCallback(
+    (state: Extract<DragState, { type: "move" }>) => {
+      const dx = state.currentX - state.startX;
+      const dy = state.currentY - state.startY;
+      const deltaTime = snapDeltaTime(dx / PIXELS_PER_SECOND, bpm, snapGrid);
+      const deltaPitch = -Math.round(dy / rowHeight);
+      return { deltaTime, deltaPitch, dx, dy };
+    },
+    [bpm, snapGrid, rowHeight],
+  );
+
+  const dragPreviewRects = useMemo((): NoteRect[] => {
+    if (!dragState) return [];
+
+    if (dragState.type === "move") {
+      const { deltaTime, deltaPitch } = getMoveDelta(dragState);
+      if (Math.abs(dragState.currentX - dragState.startX) <= 3 &&
+          Math.abs(dragState.currentY - dragState.startY) <= 3) {
+        return [];
+      }
+      return dragState.originals.map((orig) => {
+        const origNote = notes.find((n) => n.id === orig.id);
+        const duration = origNote?.duration ?? 0.25;
+        const pitch = Math.max(0, Math.min(127, orig.pitch + deltaPitch));
+        const start = Math.max(0, orig.start + deltaTime);
+        return {
+          note: { id: orig.id, pitch, start, duration, velocity: origNote?.velocity ?? 80 },
+          x: timeToScreen(start),
+          y: pitchToScreen(pitch) - noteHeight / 2,
+          w: Math.max(4, duration * PIXELS_PER_SECOND),
+          h: noteHeight,
+        };
+      });
+    }
+
+    if (dragState.type === "resize") {
+      const dx = dragState.currentX - dragState.startX;
+      if (Math.abs(dx) <= 3) return [];
+      const rawDuration = Math.max(
+        0.01,
+        dragState.originalDuration + dx / PIXELS_PER_SECOND,
+      );
+      const duration = snapDuration(rawDuration, bpm, snapGrid);
+      const note = notes.find((n) => n.id === dragState.noteId);
+      if (!note) return [];
+      return [
+        {
+          note: { ...note, duration },
+          x: timeToScreen(note.start),
+          y: pitchToScreen(note.pitch) - noteHeight / 2,
+          w: Math.max(4, duration * PIXELS_PER_SECOND),
+          h: noteHeight,
+        },
+      ];
+    }
+
+    return [];
+  }, [dragState, getMoveDelta, notes, timeToScreen, pitchToScreen, noteHeight, bpm, snapGrid]);
+
+  const draggingNoteIds = useMemo(() => {
+    if (!dragState) return new Set<string>();
+    if (dragState.type === "move") return new Set(dragState.noteIds);
+    if (dragState.type === "resize") return new Set([dragState.noteId]);
+    return new Set<string>();
+  }, [dragState]);
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<SVGSVGElement>) => {
       const svg = e.currentTarget;
       const rect = svg.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-
-      if (x < LEFT_MARGIN) return; // Clicked on pitch labels
 
       if (tool === "erase") {
         const hit = hitTestNote(x, y);
@@ -216,13 +310,12 @@ export function MidiEditorCanvas({
         const hit = hitTestNote(x, y);
         if (!hit) {
           const pitch = screenToPitch(y);
-          const time = screenToTime(x);
+          const time = snapToGrid(screenToTime(x), bpm, snapGrid);
           onAddNote(pitch, time);
         }
         return;
       }
 
-      // Select tool
       const hit = hitTestNote(x, y);
       if (hit) {
         const noteId = hit.noteRect.note.id;
@@ -245,6 +338,12 @@ export function MidiEditorCanvas({
             originalDuration: hit.noteRect.note.duration,
           });
         } else {
+          const noteIds = selectedIds.has(noteId)
+            ? Array.from(selectedIds)
+            : [noteId];
+          const originals = notes
+            .filter((n) => noteIds.includes(n.id))
+            .map((n) => ({ id: n.id, start: n.start, pitch: n.pitch }));
           setDragState({
             type: "move",
             startX: x,
@@ -252,14 +351,13 @@ export function MidiEditorCanvas({
             currentX: x,
             currentY: y,
             noteId,
-            originalStart: hit.noteRect.note.start,
-            originalPitch: hit.noteRect.note.pitch,
+            noteIds,
+            originals,
           });
         }
 
         svg.setPointerCapture(e.pointerId);
       } else {
-        // Clicked empty space — start lasso or deselect
         if (!e.shiftKey) onDeselectAll();
         setDragState({
           type: "lasso",
@@ -271,7 +369,20 @@ export function MidiEditorCanvas({
         svg.setPointerCapture(e.pointerId);
       }
     },
-    [tool, hitTestNote, selectedIds, onSelectNote, onDeselectAll, onDeleteNote, onAddNote, screenToPitch, screenToTime],
+    [
+      tool,
+      hitTestNote,
+      selectedIds,
+      notes,
+      onSelectNote,
+      onDeselectAll,
+      onDeleteNote,
+      onAddNote,
+      screenToPitch,
+      screenToTime,
+      bpm,
+      snapGrid,
+    ],
   );
 
   const handlePointerMove = useCallback(
@@ -292,24 +403,22 @@ export function MidiEditorCanvas({
       const svg = e.currentTarget;
       svg.releasePointerCapture(e.pointerId);
 
-      const dx = dragState.currentX - dragState.startX;
-      const dy = dragState.currentY - dragState.startY;
-
-      if (dragState.type === "move" && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
-        const deltaTime = (dx / drawWidth) * totalDuration;
-        const deltaPitch = -Math.round((dy / drawHeight) * pitchRange);
-        const ids = selectedIds.has(dragState.noteId!)
-          ? Array.from(selectedIds)
-          : [dragState.noteId!];
-        onMoveNotes(ids, deltaPitch, deltaTime);
-      } else if (dragState.type === "move" && Math.abs(dx) <= 3 && Math.abs(dy) <= 3) {
-        // It was a click, not a drag — selection already handled in pointerDown
+      if (dragState.type === "move") {
+        const { deltaTime, deltaPitch, dx, dy } = getMoveDelta(dragState);
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+          onMoveNotes(dragState.noteIds, deltaPitch, deltaTime);
+        }
       } else if (dragState.type === "resize") {
-        const deltaTime = (dx / drawWidth) * totalDuration;
-        const newDuration = Math.max(0.01, (dragState.originalDuration || 0.1) + deltaTime);
-        onResizeNote(dragState.noteId!, newDuration);
+        const dx = dragState.currentX - dragState.startX;
+        if (Math.abs(dx) > 3) {
+          const rawDuration = Math.max(
+            0.01,
+            dragState.originalDuration + dx / PIXELS_PER_SECOND,
+          );
+          const newDuration = snapDuration(rawDuration, bpm, snapGrid);
+          onResizeNote(dragState.noteId, newDuration);
+        }
       } else if (dragState.type === "lasso") {
-        // Select all notes within the lasso rectangle
         const x1 = Math.min(dragState.startX, dragState.currentX);
         const x2 = Math.max(dragState.startX, dragState.currentX);
         const y1 = Math.min(dragState.startY, dragState.currentY);
@@ -327,127 +436,238 @@ export function MidiEditorCanvas({
 
       setDragState(null);
     },
-    [dragState, drawWidth, drawHeight, totalDuration, pitchRange, selectedIds, noteRects, onMoveNotes, onResizeNote, onSelectNotes],
+    [dragState, getMoveDelta, noteRects, onMoveNotes, onResizeNote, onSelectNotes, bpm, snapGrid],
   );
 
-  // Cursor style based on tool
-  const cursorClass = tool === "draw" ? "cursor-crosshair" : tool === "erase" ? "cursor-pointer" : "cursor-default";
+  const cursorClass =
+    tool === "draw" ? "cursor-crosshair" : "cursor-default";
 
-  return (
-    <div ref={containerRef} className="w-full rounded-xl border border-violet-500/20 bg-black/50">
-      <svg
-        width={containerWidth}
-        height={height}
-        className={cn("block w-full select-none", cursorClass)}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        role="application"
-        aria-label={`MIDI note editor with ${notes.length} notes`}
-      >
-        {/* Background grid lines */}
-        {gridLines.map((x, i) => (
-          <line
-            key={`g-${i}`}
-            x1={x}
-            x2={x}
-            y1={TOP_MARGIN}
-            y2={height - BOTTOM_MARGIN}
-            stroke="rgba(139,92,246,0.08)"
-            strokeWidth={0.5}
-          />
-        ))}
+  const renderNoteRect = (
+    r: NoteRect,
+    opts: { isSelected: boolean; isPreview?: boolean; isGhost?: boolean },
+  ) => {
+    const { isSelected, isPreview = false, isGhost = false } = opts;
+    const vel = r.note.velocity;
 
-        {/* Pitch grid lines + labels */}
-        {pitchLabels.map((pl, i) => (
-          <g key={`pl-${i}`}>
-            <line
-              x1={LEFT_MARGIN}
-              x2={containerWidth}
-              y1={pl.y}
-              y2={pl.y}
-              stroke={pl.isC ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.08)"}
-              strokeWidth={pl.isC ? 0.8 : 0.5}
-            />
-            <text
-              x={2}
-              y={pl.y + 3}
-              fontSize={9}
-              fill={pl.isC ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.3)"}
-              fontFamily="monospace"
-            >
-              {pl.label}
-            </text>
-          </g>
-        ))}
+    let fill: string;
+    let stroke: string;
+    if (isPreview) {
+      fill = PIANO_ROLL.notePreviewFill;
+      stroke = PIANO_ROLL.notePreviewStroke;
+    } else if (isSelected) {
+      fill = PIANO_ROLL.noteSelectedFill(vel);
+      stroke = PIANO_ROLL.noteSelectedStroke;
+    } else {
+      fill = PIANO_ROLL.noteFill(vel);
+      stroke = PIANO_ROLL.noteStroke;
+    }
 
-        {/* Time labels */}
-        {timeLabels.map((tl, i) => (
-          <text
-            key={`tl-${i}`}
-            x={tl.x}
-            y={height - 8}
-            fontSize={9}
-            fill="rgba(255,255,255,0.35)"
-            textAnchor="middle"
-            fontFamily="monospace"
-          >
-            {tl.label}
-          </text>
-        ))}
-
-        {/* Notes */}
-        {noteRects.map((r) => {
-          const isSelected = selectedIds.has(r.note.id);
-          const opacity = 0.4 + (r.note.velocity / 127) * 0.6;
-
-          return (
-            <g key={r.note.id}>
-              <rect
-                x={r.x}
-                y={r.y}
-                width={r.w}
-                height={r.h}
-                rx={NOTE_BORDER_RADIUS}
-                fill={
-                  isSelected
-                    ? `rgba(251, 191, 36, ${opacity})`
-                    : `rgba(167, 139, 250, ${opacity})`
-                }
-                stroke={isSelected ? "rgba(251, 191, 36, 0.9)" : "rgba(139, 92, 246, 0.5)"}
-                strokeWidth={isSelected ? 1.5 : 0.5}
-              />
-              {/* Resize handle indicator (right edge) */}
-              {isSelected && r.w > 12 && (
-                <rect
-                  x={r.x + r.w - 3}
-                  y={r.y + 2}
-                  width={2}
-                  height={r.h - 4}
-                  rx={1}
-                  fill="rgba(251, 191, 36, 0.6)"
-                  className="cursor-ew-resize"
-                />
-              )}
-            </g>
-          );
-        })}
-
-        {/* Lasso selection rectangle */}
-        {dragState?.type === "lasso" && (
+    return (
+      <g key={isPreview ? `preview-${r.note.id}` : r.note.id} pointerEvents="none">
+        <rect
+          x={r.x}
+          y={r.y}
+          width={r.w}
+          height={r.h}
+          rx={NOTE_BORDER_RADIUS}
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={isPreview ? 1.5 : isSelected ? 1.5 : 0.5}
+          strokeDasharray={isPreview ? "4 3" : undefined}
+          opacity={isGhost ? 0.35 : 1}
+        />
+        {isSelected && !isPreview && !isGhost && r.w > 12 && (
           <rect
-            x={Math.min(dragState.startX, dragState.currentX)}
-            y={Math.min(dragState.startY, dragState.currentY)}
-            width={Math.abs(dragState.currentX - dragState.startX)}
-            height={Math.abs(dragState.currentY - dragState.startY)}
-            fill="rgba(139, 92, 246, 0.1)"
-            stroke="rgba(139, 92, 246, 0.5)"
-            strokeWidth={1}
-            strokeDasharray="4 2"
-            rx={2}
+            x={r.x + r.w - 3}
+            y={r.y + 2}
+            width={2}
+            height={r.h - 4}
+            rx={1}
+            fill="rgba(251, 191, 36, 0.6)"
           />
         )}
-      </svg>
+      </g>
+    );
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden rounded-lg border border-white/10"
+      style={{ backgroundColor: PIANO_ROLL.surface }}
+    >
+      <div className="flex">
+        {/* Piano keyboard gutter (fixed) */}
+        <svg
+          width={LEFT_MARGIN}
+          height={height}
+          className="shrink-0 select-none"
+          style={{ backgroundColor: PIANO_ROLL.ruler }}
+          aria-hidden
+        >
+          <rect x={0} y={0} width={LEFT_MARGIN} height={RULER_HEIGHT} fill={PIANO_ROLL.ruler} />
+          {pitchRows.map((row) => {
+            const keyW = row.isBlack
+              ? LEFT_MARGIN * PIANO_ROLL.gutterBlackKeyWidthRatio
+              : LEFT_MARGIN - 2;
+            return (
+              <g key={`key-${row.pitch}`}>
+                <rect
+                  x={row.isBlack ? 0 : 1}
+                  y={row.y}
+                  width={keyW}
+                  height={row.h}
+                  fill={row.isBlack ? PIANO_ROLL.gutterBlackKey : PIANO_ROLL.gutterWhiteKey}
+                  stroke="rgba(0,0,0,0.35)"
+                  strokeWidth={0.5}
+                />
+                {(row.pitch % 12 === 0 || pitchRange <= 24) && (
+                  <text
+                    x={row.isBlack ? 4 : 6}
+                    y={row.y + row.h * 0.65}
+                    fontSize={8}
+                    fill={row.isBlack ? PIANO_ROLL.labelOnBlack : PIANO_ROLL.labelOnWhite}
+                    fontFamily="monospace"
+                  >
+                    {midiToNoteName(row.pitch)}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Scrollable timeline */}
+        <div
+          ref={scrollRef}
+          className={cn(
+            "min-w-0 flex-1",
+            isScrollable && "overflow-x-auto overflow-y-hidden",
+          )}
+          title={isScrollable ? "Scroll horizontally to view the full timeline" : undefined}
+        >
+          <svg
+            width={timelineWidth}
+            height={height}
+            className={cn("block select-none", cursorClass)}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            role="application"
+            aria-label={`MIDI note editor with ${notes.length} notes${isScrollable ? ", scroll horizontally for full timeline" : ""}`}
+          >
+            {/* Time ruler (top — standard DAW placement) */}
+            <rect x={0} y={0} width={timelineWidth} height={RULER_HEIGHT} fill={PIANO_ROLL.ruler} />
+            {timeLabels.map((tl, i) => (
+              <text
+                key={`tl-${i}`}
+                x={tl.x}
+                y={15}
+                fontSize={9}
+                fill={PIANO_ROLL.rulerText}
+                textAnchor="middle"
+                fontFamily="monospace"
+              >
+                {tl.label}
+              </text>
+            ))}
+
+            {/* Row stripes (black / white keys) */}
+            {pitchRows.map((row) => (
+              <rect
+                key={`row-bg-${row.pitch}`}
+                x={0}
+                y={row.y}
+                width={timelineWidth}
+                height={row.h}
+                fill={row.isBlack ? PIANO_ROLL.blackKeyRow : PIANO_ROLL.whiteKeyRow}
+              />
+            ))}
+
+            {gridLines.map((line, i) => (
+              <line
+                key={`g-${i}`}
+                x1={line.x}
+                x2={line.x}
+                y1={CONTENT_TOP}
+                y2={height - BOTTOM_MARGIN}
+                stroke={line.isBar ? PIANO_ROLL.gridBar : PIANO_ROLL.gridBeat}
+                strokeWidth={line.isBar ? 1 : 0.5}
+              />
+            ))}
+
+            {pitchRows.map((row) =>
+              row.pitch % 12 === 0 ? (
+                <line
+                  key={`c-line-${row.pitch}`}
+                  x1={0}
+                  x2={timelineWidth}
+                  y1={row.y + row.h}
+                  y2={row.y + row.h}
+                  stroke={PIANO_ROLL.rowLineC}
+                  strokeWidth={0.5}
+                />
+              ) : (
+                <line
+                  key={`row-line-${row.pitch}`}
+                  x1={0}
+                  x2={timelineWidth}
+                  y1={row.y + row.h}
+                  y2={row.y + row.h}
+                  stroke={PIANO_ROLL.rowLine}
+                  strokeWidth={0.5}
+                />
+              ),
+            )}
+
+            {noteRects.map((r) => {
+              const isSelected = selectedIds.has(r.note.id);
+              const isGhost = draggingNoteIds.has(r.note.id);
+              return renderNoteRect(r, { isSelected, isGhost });
+            })}
+
+            {dragPreviewRects.map((r) =>
+              renderNoteRect(r, { isSelected: true, isPreview: true }),
+            )}
+
+            {dragState?.type === "lasso" && (
+              <rect
+                x={Math.min(dragState.startX, dragState.currentX)}
+                y={Math.min(dragState.startY, dragState.currentY)}
+                width={Math.abs(dragState.currentX - dragState.startX)}
+                height={Math.abs(dragState.currentY - dragState.startY)}
+                fill={PIANO_ROLL.lassoFill}
+                stroke={PIANO_ROLL.lassoStroke}
+                strokeWidth={1}
+                strokeDasharray="4 2"
+                rx={2}
+              />
+            )}
+
+            {playheadX != null && (
+              <line
+                x1={playheadX}
+                x2={playheadX}
+                y1={CONTENT_TOP}
+                y2={height - BOTTOM_MARGIN}
+                stroke={PIANO_ROLL.playhead}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                pointerEvents="none"
+              />
+            )}
+          </svg>
+        </div>
+      </div>
+
+      {isScrollable && (
+        <p
+          className="border-t border-white/8 px-3 py-1.5 text-[10px] text-white/35"
+          style={{ backgroundColor: PIANO_ROLL.ruler }}
+        >
+          Scroll timeline horizontally · {Math.round(totalDuration)}s
+        </p>
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 /**
- * MidiEditorSelectionInfo — displays info about selected notes and bulk actions.
+ * MidiEditorSelectionInfo — inspector strip for selected notes (DAW-style).
  */
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import type { EditableNote } from "../../hooks/useMidiEditor";
 import { midiToNoteName } from "../../utils/musicTheory";
 
@@ -23,70 +24,89 @@ export function MidiEditorSelectionInfo({
   const pitches = selectedNotes.map((n) => n.pitch);
   const minPitch = Math.min(...pitches);
   const maxPitch = Math.max(...pitches);
+  const velocities = selectedNotes.map((n) => n.velocity);
+  const allSameVelocity = velocities.every((v) => v === velocities[0]);
   const avgVelocity = Math.round(
-    selectedNotes.reduce((sum, n) => sum + n.velocity, 0) / selectedNotes.length,
+    velocities.reduce((sum, v) => sum + v, 0) / velocities.length,
   );
+  const selectionKey = selectedNotes.map((n) => `${n.id}:${n.velocity}`).join(",");
+  const [velocityOverride, setVelocityOverride] = useState<number | null>(null);
+
+  useEffect(() => {
+    setVelocityOverride(null);
+  }, [selectionKey]);
+
+  const sliderValue = velocityOverride ?? (allSameVelocity ? velocities[0] : avgVelocity);
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-violet-400/15 bg-violet-950/20 px-3 py-2 text-xs">
-      <span className="font-medium text-violet-200">
-        {selectedNotes.length} note{selectedNotes.length !== 1 ? "s" : ""} selected
+    <div className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
+      <span className="font-medium text-white/80">
+        {selectedNotes.length} selected
       </span>
 
-      <span className="text-white/40">|</span>
+      <span className="text-white/25">|</span>
 
-      <span className="text-white/60">
+      <span className="text-white/55" title="Pitch range">
         {minPitch === maxPitch
           ? midiToNoteName(minPitch)
           : `${midiToNoteName(minPitch)} – ${midiToNoteName(maxPitch)}`}
       </span>
 
-      <span className="text-white/40">|</span>
+      <span className="text-white/25">|</span>
 
-      <span className="text-white/60">
-        Vel: {avgVelocity}
-      </span>
-
-      <div className="flex-1" />
-
-      {/* Transpose buttons */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5" title="Transpose in semitones">
+        <span className="text-[10px] uppercase tracking-wide text-white/40">Transpose</span>
         <button
           type="button"
           onClick={() => onTranspose(-1)}
-          aria-label="Transpose down 1 semitone"
-          className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 transition hover:border-white/20 hover:text-white"
+          aria-label="Down 1 semitone"
+          className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10"
         >
-          <ChevronDown className="h-3 w-3" />
+          <Minus className="h-3 w-3" />
         </button>
         <button
           type="button"
           onClick={() => onTranspose(1)}
-          aria-label="Transpose up 1 semitone"
-          className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 transition hover:border-white/20 hover:text-white"
+          aria-label="Up 1 semitone"
+          className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10"
         >
-          <ChevronUp className="h-3 w-3" />
+          <Plus className="h-3 w-3" />
         </button>
-        <span className="ml-1 text-[10px] text-white/35">±1 st</span>
+        <span className="text-[10px] text-white/35">st</span>
       </div>
 
-      {/* Velocity quick set */}
-      <div className="flex items-center gap-1.5">
+      <span className="text-white/25">|</span>
+
+      <div className="flex items-center gap-1.5" title="Note velocity (1–127)">
+        <span className="text-[10px] uppercase tracking-wide text-white/40">Velocity</span>
         <input
           type="range"
           min={1}
           max={127}
-          value={avgVelocity}
-          onChange={(e) => onSetVelocity(parseInt(e.target.value, 10))}
-          className="h-1 w-14 cursor-pointer appearance-none rounded-full bg-violet-900/40 accent-violet-400"
-          aria-label="Set velocity for selected notes"
+          value={sliderValue}
+          onChange={(e) => {
+            const vel = parseInt(e.target.value, 10);
+            setVelocityOverride(vel);
+            onSetVelocity(vel);
+          }}
+          className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-white/10 accent-emerald-500"
+          aria-label={
+            allSameVelocity
+              ? "Set velocity for selected notes"
+              : "Set velocity (selection has mixed values; starts at average)"
+          }
         />
+        <span className="min-w-[2.5rem] font-mono text-[10px] text-white/50">
+          {allSameVelocity ? velocities[0] : `${avgVelocity}*`}
+        </span>
       </div>
 
-      {/* Delete */}
+      <div className="flex-1" />
+
       <button
         type="button"
         onClick={onDelete}
+        title="Delete selected notes (Del)"
         aria-label="Delete selected notes"
         className="flex h-7 items-center gap-1 rounded border border-red-400/30 bg-red-500/10 px-2 text-red-200 transition hover:bg-red-500/20"
       >
