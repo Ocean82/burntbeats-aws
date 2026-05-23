@@ -12,7 +12,8 @@
  * - Mobile-optimized with sequential fetching for ZIP
  */
 import { useState, useMemo, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { collapseMotion } from "../motion/presets";
 import {
   Download,
   Music,
@@ -104,6 +105,8 @@ export function MyStemsPage({
   loadingMixerJobId = null,
   loadingMidiJobId = null,
 }: MyStemsPageProps) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const collapse = collapseMotion(reduceMotion);
   const { toast } = useToast();
   const {
     jobs,
@@ -461,11 +464,7 @@ export function MyStemsPage({
                       {isExpanded && (
                         <motion.div
                           id={`job-details-${job.job_id}`}
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25, ease: "easeInOut" }}
-                          className="overflow-hidden"
+                          {...collapse}
                         >
                           <div className="border-t border-border px-md pb-md pt-sm sm:px-lg sm:pb-5">
                             {/* Stem Rows */}

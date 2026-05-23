@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import type { ComponentProps } from "react";
 
 import type { GuidanceTarget } from "../hooks/useGuidanceSystem";
@@ -31,7 +30,8 @@ export type EditorProcessingProps = ComponentProps<
 >;
 
 export interface EditorMainViewProps {
-  reduceMotion: boolean;
+  /** @deprecated Motion is static in product; kept for call-site compatibility */
+  reduceMotion?: boolean;
   chrome: EditorChromeProps;
   processingProps: EditorProcessingProps;
   mixerProps: EditorMixerWorkspaceProps;
@@ -39,7 +39,6 @@ export interface EditorMainViewProps {
 
 /** Marquee, processing/settings rail, and mixer workspace — editor home (non-pricing) body. */
 export function EditorMainView({
-  reduceMotion,
   chrome: {
     guidanceTarget,
     guidanceRingClass,
@@ -116,29 +115,14 @@ export function EditorMainView({
         )}
       </div>
 
-      <motion.section
-        className="flex flex-col gap-md"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          visible: {
-            transition: { staggerChildren: reduceMotion ? 0 : 0.05 },
-          },
-          hidden: {},
-        }}
-      >
-        <motion.div
+      <section className="flex flex-col gap-md">
+        <div
           onPointerDown={handleGuidancePanelInteract}
           className={cn(
             "rounded-2xl border border-border bg-muted/20 px-lg py-md sm:px-lg",
             guidanceTarget === "source" && guidanceRingClass,
             processingProps.isSplitting && "splitting-scan-glow",
           )}
-          variants={{
-            hidden: { opacity: 0, y: 6 },
-            visible: { opacity: 1, y: 0 },
-          }}
-          transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.25, 1, 0.5, 1] }}
         >
           <SplitErrorBoundary>
             <ProcessingSettingsPanel {...processingProps} />
@@ -158,10 +142,10 @@ export function EditorMainView({
               </div>
             )}
           </SplitErrorBoundary>
-        </motion.div>
+        </div>
 
         <MixerWorkspace {...mixerProps} />
-      </motion.section>
+      </section>
     </>
   );
 }

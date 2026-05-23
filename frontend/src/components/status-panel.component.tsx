@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { productTransition } from "../motion/presets";
 import { FolderOpen } from "lucide-react";
 import type { StemDefinition } from "../types";
 import { pipelineSteps } from "../data/stemDefinitions";
@@ -34,6 +35,7 @@ export function StatusPanel({
   stemBuffers,
   masterChain = MASTER_CHAIN,
 }: StatusPanelProps) {
+  const reduceMotion = useReducedMotion() ?? false;
   const clampedProgress = Math.max(0, Math.min(splitProgress, 100));
 
   return (
@@ -54,7 +56,7 @@ export function StatusPanel({
               className="progress-glow h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)]"
               initial={{ width: "0%" }}
               animate={{ width: `${clampedProgress}%` }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
+              transition={productTransition(reduceMotion, "fast")}
             />
           </div>
           <p className="mt-xs text-sm text-muted-foreground">{activeStageBlurb}</p>

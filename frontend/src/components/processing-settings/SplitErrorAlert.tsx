@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { alertRevealMotion } from "../../motion/presets";
 
 export interface SplitErrorAlertProps {
   splitError: string;
@@ -12,10 +13,11 @@ export function SplitErrorAlert({
   onDismissError,
   onRetry,
 }: SplitErrorAlertProps) {
+  const reduceMotion = useReducedMotion() ?? false;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      {...alertRevealMotion(reduceMotion)}
       className="mt-sm rounded-xl border border-destructive-400/30 bg-destructive-950/30 px-md py-sm"
     >
       <div className="flex flex-col gap-xs">

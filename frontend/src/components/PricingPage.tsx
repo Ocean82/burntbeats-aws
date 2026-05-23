@@ -73,7 +73,10 @@ export function PricingPage({
   );
 
   return (
-    <div className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-2xl overflow-x-clip px-sm py-md sm:px-lg lg:px-xl">
+    <motion.div
+      className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-2xl overflow-x-clip px-sm py-md sm:px-lg lg:px-xl"
+      {...viewSwitchMotion(Boolean(reduceMotion))}
+    >
       {/* Wayfinding: in-app pricing view — always offer an explicit path back without browser Back */}
       <nav
         aria-label="Breadcrumb"
@@ -177,10 +180,7 @@ export function PricingPage({
       </section>
 
       {/* Plan cards — single rendering via PricingTablePreview */}
-      <motion.section
-        className="glass-panel rounded-2xl border border-border p-md sm:p-lg"
-        {...viewSwitchMotion(Boolean(reduceMotion))}
-      >
+      <section className="glass-panel rounded-2xl border border-border p-md sm:p-lg">
         <div className="mb-md text-center">
           <p className="eyebrow mb-1 text-xs text-primary-200/90">
             Plans & Packs
@@ -196,13 +196,10 @@ export function PricingPage({
           pricingType={pricingTab}
           ctaButtonRenderer={renderCheckoutCTA}
         />
-      </motion.section>
+      </section>
 
       {/* FAQ / objections reducer */}
-      <motion.section
-        className="grid gap-md rounded-2xl border border-border bg-secondary p-md text-sm text-secondary-foreground sm:grid-cols-2 sm:p-lg"
-        {...viewSwitchMotion(Boolean(reduceMotion))}
-      >
+      <section className="grid gap-md rounded-2xl border border-border bg-secondary p-md text-sm text-secondary-foreground sm:grid-cols-2 sm:p-lg">
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             What happens if I run out of tokens?
@@ -240,7 +237,7 @@ export function PricingPage({
             first.
           </p>
         </div>
-      </motion.section>
+      </section>
 
       <p className="border-t border-border pt-8 text-center">
         <button
@@ -252,6 +249,6 @@ export function PricingPage({
           Back to editor
         </button>
       </p>
-    </div>
+    </motion.div>
   );
 }

@@ -1,7 +1,11 @@
 import { useReducedMotion } from "framer-motion";
 import {
+  alertRevealMotion,
+  bannerSlideMotion,
+  collapseMotion,
   modalBackdropMotion,
   modalContentMotion,
+  panelEnterMotion,
   productTransition,
   staggerContainer,
   staggerItem,
@@ -24,5 +28,9 @@ export function useProductMotion() {
       productTransition(reduceMotion, kind),
     staggerContainer: (delayMs?: number) => staggerContainer(reduceMotion, delayMs),
     staggerItem: () => staggerItem(reduceMotion),
+    collapse: () => collapseMotion(reduceMotion),
+    alertReveal: () => alertRevealMotion(reduceMotion),
+    bannerSlide: (edge?: "top" | "bottom") => bannerSlideMotion(reduceMotion, edge),
+    panelEnter: () => panelEnterMotion(reduceMotion),
   };
 }

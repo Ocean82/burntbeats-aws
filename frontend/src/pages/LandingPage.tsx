@@ -7,26 +7,16 @@ import { PricingTablePreview } from "../components/PricingTablePreview";
 import { PricingTabToggle } from "../components/PricingTabToggle";
 import { BillingRules } from "../components/BillingRules";
 import { trackEvent } from "../analytics/events";
-
-/** Framer Motion fade-up preset. delay in seconds, distance in px. */
-function fadeUp(delay = 0, distance = 16) {
-  return {
-    initial: { opacity: 0, y: distance },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.45, delay, ease: "easeOut" },
-  };
-}
+import {
+  brandHeroContainer,
+  brandHeroItemVariants,
+  brandScrollSection,
+} from "../motion/brandPresets";
 
 export function LandingPage() {
   const { isSignedIn } = useAuth();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotion() ?? false;
   const [pricingTab, setPricingTab] = useState<PricingTableType>("subscriptions");
-
-  /** Respects prefers-reduced-motion — skips animation when true. */
-  const anim = (delay = 0, distance = 16) =>
-    reduceMotion
-      ? { initial: false as const, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
-      : fadeUp(delay, distance);
 
   const renderPricingCTA = (plan: PlanConfig) => (
     <SignUpButton mode="modal" fallbackRedirectUrl="/app">
@@ -49,10 +39,7 @@ export function LandingPage() {
     </SignUpButton>
   );
 
-  // Clerk modal sign-in sets isSignedIn → Root re-renders and swaps to App automatically.
-  // Nothing extra needed here — Root handles the switch.
   useEffect(() => {
-    // Clean up ?checkout= query param if user lands back here after cancelling
     if (window.location.search.includes("checkout=")) {
       const url = new URL(window.location.href);
       url.searchParams.delete("checkout");
@@ -61,35 +48,32 @@ export function LandingPage() {
     }
   }, []);
 
-  // Already signed in — Root will swap us out, render nothing to avoid flash
   if (isSignedIn) return null;
+
+  const heroItem = brandHeroItemVariants(reduceMotion);
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-foreground">
-      {/* Background — fire/ice duality */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        {/* Viewport thermal edges */}
         <div className="viewport-thermal-edge viewport-thermal-edge--fire" />
         <div className="viewport-thermal-edge viewport-thermal-edge--ice" />
-
-        {/* Fire side — left (industrial, molten) */}
         <div className="fire-orb left-[-10rem] top-[-8rem] h-96 w-96" />
         <div className="fire-orb left-[-5rem] bottom-[12%] h-[22rem] w-[22rem] opacity-50" />
-
-        {/* Ice side — right (tech, crystalline) */}
         <div className="ice-orb right-[-12rem] top-16 h-[28rem] w-[28rem] opacity-70" />
         <div className="ice-orb right-[-7rem] bottom-[-12rem] h-[24rem] w-[24rem] opacity-48" />
-
-        {/* Purple bridge */}
-        <div className="fire-orb bottom-[-14rem] left-1/3 h-[32rem] w-[32rem] opacity-25" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.32), rgba(120, 60, 200, 0.16) 30%, transparent 65%)' }} />
-
+        <div
+          className="fire-orb bottom-[-14rem] left-1/3 h-[32rem] w-[32rem] opacity-25"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.32), rgba(120, 60, 200, 0.16) 30%, transparent 65%)",
+          }}
+        />
         <div className="circuit-mesh" />
         <div className="circuit-mesh-industrial" />
         <div className="mesh-overlay" />
       </div>
 
       <div className="relative mx-auto max-w-5xl px-md sm:px-lg lg:px-xl">
-        {/* Nav */}
         <nav className="flex flex-wrap items-center justify-between gap-sm py-lg">
           <div className="flex items-center gap-sm">
             <img
@@ -122,32 +106,47 @@ export function LandingPage() {
           </div>
         </nav>
 
-        {/* Hero */}
+        {/* Hero — one orchestrated entrance */}
         <motion.section
           className="flex flex-col items-center gap-lg py-12 text-center"
-          {...anim(0, 20)}
+          {...brandHeroContainer(reduceMotion)}
         >
-          <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-xs rounded-full border border-border bg-muted px-md py-xs text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-100/90 sm:text-xs sm:tracking-[0.3em]">
+          <motion.div
+            variants={heroItem}
+            className="inline-flex max-w-full flex-wrap items-center justify-center gap-xs rounded-full border border-border bg-muted px-md py-xs text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-100/90 sm:text-xs sm:tracking-[0.3em]"
+          >
             Stem Splitter · Mixer · Master
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
-          </div>
+          </motion.div>
 
-          <img
-            src="/logo-emblem.png"
-            alt=""
-            className="logo-emblem h-20 w-20 sm:h-24 sm:w-24"
-            aria-hidden="true"
-          />
-          <h1 className="logo-burnt max-w-4xl text-6xl font-bold leading-tight sm:text-7xl lg:text-8xl">
+          <motion.div variants={heroItem}>
+            <img
+              src="/logo-emblem.png"
+              alt=""
+              className="logo-emblem mx-auto h-20 w-20 sm:h-24 sm:w-24"
+              aria-hidden="true"
+            />
+          </motion.div>
+
+          <motion.h1
+            variants={heroItem}
+            className="logo-burnt max-w-4xl text-6xl font-bold leading-tight sm:text-7xl lg:text-8xl"
+          >
             <span className="logo-burnt-fire">Burnt Beats</span>
-          </h1>
+          </motion.h1>
 
-          <p className="max-w-xl break-words text-lg leading-relaxed text-secondary-foreground sm:text-xl">
+          <motion.p
+            variants={heroItem}
+            className="max-w-xl break-words text-lg leading-relaxed text-secondary-foreground sm:text-xl"
+          >
             High-fidelity stem separation for producers. Level, trim, and export
             radio-ready mixes in minutes.
-          </p>
+          </motion.p>
 
-          <div className="mt-md flex flex-col items-center gap-md sm:flex-row">
+          <motion.div
+            variants={heroItem}
+            className="mt-md flex flex-col items-center gap-md sm:flex-row"
+          >
             <SignUpButton mode="modal">
               <button
                 type="button"
@@ -164,12 +163,16 @@ export function LandingPage() {
                 Sign In
               </button>
             </SignInButton>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Secure Stripe billing · cancel anytime · one-time packs available
-          </p>
+          </motion.div>
 
-          <div className="flex flex-col items-center gap-lg text-xs text-muted-foreground sm:flex-row">
+          <motion.p variants={heroItem} className="text-xs text-muted-foreground">
+            Secure Stripe billing · cancel anytime · one-time packs available
+          </motion.p>
+
+          <motion.div
+            variants={heroItem}
+            className="flex flex-col items-center gap-lg text-xs text-muted-foreground sm:flex-row"
+          >
             <div className="flex items-center gap-xs">
               <ShieldCheck className="h-3.5 w-3.5 text-success-500/70" />
               No Install Required
@@ -182,11 +185,10 @@ export function LandingPage() {
               <AudioWaveform className="h-3.5 w-3.5 text-blue-500/70" />
               Pro Mixer & Editor
             </div>
-          </div>
+          </motion.div>
         </motion.section>
 
-        {/* Pricing — Stripe hosted pricing table */}
-        <motion.section id="pricing" className="py-12" {...anim(0.15)}>
+        <motion.section id="pricing" className="py-12" {...brandScrollSection(reduceMotion)}>
           <div className="mb-8 text-center">
             <p className="eyebrow mb-xs">Simple Pricing</p>
             <p className="text-base leading-relaxed text-secondary-foreground">
@@ -260,10 +262,9 @@ export function LandingPage() {
           </div>
         </motion.section>
 
-        {/* Footer CTA */}
         <motion.section
           className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-md py-10 text-center sm:px-xl sm:py-12"
-          {...anim(0.35)}
+          {...brandScrollSection(reduceMotion, 0.08)}
         >
           <p className="mb-xs text-2xl font-bold text-secondary-foreground">
             Ready to split?
@@ -281,10 +282,12 @@ export function LandingPage() {
           </SignUpButton>
         </motion.section>
 
-        {/* Footer */}
         <footer className="border-t border-border py-xl text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} Burnt Beats. All rights reserved.</p>
-          <nav aria-label="Footer links" className="mt-sm flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <nav
+            aria-label="Footer links"
+            className="mt-sm flex flex-wrap items-center justify-center gap-x-4 gap-y-2"
+          >
             <a
               href="/terms-of-service"
               className="text-muted-foreground underline decoration-white/20 underline-offset-2 transition hover:text-primary-200/90"

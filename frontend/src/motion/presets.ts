@@ -109,3 +109,80 @@ export function staggerItem(reduceMotion: boolean) {
     },
   };
 }
+
+/** Expand/collapse panels — layout change, use sparingly */
+export function collapseMotion(reduceMotion: boolean) {
+  const style = { overflow: "hidden" as const };
+  if (reduceMotion) {
+    return {
+      initial: false as const,
+      animate: { opacity: 1 },
+      exit: { opacity: 0 },
+      transition: { duration: 0 },
+      style,
+    };
+  }
+  return {
+    initial: { opacity: 0, height: 0 },
+    animate: { opacity: 1, height: "auto" },
+    exit: { opacity: 0, height: 0 },
+    transition: productTransition(false, "layout"),
+    style,
+  };
+}
+
+/** Inline alerts (errors, validation) */
+export function alertRevealMotion(reduceMotion: boolean) {
+  if (reduceMotion) {
+    return {
+      initial: false as const,
+      animate: { opacity: 1 },
+      transition: { duration: 0 },
+    };
+  }
+  return {
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: productTransition(false, "fast"),
+  };
+}
+
+/** Top/bottom banners (offline, export notice) */
+export function bannerSlideMotion(
+  reduceMotion: boolean,
+  edge: "top" | "bottom" = "top",
+) {
+  const offset = edge === "top" ? -12 : 12;
+  if (reduceMotion) {
+    return {
+      initial: false as const,
+      animate: { opacity: 1 },
+      exit: { opacity: 0 },
+      transition: { duration: 0 },
+    };
+  }
+  return {
+    initial: { opacity: 0, y: offset },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: offset },
+    transition: productTransition(false, "fast"),
+  };
+}
+
+/** Floating panels (batch queue) — state reveal, not page choreography */
+export function panelEnterMotion(reduceMotion: boolean) {
+  if (reduceMotion) {
+    return {
+      initial: false as const,
+      animate: { opacity: 1 },
+      exit: { opacity: 0 },
+      transition: { duration: 0 },
+    };
+  }
+  return {
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: 16 },
+    transition: productTransition(false, "fast"),
+  };
+}

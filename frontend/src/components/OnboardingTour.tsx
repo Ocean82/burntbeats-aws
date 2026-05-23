@@ -204,10 +204,14 @@ export function OnboardingTour({
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentStep}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
+                    initial={motionCfg.reduceMotion ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={
+                      motionCfg.reduceMotion
+                        ? { opacity: 0 }
+                        : { opacity: 0, transition: motionCfg.transition("exit") }
+                    }
+                    transition={motionCfg.transition("fast")}
                     className="text-center"
                   >
                     {/* Icon */}

@@ -1,5 +1,6 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { collapseMotion, productTransition } from "../../motion/presets";
 
 export interface SpeechEnhanceProgressProps {
   isEnhancing: boolean;
@@ -16,6 +17,8 @@ export function SpeechEnhanceProgress({
   enhanceProgress,
   statusMessage,
 }: SpeechEnhanceProgressProps) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const collapse = collapseMotion(reduceMotion);
   const pct = isUploading ? uploadProgress : enhanceProgress;
 
   return (
@@ -23,11 +26,7 @@ export function SpeechEnhanceProgress({
       {isEnhancing && (
         <motion.div
           key="speech-progress"
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.2 }}
-          style={{ overflow: "hidden" }}
+          {...collapse}
           className="mt-md rounded-xl border border-info-400/20 bg-info-950/30 px-md py-sm"
           role="status"
           aria-live="polite"
@@ -46,6 +45,7 @@ export function SpeechEnhanceProgress({
             isUploading={isUploading}
             enhanceProgress={enhanceProgress}
             pct={pct}
+            reduceMotion={reduceMotion}
           />
         </motion.div>
       )}
@@ -57,10 +57,12 @@ function ProgressBarInner({
   isUploading,
   enhanceProgress,
   pct,
+  reduceMotion,
 }: {
   isUploading: boolean;
   enhanceProgress: number;
   pct: number;
+  reduceMotion: boolean;
 }) {
   return (
     <>
@@ -81,7 +83,7 @@ function ProgressBarInner({
           className="h-full rounded-full bg-gradient-to-r from-info-500 via-sky-400 to-teal-300"
           initial={{ width: "0%" }}
           animate={{ width: `${Math.max(3, pct)}%` }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          transition={productTransition(reduceMotion, "normal")}
         />
       </div>
     </>

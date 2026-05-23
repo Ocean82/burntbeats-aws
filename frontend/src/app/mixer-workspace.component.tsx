@@ -1,5 +1,4 @@
 import { Suspense, lazy, type RefObject } from "react";
-import { motion } from "framer-motion";
 import { cn } from "../utils/cn";
 import { Skeleton } from "../components/ui/skeleton";
 import { ProgressWidget } from "../components/ProgressWidget";
@@ -21,7 +20,8 @@ interface MixerWorkspaceProps {
   onPointerDownMixer: React.PointerEventHandler<HTMLDivElement>;
   guidanceTarget: string | null;
   guidanceRingClass: string;
-  reduceMotion: boolean;
+  /** @deprecated No entrance animation in product surfaces */
+  reduceMotion?: boolean;
   onboardingSteps: OnboardingStep[];
   hasCompletedFirstExport: boolean;
   subscription: Pick<UseSubscriptionResult, "status" | "plan">;
@@ -86,7 +86,6 @@ export function MixerWorkspace({
   onPointerDownMixer,
   guidanceTarget,
   guidanceRingClass,
-  reduceMotion,
   onboardingSteps,
   hasCompletedFirstExport,
   subscription,
@@ -137,18 +136,13 @@ export function MixerWorkspace({
   undoToast,
 }: MixerWorkspaceProps) {
   return (
-    <motion.div
+    <div
       ref={mixerSectionRef}
       onPointerDown={onPointerDownMixer}
       className={cn(
         "rounded-2xl border border-border bg-muted/20 p-lg sm:p-lg overflow-visible",
         guidanceTarget === "mixer" && guidanceRingClass,
       )}
-      variants={{
-        hidden: { opacity: 0, y: 12 },
-        visible: { opacity: 1, y: 0 },
-      }}
-      transition={{ duration: reduceMotion ? 0 : 0.4 }}
     >
       {/* Onboarding checklist */}
       <div className="mb-md flex flex-col gap-xs rounded-2xl border border-border bg-muted px-sm py-xs text-[11px] text-secondary-foreground">
@@ -350,6 +344,6 @@ export function MixerWorkspace({
           {undoToast}
         </p>
       )}
-    </motion.div>
+    </div>
   );
 }

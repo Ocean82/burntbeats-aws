@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { collapseMotion, productTransition } from "../../motion/presets";
 import { Gamepad2, Loader2, Lock, Sparkles } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { getSplitProgressMessage } from "../../utils/splitProgressCopy";
@@ -52,6 +53,8 @@ export function SplitActions({
   onOpenWaitingGame,
   hideSampleToggle = false,
 }: SplitActionsProps) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const collapse = collapseMotion(reduceMotion);
   const stemCount: 2 | 4 = requestedStemMode;
   const progressCopy = useMemo(
     () =>
@@ -158,11 +161,7 @@ export function SplitActions({
           {isSplitting && (
             <motion.div
               key="split-progress"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              style={{ overflow: "hidden" }}
+              {...collapse}
               role="status"
               aria-live="polite"
               aria-label={
@@ -201,7 +200,7 @@ export function SplitActions({
                           ? "0%"
                           : `${Math.max(2, splitProgress)}%`,
                     }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    transition={productTransition(reduceMotion, "normal")}
                   />
                 </div>
               </div>
@@ -214,7 +213,7 @@ export function SplitActions({
             onClick={onOpenWaitingGame}
             className="inline-flex min-h-[36px] items-center gap-xs rounded-lg border border-border bg-muted px-sm py-1.5 text-[11px] font-medium text-secondary-foreground transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-100"
           >
-            <Gamepad2 className="h-3.5 w-3.5 animate-pulse text-primary-300/90" aria-hidden />
+            <Gamepad2 className="h-3.5 w-3.5 text-primary-300/90" aria-hidden />
             Play The Waiting Game while you wait
           </button>
         )}

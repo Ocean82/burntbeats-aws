@@ -1,4 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { collapseMotion, panelEnterMotion } from "../motion/presets";
 import { X, Music2, Loader2, Check, AlertCircle, Trash2, ChevronUp, ChevronDown, Lock } from "lucide-react";
 
 export type QueueItemStatus = "queued" | "processing" | "complete" | "error";
@@ -51,6 +52,10 @@ export function BatchQueue({
   onProcessQueue,
   allowProcess = true,
 }: BatchQueueProps) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const panelEnter = panelEnterMotion(reduceMotion);
+  const collapse = collapseMotion(reduceMotion);
+
   if (items.length === 0) return null;
 
   const processingCount = items.filter((i) => i.status === "processing").length;
@@ -61,10 +66,8 @@ export function BatchQueue({
   return (
     <motion.div
       className="fixed bottom-4 right-4 z-40 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-2xl border border-border bg-popover/95 shadow-elevation-xl backdrop-blur-xl"
-      initial={{ y: 100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 100, opacity: 0 }}
-      layout
+      {...panelEnter}
+      layout={!reduceMotion}
     >
       {/* Header */}
       <button
@@ -100,20 +103,12 @@ export function BatchQueue({
       {/* Queue Items */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: "auto" }}
-            exit={{ height: 0 }}
-            className="overflow-hidden"
-          >
+          <motion.div {...collapse}>
             <div id="batch-queue-items" className="max-h-64 overflow-y-auto border-t border-border">
               {items.map((item) => (
                 <motion.div
                   key={item.id}
-                  layout
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
+                  layout={!reduceMotion}
                   className="group relative border-b border-border px-md py-sm last:border-b-0"
                 >
                   <div className="flex items-center gap-sm">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { collapseMotion } from "../../motion/presets";
 import { Music2, Settings2, RotateCcw } from "lucide-react";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
 import { cn } from "../../utils/cn";
@@ -61,6 +62,8 @@ export function ProcessingSettingsPanel({
   onNewSplit,
   onOpenWaitingGame,
 }: ProcessingSettingsPanelProps) {
+  const reduceMotion = useReducedMotion() ?? false;
+  const collapse = collapseMotion(reduceMotion);
   const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
   const [loadExpanded, setLoadExpanded] = useState(false);
   const [isSample, setIsSample] = useState(false);
@@ -109,14 +112,7 @@ export function ProcessingSettingsPanel({
       {/* ── Collapsed bar: shown after a split completes ── */}
       <AnimatePresence initial={false}>
         {panelCollapsed && (
-          <motion.div
-            key="collapsed-bar"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            style={{ overflow: "hidden" }}
-          >
+          <motion.div key="collapsed-bar" {...collapse}>
             <div className="flex items-center gap-sm rounded-xl border border-border bg-muted px-md py-sm">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-500/15">
                 <Music2 className="h-3.5 w-3.5 text-primary-400" />
@@ -163,14 +159,7 @@ export function ProcessingSettingsPanel({
       {/* ── Full panel: hidden when collapsed ── */}
       <AnimatePresence initial={false}>
         {!panelCollapsed && (
-          <motion.div
-            key="full-panel"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.28, ease: "easeOut" }}
-            style={{ overflow: "hidden" }}
-          >
+          <motion.div key="full-panel" {...collapse}>
       {subscriptionInactive && sourceMode === "split" && !isSample && (
         <div className="mb-sm rounded-xl border border-primary-400/35 bg-primary-500/10 px-md py-sm text-sm leading-relaxed text-primary-100/95">
           <p>
@@ -245,14 +234,7 @@ export function ProcessingSettingsPanel({
       {/* ── Progressive disclosure: settings shown only after file is ready ── */}
       <AnimatePresence>
         {(uploadedFile != null || sourceMode === "load") && (
-          <motion.div
-            key="settings-revealed"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.28, ease: "easeOut" }}
-            style={{ overflow: "hidden" }}
-          >
+          <motion.div key="settings-revealed" {...collapse}>
             <div className="flex flex-wrap items-center gap-sm lg:flex-nowrap">
 
         {/* Load mode zone */}
