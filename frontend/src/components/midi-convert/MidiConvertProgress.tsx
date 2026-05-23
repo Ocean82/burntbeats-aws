@@ -26,7 +26,7 @@ export function MidiConvertProgress({
     : statusMessage || "Processing...";
 
   return (
-    <div className="flex flex-col gap-xs rounded-xl border border-accent-midi-400/15 bg-accent-midi-500/5 px-md py-sm">
+    <div className="flex flex-col gap-xs rounded-xl border border-accent-midi/25 bg-accent-midi/5 px-md py-sm">
       <div className="flex items-center gap-xs text-sm text-accent-midi-100/80">
         <Loader2 className="h-4 w-4 animate-spin text-accent-midi-400" aria-hidden />
         <span>{label}</span>

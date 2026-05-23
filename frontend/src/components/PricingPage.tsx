@@ -55,11 +55,12 @@ export function PricingPage({
   const renderCheckoutCTA = (plan: PlanConfig) => (
     <button
       type="button"
+      data-testid={`pricing-cta-${plan.id}`}
       onClick={() => handleSelectPlan(plan.id)}
       disabled={
         subscription.status === "loading" || checkoutLoadingPlan !== null
       }
-      className="w-full rounded-lg border border-primary-400/30 bg-primary-500/20 px-md py-sm font-medium text-primary-200 transition hover:border-primary-400/50 hover:bg-primary-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+      className="min-h-[44px] w-full rounded-lg border border-primary-400/30 bg-primary-500/20 px-md py-sm font-medium text-primary-200 transition hover:border-primary-400/50 hover:bg-primary-500/30 disabled:cursor-not-allowed disabled:opacity-60 tap-feedback"
     >
       {checkoutLoadingPlan === plan.id ? (
         <span className="inline-flex items-center justify-center gap-xs">
@@ -74,6 +75,7 @@ export function PricingPage({
 
   return (
     <motion.div
+      data-testid="pricing-page"
       className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-2xl overflow-x-clip px-sm py-md sm:px-lg lg:px-xl"
       {...viewSwitchMotion(Boolean(reduceMotion))}
     >
@@ -86,8 +88,9 @@ export function PricingPage({
           <li className="flex min-w-0 items-center gap-xs">
             <button
               type="button"
+              data-testid="pricing-back-to-editor"
               onClick={onClose}
-              className="group inline-flex min-h-[44px] min-w-0 items-center gap-xs rounded-xl border border-border bg-muted px-sm py-xs text-left text-primary-200/95 transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400/50"
+              className="group inline-flex min-h-[44px] min-w-0 items-center gap-xs rounded-xl border border-border bg-muted px-sm py-xs text-left text-primary-200/95 transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400/50 tap-feedback"
             >
               <ArrowLeft
                 className="h-4 w-4 shrink-0 text-primary-300/90 transition group-hover:-translate-x-0.5"
@@ -242,8 +245,9 @@ export function PricingPage({
       <p className="border-t border-border pt-8 text-center">
         <button
           type="button"
+          data-testid="pricing-back-to-editor-footer"
           onClick={onClose}
-          className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-border bg-muted px-md py-xs text-sm font-medium text-primary-200/95 transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400/50"
+          className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-border bg-muted px-md py-xs text-sm font-medium text-primary-200/95 transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400/50 tap-feedback"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           Back to editor

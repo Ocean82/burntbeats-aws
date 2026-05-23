@@ -82,7 +82,7 @@ export function MidiConvertSettings({
         Include pitch bends
       </label>
 
-      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <p className="mt-2xs text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Post-processing
       </p>
 
@@ -100,7 +100,7 @@ export function MidiConvertSettings({
       {settings.normalizeVelocity && (
         <label
           htmlFor="midi-convert-target-velocity"
-          className="ml-5 flex flex-col gap-xs border-l border-accent-midi-400/20 pl-3"
+          className="ml-lg flex flex-col gap-xs border-l border-accent-midi/25 pl-sm"
         >
           <span className="flex items-center justify-between text-sm text-secondary-foreground">
             <span>Target peak velocity</span>
@@ -195,7 +195,7 @@ export function MidiConvertSettings({
 
       {/* Conditional quantization settings */}
       {settings.quantize && (
-        <div className="ml-5 flex flex-col gap-sm border-l border-accent-midi-400/20 pl-3">
+        <div className="ml-lg flex flex-col gap-sm border-l border-accent-midi/25 pl-sm">
           {/* Grid division selector */}
           <label className="flex flex-col gap-xs">
             <span className="text-sm text-secondary-foreground">Grid division</span>
@@ -203,7 +203,7 @@ export function MidiConvertSettings({
               value={settings.quantizeGrid}
               onChange={(e) => onUpdate({ quantizeGrid: e.target.value })}
               disabled={disabled}
-              className="rounded border border-accent-midi-400/30 bg-accent-midi-950/40 px-xs py-1.5 text-sm text-secondary-foreground accent-accent-midi-400 focus:border-accent-midi-400 focus:outline-none focus:ring-1 focus:ring-accent-midi-400/50 disabled:opacity-40"
+              className="rounded border border-accent-midi/30 bg-accent-midi-950/40 px-xs py-xs text-sm text-secondary-foreground accent-accent-midi focus:border-accent-midi focus:outline-none focus:ring-1 focus:ring-accent-midi/50 disabled:opacity-40"
             >
               <option value="1/4">1/4</option>
               <option value="1/8">1/8</option>
@@ -232,7 +232,7 @@ export function MidiConvertSettings({
                 }
               }}
               disabled={disabled}
-              className="rounded border border-accent-midi-400/30 bg-accent-midi-950/40 px-xs py-1.5 text-sm text-secondary-foreground focus:border-accent-midi-400 focus:outline-none focus:ring-1 focus:ring-accent-midi-400/50 disabled:opacity-40"
+              className="rounded border border-accent-midi/30 bg-accent-midi-950/40 px-xs py-xs text-sm text-secondary-foreground focus:border-accent-midi focus:outline-none focus:ring-1 focus:ring-accent-midi/50 disabled:opacity-40"
             />
             <span className="text-[10px] text-muted-foreground">
               Tempo for grid alignment (40–300 BPM)

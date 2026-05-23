@@ -27,14 +27,11 @@ test.describe("Billing & pricing flow", () => {
     await page.goto("/");
     await openPricingPage(page);
 
-    // Tab toggle for subscriptions vs credit packs
-    await expect(page.getByRole("button", { name: /subscriptions/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /credit packs/i })).toBeVisible();
-
-    // Plan cards should be visible (at least one CTA button)
-    await expect(
-      page.locator("button").filter({ hasText: /start basic|subscribe|get started/i }).first(),
-    ).toBeVisible();
+    await expect(page.getByTestId("pricing-tab-toggle")).toBeVisible();
+    await expect(page.getByTestId("pricing-tab-subscriptions")).toBeVisible();
+    await expect(page.getByTestId("pricing-tab-credit-packs")).toBeVisible();
+    await expect(page.getByTestId("pricing-plan-basic")).toBeVisible();
+    await expect(page.getByTestId("pricing-cta-basic")).toBeVisible();
   });
 
   test("tab toggle switches between subscriptions and credit packs", async ({
@@ -43,34 +40,20 @@ test.describe("Billing & pricing flow", () => {
     await page.goto("/");
     await openPricingPage(page);
 
-    // Default tab is subscriptions
-    const creditPacksTab = page.getByRole("button", { name: /credit packs/i });
-    await creditPacksTab.click();
-
-    // After clicking credit packs, the content should change
-    // (credit pack cards have different text like "Top-Up" or "one-time")
-    await expect(
-      page.getByText(/one-time|top-up|credit/i).first(),
-    ).toBeVisible();
+    await expect(page.getByTestId("pricing-plan-basic")).toBeVisible();
+    await page.getByTestId("pricing-tab-credit-packs").click();
+    await expect(page.getByTestId("pricing-plan-topup")).toBeVisible();
+    await expect(page.getByText(/one-time|top-up/i).first()).toBeVisible();
   });
 
   test("checkout CTA button is clickable and shows loading state", async ({ page }) => {
     await page.goto("/");
     await openPricingPage(page);
 
-    // The primary checkout CTA should be visible
-    const checkoutButton = page
-      .locator("button")
-      .filter({ hasText: /start basic/i })
-      .first();
+    const checkoutButton = page.getByTestId("pricing-cta-basic");
     await expect(checkoutButton).toBeVisible();
     await expect(checkoutButton).toBeEnabled();
-
-    // Click it — in local dev mode startCheckout returns immediately,
-    // but the button should still be interactive (not disabled permanently)
     await checkoutButton.click();
-
-    // Button should remain functional after click (not stuck in disabled state)
     await expect(checkoutButton).toBeEnabled({ timeout: 3000 });
   });
 
@@ -80,24 +63,16 @@ test.describe("Billing & pricing flow", () => {
     await page.goto("/");
     await openPricingPage(page);
 
-    // Click "Back to editor" button
-    const backButton = page
-      .getByRole("button", { name: /back to editor/i })
-      .first();
-    await backButton.click();
+    await page.getByTestId("pricing-back-to-editor").click();
 
-    // Should be back on the editor view
     await expect(page.getByTestId("processing-settings-panel")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /pick your plan/i }),
-    ).not.toBeVisible();
+    await expect(page.getByTestId("pricing-page")).not.toBeVisible();
   });
 
   test("FAQ section is visible on pricing page", async ({ page }) => {
     await page.goto("/");
     await openPricingPage(page);
 
-    // FAQ questions should be visible
     await expect(
       page.getByText(/what happens if i run out of tokens/i),
     ).toBeVisible();

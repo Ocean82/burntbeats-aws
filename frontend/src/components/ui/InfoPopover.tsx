@@ -33,7 +33,7 @@ export function InfoPopover({ label, title, body, className }: InfoPopoverProps)
         <>
           <button
             type="button"
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
+            className="fixed inset-0 z-modal-backdrop cursor-default bg-transparent"
             aria-label="Close help"
             onClick={() => setOpen(false)}
           />

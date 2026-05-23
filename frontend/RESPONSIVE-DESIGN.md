@@ -59,7 +59,7 @@ Prefer `clamp()` for type and gutters when a single breakpoint is not enough:
 | Pattern | Mobile | `sm+` / `lg+` |
 |---------|--------|----------------|
 | Workspace tabs | Scrollable row (`editor-header`) | Inline toolbar |
-| Settings / account | `AppMobileMoreMenu` + menus | Full header actions |
+| Settings / account | `SettingsMenu` (⋯) + `AccountMenu` | Same on `sm+`; header wraps on narrow viewports |
 | Modals | `.modal-viewport-height` + `dvh` | Extra vertical margin |
 | DJ lanes | 72px lane height | 96px at `sm+` |
 | Tables | Prefer cards / stacked rows | Full table when space allows |

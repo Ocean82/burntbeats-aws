@@ -137,7 +137,7 @@ export function MidiSourceSelector({
                 onClick={() => onSelectStem(stem.id)}
                 disabled={disabled}
                 className={cn(
-                  "rounded-full border px-sm py-1.5 text-xs font-medium capitalize transition",
+                  "rounded-full border px-sm py-xs text-xs font-medium capitalize transition",
                   selectedStem === stem.id
                     ? "border-accent-midi-400/60 bg-accent-midi-500/25 text-accent-midi-100"
                     : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border",
@@ -165,7 +165,7 @@ export function MidiSourceSelector({
                 onClick={() => onSelectLoadedStem(stem.id)}
                 disabled={disabled}
                 className={cn(
-                  "rounded-full border px-sm py-1.5 text-xs font-medium transition max-w-[200px] truncate",
+                  "rounded-full border px-sm py-xs text-xs font-medium transition max-w-[200px] truncate",
                   selectedLoadedStemId === stem.id
                     ? "border-accent-midi-400/60 bg-accent-midi-500/25 text-accent-midi-100"
                     : "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border",

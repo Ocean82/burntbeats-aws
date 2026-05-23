@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import type { Plan } from "../hooks/useSubscription";
 import { getPlansForType, type PlanConfig, type PricingTableType } from "../data/plans";
+import { cn } from "../utils/cn";
 
 // Re-export for consumers that imported from here previously
 export type { PlanConfig, PricingTableType };
@@ -16,9 +17,11 @@ function PlanCard({ plan, onSelect, ctaButton }: PlanCardProps) {
 
   return (
     <article
-      className={`flex flex-col rounded-3xl border border-border bg-secondary p-lg shadow-[0_0_30px_rgba(0,0,0,0.12)] transition hover:border-border hover:bg-muted ${
-        plan.highlight ? "ring-1 ring-primary-400/20" : ""
-      }`}
+      data-testid={`pricing-plan-${plan.id}`}
+      className={cn(
+        "flex flex-col rounded-3xl border border-border bg-secondary p-lg shadow-elevation-md transition hover:border-border hover:bg-muted",
+        plan.highlight && "ring-1 ring-primary-400/20",
+      )}
     >
       <div className="flex items-start justify-between gap-md">
         <div>
@@ -71,8 +74,12 @@ export function PricingTablePreview({
   const plans = getPlansForType(pricingType);
 
   return (
-    <div className="space-y-lg">
-      <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-lg" data-testid="pricing-table-preview">
+      <div
+        id="pricing-tabpanel-plans"
+        role="tabpanel"
+        className="grid gap-md sm:grid-cols-2 lg:grid-cols-3"
+      >
         {plans.map((plan) => (
           <PlanCard
             key={plan.id}

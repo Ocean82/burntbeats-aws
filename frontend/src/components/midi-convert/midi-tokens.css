@@ -6,11 +6,11 @@
   --midi-surface-raised: #1e1e22;
   --midi-surface-inset: #121214;
   --midi-border: rgba(255, 255, 255, 0.1);
-  --midi-border-focus: rgba(120, 200, 160, 0.55);
+  --midi-border-focus: color-mix(in oklch, var(--accent-midi) 55%, transparent);
   --midi-text: rgba(255, 255, 255, 0.92);
   --midi-text-muted: rgba(255, 255, 255, 0.45);
-  --midi-accent: #5ee9b5;
-  --midi-motion: 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  --midi-accent: var(--accent-midi);
+  --midi-motion: var(--motion-fast);
   --midi-shadow-ambient: 0 1px 2px rgba(0, 0, 0, 0.45);
   --midi-shadow-face: 0 1px 0 rgba(255, 255, 255, 0.08) inset,
     0 -1px 0 rgba(0, 0, 0, 0.35) inset;

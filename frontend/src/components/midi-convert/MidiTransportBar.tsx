@@ -59,7 +59,7 @@ export function MidiTransportBar({
 
       <span className="midi-time-display" aria-live="polite" aria-label="Playhead position">
         {formatTransportTime(currentTime)}
-        <span className="text-muted-foreground"> / </span>
+        <span className="opacity-45"> / </span>
         {formatTransportTime(duration)}
       </span>
 

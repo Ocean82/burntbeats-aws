@@ -2,9 +2,10 @@
  * UpsellModal — Prompts users to purchase a subscription or add credits
  * when they complete a free sample split or their token balance drops below 2.
  */
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, CreditCard } from "lucide-react";
+import { useModalA11y } from "../hooks/useModalA11y";
 import { useProductMotion } from "../motion/useProductMotion";
 
 interface UpsellModalProps {
@@ -28,30 +29,19 @@ export function UpsellModal({
 }: UpsellModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const motionCfg = useProductMotion();
-
-  // Trap focus and handle Escape
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    // Focus the modal on open
-    modalRef.current?.focus();
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
+  useModalA11y(open, modalRef, onClose);
 
   return (
     <AnimatePresence>
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-[200] bg-secondary backdrop-blur-sm"
+            className="fixed inset-0 z-modal-backdrop bg-secondary backdrop-blur-sm"
             {...motionCfg.modalBackdrop}
             onClick={onClose}
             aria-hidden="true"
           />
-          <div className="fixed inset-0 z-[201] flex items-center justify-center p-md pointer-events-none">
+          <div className="fixed inset-0 z-modal flex items-center justify-center p-md pointer-events-none">
           <motion.div
             ref={modalRef}
             role="dialog"
@@ -72,7 +62,7 @@ export function UpsellModal({
             </button>
 
             {/* Header */}
-            <div className="mb-5 text-center">
+            <div className="mb-lg text-center">
               <div className="mx-auto mb-sm flex h-12 w-12 items-center justify-center rounded-full bg-primary-500/20">
                 <Zap className="h-6 w-6 text-primary-400" />
               </div>
@@ -96,7 +86,7 @@ export function UpsellModal({
               <button
                 type="button"
                 onClick={onViewSubscriptions}
-                className="flex w-full items-center justify-center gap-sm rounded-xl border border-primary-400/40 bg-gradient-to-r from-primary-500/20 to-orange-500/20 px-md py-sm text-sm font-semibold text-primary-100 transition hover:border-primary-400/60 hover:from-primary-500/30 hover:to-orange-500/30"
+                className="flex w-full items-center justify-center gap-sm rounded-xl border border-primary-400/40 bg-gradient-to-r from-primary-500/20 to-primary-400/10 px-md py-sm text-sm font-semibold text-primary-100 transition hover:border-primary-400/60 hover:from-primary-500/30 hover:to-primary-400/20"
               >
                 <Zap className="h-4 w-4" />
                 View Subscription Plans
@@ -117,7 +107,7 @@ export function UpsellModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-muted-foreground transition hover:text-muted-foreground"
+                className="text-xs text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
               >
                 Maybe later
               </button>

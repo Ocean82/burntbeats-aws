@@ -37,7 +37,7 @@ function StatusIcon({ status }: { status: QueueItemStatus }) {
     case "processing":
       return <Loader2 className="h-4 w-4 animate-spin text-primary-400" />;
     case "complete":
-      return <Check className="h-4 w-4 text-green-400" />;
+      return <Check className="h-4 w-4 text-success-400" />;
     case "error":
       return <AlertCircle className="h-4 w-4 text-destructive-400" />;
   }
@@ -65,7 +65,7 @@ export function BatchQueue({
 
   return (
     <motion.div
-      className="fixed bottom-4 right-4 z-40 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-2xl border border-border bg-popover/95 shadow-elevation-xl backdrop-blur-xl"
+      className="fixed right-md z-sticky w-[min(100vw-2rem,20rem)] overflow-hidden rounded-2xl border border-border bg-popover/95 shadow-elevation-xl backdrop-blur-xl fixed-bottom-safe"
       {...panelEnter}
       layout={!reduceMotion}
     >

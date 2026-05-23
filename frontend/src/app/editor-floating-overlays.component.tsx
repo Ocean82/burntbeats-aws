@@ -21,7 +21,7 @@ export function EditorFloatingOverlays({
           role="status"
           aria-live="polite"
           {...slide}
-          className="pointer-events-none fixed bottom-20 left-1/2 z-[60] w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-success-400/40 bg-success-950/95 px-md py-sm text-center text-sm text-success-50 shadow-elevation-md backdrop-blur-md sm:w-auto md:bottom-8"
+          className="pointer-events-none fixed bottom-20 left-1/2 z-toast w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-success-400/40 bg-success-950/95 px-md py-sm text-center text-sm text-success-50 shadow-elevation-md backdrop-blur-md sm:w-auto md:bottom-8"
         >
           {exportNotice}
         </motion.div>

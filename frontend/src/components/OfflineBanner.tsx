@@ -19,7 +19,7 @@ export function OfflineBanner() {
       {showBanner && (
         <motion.div
           {...slide}
-          className={`fixed inset-x-0 top-0 z-[250] flex items-center justify-center gap-xs px-md py-sm text-sm font-medium backdrop-blur-md ${
+          className={`fixed inset-x-0 top-0 z-toast flex items-center justify-center gap-xs px-md py-sm text-sm font-medium backdrop-blur-md pt-safe ${
             isOnline
               ? "border-b border-success-400/30 bg-success-950/90 text-success-100"
               : "border-b border-primary-400/30 bg-primary-950/90 text-primary-100"

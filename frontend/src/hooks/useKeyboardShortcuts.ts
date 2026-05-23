@@ -53,7 +53,7 @@ export const KEYBOARD_SHORTCUTS: { key: string; modifier?: string; action: Short
   { key: "1", modifier: "alt", action: "navEditor", label: "Alt + 1", description: "Go to Stem Editor" },
   { key: "2", modifier: "alt", action: "navSpeech", label: "Alt + 2", description: "Go to Speech Clean" },
   { key: "3", modifier: "alt", action: "navMidi", label: "Alt + 3", description: "Go to MIDI Convert" },
-  { key: "4", modifier: "alt", action: "navPricing", label: "Alt + 4", description: "Go to Plans" },
+  { key: "4", modifier: "alt", action: "navPricing", label: "Alt + 4", description: "Go to pricing" },
   { key: "5", modifier: "alt", action: "navMyStems", label: "Alt + 5", description: "Go to My Stems" },
 ];
 

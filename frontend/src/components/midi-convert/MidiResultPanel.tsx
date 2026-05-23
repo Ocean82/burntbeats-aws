@@ -36,7 +36,7 @@ export function MidiResultPanel({
   const suggestedBpm = result.analysis?.suggested_bpm ?? 120;
 
   return (
-    <div className="flex flex-col gap-md rounded-xl border border-accent-midi-400/20 bg-accent-midi-500/5 px-md py-md">
+    <div className="flex flex-col gap-md rounded-xl border border-accent-midi/25 bg-accent-midi/5 px-md py-md">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-xs">
           <Music className="h-4 w-4 text-accent-midi-300" aria-hidden />
@@ -45,7 +45,7 @@ export function MidiResultPanel({
 
         {/* View / Edit toggle */}
         {result.pianoRollNotes.length > 0 && (
-          <div className="flex items-center gap-2xs rounded-lg border border-border bg-muted p-0.5">
+          <div className="flex items-center gap-2xs rounded-lg border border-border bg-muted p-2xs">
             <button
               type="button"
               onClick={() => setMode("view")}
@@ -126,7 +126,7 @@ export function MidiResultPanel({
           <button
             type="button"
             onClick={() => (isPlaying ? stop() : play(result.pianoRollNotes))}
-            className="inline-flex min-h-[40px] items-center gap-xs rounded-xl border border-accent-midi-300/50 bg-gradient-to-r from-accent-midi-600/90 to-purple-600/90 px-lg py-xs text-sm font-bold text-foreground shadow-[0_0_20px_rgba(139,92,246,0.2)] transition hover:from-accent-midi-500 hover:to-purple-500"
+            className="inline-flex min-h-[44px] items-center gap-xs rounded-xl border border-accent-midi-300/50 bg-gradient-to-r from-accent-midi-600/90 to-accent-midi-500/90 px-lg py-xs text-sm font-bold text-foreground shadow-elevation-md transition hover:from-accent-midi-500 hover:to-accent-midi-400"
             aria-label={isPlaying ? "Stop playback" : "Play MIDI"}
           >
             {isPlaying ? (
@@ -146,7 +146,7 @@ export function MidiResultPanel({
           <button
             type="button"
             onClick={onDownload}
-            className="inline-flex min-h-[40px] items-center gap-xs rounded-xl border border-accent-midi-300/50 bg-gradient-to-r from-accent-midi-600/90 to-purple-600/90 px-lg py-xs text-sm font-bold text-foreground shadow-[0_0_20px_rgba(139,92,246,0.2)] transition hover:from-accent-midi-500 hover:to-purple-500"
+            className="inline-flex min-h-[44px] items-center gap-xs rounded-xl border border-accent-midi-300/50 bg-gradient-to-r from-accent-midi-600/90 to-accent-midi-500/90 px-lg py-xs text-sm font-bold text-foreground shadow-elevation-md transition hover:from-accent-midi-500 hover:to-accent-midi-400"
           >
             <Download className="h-4 w-4" aria-hidden />
             Download .mid
@@ -155,7 +155,7 @@ export function MidiResultPanel({
         <button
           type="button"
           onClick={onNewConversion}
-          className="inline-flex min-h-[40px] items-center gap-xs rounded-xl border border-border px-md py-xs text-sm text-secondary-foreground transition hover:border-border hover:text-foreground"
+          className="inline-flex min-h-[44px] items-center gap-xs rounded-xl border border-border px-md py-xs text-sm text-secondary-foreground transition hover:border-border hover:text-foreground"
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden />
           New conversion

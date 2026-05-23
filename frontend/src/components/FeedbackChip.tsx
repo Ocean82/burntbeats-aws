@@ -36,7 +36,7 @@ export function FeedbackChip() {
   // Show "thank you" confirmation after submission
   if (submitted) {
     return (
-      <div className="fixed left-5 fixed-bottom-safe z-40 rounded-full border border-success-400/30 bg-chrome px-md py-xs text-[11px] font-medium text-success-200 shadow-elevation-md backdrop-blur-md pb-safe">
+      <div className="fixed left-md fixed-bottom-safe z-sticky rounded-full border border-success-400/30 bg-chrome px-md py-xs text-[11px] font-medium text-success-200 shadow-elevation-md backdrop-blur-md">
         Thanks for the feedback ✓
       </div>
     );
@@ -47,7 +47,7 @@ export function FeedbackChip() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed left-5 fixed-bottom-safe z-40 rounded-full border border-border bg-chrome px-md py-xs text-[11px] font-medium text-secondary-foreground shadow-elevation-md backdrop-blur-md hover:text-foreground pb-safe"
+        className="tap-target-expand fixed left-md fixed-bottom-safe z-sticky rounded-full border border-border bg-chrome px-md py-xs text-[11px] font-medium text-secondary-foreground shadow-elevation-md backdrop-blur-md hover:text-foreground"
       >
         How&apos;s Burnt Beats so far?
       </button>
@@ -55,7 +55,7 @@ export function FeedbackChip() {
   }
 
   return (
-    <div className="fixed left-5 fixed-bottom-safe z-40 w-72 rounded-2xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-lg backdrop-blur-md">
+    <div className="fixed left-md fixed-bottom-safe z-sticky w-72 rounded-2xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-lg backdrop-blur-md">
       <div className="mb-xs flex items-center justify-between gap-xs">
         <p className="font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Quick feedback
@@ -117,7 +117,7 @@ export function FeedbackChip() {
       <button
         type="button"
         onClick={handleSubmit}
-        className="w-full rounded-full bg-primary-500/80 py-1.5 text-[11px] font-semibold text-black hover:bg-primary-400 disabled:opacity-40"
+        className="w-full rounded-full bg-primary-500/80 py-xs text-[11px] font-semibold text-primary-foreground hover:bg-primary-400 disabled:opacity-40"
         disabled={!rating && !comment.trim()}
       >
         Send

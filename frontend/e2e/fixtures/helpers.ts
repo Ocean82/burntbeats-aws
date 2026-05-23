@@ -38,7 +38,7 @@ export function skipOnboarding(page: import("@playwright/test").Page) {
 
 /** Open in-app pricing via Settings → Plans & subscriptions. */
 export async function openPricingPage(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: /open settings menu/i }).click();
-  await page.getByRole("button", { name: "Plans & subscriptions" }).click();
-  await page.getByRole("heading", { name: /pick your plan/i }).waitFor();
+  await page.getByTestId("settings-menu-trigger").click();
+  await page.getByTestId("settings-menu-pricing").click();
+  await page.getByTestId("pricing-page").waitFor();
 }

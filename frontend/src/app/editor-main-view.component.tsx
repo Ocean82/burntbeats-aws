@@ -109,7 +109,7 @@ export function EditorMainView({
           Mix & Export
         </span>
         {mixStemsLength > 0 && (
-          <span className="ml-1 text-xs text-green-400/80">
+          <span className="ml-1 text-xs text-success-400/80">
             {mixStemsLength} stems ready
           </span>
         )}

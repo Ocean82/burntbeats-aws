@@ -15,7 +15,7 @@ export function MidiAnalysisPanel({
   const { pitch_range: range } = analysis;
 
   return (
-    <div className="rounded-lg border border-accent-midi-400/15 bg-accent-midi-950/30 px-sm py-sm">
+    <div className="rounded-lg border border-accent-midi/25 bg-accent-midi-950/30 px-sm py-sm">
       <p className="mb-xs text-xs font-semibold uppercase tracking-wide text-accent-midi-200/80">
         Musical analysis
       </p>

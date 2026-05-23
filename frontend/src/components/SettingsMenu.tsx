@@ -90,6 +90,7 @@ export function SettingsMenu({
         aria-expanded={open ? "true" : "false"}
         aria-label={open ? "Close settings menu" : "Open settings menu"}
         title="Settings"
+        data-testid="settings-menu-trigger"
       >
         <MoreVertical className="h-5 w-5" aria-hidden />
       </button>
@@ -97,6 +98,7 @@ export function SettingsMenu({
       {open && (
         <div
           id={menuId}
+          data-testid="settings-menu-panel"
           className="absolute right-0 top-full z-dropdown mt-xs w-56 max-h-[80vh] overflow-y-auto rounded-2xl border border-border bg-popover/98 py-1 shadow-elevation-xl backdrop-blur-md"
         >
           <div className="flex items-center justify-between px-md py-sm border-b border-border">
@@ -120,6 +122,7 @@ export function SettingsMenu({
             <SettingsMenuItem
               icon={<CreditCard className="h-4 w-4" />}
               label="Plans & subscriptions"
+              testId="settings-menu-pricing"
               active={pricingActive}
               onClick={() => {
                 onOpenPricing();
@@ -133,6 +136,7 @@ export function SettingsMenu({
                   ? `Usage & tokens (${tokenLabel})`
                   : "Usage & tokens"
               }
+              testId="settings-menu-usage"
               onClick={() => {
                 onOpenPricing();
                 close();
@@ -214,20 +218,23 @@ export function SettingsMenu({
 function SettingsMenuItem({
   icon,
   label,
+  testId,
   active = false,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  testId?: string;
   active?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-sm rounded-lg px-sm py-sm text-left text-sm transition hover:bg-muted",
+        "flex min-h-[44px] w-full items-center gap-sm rounded-lg px-sm py-sm text-left text-sm transition hover:bg-muted tap-feedback",
         active ? "bg-primary-500/15 text-primary-100" : "text-secondary-foreground",
       )}
     >

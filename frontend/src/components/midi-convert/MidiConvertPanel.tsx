@@ -199,26 +199,26 @@ export function MidiConvertPanel({
   return (
     <div data-testid="midi-convert-panel" className="flex flex-col gap-md">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-sm border-b border-accent-midi-400/15 pb-md">
+      <div className="flex flex-wrap items-start justify-between gap-sm border-b border-accent-midi/25 pb-md">
         <div className="flex items-start gap-sm">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-accent-midi-400/35 bg-accent-midi-500/15">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-accent-midi/35 bg-accent-midi/15">
             <Music className="h-5 w-5 text-accent-midi-300" aria-hidden />
           </div>
-          <div>
+          <div className="flex max-w-xl flex-col gap-2xs">
             <h2 className="text-lg font-bold tracking-tight text-foreground">
               Audio to MIDI
             </h2>
-            <p className="mt-0.5 max-w-xl text-sm text-accent-midi-100/55">
+            <p className="text-sm text-accent-midi-foreground/55">
               Convert any stem or audio file into a downloadable MIDI file. Great for remixing in your DAW.
             </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-xs">
-          <span className="shrink-0 rounded-full border border-accent-midi-400/35 bg-accent-midi-500/10 px-sm py-1 text-[10px] font-bold uppercase tracking-wider text-accent-midi-200">
+          <span className="shrink-0 rounded-full border border-accent-midi/35 bg-accent-midi/10 px-sm py-1 text-[10px] font-bold uppercase tracking-wider text-accent-midi-200">
             Audio → MIDI
           </span>
-          <span className="inline-flex items-center gap-2xs rounded-full border border-primary-400/40 bg-primary-500/10 px-sm py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-200 animate-pulse">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary-400" />
+          <span className="inline-flex items-center gap-2xs rounded-full border border-primary-400/40 bg-primary-500/10 px-sm py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary-400" aria-hidden />
             Available to all paid plans — limited time
           </span>
         </div>
@@ -302,7 +302,7 @@ export function MidiConvertPanel({
             data-testid="midi-convert-button"
             onClick={() => void triggerConvert(splitJobId)}
             disabled={!canConvert}
-            className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/50 bg-gradient-to-r from-accent-midi-600/90 to-purple-600/90 px-lg py-sm text-sm font-bold text-foreground shadow-[0_0_24px_rgba(139,92,246,0.2)] transition hover:from-accent-midi-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/50 bg-gradient-to-r from-accent-midi-600/90 to-accent-midi-500/90 px-lg py-sm text-sm font-bold text-foreground shadow-elevation-md transition hover:from-accent-midi-500 hover:to-accent-midi-400 disabled:cursor-not-allowed disabled:opacity-45"
           >
             {isConverting || isUploading ? (
               <>
@@ -326,7 +326,7 @@ export function MidiConvertPanel({
             data-testid="midi-batch-convert-button"
             onClick={() => splitJobId && void triggerBatchConvert(splitJobId, stemNames)}
             disabled={!canBatch}
-            className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/40 bg-gradient-to-r from-accent-midi-700/70 to-purple-700/70 px-lg py-sm text-sm font-bold text-foreground shadow-[0_0_16px_rgba(139,92,246,0.15)] transition hover:from-accent-midi-600 hover:to-purple-600 disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/40 bg-gradient-to-r from-accent-midi-700/70 to-accent-midi-600/70 px-lg py-sm text-sm font-bold text-foreground shadow-elevation-sm transition hover:from-accent-midi-600 hover:to-accent-midi-500 disabled:cursor-not-allowed disabled:opacity-45"
           >
             <Music className="h-4 w-4" aria-hidden />
             Convert All Stems
@@ -346,7 +346,7 @@ export function MidiConvertPanel({
 
       {/* Batch progress UI */}
       {isBatchMode && batchJobs.length > 0 && (
-        <div className="flex flex-col gap-sm rounded-xl border border-accent-midi-400/20 bg-accent-midi-950/20 p-md">
+        <div className="flex flex-col gap-sm rounded-xl border border-accent-midi/25 bg-accent-midi-950/20 p-md">
           {/* Progress summary */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-foreground">
@@ -380,13 +380,13 @@ export function MidiConvertPanel({
                 <div className="flex min-w-0 flex-1 items-start gap-xs sm:items-center">
                   {/* Status indicator */}
                   {job.status === "pending" && (
-                    <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-secondary sm:mt-0" />
+                    <span className="mt-2xs h-2.5 w-2.5 shrink-0 rounded-full bg-secondary sm:mt-0" />
                   )}
                   {job.status === "converting" && (
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent-midi-300" />
                   )}
                   {job.status === "completed" && (
-                    <Check className="h-4 w-4 shrink-0 text-green-400" />
+                    <Check className="h-4 w-4 shrink-0 text-success" />
                   )}
                   {job.status === "failed" && (
                     <X className="h-4 w-4 shrink-0 text-destructive-400" />
@@ -396,7 +396,7 @@ export function MidiConvertPanel({
                       {job.stemName}
                     </span>
                     {job.status === "failed" && job.error && (
-                      <span className="mt-1 block text-xs text-destructive-300/90 line-clamp-2">
+                      <span className="mt-2xs block text-xs text-destructive-300/90 line-clamp-2">
                         {job.error}
                       </span>
                     )}
@@ -438,7 +438,7 @@ export function MidiConvertPanel({
                 data-testid="midi-batch-download-zip"
                 onClick={() => void downloadAllAsZip()}
                 disabled={isZipping}
-                className="inline-flex min-h-[40px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/40 bg-accent-midi-600/30 px-lg py-xs text-sm font-semibold text-foreground transition hover:bg-accent-midi-600/50 disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/40 bg-accent-midi-600/30 px-lg py-xs text-sm font-semibold text-foreground transition hover:bg-accent-midi-600/50 disabled:opacity-50"
               >
                 {isZipping ? (
                   <>
@@ -460,7 +460,7 @@ export function MidiConvertPanel({
                   data-testid="midi-batch-multitrack"
                   onClick={() => void downloadMultiTrack()}
                   disabled={isMerging}
-                  className="inline-flex min-h-[40px] items-center justify-center gap-xs rounded-xl border border-primary-300/40 bg-primary-600/20 px-lg py-xs text-sm font-semibold text-foreground transition hover:bg-primary-600/35 disabled:opacity-50"
+                  className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-primary-300/40 bg-primary-600/20 px-lg py-xs text-sm font-semibold text-foreground transition hover:bg-primary-600/35 disabled:opacity-50"
                 >
                   {isMerging ? (
                     <>
@@ -495,7 +495,7 @@ export function MidiConvertPanel({
           role="alert"
           className="flex items-start gap-xs rounded-xl border border-destructive-500/35 bg-destructive-950/25 px-md py-sm text-sm text-destructive-200"
         >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <AlertCircle className="mt-2xs h-4 w-4 shrink-0" aria-hidden />
           <p>{error}</p>
           <button
             type="button"

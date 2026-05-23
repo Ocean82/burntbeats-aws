@@ -54,7 +54,7 @@ export function WaitingGamePanel({
                 ? { duration: 0 }
                 : { duration: 0.28, ease: [0.25, 1, 0.5, 1] }
             }
-            className="fixed bottom-0 left-0 right-0 z-40 flex justify-center"
+            className="fixed bottom-0 left-0 right-0 z-sticky flex justify-center pb-safe"
           >
             <div className="w-full max-w-2xl rounded-t-[2rem] border border-b-0 border-border bg-chrome backdrop-blur-xl shadow-[0_-20px_60px_rgba(0,0,0,0.7)] px-lg pt-5 pb-md">
               <div className="mb-sm flex items-center justify-between">

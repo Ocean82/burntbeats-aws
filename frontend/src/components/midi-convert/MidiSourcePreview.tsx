@@ -97,7 +97,7 @@ export function MidiSourcePreview({
   return (
     <div
       data-testid="midi-source-preview"
-      className="flex flex-col gap-xs rounded-xl border border-accent-midi-400/15 bg-accent-midi-950/20 px-md py-sm"
+      className="flex flex-col gap-xs rounded-xl border border-accent-midi/25 bg-accent-midi-950/20 px-md py-sm"
     >
       <div className="flex items-center gap-xs text-xs font-medium uppercase tracking-wide text-accent-midi-200/70">
         <Volume2 className="h-3.5 w-3.5" aria-hidden />
