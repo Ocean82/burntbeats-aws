@@ -177,6 +177,32 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Tool chrome: ≥12px on mobile; compact metadata on sm+ (see RESPONSIVE-DESIGN.md) */
+  .text-meta {
+    font-size: 0.75rem;
+    line-height: 1.125rem;
+  }
+
+  @media (min-width: 40rem) {
+    .text-meta {
+      font-size: 0.6875rem;
+      line-height: 1rem;
+    }
+  }
+
+  /* Helper / secondary copy: 14px mobile, 12px sm+ */
+  .text-helper {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  @media (min-width: 40rem) {
+    .text-helper {
+      font-size: 0.75rem;
+      line-height: 1.125rem;
+    }
+  }
 }
 
 @layer components {
@@ -387,10 +413,13 @@
       0 22px 52px rgba(255, 60, 10, 0.35),
       0 0 36px rgba(255, 100, 30, 0.38),
       0 0 0 1px rgba(255, 80, 20, 0.2);
-    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+    transition:
+      transform var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart),
+      filter var(--motion-fast) var(--ease-out-quart);
   }
 
-  .fire-button:hover {
+  .fire-button:hover:not(:disabled) {
     transform: translateY(-2px) scale(1.02);
     filter: brightness(1.14);
     box-shadow:
@@ -401,12 +430,30 @@
       0 0 0 1px rgba(255, 100, 30, 0.3);
   }
 
-  .fire-button:active {
+  .fire-button:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
     box-shadow:
       inset 0 2px 10px rgba(0, 0, 0, 0.25),
       0 0 40px rgba(255, 80, 20, 0.65),
       0 0 60px rgba(255, 60, 10, 0.35);
+  }
+
+  .fire-button:focus-visible {
+    outline: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.32),
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+  }
+
+  .fire-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    filter: grayscale(0.15);
+    transform: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 0 0 1px rgba(255, 80, 20, 0.12);
   }
 
   .ghost-button,
@@ -421,11 +468,15 @@
       linear-gradient(135deg, rgba(0, 200, 255, 0.06) 0%, transparent 100%);
     color: rgba(255, 249, 244, 0.86);
     padding: 0.78rem 1rem;
-    transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    transition:
+      transform var(--motion-fast) var(--ease-out-quart),
+      background var(--motion-fast) var(--ease-out-quart),
+      border-color var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart);
   }
 
-  .ghost-button:hover,
-  .icon-button:hover {
+  .ghost-button:hover:not(:disabled),
+  .icon-button:hover:not(:disabled) {
     transform: translateY(-2px);
     border-color: rgba(0, 220, 255, 0.55);
     background:
@@ -434,20 +485,54 @@
     box-shadow: 0 0 32px rgba(0, 200, 255, 0.32), inset 0 1px 8px rgba(255, 255, 255, 0.08);
   }
 
-  .ghost-button:active,
-  .icon-button:active {
+  .ghost-button:active:not(:disabled),
+  .icon-button:active:not(:disabled) {
     transform: translateY(0) scale(0.97);
     box-shadow: 0 0 36px rgba(0, 200, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
-  /* Generic press feedback for key CTAs */
-  .tap-feedback {
-    transition: transform 0.1s ease-out, box-shadow 0.12s ease-out;
+  .ghost-button:focus-visible,
+  .icon-button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
   }
 
-  .tap-feedback:active {
+  .ghost-button:disabled,
+  .icon-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    transform: none;
+  }
+
+  /* Generic press feedback for key CTAs */
+  .tap-feedback {
+    transition:
+      transform var(--motion-instant) var(--ease-out-quart),
+      box-shadow var(--motion-instant) var(--ease-out-quart);
+  }
+
+  .tap-feedback:active:not(:disabled) {
     transform: translateY(1px) scale(0.97);
     box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Subtle attention pulse (replaces bounce); disabled under prefers-reduced-motion */
+  .motion-ping {
+    animation: motion-ping 1.4s var(--ease-out-quart) infinite;
+  }
+
+  @keyframes motion-ping {
+    0%,
+    100% {
+      opacity: 1;
+      transform: translate(-50%, 0) scale(1);
+    }
+    50% {
+      opacity: 0.88;
+      transform: translate(-50%, 0) scale(1.02);
+    }
   }
 
   /* 44px hit area without changing visual size (pair with compact icon markup) */
@@ -2250,6 +2335,20 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .fire-button:hover,
+  .fire-button:active,
+  .ghost-button:hover,
+  .ghost-button:active,
+  .icon-button:hover,
+  .icon-button:active,
+  .tap-feedback:active {
+    transform: none !important;
+  }
+
+  .motion-ping {
+    animation: none !important;
   }
 
   .animate-scroll-text,

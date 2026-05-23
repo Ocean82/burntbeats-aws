@@ -21,7 +21,7 @@ export function TimelineRuler({ ticks, formatTime }: TimelineRulerProps) {
             }
           >
           <div className="h-2 w-px bg-secondary" />
-          <span className="text-[9px] text-muted-foreground">{formatTime(time)}</span>
+          <span className="text-meta text-muted-foreground">{formatTime(time)}</span>
         </div>
         );
       })}

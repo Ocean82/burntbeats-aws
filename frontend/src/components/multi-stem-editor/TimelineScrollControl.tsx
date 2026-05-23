@@ -38,7 +38,7 @@ export const TimelineScrollControl = memo(function TimelineScrollControl({
       role="group"
       aria-label="Timeline scroll"
     >
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
         Scroll timeline
       </span>
       <input
@@ -51,11 +51,11 @@ export const TimelineScrollControl = memo(function TimelineScrollControl({
         className="stem-accent-slider w-28 min-w-[7rem]"
         aria-label="Scroll timeline"
       />
-      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{readout}%</span>
+      <span className="font-mono text-meta tabular-nums text-muted-foreground">{readout}%</span>
       <button
         type="button"
         onClick={onCenterPlayhead}
-        className="flex min-h-[40px] items-center gap-2xs rounded-lg border border-border bg-muted px-xs py-1 text-[10px] font-medium text-muted-foreground hover:border-primary-400/30 hover:text-primary-100 transition"
+        className="tap-feedback flex min-h-[44px] items-center gap-2xs rounded-lg border border-border bg-muted px-xs py-xs text-meta font-medium text-muted-foreground transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-primary-400/30 hover:bg-secondary hover:text-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
         aria-label="Center playhead in timeline view"
         title="Center playhead"
       >

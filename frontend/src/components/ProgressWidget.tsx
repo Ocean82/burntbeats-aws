@@ -11,12 +11,12 @@ export function ProgressWidget({ milestones, onViewPlans }: ProgressWidgetProps)
   const progressPct = total === 0 ? 0 : (doneCount / total) * 100;
 
   return (
-    <div className="rounded-2xl border border-border bg-muted px-sm py-sm text-[11px] text-secondary-foreground">
+    <div className="rounded-2xl border border-border bg-muted px-sm py-sm text-helper text-secondary-foreground">
       <div className="mb-1 flex items-center justify-between gap-xs">
         <p className="font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Progress &amp; rewards
         </p>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-meta text-muted-foreground">
           {doneCount}/{total} steps
         </span>
       </div>
@@ -53,7 +53,7 @@ export function ProgressWidget({ milestones, onViewPlans }: ProgressWidgetProps)
       {onViewPlans && doneCount === total && (
         <button
           type="button"
-          className="mt-xs text-[10px] font-semibold text-primary-200 underline underline-offset-2 hover:text-primary-100"
+          className="mt-xs text-meta font-semibold text-primary-200 underline underline-offset-2 hover:text-primary-100"
           onClick={onViewPlans}
         >
           See plans that match how you use Burnt Beats

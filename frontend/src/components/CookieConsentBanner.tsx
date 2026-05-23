@@ -56,14 +56,14 @@ export function CookieConsentBanner() {
             <button
               type="button"
               onClick={declineAnalytics}
-              className="rounded-full border border-border bg-muted px-md py-xs text-xs font-medium text-secondary-foreground transition hover:bg-muted hover:text-foreground"
+              className="tap-feedback min-h-[44px] rounded-full border border-border bg-muted px-md py-xs text-xs font-medium text-secondary-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
             >
               Decline
             </button>
             <button
               type="button"
               onClick={acceptAnalytics}
-              className="rounded-full border border-primary-400/40 bg-primary-500/20 px-md py-xs text-xs font-medium text-primary-100 transition hover:bg-primary-500/30"
+              className="tap-feedback min-h-[44px] rounded-full border border-primary-400/40 bg-primary-500/20 px-md py-xs text-xs font-medium text-primary-100 transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-primary-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
             >
               Accept cookies
             </button>

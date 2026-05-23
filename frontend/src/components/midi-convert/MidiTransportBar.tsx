@@ -72,7 +72,7 @@ export function MidiTransportBar({
       </span>
 
       {!isSupported && (
-        <span className="text-[10px] text-primary-300/80">Preview unavailable in this browser</span>
+        <span className="text-meta text-primary-300/80">Preview unavailable in this browser</span>
       )}
     </div>
   );

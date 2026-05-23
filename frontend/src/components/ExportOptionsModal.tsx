@@ -163,17 +163,18 @@ export function ExportOptionsModal({
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={onClose}
                   disabled={isExporting}
                   aria-label="Close export options"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="tap-target-expand flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-[color,background-color] duration-[var(--motion-fast)] hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               {/* Format */}
-              <fieldset className="mb-5">
+              <fieldset className="mb-lg">
                 <legend className="mb-xs block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Format
                 </legend>
@@ -185,11 +186,12 @@ export function ExportOptionsModal({
                       onClick={() =>
                         setOptions((o) => ({ ...o, format: format.value }))
                       }
+                      aria-pressed={options.format === format.value}
                       className={cn(
-                        "rounded-xl border px-sm py-sm text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60",
+                        "tap-feedback min-h-[44px] rounded-xl border px-sm py-sm text-left transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]",
                         options.format === format.value
                           ? "border-primary-400/50 bg-primary-500/15 text-foreground"
-                          : "border-border bg-muted text-secondary-foreground hover:border-border hover:bg-muted",
+                          : "border-border bg-muted text-secondary-foreground hover:border-primary-400/30 hover:bg-secondary",
                       )}
                     >
                       <div className="flex items-center justify-between">
@@ -198,21 +200,21 @@ export function ExportOptionsModal({
                           <Check className="h-3.5 w-3.5 text-primary-400" />
                         )}
                       </div>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      <p className="mt-0.5 text-helper text-muted-foreground">
                         {format.description}
                       </p>
                     </button>
                   ))}
                 </div>
                 {isTouchDevice && options.format === "wav" && (
-                  <p className="mt-xs rounded-lg border border-primary-400/20 bg-primary-500/10 px-sm py-xs text-[11px] text-primary-200/80">
-                    💡 MP3 is recommended on mobile — smaller file size and less memory usage.
+                  <p className="mt-xs rounded-lg border border-primary-400/20 bg-primary-500/10 px-sm py-xs text-helper text-primary-200/80">
+                    MP3 is recommended on mobile — smaller file size and less memory usage.
                   </p>
                 )}
               </fieldset>
 
               {/* Export Target */}
-              <fieldset className="mb-5">
+              <fieldset className="mb-lg">
                 <legend className="mb-xs block text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   What to export
                 </legend>
@@ -226,11 +228,12 @@ export function ExportOptionsModal({
                         onClick={() =>
                           setOptions((o) => ({ ...o, target: target.value }))
                         }
+                        aria-pressed={options.target === target.value}
                         className={cn(
-                          "flex w-full items-center justify-between rounded-xl border px-md py-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60",
+                          "tap-feedback flex min-h-[44px] w-full items-center justify-between rounded-xl border px-md py-sm transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]",
                           options.target === target.value
                             ? "border-primary-400/50 bg-primary-500/15 text-foreground"
-                            : "border-border bg-muted text-secondary-foreground hover:border-border hover:bg-muted",
+                            : "border-border bg-muted text-secondary-foreground hover:border-primary-400/30 hover:bg-secondary",
                         )}
                       >
                         <div className="flex items-center gap-sm">
@@ -239,7 +242,7 @@ export function ExportOptionsModal({
                             <span className="block break-words font-medium">
                               {target.label}
                             </span>
-                            <span className="block break-words text-[10px] text-muted-foreground">
+                            <span className="block break-words text-helper text-muted-foreground">
                               {target.description}
                             </span>
                           </div>
@@ -256,7 +259,7 @@ export function ExportOptionsModal({
               {trackDurationSec > 0 && (
                 <div
                   className={cn(
-                    "mb-5 rounded-xl border px-md py-sm text-sm",
+                    "mb-lg rounded-xl border px-md py-sm text-sm",
                     sizeWarning === "large"
                       ? "border-primary-500/45 bg-primary-500/12 text-primary-100"
                       : sizeWarning === "medium"
@@ -299,11 +302,12 @@ export function ExportOptionsModal({
                   type="button"
                   aria-label="Toggle audio normalization"
                   title="Toggle audio normalization"
+                  aria-pressed={options.normalize}
                   onClick={() =>
                     setOptions((o) => ({ ...o, normalize: !o.normalize }))
                   }
                   className={cn(
-                    "relative h-6 w-11 rounded-full transition-colors",
+                    "tap-target-expand relative h-7 w-12 shrink-0 rounded-full transition-[background-color,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                     options.normalize ? "bg-primary-500" : "bg-secondary",
                   )}
                 >
@@ -334,9 +338,9 @@ export function ExportOptionsModal({
                       onClose();
                       useEventBus.getState().emit("open-pricing");
                     }}
-                    className="fire-button flex w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition"
+                    className="fire-button tap-feedback flex min-h-[44px] w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold focus-visible:outline-none"
                   >
-                    View Plans & Pricing
+                    View plans & pricing
                   </button>
                 </div>
               ) : (
@@ -346,7 +350,8 @@ export function ExportOptionsModal({
                     if (!isExporting) void onExport(options);
                   }}
                   disabled={isExporting}
-                  className="fire-button flex w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-50"
+                  aria-busy={isExporting}
+                  className="fire-button tap-feedback flex min-h-[44px] w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold focus-visible:outline-none disabled:pointer-events-none"
                 >
                   {isExporting ? (
                     <>

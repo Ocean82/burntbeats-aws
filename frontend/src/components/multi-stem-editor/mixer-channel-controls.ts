@@ -3,7 +3,7 @@ import { cn } from "../../utils/cn";
 export type ChannelButtonKind = "mute" | "solo";
 
 const COMPACT_BASE =
-  "flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold ring-1 transition-all duration-200 ease";
+  "tap-feedback flex h-11 w-11 items-center justify-center rounded text-meta font-bold ring-1 transition-[color,background-color,transform,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95]";
 
 const COMPACT_INACTIVE =
   "bg-white/5 text-white/50 ring-transparent hover:bg-white/10 hover:text-white/70 hover:ring-white/10";

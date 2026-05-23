@@ -145,10 +145,10 @@ export function MixerWorkspace({
       )}
     >
       {/* Onboarding checklist */}
-      <div className="mb-md flex flex-col gap-xs rounded-2xl border border-border bg-muted px-sm py-xs text-[11px] text-secondary-foreground">
+      <div className="mb-md flex flex-col gap-xs rounded-2xl border border-border bg-muted px-sm py-xs text-helper text-secondary-foreground">
         <div className="flex flex-wrap items-center justify-between gap-xs">
           <div className="flex items-center gap-xs">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">
               {ENABLE_ONBOARDING_QUEST
                 ? "First project quest"
                 : "Getting started"}
@@ -167,13 +167,13 @@ export function MixerWorkspace({
             </div>
           </div>
           {ENABLE_ONBOARDING_QUEST && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               Step {onboardingSteps.filter((s) => s.done).length}{" "}
               of {onboardingSteps.length}
             </span>
           )}
         </div>
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Press{" "}
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-secondary-foreground">
             ?

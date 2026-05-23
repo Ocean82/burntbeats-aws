@@ -295,11 +295,11 @@ export function WaveformLane({
             disabled={!audioReady}
             aria-label={isSoloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-bold text-[10px] tracking-wide transition-all duration-150 sm:h-8 sm:w-8",
+              "tap-feedback flex h-11 w-11 shrink-0 items-center justify-center rounded-md border font-bold text-meta tracking-wide transition-[color,background-color,border-color,transform,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95] sm:h-10 sm:w-10",
               isSoloed
                 ? "border-primary-400/70 bg-primary-500/30 text-primary-100 shadow-[0_0_14px_rgba(255,172,92,0.5)]"
                 : "border-border bg-muted text-muted-foreground hover:border-primary-400/40 hover:text-primary-200",
-              !audioReady && "opacity-40",
+              !audioReady && "cursor-not-allowed opacity-40",
             )}
           >
             S
@@ -310,11 +310,11 @@ export function WaveformLane({
             disabled={!audioReady}
             aria-label={isMuted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-md border font-bold text-[10px] tracking-wide transition-all duration-150 sm:h-8 sm:w-8",
+              "tap-feedback flex h-11 w-11 shrink-0 items-center justify-center rounded-md border font-bold text-meta tracking-wide transition-[color,background-color,border-color,transform,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95] sm:h-10 sm:w-10",
               isMuted
                 ? "border-destructive-400/60 bg-destructive-500/25 text-destructive-100 shadow-[0_0_12px_rgba(239,68,68,0.4)]"
                 : "border-border bg-muted text-[color:var(--stem-glow)]/85 hover:border-destructive-400/30 hover:text-destructive-200",
-              !audioReady && "opacity-40",
+              !audioReady && "cursor-not-allowed opacity-40",
             )}
           >
             M
@@ -338,7 +338,7 @@ export function WaveformLane({
               )}
             />
             <span
-              className="w-7 shrink-0 text-center font-mono text-[8px] leading-none text-secondary-foreground"
+              className="w-8 shrink-0 text-center font-mono text-meta leading-none text-secondary-foreground"
               aria-hidden
             >
               {mixer.gain > 0 ? "+" : ""}
@@ -353,7 +353,7 @@ export function WaveformLane({
         tabIndex={0}
         aria-label={`${stem.label} waveform — click to select`}
         className={cn(
-          "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all",
+          "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           audioReady ? "cursor-crosshair" : "cursor-default",
           isActive ? "border-border" : "border-border",
         )}
@@ -437,7 +437,7 @@ export function WaveformLane({
         );
       })()}
 
-      <span className="waveform-lane-label pointer-events-none absolute left-2 top-1 text-[9px] font-bold uppercase tracking-wider">
+      <span className="waveform-lane-label pointer-events-none absolute left-2 top-1 text-meta font-bold uppercase tracking-wider">
         {stem.label}
       </span>
 

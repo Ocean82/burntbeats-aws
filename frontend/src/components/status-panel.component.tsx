@@ -41,7 +41,7 @@ export function StatusPanel({
   return (
     <>
       <p className="eyebrow">What&apos;s happening</p>
-      <h2 className="font-display text-2xl tracking-[-0.04em] text-foreground mb-5">Status · Tracks · Master</h2>
+      <h2 className="font-display mb-lg text-2xl tracking-[-0.04em] text-foreground">Status · Tracks · Master</h2>
       <div className="space-y-md">
         <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-md py-sm" role="status" aria-live="polite">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Status</span>

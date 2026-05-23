@@ -14,7 +14,7 @@ export const MixerSectionLabel = memo(function MixerSectionLabel({
   return (
     <span
       className={cn(
-        "mixer-section-label text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
+        "mixer-section-label text-meta font-semibold uppercase tracking-[0.12em] text-muted-foreground",
         className,
       )}
     >

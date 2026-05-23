@@ -33,14 +33,14 @@ export function SplitErrorAlert({
           <button
             type="button"
             onClick={onRetry}
-            className="rounded-lg bg-primary-500 px-sm py-1.5 text-xs font-medium text-black transition hover:bg-primary-400"
+            className="tap-feedback min-h-[44px] rounded-lg bg-primary px-sm py-xs text-xs font-medium text-primary-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
           >
-            Try Again
+            Try again
           </button>
           <button
             type="button"
             onClick={onDismissError}
-            className="rounded-lg border border-border px-sm py-1.5 text-xs text-secondary-foreground transition hover:bg-muted"
+            className="tap-feedback min-h-[44px] rounded-lg border border-border px-sm py-xs text-xs text-secondary-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
           >
             Dismiss
           </button>

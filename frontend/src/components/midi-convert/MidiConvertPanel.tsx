@@ -214,10 +214,10 @@ export function MidiConvertPanel({
           </div>
         </div>
         <div className="flex flex-col items-end gap-xs">
-          <span className="shrink-0 rounded-full border border-accent-midi/35 bg-accent-midi/10 px-sm py-1 text-[10px] font-bold uppercase tracking-wider text-accent-midi-200">
+          <span className="shrink-0 rounded-full border border-accent-midi/35 bg-accent-midi/10 px-sm py-1 text-meta font-bold uppercase tracking-wider text-accent-midi-200">
             Audio → MIDI
           </span>
-          <span className="inline-flex items-center gap-2xs rounded-full border border-primary-400/40 bg-primary-500/10 px-sm py-1 text-[10px] font-semibold uppercase tracking-wide text-primary-200">
+          <span className="inline-flex items-center gap-2xs rounded-full border border-primary-400/40 bg-primary-500/10 px-sm py-1 text-meta font-semibold uppercase tracking-wide text-primary-200">
             <span className="h-1.5 w-1.5 rounded-full bg-primary-400" aria-hidden />
             Available to all paid plans — limited time
           </span>
@@ -276,7 +276,7 @@ export function MidiConvertPanel({
                 </span>
               </span>
               {usageBalance < 1 && (
-                <span className="text-destructive-300/80 text-[10px]">
+                <span className="text-destructive-300/80 text-meta">
                   — not enough tokens
                 </span>
               )}

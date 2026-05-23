@@ -380,14 +380,14 @@ export function MyStemsPage({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by filename…"
               aria-label="Search stems by filename"
-              className="w-full rounded-xl border border-border bg-muted py-sm pl-10 pr-md text-sm text-foreground placeholder-white/40 outline-none transition focus:border-primary-400/50 focus:ring-1 focus:ring-primary-400/30"
+              className="w-full rounded-xl border border-border bg-muted py-sm pl-10 pr-md text-sm text-foreground placeholder:text-placeholder-foreground outline-none transition-[border-color,box-shadow] duration-[var(--motion-fast)] focus-visible:border-primary-400/50 focus-visible:ring-2 focus-visible:ring-primary-400/30"
             />
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
             aria-label="Sort stems"
-            className="rounded-xl border border-border bg-muted px-sm py-sm text-sm text-foreground outline-none transition focus:border-primary-400/50 focus:ring-1 focus:ring-primary-400/30"
+            className="min-h-[44px] rounded-xl border border-border bg-muted px-sm py-sm text-sm text-foreground outline-none transition-[border-color,box-shadow] duration-[var(--motion-fast)] focus-visible:border-primary-400/50 focus-visible:ring-2 focus-visible:ring-primary-400/30"
           >
             {SORT_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>

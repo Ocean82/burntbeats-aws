@@ -114,7 +114,8 @@ export function SplitActions({
                 ? "Upload a new file to run separation again. Each upload is a new job."
                 : undefined
             }
-            className="fire-button min-h-[44px] shrink-0 inline-flex items-center justify-center gap-xs px-lg py-sm text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+            aria-busy={isSplitting}
+            className="fire-button tap-feedback min-h-[44px] shrink-0 inline-flex items-center justify-center gap-xs px-lg py-sm text-sm font-semibold focus-visible:outline-none disabled:cursor-not-allowed"
           >
             {isSplitting ? (
               <>
@@ -140,10 +141,10 @@ export function SplitActions({
               aria-pressed={isSample}
               title="Process only the first 60 seconds — free, no tokens used"
               className={cn(
-                "min-h-[44px] inline-flex items-center gap-xs rounded-full border px-md py-xs text-xs font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed",
+                "tap-feedback min-h-[44px] inline-flex items-center gap-xs rounded-full border px-md py-xs text-xs font-semibold transition-[color,background-color,box-shadow,border-color] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]",
                 isSample
                   ? "border-success-400/60 bg-success-500/20 text-success-200 shadow-[0_0_16px_rgba(52,211,153,0.25)]"
-                  : "border-border bg-muted text-muted-foreground hover:border-border hover:text-foreground",
+                  : "border-border bg-muted text-muted-foreground hover:border-border hover:bg-secondary hover:text-foreground",
               )}
             >
               <Sparkles className={cn("h-3.5 w-3.5", isSample ? "text-success-300" : "text-muted-foreground")} />
@@ -152,7 +153,7 @@ export function SplitActions({
           )}
         </div>
         {isSample && (
-          <p className="text-[11px] text-success-400/80">
+          <p className="text-xs text-success-400/80 sm:text-[11px]">
             60-second sample · no tokens consumed
           </p>
         )}
@@ -175,7 +176,7 @@ export function SplitActions({
               <div className="mt-1 w-full min-w-[220px]">
                 <div
                   className={cn(
-                    "mb-1 flex items-center justify-between gap-xs text-[11px]",
+                    "mb-1 flex items-center justify-between gap-xs text-helper",
                     queuePosition != null && !isUploading
                       ? "text-primary-200/80"
                       : "text-muted-foreground",
@@ -211,7 +212,7 @@ export function SplitActions({
           <button
             type="button"
             onClick={onOpenWaitingGame}
-            className="inline-flex min-h-[36px] items-center gap-xs rounded-lg border border-border bg-muted px-sm py-1.5 text-[11px] font-medium text-secondary-foreground transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-100"
+            className="tap-feedback inline-flex min-h-[44px] items-center gap-xs rounded-lg border border-border bg-muted px-sm py-xs text-xs font-medium text-secondary-foreground transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
           >
             <Gamepad2 className="h-3.5 w-3.5 text-primary-300/90" aria-hidden />
             Play The Waiting Game while you wait
@@ -240,7 +241,7 @@ export function SplitActions({
                   ? "Add to batch queue"
                   : "Requires Premium or Studio"
             }
-            className="ghost-button w-full rounded-lg border border-border px-sm py-sm text-left text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            className="ghost-button tap-feedback w-full min-h-[44px] rounded-lg border border-border px-sm py-sm text-left text-muted-foreground hover:text-foreground focus-visible:outline-none disabled:cursor-not-allowed"
           >
             <span className="inline-flex items-center gap-2xs">
               Add to batch queue
@@ -250,7 +251,7 @@ export function SplitActions({
             </span>
           </button>
           {!canUseBatchQueue && (
-            <p className="text-[10px] leading-relaxed text-muted-foreground">
+            <p className="text-helper leading-relaxed text-muted-foreground">
               Premium &amp; Studio plans can process whole queues automatically.
             </p>
           )}
@@ -273,7 +274,7 @@ export function SplitActions({
           <button
             type="button"
             onClick={() => onExpand()}
-            className="ghost-button shrink-0 rounded-xl border border-border px-sm py-xs text-xs text-muted-foreground hover:text-foreground"
+            className="ghost-button tap-feedback shrink-0 min-h-[44px] rounded-xl border border-border px-sm py-xs text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none"
           >
             Expand → 4 stems
           </button>

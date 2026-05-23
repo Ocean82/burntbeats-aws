@@ -72,7 +72,7 @@ export function SpeechCleanPanel({
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-info-400/35 bg-info-500/10 px-sm py-1 text-[10px] font-bold uppercase tracking-wider text-info-200">
+        <span className="shrink-0 rounded-full border border-info-400/35 bg-info-500/10 px-sm py-1 text-meta font-bold uppercase tracking-wider text-info-200">
           Speech only
         </span>
       </div>

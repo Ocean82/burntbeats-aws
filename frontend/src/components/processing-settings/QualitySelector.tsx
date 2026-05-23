@@ -58,7 +58,7 @@ export function QualitySelector({
       data-tour="quality-selector"
       className="flex w-full max-w-full shrink-0 flex-wrap items-center gap-xs sm:w-auto"
     >
-      <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:block">
+      <span className="hidden text-meta font-semibold uppercase tracking-wider text-muted-foreground sm:block">
         Quality
       </span>
       <div className="flex w-full overflow-x-auto rounded-xl border border-border bg-muted p-0.5 sm:w-auto scrollbar-hide">
@@ -97,7 +97,7 @@ export function QualitySelector({
         ))}
       </div>
       {!canChoosePaidQuality && (
-        <span className="ml-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="ml-2 text-meta font-medium uppercase tracking-wide text-muted-foreground">
           Premium/Studio to unlock
         </span>
       )}

@@ -65,7 +65,7 @@ export const MixerStrips = memo(function MixerStrips({
     <div className="w-full">
       {stemLayout != null && (
         <p className="mb-xs flex items-center gap-xs text-xs text-muted-foreground">
-          <span className="rounded-full border border-primary-400/30 bg-primary-500/10 px-xs py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-200/90">
+          <span className="rounded-full border border-primary-400/30 bg-primary-500/10 px-xs py-0.5 text-meta font-bold uppercase tracking-wide text-primary-200/90">
             {stemLayout}-stem
           </span>
           {LAYOUT_LABELS[stemLayout]}

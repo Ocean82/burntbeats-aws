@@ -127,14 +127,14 @@ export function ProcessingSettingsPanel({
                   </span>
                 ) : null}
               </div>
-              <span className="shrink-0 rounded-full border border-success-400/40 bg-success-500/15 px-sm py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success-200">
+              <span className="shrink-0 rounded-full border border-success-400/40 bg-success-500/15 px-sm py-0.5 text-meta font-semibold uppercase tracking-wide text-success-200">
                 {splitResultStemsLength} stems ready
               </span>
               {onNewSplit && (
                 <button
                   type="button"
                   onClick={() => setShowNewSplitConfirm(true)}
-                  className="flex shrink-0 items-center gap-xs rounded-lg border border-destructive-400/30 bg-destructive-500/10 px-sm py-1.5 text-xs font-medium text-destructive-200/90 transition hover:border-destructive-400/50 hover:bg-destructive-500/20 hover:text-destructive-100"
+                  className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-destructive-400/30 bg-destructive-500/10 px-sm py-xs text-xs font-medium text-destructive-200/90 transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-destructive-400/50 hover:bg-destructive-500/20 hover:text-destructive-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                   aria-label="Start a new split"
                   title="Clear current split and load a new track"
                 >
@@ -145,7 +145,7 @@ export function ProcessingSettingsPanel({
               <button
                 type="button"
                 onClick={() => setUserExpanded(true)}
-                className="flex shrink-0 items-center gap-xs rounded-lg border border-border bg-muted px-sm py-1.5 text-xs font-medium text-muted-foreground transition hover:border-border hover:text-foreground"
+                className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-border bg-muted px-sm py-xs text-xs font-medium text-muted-foreground transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-border hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                 aria-label="Edit source settings"
               >
                 <Settings2 className="h-3 w-3" />
@@ -174,7 +174,7 @@ export function ProcessingSettingsPanel({
             <button
               type="button"
               onClick={onContinueCheckout}
-              className="ghost-button min-h-[40px] rounded-lg border border-primary-300/30 px-sm py-1.5 text-xs font-semibold text-primary-100 hover:border-primary-200/50 hover:text-primary-50"
+              className="ghost-button tap-feedback min-h-[44px] rounded-lg border border-primary-300/30 px-sm py-xs text-xs font-semibold text-primary-100 transition-[color,transform] duration-[var(--motion-fast)] hover:border-primary-200/50 hover:text-primary-50 focus-visible:outline-none"
             >
               Continue to secure checkout
             </button>
@@ -191,11 +191,12 @@ export function ProcessingSettingsPanel({
           data-testid="source-mode-split"
           type="button"
           onClick={() => onSourceModeChange("split")}
+          aria-pressed={sourceMode === "split"}
           className={cn(
-            "rounded-lg px-md py-1.5 text-xs font-medium transition",
+            "tap-feedback min-h-[44px] rounded-lg px-md py-xs text-xs font-medium transition-[color,background-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
             sourceMode === "split"
               ? "bg-primary-500/20 text-primary-200"
-              : "text-muted-foreground hover:text-foreground",
+              : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
           )}
         >
           Split
@@ -204,11 +205,12 @@ export function ProcessingSettingsPanel({
           data-testid="source-mode-load"
           type="button"
           onClick={() => onSourceModeChange("load")}
+          aria-pressed={sourceMode === "load"}
           className={cn(
-            "rounded-lg px-md py-1.5 text-xs font-medium transition",
+            "tap-feedback min-h-[44px] rounded-lg px-md py-xs text-xs font-medium transition-[color,background-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
             sourceMode === "load"
               ? "bg-primary-500/20 text-primary-200"
-              : "text-muted-foreground hover:text-foreground",
+              : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
           )}
         >
           Load

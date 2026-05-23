@@ -116,7 +116,7 @@ export function SettingsMenu({
           </div>
 
           <div className="px-sm py-xs">
-            <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="px-1 pb-1 text-meta font-semibold uppercase tracking-wider text-muted-foreground">
               Plans & billing
             </p>
             <SettingsMenuItem
@@ -165,7 +165,7 @@ export function SettingsMenu({
           <div className="mx-3 border-t border-border" />
 
           <div className="px-sm py-xs">
-            <p className="px-1 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="px-1 pb-1 text-meta font-semibold uppercase tracking-wider text-muted-foreground">
               App
             </p>
             <SettingsMenuItem
@@ -241,7 +241,7 @@ function SettingsMenuItem({
       <span className="opacity-70">{icon}</span>
       <span className="flex-1">{label}</span>
       {active && (
-        <span className="text-[10px] font-medium uppercase tracking-wide text-primary-300/80">
+        <span className="text-meta font-medium uppercase tracking-wide text-primary-300/80">
           Open
         </span>
       )}

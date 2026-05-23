@@ -162,7 +162,7 @@ export function BatchQueue({
                   disabled={!canProcess}
                   title={allowProcess ? "Process all queued files" : "Requires Premium or Studio"}
                   aria-label="Process all queued files"
-                  className="rounded-lg bg-primary-500/20 px-sm py-1.5 text-xs font-medium text-primary-200 transition hover:bg-primary-500/30 disabled:opacity-50"
+                  className="tap-feedback min-h-[44px] rounded-lg bg-primary-500/20 px-sm py-xs text-xs font-medium text-primary-200 transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-primary-500/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="inline-flex items-center gap-2xs">
                     Process queue
@@ -174,14 +174,14 @@ export function BatchQueue({
                 <button
                   type="button"
                   onClick={onClearCompleted}
-                  className="flex items-center gap-xs rounded-lg px-xs py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="tap-feedback flex min-h-[44px] items-center gap-xs rounded-lg px-xs py-xs text-xs text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                 >
                   <Trash2 className="h-4 w-4" />
                   Clear completed
                 </button>
               )}
               {!allowProcess && (
-                <p className="w-full text-[10px] leading-4 text-primary-100/85">
+                <p className="w-full text-helper leading-snug text-primary-100/85">
                   Upgrade to Premium or Studio to process all queued tracks in one go.
                 </p>
               )}

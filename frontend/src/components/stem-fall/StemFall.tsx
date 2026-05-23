@@ -160,7 +160,7 @@ export default function WaitingGame() {
     <div className="flex flex-col items-center gap-sm select-none py-xs" style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
 
       {/* Idle message */}
-      <div className="h-4 text-center text-[11px] text-muted-foreground max-w-xs px-xs">
+      <div className="h-4 text-center text-helper text-muted-foreground max-w-xs px-xs">
         {idleMsg}
       </div>
 
@@ -178,15 +178,16 @@ export default function WaitingGame() {
           {/* Start overlay */}
           {!game.started && !game.gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-sm rounded-lg bg-chrome backdrop-blur-sm">
-              <div className="text-[13px] text-primary-400 animate-pulse tracking-widest">THE WAITING GAME</div>
-              <div className="text-[10px] text-muted-foreground">drop blocks while you wait</div>
+              <div className="text-sm text-primary-400 animate-pulse tracking-widest">THE WAITING GAME</div>
+              <div className="text-helper text-muted-foreground">drop blocks while you wait</div>
               <button
+                type="button"
                 onClick={game.startGame}
-                className="mt-1 rounded-lg border border-primary-500/40 bg-primary-500/15 px-md py-xs text-[11px] text-primary-200 transition hover:bg-primary-500/25"
+                className="tap-feedback mt-1 min-h-[44px] rounded-lg border border-primary-500/40 bg-primary-500/15 px-md py-xs text-xs text-primary-200 transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-primary-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
               >
                 START / ENTER
               </button>
-              <div className="text-[9px] text-muted-foreground text-center leading-relaxed mt-xs">
+              <div className="text-meta text-muted-foreground text-center leading-relaxed mt-xs">
                 ← → move &nbsp;·&nbsp; ↑ rotate<br />
                 ↓ soft drop &nbsp;·&nbsp; SPACE hard drop<br />
                 P pause
@@ -197,13 +198,14 @@ export default function WaitingGame() {
           {/* Game over overlay */}
           {game.gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-xs rounded-lg bg-chrome backdrop-blur-sm">
-              <div className="text-[15px] text-destructive-400 tracking-widest">GAME OVER</div>
-              <div className="text-[10px] text-muted-foreground text-center px-md">{game.message}</div>
-              <div className="text-[11px] text-foreground mt-1">{game.score.toLocaleString()}</div>
-              <div className="text-[9px] text-muted-foreground">lines {game.lines} · lvl {game.level}</div>
+              <div className="text-sm text-destructive-400 tracking-widest">GAME OVER</div>
+              <div className="text-helper text-muted-foreground text-center px-md">{game.message}</div>
+              <div className="text-xs text-foreground mt-1">{game.score.toLocaleString()}</div>
+              <div className="text-meta text-muted-foreground">lines {game.lines} · lvl {game.level}</div>
               <button
+                type="button"
                 onClick={game.startGame}
-                className="mt-xs rounded-lg border border-primary-500/40 bg-primary-500/15 px-md py-xs text-[11px] text-primary-200 transition hover:bg-primary-500/25"
+                className="tap-feedback mt-xs min-h-[44px] rounded-lg border border-primary-500/40 bg-primary-500/15 px-md py-xs text-xs text-primary-200 transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-primary-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
               >
                 PLAY AGAIN
               </button>
@@ -213,14 +215,14 @@ export default function WaitingGame() {
           {/* Paused overlay */}
           {game.paused && !game.gameOver && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-xs rounded-lg bg-chrome backdrop-blur-sm">
-              <div className="text-[14px] text-primary-300 animate-pulse">PAUSED</div>
-              <div className="text-[9px] text-muted-foreground">press P to resume</div>
+              <div className="text-sm text-primary-300 animate-pulse">PAUSED</div>
+              <div className="text-meta text-muted-foreground">press P to resume</div>
             </div>
           )}
 
           {/* Toast message */}
           {game.message && !game.gameOver && !game.paused && game.started && (
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-primary-500/30 bg-chrome px-sm py-1.5 text-[10px] text-primary-200 animate-bounce">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-primary-500/30 bg-chrome px-sm py-xs text-xs text-primary-200 animate-pulse" role="status" aria-live="polite">
               {game.message}
             </div>
           )}
@@ -229,19 +231,19 @@ export default function WaitingGame() {
         {/* Side panel */}
         <div className="flex flex-col gap-sm" style={{ minWidth: SIDE_PANEL_W }}>
           <div>
-            <div className="text-[9px] text-muted-foreground mb-1 tracking-widest">SCORE</div>
-            <div className="text-[12px] text-foreground tabular-nums">{game.score.toLocaleString()}</div>
+            <div className="text-meta text-muted-foreground mb-1 tracking-widest">SCORE</div>
+            <div className="text-xs text-foreground tabular-nums">{game.score.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-[9px] text-muted-foreground mb-1 tracking-widest">LEVEL</div>
-            <div className="text-[12px] text-primary-300">{game.level}</div>
+            <div className="text-meta text-muted-foreground mb-1 tracking-widest">LEVEL</div>
+            <div className="text-xs text-primary-300">{game.level}</div>
           </div>
           <div>
-            <div className="text-[9px] text-muted-foreground mb-1 tracking-widest">LINES</div>
-            <div className="text-[12px] text-foreground">{game.lines}</div>
+            <div className="text-meta text-muted-foreground mb-1 tracking-widest">LINES</div>
+            <div className="text-xs text-foreground">{game.lines}</div>
           </div>
           <div>
-            <div className="text-[9px] text-muted-foreground mb-xs tracking-widest">NEXT</div>
+            <div className="text-meta text-muted-foreground mb-xs tracking-widest">NEXT</div>
             <div className="flex items-center justify-center rounded-lg border border-border bg-secondary p-xs" style={{ minHeight: 56 }}>
               <NextPiecePreview piece={game.nextPiece} cellSize={previewCellSize} />
             </div>
@@ -250,31 +252,32 @@ export default function WaitingGame() {
           {/* Pause button */}
           {game.started && !game.gameOver && (
             <button
+              type="button"
               onClick={game.togglePause}
-              className="rounded-lg border border-border bg-muted px-xs py-1.5 text-[9px] text-muted-foreground transition hover:text-foreground"
+              className="tap-feedback min-h-[44px] w-full rounded-lg border border-border bg-muted px-xs py-xs text-meta text-muted-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
             >
               {game.paused ? 'RESUME' : 'PAUSE'}
             </button>
           )}
 
           {/* Mobile d-pad */}
-          <div className="flex flex-col gap-2xs mt-1 md:hidden">
+          <div className="flex flex-col gap-2xs mt-1 md:hidden" role="group" aria-label="Touch controls">
             <div className="flex justify-center">
-              <button onPointerDown={game.rotatePiece} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">↑</button>
+              <button type="button" onPointerDown={game.rotatePiece} aria-label="Rotate" className="tap-feedback flex h-11 w-11 items-center justify-center rounded bg-muted text-sm transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">↑</button>
             </div>
             <div className="flex gap-2xs justify-center">
-              <button onPointerDown={game.moveLeft} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">←</button>
-              <button onPointerDown={game.softDrop} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">↓</button>
-              <button onPointerDown={game.moveRight} className="h-9 w-9 rounded bg-muted text-sm active:bg-secondary">→</button>
+              <button type="button" onPointerDown={game.moveLeft} aria-label="Move left" className="tap-feedback flex h-11 w-11 items-center justify-center rounded bg-muted text-sm transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">←</button>
+              <button type="button" onPointerDown={game.softDrop} aria-label="Soft drop" className="tap-feedback flex h-11 w-11 items-center justify-center rounded bg-muted text-sm transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">↓</button>
+              <button type="button" onPointerDown={game.moveRight} aria-label="Move right" className="tap-feedback flex h-11 w-11 items-center justify-center rounded bg-muted text-sm transition active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">→</button>
             </div>
-            <button onPointerDown={game.hardDrop} className="mt-1 h-8 w-full rounded bg-muted text-[10px] active:bg-secondary">DROP</button>
+            <button type="button" onPointerDown={game.hardDrop} aria-label="Hard drop" className="tap-feedback mt-1 flex min-h-[44px] w-full items-center justify-center rounded bg-muted text-meta transition active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">DROP</button>
           </div>
         </div>
       </div>
 
       {game.started && (
-        <div className="text-[9px] text-muted-foreground text-center">
-          👀 there might be a secret code hidden somewhere
+        <div className="text-meta text-muted-foreground text-center">
+          there might be a secret code hidden somewhere
         </div>
       )}
     </div>

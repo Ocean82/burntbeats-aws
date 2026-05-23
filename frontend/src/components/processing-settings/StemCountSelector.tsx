@@ -22,7 +22,7 @@ export function StemCountSelector({
   if (splitResultStemsLength > 0) {
     return (
       <div className="flex shrink-0 flex-col justify-center rounded-xl border border-border bg-muted px-sm py-1.5">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">
           Result
         </span>
         <span className="text-xs font-medium text-secondary-foreground">
@@ -34,7 +34,7 @@ export function StemCountSelector({
 
   return (
     <div className="flex w-full shrink-0 basis-full items-center gap-xs sm:basis-auto lg:w-auto">
-      <span className="hidden text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:block">
+      <span className="hidden text-meta font-semibold uppercase tracking-wider text-muted-foreground sm:block">
         Stems
       </span>
       <div className="flex flex-col items-center gap-0.5">
@@ -57,7 +57,7 @@ export function StemCountSelector({
           aria-label="Number of stems"
           aria-valuetext={`${requestedStemMode} stems${requestedStemMode === 4 && !canExpandToFourStems ? " (requires Premium)" : ""}`}
         />
-        <div className="flex w-20 justify-between text-[10px] text-muted-foreground font-mono">
+        <div className="flex w-20 justify-between text-meta text-muted-foreground font-mono">
           <span>2</span>
           <span
             className={cn(
@@ -75,7 +75,7 @@ export function StemCountSelector({
           </span>
         </div>
         {!canExpandToFourStems && (
-          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-meta font-medium uppercase tracking-wide text-muted-foreground">
             4-stem requires Premium/Studio
           </span>
         )}

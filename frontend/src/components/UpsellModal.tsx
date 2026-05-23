@@ -55,7 +55,7 @@ export function UpsellModal({
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-4 top-4 rounded-lg p-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="tap-target-expand absolute right-md top-md flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-[color,background-color] duration-[var(--motion-fast)] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -86,7 +86,7 @@ export function UpsellModal({
               <button
                 type="button"
                 onClick={onViewSubscriptions}
-                className="flex w-full items-center justify-center gap-sm rounded-xl border border-primary-400/40 bg-gradient-to-r from-primary-500/20 to-primary-400/10 px-md py-sm text-sm font-semibold text-primary-100 transition hover:border-primary-400/60 hover:from-primary-500/30 hover:to-primary-400/20"
+                className="tap-feedback flex min-h-[44px] w-full items-center justify-center gap-sm rounded-xl border border-primary-400/40 bg-gradient-to-r from-primary-500/20 to-primary-400/10 px-md py-sm text-sm font-semibold text-primary-100 transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] hover:border-primary-400/60 hover:from-primary-500/30 hover:to-primary-400/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
               >
                 <Zap className="h-4 w-4" />
                 View Subscription Plans
@@ -95,7 +95,7 @@ export function UpsellModal({
               <button
                 type="button"
                 onClick={onBuyCredits}
-                className="flex w-full items-center justify-center gap-sm rounded-xl border border-border bg-muted px-md py-sm text-sm font-semibold text-secondary-foreground transition hover:border-border hover:bg-muted hover:text-foreground"
+                className="tap-feedback flex min-h-[44px] w-full items-center justify-center gap-sm rounded-xl border border-border bg-muted px-md py-sm text-sm font-semibold text-secondary-foreground transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] hover:border-border hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
               >
                 <CreditCard className="h-4 w-4" />
                 Buy Credits (Pay As You Go)
@@ -107,7 +107,7 @@ export function UpsellModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs text-muted-foreground underline-offset-2 transition hover:text-foreground hover:underline"
+                className="rounded-md px-xs py-2xs text-xs text-muted-foreground underline-offset-2 transition-[color,text-decoration] duration-[var(--motion-fast)] hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 Maybe later
               </button>

@@ -40,7 +40,7 @@ export function MidiConvertSettings({
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-meta text-muted-foreground">
           Higher = fewer notes but more accurate. Lower = more notes but may include noise.
         </span>
       </label>
@@ -65,7 +65,7 @@ export function MidiConvertSettings({
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-meta text-muted-foreground">
           Filters out very short notes. Increase for cleaner output.
         </span>
       </label>
@@ -146,7 +146,7 @@ export function MidiConvertSettings({
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-meta text-muted-foreground">
           Removes sustained false notes. 0 = disabled.
         </span>
       </label>
@@ -176,7 +176,7 @@ export function MidiConvertSettings({
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
         />
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-meta text-muted-foreground">
           Shift all notes up or down. Useful for key matching in your DAW.
         </span>
       </label>
@@ -234,7 +234,7 @@ export function MidiConvertSettings({
               disabled={disabled}
               className="rounded border border-accent-midi/30 bg-accent-midi-950/40 px-xs py-xs text-sm text-secondary-foreground focus:border-accent-midi focus:outline-none focus:ring-1 focus:ring-accent-midi/50 disabled:opacity-40"
             />
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               Tempo for grid alignment (40–300 BPM)
             </span>
           </label>
@@ -258,7 +258,7 @@ export function MidiConvertSettings({
               disabled={disabled}
               className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
             />
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               Lower values keep more of the original timing.
             </span>
           </label>

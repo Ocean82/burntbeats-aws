@@ -86,7 +86,7 @@ export const PanKnob = memo(function PanKnob({
     <span
       className={cn(
         "pan-knob__readout font-mono tabular-nums",
-        isConsole ? "pan-knob__readout--console" : "text-[9px] text-muted-foreground",
+        isConsole ? "pan-knob__readout--console" : "text-meta text-muted-foreground",
       )}
     >
       {formatPan(value)}
@@ -113,7 +113,7 @@ export const PanKnob = memo(function PanKnob({
         aria-valuenow={value}
         aria-valuetext={formatPan(value)}
         className={cn(
-          "cursor-pointer outline-none",
+          "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full",
           disabled && "cursor-not-allowed opacity-40",
           focused && !disabled && "drop-shadow-[0_0_6px_rgba(245,158,11,0.35)]",
         )}

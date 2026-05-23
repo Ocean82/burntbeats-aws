@@ -208,7 +208,7 @@ export const ChannelStrip = memo(function ChannelStrip({
           { key: "eqHigh" as const, label: "Hi" },
         ]).map(({ key, label }) => (
           <div key={key} className="flex items-center gap-xs">
-            <span className="w-6 text-[9px] text-muted-foreground shrink-0">{label}</span>
+            <span className="w-6 text-meta text-muted-foreground shrink-0">{label}</span>
             <input
               type="range"
               min={-12}
@@ -221,7 +221,7 @@ export const ChannelStrip = memo(function ChannelStrip({
               className="stem-accent-slider min-w-0 flex-1"
               aria-label={`${stem.label} ${label} EQ`}
             />
-            <span className="w-8 text-right font-mono text-[8px] text-muted-foreground tabular-nums shrink-0">
+            <span className="w-8 text-right font-mono text-meta text-muted-foreground tabular-nums shrink-0">
               {formatDb(mixer[key])}
             </span>
           </div>
@@ -241,7 +241,7 @@ export const ChannelStrip = memo(function ChannelStrip({
           { key: "compReleaseMs" as const, label: "Rel", min: 10, max: 1000, step: 10, unit: "ms" },
         ]).map(({ key, label, min = 0, max, step = 1, unit }) => (
           <div key={key} className="flex items-center gap-xs">
-            <span className="w-6 text-[9px] text-muted-foreground shrink-0">{label}</span>
+            <span className="w-6 text-meta text-muted-foreground shrink-0">{label}</span>
             <input
               type="range"
               min={min}
@@ -265,7 +265,7 @@ export const ChannelStrip = memo(function ChannelStrip({
               className="stem-accent-slider min-w-0 flex-1"
               aria-label={`${stem.label} ${label}`}
             />
-            <span className="w-8 text-right font-mono text-[8px] text-muted-foreground tabular-nums shrink-0">
+            <span className="w-8 text-right font-mono text-meta text-muted-foreground tabular-nums shrink-0">
               {key === "compRatio"
                 ? `${mixer[key].toFixed(1)}`
                 : `${mixer[key]}`}
@@ -282,7 +282,7 @@ export const ChannelStrip = memo(function ChannelStrip({
         aria-label={`${stem.label} pan`}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        <span className="self-start text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="self-start text-meta font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Pan
         </span>
         <PanKnob
@@ -347,7 +347,7 @@ export const ChannelStrip = memo(function ChannelStrip({
           disabled={!audioReady || isLoadingPreview}
           aria-label={isPreviewPlaying ? `Stop ${stem.label}` : `Preview ${stem.label}`}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded text-[10px] font-bold transition ring-1 ring-transparent",
+            "tap-feedback flex h-11 w-11 items-center justify-center rounded text-meta font-bold transition-[color,background-color,transform] duration-[var(--motion-fast)] ring-1 ring-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95]",
             isPreviewPlaying
               ? "bg-primary-500/20 text-primary-200"
               : "bg-muted text-muted-foreground hover:bg-muted hover:text-secondary-foreground",
@@ -408,10 +408,10 @@ function ControlSection({
   return (
     <div className="flex flex-col gap-2xs border-t border-border px-sm py-xs">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="text-meta font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {label}
         </span>
-        <span className="font-mono text-[9px] tabular-nums text-muted-foreground">
+        <span className="font-mono text-meta tabular-nums text-muted-foreground">
           {value}
         </span>
       </div>

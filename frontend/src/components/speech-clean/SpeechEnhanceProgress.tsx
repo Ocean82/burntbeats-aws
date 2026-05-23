@@ -66,7 +66,7 @@ function ProgressBarInner({
 }) {
   return (
     <>
-      <div className="mb-1 flex items-center justify-between text-[11px] text-info-200/60">
+      <div className="mb-1 flex items-center justify-between text-helper text-info-200/60">
         <span>
           {isUploading
             ? "Sending to speech service"

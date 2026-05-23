@@ -419,7 +419,7 @@ export function MultiStemEditor({
               Beat Grid
             </button>
             <span
-              className="rounded-lg border border-border bg-muted px-xs py-1 font-mono text-[10px] tabular-nums text-muted-foreground"
+              className="rounded-lg border border-border bg-muted px-xs py-1 font-mono text-meta tabular-nums text-muted-foreground"
               title={
                 beatGrid && beatGrid.confidence < 0.7
                   ? `BPM confidence ${Math.round(beatGrid.confidence * 100)}%`
@@ -558,7 +558,7 @@ export function MultiStemEditor({
               <button
                 type="button"
                 onClick={() => setActivePanel(null)}
-                className="text-muted-foreground hover:text-foreground transition"
+                className="tap-target-expand rounded-md text-muted-foreground transition-[color,transform] duration-[var(--motion-fast)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                 aria-label="Close panel"
               >
                 <X className="h-4 w-4" />
@@ -569,7 +569,7 @@ export function MultiStemEditor({
               <button
                 type="button"
                 onClick={() => setChannelsSummaryOpen((o) => !o)}
-                className="flex w-full items-center justify-between px-md py-xs text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                className="tap-feedback flex min-h-[44px] w-full items-center justify-between px-md py-xs text-meta font-semibold uppercase tracking-wider text-muted-foreground transition-[color,background-color] duration-[var(--motion-fast)] hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-expanded={channelsSummaryOpen}
               >
                 All channels
@@ -585,12 +585,12 @@ export function MultiStemEditor({
                           type="button"
                           onClick={() => setActiveStemId(s.id)}
                           className={cn(
-                            "flex w-full gap-xs rounded-lg px-xs py-1.5 text-left text-[11px] hover:bg-muted",
+                            "tap-feedback flex min-h-[44px] w-full gap-xs rounded-lg px-xs py-xs text-left text-helper transition-[background-color,transform] duration-[var(--motion-fast)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]",
                             s.id === resolvedActiveStemId && "bg-primary-500/10",
                           )}
                         >
                           <span className="truncate flex-1">{s.label}</span>
-                          <span className="font-mono text-[9px] text-muted-foreground">
+                          <span className="font-mono text-helper text-muted-foreground">
                             {st.mixer.gain.toFixed(0)}dB
                           </span>
                         </button>
@@ -625,7 +625,7 @@ export function MultiStemEditor({
                     {activeState.pitchSemitones > 0 ? "+" : ""}
                     {activeState.pitchSemitones.toFixed(1)} st
                   </p>
-                  <p className="text-center text-[9px] text-muted-foreground">
+                  <p className="text-center text-helper text-muted-foreground">
                     Double-click to reset
                   </p>
                 </div>
@@ -640,10 +640,10 @@ export function MultiStemEditor({
                   ]).map(({ key, label, freq }) => (
                     <div key={key} className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                           {label} <span className="text-muted-foreground">{freq}</span>
                         </span>
-                        <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                        <span className="font-mono text-meta tabular-nums text-muted-foreground">
                           {activeState.mixer[key] > 0 ? "+" : ""}
                           {activeState.mixer[key].toFixed(1)} dB
                         </span>
@@ -672,7 +672,7 @@ export function MultiStemEditor({
                       />
                     </div>
                   ))}
-                  <p className="text-center text-[9px] text-muted-foreground pt-1">
+                  <p className="text-center text-helper text-muted-foreground pt-1">
                     Double-click to reset
                   </p>
                 </div>
@@ -702,7 +702,7 @@ export function MultiStemEditor({
                     {activeState.mixer.gain > 0 ? "+" : ""}
                     {activeState.mixer.gain.toFixed(1)} dB
                   </p>
-                  <p className="text-center text-[9px] text-muted-foreground">
+                  <p className="text-center text-helper text-muted-foreground">
                     Double-click to reset
                   </p>
                 </div>
@@ -730,7 +730,7 @@ export function MultiStemEditor({
                     {timeStretchToDisplayPercent(activeState.timeStretch) >= 0 ? "+" : ""}
                     {timeStretchToDisplayPercent(activeState.timeStretch)}%
                   </p>
-                  <p className="text-center text-[9px] text-muted-foreground">
+                  <p className="text-center text-helper text-muted-foreground">
                     Double-click to reset
                   </p>
                 </div>
@@ -739,10 +739,10 @@ export function MultiStemEditor({
                 <div className="space-y-md">
                   <motion.div layout className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Warmth
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.warmth}%
                       </span>
                     </div>
@@ -765,15 +765,15 @@ export function MultiStemEditor({
                       className="stem-accent-slider w-full"
                       aria-label={`${activeStem.label} warmth`}
                     />
-                    <p className="text-[9px] text-muted-foreground">Harmonic saturation for body and glue</p>
+                    <p className="text-helper text-muted-foreground">Harmonic saturation for body and glue</p>
                   </motion.div>
 
                   <motion.div layout className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Presence
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.presence > 0 ? "+" : ""}
                         {activeState.mixer.presence.toFixed(1)} dB
                       </span>
@@ -797,16 +797,16 @@ export function MultiStemEditor({
                       className="stem-accent-slider w-full"
                       aria-label={`${activeStem.label} presence`}
                     />
-                    <p className="text-[9px] text-muted-foreground">Air and clarity around 10 kHz</p>
+                    <p className="text-helper text-muted-foreground">Air and clarity around 10 kHz</p>
                   </motion.div>
 
                   {/* Reverb */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Reverb
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.reverbWet}%
                       </span>
                     </div>
@@ -834,10 +834,10 @@ export function MultiStemEditor({
                   {/* Delay */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Delay
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.delayWet}%
                       </span>
                     </div>
@@ -865,10 +865,10 @@ export function MultiStemEditor({
                   {/* Compressor Threshold */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Threshold
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.compThreshold} dB
                       </span>
                     </div>
@@ -896,10 +896,10 @@ export function MultiStemEditor({
                   {/* Compressor Ratio */}
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Ratio
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.compRatio.toFixed(1)}:1
                       </span>
                     </div>
@@ -926,10 +926,10 @@ export function MultiStemEditor({
 
                   <motion.div layout className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Attack
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.compAttackMs} ms
                       </span>
                     </div>
@@ -956,10 +956,10 @@ export function MultiStemEditor({
 
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
                         Comp Release
                       </span>
-                      <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                      <span className="font-mono text-meta tabular-nums text-muted-foreground">
                         {activeState.mixer.compReleaseMs} ms
                       </span>
                     </div>
@@ -984,7 +984,7 @@ export function MultiStemEditor({
                     />
                   </div>
 
-                  <p className="text-center text-[9px] text-muted-foreground pt-1">
+                  <p className="text-center text-helper text-muted-foreground pt-1">
                     Double-click to reset
                   </p>
                 </div>

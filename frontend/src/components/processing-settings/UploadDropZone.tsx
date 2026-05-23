@@ -91,7 +91,7 @@ export function UploadDropZone({
             )}
           </p>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-sm text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-center gap-sm text-helper text-muted-foreground">
           <span className="flex items-center gap-xs">
             <Sparkles className="h-3 w-3 text-primary-500/60" />
             AI stem separation

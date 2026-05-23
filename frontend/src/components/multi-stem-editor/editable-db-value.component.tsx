@@ -55,7 +55,7 @@ export const EditableDbValue = memo(function EditableDbValue({
 
   if (muted) {
     return (
-      <span className={cn("font-mono text-[9px] font-semibold text-destructive-400", className)}>
+      <span className={cn("font-mono text-meta font-semibold text-destructive-400", className)}>
         MUTE
       </span>
     );
@@ -74,7 +74,7 @@ export const EditableDbValue = memo(function EditableDbValue({
         role="spinbutton"
         aria-label={`${stemLabel} volume in dB`}
         className={cn(
-          "w-14 rounded border border-primary-400/40 bg-secondary px-1 py-0.5 text-center font-mono text-[9px] font-semibold tabular-nums text-foreground outline-none focus:border-primary-400/70",
+          "w-14 rounded border border-primary-400/40 bg-secondary px-1 py-0.5 text-center font-mono text-meta font-semibold tabular-nums text-foreground outline-none focus-visible:border-primary-400/70 focus-visible:ring-2 focus-visible:ring-ring",
           className,
         )}
         onClick={(e) => e.stopPropagation()}
@@ -102,7 +102,7 @@ export const EditableDbValue = memo(function EditableDbValue({
       onClick={(e) => e.stopPropagation()}
       title="Double-click to type a value"
       className={cn(
-        "font-mono text-[9px] font-semibold tabular-nums cursor-text",
+        "font-mono text-meta font-semibold tabular-nums cursor-text",
         value > 3 ? "text-primary-300" : "text-muted-foreground",
         disabled && "cursor-not-allowed opacity-50",
         className,

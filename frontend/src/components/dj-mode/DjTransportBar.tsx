@@ -114,11 +114,12 @@ export function DjTransportBar({
           onClick={onExport}
           disabled={!exportReady || isExporting}
           className={cn(
-            "flex items-center gap-xs rounded-lg border px-md py-1.5 text-xs font-semibold transition",
+            "tap-feedback flex min-h-[44px] items-center gap-xs rounded-lg border px-md py-xs text-xs font-semibold transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]",
             exportReady && !isExporting
               ? "border-primary-400/50 bg-primary-500/20 text-primary-100 hover:bg-primary-500/30"
-              : "border-border bg-muted text-muted-foreground opacity-50",
+              : "cursor-not-allowed border-border bg-muted text-muted-foreground opacity-50",
           )}
+          aria-busy={isExporting}
           aria-label={isExporting ? "Exporting mix" : "Export mix"}
         >
           <Download className="h-3.5 w-3.5" aria-hidden />
@@ -133,7 +134,7 @@ export function DjTransportBar({
           onClick={onBeatGridToggle}
           aria-label="Toggle beat grid"
           className={cn(
-            "flex items-center gap-2xs rounded-lg border px-sm py-1.5 text-[10px] font-medium uppercase tracking-wider transition",
+            "flex items-center gap-2xs rounded-lg border px-sm py-1.5 text-meta font-medium uppercase tracking-wider transition",
             showBeatGrid
               ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
               : "border-border bg-muted text-muted-foreground hover:text-foreground",
@@ -155,7 +156,7 @@ export function DjTransportBar({
         >
           <ZoomOut className="h-3.5 w-3.5" />
         </button>
-        <span className="px-1 text-[10px] text-muted-foreground tabular-nums">{Math.round(zoom * 100)}%</span>
+        <span className="px-1 text-meta text-muted-foreground tabular-nums">{Math.round(zoom * 100)}%</span>
         <button
           type="button"
           onClick={onZoomIn}

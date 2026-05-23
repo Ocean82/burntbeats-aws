@@ -48,10 +48,10 @@ export const MixerConsole = memo(function MixerConsole({
       aria-label="Mixer debug console"
       className="rounded-xl border border-primary-400/20 bg-secondary p-sm"
     >
-      <p className="mb-xs text-[10px] font-semibold uppercase tracking-wider text-primary-200/80">
+      <p className="mb-xs text-meta font-semibold uppercase tracking-wider text-primary-200/80">
         Mixer console
       </p>
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-snug text-secondary-foreground">
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-meta leading-snug text-secondary-foreground">
         {JSON.stringify(snapshot, null, 2)}
       </pre>
     </section>

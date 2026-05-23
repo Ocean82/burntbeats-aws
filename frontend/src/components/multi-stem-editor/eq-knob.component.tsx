@@ -77,7 +77,7 @@ export const EqKnob = memo(function EqKnob({
         aria-valuenow={value}
         aria-valuetext={`${formatDb(value)} dB`}
         className={cn(
-          "cursor-pointer outline-none",
+          "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-full",
           disabled && "cursor-not-allowed opacity-40",
           focused && !disabled && "drop-shadow-[0_0_4px_rgba(245,158,11,0.3)]",
         )}

@@ -125,7 +125,7 @@ export function MixerPanel({
     return (
       <>
         <p className="eyebrow">Stems</p>
-        <h2 className="font-display text-2xl tracking-[-0.04em] text-foreground mb-5">Timeline</h2>
+        <h2 className="font-display mb-lg text-2xl tracking-[-0.04em] text-foreground">Timeline</h2>
         <div 
           className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/[0.02] py-12 text-center"
           role="region"
@@ -159,14 +159,14 @@ export function MixerPanel({
                 onResetLevels();
                 setShowResetConfirm(false);
               }}
-              className="rounded bg-primary-500 px-xs py-1 text-xs font-medium text-black transition hover:bg-primary-400"
+              className="tap-feedback min-h-[44px] rounded bg-primary px-xs py-xs text-xs font-medium text-primary-foreground transition-[background-color,transform] duration-[var(--motion-fast)] hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
             >
               Yes
             </button>
             <button
               type="button"
               onClick={() => setShowResetConfirm(false)}
-              className="rounded border border-border px-xs py-1 text-xs text-secondary-foreground transition hover:bg-muted"
+              className="tap-feedback min-h-[44px] rounded border border-border px-xs py-xs text-xs text-secondary-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
             >
               No
             </button>
@@ -174,7 +174,7 @@ export function MixerPanel({
         ) : (
           <button
             type="button"
-            className="ghost-button flex items-center gap-xs rounded-lg border border-border px-sm py-1.5 text-xs text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            className="ghost-button tap-feedback flex min-h-[44px] items-center gap-xs rounded-lg border border-border px-sm py-xs text-xs text-muted-foreground transition-[color,transform] duration-[var(--motion-fast)] hover:text-foreground focus-visible:outline-none disabled:cursor-not-allowed"
             onClick={() => setShowResetConfirm(true)}
             disabled={!hasStemBuffers}
             aria-label="Reset all mixer levels to defaults"
@@ -197,7 +197,7 @@ export function MixerPanel({
               <button
                 type="button"
                 onClick={onRetryLoadStems}
-                className="flex items-center gap-xs rounded-lg bg-primary-500 px-sm py-1.5 text-xs font-medium text-black transition hover:bg-primary-400"
+                className="tap-feedback flex min-h-[44px] items-center gap-xs rounded-lg bg-primary px-sm py-xs text-xs font-medium text-primary-foreground transition-[background-color,transform] duration-[var(--motion-fast)] hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                 aria-label="Retry loading stems"
               >
                 <RefreshCw className="h-3.5 w-3.5" />

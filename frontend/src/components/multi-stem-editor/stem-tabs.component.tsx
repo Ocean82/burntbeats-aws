@@ -23,10 +23,10 @@ export function StemTabs({ stems, activeStemId, stemStates, onSelectStem }: Stem
             type="button"
             onClick={() => onSelectStem(stem.id)}
             className={cn(
-              "flex items-center gap-xs rounded-lg border px-sm py-1.5 text-xs font-medium transition",
+              "tap-feedback flex min-h-[44px] items-center gap-xs rounded-lg border px-sm py-xs text-xs font-medium transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
               selected
                 ? "border-current text-foreground"
-                : "border-border bg-muted text-muted-foreground hover:text-secondary-foreground",
+                : "border-border bg-muted text-muted-foreground hover:bg-secondary/50 hover:text-secondary-foreground",
               state.muted && "opacity-50"
             )}
             style={selected ? { borderColor: stem.glow, background: `${stem.glow}18`, color: stem.glow } : {}}
@@ -42,8 +42,8 @@ export function StemTabs({ stems, activeStemId, stemStates, onSelectStem }: Stem
               style={{ backgroundColor: stem.glow, boxShadow: selected ? `0 0 6px ${stem.glow}` : "none" }}
             />
             {stem.label}
-            {state.muted && <span className="text-[9px] opacity-60">M</span>}
-            {state.soloed && <span className="text-[9px] text-primary-300">S</span>}
+            {state.muted && <span className="text-meta opacity-60" aria-hidden>M</span>}
+            {state.soloed && <span className="text-meta text-primary-300" aria-hidden>S</span>}
           </button>
         );
       })}

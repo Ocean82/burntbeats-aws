@@ -32,7 +32,7 @@ export function LoadStemsZone({
         data-testid="load-upload-dropzone"
         role="button"
         tabIndex={0}
-        aria-label="Load stem files — click or drop audio files here"
+        aria-label="Load stem files dropzone — click or drop audio files here"
         onDragOver={(e) => {
           e.preventDefault();
           onSetIsDragging(true);
