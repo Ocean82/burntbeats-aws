@@ -1,7 +1,7 @@
 /**
  * MidiEditorSelectionInfo — inspector strip for selected notes (DAW-style).
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import type { EditableNote } from "../../hooks/useMidiEditor";
 import { midiToNoteName } from "../../utils/musicTheory";
@@ -21,6 +21,25 @@ export function MidiEditorSelectionInfo({
 }: MidiEditorSelectionInfoProps) {
   if (selectedNotes.length === 0) return null;
 
+  const selectionKey = selectedNotes.map((n) => `${n.id}:${n.velocity}`).join(",");
+
+  return (
+    <MidiEditorSelectionInfoBody
+      key={selectionKey}
+      selectedNotes={selectedNotes}
+      onDelete={onDelete}
+      onTranspose={onTranspose}
+      onSetVelocity={onSetVelocity}
+    />
+  );
+}
+
+function MidiEditorSelectionInfoBody({
+  selectedNotes,
+  onDelete,
+  onTranspose,
+  onSetVelocity,
+}: MidiEditorSelectionInfoProps) {
   const pitches = selectedNotes.map((n) => n.pitch);
   const minPitch = Math.min(...pitches);
   const maxPitch = Math.max(...pitches);
@@ -29,12 +48,7 @@ export function MidiEditorSelectionInfo({
   const avgVelocity = Math.round(
     velocities.reduce((sum, v) => sum + v, 0) / velocities.length,
   );
-  const selectionKey = selectedNotes.map((n) => `${n.id}:${n.velocity}`).join(",");
   const [velocityOverride, setVelocityOverride] = useState<number | null>(null);
-
-  useEffect(() => {
-    setVelocityOverride(null);
-  }, [selectionKey]);
 
   const sliderValue = velocityOverride ?? (allSameVelocity ? velocities[0] : avgVelocity);
 
