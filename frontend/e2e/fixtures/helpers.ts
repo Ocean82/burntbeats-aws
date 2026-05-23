@@ -35,3 +35,10 @@ export function skipOnboarding(page: import("@playwright/test").Page) {
     localStorage.setItem("burnt-beats-onboarding-complete", "true");
   });
 }
+
+/** Open in-app pricing via Settings → Plans & subscriptions. */
+export async function openPricingPage(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: /open settings menu/i }).click();
+  await page.getByRole("button", { name: "Plans & subscriptions" }).click();
+  await page.getByRole("heading", { name: /pick your plan/i }).waitFor();
+}

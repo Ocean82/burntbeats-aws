@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { skipOnboarding } from "./fixtures/helpers";
+import { openPricingPage, skipOnboarding } from "./fixtures/helpers";
 
 /**
  * Billing/checkout flow integration tests.
@@ -12,16 +12,12 @@ test.describe("Billing & pricing flow", () => {
     await skipOnboarding(page);
   });
 
-  test("navigates to pricing page via Plans button", async ({ page }) => {
+  test("navigates to pricing page via settings menu", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("processing-settings-panel")).toBeVisible();
 
-    // Click the "Plans" button in the header nav
-    const plansButton = page.getByRole("button", { name: "Plans" });
-    await expect(plansButton).toBeVisible();
-    await plansButton.click();
+    await openPricingPage(page);
 
-    // Pricing page hero should be visible
     await expect(
       page.getByRole("heading", { name: /pick your plan/i }),
     ).toBeVisible();
@@ -29,7 +25,7 @@ test.describe("Billing & pricing flow", () => {
 
   test("pricing page shows plan cards and tab toggle", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Plans" }).click();
+    await openPricingPage(page);
 
     // Tab toggle for subscriptions vs credit packs
     await expect(page.getByRole("button", { name: /subscriptions/i })).toBeVisible();
@@ -45,7 +41,7 @@ test.describe("Billing & pricing flow", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Plans" }).click();
+    await openPricingPage(page);
 
     // Default tab is subscriptions
     const creditPacksTab = page.getByRole("button", { name: /credit packs/i });
@@ -60,7 +56,7 @@ test.describe("Billing & pricing flow", () => {
 
   test("checkout CTA button is clickable and shows loading state", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Plans" }).click();
+    await openPricingPage(page);
 
     // The primary checkout CTA should be visible
     const checkoutButton = page
@@ -82,11 +78,7 @@ test.describe("Billing & pricing flow", () => {
     page,
   }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Plans" }).click();
-
-    await expect(
-      page.getByRole("heading", { name: /pick your plan/i }),
-    ).toBeVisible();
+    await openPricingPage(page);
 
     // Click "Back to editor" button
     const backButton = page
@@ -103,7 +95,7 @@ test.describe("Billing & pricing flow", () => {
 
   test("FAQ section is visible on pricing page", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Plans" }).click();
+    await openPricingPage(page);
 
     // FAQ questions should be visible
     await expect(
