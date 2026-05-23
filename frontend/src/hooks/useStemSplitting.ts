@@ -211,7 +211,8 @@ export function useStemSplitting({
         quality: splitQuality,
       });
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "Split failed";
+      const errMsg =
+        err instanceof Error ? err.message : "Couldn't complete split. Try again.";
       document.title = "Burnt Beats — Stem Splitter";
       setUploadState((prev) => ({
         ...prev,

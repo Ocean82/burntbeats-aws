@@ -52,7 +52,7 @@ export function WaitingGamePanel({
             transition={
               reduceMotion
                 ? { duration: 0 }
-                : { type: "spring", damping: 28, stiffness: 260 }
+                : { duration: 0.28, ease: [0.25, 1, 0.5, 1] }
             }
             className="fixed bottom-0 left-0 right-0 z-40 flex justify-center"
           >

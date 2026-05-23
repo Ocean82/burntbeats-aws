@@ -5,6 +5,7 @@
 import { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Zap, CreditCard } from "lucide-react";
+import { useProductMotion } from "../motion/useProductMotion";
 
 interface UpsellModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ export function UpsellModal({
   balance,
 }: UpsellModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const motionCfg = useProductMotion();
 
   // Trap focus and handle Escape
   useEffect(() => {
@@ -42,32 +44,22 @@ export function UpsellModal({
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-md"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-secondary backdrop-blur-sm"
+        <>
+          <motion.div
+            className="fixed inset-0 z-[200] bg-secondary backdrop-blur-sm"
+            {...motionCfg.modalBackdrop}
             onClick={onClose}
             aria-hidden="true"
           />
-
-          {/* Modal */}
+          <div className="fixed inset-0 z-[201] flex items-center justify-center p-md pointer-events-none">
           <motion.div
             ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="upsell-title"
             tabIndex={-1}
-            className="relative w-full max-w-md rounded-2xl border border-border bg-popover/95 p-lg shadow-elevation-xl outline-none"
-            initial={{ opacity: 0, scale: 0.95, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 12 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="relative w-full max-w-md rounded-2xl border border-border bg-popover/95 p-lg shadow-elevation-xl outline-none pointer-events-auto"
+            {...motionCfg.modalContent}
           >
             {/* Close button */}
             <button
@@ -131,7 +123,8 @@ export function UpsellModal({
               </button>
             </p>
           </motion.div>
-        </motion.div>
+          </div>
+        </>
       )}
     </AnimatePresence>
   );

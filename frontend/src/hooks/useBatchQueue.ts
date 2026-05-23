@@ -100,7 +100,8 @@ export function useBatchQueue(): UseBatchQueueReturn {
           onStemsReady(res.stems);
           if (res.job_id && onJobId) onJobId(res.job_id);
         } catch (err) {
-          const msg = err instanceof Error ? err.message : "Split failed";
+          const msg =
+            err instanceof Error ? err.message : "Couldn't complete split. Try again.";
           updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "error" as const, error: msg } : i));
           onError(msg);
         } finally {

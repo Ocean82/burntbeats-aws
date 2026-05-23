@@ -3,6 +3,7 @@ import { X, Keyboard, HelpCircle } from "lucide-react";
 import { useRef } from "react";
 import { KEYBOARD_SHORTCUTS } from "../hooks/useKeyboardShortcuts";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useProductMotion } from "../motion/useProductMotion";
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface HelpModalProps {
 
 export function HelpModal({ isOpen, onClose }: HelpModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const motionCfg = useProductMotion();
   useModalA11y(isOpen, modalRef, onClose);
 
   // Deduplicate shortcuts (some have both meta and ctrl variants)
@@ -26,19 +28,11 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           {/* Backdrop */}
           <motion.div
             className="fixed inset-0 z-modal-backdrop bg-secondary backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            {...motionCfg.modalBackdrop}
             onClick={onClose}
           />
 
-          {/* Modal */}
-          <motion.div
-            className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <div className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md">
             <motion.div
               className="relative w-full max-w-lg max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-lg"
               ref={modalRef}
@@ -46,10 +40,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
               aria-modal="true"
               aria-labelledby="help-modal-title"
               tabIndex={-1}
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              {...motionCfg.modalContent}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -60,7 +51,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   </div>
                   <div className="min-w-0">
                     <h2 id="help-modal-title" className="break-words text-lg font-semibold text-foreground">Keyboard Shortcuts</h2>
-                    <p className="break-words text-xs text-muted-foreground">Quick actions for power users</p>
+                    <p className="break-words text-xs text-muted-foreground">Faster editing from the keyboard</p>
                   </div>
                 </div>
                 <button
@@ -94,10 +85,10 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                   <div>
                     <p className="text-xs font-medium text-secondary-foreground">Pro Tips</p>
                     <ul className="mt-1.5 space-y-1 text-xs text-muted-foreground">
-                      <li>Press number keys 1-4 to quickly solo individual stems</li>
-                      <li>Use Cmd/Ctrl + Z to undo mixer changes</li>
-                      <li>Press L to toggle loop playback</li>
-                      <li>Press Space to play/stop the mix hands-free</li>
+                      <li>Keys 1–4 solo Vocals, Drums, Bass, Melody (when those stems exist)</li>
+                      <li>Ctrl+Z / ⌘Z undoes mixer changes</li>
+                      <li>L toggles loop playback</li>
+                      <li>Space plays or stops the mix</li>
                     </ul>
                   </div>
                 </div>
@@ -110,7 +101,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                 </p>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

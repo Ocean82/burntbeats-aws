@@ -69,7 +69,7 @@ function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unable to record acceptance. Please try again.";
       setError(
-        `${msg} If this persists, sign out/sign in and try again.`
+        `${msg} If this persists, sign out and sign back in, then try again.`
       );
       trackEvent("legal_accept_failed", {
         error: msg.slice(0, 120),

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Music2, Settings2, RotateCcw, Sparkles } from "lucide-react";
+import { Music2, Settings2, RotateCcw } from "lucide-react";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
 import { cn } from "../../utils/cn";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
@@ -177,27 +177,18 @@ export function ProcessingSettingsPanel({
             <span className="font-semibold text-primary-50">
               Active plan required to split full tracks.
             </span>{" "}
-            Continue to secure checkout, or use{" "}
+            Continue to secure checkout, or enable{" "}
             <span className="font-semibold text-primary-200">Try for free</span>{" "}
-            below.
+            in the split controls below.
           </p>
           <div className="mt-xs">
-            <div className="flex flex-wrap gap-xs">
-              <button
-                type="button"
-                onClick={onContinueCheckout}
-                className="ghost-button min-h-[40px] rounded-lg border border-primary-300/30 px-sm py-1.5 text-xs font-semibold text-primary-100 hover:border-primary-200/50 hover:text-primary-50"
-              >
-                Continue to secure checkout
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsSample(true)}
-                className="ghost-button min-h-[40px] rounded-lg border border-border px-sm py-1.5 text-xs font-semibold text-secondary-foreground hover:border-border hover:text-foreground"
-              >
-                Use 60s free sample
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onContinueCheckout}
+              className="ghost-button min-h-[40px] rounded-lg border border-primary-300/30 px-sm py-1.5 text-xs font-semibold text-primary-100 hover:border-primary-200/50 hover:text-primary-50"
+            >
+              Continue to secure checkout
+            </button>
           </div>
         </div>
       )}
@@ -301,31 +292,6 @@ export function ProcessingSettingsPanel({
         {/* Split actions (split mode only) */}
         {sourceMode === "split" && (
           <>
-            {subscriptionInactive && !isSample && splitResultStemsLength === 0 && (
-              <motion.div className="mb-sm w-full rounded-xl border border-success-400/40 bg-gradient-to-r from-success-950/50 to-success-900/20 px-md py-sm shadow-[0_0_24px_rgba(52,211,153,0.12)]">
-                <div className="flex flex-wrap items-center justify-between gap-sm">
-                  <div className="flex min-w-0 items-start gap-sm">
-                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-success-300" aria-hidden />
-                    <div>
-                      <p className="text-sm font-semibold text-success-50">
-                        Try a 60-second preview — no plan required
-                      </p>
-                      <p className="mt-0.5 text-xs text-success-200/65">
-                        Hear the quality before you subscribe. Uses the first minute of your track only.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsSample(true)}
-                    disabled={isSplitting}
-                    className="min-h-[40px] shrink-0 rounded-lg border border-success-300/50 bg-success-500/25 px-md py-xs text-xs font-bold text-success-50 transition hover:bg-success-500/40 disabled:opacity-50"
-                  >
-                    Enable free sample
-                  </button>
-                </div>
-              </motion.div>
-            )}
             <SplitActions
               uploadedFile={uploadedFile}
               requestedStemMode={requestedStemMode}
@@ -347,7 +313,7 @@ export function ProcessingSettingsPanel({
               canUseBatchQueue={canUseBatchQueue}
               onAddToQueue={onAddToQueue}
               onOpenWaitingGame={onOpenWaitingGame}
-              hideSampleToggle={subscriptionInactive}
+              hideSampleToggle={false}
             />
           </>
         )}

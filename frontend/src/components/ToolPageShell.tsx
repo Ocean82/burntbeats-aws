@@ -3,6 +3,7 @@
  * Provides consistent animation, glass panel styling, paywall banner, and error/notice display.
  */
 import { motion } from "framer-motion";
+import { viewSwitchMotion } from "../motion/presets";
 import type { ReactNode } from "react";
 import { PaywallBanner } from "./PaywallBanner";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
@@ -31,16 +32,10 @@ export function ToolPageShell({
   return (
     <motion.section
       className="stack-md"
-      {...(reduceMotion
-        ? { initial: false, animate: { opacity: 1, y: 0 }, transition: { duration: 0 } }
-        : {
-            initial: { opacity: 0, y: 16 },
-            animate: { opacity: 1, y: 0 },
-            transition: { duration: 0.4 },
-          })}
+      {...viewSwitchMotion(reduceMotion)}
     >
       <div
-        className={`glass-panel mirror-sheen rounded-[2rem] border ${borderColorClass} px-lg py-lg sm:px-lg`}
+        className={`rounded-2xl border bg-muted/20 ${borderColorClass} px-lg py-lg sm:px-lg`}
         data-testid={testId}
       >
         {children}

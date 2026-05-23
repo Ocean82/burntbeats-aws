@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, FileAudio, Package, Check } from "lucide-react";
 import { cn } from "../utils/cn";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useProductMotion } from "../motion/useProductMotion";
 import { useIsTouchDevice } from "../hooks/useIsTouchDevice";
 import { useEventBus } from "../store/eventBus";
 
@@ -81,6 +82,7 @@ export function ExportOptionsModal({
   trackDurationSec = 0,
 }: ExportOptionsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const motionCfg = useProductMotion();
   useModalA11y(isOpen, modalRef, onClose, { disableEscape: isExporting });
   const isTouchDevice = useIsTouchDevice();
 
@@ -126,19 +128,12 @@ export function ExportOptionsModal({
         <>
           <motion.div
             className="fixed inset-0 z-modal-backdrop bg-secondary backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            {...motionCfg.modalBackdrop}
             onClick={() => {
               if (!isExporting) onClose();
             }}
           />
-          <motion.div
-            className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <div className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md">
             <motion.div
               className="relative w-full max-w-md modal-viewport-height overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:p-lg"
               ref={modalRef}
@@ -146,10 +141,7 @@ export function ExportOptionsModal({
               aria-modal="true"
               aria-labelledby="export-options-title"
               tabIndex={-1}
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              {...motionCfg.modalContent}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -375,7 +367,7 @@ export function ExportOptionsModal({
                 </button>
               )}
             </motion.div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

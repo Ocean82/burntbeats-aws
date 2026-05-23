@@ -115,36 +115,6 @@ export function EditorMainView({
           </span>
         )}
       </div>
-      {/* Marquee — static text on small screens to reduce motion noise */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-muted/[0.03] backdrop-blur-sm md:hidden">
-        <p className="px-md py-sm text-center text-[11px] uppercase leading-relaxed tracking-[0.18em] text-muted-foreground">
-          Drop track · Split · Mix · Export · Premium &amp; Studio unlock batch
-          &amp; faster queues.
-        </p>
-      </div>
-      <motion.div
-        className="hidden overflow-hidden rounded-2xl border border-border bg-muted/[0.03] backdrop-blur-sm md:block"
-        {...(reduceMotion
-          ? {
-              initial: false,
-              animate: { opacity: 1 },
-              transition: { duration: 0 },
-            }
-          : {
-              initial: { opacity: 0.6 },
-              animate: { opacity: 1 },
-              transition: { duration: 0.5 },
-            })}
-      >
-        <div className="flex w-max animate-scroll-text gap-3xl py-xs text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          <span>Drop track · Split · Mix · Export</span>
-          <span>
-            Hit your first finished stem in minutes — then batch the rest.
-          </span>
-          <span>Drop track · Split · Mix · Export</span>
-          <span>Premium & Studio plans unlock faster queues and more stems.</span>
-        </div>
-      </motion.div>
 
       <motion.section
         className="flex flex-col gap-md"
@@ -152,7 +122,7 @@ export function EditorMainView({
         animate="visible"
         variants={{
           visible: {
-            transition: { staggerChildren: reduceMotion ? 0 : 0.08 },
+            transition: { staggerChildren: reduceMotion ? 0 : 0.05 },
           },
           hidden: {},
         }}
@@ -160,15 +130,15 @@ export function EditorMainView({
         <motion.div
           onPointerDown={handleGuidancePanelInteract}
           className={cn(
-            "glass-panel mirror-sheen rounded-[2rem] px-lg py-md sm:px-lg",
+            "rounded-2xl border border-border bg-muted/20 px-lg py-md sm:px-lg",
             guidanceTarget === "source" && guidanceRingClass,
             processingProps.isSplitting && "splitting-scan-glow",
           )}
           variants={{
-            hidden: { opacity: 0, y: 12 },
+            hidden: { opacity: 0, y: 6 },
             visible: { opacity: 1, y: 0 },
           }}
-          transition={{ duration: reduceMotion ? 0 : 0.4 }}
+          transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.25, 1, 0.5, 1] }}
         >
           <SplitErrorBoundary>
             <ProcessingSettingsPanel {...processingProps} />

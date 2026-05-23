@@ -23,7 +23,7 @@ const baseProps = {
 describe("MidiSourceSelector", () => {
   it("shows helper text explaining source modes", () => {
     render(<MidiSourceSelector {...baseProps} />);
-    expect(screen.getByText(/uses stems from your last server split/i)).toBeInTheDocument();
+    expect(screen.getByText(/uses stems from your last split in Burnt Beats/i)).toBeInTheDocument();
     expect(screen.getByText(/uses files you loaded in the stem editor/i)).toBeInTheDocument();
     expect(screen.getByText(/is for any local audio/i)).toBeInTheDocument();
   });

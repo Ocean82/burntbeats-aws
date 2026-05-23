@@ -83,6 +83,8 @@ Curated map for **maintainers** (not web users). **Runtime truth** = root [`READ
 |-----|---------|
 | [`../frontend/SPATIAL-DESIGN.md`](../frontend/SPATIAL-DESIGN.md) | 4pt spacing tokens, elevation, grids, container queries, touch targets |
 | [`../frontend/COLOR-CONTRAST.md`](../frontend/COLOR-CONTRAST.md) | OKLCH palette, ember neutrals, WCAG contrast, 60-30-10 |
+| [`../frontend/RESPONSIVE-DESIGN.md`](../frontend/RESPONSIVE-DESIGN.md) | Mobile-first breakpoints, pointer/hover queries, safe areas, fluid type |
+| [`../frontend/MOTION-DESIGN.md`](../frontend/MOTION-DESIGN.md) | Product motion (150–250ms), presets, reduced-motion |
 | [`frontend-mixer-notes.md`](frontend-mixer-notes.md) | Mixer-centric dev notes; backlog cross-links live under [`roadmap/`](roadmap/) |
 
 ---

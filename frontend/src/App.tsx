@@ -8,6 +8,7 @@ import {
   Suspense,
 } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { viewSwitchMotion } from "./motion/presets";
 import { useLocation } from "wouter";
 
 const importHelpModal = () => import("./components/HelpModal");
@@ -770,19 +771,7 @@ export function App() {
         >
           {/* Either show the main editor view or the dedicated pricing page */}
           {activeView === "pricing" ? (
-            <motion.section
-              {...(reduceMotion
-                ? {
-                    initial: false,
-                    animate: { opacity: 1, y: 0 },
-                    transition: { duration: 0 },
-                  }
-                : {
-                    initial: { opacity: 0, y: 16 },
-                    animate: { opacity: 1, y: 0 },
-                    transition: { duration: 0.4 },
-                  })}
-            >
+            <motion.section {...viewSwitchMotion(Boolean(reduceMotion))}>
               <PricingPage
                 subscription={subscription}
                 onClose={() => setActiveView("editor")}
@@ -906,8 +895,6 @@ export function App() {
                 setActiveView,
                 splitResultStemsLength: splitResultStems.length,
                 mixStemsLength: mixStems.length,
-                uploadedFile,
-                onBrowseUpload: handleBrowseUpload,
                 mixStemCount: mixStems.length,
                 splitStemCount:
                   splitResultStems.length === 2 || splitResultStems.length === 4
@@ -987,10 +974,6 @@ export function App() {
       <EditorFloatingOverlays
         reduceMotion={Boolean(reduceMotion)}
         exportNotice={exportNotice}
-        headerVisible={headerVisible}
-        uploadedFile={uploadedFile}
-        splitResultCount={splitResultStems.length}
-        isSplitting={isSplitting}
       />
       {activeView === "editor" && <FeedbackChip />}
 

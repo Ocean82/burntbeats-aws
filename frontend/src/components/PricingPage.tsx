@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { viewSwitchMotion } from "../motion/presets";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
@@ -178,17 +179,7 @@ export function PricingPage({
       {/* Plan cards — single rendering via PricingTablePreview */}
       <motion.section
         className="glass-panel rounded-2xl border border-border p-md sm:p-lg"
-        {...(reduceMotion
-          ? {
-              initial: false,
-              animate: { opacity: 1, y: 0 },
-              transition: { duration: 0 },
-            }
-          : {
-              initial: { opacity: 0, y: 12 },
-              animate: { opacity: 1, y: 0 },
-              transition: { duration: 0.4 },
-            })}
+        {...viewSwitchMotion(Boolean(reduceMotion))}
       >
         <div className="mb-md text-center">
           <p className="eyebrow mb-1 text-xs text-primary-200/90">
@@ -210,17 +201,7 @@ export function PricingPage({
       {/* FAQ / objections reducer */}
       <motion.section
         className="grid gap-md rounded-2xl border border-border bg-secondary p-md text-sm text-secondary-foreground sm:grid-cols-2 sm:p-lg"
-        {...(reduceMotion
-          ? {
-              initial: false,
-              animate: { opacity: 1, y: 0 },
-              transition: { duration: 0 },
-            }
-          : {
-              initial: { opacity: 0, y: 12 },
-              animate: { opacity: 1, y: 0 },
-              transition: { duration: 0.4, delay: 0.1 },
-            })}
+        {...viewSwitchMotion(Boolean(reduceMotion))}
       >
         <div>
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">

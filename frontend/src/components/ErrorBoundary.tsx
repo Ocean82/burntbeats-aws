@@ -125,9 +125,9 @@ export function SplitErrorBoundary({ children }: SplitErrorBoundaryProps) {
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-primary-200">Split failed</h2>
+            <h2 className="text-xl font-semibold text-primary-200">Couldn&apos;t process this track</h2>
             <p className="mt-xs max-w-md text-sm text-primary-300/70">
-              There was an issue processing your audio file. Please try again.
+              Try splitting again, or upload a different file (MP3, WAV, or FLAC).
             </p>
           </div>
         </div>

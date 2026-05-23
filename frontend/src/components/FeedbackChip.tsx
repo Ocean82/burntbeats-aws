@@ -36,7 +36,7 @@ export function FeedbackChip() {
   // Show "thank you" confirmation after submission
   if (submitted) {
     return (
-      <div className="fixed bottom-5 left-5 z-40 rounded-full border border-success-400/30 bg-chrome px-md py-xs text-[11px] font-medium text-success-200 shadow-elevation-md backdrop-blur-md pb-safe">
+      <div className="fixed left-5 fixed-bottom-safe z-40 rounded-full border border-success-400/30 bg-chrome px-md py-xs text-[11px] font-medium text-success-200 shadow-elevation-md backdrop-blur-md pb-safe">
         Thanks for the feedback ✓
       </div>
     );
@@ -47,7 +47,7 @@ export function FeedbackChip() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 left-5 z-40 rounded-full border border-border bg-chrome px-md py-xs text-[11px] font-medium text-secondary-foreground shadow-elevation-md backdrop-blur-md hover:text-foreground pb-safe"
+        className="fixed left-5 fixed-bottom-safe z-40 rounded-full border border-border bg-chrome px-md py-xs text-[11px] font-medium text-secondary-foreground shadow-elevation-md backdrop-blur-md hover:text-foreground pb-safe"
       >
         How&apos;s Burnt Beats so far?
       </button>
@@ -55,7 +55,7 @@ export function FeedbackChip() {
   }
 
   return (
-    <div className="fixed bottom-5 left-5 z-40 w-72 rounded-2xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-lg backdrop-blur-md">
+    <div className="fixed left-5 fixed-bottom-safe z-40 w-72 rounded-2xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-lg backdrop-blur-md">
       <div className="mb-xs flex items-center justify-between gap-xs">
         <p className="font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           Quick feedback

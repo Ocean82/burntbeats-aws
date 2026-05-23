@@ -28,8 +28,6 @@ interface MixerWorkspaceProps {
   setActiveView: (view: "editor" | "pricing") => void;
   splitResultStemsLength: number;
   mixStemsLength: number;
-  uploadedFile: File | null;
-  onBrowseUpload: () => void;
   /* MixerPanel props */
   mixStemCount: number;
   splitStemCount?: 2 | 4 | null;
@@ -95,8 +93,6 @@ export function MixerWorkspace({
   setActiveView,
   splitResultStemsLength,
   mixStemsLength,
-  uploadedFile,
-  onBrowseUpload,
   mixStemCount,
   splitStemCount = null,
   isPlayingMix,
@@ -145,7 +141,7 @@ export function MixerWorkspace({
       ref={mixerSectionRef}
       onPointerDown={onPointerDownMixer}
       className={cn(
-        "glass-panel mirror-sheen rounded-[2rem] p-lg sm:p-lg overflow-visible",
+        "rounded-2xl border border-border bg-muted/20 p-lg sm:p-lg overflow-visible",
         guidanceTarget === "mixer" && guidanceRingClass,
       )}
       variants={{
@@ -263,77 +259,6 @@ export function MixerWorkspace({
             </button>
           </div>
         )}
-
-      {uploadedFile == null && mixStemsLength === 0 && (
-        <div className="mb-md overflow-hidden rounded-2xl border border-border bg-secondary relative">
-          {/* Overlay to blur and block interaction while providing CTA */}
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-secondary backdrop-blur-[2px]">
-            <div className="rounded-[2rem] border border-primary-400/30 bg-primary-500/10 px-xl py-lg text-center shadow-[0_0_40px_rgba(255,140,80,0.15)] backdrop-blur-md">
-              <h3 className="mb-xs text-xl font-bold text-foreground">
-                Your studio awaits
-              </h3>
-              <p className="mb-lg max-w-xs text-sm text-primary-50/70">
-                Upload a track to automatically split it into stems, then mix and master your creation.
-              </p>
-              <button
-                type="button"
-                onClick={onBrowseUpload}
-                className="fire-button inline-flex h-12 w-full items-center justify-center rounded-xl px-lg text-sm font-bold shadow-elevation-md transition-transform hover:scale-105 active:scale-95"
-              >
-                Upload a track
-              </button>
-            </div>
-          </div>
-
-          {/* Ghost UI Content */}
-          <div className="px-lg py-lg opacity-40 pointer-events-none select-none filter grayscale-[30%]">
-            <div className="mb-lg flex items-center justify-between border-b border-border pb-md">
-              <div className="flex items-center gap-sm">
-                <div className="h-10 w-10 rounded-full bg-muted" />
-                <div className="space-y-xs">
-                  <div className="h-3 w-32 rounded bg-secondary" />
-                  <div className="h-2 w-24 rounded bg-muted" />
-                </div>
-              </div>
-              <div className="flex gap-xs">
-                <div className="h-8 w-8 rounded-lg border border-border bg-muted" />
-                <div className="h-8 w-24 rounded-lg border border-border bg-muted" />
-              </div>
-            </div>
-
-            <div className="grid gap-md md:grid-cols-2 xl:grid-cols-4">
-              {[
-                { color: "amber", delay: "0s", hideClass: "" },
-                { color: "sky", delay: "0.1s", hideClass: "hidden md:flex" },
-                { color: "rose", delay: "0.2s", hideClass: "hidden xl:flex" },
-                { color: "emerald", delay: "0.3s", hideClass: "hidden xl:flex" },
-              ].map((strip, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "ghost-mixer-strip flex flex-col gap-md rounded-xl border border-border bg-muted p-md",
-                    strip.hideClass
-                  )}
-                  style={{ animationDelay: strip.delay }}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className={`h-4 w-16 rounded bg-${strip.color}-400/40`} />
-                    <div className="h-4 w-4 rounded-full bg-secondary" />
-                  </div>
-                  <div className="h-24 w-full rounded bg-muted" />
-                  <div className="space-y-xs">
-                    <div className="flex justify-between">
-                      <div className="h-2 w-6 rounded bg-secondary" />
-                      <div className="h-2 w-6 rounded bg-secondary" />
-                    </div>
-                    <div className="h-1.5 w-full rounded bg-muted" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       <Suspense
         fallback={

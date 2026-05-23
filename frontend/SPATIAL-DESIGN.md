@@ -123,3 +123,5 @@ App shells and feature components under `frontend/src` (excluding `components/ui
 **`components/ui/`** (shadcn) uses the same tokens: `gap-md`, `p-lg`, `shadow-elevation-sm`, `z-modal`, `z-dropdown`, `z-tooltip`, etc. Modal overlays use `z-modal-backdrop` + `z-modal`; menus/popovers use `z-dropdown`; tooltips use `z-tooltip`.
 
 **Colors:** see [`COLOR-CONTRAST.md`](COLOR-CONTRAST.md) and [`src/design-tokens-oklch.css`](src/design-tokens-oklch.css).
+
+**Responsive:** see [`RESPONSIVE-DESIGN.md`](RESPONSIVE-DESIGN.md) and [`src/design-tokens-responsive.css`](src/design-tokens-responsive.css).

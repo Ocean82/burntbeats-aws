@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, Trash2, Check, Sliders } from "lucide-react";
 import { defaultMixer, type MixerState, type TrimState } from "../types";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useProductMotion } from "../motion/useProductMotion";
 
 export interface MixerPreset {
   id: string;
@@ -96,6 +97,7 @@ export function MixerPresetsModal({
   currentFadeMap,
 }: MixerPresetsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const motionCfg = useProductMotion();
   useModalA11y(isOpen, modalRef, onClose);
 
   const [presets, setPresets] = useState<MixerPreset[]>([]);
@@ -160,18 +162,11 @@ export function MixerPresetsModal({
         <>
           <motion.div
             className="fixed inset-0 z-modal-backdrop bg-secondary backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            {...motionCfg.modalBackdrop}
             onClick={onClose}
           />
 
-          <motion.div
-            className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+          <div className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md">
             <motion.div
               className="relative w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:max-h-[calc(100vh-2rem)] sm:p-lg"
               ref={modalRef}
@@ -179,10 +174,7 @@ export function MixerPresetsModal({
               aria-modal="true"
               aria-labelledby="mixer-presets-title"
               tabIndex={-1}
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              {...motionCfg.modalContent}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -283,7 +275,7 @@ export function MixerPresetsModal({
                 ))}
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

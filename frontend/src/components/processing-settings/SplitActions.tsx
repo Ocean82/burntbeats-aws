@@ -220,40 +220,43 @@ export function SplitActions({
         )}
       </div>
 
-      {/* Queue button */}
-      <div className="flex shrink-0 flex-col items-start gap-2xs">
-        <button
-          type="button"
-          onClick={onAddToQueue}
-          disabled={
-            !uploadedFile ||
-            isSplitting ||
-            !canUseBatchQueue ||
-            splitResultStemsLength > 0
-          }
-          title={
-            splitResultStemsLength > 0
-              ? "Clear results by uploading a new file before adding to the queue."
-              : canUseBatchQueue
-                ? "Add to batch queue"
-                : "Requires Premium or Studio"
-          }
-          className="ghost-button shrink-0 rounded-xl border border-border px-sm py-sm text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <span className="inline-flex items-center gap-2xs">
-            + Queue
-            {!canUseBatchQueue && (
-              <Lock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
-            )}
-          </span>
-        </button>
-        {!canUseBatchQueue && (
-          <span className="max-w-[12rem] text-[10px] text-muted-foreground">
-            Premium &amp; Studio plans let you run whole queues
-            automatically while you work.
-          </span>
-        )}
-      </div>
+      <details className="shrink-0 rounded-xl border border-border bg-muted/40 px-sm py-1.5 text-xs text-muted-foreground">
+        <summary className="cursor-pointer select-none font-medium text-secondary-foreground hover:text-foreground">
+          More options
+        </summary>
+        <div className="mt-sm flex flex-col gap-2xs">
+          <button
+            type="button"
+            onClick={onAddToQueue}
+            disabled={
+              !uploadedFile ||
+              isSplitting ||
+              !canUseBatchQueue ||
+              splitResultStemsLength > 0
+            }
+            title={
+              splitResultStemsLength > 0
+                ? "Clear results by uploading a new file before adding to the queue."
+                : canUseBatchQueue
+                  ? "Add to batch queue"
+                  : "Requires Premium or Studio"
+            }
+            className="ghost-button w-full rounded-lg border border-border px-sm py-sm text-left text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <span className="inline-flex items-center gap-2xs">
+              Add to batch queue
+              {!canUseBatchQueue && (
+                <Lock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+              )}
+            </span>
+          </button>
+          {!canUseBatchQueue && (
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              Premium &amp; Studio plans can process whole queues automatically.
+            </p>
+          )}
+        </div>
+      </details>
 
       {/* Expanding indicator */}
       {isExpanding && (

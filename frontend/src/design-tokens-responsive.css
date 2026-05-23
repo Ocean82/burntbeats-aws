@@ -1,0 +1,29 @@
+/**
+ * Burnt Beats — responsive tokens (mobile-first, content-driven breakpoints)
+ * Breakpoints align with Tailwind defaults: sm 640, md 768, lg 1024
+ */
+
+:root {
+  --bp-sm: 40rem; /* 640px */
+  --bp-md: 48rem; /* 768px */
+  --bp-lg: 64rem; /* 1024px */
+
+  /* Fluid type — reduce breakpoint soup */
+  --text-fluid-xs: clamp(0.6875rem, 0.65rem + 0.15vw, 0.75rem);
+  --text-fluid-sm: clamp(0.8125rem, 0.78rem + 0.2vw, 0.875rem);
+  --text-fluid-base: clamp(0.875rem, 0.84rem + 0.25vw, 1rem);
+  --text-fluid-lg: clamp(1.125rem, 1rem + 0.5vw, 1.5rem);
+  --text-fluid-xl: clamp(1.5rem, 1.25rem + 1vw, 2.25rem);
+
+  /* Fluid spacing */
+  --space-fluid-gutter: clamp(var(--space-md), 4vw, var(--space-xl));
+  --space-fluid-section: clamp(var(--space-lg), 5vw, var(--space-3xl));
+}
+
+@theme {
+  --text-fluid-xs: var(--text-fluid-xs);
+  --text-fluid-sm: var(--text-fluid-sm);
+  --text-fluid-base: var(--text-fluid-base);
+  --text-fluid-lg: var(--text-fluid-lg);
+  --text-fluid-xl: var(--text-fluid-xl);
+}

@@ -69,8 +69,7 @@ export function UsageTokenRow({
               </span>
             )}
           <span className="mt-1 block text-xs text-muted-foreground">
-            1 token ≈ 1 minute of audio (rounds up). Metered when enabled on
-            the server.
+            1 token ≈ 1 minute of audio (partial minutes round up).
           </span>
         </>
       )}

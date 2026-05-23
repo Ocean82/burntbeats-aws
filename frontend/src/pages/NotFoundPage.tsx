@@ -13,9 +13,9 @@ export function NotFoundPage() {
 
       <div className="space-y-xs">
         <h1 className="text-4xl font-bold tracking-tight">404</h1>
-        <p className="text-lg text-secondary-foreground">This track doesn't exist.</p>
+        <p className="text-lg text-secondary-foreground">Page not found</p>
         <p className="text-sm text-muted-foreground">
-          The page you're looking for has been moved, deleted, or never existed.
+          This link may be wrong, or the page was removed.
         </p>
       </div>
 

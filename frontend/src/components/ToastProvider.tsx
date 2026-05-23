@@ -4,6 +4,7 @@
  */
 import { useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { productTransition } from "../motion/presets";
 import { X, CheckCircle2, AlertCircle, Info, Undo2 } from "lucide-react";
 import { useToastStore, type Toast, type ToastType } from "../store/toastStore";
 import { cn } from "../utils/cn";
@@ -46,8 +47,12 @@ function ToastItem({ toast }: { toast: Toast }) {
       layout
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 80, scale: 0.95 }}
       animate={reduceMotion ? { opacity: 1 } : { opacity: 1, x: 0, scale: 1 }}
-      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 80, scale: 0.95 }}
-      transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeOut" }}
+      exit={
+        reduceMotion
+          ? { opacity: 0 }
+          : { opacity: 0, x: 48, scale: 0.98, transition: productTransition(false, "exit") }
+      }
+      transition={productTransition(Boolean(reduceMotion), "fast")}
       className={cn(
         "pointer-events-auto flex items-center gap-sm rounded-xl border px-md py-sm shadow-elevation-xl backdrop-blur-xl",
         COLOR_MAP[toast.type],
@@ -87,7 +92,7 @@ export function ToastProvider() {
   return (
     <div
       aria-label="Notifications"
-      className="pointer-events-none fixed bottom-5 right-5 z-toast flex max-w-sm flex-col gap-xs"
+      className="pointer-events-none fixed right-5 z-toast flex max-w-sm flex-col gap-xs fixed-bottom-safe"
     >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (

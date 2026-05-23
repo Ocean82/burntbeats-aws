@@ -68,6 +68,8 @@ export interface DjModeEditorProps {
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
   getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
   getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
+  isExporting?: boolean;
+  onExport?: () => void;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -111,8 +113,10 @@ export function DjModeEditor({
   getMasterAnalyserTimeDomainData,
   getMasterAnalyserTimeDomainDataLeft,
   getMasterAnalyserTimeDomainDataRight,
+  isExporting = false,
+  onExport,
 }: DjModeEditorProps) {
-  const [consoleCollapsed, setConsoleCollapsed] = useState(false);
+  const [consoleCollapsed, setConsoleCollapsed] = useState(true);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
   const [showToolbarSettings, setShowToolbarSettings] = useState(false);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
@@ -251,6 +255,9 @@ export function DjModeEditor({
         onZoomOut={() => setZoom((z) => Math.max(1, z / 1.5))}
         onScrollChange={(v) => setScrollPct(v)}
         onBeatGridToggle={() => setShowBeatGrid((v) => !v)}
+        isExporting={isExporting}
+        exportReady={playbackReady}
+        onExport={onExport}
       />
 
       {/* ── Waveform Section (full width, taller lanes, dark bg) ── */}

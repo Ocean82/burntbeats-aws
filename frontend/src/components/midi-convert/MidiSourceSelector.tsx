@@ -72,7 +72,7 @@ export function MidiSourceSelector({
   return (
     <div className="flex flex-col gap-sm">
       <p className="text-xs text-accent-midi-100/50 leading-relaxed">
-        <span className="font-medium text-accent-midi-200/80">From recent split</span> uses stems from your last server split.
+        <span className="font-medium text-accent-midi-200/80">From recent split</span> uses stems from your last split in Burnt Beats.
         {" "}
         <span className="font-medium text-accent-midi-200/80">From loaded stems</span> uses files you loaded in the stem editor.
         {" "}

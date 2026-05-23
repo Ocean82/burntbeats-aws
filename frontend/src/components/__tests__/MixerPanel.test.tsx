@@ -40,6 +40,18 @@ describe("MixerPanel", () => {
         disconnect: vi.fn(),
       }));
     }
+    Object.defineProperty(window, "matchMedia", {
+      writable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query.includes("max-width"),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
   });
 
   function renderMixer(overrides: Partial<React.ComponentProps<typeof MixerPanel>> = {}) {
@@ -108,16 +120,15 @@ describe("MixerPanel", () => {
   it("renders mixer header and controls when stems exist", () => {
     renderMixer();
 
-    expect(screen.getByText(/Timeline · Mix · Export/i)).toBeInTheDocument();
-    expect(screen.getByRole("slider", { name: /master output volume/i })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Play mix/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: /Export/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Timeline/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Play$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Export mix/i })).toBeInTheDocument();
   });
 
-  it("calls onPlayStop when Play mix is clicked", () => {
+  it("calls onPlayStop when Play is clicked", () => {
     const { handlers } = renderMixer();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Play mix/i })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /^Play$/i }));
     expect(handlers.onPlayStop).toHaveBeenCalledTimes(1);
   });
 
@@ -129,6 +140,7 @@ describe("MixerPanel", () => {
 
   it("resets master volume on double click and toggles limiter", () => {
     const { handlers } = renderMixer();
+    fireEvent.click(screen.getByRole("button", { name: /Expand mixer console/i }));
     const slider = screen.getByRole("slider", { name: /master output volume/i });
     fireEvent.doubleClick(slider);
     expect(handlers.onMasterVolumeChange).toHaveBeenCalledWith(1);

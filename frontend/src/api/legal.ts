@@ -26,5 +26,5 @@ export async function acceptLegal(params: { tosVersion: string; privacyVersion: 
   }
   const j = (await res.json()) as { ok?: unknown };
   if (j && j.ok === true) return { ok: true };
-  throw new Error(userFacingApiError(null, "Unexpected response from server."));
+  throw new Error(userFacingApiError(null, "Something went wrong. Please try again."));
 }

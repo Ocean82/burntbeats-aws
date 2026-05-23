@@ -18,8 +18,10 @@ const STORAGE_KEY = "burntbeats_layout_mode";
 function getInitialMode(): LayoutMode {
   if (typeof window === "undefined") return "dj";
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "classic" || stored === "dj") return stored;
-  return "dj"; // DJ mode is the default
+  if (stored === "classic") {
+    localStorage.setItem(STORAGE_KEY, "dj");
+  }
+  return "dj";
 }
 
 const LayoutModeContext = createContext<LayoutModeContextValue>({
@@ -32,16 +34,14 @@ export function LayoutModeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<LayoutMode>(getInitialMode);
 
   const setMode = useCallback((next: LayoutMode) => {
-    setModeState(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    setModeState("dj");
+    localStorage.setItem(STORAGE_KEY, "dj");
+    void next;
   }, []);
 
   const toggleMode = useCallback(() => {
-    setModeState((prev) => {
-      const next = prev === "dj" ? "classic" : "dj";
-      localStorage.setItem(STORAGE_KEY, next);
-      return next;
-    });
+    setModeState("dj");
+    localStorage.setItem(STORAGE_KEY, "dj");
   }, []);
 
   const value = useMemo<LayoutModeContextValue>(

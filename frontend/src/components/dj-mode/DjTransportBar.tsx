@@ -2,7 +2,7 @@
  * DjTransportBar — Compact transport controls for DJ mode.
  * Play/Stop, Loop, Zoom, Beat Grid, Timecode display.
  */
-import { Grid, Play, Repeat, Square, ZoomIn, ZoomOut } from "lucide-react";
+import { Download, Grid, Play, Repeat, Square, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 interface DjTransportBarProps {
@@ -22,6 +22,9 @@ interface DjTransportBarProps {
   onZoomOut: () => void;
   onScrollChange: (value: number) => void;
   onBeatGridToggle: () => void;
+  isExporting?: boolean;
+  exportReady?: boolean;
+  onExport?: () => void;
 }
 
 function formatTimecode(seconds: number): string {
@@ -50,6 +53,9 @@ export function DjTransportBar({
   onZoomOut,
   onScrollChange,
   onBeatGridToggle,
+  isExporting = false,
+  exportReady = false,
+  onExport,
 }: DjTransportBarProps) {
   const currentTime = (playheadPct / 100) * maxDuration;
 
@@ -101,6 +107,24 @@ export function DjTransportBar({
 
       {/* Spacer */}
       <div className="flex-1" />
+
+      {onExport && (
+        <button
+          type="button"
+          onClick={onExport}
+          disabled={!exportReady || isExporting}
+          className={cn(
+            "flex items-center gap-xs rounded-lg border px-md py-1.5 text-xs font-semibold transition",
+            exportReady && !isExporting
+              ? "border-primary-400/50 bg-primary-500/20 text-primary-100 hover:bg-primary-500/30"
+              : "border-border bg-muted text-muted-foreground opacity-50",
+          )}
+          aria-label={isExporting ? "Exporting mix" : "Export mix"}
+        >
+          <Download className="h-3.5 w-3.5" aria-hidden />
+          {isExporting ? "Exporting…" : "Export"}
+        </button>
+      )}
 
       {/* Beat Grid */}
       {hasBeatGrid && (

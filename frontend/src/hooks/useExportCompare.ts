@@ -97,6 +97,7 @@ export function useExportCompare({
   return {
     isComparingExport,
     exportCompareSummary,
-    onCompareExport: canCompareExport ? onCompareExport : undefined,
+    onCompareExport:
+      import.meta.env.DEV && canCompareExport ? onCompareExport : undefined,
   };
 }

@@ -2,9 +2,9 @@
 @import "tailwindcss";
 @import "./design-tokens-oklch.css";
 @import "./design-tokens-responsive.css";
+@import "./design-tokens-motion.css";
 
 :root {
-  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Spatial scale — 4pt base (4, 8, 12, 16, 24, 32, 48, 64, 96) */
   --space-2xs: 4px;
@@ -247,29 +247,39 @@
     transition: transform var(--transition-smooth), box-shadow var(--transition-smooth), border-color var(--transition-smooth);
   }
 
-  .glass-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(255, 160, 80, 0.48);
-    border-left-color: rgba(255, 100, 30, 0.62);
-    border-right-color: rgba(0, 220, 255, 0.58);
-    background:
-      /* brighter polished-top sheen on hover */
-      linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.07) 12%, transparent 36%),
-      /* intensified warm reflection */
-      linear-gradient(135deg, rgba(255, 110, 40, 0.2) 0%, transparent 42%),
-      /* intensified cool reflection */
-      linear-gradient(315deg, rgba(0, 200, 255, 0.16) 0%, transparent 42%),
-      var(--panel);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.52),
-      inset 2px 0 0 rgba(255, 200, 140, 0.14),
-      inset -2px 0 0 rgba(140, 240, 255, 0.14),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.38),
-      inset 0 0 20px rgba(255, 80, 20, 0.08),
-      var(--shadow-elevation-lg),
-      0 0 0 1px rgba(255, 160, 80, 0.18),
-      0 0 24px rgba(255, 60, 10, 0.1),
-      0 0 32px rgba(0, 200, 255, 0.08);
+  /* Hover lift only when the device supports hover (not touch-primary) */
+  @media (hover: hover) and (pointer: fine) {
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 160, 80, 0.48);
+      border-left-color: rgba(255, 100, 30, 0.62);
+      border-right-color: rgba(0, 220, 255, 0.58);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.07) 12%, transparent 36%),
+        linear-gradient(135deg, rgba(255, 110, 40, 0.2) 0%, transparent 42%),
+        linear-gradient(315deg, rgba(0, 200, 255, 0.16) 0%, transparent 42%),
+        var(--panel);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.52),
+        inset 2px 0 0 rgba(255, 200, 140, 0.14),
+        inset -2px 0 0 rgba(140, 240, 255, 0.14),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.38),
+        inset 0 0 20px rgba(255, 80, 20, 0.08),
+        var(--shadow-elevation-lg),
+        0 0 0 1px rgba(255, 160, 80, 0.18),
+        0 0 24px rgba(255, 60, 10, 0.1),
+        0 0 32px rgba(0, 200, 255, 0.08);
+    }
+
+    .hover-lift:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  @media (hover: none) {
+    .glass-card:active {
+      transform: translateY(0) scale(0.995);
+    }
   }
 
   /* Static prismatic dispersion + crystalline top rim */
@@ -1171,14 +1181,14 @@
   .ghost-button:focus-visible,
   .icon-button:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent), 0 0 24px rgba(255, 132, 92, 0.5);
+    box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--brand-accent), 0 0 24px rgba(255, 132, 92, 0.5);
   }
 
   /* Better focus ring for all interactive elements */
   button:focus-visible,
   input:focus-visible,
   select:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 
@@ -1205,7 +1215,7 @@
 
   .step-zone:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent), 0 0 28px rgba(255, 132, 92, 0.4);
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand-accent), 0 0 28px rgba(255, 132, 92, 0.4);
   }
 
   /* Subtle guidance cue (replaces loud green pulse ring) */
@@ -1413,10 +1423,17 @@
      DJ MODE — Vibrant neon waveforms, taller lanes, dark background
      ═══════════════════════════════════════════════════════════════════ */
 
+  /* DJ lanes: mobile-first height, expand from sm */
   .dj-mode-editor .waveform-lane-surface {
-    height: 96px;
+    height: 72px;
     background: rgba(0, 0, 0, 0.6);
     border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  @media (min-width: 640px) {
+    .dj-mode-editor .waveform-lane-surface {
+      height: 96px;
+    }
   }
 
   .dj-mode-editor .waveform-lane-trim-window {
@@ -1573,27 +1590,38 @@
     border-color: color-mix(in srgb, var(--fader-accent, #f59e0b) 30%, rgba(255, 255, 255, 0.2));
   }
 
-  /* Responsive: smaller screens — touch targets, EQ knob size, lane height */
-  @media (max-width: 640px) {
-    .dj-mode-editor .waveform-lane-surface {
-      height: 72px;
-    }
+  /* DJ touch targets: 44px default; compact on fine pointer + sm+ */
+  .dj-ms-btn-touch {
+    height: 2.25rem;
+    width: 2.25rem;
+    min-height: 44px;
+    min-width: 44px;
+  }
 
+  .dj-channel-strip__eq .eq-knob {
+    width: 44px;
+    height: 44px;
+  }
+
+  .dj-channel-strip__eq .eq-knob svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  @media (pointer: fine) and (min-width: 640px) {
     .dj-ms-btn-touch {
-      height: 2.25rem;
-      width: 2.25rem;
-      min-height: 44px;
-      min-width: 44px;
+      min-height: 2.25rem;
+      min-width: 2.25rem;
     }
 
     .dj-channel-strip__eq .eq-knob {
-      width: 44px;
-      height: 44px;
+      width: 36px;
+      height: 36px;
     }
 
     .dj-channel-strip__eq .eq-knob svg {
-      width: 38px;
-      height: 38px;
+      width: 32px;
+      height: 32px;
     }
   }
 }
@@ -1906,8 +1934,8 @@
   top: 0;
   bottom: 0;
   width: 2px;
-  background: linear-gradient(to bottom, var(--accent), rgba(255, 132, 92, 0.3));
-  box-shadow: 0 0 8px var(--accent);
+  background: linear-gradient(to bottom, var(--brand-accent), rgba(255, 132, 92, 0.3));
+  box-shadow: 0 0 8px var(--brand-accent);
   z-index: 10;
   pointer-events: none;
   transition: left 0.05s linear;
@@ -1920,9 +1948,9 @@
   left: -4px;
   width: 10px;
   height: 10px;
-  background: var(--accent);
+  background: var(--brand-accent);
   border-radius: 50%;
-  box-shadow: 0 0 12px var(--accent);
+  box-shadow: 0 0 12px var(--brand-accent);
 }
 
 /* Touch-friendly controls for mobile */
@@ -2008,6 +2036,15 @@
 }
 
 /* Safe area utilities */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+.px-safe {
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
@@ -2018,6 +2055,32 @@
 
 .bottom-safe {
   bottom: env(safe-area-inset-bottom, 0);
+}
+
+.inset-safe-bottom {
+  padding-bottom: max(var(--space-md), env(safe-area-inset-bottom, 0px));
+}
+
+.fixed-bottom-safe {
+  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+.fixed-top-safe {
+  top: max(0px, env(safe-area-inset-top, 0px));
+}
+
+/* Fine vs coarse pointer — component padding */
+@media (pointer: fine) {
+  .btn-interactive {
+    padding: var(--space-xs) var(--space-md);
+  }
+}
+
+@media (pointer: coarse) {
+  .btn-interactive {
+    padding: var(--space-sm) var(--space-lg);
+    min-height: 44px;
+  }
 }
 
 /* Swipe hint animation for mobile */
@@ -2228,10 +2291,12 @@
       0 8px 24px rgba(0, 0, 0, 0.4);
   }
 
-  .glass-card:hover {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.3),
-      0 12px 32px rgba(0, 0, 0, 0.45);
+  @media (hover: hover) {
+    .glass-card:hover {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        0 12px 32px rgba(0, 0, 0, 0.45);
+    }
   }
 
   .mirror-sheen::before,
@@ -2240,3 +2305,8 @@
   }
 
   .fire-orb,
+  .ice-orb {
+    opacity: 0.3;
+    filter: blur(60px);
+  }
+}

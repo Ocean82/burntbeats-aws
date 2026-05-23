@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, ChevronLeft, Upload, Sliders, Music2, Download, Sparkles } from "lucide-react";
 import { cn } from "../utils/cn";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useProductMotion } from "../motion/useProductMotion";
 import { useAppEvent } from "../store/eventBus";
 
 interface OnboardingTourProps {
@@ -27,8 +28,8 @@ const TOUR_STEPS = [
   {
     icon: Sliders,
     title: "Configure Your Split",
-    description: "First split gives vocals + instrumental. Use \"Keep going\" to split the instrumental into drums, bass & other.",
-    tip: "Use Quality mode for best results",
+    description: "First split gives vocals + instrumental. Tap Expand → 4 stems to break out drums, bass & other.",
+    tip: "Use Quality (or Balanced) for the cleanest separation",
     target: '[data-tour="quality-selector"]',
   },
   {
@@ -41,7 +42,7 @@ const TOUR_STEPS = [
     icon: Download,
     title: "Export Your Work",
     description: "Download individual stems or a mixed master. Choose your preferred format and quality.",
-    tip: "Press Cmd/Ctrl + E for quick export",
+    tip: "Use Export in the mixer, or Ctrl+E (Mac: ⌘E)",
   },
 ];
 
@@ -55,6 +56,7 @@ export function OnboardingTour({
   const [isVisible, setIsVisible] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const motionCfg = useProductMotion();
 
   useEffect(() => {
     const completed = localStorage.getItem(ONBOARDING_KEY);
@@ -142,15 +144,13 @@ export function OnboardingTour({
       {isVisible && (
         <>
           <motion.div
-            className="fixed inset-0 z-modal bg-chrome backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-modal bg-black/70 backdrop-blur-sm"
+            {...motionCfg.modalBackdrop}
           />
 
           {spotlightRect && (
             <motion.div
-              className="pointer-events-none fixed z-modal rounded-xl ring-4 ring-primary-400/70"
+              className="pointer-events-none fixed z-modal rounded-xl ring-4 ring-amber-400/70"
               style={{
                 left: spotlightRect.left - 6,
                 top: spotlightRect.top - 6,
@@ -161,37 +161,31 @@ export function OnboardingTour({
             />
           )}
 
-          <motion.div
+          <div
             className={cn(
               "z-modal",
               spotlightRect ? "fixed inset-0 pointer-events-none" : "fixed inset-0 flex items-center justify-center p-md",
             )}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           >
             <motion.div
               ref={modalRef}
               style={anchoredStyle}
               className={cn(
-                "relative overflow-y-auto rounded-3xl border border-border bg-popover/95 shadow-elevation-xl backdrop-blur-xl pointer-events-auto",
+                "relative overflow-y-auto rounded-3xl border border-white/10 bg-[#1a1412]/95 shadow-elevation-xl backdrop-blur-xl pointer-events-auto",
                 spotlightRect ? "max-h-[min(70vh,400px)]" : "w-full max-w-md max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]",
               )}
               role="dialog"
               aria-modal="true"
               aria-labelledby="onboarding-title"
-              initial={{ scale: 0.9, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 30 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              {...motionCfg.modalContent}
             >
               {/* Progress bar */}
-              <div className="absolute left-0 right-0 top-0 h-1 bg-muted">
+              <div className="absolute left-0 right-0 top-0 h-1 bg-white/10">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-primary-500 to-orange-500"
+                  className="h-full bg-gradient-to-r from-amber-500 to-orange-500"
                   initial={{ width: 0 }}
                   animate={{ width: `${((currentStep + 1) / TOUR_STEPS.length) * 100}%` }}
-                  transition={{ duration: 0.3 }}
+                  transition={motionCfg.transition("normal")}
                 />
               </div>
 
@@ -200,7 +194,7 @@ export function OnboardingTour({
                 onClick={handleSkip}
                 aria-label="Skip onboarding tour"
                 title="Skip onboarding tour"
-                className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-lg bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground sm:h-8 sm:w-8"
+                className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-lg bg-white/5 text-white/40 transition hover:bg-white/10 hover:text-white sm:h-8 sm:w-8"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -217,18 +211,18 @@ export function OnboardingTour({
                     className="text-center"
                   >
                     {/* Icon */}
-                    <div className="mx-auto mb-lg flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500/20 to-orange-500/20 shadow-elevation-md">
-                      <Icon className="h-10 w-10 text-primary-400" strokeWidth={1.5} />
+                    <div className="mx-auto mb-lg flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 shadow-elevation-md">
+                      <Icon className="h-10 w-10 text-amber-400" strokeWidth={1.5} />
                     </div>
 
                     {/* Title */}
-                    <h2 id="onboarding-title" className="mb-sm text-2xl font-bold text-foreground">{step.title}</h2>
+                    <h2 id="onboarding-title" className="mb-sm text-2xl font-bold text-white">{step.title}</h2>
 
                     {/* Description */}
-                    <p className="mb-md text-sm leading-relaxed text-secondary-foreground">{step.description}</p>
+                    <p className="mb-md text-sm leading-relaxed text-white/70">{step.description}</p>
 
                     {/* Tip */}
-                    <div className="mx-auto inline-flex items-center gap-xs rounded-full bg-primary-500/10 px-md py-xs text-xs text-primary-200">
+                    <div className="mx-auto inline-flex items-center gap-xs rounded-full bg-amber-500/10 px-md py-xs text-xs text-amber-200">
                       <Sparkles className="h-3 w-3" />
                       {step.tip}
                     </div>
@@ -237,15 +231,15 @@ export function OnboardingTour({
               </div>
 
               {/* Navigation */}
-              <div className="flex items-center justify-between border-t border-border p-md">
+              <div className="flex items-center justify-between border-t border-white/10 p-md">
                 <button
                   onClick={prevStep}
                   disabled={currentStep === 0}
                   className={cn(
                     "flex items-center gap-2xs rounded-lg px-md py-xs text-sm transition",
                     currentStep === 0
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "text-white/20"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -261,12 +255,12 @@ export function OnboardingTour({
                       aria-label={`Go to step ${index + 1} of ${TOUR_STEPS.length}`}
                       title={`Step ${index + 1} of ${TOUR_STEPS.length}`}
                       className={cn(
-                        "h-3 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60",
+                        "h-3 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60",
                         index === currentStep
-                          ? "w-6 bg-primary-400"
+                          ? "w-6 bg-amber-400"
                           : index < currentStep
-                          ? "w-3 bg-primary-400/50"
-                          : "w-3 bg-secondary hover:bg-secondary"
+                          ? "w-3 bg-amber-400/50"
+                          : "w-3 bg-white/20 hover:bg-white/40"
                       )}
                     />
                   ))}
@@ -274,14 +268,14 @@ export function OnboardingTour({
 
                 <button
                   onClick={nextStep}
-                  className="flex items-center gap-2xs rounded-lg bg-primary-500 px-md py-xs text-sm font-medium text-black transition hover:bg-primary-400"
+                  className="flex items-center gap-2xs rounded-lg bg-amber-500 px-md py-xs text-sm font-medium text-black transition hover:bg-amber-400"
                 >
                   {currentStep === TOUR_STEPS.length - 1 ? "Get Started" : "Next"}
                   {currentStep < TOUR_STEPS.length - 1 && <ChevronRight className="h-4 w-4" />}
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>
