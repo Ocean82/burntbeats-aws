@@ -19,6 +19,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from speech_service.config import SPEECH_OUTPUT_DIR
+from speech_service.correlation import (
+    CorrelationLoggingMiddleware,
+    install_correlation_logging_filter,
+)
 from speech_service.job_queue import enqueue_job, get_queue_depth, start_worker, stop_worker
 from speech_service.job_utils import (
     OUTPUT_FILENAME,
@@ -31,6 +35,9 @@ from speech_service.model_runtime import verify_models_at_startup
 from speech_service.pipeline import run_enhance_sync
 
 logger = logging.getLogger(__name__)
+
+# Install correlation ID logging filter on root logger
+install_correlation_logging_filter()
 
 UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
@@ -71,6 +78,8 @@ def _run_job(
 
 
 app = FastAPI(title="Speech Enhance Service", version="1.0.0", lifespan=lifespan)
+
+app.add_middleware(CorrelationLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=FRONTEND_ORIGINS,

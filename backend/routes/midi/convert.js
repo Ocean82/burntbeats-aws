@@ -207,6 +207,7 @@ midiConvertRouter.post(
         {
           timeoutMs: MIDI_ACCEPT_TIMEOUT_MS,
           authHeaderFn: withMidiServiceAuthHeader,
+          correlationId: /** @type {any} */ (req).correlationId,
         },
       );
 

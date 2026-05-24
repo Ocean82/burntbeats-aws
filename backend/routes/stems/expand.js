@@ -88,7 +88,9 @@ expandRouter.post(
     form.append("job_id", jobId);
     if (quality) form.append("quality", quality);
     try {
-      const data = await proxyFormRequest("/expand", form);
+      const data = await proxyFormRequest("/expand", form, {
+        correlationId: /** @type {any} */ (req).correlationId,
+      });
       if (data.statusCode === 202) {
         const newJobId = data.data.job_id;
         // Record expand job in database (non-blocking)

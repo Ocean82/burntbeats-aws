@@ -172,6 +172,7 @@ splitRouter.post(
     try {
       const data = await proxyFormRequest("/split", form, {
         timeoutMs: SPLIT_ACCEPT_TIMEOUT_MS,
+        correlationId: /** @type {any} */ (req).correlationId,
       });
 
       if (data.statusCode === 202) {

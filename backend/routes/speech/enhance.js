@@ -107,6 +107,7 @@ enhanceRouter.post(
 
       const { statusCode, data } = await proxySpeechFormRequest("/enhance", form, {
         timeoutMs: SPEECH_ACCEPT_TIMEOUT_MS,
+        correlationId: /** @type {any} */ (req).correlationId,
       });
 
       if (statusCode !== 202 || !data?.job_id) {

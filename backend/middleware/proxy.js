@@ -11,6 +11,17 @@ const SPEECH_SERVICE_URL =
 const SPEECH_SERVICE_API_TOKEN = process.env.SPEECH_SERVICE_API_TOKEN || "";
 
 /**
+ * Inject correlation ID into outbound headers when available.
+ * @param {Record<string, string>} headers
+ * @param {string | undefined} correlationId
+ * @returns {Record<string, string>}
+ */
+function withCorrelationId(headers, correlationId) {
+  if (!correlationId) return headers;
+  return { ...headers, "X-Correlation-ID": correlationId };
+}
+
+/**
  * Attach stem-service auth header when token protection is enabled.
  * @param {Record<string, string>} headers
  * @returns {Record<string, string>}
@@ -74,7 +85,7 @@ export function extractProxyErrorMessage(body, fallback) {
  * @param {string} baseUrl
  * @param {string} endpointPath
  * @param {import("form-data")} form
- * @param {{ timeoutMs?: number, authHeaderFn?: (h: Record<string, string>) => Record<string, string> }} [options]
+ * @param {{ timeoutMs?: number, authHeaderFn?: (h: Record<string, string>) => Record<string, string>, correlationId?: string }} [options]
  */
 export function proxyFormRequestTo(
   baseUrl,
@@ -102,12 +113,15 @@ export function proxyFormRequestTo(
       if (timeout) clearTimeout(timeout);
     };
 
+    let headers = authHeaderFn(form.getHeaders());
+    headers = withCorrelationId(headers, options.correlationId);
+
     const opts = {
       hostname: targetUrl.hostname,
       port: targetUrl.port || (isHttps ? 443 : 80),
       path: targetUrl.pathname + targetUrl.search,
       method: "POST",
-      headers: authHeaderFn(form.getHeaders()),
+      headers,
       signal: reqAbort.signal,
     };
 
@@ -174,3 +188,5 @@ export function getStemServiceUrl() {
 export function getSpeechServiceUrl() {
   return process.env.SPEECH_SERVICE_URL || "http://127.0.0.1:5001";
 }
+
+export { withCorrelationId };

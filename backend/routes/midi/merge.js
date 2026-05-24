@@ -44,6 +44,12 @@ midiMergeRouter.post("/", authMiddleware, async (req, res) => {
       "Content-Type": "application/json",
     });
 
+    // Forward correlation ID for distributed tracing
+    const correlationId = /** @type {any} */ (req).correlationId;
+    if (correlationId) {
+      headers["X-Correlation-ID"] = correlationId;
+    }
+
     const payload = JSON.stringify({ jobs, bpm: bpm || 120 });
 
     const result = await new Promise((resolve, reject) => {

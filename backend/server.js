@@ -22,6 +22,7 @@ import { isUsageTokensEnabled } from "./usageTokens.js";
 import { getAllowedOriginSet } from "./allowedOrigins.js";
 import { closePool } from "./db.js";
 import { rateLimitMiddleware } from "./middleware/rateLimiter.js";
+import { correlationIdMiddleware } from "./lib/correlationId.js";
 import { stemsRouter, STEM_OUTPUT_DIR } from "./routes/stems/index.js";
 import { speechRouter } from "./routes/speech/index.js";
 import { SPEECH_OUTPUT_DIR } from "./routes/speech/shared.js";
@@ -83,8 +84,12 @@ app.set("trust proxy", 1);
 
 app.use(helmet());
 
+// ── Correlation ID ───────────────────────────────────────────────────────────
+// Must be early so all downstream middleware/routes can access req.correlationId.
+app.use(correlationIdMiddleware);
+
 // ── Request logging ──────────────────────────────────────────────────────────
-// Minimal structured request log: method, path, status, duration, ip.
+// Minimal structured request log: method, path, status, duration, ip, correlation_id.
 // Skips high-frequency status polling to keep logs readable.
 app.use((req, res, next) => {
   if (req.method === "GET" && req.path.startsWith("/api/stems/status/"))
@@ -93,8 +98,9 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const ms = Date.now() - start;
     const ip = req.ip || req.socket?.remoteAddress || "-";
+    const cid = /** @type {any} */ (req).correlationId || "-";
     console.log(
-      `[${new Date().toISOString()}] ${req.method} ${req.path} ${res.statusCode} ${ms}ms ip=${ip}`,
+      `[${new Date().toISOString()}] ${req.method} ${req.path} ${res.statusCode} ${ms}ms ip=${ip} cid=${cid}`,
     );
   });
   next();

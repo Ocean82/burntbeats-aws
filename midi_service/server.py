@@ -23,6 +23,10 @@ from midi_service.config import (
     MIDI_OUTPUT_DIR,
     MIDI_SERVICE_API_TOKEN,
 )
+from midi_service.correlation import (
+    CorrelationLoggingMiddleware,
+    install_correlation_logging_filter,
+)
 from midi_service.job_queue import enqueue_job, get_queue_depth, start_worker, stop_worker
 from midi_service.job_utils import (
     OUTPUT_FILENAME,
@@ -35,6 +39,9 @@ from midi_service.multi_track import merge_jobs_to_multitrack
 from midi_service.pipeline import preload_model, run_midi_convert_sync
 
 logger = logging.getLogger(__name__)
+
+# Install correlation ID logging filter on root logger
+install_correlation_logging_filter()
 
 UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
@@ -74,6 +81,8 @@ def _run_job(
 
 
 app = FastAPI(title="MIDI Conversion Service", version="1.0.0", lifespan=lifespan)
+
+app.add_middleware(CorrelationLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=FRONTEND_ORIGINS,
