@@ -29,18 +29,19 @@ export const MIDI_OUTPUT_DIR = path.resolve(
 
 /** Time to wait for MIDI service to accept the job (202). */
 export const MIDI_ACCEPT_TIMEOUT_MS =
-  Number(process.env.MIDI_ACCEPT_TIMEOUT_MS) || 30_000;
+  Number(process.env.MIDI_ACCEPT_TIMEOUT_MS) || 120_000;
 
 /** MIDI service base URL. */
 export const MIDI_SERVICE_URL =
   process.env.MIDI_SERVICE_URL || "http://127.0.0.1:5002";
 
 /** MIDI service API token for service-to-service auth. */
-export const MIDI_SERVICE_API_TOKEN =
-  process.env.MIDI_SERVICE_API_TOKEN || "";
+export const MIDI_SERVICE_API_TOKEN = process.env.MIDI_SERVICE_API_TOKEN || "";
 
 /** Token cost for a single MIDI conversion. */
-export const MIDI_TOKEN_COST = Math.ceil(Number(process.env.MIDI_TOKEN_COST) || 1);
+export const MIDI_TOKEN_COST = Math.ceil(
+  Number(process.env.MIDI_TOKEN_COST) || 1,
+);
 
 /** Must match midi_service MIDI_MAX_UPLOAD_MB (default 100). */
 export const MIDI_MAX_UPLOAD_BYTES =
@@ -84,8 +85,7 @@ export async function handleMidiProxyError(e, res, logPrefix, usage) {
       .status(e.statusCode)
       .json({ error: sanitizedProxyClientError(e.statusCode, e.error) });
   }
-  const err =
-    e && typeof e === "object" ? e : { name: "", message: String(e) };
+  const err = e && typeof e === "object" ? e : { name: "", message: String(e) };
   console.error(
     `${logPrefix} proxy error:`,
     err.name,
