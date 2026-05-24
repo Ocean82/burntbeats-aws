@@ -407,6 +407,20 @@ async def expand(
             detail="Job is not a 2-stem result (need vocals.wav and instrumental.wav). Run 2-stem split first.",
         )
     prefer_speed = (quality or "").strip().lower() == "speed"
+
+    # Enforce queue depth limit (same as /split) to prevent unbounded expand concurrency
+    queue_condition = get_queue_condition()
+    if queue_condition is not None:
+        async with queue_condition:
+            if len(get_queued_splits()) >= MAX_QUEUE_DEPTH:
+                logger.warning(
+                    "Rejecting expand request: max queue depth %d reached", MAX_QUEUE_DEPTH
+                )
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Service capacity reached. Server is currently processing its maximum depth of {MAX_QUEUE_DEPTH} connections. Please try again later.",
+                )
+
     expand_job_id = str(uuid.uuid4())
     out_dir = OUTPUT_BASE / expand_job_id
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -508,3 +522,17 @@ async def health() -> dict:
     if os.environ.get("NODE_ENV", "development").lower() != "production":
         payload["repo_root"] = str(REPO_ROOT)
     return payload
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus-compatible metrics endpoint."""
+    from starlette.responses import Response as StarletteResponse
+
+    from stem_service.metrics import get_metrics_text, set_queue_depth
+
+    set_queue_depth(len(get_queued_splits()))
+    return StarletteResponse(
+        content=get_metrics_text(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )

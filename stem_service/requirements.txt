@@ -51,3 +51,6 @@ pyyaml>=6.0
 pytest
 requests
 httpx>=0.23.0,<0.28.0
+
+# Prometheus metrics
+prometheus_client>=0.20.0

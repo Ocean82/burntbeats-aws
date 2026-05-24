@@ -39,6 +39,10 @@ logger = logging.getLogger(__name__)
 # Install correlation ID logging filter on root logger
 install_correlation_logging_filter()
 
+# ── Service metadata ──────────────────────────────────────────────────────────
+_start_time = None
+_last_job_completed_at: str | None = None
+
 UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
@@ -59,6 +63,9 @@ def _require_api_token(request: Request) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _start_time
+    import time
+    _start_time = time.time()
     SPEECH_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     verify_models_at_startup()
     logger.info("Speech model layout OK under SPEECH_MODELS_DIR")
@@ -91,7 +98,31 @@ app.add_middleware(
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "queue_depth": get_queue_depth()}
+    import time
+    from speech_service import __version__
+
+    uptime = int(time.time() - _start_time) if _start_time else 0
+    return {
+        "status": "ok",
+        "version": __version__,
+        "uptime_seconds": uptime,
+        "queue_depth": get_queue_depth(),
+        "last_job_completed_at": _last_job_completed_at,
+    }
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus-compatible metrics endpoint."""
+    from starlette.responses import Response as StarletteResponse
+
+    from speech_service.metrics import get_metrics_text, set_queue_depth
+
+    set_queue_depth(get_queue_depth())
+    return StarletteResponse(
+        content=get_metrics_text(),
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @app.post("/enhance")

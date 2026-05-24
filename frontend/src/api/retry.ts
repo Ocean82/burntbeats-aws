@@ -72,6 +72,7 @@ export async function fetchWithRetry(
 ): Promise<Response> {
   const config = { ...DEFAULT_CONFIG, ...retryConfig };
   let lastError: unknown;
+  let lastResponse: Response | null = null;
 
   for (let attempt = 1; attempt <= config.maxAttempts; attempt++) {
     try {
@@ -83,6 +84,7 @@ export async function fetchWithRetry(
       }
 
       // Retryable HTTP status — treat as transient failure
+      lastResponse = response;
       lastError = new Error(`HTTP ${response.status}`);
 
       if (attempt < config.maxAttempts) {
@@ -103,6 +105,9 @@ export async function fetchWithRetry(
       await sleep(delay);
     }
   }
+
+  // All retries exhausted — return the last response if we have one (retryable HTTP status)
+  if (lastResponse) return lastResponse;
 
   // All retries exhausted
   throw lastError;

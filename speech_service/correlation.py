@@ -55,6 +55,11 @@ class CorrelationLoggingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             response.headers["X-Correlation-ID"] = correlation_id
+            try:
+                from speech_service import __version__
+                response.headers["X-Service-Version"] = __version__
+            except ImportError:
+                pass
             return response
         finally:
             CORRELATION_ID_CONTEXT_VAR.reset(token)

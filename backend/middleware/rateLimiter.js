@@ -1,4 +1,5 @@
 // @ts-check
+import { createRedisRateLimiter } from "../lib/redisRateLimiter.js";
 
 const RATE_LIMIT_WINDOW_MS =
   Number(process.env.RATE_LIMIT_WINDOW_MS) || 60 * 1000;
@@ -53,14 +54,32 @@ function shouldSkipGlobalRateLimit(req) {
   return false;
 }
 
+// Redis-backed rate limiter instance (lazy — only active when REDIS_URL is set).
+const redisGlobalLimiter = createRedisRateLimiter({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  maxRequests: RATE_LIMIT_MAX_REQUESTS,
+  keyPrefix: "rl:global",
+});
+
 /**
  * @param {import("express").Request} req
  * @param {import("express").Response} res
  * @param {import("express").NextFunction} next
  */
-export function rateLimitMiddleware(req, res, next) {
+export async function rateLimitMiddleware(req, res, next) {
   if (shouldSkipGlobalRateLimit(req)) return next();
   const ip = req.ip || req.socket.remoteAddress || "unknown";
+
+  // Try Redis-backed limiter first (returns allowed:true if Redis unavailable)
+  const redisResult = await redisGlobalLimiter(ip);
+  if (!redisResult.allowed) {
+    res.set("Retry-After", String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)));
+    return res
+      .status(429)
+      .json({ error: "Too many requests. Please slow down." });
+  }
+
+  // In-memory fallback (always runs as secondary protection for single-instance)
   const now = Date.now();
   const record = rateLimitStore.get(ip);
   if (!record || now > record.resetTime) {

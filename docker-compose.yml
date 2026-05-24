@@ -230,3 +230,23 @@ services:
         limits:
           memory: 1G
           cpus: "1.0"
+
+  cleanup:
+    build:
+      context: ./docker/cleanup
+      dockerfile: Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:3001
+      API_KEY: ${API_KEY:-}
+      STEM_MAX_AGE_HOURS: ${STEM_CLEANUP_MAX_AGE_HOURS:-48}
+      MIDI_MAX_AGE_HOURS: ${MIDI_CLEANUP_MAX_AGE_HOURS:-24}
+      CLEANUP_INTERVAL_HOURS: ${CLEANUP_INTERVAL_HOURS:-6}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"

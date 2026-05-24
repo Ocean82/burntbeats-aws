@@ -1740,6 +1740,26 @@
   }
 }
 
+/* Success flash — scale up + fade out for completed action feedback */
+@keyframes successFlash {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
 /* Pinpoint sparkles — like frost crystals catching ambient light */
 @keyframes iceSparkle {
   0% {

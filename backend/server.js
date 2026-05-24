@@ -23,6 +23,7 @@ import { getAllowedOriginSet } from "./allowedOrigins.js";
 import { closePool } from "./db.js";
 import { rateLimitMiddleware } from "./middleware/rateLimiter.js";
 import { correlationIdMiddleware } from "./lib/correlationId.js";
+import { metricsMiddleware, metricsHandler } from "./metrics.js";
 import { stemsRouter, STEM_OUTPUT_DIR } from "./routes/stems/index.js";
 import { speechRouter } from "./routes/speech/index.js";
 import { SPEECH_OUTPUT_DIR } from "./routes/speech/shared.js";
@@ -131,6 +132,7 @@ app.use(
   }),
 );
 app.use(express.json());
+app.use(metricsMiddleware);
 app.use(rateLimitMiddleware);
 
 // ── Route mounts ─────────────────────────────────────────────────────────────
@@ -144,6 +146,10 @@ app.use("/api/midi", midiRouter);
 app.use("/api/legal", legalRouter);
 app.use("/api/health", healthRouter);
 app.use("/api", historyRouter);
+
+// ── Metrics endpoint ─────────────────────────────────────────────────────────
+// Prometheus-compatible. Not behind /api/ prefix (internal scraping only).
+app.get("/metrics", metricsHandler);
 
 // ── Sentry error handler ─────────────────────────────────────────────────────
 // Must be mounted after all routes but before the generic error handler.
