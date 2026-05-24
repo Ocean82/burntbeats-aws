@@ -37,9 +37,9 @@ export function MidiResultPanel({
 
   return (
     <div className="flex flex-col gap-md rounded-xl border border-accent-midi/25 bg-accent-midi/5 px-md py-md">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-xs">
-          <Music className="h-4 w-4 text-accent-midi-300" aria-hidden />
+      <div className="flex items-center justify-between gap-sm">
+        <div className="flex min-w-0 items-center gap-xs">
+          <Music className="h-4 w-4 shrink-0 text-accent-midi-300" aria-hidden />
           <h3 className="text-sm font-semibold text-foreground">Conversion Complete</h3>
         </div>
 

@@ -59,16 +59,16 @@ export function SpeechCleanPanel({
   return (
     <div data-testid="speech-clean-panel" className="flex flex-col gap-md">
       <div className="flex flex-wrap items-start justify-between gap-sm border-b border-info-400/15 pb-md">
-        <div className="flex items-start gap-sm">
+        <div className="flex min-w-0 flex-1 items-start gap-sm">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-info-400/35 bg-info-500/15">
             <Mic2 className="h-5 w-5 text-info-300" aria-hidden />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="text-lg font-bold tracking-tight text-foreground">
               Speech Clean
             </h2>
-            <p className="mt-0.5 max-w-xl text-sm text-info-100/55">
-              Denoise and restore voice recordings. This tool is tuned for speech — not music stem separation.
+            <p className="mt-0.5 text-sm text-info-100/55">
+              Denoise and restore voice recordings. This tool is tuned for speech, not music stem separation.
             </p>
           </div>
         </div>

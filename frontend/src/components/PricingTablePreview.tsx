@@ -24,12 +24,12 @@ function PlanCard({ plan, onSelect, ctaButton }: PlanCardProps) {
       )}
     >
       <div className="flex items-start justify-between gap-md">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xl font-semibold text-foreground">{plan.name}</p>
           <p className="mt-xs text-sm text-secondary-foreground">{plan.description}</p>
         </div>
         {plan.badge ? (
-          <span className="rounded-full border border-border bg-muted px-sm py-1 text-[11px] uppercase tracking-[0.22em] text-secondary-foreground">
+          <span className="shrink-0 rounded-full border border-border bg-muted px-sm py-1 text-[11px] uppercase tracking-[0.22em] text-secondary-foreground">
             {plan.badge}
           </span>
         ) : null}
