@@ -39,6 +39,7 @@ htmlcov/
 .idea/
 .cursor/
 .claude/
+.impeccable/
 .vs/
 .DS_Store
 Thumbs.db

@@ -7,11 +7,11 @@ import { EASE_OUT_QUART } from "./presets";
 
 export const brandMotionMs = {
   /** Hero & primary section entrance */
-  entrance: 600,
+  entrance: 700,
   /** Below-fold sections (scroll-triggered) */
-  section: 500,
+  section: 550,
   /** Stagger between hero children */
-  stagger: 120,
+  stagger: 100,
 } as const;
 
 function brandTransition(reduceMotion: boolean, durationMs: number): Transition {
@@ -45,10 +45,11 @@ export function brandHeroItemVariants(reduceMotion: boolean): Variants {
     };
   }
   return {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 28, scale: 0.97 },
     visible: {
       opacity: 1,
       y: 0,
+      scale: 1,
       transition: brandTransition(false, brandMotionMs.entrance),
     },
   };
@@ -64,7 +65,7 @@ export function brandScrollSection(reduceMotion: boolean, delaySec = 0) {
     };
   }
   return {
-    initial: { opacity: 0, y: 24 },
+    initial: { opacity: 0, y: 32 },
     whileInView: { opacity: 1, y: 0 },
     viewport: { once: true, amount: 0.2, margin: "-60px" },
     transition: {

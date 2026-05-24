@@ -13,6 +13,50 @@ import {
   brandScrollSection,
 } from "../motion/brandPresets";
 
+/** Stem visualization bars for the hero teaser */
+function StemTeaser({ reduceMotion }: { reduceMotion: boolean }) {
+  const stems = [
+    { label: "VOX", color: "var(--stem-vocals)", height: "68%" },
+    { label: "DRM", color: "var(--stem-drums)", height: "82%" },
+    { label: "BAS", color: "var(--stem-bass)", height: "55%" },
+    { label: "MEL", color: "var(--stem-melody)", height: "72%" },
+  ];
+  return (
+    <div className="flex items-end justify-center gap-[clamp(0.75rem,2vw,1.5rem)] h-[clamp(4rem,12vw,7rem)]">
+      {stems.map((stem, i) => (
+        <motion.div
+          key={stem.label}
+          className="relative flex flex-col items-center gap-xs"
+          initial={reduceMotion ? false : { opacity: 0, scaleY: 0 }}
+          animate={{ opacity: 1, scaleY: 1 }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { delay: 1.2 + i * 0.12, duration: 0.7, ease: [0.16, 1, 0.3, 1] }
+          }
+          style={{ transformOrigin: "bottom" }}
+        >
+          <div
+            className="w-[clamp(2rem,4vw,3.5rem)] rounded-t-md"
+            style={{
+              height: stem.height,
+              background: `linear-gradient(180deg, ${stem.color}, transparent)`,
+              opacity: 0.7,
+              boxShadow: `0 0 20px color-mix(in srgb, ${stem.color} 40%, transparent)`,
+            }}
+          />
+          <span
+            className="text-[9px] font-bold tracking-[0.2em] uppercase"
+            style={{ color: stem.color, opacity: 0.8 }}
+          >
+            {stem.label}
+          </span>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+
 export function LandingPage() {
   const { isSignedIn } = useAuth();
   const reduceMotion = useReducedMotion() ?? false;
@@ -106,16 +150,16 @@ export function LandingPage() {
           </div>
         </nav>
 
-        {/* Hero — one orchestrated entrance */}
+        {/* Hero — ignition sequence */}
         <motion.section
-          className="flex flex-col items-center gap-lg py-12 text-center"
+          className="relative flex flex-col items-center gap-xl py-[clamp(3rem,8vw,6rem)] text-center"
           {...brandHeroContainer(reduceMotion)}
         >
           <motion.div
             variants={heroItem}
             className="inline-flex max-w-full flex-wrap items-center justify-center gap-xs rounded-full border border-border bg-muted px-md py-xs text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-100/90 sm:text-xs sm:tracking-[0.3em]"
           >
-            Stem Splitter · Mixer · Master
+            Split · Mix · Master · Export
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
           </motion.div>
 
@@ -123,34 +167,34 @@ export function LandingPage() {
             <img
               src="/logo-emblem.png"
               alt=""
-              className="logo-emblem mx-auto h-20 w-20 sm:h-24 sm:w-24"
+              className="logo-emblem mx-auto h-16 w-16 sm:h-20 sm:w-20"
               aria-hidden="true"
             />
           </motion.div>
 
           <motion.h1
             variants={heroItem}
-            className="logo-burnt max-w-4xl text-6xl font-bold leading-tight sm:text-7xl lg:text-8xl"
+            className="logo-burnt max-w-5xl text-[clamp(3.5rem,10vw,8rem)] font-bold leading-[0.92] tracking-[-0.05em]"
           >
             <span className="logo-burnt-fire">Burnt Beats</span>
           </motion.h1>
 
           <motion.p
             variants={heroItem}
-            className="max-w-xl break-words text-lg leading-relaxed text-secondary-foreground sm:text-xl"
+            className="max-w-lg break-words text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground"
           >
-            High-fidelity stem separation for producers. Level, trim, and export
-            radio-ready mixes in minutes.
+            Studio-grade stem separation. Level, trim, and export radio-ready
+            mixes without leaving your browser.
           </motion.p>
 
           <motion.div
             variants={heroItem}
-            className="mt-md flex flex-col items-center gap-md sm:flex-row"
+            className="mt-lg flex flex-col items-center gap-md sm:flex-row"
           >
             <SignUpButton mode="modal">
               <button
                 type="button"
-                className="fire-button tap-feedback text-xl px-12 py-lg font-bold"
+                className="fire-button tap-feedback text-[clamp(1.1rem,2.5vw,1.35rem)] px-[clamp(2rem,5vw,3.5rem)] py-[clamp(1rem,2vw,1.4rem)] font-bold"
               >
                 Try for Free
               </button>
@@ -165,34 +209,47 @@ export function LandingPage() {
             </SignInButton>
           </motion.div>
 
-          <motion.p variants={heroItem} className="text-xs text-muted-foreground">
-            Secure Stripe billing · cancel anytime · one-time packs available
-          </motion.p>
-
+          {/* Stem teaser visualization */}
           <motion.div
             variants={heroItem}
-            className="flex flex-col items-center gap-lg text-xs text-muted-foreground sm:flex-row"
+            className="mt-xl w-full max-w-md"
+            aria-hidden="true"
           >
-            <div className="flex items-center gap-xs">
-              <ShieldCheck className="h-3.5 w-3.5 text-success-500/70" />
-              No Install Required
+            <StemTeaser reduceMotion={reduceMotion} />
+          </motion.div>
+
+          {/* Proof strip */}
+          <motion.div
+            variants={heroItem}
+            className="mt-lg flex flex-col items-center gap-md sm:flex-row sm:gap-xl"
+          >
+            <div className="flex items-center gap-xs text-sm font-medium text-secondary-foreground">
+              <ShieldCheck className="h-4 w-4 text-success-500/80" aria-hidden="true" />
+              No install required
             </div>
-            <div className="flex items-center gap-xs">
-              <Zap className="h-3.5 w-3.5 text-primary-500/70" />
-              60s Free Sample
+            <div className="flex items-center gap-xs text-sm font-medium text-secondary-foreground">
+              <Zap className="h-4 w-4 text-primary-500/80" aria-hidden="true" />
+              60-second free sample
             </div>
-            <div className="flex items-center gap-xs">
-              <AudioWaveform className="h-3.5 w-3.5 text-blue-500/70" />
-              Pro Mixer & Editor
+            <div className="flex items-center gap-xs text-sm font-medium text-secondary-foreground">
+              <AudioWaveform className="h-4 w-4 text-ice-500/80" aria-hidden="true" />
+              Pro mixer and editor
             </div>
           </motion.div>
+
+          <motion.p variants={heroItem} className="text-xs text-muted-foreground/70">
+            Secure Stripe billing · cancel anytime · one-time packs available
+          </motion.p>
         </motion.section>
 
-        <motion.section id="pricing" className="py-12" {...brandScrollSection(reduceMotion)}>
-          <div className="mb-8 text-center">
-            <p className="eyebrow mb-xs">Simple Pricing</p>
-            <p className="text-base leading-relaxed text-secondary-foreground">
-              Choose a plan or buy a one-time pack. Cancel anytime.
+        <motion.section id="pricing" className="py-[clamp(3rem,6vw,5rem)]" {...brandScrollSection(reduceMotion)}>
+          <div className="mb-10 text-center">
+            <p className="eyebrow mb-sm">Pricing</p>
+            <p className="font-display text-[clamp(1.25rem,3vw,1.75rem)] font-bold leading-tight text-secondary-foreground">
+              Choose a plan or buy a one-time pack
+            </p>
+            <p className="mt-xs text-sm text-muted-foreground">
+              Cancel anytime. No lock-in.
             </p>
           </div>
 
@@ -208,52 +265,50 @@ export function LandingPage() {
             />
           </div>
 
-          <div className="mt-10 grid gap-md text-left text-base leading-relaxed text-secondary-foreground sm:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-secondary p-md">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
+          <div className="mt-12 grid gap-md text-left sm:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+              <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 Will this work on my laptop?
               </p>
-              <p>
-                Yes. Burnt Beats is tuned for CPU-friendly processing — no GPU
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Yes. Burnt Beats is tuned for CPU-friendly processing. No GPU
                 or special hardware required. If you can stream music, you can
                 split stems.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary p-md">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+              <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 How do tokens map to songs?
               </p>
-              <p className="break-words">
-                1 token = 1 minute of audio. A 3‑minute track costs 3 tokens to
+              <p className="break-words text-sm leading-relaxed text-muted-foreground">
+                1 token = 1 minute of audio. A 3-minute track costs 3 tokens to
                 split, and another 3 if you expand to 4 stems. Partial minutes
-                round up, so you always know the cost upfront.
+                round up.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary p-md">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+              <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 Can I cancel or change plans?
               </p>
-              <p>
-                Absolutely. Manage everything through Stripe — upgrade,
-                downgrade, or cancel with a couple of clicks. No emails or phone
-                calls required.
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Absolutely. Manage everything through Stripe. Upgrade,
+                downgrade, or cancel with a couple of clicks.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary p-md">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+              <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 Do I have to subscribe?
               </p>
-              <p>
-                No. If you only need stems occasionally, you can use the Top‑Up
-                pack to buy a one‑time block of tokens instead of a monthly
-                plan.
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                No. If you only need stems occasionally, buy a one-time Top-Up
+                pack instead of a monthly plan.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary p-md">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-secondary-foreground">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg sm:col-span-2">
+              <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 What is The Waiting Game?
               </p>
-              <p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 A lightweight mini-game inside the app to pass time while stems
                 are processing. Open it from the bottom-right tab during split
                 progress.
@@ -263,19 +318,27 @@ export function LandingPage() {
         </motion.section>
 
         <motion.section
-          className="glass-panel mirror-sheen mb-16 rounded-[2rem] px-md py-10 text-center sm:px-xl sm:py-12"
+          className="glass-panel mirror-sheen relative mb-16 overflow-hidden rounded-[2rem] px-md py-[clamp(3rem,6vw,5rem)] text-center sm:px-xl"
           {...brandScrollSection(reduceMotion, 0.08)}
         >
-          <p className="mb-xs text-2xl font-bold text-secondary-foreground">
+          {/* Thermal glow behind CTA */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 80% 60% at 50% 80%, rgba(255, 60, 10, 0.18), transparent 60%)",
+            }}
+          />
+          <p className="relative mb-xs font-display text-[clamp(1.5rem,4vw,2.5rem)] font-bold leading-tight text-secondary-foreground">
             Ready to split?
           </p>
-          <p className="mb-8 text-base text-secondary-foreground">
+          <p className="relative mb-10 text-base text-secondary-foreground/80">
             Create an account and start separating stems in seconds.
           </p>
           <SignUpButton mode="modal">
             <button
               type="button"
-              className="fire-button tap-feedback text-base px-xl py-md"
+              className="fire-button tap-feedback relative text-[clamp(1rem,2vw,1.2rem)] px-[clamp(2rem,4vw,3rem)] py-[clamp(0.9rem,2vw,1.2rem)] font-bold"
             >
               Create free account
             </button>
