@@ -374,16 +374,23 @@ export function useMidiConvert() {
         }
       }
 
-      const res = await fetch(`${API_BASE}/api/midi/convert`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Conversion request failed (${res.status})`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), MIDI_ACCEPT_TIMEOUT_MS);
+      try {
+        const res = await fetch(`${API_BASE}/api/midi/convert`, {
+          method: "POST",
+          headers,
+          body: formData,
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Conversion request failed (${res.status})`);
+        }
+        return res.json() as Promise<ConvertJobResponse>;
+      } finally {
+        clearTimeout(timer);
       }
-      return res.json() as Promise<ConvertJobResponse>;
     },
     [],
   );
@@ -502,7 +509,7 @@ export function useMidiConvert() {
   const pollBatchJob = useCallback(
     async (jobId: string, token: string): Promise<PollResponse> => {
       const POLL_INTERVAL = 1500;
-      const MAX_POLLS = 200;
+      const MAX_POLLS = 400;
       let polls = 0;
 
       while (polls < MAX_POLLS) {

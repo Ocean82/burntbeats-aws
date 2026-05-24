@@ -71,9 +71,9 @@ async def lifespan(app: FastAPI):
             "MIDI_DEVICE=%s is ignored; this service runs CPU-only inference",
             MIDI_DEVICE,
         )
+    await start_worker(_run_job)
     preload_model()
     logger.info("Basic Pitch model preloaded (CPU)")
-    await start_worker(_run_job)
     yield
     await stop_worker()
 

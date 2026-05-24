@@ -215,6 +215,7 @@ services:
       MIDI_OUTPUT_DIR: /repo/tmp/midi
       MIDI_SERVICE_API_TOKEN: ${MIDI_SERVICE_API_TOKEN:-}
       MIDI_MAX_QUEUE_DEPTH: ${MIDI_MAX_QUEUE_DEPTH:-8}
+      MIDI_ACCEPT_TIMEOUT_MS: ${MIDI_ACCEPT_TIMEOUT_MS:-60000}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
     volumes:
       - ./tmp/midi:/repo/tmp/midi
@@ -223,7 +224,7 @@ services:
       interval: 20s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 120s
     restart: unless-stopped
     deploy:
       resources:
