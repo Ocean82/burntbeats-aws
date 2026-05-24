@@ -132,7 +132,7 @@ def run_midi_convert_sync(
         onset_threshold=min_confidence,
         frame_threshold=max(0.1, min_confidence - 0.2),
         minimum_note_length=min_note_length_ms,
-        include_pitch_bends=include_pitch_bends,
+        multiple_pitch_bends=include_pitch_bends,
     )
 
     inference_time_seconds = round(time.perf_counter() - t_start, 3)

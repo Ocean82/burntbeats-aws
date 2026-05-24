@@ -39,7 +39,7 @@ export const MIDI_SERVICE_URL =
 export const MIDI_SERVICE_API_TOKEN =
   process.env.MIDI_SERVICE_API_TOKEN || "";
 
-/** Token cost for a single MIDI conversion (half a stem split). */
+/** Token cost for a single MIDI conversion. */
 export const MIDI_TOKEN_COST = Math.ceil(Number(process.env.MIDI_TOKEN_COST) || 1);
 
 /** Must match midi_service MIDI_MAX_UPLOAD_MB (default 100). */

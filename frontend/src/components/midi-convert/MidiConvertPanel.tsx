@@ -85,7 +85,7 @@ export function MidiConvertPanel({
     !isBatchMode &&
     !result &&
     sourceMode === "split";
-  const batchCost = splitResultStems.length * 0.5;
+  const batchCost = splitResultStems.length * 1;
   const canBatch =
     showBatchButton &&
     usageBalance !== null &&
@@ -264,7 +264,7 @@ export function MidiConvertPanel({
       {!subscriptionInactive && !usageLoading && (
         <div className="flex items-center gap-xs text-xs text-muted-foreground">
           <span>
-            Cost: <span className="text-accent-midi-200 font-medium">0.5 tokens</span> per conversion
+            Cost: <span className="text-accent-midi-200 font-medium">1 token</span> per conversion
           </span>
           {usageBalance !== null && (
             <>
@@ -293,7 +293,7 @@ export function MidiConvertPanel({
               Subscribe to unlock MIDI conversion
             </p>
             <p className="text-xs text-primary-100/60">
-              All paid plans include access to Audio-to-MIDI. Each conversion uses 0.5 tokens from your balance.
+              All paid plans include access to Audio-to-MIDI. Each conversion uses 1 token from your balance.
             </p>
           </div>
         ) : (
@@ -334,7 +334,7 @@ export function MidiConvertPanel({
           <span className="text-xs text-muted-foreground">
             Estimated cost:{" "}
             <span className="font-medium text-accent-midi-200">{batchCost} tokens</span>
-            {" "}({splitResultStems.length} stems × 0.5)
+            {" "}({splitResultStems.length} stems × 1)
           </span>
           {usageBalance !== null && usageBalance < batchCost && (
             <span className="text-xs text-destructive-300/80">
