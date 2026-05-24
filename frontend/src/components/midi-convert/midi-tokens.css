@@ -2,20 +2,20 @@
  * MIDI editor chrome — physical controls & shell (scoped to .midi-editor-root).
  */
 .midi-editor-root {
-  --midi-surface: #161618;
-  --midi-surface-raised: #1e1e22;
-  --midi-surface-inset: #121214;
-  --midi-border: rgba(255, 255, 255, 0.1);
+  --midi-surface: #181714;
+  --midi-surface-raised: #201e1a;
+  --midi-surface-inset: #131210;
+  --midi-border: rgba(255, 245, 220, 0.1);
   --midi-border-focus: color-mix(in oklch, var(--accent-midi) 55%, transparent);
-  --midi-text: rgba(255, 255, 255, 0.92);
-  --midi-text-muted: rgba(255, 255, 255, 0.45);
+  --midi-text: rgba(255, 248, 230, 0.92);
+  --midi-text-muted: rgba(255, 245, 220, 0.45);
   --midi-accent: var(--accent-midi);
   --midi-motion: var(--motion-fast);
   --midi-shadow-ambient: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --midi-shadow-face: 0 1px 0 rgba(255, 255, 255, 0.08) inset,
+  --midi-shadow-face: 0 1px 0 rgba(255, 245, 220, 0.06) inset,
     0 -1px 0 rgba(0, 0, 0, 0.35) inset;
   --midi-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.35),
-    0 1px 0 rgba(255, 255, 255, 0.1) inset;
+    0 1px 0 rgba(255, 245, 220, 0.08) inset;
   --midi-shadow-pressed: 0 1px 3px rgba(0, 0, 0, 0.5) inset,
     0 0 0 1px rgba(0, 0, 0, 0.2) inset;
 }
@@ -107,8 +107,8 @@
 
 .midi-btn--play {
   padding: 0 12px;
-  background: linear-gradient(180deg, #3d9a7a 0%, #2d7a62 100%);
-  border-color: rgba(94, 233, 181, 0.35);
+  background: linear-gradient(180deg, #8a7030 0%, #6a5520 100%);
+  border-color: rgba(205, 165, 60, 0.4);
 }
 
 .midi-btn--icon {
@@ -117,8 +117,8 @@
 }
 
 .midi-btn--tool[aria-pressed="true"] {
-  border-color: rgba(94, 233, 181, 0.4);
-  background: linear-gradient(180deg, #4a4a52 0%, #35353c 100%);
+  border-color: rgba(205, 165, 60, 0.45);
+  background: linear-gradient(180deg, #4a4840 0%, #35332c 100%);
 }
 
 .midi-time-display {
@@ -175,7 +175,7 @@
   width: 6px;
   transform: translateX(-50%);
   border-radius: 3px;
-  background: linear-gradient(180deg, var(--midi-accent) 0%, #3d9a7a 100%);
+  background: linear-gradient(180deg, var(--midi-accent) 0%, #8a7030 100%);
   pointer-events: none;
 }
 

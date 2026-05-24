@@ -9,10 +9,11 @@ Curated map for **maintainers** (not web users). **Runtime truth** = root [`READ
 | Doc | Purpose |
 |-----|---------|
 | [`../README.md`](../README.md) | Repo overview, Compose, env cheat sheet, EC2 deploy loop |
-| [`ARCHITECTURE-FLOW.md`](ARCHITECTURE-FLOW.md) | Upload → split → storage → client mixer → **export** (client WAV/MP3/ZIP; optional **server** WAV), tokens, cleanup |
+| [`ARCHITECTURE-FLOW.md`](ARCHITECTURE-FLOW.md) | Upload → split → storage → client mixer → **export** (client WAV/MP3/ZIP; optional **server** WAV), speech enhance, MIDI convert, tokens, cleanup |
 | [`stem-pipeline.md`](stem-pipeline.md) | Implemented separation routing (2-stem, expand, SCNet, hybrid, ultra, quality modes) |
 | [`MODEL-SELECTION-AUTHORITY.md`](MODEL-SELECTION-AUTHORITY.md) | Tier tables + how benchmark CSVs inform policy |
 | [`MODEL-PARAMS.md`](MODEL-PARAMS.md) | Parameter mapping notes for hybrid / stage-1 returns |
+| [`MIDI-CONVERSION-PLAN.md`](MIDI-CONVERSION-PLAN.md) | MIDI feature design: UX, architecture, phased delivery (Phase 1-3) |
 
 ---
 
@@ -86,6 +87,23 @@ Curated map for **maintainers** (not web users). **Runtime truth** = root [`READ
 | [`../frontend/RESPONSIVE-DESIGN.md`](../frontend/RESPONSIVE-DESIGN.md) | Mobile-first breakpoints, pointer/hover queries, safe areas, fluid type |
 | [`../frontend/MOTION-DESIGN.md`](../frontend/MOTION-DESIGN.md) | Product motion (150–250ms), presets, reduced-motion |
 | [`frontend-mixer-notes.md`](frontend-mixer-notes.md) | Mixer-centric dev notes; backlog cross-links live under [`roadmap/`](roadmap/) |
+
+---
+
+## 7b. Speech & MIDI services
+
+| Doc | Purpose |
+|-----|---------|
+| [`MIDI-CONVERSION-PLAN.md`](MIDI-CONVERSION-PLAN.md) | Full MIDI feature design (UX, architecture, API, phased delivery) |
+| [`MIDI-EDITOR-PLAN.md`](MIDI-EDITOR-PLAN.md) | Interactive MIDI note editor design |
+| `speech_service/.env.example` | Speech service env reference |
+| `midi_service/.env.example` | MIDI service env reference |
+
+**Service architecture (both follow the same pattern):**
+- FastAPI + single-worker async queue + ThreadPoolExecutor
+- Backend proxies requests; services are internal-only (127.0.0.1 binding)
+- Shared volume mounts for output files (backend serves them to clients)
+- Health check endpoints gate backend startup via `depends_on: condition: service_healthy`
 
 ---
 

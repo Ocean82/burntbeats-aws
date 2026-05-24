@@ -209,17 +209,17 @@ export function MidiConvertPanel({
               Audio to MIDI
             </h2>
             <p className="text-sm text-accent-midi-foreground/55">
-              Convert any stem or audio file into a downloadable MIDI file. Great for remixing in your DAW.
+              Turn any stem or audio file into MIDI notes you can drop straight into your DAW. Edit, quantize, and export.
             </p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-xs">
           <span className="shrink-0 rounded-full border border-accent-midi/35 bg-accent-midi/10 px-sm py-1 text-meta font-bold uppercase tracking-wider text-accent-midi-200">
-            Audio → MIDI
+            MIDI Convert
           </span>
           <span className="inline-flex items-center gap-2xs rounded-full border border-primary-400/40 bg-primary-500/10 px-sm py-1 text-meta font-semibold uppercase tracking-wide text-primary-200">
             <span className="h-1.5 w-1.5 rounded-full bg-primary-400" aria-hidden />
-            Available to all paid plans — limited time
+            Included with all paid plans
           </span>
         </div>
       </div>

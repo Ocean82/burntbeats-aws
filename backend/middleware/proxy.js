@@ -7,7 +7,7 @@ const STEM_SERVICE_URL =
 const STEM_SERVICE_API_TOKEN = process.env.STEM_SERVICE_API_TOKEN || "";
 
 const SPEECH_SERVICE_URL =
-  process.env.SPEECH_SERVICE_URL || "http://localhost:5001";
+  process.env.SPEECH_SERVICE_URL || "http://127.0.0.1:5001";
 const SPEECH_SERVICE_API_TOKEN = process.env.SPEECH_SERVICE_API_TOKEN || "";
 
 /**
@@ -172,5 +172,5 @@ export function getStemServiceUrl() {
  * @returns {string}
  */
 export function getSpeechServiceUrl() {
-  return process.env.SPEECH_SERVICE_URL || "http://localhost:5001";
+  return process.env.SPEECH_SERVICE_URL || "http://127.0.0.1:5001";
 }

@@ -21,12 +21,18 @@ if ! grep -q "VITE_API_BASE_URL=http://localhost:3001" frontend/.env 2>/dev/null
 fi
 
 export STEM_OUTPUT_DIR="${STEM_OUTPUT_DIR:-$ROOT/tmp/stems}"
+export SPEECH_OUTPUT_DIR="${SPEECH_OUTPUT_DIR:-$ROOT/tmp/speech}"
+export MIDI_OUTPUT_DIR="${MIDI_OUTPUT_DIR:-$ROOT/tmp/midi}"
 export STEM_SERVICE_URL="${STEM_SERVICE_URL:-http://127.0.0.1:5000}"
-mkdir -p "$STEM_OUTPUT_DIR"
+export SPEECH_SERVICE_URL="${SPEECH_SERVICE_URL:-http://127.0.0.1:5001}"
+export MIDI_SERVICE_URL="${MIDI_SERVICE_URL:-http://127.0.0.1:5002}"
+mkdir -p "$STEM_OUTPUT_DIR" "$SPEECH_OUTPUT_DIR" "$MIDI_OUTPUT_DIR"
 
 # Free ports so a re-run can bind (e.g. after previous Ctrl+C left something running)
 if command -v fuser &>/dev/null; then
   fuser -k 5000/tcp 2>/dev/null || true
+  fuser -k 5001/tcp 2>/dev/null || true
+  fuser -k 5002/tcp 2>/dev/null || true
   fuser -k 3001/tcp 2>/dev/null || true
   sleep 2
 fi
@@ -35,13 +41,16 @@ cleanup() {
   echo ""
   echo "Stopping services..."
   [ -n "$STEM_PID" ] && kill "$STEM_PID" 2>/dev/null || true
+  [ -n "$SPEECH_PID" ] && kill "$SPEECH_PID" 2>/dev/null || true
+  [ -n "$MIDI_PID" ] && kill "$MIDI_PID" 2>/dev/null || true
   [ -n "$BACKEND_PID" ] && kill "$BACKEND_PID" 2>/dev/null || true
   exit 0
 }
 trap cleanup INT TERM
 
 echo "=== Burnt Beats local (localhost) ==="
-echo "Stem: http://localhost:5000  |  Backend: http://localhost:3001  |  Frontend: http://localhost:5173"
+echo "Stem: http://127.0.0.1:5000  |  Speech: http://127.0.0.1:5001  |  MIDI: http://127.0.0.1:5002"
+echo "Backend: http://localhost:3001  |  Frontend: http://localhost:5173"
 echo ""
 
 # Force backend port to 3001 for this script (matches frontend/.env above; overrides backend/.env PORT)
@@ -50,10 +59,14 @@ export BURNTBEATS_LOCAL_STACK_PORT=3001
 
 bash scripts/run-stem-service.sh &
 STEM_PID=$!
+bash scripts/run-speech-service.sh &
+SPEECH_PID=$!
+bash scripts/run-midi-service.sh &
+MIDI_PID=$!
 bash scripts/run-backend.sh &
 BACKEND_PID=$!
 
-echo "Waiting for stem and backend to bind..."
-sleep 4
+echo "Waiting for Python services and backend to bind..."
+sleep 6
 
 bash scripts/run-frontend.sh

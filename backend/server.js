@@ -168,10 +168,10 @@ async function main() {
       `STEM_SERVICE_URL=${process.env.STEM_SERVICE_URL || "http://localhost:5000"} STEM_OUTPUT_DIR=${STEM_OUTPUT_DIR}`,
     );
     console.log(
-      `SPEECH_SERVICE_URL=${process.env.SPEECH_SERVICE_URL || "http://localhost:5001"} SPEECH_OUTPUT_DIR=${SPEECH_OUTPUT_DIR}`,
+      `SPEECH_SERVICE_URL=${process.env.SPEECH_SERVICE_URL || "http://127.0.0.1:5001"} SPEECH_OUTPUT_DIR=${SPEECH_OUTPUT_DIR}`,
     );
     console.log(
-      `MIDI_SERVICE_URL=${process.env.MIDI_SERVICE_URL || "http://localhost:5002"} MIDI_OUTPUT_DIR=${MIDI_OUTPUT_DIR}`,
+      `MIDI_SERVICE_URL=${process.env.MIDI_SERVICE_URL || "http://127.0.0.1:5002"} MIDI_OUTPUT_DIR=${MIDI_OUTPUT_DIR}`,
     );
     console.log(
       `CORS allowed origins: ${[...getAllowedOriginSet()].join(", ")}`,

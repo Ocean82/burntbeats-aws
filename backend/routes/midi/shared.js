@@ -33,7 +33,7 @@ export const MIDI_ACCEPT_TIMEOUT_MS =
 
 /** MIDI service base URL. */
 export const MIDI_SERVICE_URL =
-  process.env.MIDI_SERVICE_URL || "http://localhost:5002";
+  process.env.MIDI_SERVICE_URL || "http://127.0.0.1:5002";
 
 /** MIDI service API token for service-to-service auth. */
 export const MIDI_SERVICE_API_TOKEN =

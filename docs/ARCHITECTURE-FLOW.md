@@ -33,14 +33,16 @@ This document is the **product contract** for how Burnt Beats splits audio, stor
 
 ## 3. Billing (usage tokens)
 
-**Tokens meter expensive server-side work** (compute + I/O tied to separation / optional server export). Client mixing, polling, downloads of already-generated stems, and **client-side** master export paths are unmetered.
+**Tokens meter expensive server-side work** (compute + I/O tied to separation / optional server export / speech enhancement / MIDI conversion). Client mixing, polling, downloads of already-generated stems, and **client-side** master export paths are unmetered.
 
 | Action | Tokens? |
 |--------|--------|
 | **Split** (`POST /api/stems/split`) | Yes — when `USAGE_TOKENS_ENABLED`, proportional to **source duration** (1 token ≈ 1 minute of audio, partial minutes round up). See `backend/usageTokens.js`. |
 | **Expand** (`POST /api/stems/expand`) | Yes — same minute-based rules. |
+| **Speech enhance** (`POST /api/speech/enhance`) | Yes — duration-based (same as split). |
+| **MIDI convert** (`POST /api/midi/convert`) | Yes — flat **0.5 tokens** per conversion (configurable via `MIDI_TOKEN_COST`). Refunded on proxy failure. |
 | **Server-side master export** (`POST /api/stems/server-export`) | Yes — when **`SERVER_EXPORT_ENABLED`** and **`USAGE_TOKENS_ENABLED`** (duration-based reservation; failure paths refund where applicable — see `backend/server.js` + `usageTokens.js`). |
-| **Poll status, download stem files, mix, edit, client master / MP3 / ZIP export** | **No** |
+| **Poll status, download stem/speech/midi files, mix, edit, client master / MP3 / ZIP export** | **No** |
 
 Subscriptions and monthly credits: Stripe + Clerk webhook (`docs/BILLING-AND-TOKENS.md`).
 
@@ -50,9 +52,9 @@ Subscriptions and monthly credits: Stripe + Clerk webhook (`docs/BILLING-AND-TOK
 
 | Concern | Behavior |
 |--------|----------|
-| **Async jobs** | Stem service returns **202** with `job_id`; work runs in a background task / queue worker. |
-| **Progress** | Client polls **`GET /api/stems/status/:job_id`** until `completed` / `failed`. |
-| **TTL cleanup** | **`POST /api/stems/cleanup?maxAgeHours=…`** (requires **`API_KEY`**) deletes job dirs under `STEM_OUTPUT_DIR` **older than** the threshold, plus old upload temp files. Default **`maxAgeHours`** comes from **`STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS`** (fallback **24**). Run from **cron** in production (e.g. nightly). **S3:** delete objects separately (e.g. lifecycle rule on prefix `stems/`) if you no longer keep local copies. |
+| **Async jobs** | Stem service returns **202** with `job_id`; work runs in a background task / queue worker. Speech and MIDI services follow the same pattern (202 → poll → file serve). |
+| **Progress** | Client polls **`GET /api/stems/status/:job_id`** until `completed` / `failed`. Same for **`/api/speech/status/:id`** and **`/api/midi/status/:id`**. |
+| **TTL cleanup** | **`POST /api/stems/cleanup?maxAgeHours=…`** (requires **`API_KEY`**) deletes job dirs under `STEM_OUTPUT_DIR` **older than** the threshold, plus old upload temp files. **`POST /api/midi/cleanup?maxAgeHours=…`** does the same for MIDI output. Default **`maxAgeHours`** comes from **`STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS`** / **`MIDI_CLEANUP_DEFAULT_MAX_AGE_HOURS`** (fallback **24**). Run from **cron** in production (e.g. nightly). **S3:** delete objects separately (e.g. lifecycle rule on prefix `stems/`) if you no longer keep local copies. |
 | **S3 CORS** | If the browser loads presigned URLs directly, configure the bucket **CORS** to allow **`GET`** from your app origin (or tests may fail for `<audio src>` / `fetch`). |
 | **Server export temps** | Node writes transient render output under **`/tmp/burntbeats-server-export/`** before `res.download`; files are cleaned up after send. |
 
@@ -93,4 +95,7 @@ curl -sS -H "x-api-key: $API_KEY" \
 | Stripe / Clerk | `backend/billing.js` |
 | Stem jobs + S3 upload | `stem_service/server.py`, `stem_service/s3_upload.py` |
 | Server-side offline master render | `stem_service/server_export.py` |
+| Speech enhancement routes | `backend/routes/speech/` → `speech_service/server.py` |
+| MIDI conversion routes | `backend/routes/midi/` → `midi_service/server.py` |
 | Client export | `frontend/src/hooks/useExport.ts` |
+| MIDI conversion hook | `frontend/src/hooks/useMidiConvert.ts` |

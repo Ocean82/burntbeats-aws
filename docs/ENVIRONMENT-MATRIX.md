@@ -45,7 +45,14 @@ Baked into **`frontend/dist`** at **`docker compose build frontend`**.
 | `PORT` | Default 3001 | Listen port. |
 | `PUBLIC_BASE_URL` | HTTPS prod | Correct stem URLs behind TLS proxies. |
 | `STEM_SERVICE_URL` | Yes | Compose: **`http://stem_service:5000`**. |
+| `SPEECH_SERVICE_URL` | Yes | Compose: **`http://speech_service:5001`**. |
+| `MIDI_SERVICE_URL` | Yes | Compose: **`http://midi_service:5002`**. |
 | `STEM_OUTPUT_DIR` | Match stem | Writable job dir (**must match stem `STEM_OUTPUT_DIR`** logically). |
+| `SPEECH_OUTPUT_DIR` | Match speech | Writable job dir (**must match speech `SPEECH_OUTPUT_DIR`**). |
+| `MIDI_OUTPUT_DIR` | Match midi | Writable job dir (**must match midi `MIDI_OUTPUT_DIR`**). |
+| `SPEECH_SERVICE_API_TOKEN` | Prod | Token for backend → speech_service auth. Must match speech_service's value. |
+| `MIDI_SERVICE_API_TOKEN` | Prod | Token for backend → midi_service auth. Must match midi_service's value. |
+| `SPEECH_MAX_UPLOAD_MB` | Optional | Max speech upload (default 100). |
 | `FRONTEND_ORIGINS` | CORS | Allowed browser origins (**`allowedOrigins.js`**). |
 | `CLERK_SECRET_KEY` | Prod | JWT verification. |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | Prod webhooks | `user.created` / welcome grants. |
@@ -80,13 +87,50 @@ Pipeline flags: **`stem_service/.env`** (Compose **`env_file`**, optional).
 
 ---
 
-## 5. Cross-checks before release
+## 5. Speech service (Python FastAPI — port 5001)
+
+| Variable | Notes |
+|----------|--------|
+| `SPEECH_MODELS_DIR` | Path to LavaSR weights (**`/repo/speech_models`** in Compose). |
+| `SPEECH_OUTPUT_DIR` | Job output (**`/repo/tmp/speech`** in Compose). |
+| `SPEECH_DEVICE` | `cpu` (default) or `cuda`. Production EC2 uses CPU. |
+| `SPEECH_MAX_UPLOAD_MB` | Max upload size (default **100**). Must match backend `SPEECH_MAX_UPLOAD_MB`. |
+| `SPEECH_SERVICE_API_TOKEN` | Service-to-service auth token. Must match backend's `SPEECH_SERVICE_API_TOKEN`. If empty, auth is disabled. |
+| `FRONTEND_ORIGINS` | CORS origins. |
+
+**Model weights required** (gitignored, volume-mounted from `./speech_models`):
+- `speech_models/enhancer_v2/config.yaml`
+- `speech_models/enhancer_v2/model.safetensors`
+- `speech_models/denoiser/denoiser.safetensors`
+
+If missing, `speech_service` stays unhealthy → backend never starts (unless using `docker-compose.speech-optional.yml`).
+
+---
+
+## 6. MIDI service (Python FastAPI — port 5002)
+
+| Variable | Notes |
+|----------|--------|
+| `MIDI_OUTPUT_DIR` | Job output (**`/repo/tmp/midi`** in Compose). |
+| `MIDI_SERVICE_API_TOKEN` | Service-to-service auth token. Must match backend's `MIDI_SERVICE_API_TOKEN`. If empty, auth is disabled. |
+| `MIDI_MAX_QUEUE_DEPTH` | Max queued jobs (default **8**). |
+| `MIDI_MAX_UPLOAD_MB` | Max upload size (default **100**). Must match backend `MIDI_MAX_UPLOAD_BYTES` derivation. |
+| `FRONTEND_ORIGINS` | CORS origins. |
+
+**No external model weights needed** — Basic Pitch model is bundled in the pip package. First request triggers a warmup inference at startup (~3-5s).
+
+---
+
+## 7. Cross-checks before release
 
 | Check | Rule |
 |--------|------|
 | Legal acceptance | **`LEGAL_TOS_VERSION` / `LEGAL_PRIVACY_VERSION`** = **`LEGAL_VERSIONS`** in **`frontend/src/legal/versions.ts`**. |
 | Stripe / Clerk modes | **`sk_live`** with **`pk_live`**, webhook secrets match Dashboard. |
 | Stem paths | **`STEM_OUTPUT_DIR`** + mounts consistent across **backend** and **`stem_service`**. |
+| Speech paths | **`SPEECH_OUTPUT_DIR`** + mounts consistent across **backend** and **`speech_service`**. |
+| MIDI paths | **`MIDI_OUTPUT_DIR`** + mounts consistent across **backend** and **`midi_service`**. |
+| Service tokens | **`SPEECH_SERVICE_API_TOKEN`** and **`MIDI_SERVICE_API_TOKEN`** match between backend and respective services. |
 | Pricing table IDs | `VITE_STRIPE_PRICING_TABLE_ID` in root `.env` = `frontend/.env`. |
 | Single price ID | `STRIPE_PRICE_ID_SINGLE` present in root `.env` and docker-compose.yml backend env. |
 | PUBLIC_BASE_URL | Must be `https://burntbeats.com` (site origin, not a Clerk URL). |

@@ -10,10 +10,12 @@ End users of the public site do not read this repo; this file is for **direction
 
 | Layer | Role |
 |-------|------|
-| **`frontend/`** | Upload, plan gating, polling, waveforms, mixer (Web Audio), export (**WAV**, **MP3**, **ZIP** of job stems; optional **server master** when env flags allow). Clerk + Stripe.js. |
-| **`backend/`** | Auth/usage, proxy to stem service, **`/api/stems/file`**, presigned S3 redirects, billing webhooks, malware scan hooks, rate limits, optional **`POST /api/stems/server-export`**. |
-| **`stem_service/`** | FastAPI: **2-stem** default, **expand to 4**, quality modes, SCNet / hybrid Demucs paths (**see `docs/stem-pipeline.md`** — single source of truth for routing). Optional S3 upload after job. |
-| **`docker-compose.yml`** | Local / EC2: `frontend` (nginx → host **5173**), **`backend`**, **`stem_service`**, shared **`tmp/stems`**, plus bind mounts **`./models`** → `/repo/models` and **`./server_models`** → `/repo/server_models`. |
+| **`frontend/`** | Upload, plan gating, polling, waveforms, mixer (Web Audio), export (**WAV**, **MP3**, **ZIP** of job stems; optional **server master** when env flags allow). Audio-to-MIDI conversion UI with piano roll, batch conversion, and interactive note editor. Clerk + Stripe.js. |
+| **`backend/`** | Auth/usage, proxy to stem/speech/midi services, **`/api/stems/file`**, presigned S3 redirects, billing webhooks, malware scan hooks, rate limits, optional **`POST /api/stems/server-export`**. |
+| **`stem_service/`** | FastAPI (port 5000): **2-stem** default, **expand to 4**, quality modes, SCNet / hybrid Demucs paths (**see `docs/stem-pipeline.md`** — single source of truth for routing). Optional S3 upload after job. |
+| **`speech_service/`** | FastAPI (port 5001): LavaSR-based speech enhancement/denoising. Single-worker async queue, CPU inference (PyTorch). Requires model weights in **`speech_models/`**. |
+| **`midi_service/`** | FastAPI (port 5002): Audio-to-MIDI transcription via Spotify Basic Pitch. Single-worker async queue, CPU inference (TensorFlow/ONNX). Model bundled in pip package — no external weights needed. |
+| **`docker-compose.yml`** | Local / EC2: `frontend` (nginx → host **5173**), **`backend`**, **`stem_service`**, **`speech_service`**, **`midi_service`**, shared **`tmp/stems`**, **`tmp/speech`**, **`tmp/midi`**, plus bind mounts **`./models`** → `/repo/models`, **`./server_models`** → `/repo/server_models`, and **`./speech_models`** → `/repo/speech_models`. |
 | **`models/` vs `server_models/`** | **Weights are not baked into Docker images** (see `.dockerignore` — both dirs omitted from context). Inference reads whichever subtree **`STEM_MODELS_DIR`** names; see § **Models layout** below + `docs/MODELS-INVENTORY.md`. |
 
 **Not in the Compose path:** **`stem_api/`** (Rust) — **archived experiment**; **`stem_api/README.md`** · **`docs/archive/IMPLEMENTATION-HYBRID.md`**.  
@@ -57,6 +59,21 @@ End users of the public site do not read this repo; this file is for **direction
 4. Stems load via **`GET /api/stems/file/:job_id/:stemId.wav`** (disk stream or S3 proxy when `progress.json` has `s3` metadata). See **[`docs/STEM-S3-AND-CPU.md`](docs/STEM-S3-AND-CPU.md)**.
 5. Mix / export in browser; see **`docs/ARCHITECTURE-FLOW.md`** for **client vs optional server** export.
 
+### Speech enhancement flow
+
+1. Browser → **`POST /api/speech/enhance`** (Node: auth, metering, upload verify) → **`speech_service`**.
+2. Speech service returns **202** + `job_id`; LavaSR inference runs asynchronously.
+3. Browser polls **`GET /api/speech/status/:job_id`**.
+4. Enhanced audio via **`GET /api/speech/file/:job_id/enhanced.wav`**.
+
+### MIDI conversion flow
+
+1. Browser → **`POST /api/midi/convert`** (Node: auth, metering, upload or stem reference) → **`midi_service`**.
+2. MIDI service returns **202** + `job_id`; Basic Pitch inference runs asynchronously (2-8s typical).
+3. Browser polls **`GET /api/midi/status/:job_id`** (includes piano roll note data on completion).
+4. MIDI file via **`GET /api/midi/file/:job_id/output.mid`**.
+5. Optional: **`POST /api/midi/merge`** combines multiple completed jobs into a multi-track MIDI Type 1 file.
+
 ---
 
 ## Quick start (Docker Compose)
@@ -74,11 +91,15 @@ Health checks:
 ```bash
 curl -fsS http://127.0.0.1:5173/api/health
 curl -fsS http://127.0.0.1:5000/health
+curl -fsS http://127.0.0.1:5001/health
+curl -fsS http://127.0.0.1:5002/health
 ```
 
 - Frontend (nginx): `127.0.0.1:5173` — same-origin **`/api/*`** is reverse-proxied to the backend container.
 - Backend (Express): `127.0.0.1:3001` (published in default `docker-compose.yml` for localhost debugging; production often hides this behind the edge proxy only).
 - Stem service: `127.0.0.1:5000`
+- Speech service: `127.0.0.1:5001` (requires `speech_models/` volume mount)
+- MIDI service: `127.0.0.1:5002` (model bundled in package — no external weights)
 
 ---
 
@@ -86,8 +107,10 @@ curl -fsS http://127.0.0.1:5000/health
 
 Scripts under `scripts/` (run from repo root, bash):
 
-- `bash scripts/run-all-local.sh`
+- `bash scripts/run-all-local.sh` (stem + speech + midi + backend + frontend)
 - `bash scripts/run-stem-service.sh`
+- `bash scripts/run-speech-service.sh` (port **5001**)
+- `bash scripts/run-midi-service.sh` (port **5002**)
 - `bash scripts/run-backend.sh`
 - `bash scripts/run-frontend.sh`
 
@@ -110,6 +133,8 @@ Primary file for Compose: **root `.env`** (see each service’s `.env.example` w
 | Billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_*` |
 | Metering | **`USAGE_TOKENS_ENABLED`** |
 | Job hardening | **`JOB_TOKEN_SECRET`** (per-job `x-job-token`), optional **`API_KEY`** |
+| Speech service | **`SPEECH_SERVICE_API_TOKEN`** (service-to-service auth), `SPEECH_MAX_UPLOAD_MB` |
+| MIDI service | **`MIDI_SERVICE_API_TOKEN`** (service-to-service auth), `MIDI_MAX_QUEUE_DEPTH`, `MIDI_TOKEN_COST` |
 | Optional **server master export** | **`SERVER_EXPORT_ENABLED=1`** (backend) · **`VITE_SERVER_EXPORT_ENABLED=1`** (frontend build) — **`docs/ARCHITECTURE-FLOW.md`**. Default Compose **does not** enable this. |
 | S3 | `S3_ENABLED`, bucket/region/keys, `S3_DELETE_LOCAL_AFTER_UPLOAD`; bucket CORS if browsers fetch presigned URLs |
 
@@ -127,8 +152,8 @@ Typical loop (Ubuntu + Docker):
 
 ```bash
 git pull --ff-only origin main
-docker compose build --no-cache backend frontend stem_service
-docker compose up -d backend frontend stem_service
+docker compose build --no-cache backend frontend stem_service speech_service midi_service
+docker compose up -d
 docker compose ps
 ```
 

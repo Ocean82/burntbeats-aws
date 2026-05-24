@@ -43,6 +43,7 @@ EOF
   echo "  created midi_service/.env.example"
 fi
 
+append_if_missing backend/.env SPEECH_SERVICE_URL "SPEECH_SERVICE_URL=http://127.0.0.1:5001"
 append_if_missing backend/.env MIDI_SERVICE_URL "MIDI_SERVICE_URL=http://127.0.0.1:5002"
 append_if_missing backend/.env MIDI_SERVICE_API_TOKEN "# MIDI_SERVICE_API_TOKEN="
 append_if_missing backend/.env MIDI_OUTPUT_DIR "# MIDI_OUTPUT_DIR=/home/ubuntu/burntbeats-aws/tmp/midi"

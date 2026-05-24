@@ -39,11 +39,19 @@ This checklist is intentionally short and repeatable before each deploy.
 - **Docker Compose deploy (typical EC2 path):** After `git pull`, rebuild and recreate as needed — see **[DEPLOY-DOCKER-EC2.md](DEPLOY-DOCKER-EC2.md)** (single-service builds, **build duration**, **container name conflicts** → `docker compose down` / `up -d`).
 - Ensure local-only override files are not used in production rollout commands (for example `docker-compose.local-nobind.yml`).
 - Confirm containers healthy:
-  - `sudo docker compose ps` — `backend`, `frontend`, `stem_service` report **healthy** (or equivalent).
+  - `sudo docker compose ps` — **all five services** (`backend`, `frontend`, `stem_service`, `speech_service`, `midi_service`) report **healthy**.
 - Confirm endpoint behavior:
   - `GET /api/health` -> `200`
+  - `curl http://127.0.0.1:5000/health` -> `200` (stem_service)
+  - `curl http://127.0.0.1:5001/health` -> `200` (speech_service)
+  - `curl http://127.0.0.1:5002/health` -> `200` (midi_service)
   - anonymous `GET /api/billing/subscription` -> `401`
   - anonymous multipart `POST /api/stems/split` -> `401`
+- Confirm inter-service connectivity (from inside backend container):
+  - `docker exec <backend> node -e "..."` → `http://speech_service:5001/health` returns 200
+  - `docker exec <backend> node -e "..."` → `http://midi_service:5002/health` returns 200
+- Confirm shared volume mounts exist in backend:
+  - `/app/tmp/stems`, `/app/tmp/speech`, `/app/tmp/midi` all present
 
 ## 6) Scanner Noise (Operational)
 

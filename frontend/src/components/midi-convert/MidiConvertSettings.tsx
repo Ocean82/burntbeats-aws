@@ -1,7 +1,37 @@
 /**
  * MidiConvertSettings — conversion options (confidence, note length, pitch bends).
+ * Includes stem-type presets for quick configuration.
  */
+import { useState } from "react";
 import type { MidiConvertSettings as Settings } from "../../hooks/useMidiConvert";
+
+const PRESETS: Record<string, { label: string; hint: string; settings: Partial<Settings> }> = {
+  vocals: {
+    label: "Vocals",
+    hint: "Monophonic melody — high confidence, longer notes",
+    settings: { minConfidence: 0.6, minNoteLengthMs: 80, includePitchBends: true, maxNoteLengthMs: 0 },
+  },
+  bass: {
+    label: "Bass",
+    hint: "Low register — fewer short notes, no pitch bends",
+    settings: { minConfidence: 0.55, minNoteLengthMs: 100, includePitchBends: false, maxNoteLengthMs: 2000 },
+  },
+  drums: {
+    label: "Drums",
+    hint: "Percussive hits — low confidence, very short notes",
+    settings: { minConfidence: 0.35, minNoteLengthMs: 20, includePitchBends: false, maxNoteLengthMs: 500 },
+  },
+  melody: {
+    label: "Melody",
+    hint: "Polyphonic — balanced detection",
+    settings: { minConfidence: 0.5, minNoteLengthMs: 58, includePitchBends: true, maxNoteLengthMs: 0 },
+  },
+  piano: {
+    label: "Piano / Keys",
+    hint: "Wide range, sustain-friendly",
+    settings: { minConfidence: 0.45, minNoteLengthMs: 50, includePitchBends: false, maxNoteLengthMs: 4000 },
+  },
+};
 
 interface MidiConvertSettingsProps {
   settings: Settings;
@@ -14,11 +44,51 @@ export function MidiConvertSettings({
   onUpdate,
   disabled = false,
 }: MidiConvertSettingsProps) {
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+
+  const applyPreset = (key: string) => {
+    const preset = PRESETS[key];
+    if (!preset) return;
+    onUpdate(preset.settings);
+    setActivePreset(key);
+  };
+
+  // Clear preset indicator when user manually changes a setting
+  const handleUpdate = (partial: Partial<Settings>) => {
+    setActivePreset(null);
+    handleUpdate(partial);
+  };
+
   return (
     <div className="flex flex-col gap-sm rounded-xl border border-border bg-muted px-md py-sm">
       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Conversion settings
       </p>
+
+      {/* Stem-type presets */}
+      <div className="flex flex-col gap-xs">
+        <span className="text-xs text-muted-foreground">
+          Quick presets — pick your source type for optimized settings:
+        </span>
+        <div className="flex flex-wrap gap-xs">
+          {Object.entries(PRESETS).map(([key, { label, hint }]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => applyPreset(key)}
+              disabled={disabled}
+              title={hint}
+              className={`rounded-full border px-sm py-xs text-xs font-medium transition ${
+                activePreset === key
+                  ? "border-accent-midi-400/60 bg-accent-midi-500/20 text-accent-midi-200"
+                  : "border-border bg-secondary text-muted-foreground hover:text-secondary-foreground hover:border-border"
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Min confidence slider */}
       <label className="flex flex-col gap-xs">
@@ -35,7 +105,7 @@ export function MidiConvertSettings({
           step={0.05}
           value={settings.minConfidence}
           onChange={(e) =>
-            onUpdate({ minConfidence: parseFloat(e.target.value) })
+            handleUpdate({ minConfidence: parseFloat(e.target.value) })
           }
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
@@ -60,7 +130,7 @@ export function MidiConvertSettings({
           step={5}
           value={settings.minNoteLengthMs}
           onChange={(e) =>
-            onUpdate({ minNoteLengthMs: parseInt(e.target.value, 10) })
+            handleUpdate({ minNoteLengthMs: parseInt(e.target.value, 10) })
           }
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
@@ -75,7 +145,7 @@ export function MidiConvertSettings({
         <input
           type="checkbox"
           checked={settings.includePitchBends}
-          onChange={(e) => onUpdate({ includePitchBends: e.target.checked })}
+          onChange={(e) => handleUpdate({ includePitchBends: e.target.checked })}
           disabled={disabled}
           className="rounded border-accent-midi-400/40 bg-accent-midi-950/40 text-accent-midi-400 focus:ring-accent-midi-400/50"
         />
@@ -90,7 +160,7 @@ export function MidiConvertSettings({
         <input
           type="checkbox"
           checked={settings.normalizeVelocity}
-          onChange={(e) => onUpdate({ normalizeVelocity: e.target.checked })}
+          onChange={(e) => handleUpdate({ normalizeVelocity: e.target.checked })}
           disabled={disabled}
           className="rounded border-accent-midi-400/40 bg-accent-midi-950/40 text-accent-midi-400 focus:ring-accent-midi-400/50"
         />
@@ -116,7 +186,7 @@ export function MidiConvertSettings({
             step={1}
             value={settings.targetVelocity}
             onChange={(e) =>
-              onUpdate({ targetVelocity: parseInt(e.target.value, 10) })
+              handleUpdate({ targetVelocity: parseInt(e.target.value, 10) })
             }
             disabled={disabled}
             aria-label="Target peak velocity"
@@ -141,7 +211,7 @@ export function MidiConvertSettings({
           step={100}
           value={settings.maxNoteLengthMs}
           onChange={(e) =>
-            onUpdate({ maxNoteLengthMs: parseInt(e.target.value, 10) })
+            handleUpdate({ maxNoteLengthMs: parseInt(e.target.value, 10) })
           }
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
@@ -171,7 +241,7 @@ export function MidiConvertSettings({
           step={1}
           value={settings.transpose}
           onChange={(e) =>
-            onUpdate({ transpose: parseInt(e.target.value, 10) })
+            handleUpdate({ transpose: parseInt(e.target.value, 10) })
           }
           disabled={disabled}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
@@ -186,7 +256,7 @@ export function MidiConvertSettings({
         <input
           type="checkbox"
           checked={settings.quantize}
-          onChange={(e) => onUpdate({ quantize: e.target.checked })}
+          onChange={(e) => handleUpdate({ quantize: e.target.checked })}
           disabled={disabled}
           className="rounded border-accent-midi-400/40 bg-accent-midi-950/40 text-accent-midi-400 focus:ring-accent-midi-400/50"
         />
@@ -201,7 +271,7 @@ export function MidiConvertSettings({
             <span className="text-sm text-secondary-foreground">Grid division</span>
             <select
               value={settings.quantizeGrid}
-              onChange={(e) => onUpdate({ quantizeGrid: e.target.value })}
+              onChange={(e) => handleUpdate({ quantizeGrid: e.target.value })}
               disabled={disabled}
               className="rounded border border-accent-midi/30 bg-accent-midi-950/40 px-xs py-xs text-sm text-secondary-foreground accent-accent-midi focus:border-accent-midi focus:outline-none focus:ring-1 focus:ring-accent-midi/50 disabled:opacity-40"
             >
@@ -228,7 +298,7 @@ export function MidiConvertSettings({
               onChange={(e) => {
                 const val = parseInt(e.target.value, 10);
                 if (!isNaN(val)) {
-                  onUpdate({ quantizeBpm: Math.max(40, Math.min(300, val)) });
+                  handleUpdate({ quantizeBpm: Math.max(40, Math.min(300, val)) });
                 }
               }}
               disabled={disabled}
@@ -253,7 +323,7 @@ export function MidiConvertSettings({
               step={0.05}
               value={settings.quantizeStrength}
               onChange={(e) =>
-                onUpdate({ quantizeStrength: parseFloat(e.target.value) })
+                handleUpdate({ quantizeStrength: parseFloat(e.target.value) })
               }
               disabled={disabled}
               className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-accent-midi-900/40 accent-accent-midi-400 disabled:opacity-40"
