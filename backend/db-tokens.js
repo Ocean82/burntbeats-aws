@@ -74,6 +74,9 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
   if (!pool) return { success: false, error: "DB not available" };
   if (!Number.isFinite(cost) || cost <= 0) return { success: true, balanceAfter: undefined };
 
+  // DB column is integer — ceil fractional costs to prevent type errors
+  const intCost = Math.ceil(cost);
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -87,15 +90,15 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
     );
     const currentBalance = lockRes.rows[0]?.balance ?? 0;
 
-    if (currentBalance < cost) {
+    if (currentBalance < intCost) {
       await client.query("ROLLBACK");
       return {
         success: false,
-        error: `Insufficient usage tokens (need ${cost}, have ${currentBalance}). Upgrade your plan or wait for renewal.`,
+        error: `Insufficient usage tokens (need ${intCost}, have ${currentBalance}). Upgrade your plan or wait for renewal.`,
       };
     }
 
-    const newBalance = currentBalance - cost;
+    const newBalance = currentBalance - intCost;
 
     // Update balance
     await client.query(
@@ -107,7 +110,7 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
     await client.query(
       `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
        VALUES ($1, 'debit', $2, $3, $4, $5)`,
-      [clerkUserId, -cost, newBalance, meta.jobId || null, meta.note || "split/expand debit"],
+      [clerkUserId, -intCost, newBalance, meta.jobId || null, meta.note || "split/expand debit"],
     );
 
     await client.query("COMMIT");
