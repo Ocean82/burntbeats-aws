@@ -40,6 +40,8 @@ models/
 credentials.json
 *-credentials.json
 google-services.json
+deploy-to-ec2.sh
+.agents/skills/impeccable
 
 # Local env (never commit real secrets)
 .env
