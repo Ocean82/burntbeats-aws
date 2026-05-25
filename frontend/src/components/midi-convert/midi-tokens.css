@@ -121,6 +121,12 @@
   background: linear-gradient(180deg, #4a4840 0%, #35332c 100%);
 }
 
+.midi-btn--tool-active {
+  border-color: rgba(205, 165, 60, 0.55) !important;
+  background: linear-gradient(180deg, #5a5530 0%, #3a3828 100%) !important;
+  color: var(--midi-accent) !important;
+}
+
 .midi-time-display {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
@@ -227,4 +233,343 @@
 .midi-input-num:focus {
   outline: 2px solid var(--midi-border-focus);
   outline-offset: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Horizontal DAW-style parameter slider (MidiParamSlider)
+   Groove track, knurled thumb, value readout, tick marks
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-param-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--midi-surface-inset);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) inset;
+  transition: box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.midi-param-slider--dragging {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5) inset,
+    0 0 0 1px rgba(205, 165, 60, 0.15);
+}
+
+.midi-param-slider--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.midi-param-slider__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.midi-param-slider__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--midi-text-muted);
+}
+
+.midi-param-slider__value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--midi-accent);
+  background: var(--midi-surface-raised);
+  border: 1px solid rgba(205, 165, 60, 0.2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  min-width: 3em;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) inset;
+}
+
+.midi-param-slider__track {
+  position: relative;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.midi-param-slider__ticks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 0;
+  pointer-events: none;
+}
+
+.midi-param-slider__tick {
+  position: absolute;
+  top: 2px;
+  width: 1px;
+  height: 4px;
+  background: rgba(255, 245, 220, 0.15);
+  transform: translateX(-50%);
+}
+
+/* Major ticks (every 5th) */
+.midi-param-slider__tick:nth-child(5n) {
+  height: 6px;
+  background: rgba(255, 245, 220, 0.25);
+}
+
+.midi-param-slider__groove {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--midi-surface-raised);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) inset,
+    0 1px 0 rgba(255, 245, 220, 0.04);
+  pointer-events: none;
+}
+
+.midi-param-slider__fill {
+  position: absolute;
+  left: 4px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #8a7030, var(--midi-accent));
+  box-shadow: 0 0 6px rgba(205, 165, 60, 0.25);
+  pointer-events: none;
+  transition: width 0.05s linear;
+}
+
+.midi-param-slider__thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 22px;
+  border-radius: 4px;
+  background:
+    /* top highlight */
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 40%),
+    /* face gradient */
+    linear-gradient(180deg, #4a4840 0%, #2e2c28 50%, #262420 100%);
+  border: 1px solid rgba(255, 245, 220, 0.15);
+  border-top-color: rgba(255, 245, 220, 0.25);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 245, 220, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.3) inset;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.05s linear, box-shadow 0.15s ease;
+}
+
+/* Knurling lines on thumb */
+.midi-param-slider__thumb::before {
+  content: "";
+  position: absolute;
+  inset: 4px 5px;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 1.5px,
+      rgba(255, 245, 220, 0.08) 1.5px,
+      rgba(255, 245, 220, 0.08) 2px
+    );
+  pointer-events: none;
+}
+
+/* Center ridge on thumb */
+.midi-param-slider__thumb::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 10px;
+  border-radius: 1px;
+  background: rgba(205, 165, 60, 0.35);
+  box-shadow: 0 0 4px rgba(205, 165, 60, 0.2);
+}
+
+.midi-param-slider--dragging .midi-param-slider__thumb {
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(205, 165, 60, 0.3),
+    0 0 12px rgba(205, 165, 60, 0.15);
+}
+
+.midi-param-slider__hint {
+  font-size: 10px;
+  color: var(--midi-text-muted);
+  line-height: 1.4;
+  opacity: 0.7;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DAW rack panel — sectioned parameter surface
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-rack-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  border: 1px solid var(--midi-border);
+  background: var(--midi-surface);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.midi-rack-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--midi-surface-raised);
+  border-bottom: 1px solid var(--midi-border);
+}
+
+.midi-rack-panel__header-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--midi-text-muted);
+}
+
+.midi-rack-panel__header-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--midi-accent);
+  box-shadow: 0 0 6px rgba(205, 165, 60, 0.4);
+}
+
+.midi-rack-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+}
+
+.midi-rack-panel__section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 245, 220, 0.25);
+  padding: 6px 8px 2px;
+  border-top: 1px solid var(--midi-border);
+  margin-top: 2px;
+}
+
+.midi-rack-panel__section-label:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* DAW-style toggle switch */
+.midi-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 12px;
+  color: var(--midi-text);
+  user-select: none;
+}
+
+.midi-toggle--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.midi-toggle__track {
+  position: relative;
+  width: 32px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--midi-surface-inset);
+  border: 1px solid rgba(255, 245, 220, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) inset;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.midi-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #5a5850, #3a3830);
+  border: 1px solid rgba(255, 245, 220, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: left 0.15s ease, background 0.15s ease;
+}
+
+.midi-toggle--on .midi-toggle__track {
+  background: linear-gradient(90deg, #6a5520, #8a7030);
+  border-color: rgba(205, 165, 60, 0.35);
+}
+
+.midi-toggle--on .midi-toggle__thumb {
+  left: 18px;
+  background: linear-gradient(180deg, #c4a040, #9a8030);
+  border-color: rgba(205, 165, 60, 0.5);
+  box-shadow: 0 0 6px rgba(205, 165, 60, 0.3);
+}
+
+/* DAW-style select / dropdown */
+.midi-rack-select {
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 245, 220, 0.12);
+  background: var(--midi-surface-inset);
+  padding: 0 8px 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--midi-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) inset,
+    var(--midi-shadow-face);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.midi-rack-select:focus {
+  outline: none;
+  border-color: rgba(205, 165, 60, 0.5);
+}
+
+/* DAW-style number input */
+.midi-rack-num {
+  height: 26px;
+  width: 4em;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 245, 220, 0.12);
+  background: var(--midi-surface-inset);
+  padding: 0 6px;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--midi-accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) inset,
+    var(--midi-shadow-face);
+}
+
+.midi-rack-num:focus {
+  outline: none;
+  border-color: rgba(205, 165, 60, 0.5);
 }

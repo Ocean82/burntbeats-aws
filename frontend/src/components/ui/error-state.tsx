@@ -107,7 +107,7 @@ export function ErrorState({
           {displayTitle}
         </h3>
         {description && (
-          <p className="max-w-sm text-sm text-muted-foreground">
+          <p className="text-pretty text-sm text-muted-foreground">
             {description}
           </p>
         )}

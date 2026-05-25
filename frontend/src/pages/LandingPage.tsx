@@ -181,7 +181,7 @@ export function LandingPage() {
 
           <motion.p
             variants={heroItem}
-            className="max-w-lg break-words text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground"
+            className="max-w-2xl text-pretty text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground"
           >
             Studio-grade stem separation. Level, trim, and export radio-ready
             mixes without leaving your browser.
@@ -280,7 +280,7 @@ export function LandingPage() {
               <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 How do tokens map to songs?
               </p>
-              <p className="break-words text-sm leading-relaxed text-muted-foreground">
+              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
                 1 token = 1 minute of audio. A 3-minute track costs 3 tokens to
                 split, and another 3 if you expand to 4 stems. Partial minutes
                 round up.

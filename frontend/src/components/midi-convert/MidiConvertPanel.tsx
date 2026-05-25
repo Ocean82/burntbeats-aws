@@ -15,6 +15,7 @@ import { MidiConvertProgress } from "./MidiConvertProgress";
 import { MidiResultPanel } from "./MidiResultPanel";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
+import "./midi-tokens.css";
 
 export interface MidiConvertPanelProps {
   usageBalance?: number | null;
@@ -197,35 +198,20 @@ export function MidiConvertPanel({
   }, [batchJobs, settings.quantizeBpm, setError]);
 
   return (
-    <div data-testid="midi-convert-panel" className="flex flex-col gap-md">
+    <div data-testid="midi-convert-panel" className="midi-rack-panel">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-sm border-b border-accent-midi/25 pb-md">
-        <div className="flex min-w-0 flex-1 items-start gap-sm">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-accent-midi/35 bg-accent-midi/15">
-            <Music className="h-5 w-5 text-accent-midi-300" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1 flex flex-col gap-2xs">
-            <h2 className="text-lg font-bold tracking-tight text-foreground">
-              Audio to MIDI
-            </h2>
-            <p className="text-sm text-accent-midi-foreground/55">
-              Turn any stem or audio file into MIDI notes you can drop straight into your DAW. Edit, quantize, and export.
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-xs">
-          <span className="shrink-0 rounded-full border border-accent-midi/35 bg-accent-midi/10 px-sm py-1 text-meta font-bold uppercase tracking-wider text-accent-midi-200">
-            MIDI Convert
-          </span>
-          <span className="inline-flex items-center gap-2xs rounded-full border border-primary-400/40 bg-primary-500/10 px-sm py-1 text-meta font-semibold uppercase tracking-wide text-primary-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary-400" aria-hidden />
-            Included with all paid plans
-          </span>
-        </div>
+      <div className="midi-rack-panel__header">
+        <span className="midi-rack-panel__header-dot" aria-hidden />
+        <span className="midi-rack-panel__header-label">Audio to MIDI</span>
+        <span className="ml-auto shrink-0 rounded-full border border-accent-midi/35 bg-accent-midi/10 px-sm py-1 text-meta font-bold uppercase tracking-wider text-accent-midi-200">
+          MIDI Convert
+        </span>
       </div>
 
-      {/* Source selection */}
-      <MidiSourceSelector
+      {/* Body */}
+      <div className="midi-rack-panel__body">
+        {/* Source selection */}
+        <MidiSourceSelector
         sourceMode={sourceMode}
         onSourceModeChange={setSourceMode}
         selectedStem={selectedStem}
@@ -262,9 +248,9 @@ export function MidiConvertPanel({
 
       {/* Usage info */}
       {!subscriptionInactive && !usageLoading && (
-        <div className="flex items-center gap-xs text-xs text-muted-foreground">
+        <div className="flex items-center gap-xs text-xs text-muted-foreground px-sm py-1">
           <span>
-            Cost: <span className="text-accent-midi-200 font-medium">1 token</span> per conversion
+            Cost: <span className="font-medium text-accent-midi-200">1 token</span> per conversion
           </span>
           {usageBalance !== null && (
             <>
@@ -288,7 +274,7 @@ export function MidiConvertPanel({
       {/* Convert button */}
       <div className="flex flex-wrap items-center gap-sm">
         {subscriptionInactive ? (
-          <div className="flex flex-col gap-xs rounded-xl border border-primary-400/20 bg-primary-500/5 px-md py-sm">
+          <div className="midi-param-slider rounded-lg border border-primary-400/20 bg-primary-500/5">
             <p className="text-sm font-medium text-primary-100">
               Subscribe to unlock MIDI conversion
             </p>
@@ -302,7 +288,7 @@ export function MidiConvertPanel({
             data-testid="midi-convert-button"
             onClick={() => void triggerConvert(splitJobId)}
             disabled={!canConvert}
-            className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/50 bg-gradient-to-r from-accent-midi-600/90 to-accent-midi-500/90 px-lg py-sm text-sm font-bold text-foreground shadow-elevation-md transition hover:from-accent-midi-500 hover:to-accent-midi-400 disabled:cursor-not-allowed disabled:opacity-45"
+            className="midi-btn midi-btn--play text-sm px-lg disabled:opacity-45"
           >
             {isConverting || isUploading ? (
               <>
@@ -320,13 +306,13 @@ export function MidiConvertPanel({
 
       {/* Batch Convert All Stems button */}
       {showBatchButton && !subscriptionInactive && (
-        <div className="flex flex-wrap items-center gap-sm">
+        <div className="flex flex-wrap items-center gap-sm px-sm">
           <button
             type="button"
             data-testid="midi-batch-convert-button"
             onClick={() => splitJobId && void triggerBatchConvert(splitJobId, stemNames)}
             disabled={!canBatch}
-            className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/40 bg-gradient-to-r from-accent-midi-700/70 to-accent-midi-600/70 px-lg py-sm text-sm font-bold text-foreground shadow-elevation-sm transition hover:from-accent-midi-600 hover:to-accent-midi-500 disabled:cursor-not-allowed disabled:opacity-45"
+            className="midi-btn text-sm"
           >
             <Music className="h-4 w-4" aria-hidden />
             Convert All Stems
@@ -346,7 +332,7 @@ export function MidiConvertPanel({
 
       {/* Batch progress UI */}
       {isBatchMode && batchJobs.length > 0 && (
-        <div className="flex flex-col gap-sm rounded-xl border border-accent-midi/25 bg-accent-midi-950/20 p-md">
+        <div className="midi-param-slider">
           {/* Progress summary */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-foreground">
@@ -408,7 +394,7 @@ export function MidiConvertPanel({
                     <button
                       type="button"
                       onClick={() => void downloadSingleBatchMidi(job.fileUrl!, job.jobToken!, job.stemName)}
-                      className="inline-flex items-center gap-2xs rounded-lg border border-border px-sm py-1 text-xs text-secondary-foreground hover:border-border hover:text-foreground"
+                      className="midi-btn text-xs"
                     >
                       <Download className="h-3 w-3" />
                       .mid
@@ -419,7 +405,7 @@ export function MidiConvertPanel({
                     <button
                       type="button"
                       onClick={() => void retryBatchJob(splitJobId, idx)}
-                      className="inline-flex items-center gap-2xs rounded-lg border border-primary-400/30 bg-primary-500/10 px-sm py-1 text-xs text-primary-200 hover:bg-primary-500/20"
+                      className="midi-btn text-xs"
                     >
                       <RefreshCw className="h-3 w-3" />
                       Retry
@@ -438,7 +424,7 @@ export function MidiConvertPanel({
                 data-testid="midi-batch-download-zip"
                 onClick={() => void downloadAllAsZip()}
                 disabled={isZipping}
-                className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-accent-midi-300/40 bg-accent-midi-600/30 px-lg py-xs text-sm font-semibold text-foreground transition hover:bg-accent-midi-600/50 disabled:opacity-50"
+                className="midi-btn text-sm"
               >
                 {isZipping ? (
                   <>
@@ -460,7 +446,7 @@ export function MidiConvertPanel({
                   data-testid="midi-batch-multitrack"
                   onClick={() => void downloadMultiTrack()}
                   disabled={isMerging}
-                  className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-primary-300/40 bg-primary-600/20 px-lg py-xs text-sm font-semibold text-foreground transition hover:bg-primary-600/35 disabled:opacity-50"
+                  className="midi-btn text-sm"
                 >
                   {isMerging ? (
                     <>
@@ -518,6 +504,7 @@ export function MidiConvertPanel({
           }}
         />
       )}
+      </div>
     </div>
   );
 }

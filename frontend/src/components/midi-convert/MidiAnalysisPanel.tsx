@@ -15,44 +15,42 @@ export function MidiAnalysisPanel({
   const { pitch_range: range } = analysis;
 
   return (
-    <div className="rounded-lg border border-accent-midi/25 bg-accent-midi-950/30 px-sm py-sm">
-      <p className="mb-xs text-xs font-semibold uppercase tracking-wide text-accent-midi-200/80">
-        Musical analysis
-      </p>
+    <div className="midi-param-slider">
+      <p className="midi-param-slider__label mb-1">Musical analysis</p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
         <div>
-          <dt className="text-muted-foreground">Estimated key</dt>
-          <dd className="font-medium text-secondary-foreground">{analysis.estimated_key}</dd>
+          <dt className="midi-param-slider__label">Estimated key</dt>
+          <dd className="midi-param-slider__value mt-1 inline-block">{analysis.estimated_key}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Pitch range</dt>
-          <dd className="font-medium text-secondary-foreground">
+          <dt className="midi-param-slider__label">Pitch range</dt>
+          <dd className="midi-param-slider__value mt-1 inline-block">
             {range.min_name} – {range.max_name}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Note density</dt>
-          <dd className="font-medium text-secondary-foreground">
+          <dt className="midi-param-slider__label">Note density</dt>
+          <dd className="midi-param-slider__value mt-1 inline-block">
             {analysis.note_density.toFixed(1)} / sec
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Complexity</dt>
-          <dd className="font-medium text-secondary-foreground">
+          <dt className="midi-param-slider__label">Complexity</dt>
+          <dd className="midi-param-slider__value mt-1 inline-block">
             {Math.round(analysis.complexity_score * 100)}%
           </dd>
         </div>
         <div className="col-span-2 sm:col-span-1">
-          <dt className="text-muted-foreground">Suggested BPM</dt>
-          <dd className="flex flex-wrap items-center gap-xs font-medium text-secondary-foreground">
+          <dt className="midi-param-slider__label">Suggested BPM</dt>
+          <dd className="flex flex-wrap items-center gap-xs mt-1">
             {analysis.suggested_bpm != null ? (
               <>
-                <span>{analysis.suggested_bpm}</span>
+                <span className="midi-param-slider__value">{analysis.suggested_bpm}</span>
                 {onApplySuggestedBpm && (
                   <button
                     type="button"
                     onClick={() => onApplySuggestedBpm(analysis.suggested_bpm!)}
-                    className="rounded border border-accent-midi-400/40 px-xs py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-midi-200 transition hover:border-accent-midi-300/60 hover:bg-accent-midi-500/20"
+                    className="midi-btn text-[10px] px-sm py-0"
                   >
                     Use for quantize
                   </button>

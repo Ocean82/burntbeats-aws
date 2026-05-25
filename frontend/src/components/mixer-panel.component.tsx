@@ -133,7 +133,7 @@ export function MixerPanel({
         >
           <Sliders className="h-10 w-10 text-muted-foreground mb-md" strokeWidth={1.5} />
           <p className="text-muted-foreground text-sm font-medium mb-1">Timeline</p>
-          <p className="text-muted-foreground text-xs max-w-xs">
+          <p className="text-muted-foreground text-xs text-pretty">
             Split a track or load stem files above to start mixing and exporting.
           </p>
         </div>
