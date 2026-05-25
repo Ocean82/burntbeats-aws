@@ -51,4 +51,33 @@ describe("PricingPage", () => {
 
     expect(startCheckout).not.toHaveBeenCalled();
   });
+
+  it("uses workflow-oriented copy for subscriptions and credit packs", () => {
+    render(
+      <PricingPage
+        subscription={{
+          status: "inactive",
+          plan: null,
+          billingError: null,
+          startCheckout: vi.fn(() => Promise.resolve()),
+          openPortal: vi.fn(() => Promise.resolve()),
+          refetch: vi.fn(),
+        }}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(/workstation ready whenever a track needs a first pass/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/building edits, remixes, and repeat sessions every week/i),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("pricing-tab-credit-packs"));
+
+    expect(
+      screen.getByText(/open the workstation when you need stems, without a monthly plan/i),
+    ).toBeInTheDocument();
+  });
 });
