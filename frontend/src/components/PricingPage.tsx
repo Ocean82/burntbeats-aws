@@ -33,8 +33,11 @@ export function PricingPage({
     null,
   );
   const [pricingTab, setPricingTab] = useState<PricingTableType>(initialTab ?? "subscriptions");
+  const isCurrentPlan = (plan: Plan) =>
+    subscription.status === "active" && subscription.plan === plan;
 
   const handleSelectPlan = (plan: Plan) => {
+    if (isCurrentPlan(plan)) return;
     trackEvent("pricing_plan_selected", {
       source: "pricing_page",
       plan,
@@ -58,15 +61,23 @@ export function PricingPage({
       data-testid={`pricing-cta-${plan.id}`}
       onClick={() => handleSelectPlan(plan.id)}
       disabled={
-        subscription.status === "loading" || checkoutLoadingPlan !== null
+        subscription.status === "loading" ||
+        checkoutLoadingPlan !== null ||
+        isCurrentPlan(plan.id)
       }
-      className="min-h-[44px] w-full rounded-lg border border-primary-400/30 bg-primary-500/20 px-md py-sm font-medium text-primary-200 transition hover:border-primary-400/50 hover:bg-primary-500/30 disabled:cursor-not-allowed disabled:opacity-60 tap-feedback"
+      className={
+        isCurrentPlan(plan.id)
+          ? "min-h-[44px] w-full rounded-lg border border-success-400/35 bg-success-500/15 px-md py-sm font-medium text-success-100 disabled:cursor-default tap-feedback"
+          : "min-h-[44px] w-full rounded-lg border border-primary-400/30 bg-primary-500/20 px-md py-sm font-medium text-primary-200 transition hover:border-primary-400/50 hover:bg-primary-500/30 disabled:cursor-not-allowed disabled:opacity-60 tap-feedback"
+      }
     >
       {checkoutLoadingPlan === plan.id ? (
         <span className="inline-flex items-center justify-center gap-xs">
           <Loader2 className="h-4 w-4 animate-spin" />
           Redirecting...
         </span>
+      ) : isCurrentPlan(plan.id) ? (
+        "Current plan"
       ) : (
         plan.cta
       )}
@@ -197,7 +208,9 @@ export function PricingPage({
         </div>
         <PricingTablePreview
           pricingType={pricingTab}
+          onSelectPlan={handleSelectPlan}
           ctaButtonRenderer={renderCheckoutCTA}
+          currentPlan={subscription.status === "active" ? subscription.plan : null}
         />
       </section>
 
