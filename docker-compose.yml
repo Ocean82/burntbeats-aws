@@ -60,6 +60,7 @@ services:
       STEM_SERVICE_URL: http://stem_service:5000
       SPEECH_SERVICE_URL: http://speech_service:5001
       MIDI_SERVICE_URL: http://midi_service:5002
+      MIDI_ACCEPT_TIMEOUT_MS: ${MIDI_ACCEPT_TIMEOUT_MS:-60000}
       STEM_OUTPUT_DIR: /app/tmp/stems
       SPEECH_OUTPUT_DIR: /app/tmp/speech
       SPEECH_MAX_UPLOAD_MB: ${SPEECH_MAX_UPLOAD_MB:-100}
@@ -215,7 +216,6 @@ services:
       MIDI_OUTPUT_DIR: /repo/tmp/midi
       MIDI_SERVICE_API_TOKEN: ${MIDI_SERVICE_API_TOKEN:-}
       MIDI_MAX_QUEUE_DEPTH: ${MIDI_MAX_QUEUE_DEPTH:-8}
-      MIDI_ACCEPT_TIMEOUT_MS: ${MIDI_ACCEPT_TIMEOUT_MS:-60000}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
     volumes:
       - ./tmp/midi:/repo/tmp/midi

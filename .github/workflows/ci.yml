@@ -35,6 +35,9 @@ jobs:
       - name: Frontend critical unit tests
         working-directory: frontend
         run: npm run test:run -- src/utils/tokenCost.test.ts src/hooks/useExport.test.ts
+      - name: Frontend MIDI hardening tests
+        working-directory: frontend
+        run: npm run test:run -- src/hooks/useMidiConvert.test.ts src/hooks/useMidiHistory.test.ts src/components/MyStemsPage.test.tsx
       - name: Install Playwright Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium
@@ -73,6 +76,16 @@ jobs:
           trap "kill $pid >/dev/null 2>&1 || true" EXIT
           sleep 2
           curl -fsS http://localhost:3001/api/health | cat
+      - name: Backend MIDI hardening tests
+        working-directory: backend
+        run: |
+          node --test \
+            server.test.js \
+            tests/auth-gates.test.mjs \
+            tests/midi-auth.test.mjs \
+            tests/midi-storage-health.test.mjs \
+            tests/midi-convert-validation.test.mjs \
+            tests/midi-status-auth.test.mjs
 
   python:
     runs-on: ubuntu-latest
@@ -106,6 +119,22 @@ jobs:
         env:
           STEM_ALLOW_MISSING_HTDEMUCS: "1"
         run: python -m pytest stem_service/tests -q
+
+  midi-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install midi_service test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libsndfile1 ffmpeg
+          python -m pip install -r midi_service/requirements.txt
+      - name: MIDI service unit tests
+        run: python -m pytest midi_service/tests -q -m "not integration"
 
   stem-docker:
     runs-on: ubuntu-latest

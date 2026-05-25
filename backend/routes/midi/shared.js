@@ -2,8 +2,9 @@
 /**
  * Shared constants and helpers for MIDI route modules.
  */
-import os from "os";
+import { constants as fsConstants } from "fs";
 import path from "path";
+import { access, mkdir, readFile, realpath, rm, stat, writeFile } from "fs/promises";
 import { fileURLToPath } from "url";
 
 import { verifyClerkBearer } from "../../clerkAuth.js";
@@ -53,6 +54,195 @@ export const MIDI_CLEANUP_DEFAULT_MAX_AGE_HOURS = (() => {
   if (Number.isFinite(raw) && raw >= 0) return raw;
   return 24;
 })();
+
+export const MIDI_METADATA_FILENAME = "metadata.json";
+export const MIDI_OUTPUT_FILENAME = "output.mid";
+export const MIDI_STORAGE_SENTINEL_FILENAME = ".midi-service-storage.json";
+
+/**
+ * @param {string | undefined | null} jobId
+ * @returns {boolean}
+ */
+export function isValidMidiJobId(jobId) {
+  return !!jobId && /^[0-9a-f-]{36}$/i.test(jobId);
+}
+
+/**
+ * Resolve a path under MIDI_OUTPUT_DIR with path-traversal protection.
+ * @param {string} jobId
+ * @param {string} filename
+ * @returns {string | null}
+ */
+export function resolveMidiJobPath(jobId, filename) {
+  if (!isValidMidiJobId(jobId)) return null;
+  const resolved = path.resolve(MIDI_OUTPUT_DIR, jobId, filename);
+  if (!resolved.startsWith(path.resolve(MIDI_OUTPUT_DIR))) return null;
+  return resolved;
+}
+
+/**
+ * @param {string} jobId
+ * @returns {Promise<any | null>}
+ */
+export async function readMidiJobMetadata(jobId) {
+  const metaPath = resolveMidiJobPath(jobId, MIDI_METADATA_FILENAME);
+  if (!metaPath) return null;
+  try {
+    const raw = await readFile(metaPath, "utf-8");
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {string} jobId
+ * @returns {Promise<boolean>}
+ */
+export async function midiOutputExists(jobId) {
+  const filePath = resolveMidiJobPath(jobId, MIDI_OUTPUT_FILENAME);
+  if (!filePath) return false;
+  try {
+    const fileStat = await stat(filePath);
+    return fileStat.isFile();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve the authenticated Clerk user for this request.
+ * Allows tests to inject a verifier via app.locals.verifyClerkBearer.
+ * @param {import("express").Request} req
+ * @returns {Promise<string>}
+ */
+export async function verifyMidiOwner(req) {
+  const testVerifier = req.app?.locals?.verifyClerkBearer;
+  if (typeof testVerifier === "function") {
+    return await testVerifier(req);
+  }
+  return await verifyClerkBearer(req);
+}
+
+/**
+ * @param {string} filePath
+ * @returns {Promise<boolean>}
+ */
+export async function pathExists(filePath) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Probe backend access to the shared MIDI output directory.
+ * @param {{ createIfMissing?: boolean }} [options]
+ * @returns {Promise<{
+ *   ok: boolean;
+ *   output_dir: string;
+ *   resolved_output_dir: string;
+ *   can_read: boolean;
+ *   can_write: boolean;
+ *   error?: string;
+ * }>}
+ */
+export async function probeMidiStorage(options = {}) {
+  const outputDir = path.resolve(MIDI_OUTPUT_DIR);
+  const createIfMissing = options.createIfMissing === true;
+
+  try {
+    if (createIfMissing) {
+      await mkdir(outputDir, { recursive: true });
+    }
+
+    const dirStat = await stat(outputDir);
+    if (!dirStat.isDirectory()) {
+      return {
+        ok: false,
+        output_dir: outputDir,
+        resolved_output_dir: outputDir,
+        can_read: false,
+        can_write: false,
+        error: "MIDI output path is not a directory",
+      };
+    }
+
+    const resolved = await realpath(outputDir).catch(() => outputDir);
+    const canRead = await access(outputDir, fsConstants.R_OK)
+      .then(() => true)
+      .catch(() => false);
+    const canWrite = await access(outputDir, fsConstants.W_OK)
+      .then(() => true)
+      .catch(() => false);
+
+    if (!canWrite) {
+      return {
+        ok: false,
+        output_dir: outputDir,
+        resolved_output_dir: resolved,
+        can_read: canRead,
+        can_write: canWrite,
+        error: "Backend cannot write to MIDI output directory",
+      };
+    }
+
+    const probePath = path.join(outputDir, `.backend-midi-probe-${process.pid}.tmp`);
+    await writeFile(probePath, "ok", "utf-8");
+    await rm(probePath, { force: true });
+
+    return {
+      ok: canRead && canWrite,
+      output_dir: outputDir,
+      resolved_output_dir: resolved,
+      can_read: canRead,
+      can_write: canWrite,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      output_dir: outputDir,
+      resolved_output_dir: outputDir,
+      can_read: false,
+      can_write: false,
+      error: message,
+    };
+  }
+}
+
+/**
+ * Compare backend and midi_service storage diagnostics.
+ * Different containers may mount the same shared directory at different paths,
+ * so alignment uses the service-written sentinel file rather than path equality.
+ * @param {Awaited<ReturnType<typeof probeMidiStorage>>} backendStorage
+ * @param {any} midiServiceHealth
+ */
+export async function getMidiSharedStorageHealth(backendStorage, midiServiceHealth) {
+  const serviceStorage = midiServiceHealth?.storage || null;
+  const sentinelFilename =
+    typeof serviceStorage?.sentinel_filename === "string"
+      ? serviceStorage.sentinel_filename
+      : MIDI_STORAGE_SENTINEL_FILENAME;
+  const sentinelVisible =
+    backendStorage.ok &&
+    (await pathExists(path.join(MIDI_OUTPUT_DIR, sentinelFilename)));
+
+  const aligned = Boolean(
+    backendStorage.ok && serviceStorage?.ok === true && sentinelVisible,
+  );
+
+  return {
+    aligned,
+    service_sentinel_visible: sentinelVisible,
+    sentinel_filename: sentinelFilename,
+    reason: aligned
+      ? null
+      : "Backend could not confirm the midi_service storage sentinel on the shared MIDI volume.",
+  };
+}
 
 /**
  * Attach MIDI service auth header when token protection is enabled.

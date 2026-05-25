@@ -4,7 +4,7 @@
  */
 import { Router } from "express";
 import FormData from "form-data";
-import { createReadStream, existsSync, unlink } from "fs";
+import { createReadStream, readdirSync, unlink } from "fs";
 import { unlink as unlinkPromise } from "fs/promises";
 import path from "path";
 
@@ -37,6 +37,16 @@ import { STEM_OUTPUT_DIR } from "../stems/shared.js";
 
 export const midiConvertRouter = Router();
 
+const MIDI_ALLOWED_UPLOAD_EXTS = new Set([
+  ".mp3",
+  ".wav",
+  ".flac",
+  ".ogg",
+  ".m4a",
+  ".webm",
+]);
+const MIDI_ALLOWED_UPLOAD_FORMATS_LABEL = "MP3, WAV, FLAC, OGG, M4A, WebM";
+
 /**
  * Resolve a stem WAV path from a previous split job.
  * @param {string} stemJobId
@@ -46,17 +56,25 @@ export const midiConvertRouter = Router();
 function resolveStemPath(stemJobId, stemName) {
   // Validate inputs to prevent injection
   if (!/^[0-9a-f-]{36}$/i.test(stemJobId)) return null;
-  if (!/^[a-z_]+$/i.test(stemName)) return null;
+  if (typeof stemName !== "string") return null;
+  const trimmedStemName = stemName.trim();
+  if (!trimmedStemName) return null;
+  if (trimmedStemName.includes("/") || trimmedStemName.includes("\\") || trimmedStemName.includes("\0")) {
+    return null;
+  }
 
-  // Stem files are stored as: STEM_OUTPUT_DIR/<jobId>/stems/<stemName>.wav
-  const candidate = path.join(STEM_OUTPUT_DIR, stemJobId, "stems", `${stemName}.wav`);
   try {
-    const resolved = path.resolve(candidate);
-    // Prevent path traversal
-    if (!resolved.startsWith(path.resolve(STEM_OUTPUT_DIR))) return null;
-    // Verify file actually exists
-    if (!existsSync(resolved)) return null;
-    return resolved;
+    const stemsDir = path.resolve(STEM_OUTPUT_DIR, stemJobId, "stems");
+    if (!stemsDir.startsWith(path.resolve(STEM_OUTPUT_DIR))) return null;
+
+    const entries = readdirSync(stemsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      if (path.extname(entry.name).toLowerCase() !== ".wav") continue;
+      if (path.basename(entry.name, ".wav") !== trimmedStemName) continue;
+      return path.resolve(stemsDir, entry.name);
+    }
+    return null;
   } catch {
     return null;
   }
@@ -126,6 +144,11 @@ midiConvertRouter.post(
         const declaredExt =
           path.extname(req.file?.originalname || "").toLowerCase() ||
           path.extname(filePath).toLowerCase();
+        if (!MIDI_ALLOWED_UPLOAD_EXTS.has(declaredExt)) {
+          return res.status(415).json({
+            error: `Unsupported format (${declaredExt || "unknown"}). Accepted for MIDI: ${MIDI_ALLOWED_UPLOAD_FORMATS_LABEL}.`,
+          });
+        }
         const sniff = verifyUploadMatchesExtension(filePath, declaredExt);
         if (!sniff.ok) {
           return res.status(415).json({ error: sniff.message || "Invalid audio file" });

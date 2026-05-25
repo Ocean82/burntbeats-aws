@@ -183,6 +183,34 @@ class TestErrorCases:
         )
         assert response.status_code == 400
 
+    async def test_invalid_numeric_convert_option_returns_400(
+        self, client, piano_wav_path: Path
+    ):
+        """Malformed numeric form fields should fail with a 400, not a 500."""
+        with open(piano_wav_path, "rb") as f:
+            response = await client.post(
+                "/convert",
+                files={"file": ("piano_c_major.wav", f, "audio/wav")},
+                data={"quantize_bpm": "fast"},
+            )
+
+        assert response.status_code == 400
+        assert "detail" in response.json()
+
+    async def test_invalid_quantize_grid_returns_400(
+        self, client, piano_wav_path: Path
+    ):
+        """Unsupported quantize grids should fail at the API boundary."""
+        with open(piano_wav_path, "rb") as f:
+            response = await client.post(
+                "/convert",
+                files={"file": ("piano_c_major.wav", f, "audio/wav")},
+                data={"quantize": "true", "quantize_grid": "1/3"},
+            )
+
+        assert response.status_code == 400
+        assert "detail" in response.json()
+
 
 # ---------------------------------------------------------------------------
 # Task 7.6: Health endpoint test
@@ -217,6 +245,21 @@ class TestHealthEndpoint:
                 sys.modules["basic_pitch"], MagicMock
             ):
                 del sys.modules["basic_pitch"]
+
+    async def test_health_reports_storage_diagnostics(self, client):
+        """Health endpoint should expose resolved MIDI storage diagnostics."""
+        response = await client.get("/health")
+        assert response.status_code == 200
+
+        body = response.json()
+        assert "storage" in body
+        assert body["storage"]["ok"] is True
+        assert body["storage"]["output_dir"]
+        assert body["storage"]["resolved_output_dir"]
+        assert body["storage"]["can_read"] is True
+        assert body["storage"]["can_write"] is True
+        assert "auth" in body
+        assert "token_required" in body["auth"]
 
 
 # ---------------------------------------------------------------------------

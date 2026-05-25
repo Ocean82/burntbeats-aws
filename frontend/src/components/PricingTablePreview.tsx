@@ -17,29 +17,14 @@ interface PlanCardProps {
 function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCardProps) {
   const interactive = Boolean(onSelect) && !isCurrentPlan;
   const handleSelect = () => onSelect?.(plan.id);
-  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-    if (!interactive) return;
-    if (event.key !== "Enter" && event.key !== " ") return;
-    event.preventDefault();
-    handleSelect();
-  };
 
   return (
     <article
       data-testid={`pricing-plan-${plan.id}`}
-      {...(interactive
-        ? {
-            role: "button" as const,
-            tabIndex: 0,
-            "aria-label": `Select ${plan.name} plan`,
-          }
-        : {})}
-      onClick={interactive ? handleSelect : undefined}
-      onKeyDown={handleCardKeyDown}
       className={cn(
         "group flex flex-col rounded-3xl border border-border bg-secondary p-lg shadow-elevation-md transition",
         interactive &&
-          "cursor-pointer hover:-translate-y-0.5 hover:border-primary-400/45 hover:bg-primary-500/8 hover:shadow-elevation-lg active:translate-y-0 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "hover:-translate-y-0.5 hover:border-primary-400/45 hover:bg-primary-500/8 hover:shadow-elevation-lg",
         isCurrentPlan &&
           "border-success-400/45 bg-success-500/10 ring-2 ring-success-400/20",
         plan.highlight && "ring-1 ring-primary-400/20",
@@ -67,10 +52,7 @@ function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCard
         <button
           type="button"
           data-testid={`pricing-price-${plan.id}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            handleSelect();
-          }}
+          onClick={handleSelect}
           className="mt-lg inline-flex w-fit items-center gap-xs rounded-full border border-primary-400/25 bg-primary-500/10 px-md py-xs text-left text-2xl font-semibold text-primary-100 transition group-hover:border-primary-400/45 group-hover:bg-primary-500/18 group-hover:text-primary-50 hover:border-primary-300/60 hover:bg-primary-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-3xl"
           aria-label={`Choose ${plan.name} for ${plan.priceLabel}`}
         >
@@ -97,16 +79,13 @@ function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCard
         ))}
       </ul>
       {ctaButton ? (
-        <div className="mt-lg" onClick={(event) => event.stopPropagation()}>
+        <div className="mt-lg">
           {ctaButton}
         </div>
       ) : onSelect ? (
         <button
           type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleSelect();
-          }}
+          onClick={handleSelect}
           className="mt-lg w-full rounded-lg border border-primary-400/30 bg-primary-500/20 px-md py-sm font-medium text-primary-200 transition hover:border-primary-400/50 hover:bg-primary-500/30"
         >
           {plan.cta}

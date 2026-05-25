@@ -58,6 +58,26 @@ export function verifyJobToken(token, secret) {
 }
 
 /**
+ * Validate the x-job-token header for a specific job id.
+ * @param {import("express").Request} req
+ * @param {string | undefined | null} jobId
+ * @returns {{ ok: true } | { ok: false; status: number; error: string }}
+ */
+export function validateJobTokenForRequest(req, jobId) {
+  const secret = process.env.JOB_TOKEN_SECRET || "";
+  if (!secret) return { ok: true };
+  if (!jobId) {
+    return { ok: false, status: 400, error: "Missing job_id." };
+  }
+  const token = req.headers["x-job-token"];
+  const verified = verifyJobToken(/** @type {string} */ (token), secret);
+  if (!verified || verified !== jobId) {
+    return { ok: false, status: 401, error: "Missing or invalid job token." };
+  }
+  return { ok: true };
+}
+
+/**
  * Middleware: when JOB_TOKEN_SECRET is set, require a valid x-job-token header
  * that matches the job_id (never accept tokens in the query string — URLs leak via Referer/logs).
  * Job id is resolved from: req.params.job_id → req.body.job_id
@@ -66,14 +86,9 @@ export function verifyJobToken(token, secret) {
  * @param {import("express").NextFunction} next
  */
 export function jobTokenMiddleware(req, res, next) {
-  const secret = process.env.JOB_TOKEN_SECRET || "";
-  if (!secret) return next();
   const jobId = req.params.job_id || (req.body && req.body.job_id);
-  const token = req.headers["x-job-token"];
-  const verified = verifyJobToken(/** @type {string} */ (token), secret);
-  if (!verified || verified !== jobId) {
-    return res.status(401).json({ error: "Missing or invalid job token." });
-  }
+  const result = validateJobTokenForRequest(req, jobId);
+  if (!result.ok) return res.status(result.status).json({ error: result.error });
   next();
 }
 

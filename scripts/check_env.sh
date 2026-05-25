@@ -15,7 +15,7 @@ fail()  { echo -e "  ${RED}✘${NC}  $1"; ((ERRORS++)) || true; }
 header(){ echo -e "\n${CYAN}── $1 ──${NC}"; }
 
 # Load an env file into associative array
-declare -A BENV FENV
+declare -A RENV BENV FENV
 
 load_env() {
   local file="$1"
@@ -32,11 +32,13 @@ load_env() {
   done < "$file"
 }
 
+load_env ".env" RENV || true
 load_env "backend/.env"  BENV || true
 load_env "frontend/.env" FENV || true
 
 # ── File presence ─────────────────────────────────────────────────────────────
 header "Env files"
+[[ -f ".env" ]] && pass ".env exists" || warn ".env missing — Docker/Compose deployments read the repo root .env"
 [[ -f "backend/.env"  ]] && pass "backend/.env exists"  || fail "backend/.env missing — copy backend/.env.example and fill in values"
 [[ -f "frontend/.env" ]] && pass "frontend/.env exists" || fail "frontend/.env missing — copy frontend/.env.example and fill in values"
 
@@ -93,6 +95,46 @@ check_b "STRIPE_PRICE_ID_PREMIUM" '^price_[A-Za-z0-9]{10,}' "STRIPE_PRICE_ID_PRE
 check_b "STRIPE_PRICE_ID_STUDIO"  '^price_[A-Za-z0-9]{10,}' "STRIPE_PRICE_ID_STUDIO"
 check_b "STRIPE_PRICE_ID_TOPUP"   '^price_[A-Za-z0-9]{10,}' "STRIPE_PRICE_ID_TOPUP"
 check_b "JOB_TOKEN_SECRET"      '^[A-Za-z0-9+/=_-]{16,}'               "JOB_TOKEN_SECRET"
+
+# ── Shared MIDI config (root .env / Compose) ─────────────────────────────────
+header "Shared MIDI config"
+
+root_job_token="${RENV[JOB_TOKEN_SECRET]:-${BENV[JOB_TOKEN_SECRET]:-}}"
+if [[ -n "$root_job_token" ]]; then
+  if echo "$root_job_token" | grep -qE '^[A-Za-z0-9+/=_-]{16,}$'; then
+    pass "JOB_TOKEN_SECRET available for Compose/backend"
+  else
+    fail "JOB_TOKEN_SECRET format is invalid in .env/backend.env"
+  fi
+else
+  warn "JOB_TOKEN_SECRET missing from root/backend env — historical job-token protections may be disabled"
+fi
+
+if [[ -n "${RENV[MIDI_SERVICE_API_TOKEN]:-}" ]]; then
+  pass "MIDI_SERVICE_API_TOKEN is set in root .env"
+else
+  warn "MIDI_SERVICE_API_TOKEN not set in root .env — backend↔midi_service calls are unsecured"
+fi
+
+if [[ -n "${RENV[MIDI_ACCEPT_TIMEOUT_MS]:-}" ]]; then
+  if echo "${RENV[MIDI_ACCEPT_TIMEOUT_MS]}" | grep -qE '^[0-9]+$'; then
+    pass "MIDI_ACCEPT_TIMEOUT_MS is set in root .env"
+  else
+    fail "MIDI_ACCEPT_TIMEOUT_MS must be an integer number of milliseconds"
+  fi
+else
+  warn "MIDI_ACCEPT_TIMEOUT_MS not set in root .env — backend default (60000ms) will be used"
+fi
+
+if [[ -n "${RENV[MIDI_MAX_QUEUE_DEPTH]:-}" ]]; then
+  if echo "${RENV[MIDI_MAX_QUEUE_DEPTH]}" | grep -qE '^[0-9]+$'; then
+    pass "MIDI_MAX_QUEUE_DEPTH is set in root .env"
+  else
+    fail "MIDI_MAX_QUEUE_DEPTH must be an integer"
+  fi
+else
+  warn "MIDI_MAX_QUEUE_DEPTH not set in root .env — midi_service default (8) will be used"
+fi
 
 # ── Backend optional but recommended ─────────────────────────────────────────
 header "Backend optional vars"

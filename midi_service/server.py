@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import shutil
 import uuid
@@ -46,10 +47,12 @@ install_correlation_logging_filter()
 # ── Service metadata ──────────────────────────────────────────────────────────
 _start_time = None
 _last_job_completed_at: str | None = None
+STORAGE_SENTINEL_FILENAME = ".midi-service-storage.json"
 
 UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
+ALLOWED_QUANTIZE_GRIDS = {"1/4", "1/8", "1/16", "1/32"}
 
 
 def _require_api_token(request: Request) -> None:
@@ -60,12 +63,146 @@ def _require_api_token(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def _probe_storage(create_if_missing: bool = False) -> dict:
+    output_dir = MIDI_OUTPUT_DIR
+    if create_if_missing:
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    resolved_output_dir = str(output_dir.resolve())
+    if not output_dir.exists():
+        return {
+            "ok": False,
+            "output_dir": str(output_dir),
+            "resolved_output_dir": resolved_output_dir,
+            "can_read": False,
+            "can_write": False,
+            "sentinel_filename": STORAGE_SENTINEL_FILENAME,
+            "error": "MIDI output directory does not exist",
+        }
+    if not output_dir.is_dir():
+        return {
+            "ok": False,
+            "output_dir": str(output_dir),
+            "resolved_output_dir": resolved_output_dir,
+            "can_read": False,
+            "can_write": False,
+            "sentinel_filename": STORAGE_SENTINEL_FILENAME,
+            "error": "MIDI output path is not a directory",
+        }
+
+    can_read = os.access(output_dir, os.R_OK)
+    can_write = os.access(output_dir, os.W_OK)
+    if not can_write:
+        return {
+            "ok": False,
+            "output_dir": str(output_dir),
+            "resolved_output_dir": resolved_output_dir,
+            "can_read": can_read,
+            "can_write": can_write,
+            "sentinel_filename": STORAGE_SENTINEL_FILENAME,
+            "error": "midi_service cannot write to MIDI output directory",
+        }
+
+    probe_path = output_dir / f".midi-service-probe-{uuid.uuid4().hex}.tmp"
+    try:
+        probe_path.write_text("ok", encoding="utf-8")
+    finally:
+        probe_path.unlink(missing_ok=True)
+
+    return {
+        "ok": can_read and can_write,
+        "output_dir": str(output_dir),
+        "resolved_output_dir": resolved_output_dir,
+        "can_read": can_read,
+        "can_write": can_write,
+        "sentinel_filename": STORAGE_SENTINEL_FILENAME,
+    }
+
+
+def _write_storage_sentinel(storage: dict) -> None:
+    if not storage.get("ok"):
+        return
+
+    from datetime import datetime, timezone
+
+    sentinel_path = MIDI_OUTPUT_DIR / STORAGE_SENTINEL_FILENAME
+    sentinel_payload = {
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "output_dir": storage["output_dir"],
+        "resolved_output_dir": storage["resolved_output_dir"],
+        "service": "midi_service",
+    }
+    sentinel_path.write_text(json.dumps(sentinel_payload), encoding="utf-8")
+
+
+def _parse_bool_option(name: str, raw: str) -> bool:
+    normalized = (raw or "").strip().lower()
+    if normalized in {"true", "1", "yes"}:
+        return True
+    if normalized in {"false", "0", "no"}:
+        return False
+    raise ValueError(f"{name} must be true or false")
+
+
+def _parse_int_option(
+    name: str,
+    raw: str,
+    *,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int:
+    try:
+        value = int((raw or "").strip())
+    except Exception as exc:
+        raise ValueError(f"{name} must be an integer") from exc
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{name} must be <= {maximum}")
+    return value
+
+
+def _parse_float_option(
+    name: str,
+    raw: str,
+    *,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> float:
+    try:
+        value = float((raw or "").strip())
+    except Exception as exc:
+        raise ValueError(f"{name} must be a number") from exc
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{name} must be <= {maximum}")
+    return value
+
+
+def _parse_quantize_grid(raw: str) -> str:
+    grid = (raw or "").strip()
+    if grid not in ALLOWED_QUANTIZE_GRIDS:
+        raise ValueError(
+            "quantize_grid must be one of 1/4, 1/8, 1/16, or 1/32"
+        )
+    return grid
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _start_time
     import time
     _start_time = time.time()
-    MIDI_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    storage = _probe_storage(create_if_missing=True)
+    if not storage["ok"]:
+        raise RuntimeError(storage.get("error", "MIDI storage probe failed"))
+    _write_storage_sentinel(storage)
+    logger.info(
+        "MIDI storage ready: output_dir=%s resolved=%s",
+        storage["output_dir"],
+        storage["resolved_output_dir"],
+    )
     if MIDI_DEVICE != "cpu":
         logger.warning(
             "MIDI_DEVICE=%s is ignored; this service runs CPU-only inference",
@@ -102,19 +239,26 @@ app.add_middleware(
 @app.get("/health")
 async def health() -> dict:
     import time
+    storage = _probe_storage()
+    try:
+        import basic_pitch
 
-    import basic_pitch
+        basic_pitch_version = getattr(basic_pitch, "__version__", "unknown")
+    except ModuleNotFoundError:
+        basic_pitch_version = "unavailable"
 
     from midi_service import __version__
 
     uptime = int(time.time() - _start_time) if _start_time else 0
     return {
-        "status": "ok",
+        "status": "ok" if storage["ok"] else "degraded",
         "version": __version__,
         "uptime_seconds": uptime,
         "queue_depth": get_queue_depth(),
-        "basic_pitch_version": getattr(basic_pitch, "__version__", "unknown"),
+        "basic_pitch_version": basic_pitch_version,
         "last_job_completed_at": _last_job_completed_at,
+        "storage": storage,
+        "auth": {"token_required": bool(MIDI_SERVICE_API_TOKEN)},
     }
 
 
@@ -174,24 +318,44 @@ async def convert(
         shutil.rmtree(out_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail="Failed to save upload") from e
 
-    options = {
-        "min_confidence": float(min_confidence),
-        "min_note_length_ms": int(min_note_length_ms),
-        "include_pitch_bends": (include_pitch_bends or "").strip().lower()
-        in ("true", "1", "yes"),
-        "quantize": quantize.strip().lower() in ("true", "1", "yes"),
-        "quantize_grid": quantize_grid,
-        "quantize_bpm": int(quantize_bpm),
-        "quantize_strength": float(quantize_strength),
-        "normalize_velocity": (normalize_velocity or "").strip().lower()
-        in ("true", "1", "yes"),
-        "target_velocity": int(target_velocity),
-        "max_note_length_ms": int(max_note_length_ms),
-        "transpose": int(transpose),
-        "stem_job_id": stem_job_id or None,
-        "stem_name": stem_name or None,
-        "user_id": user_id or None,
-    }
+    try:
+        options = {
+            "min_confidence": _parse_float_option(
+                "min_confidence", min_confidence, minimum=0.05, maximum=0.95
+            ),
+            "min_note_length_ms": _parse_int_option(
+                "min_note_length_ms", min_note_length_ms, minimum=10, maximum=500
+            ),
+            "include_pitch_bends": _parse_bool_option(
+                "include_pitch_bends", include_pitch_bends
+            ),
+            "quantize": _parse_bool_option("quantize", quantize),
+            "quantize_grid": _parse_quantize_grid(quantize_grid),
+            "quantize_bpm": _parse_int_option(
+                "quantize_bpm", quantize_bpm, minimum=40, maximum=300
+            ),
+            "quantize_strength": _parse_float_option(
+                "quantize_strength", quantize_strength, minimum=0.0, maximum=1.0
+            ),
+            "normalize_velocity": _parse_bool_option(
+                "normalize_velocity", normalize_velocity
+            ),
+            "target_velocity": _parse_int_option(
+                "target_velocity", target_velocity, minimum=1, maximum=127
+            ),
+            "max_note_length_ms": _parse_int_option(
+                "max_note_length_ms", max_note_length_ms, minimum=0, maximum=60_000
+            ),
+            "transpose": _parse_int_option(
+                "transpose", transpose, minimum=-48, maximum=48
+            ),
+            "stem_job_id": stem_job_id or None,
+            "stem_name": stem_name or None,
+            "user_id": user_id or None,
+        }
+    except ValueError as exc:
+        shutil.rmtree(out_dir, ignore_errors=True)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     write_progress(
         out_dir,

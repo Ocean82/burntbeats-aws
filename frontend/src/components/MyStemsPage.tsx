@@ -245,13 +245,26 @@ export function MyStemsPage({
       try {
         const url = `${API_BASE}/api/midi/file/${midiJobId}/output.mid`;
         const response = await fetch(url, { headers: await authHeaders() });
-        if (!response.ok) throw new Error("MIDI download failed");
+        if (!response.ok) {
+          if (response.status === 403) {
+            throw new Error("You do not have access to this MIDI file");
+          }
+          if (response.status === 404) {
+            throw new Error("This MIDI file is no longer available");
+          }
+          if (response.status === 503) {
+            throw new Error("MIDI storage is temporarily unavailable");
+          }
+          throw new Error("MIDI download failed");
+        }
         const blob = await response.blob();
         const filename = stemName ? `${stemName}.mid` : `midi-${midiJobId.slice(0, 8)}.mid`;
         await downloadBlob(blob, filename);
       } catch (err) {
         console.error("MIDI download failed:", err);
-        toast("Failed to download MIDI file", { type: "error" });
+        const message =
+          err instanceof Error ? err.message : "Failed to download MIDI file";
+        toast(message, { type: "error" });
       } finally {
         setIsDownloading((prev) => ({ ...prev, [key]: false }));
       }
@@ -407,6 +420,7 @@ export function MyStemsPage({
             <div className="space-y-sm">
               {filteredAndSortedJobs.map((job) => {
                 const isExpanded = expandedJobId === job.job_id;
+                const detailsId = `job-details-${job.job_id}`;
                 const availableStems = job.stem_files.filter((s) => s.s3_key !== null);
                 const jobZipping = isZipping === job.job_id;
                 const jobMidiRecords = midiRecords.filter(
@@ -425,8 +439,8 @@ export function MyStemsPage({
                         setExpandedJobId(isExpanded ? null : job.job_id)
                       }
                       className="flex w-full items-center justify-between gap-sm p-md text-left transition hover:bg-muted sm:p-lg"
-                      aria-expanded={isExpanded}
-                      aria-controls={`job-details-${job.job_id}`}
+                      aria-expanded={isExpanded ? "true" : "false"}
+                      aria-controls={detailsId}
                     >
                       <div className="min-w-0 flex-1">
                         <h3 className="truncate text-sm font-medium text-foreground">
@@ -463,7 +477,7 @@ export function MyStemsPage({
                     <AnimatePresence initial={false}>
                       {isExpanded && (
                         <motion.div
-                          id={`job-details-${job.job_id}`}
+                          id={detailsId}
                           {...collapse}
                         >
                           <div className="border-t border-border px-md pb-md pt-sm sm:px-lg sm:pb-5">
@@ -526,6 +540,7 @@ export function MyStemsPage({
                                   {jobMidiRecords.map((midi) => {
                                     const midiKey = `midi:${midi.job_id}`;
                                     const midiDownloading = isDownloading[midiKey] ?? false;
+                                    const midiUnavailable = !midi.file_available;
                                     return (
                                       <li
                                         key={midi.job_id}
@@ -543,7 +558,7 @@ export function MyStemsPage({
                                           onClick={() =>
                                             handleDownloadMidi(midi.job_id, midi.stem_name)
                                           }
-                                          disabled={midiDownloading}
+                                          disabled={midiDownloading || midiUnavailable}
                                           className="flex h-9 shrink-0 items-center gap-xs rounded-lg bg-purple-500/20 px-sm text-xs font-medium text-purple-400 transition hover:bg-purple-500/30 disabled:opacity-50"
                                           aria-label={`Download MIDI for ${midi.stem_name || "audio"}`}
                                         >
@@ -552,7 +567,11 @@ export function MyStemsPage({
                                           ) : (
                                             <Download className="h-3.5 w-3.5" />
                                           )}
-                                          {midiDownloading ? "…" : "MIDI"}
+                                          {midiDownloading
+                                            ? "…"
+                                            : midiUnavailable
+                                              ? "Unavailable"
+                                              : "MIDI"}
                                         </button>
                                       </li>
                                     );

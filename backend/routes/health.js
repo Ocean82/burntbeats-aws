@@ -15,6 +15,10 @@ import {
   midiServiceClient,
   getCircuitStates,
 } from "../lib/serviceClients.js";
+import {
+  getMidiSharedStorageHealth,
+  probeMidiStorage,
+} from "./midi/shared.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -26,6 +30,7 @@ export const healthRouter = Router();
 
 healthRouter.get("/", async (req, res) => {
   const db = await dbHealthCheck();
+  const backendMidiStorage = await probeMidiStorage();
 
   // Check downstream services (non-blocking, with short timeout)
   const [stemHealth, speechHealth, midiHealth] = await Promise.allSettled([
@@ -46,9 +51,15 @@ healthRouter.get("/", async (req, res) => {
     stemHealth.status === "fulfilled" &&
     speechHealth.status === "fulfilled" &&
     midiHealth.status === "fulfilled";
+  const midiServiceHealth = midiHealth.status === "fulfilled" ? midiHealth.value?.data : null;
+  const midiSharedStorage = await getMidiSharedStorageHealth(
+    backendMidiStorage,
+    midiServiceHealth,
+  );
+  const midiStorageOk = backendMidiStorage.ok && midiSharedStorage.aligned;
 
   const payload = {
-    status: db.ok && allServicesOk ? "ok" : "degraded",
+    status: db.ok && allServicesOk && midiStorageOk ? "ok" : "degraded",
     version: pkg.version,
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     database: {
@@ -60,6 +71,11 @@ healthRouter.get("/", async (req, res) => {
       stem: serviceStatus(stemHealth),
       speech: serviceStatus(speechHealth),
       midi: serviceStatus(midiHealth),
+    },
+    storage: {
+      midi_backend: backendMidiStorage,
+      midi_service: midiServiceHealth?.storage || null,
+      midi_shared: midiSharedStorage,
     },
     circuits,
   };

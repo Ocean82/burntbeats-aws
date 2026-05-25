@@ -1,7 +1,7 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ShieldCheck, AudioWaveform, Library, Piano } from "lucide-react";
+import { ShieldCheck, Library, Piano } from "lucide-react";
 import type { PlanConfig, PricingTableType } from "../data/plans";
 import { PricingTablePreview } from "../components/PricingTablePreview";
 import { PricingTabToggle } from "../components/PricingTabToggle";

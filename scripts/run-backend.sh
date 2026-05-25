@@ -12,6 +12,11 @@ export STEM_SERVICE_URL="${STEM_SERVICE_URL:-http://127.0.0.1:5000}"
 export SPEECH_SERVICE_URL="${SPEECH_SERVICE_URL:-http://127.0.0.1:5001}"
 export MIDI_SERVICE_URL="${MIDI_SERVICE_URL:-http://127.0.0.1:5002}"
 mkdir -p "$STEM_OUTPUT_DIR" "$SPEECH_OUTPUT_DIR" "$MIDI_OUTPUT_DIR"
+if command -v realpath >/dev/null 2>&1; then
+  MIDI_OUTPUT_RESOLVED="$(realpath "$MIDI_OUTPUT_DIR" 2>/dev/null || echo "$MIDI_OUTPUT_DIR")"
+else
+  MIDI_OUTPUT_RESOLVED="$MIDI_OUTPUT_DIR"
+fi
 
 cd backend
 # Optional: load backend/.env so PORT and CORS match server (e.g. PORT=8001)
@@ -28,4 +33,8 @@ echo "Backend at http://localhost:${PORT:-3001}"
 echo "  STEM_SERVICE_URL=$STEM_SERVICE_URL"
 echo "  SPEECH_SERVICE_URL=$SPEECH_SERVICE_URL"
 echo "  MIDI_SERVICE_URL=$MIDI_SERVICE_URL"
+echo "  MIDI_OUTPUT_DIR=$MIDI_OUTPUT_DIR"
+echo "  MIDI_OUTPUT_RESOLVED=$MIDI_OUTPUT_RESOLVED"
+echo "  JOB_TOKEN_SECRET=$([ -n "${JOB_TOKEN_SECRET:-}" ] && echo enabled || echo disabled)"
+echo "  MIDI_SERVICE_API_TOKEN=$([ -n "${MIDI_SERVICE_API_TOKEN:-}" ] && echo enabled || echo disabled)"
 exec node server.js

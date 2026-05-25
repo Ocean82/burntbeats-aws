@@ -28,7 +28,7 @@ import { stemsRouter, STEM_OUTPUT_DIR } from "./routes/stems/index.js";
 import { speechRouter } from "./routes/speech/index.js";
 import { SPEECH_OUTPUT_DIR } from "./routes/speech/shared.js";
 import { midiRouter } from "./routes/midi/index.js";
-import { MIDI_OUTPUT_DIR } from "./routes/midi/shared.js";
+import { MIDI_OUTPUT_DIR, probeMidiStorage } from "./routes/midi/shared.js";
 import { stemHistoryRouter } from "./routes/stems/history.js";
 import { healthRouter } from "./routes/health.js";
 import { legalRouter } from "./routes/legal.js";
@@ -172,8 +172,13 @@ let server;
 async function main() {
   await mkdir(STEM_OUTPUT_DIR, { recursive: true });
   await mkdir(SPEECH_OUTPUT_DIR, { recursive: true });
-  await mkdir(MIDI_OUTPUT_DIR, { recursive: true });
   await mkdir(UPLOAD_TMP_DIR, { recursive: true });
+  const midiStorage = await probeMidiStorage({ createIfMissing: true });
+  if (!midiStorage.ok) {
+    throw new Error(
+      `[startup] MIDI storage probe failed: ${midiStorage.error || "Unknown error"} (${midiStorage.output_dir})`,
+    );
+  }
   server = app.listen(PORT, () => {
     console.log(`Backend listening on http://localhost:${PORT}`);
     console.log(
@@ -184,6 +189,9 @@ async function main() {
     );
     console.log(
       `MIDI_SERVICE_URL=${process.env.MIDI_SERVICE_URL || "http://127.0.0.1:5002"} MIDI_OUTPUT_DIR=${MIDI_OUTPUT_DIR}`,
+    );
+    console.log(
+      `[startup] MIDI storage probe OK: resolved=${midiStorage.resolved_output_dir}`,
     );
     console.log(
       `CORS allowed origins: ${[...getAllowedOriginSet()].join(", ")}`,
