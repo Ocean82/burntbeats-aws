@@ -133,6 +133,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libsndfile1 ffmpeg
           python -m pip install -r midi_service/requirements.txt
+          python -m pip install pytest pytest-asyncio httpx
       - name: MIDI service unit tests
         run: python -m pytest midi_service/tests -q -m "not integration"
 

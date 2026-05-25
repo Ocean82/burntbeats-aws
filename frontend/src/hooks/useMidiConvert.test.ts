@@ -1,8 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useMidiConvert } from "./useMidiConvert";
+import type { AppState } from "../store/appStore";
 
-const mockStore = {
+type MockStore = Pick<AppState, "splitResultStems" | "loadedStems">;
+
+const mockStore: MockStore = {
   splitResultStems: [],
   loadedStems: [],
 };
@@ -10,7 +13,7 @@ const mockAuthHeaders = vi.fn();
 const mockSetJobToken = vi.fn();
 
 vi.mock("../store/appStore", () => ({
-  useAppStore: (selector: (s: unknown) => unknown) =>
+  useAppStore: <T>(selector: (s: MockStore) => T) =>
     selector(mockStore),
 }));
 
