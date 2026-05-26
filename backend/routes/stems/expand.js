@@ -14,7 +14,6 @@ import {
 import { proxyFormRequest } from "../../middleware/proxy.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 
-import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
   computeExpandCost,
   findJobInputPath,
@@ -30,6 +29,7 @@ import {
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
+import { requireExpandEntitlements } from "./entitlements.js";
 
 export const expandRouter = Router();
 
@@ -56,13 +56,19 @@ expandRouter.post(
     }
     const quality = rawQuality === "balanced" ? "quality" : rawQuality;
 
+    const entitlementCheck = await requireExpandEntitlements(req);
+    if (!entitlementCheck.ok) {
+      return res
+        .status(entitlementCheck.status)
+        .json({ error: entitlementCheck.error });
+    }
+
     /** @type {string | null} */
-    let usageUserId = null;
+    let usageUserId = entitlementCheck.userId;
     let usageCost = 0;
     let usageReserved = false;
     if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH) {
       try {
-        usageUserId = await verifyClerkBearer(req);
         const inputPath = findJobInputPath(path.join(STEM_OUTPUT_DIR, jobId));
         if (!inputPath) {
           return res

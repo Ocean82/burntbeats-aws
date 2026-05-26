@@ -31,6 +31,7 @@ export interface ProcessingSettingsPanelProps {
   quality: SplitQuality;
   onQualityChange: (next: SplitQuality) => void;
   stemQualityOptions?: "speed_only" | "full";
+  canSplitFourStems?: boolean;
   canExpandToFourStems?: boolean;
 
   onSplit: (requestedStemMode: 2 | 4, isSample?: boolean) => void;

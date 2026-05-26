@@ -12,10 +12,12 @@ export interface AppSubscriptionResult {
   usageBalance: number | null;
   usageLoading: boolean;
   refetchUsage: () => void;
-  /** True when plan is "basic" (limited quality, no 4-stem, no batch). */
-  isBasicPlan: boolean;
   /** "speed_only" for basic plans, "full" otherwise. */
   stemQualityOptions: "speed_only" | "full";
+  /** Whether the user can choose a direct 4-stem split. */
+  canSplitFourStems: boolean;
+  /** Whether the user can choose paid stem quality modes. */
+  canUsePremiumStemQualities: boolean;
   /** Whether the user can expand 2→4 stems. */
   canExpandToFourStems: boolean;
   /** Whether the user can use batch queue. */
@@ -45,11 +47,14 @@ export function useAppSubscription(opts: {
 
   usePostSignupPlanCheckout(subscription);
 
-  const isBasicPlan =
-    subscription.status === "active" && subscription.plan === "basic";
-  const stemQualityOptions = isBasicPlan ? ("speed_only" as const) : ("full" as const);
-  const canExpandToFourStems = subscription.status === "active" && !isBasicPlan;
-  const canUseBatchQueue = subscription.status === "active" && !isBasicPlan;
+  const canSplitFourStems = subscription.capabilities.canSplitFourStems;
+  const canUsePremiumStemQualities =
+    subscription.capabilities.canUsePremiumStemQualities;
+  const canExpandToFourStems = subscription.capabilities.canExpandToFourStems;
+  const canUseBatchQueue = subscription.capabilities.canUseBatchQueue;
+  const stemQualityOptions = canUsePremiumStemQualities
+    ? ("full" as const)
+    : ("speed_only" as const);
 
   return useMemo(
     () => ({
@@ -57,8 +62,9 @@ export function useAppSubscription(opts: {
       usageBalance,
       usageLoading,
       refetchUsage,
-      isBasicPlan,
       stemQualityOptions,
+      canSplitFourStems,
+      canUsePremiumStemQualities,
       canExpandToFourStems,
       canUseBatchQueue,
     }),
@@ -67,8 +73,9 @@ export function useAppSubscription(opts: {
       usageBalance,
       usageLoading,
       refetchUsage,
-      isBasicPlan,
       stemQualityOptions,
+      canSplitFourStems,
+      canUsePremiumStemQualities,
       canExpandToFourStems,
       canUseBatchQueue,
     ],

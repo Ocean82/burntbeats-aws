@@ -14,14 +14,18 @@ interface UseStemSplittingArgs {
   subscription: UseSubscriptionResult;
   stopPreview: () => void;
   splitQuality: SplitQuality;
-  isBasicPlan: boolean;
+  canSplitFourStems: boolean;
+  canExpandToFourStems: boolean;
+  canUsePremiumStemQualities: boolean;
 }
 
 export function useStemSplitting({
   subscription,
   stopPreview,
   splitQuality,
-  isBasicPlan,
+  canSplitFourStems,
+  canExpandToFourStems,
+  canUsePremiumStemQualities,
 }: UseStemSplittingArgs) {
   const setUploadState = useAppStore((s) => s.setUploadState);
   const setSplitError = useAppStore((s) => s.setSplitError);
@@ -39,10 +43,10 @@ export function useStemSplitting({
 
   // Force quality to "speed" on basic plan
   useEffect(() => {
-    if (isBasicPlan) {
+    if (!canUsePremiumStemQualities) {
       setUploadState((prev) => (prev.quality === "speed" ? prev : { ...prev, quality: "speed" }));
     }
-  }, [isBasicPlan, setUploadState]);
+  }, [canUsePremiumStemQualities, setUploadState]);
 
   const handleFile = useCallback((file: File | null) => {
     if (!file) {
@@ -162,7 +166,7 @@ export function useStemSplitting({
       // Premium/Studio: one server job for 4 stems (hybrid MDX + PyTorch Demucs / SCNet per backend).
       // Basic: 2-stem only.
       const stemsArg =
-        requestedStemMode === 4 && !isBasicPlan ? ("4" as const) : ("2" as const);
+        requestedStemMode === 4 && canSplitFourStems ? ("4" as const) : ("2" as const);
       trackEvent("split_started", {
         requested_stems: requestedStemMode,
         actual_stems: Number(stemsArg),
@@ -229,10 +233,16 @@ export function useStemSplitting({
     } finally {
       setUploadState((prev) => ({ ...prev, isSplitting: false, isUploading: false, uploadProgress: 0 }));
     }
-  }, [isBasicPlan, splitQuality, stopPreview, subscription, setUploadState]);
+  }, [
+    canSplitFourStems,
+    splitQuality,
+    stopPreview,
+    subscription,
+    setUploadState,
+  ]);
 
   const triggerExpand = useCallback(async () => {
-    if (isBasicPlan) {
+    if (!canExpandToFourStems) {
       setSplitError("4-stem expand requires Premium or Studio.");
       trackEvent("expand_blocked_basic_plan");
       return;
@@ -269,7 +279,7 @@ export function useStemSplitting({
     } finally {
       setUploadState((prev) => ({ ...prev, isExpanding: false }));
     }
-  }, [splitQuality, isBasicPlan, setSplitError, setUploadState]);
+  }, [splitQuality, canExpandToFourStems, setSplitError, setUploadState]);
 
   return { handleFile, handleLoadStems, removeLoadedStem, triggerSplit, triggerExpand };
 }

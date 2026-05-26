@@ -210,7 +210,11 @@ export function PricingPage({
           pricingType={pricingTab}
           onSelectPlan={handleSelectPlan}
           ctaButtonRenderer={renderCheckoutCTA}
-          currentPlan={subscription.status === "active" ? subscription.plan : null}
+          currentPlan={
+            subscription.status === "active" && subscription.plan !== "unknown"
+              ? subscription.plan
+              : null
+          }
         />
       </section>
 

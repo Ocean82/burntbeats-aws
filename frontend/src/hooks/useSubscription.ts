@@ -63,7 +63,44 @@ function classifySubscriptionFetchFailure(res: Response): string {
 }
 
 export type Plan = "basic" | "premium" | "studio" | "topup" | "single";
+export type ServerPlan = Plan | "unknown";
 export type SubscriptionStatus = "loading" | "active" | "inactive" | "error";
+export type EntitlementSource = "subscription" | "usage_tokens" | "none";
+
+export interface SubscriptionCapabilities {
+  canSplitFourStems: boolean;
+  canExpandToFourStems: boolean;
+  canUsePremiumStemQualities: boolean;
+  canUseBatchQueue: boolean;
+}
+
+export const NO_SUBSCRIPTION_CAPABILITIES: SubscriptionCapabilities = {
+  canSplitFourStems: false,
+  canExpandToFourStems: false,
+  canUsePremiumStemQualities: false,
+  canUseBatchQueue: false,
+};
+
+function premiumCapabilities(): SubscriptionCapabilities {
+  return {
+    canSplitFourStems: true,
+    canExpandToFourStems: true,
+    canUsePremiumStemQualities: true,
+    canUseBatchQueue: true,
+  };
+}
+
+function normalizeCapabilities(
+  value: Partial<SubscriptionCapabilities> | null | undefined,
+): SubscriptionCapabilities {
+  return {
+    canSplitFourStems: value?.canSplitFourStems === true,
+    canExpandToFourStems: value?.canExpandToFourStems === true,
+    canUsePremiumStemQualities: value?.canUsePremiumStemQualities === true,
+    canUseBatchQueue: value?.canUseBatchQueue === true,
+  };
+}
+
 type CheckoutSource =
   | "split_gate"
   | "paywall_banner"
@@ -73,8 +110,10 @@ type CheckoutSource =
 
 export interface UseSubscriptionResult {
   status: SubscriptionStatus;
-  /** Active plan name, e.g. "basic" | "premium" | "studio" — null if inactive */
-  plan: Plan | null;
+  /** Active plan name from the backend — null if inactive. */
+  plan: ServerPlan | null;
+  entitlementSource: EntitlementSource;
+  capabilities: SubscriptionCapabilities;
   /** Non-null when a checkout or portal action fails — display to the user. */
   billingError: string | null;
   /** Redirect to Stripe Checkout for the given plan. */
@@ -93,8 +132,14 @@ export function useSubscription(): UseSubscriptionResult {
   const [status, setStatus] = useState<SubscriptionStatus>(
     localFullApp ? "active" : "loading",
   );
-  const [plan, setPlan] = useState<Plan | null>(
+  const [plan, setPlan] = useState<ServerPlan | null>(
     localFullApp ? "premium" : null,
+  );
+  const [entitlementSource, setEntitlementSource] = useState<EntitlementSource>(
+    localFullApp ? "subscription" : "none",
+  );
+  const [capabilities, setCapabilities] = useState<SubscriptionCapabilities>(
+    localFullApp ? premiumCapabilities() : NO_SUBSCRIPTION_CAPABILITIES,
   );
   const [billingError, setBillingError] = useState<string | null>(null);
 
@@ -102,11 +147,15 @@ export function useSubscription(): UseSubscriptionResult {
     if (localFullApp) {
       setStatus("active");
       setPlan("premium");
+      setEntitlementSource("subscription");
+      setCapabilities(premiumCapabilities());
       return;
     }
     if (!isSignedIn) {
       setStatus("inactive");
       setPlan(null);
+      setEntitlementSource("none");
+      setCapabilities(NO_SUBSCRIPTION_CAPABILITIES);
       setBillingError(null);
       return;
     }
@@ -134,11 +183,24 @@ export function useSubscription(): UseSubscriptionResult {
         }
         setStatus("inactive");
         setPlan(null);
+        setEntitlementSource("none");
+        setCapabilities(NO_SUBSCRIPTION_CAPABILITIES);
         return;
       }
-      const data = (await res.json()) as { active: boolean; plan: Plan | null };
+      const data = (await res.json()) as {
+        active: boolean;
+        plan: ServerPlan | null;
+        entitlementSource?: EntitlementSource;
+        capabilities?: Partial<SubscriptionCapabilities>;
+      };
       setStatus(data.active ? "active" : "inactive");
       setPlan(data.active ? data.plan : null);
+      setEntitlementSource(data.active ? (data.entitlementSource ?? "none") : "none");
+      setCapabilities(
+        data.active
+          ? normalizeCapabilities(data.capabilities)
+          : NO_SUBSCRIPTION_CAPABILITIES,
+      );
       setBillingError(null);
     } catch (err) {
       trackEvent("subscription_fetch_failed", {
@@ -148,6 +210,8 @@ export function useSubscription(): UseSubscriptionResult {
       });
       setStatus("error");
       setPlan(null);
+      setEntitlementSource("none");
+      setCapabilities(NO_SUBSCRIPTION_CAPABILITIES);
       setBillingError(
         "We could not reach billing services. Please check your connection and try again.",
       );
@@ -273,6 +337,8 @@ export function useSubscription(): UseSubscriptionResult {
   return {
     status,
     plan,
+    entitlementSource,
+    capabilities,
     billingError,
     startCheckout,
     openPortal,
