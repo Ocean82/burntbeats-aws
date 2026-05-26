@@ -4,7 +4,7 @@ import { cn } from "../../utils/cn";
 export interface StemCountSelectorProps {
   requestedStemMode: 2 | 4;
   onStemModeChange: (mode: 2 | 4) => void;
-  canExpandToFourStems: boolean;
+  canSplitFourStems: boolean;
   isSplitting: boolean;
   splitResultStemsLength: number;
   onUpgradeToPremium?: () => void;
@@ -14,7 +14,7 @@ export interface StemCountSelectorProps {
 export function StemCountSelector({
   requestedStemMode,
   onStemModeChange,
-  canExpandToFourStems,
+  canSplitFourStems,
   isSplitting,
   splitResultStemsLength,
   onUpgradeToPremium,
@@ -47,7 +47,7 @@ export function StemCountSelector({
           disabled={isSplitting}
           onChange={(e) => {
             const val = parseInt(e.target.value) as 2 | 4;
-            if (val === 4 && !canExpandToFourStems && onUpgradeToPremium) {
+            if (val === 4 && !canSplitFourStems && onUpgradeToPremium) {
               onUpgradeToPremium();
               return;
             }
@@ -55,18 +55,18 @@ export function StemCountSelector({
           }}
           className="w-20 accent-primary-500 disabled:opacity-40"
           aria-label="Number of stems"
-          aria-valuetext={`${requestedStemMode} stems${requestedStemMode === 4 && !canExpandToFourStems ? " (requires Premium)" : ""}`}
+          aria-valuetext={`${requestedStemMode} stems${requestedStemMode === 4 && !canSplitFourStems ? " (requires Premium)" : ""}`}
         />
         <div className="flex w-20 justify-between text-meta text-muted-foreground font-mono">
           <span>2</span>
           <span
             className={cn(
               requestedStemMode === 4 ? "text-primary-300" : "",
-              !canExpandToFourStems && "inline-flex items-center gap-2xs",
+              !canSplitFourStems && "inline-flex items-center gap-2xs",
             )}
           >
             4
-            {!canExpandToFourStems && (
+            {!canSplitFourStems && (
               <Lock
                 className="h-3 w-3 text-muted-foreground"
                 aria-hidden="true"
@@ -74,7 +74,7 @@ export function StemCountSelector({
             )}
           </span>
         </div>
-        {!canExpandToFourStems && (
+        {!canSplitFourStems && (
           <span className="text-meta font-medium uppercase tracking-wide text-muted-foreground">
             4-stem requires Premium/Studio
           </span>

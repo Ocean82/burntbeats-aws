@@ -34,6 +34,10 @@ import {
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
+import {
+  isPremiumSplitRequest,
+  requireSplitEntitlements,
+} from "./entitlements.js";
 
 export const splitRouter = Router();
 
@@ -106,6 +110,21 @@ splitRouter.post(
       });
     }
     const quality = rawQuality;
+    /** @type {string | null} */
+    let entitlementUserId = null;
+    if (isPremiumSplitRequest(stems, quality)) {
+      const entitlementCheck = await requireSplitEntitlements(req, {
+        stems,
+        quality,
+      });
+      if (!entitlementCheck.ok) {
+        await unlinkPromise(filePath).catch(() => {});
+        return res
+          .status(entitlementCheck.status)
+          .json({ error: entitlementCheck.error });
+      }
+      entitlementUserId = entitlementCheck.userId;
+    }
 
     const scanResult = await scanUploadedFile(filePath);
     if (!scanResult.ok) {
@@ -141,6 +160,7 @@ splitRouter.post(
     if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH && !isSample) {
       try {
         usageUserId =
+          entitlementUserId ||
           /** @type {any} */ (req)._usageUserId ||
           (await verifyClerkBearer(req));
         const durationSec = await getAudioDurationSeconds(filePath);

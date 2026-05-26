@@ -3,89 +3,87 @@
  * Billing subscription and usage routes.
  *
  * Routes:
- *   GET /subscription — { active, plan } for current user
+ *   GET /subscription — { active, plan, entitlementSource, capabilities } for current user
  *   GET /usage        — { balance, periodEnd }
  *   GET /balance      — backward-compatible alias for /usage
  */
 import express from "express";
-import { verifyClerkBearer, getClerkClient } from "../clerkAuth.js";
+import { verifyClerkBearer } from "../clerkAuth.js";
 import { getUsageBalance } from "../usageTokens.js";
 import { publicErrorMessage } from "../clientSafeError.js";
-import { getStripe } from "./stripeClient.js";
-import { getActiveSubscription, planFromSubscription } from "./stripeCustomer.js";
+import { resolveEntitlementStateForUser } from "./entitlements.js";
 
-export const subscriptionRouter = express.Router();
+/**
+ * @param {{
+ *   verifyClerkBearer?: typeof verifyClerkBearer;
+ *   resolveEntitlementStateForUser?: typeof resolveEntitlementStateForUser;
+ *   getUsageBalance?: typeof getUsageBalance;
+ * }} [deps]
+ */
+export function createSubscriptionRouter(deps = {}) {
+  const router = express.Router();
+  const readUserId = deps.verifyClerkBearer || verifyClerkBearer;
+  const readEntitlements =
+    deps.resolveEntitlementStateForUser || resolveEntitlementStateForUser;
+  const readUsageBalance = deps.getUsageBalance || getUsageBalance;
 
-// ── GET /subscription ────────────────────────────────────────────────────────
-subscriptionRouter.get("/subscription", async (req, res) => {
-  try {
-    const userId = await verifyClerkBearer(req);
-    const clerk = getClerkClient();
-    if (!clerk) return res.json({ active: false, plan: null });
-
-    const stripe = getStripe();
-    const user = await clerk.users.getUser(userId);
-    const customerId = /** @type {string|undefined} */ (
-      user.publicMetadata?.stripeCustomerId
-    );
-    if (stripe && customerId) {
-      const sub = await getActiveSubscription(customerId);
-      if (sub) {
-        return res.json({ active: true, plan: planFromSubscription(sub) });
-      }
-    }
-
-    const { balance } = await getUsageBalance(userId);
-    if (balance > 0) {
+  // ── GET /subscription ──────────────────────────────────────────────────────
+  router.get("/subscription", async (req, res) => {
+    try {
+      const userId = await readUserId(req);
+      const entitlements = await readEntitlements(userId);
       return res.json({
-        active: true,
-        plan: "basic",
-        entitlement: "usage_tokens",
+        active: entitlements.plan !== null,
+        plan: entitlements.plan,
+        entitlementSource: entitlements.entitlementSource,
+        capabilities: entitlements.capabilities,
       });
+    } catch (/** @type {any} */ err) {
+      console.error("[billing/subscription] error:", err.message);
+      const msg = publicErrorMessage(
+        typeof err?.message === "string" ? err.message : "",
+        "Unable to load subscription.",
+        "[billing/subscription]",
+      );
+      return res.status(err.status || 500).json({ error: msg });
     }
+  });
 
-    return res.json({ active: false, plan: null });
-  } catch (/** @type {any} */ err) {
-    console.error("[billing/subscription] error:", err.message);
-    const msg = publicErrorMessage(
-      typeof err?.message === "string" ? err.message : "",
-      "Unable to load subscription.",
-      "[billing/subscription]",
-    );
-    return res.status(err.status || 500).json({ error: msg });
-  }
-});
+  // ── GET /usage ─────────────────────────────────────────────────────────────
+  router.get("/usage", async (req, res) => {
+    try {
+      const userId = await readUserId(req);
+      const { balance, periodEnd } = await readUsageBalance(userId);
+      return res.json({ balance, periodEnd });
+    } catch (/** @type {any} */ err) {
+      console.error("[billing/usage] error:", err.message);
+      const msg = publicErrorMessage(
+        typeof err?.message === "string" ? err.message : "",
+        "Unable to load usage.",
+        "[billing/usage]",
+      );
+      return res.status(err.status || 500).json({ error: msg });
+    }
+  });
 
-// ── GET /usage ───────────────────────────────────────────────────────────────
-subscriptionRouter.get("/usage", async (req, res) => {
-  try {
-    const userId = await verifyClerkBearer(req);
-    const { balance, periodEnd } = await getUsageBalance(userId);
-    return res.json({ balance, periodEnd });
-  } catch (/** @type {any} */ err) {
-    console.error("[billing/usage] error:", err.message);
-    const msg = publicErrorMessage(
-      typeof err?.message === "string" ? err.message : "",
-      "Unable to load usage.",
-      "[billing/usage]",
-    );
-    return res.status(err.status || 500).json({ error: msg });
-  }
-});
+  // ── GET /balance (backward-compatible alias) ───────────────────────────────
+  router.get("/balance", async (req, res) => {
+    try {
+      const userId = await readUserId(req);
+      const { balance, periodEnd } = await readUsageBalance(userId);
+      return res.json({ balance, periodEnd });
+    } catch (/** @type {any} */ err) {
+      console.error("[billing/balance] error:", err.message);
+      const msg = publicErrorMessage(
+        typeof err?.message === "string" ? err.message : "",
+        "Unable to load usage.",
+        "[billing/balance]",
+      );
+      return res.status(err.status || 500).json({ error: msg });
+    }
+  });
 
-// ── GET /balance (backward-compatible alias) ─────────────────────────────────
-subscriptionRouter.get("/balance", async (req, res) => {
-  try {
-    const userId = await verifyClerkBearer(req);
-    const { balance, periodEnd } = await getUsageBalance(userId);
-    return res.json({ balance, periodEnd });
-  } catch (/** @type {any} */ err) {
-    console.error("[billing/balance] error:", err.message);
-    const msg = publicErrorMessage(
-      typeof err?.message === "string" ? err.message : "",
-      "Unable to load usage.",
-      "[billing/balance]",
-    );
-    return res.status(err.status || 500).json({ error: msg });
-  }
-});
+  return router;
+}
+
+export const subscriptionRouter = createSubscriptionRouter();

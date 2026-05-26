@@ -11,6 +11,13 @@ describe("PricingPage", () => {
         subscription={{
           status: "inactive",
           plan: null,
+          entitlementSource: "none",
+          capabilities: {
+            canSplitFourStems: false,
+            canExpandToFourStems: false,
+            canUsePremiumStemQualities: false,
+            canUseBatchQueue: false,
+          },
           billingError: null,
           startCheckout,
           openPortal: vi.fn(() => Promise.resolve()),
@@ -36,6 +43,13 @@ describe("PricingPage", () => {
         subscription={{
           status: "active",
           plan: "premium",
+          entitlementSource: "subscription",
+          capabilities: {
+            canSplitFourStems: true,
+            canExpandToFourStems: true,
+            canUsePremiumStemQualities: true,
+            canUseBatchQueue: true,
+          },
           billingError: null,
           startCheckout,
           openPortal: vi.fn(() => Promise.resolve()),
@@ -58,6 +72,13 @@ describe("PricingPage", () => {
         subscription={{
           status: "inactive",
           plan: null,
+          entitlementSource: "none",
+          capabilities: {
+            canSplitFourStems: false,
+            canExpandToFourStems: false,
+            canUsePremiumStemQualities: false,
+            canUseBatchQueue: false,
+          },
           billingError: null,
           startCheckout: vi.fn(() => Promise.resolve()),
           openPortal: vi.fn(() => Promise.resolve()),

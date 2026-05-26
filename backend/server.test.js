@@ -108,16 +108,16 @@ test("POST /api/stems/split forwards X-Stem-Service-Token to stem service", asyn
   assert.equal(lastStemServiceTokenHeader, process.env.STEM_SERVICE_API_TOKEN);
 });
 
-test("POST /api/stems/expand forwards X-Stem-Service-Token to stem service", async () => {
+test("POST /api/stems/expand requires account auth before premium expand", async () => {
   lastStemServiceTokenHeader = undefined;
   const res = await request
     .post("/api/stems/expand")
     .set("x-api-key", process.env.API_KEY)
     .send({ job_id: randomUUID(), quality: "quality" })
-    .expect(202);
+    .expect(401);
 
-  assert.equal(typeof res.body.job_id, "string");
-  assert.equal(lastStemServiceTokenHeader, process.env.STEM_SERVICE_API_TOKEN);
+  assert.equal(res.body.error, "Unable to verify your account. Please sign in again.");
+  assert.equal(lastStemServiceTokenHeader, undefined);
 });
 
 test("DELETE /api/stems/:job_id forwards X-Stem-Service-Token to stem service", async () => {

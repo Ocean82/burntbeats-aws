@@ -35,6 +35,7 @@ export function ProcessingSettingsPanel({
   quality,
   onQualityChange,
   stemQualityOptions = "full",
+  canSplitFourStems = true,
   canExpandToFourStems = true,
   onSplit,
   isSplitting,
@@ -95,10 +96,10 @@ export function ProcessingSettingsPanel({
   }, [quality, onQualityChange]);
 
   useEffect(() => {
-    if (!canExpandToFourStems && requestedStemMode !== 2)
+    if (!canSplitFourStems && requestedStemMode !== 2)
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp stem mode when expansion unavailable
       setRequestedStemMode(2);
-  }, [canExpandToFourStems, requestedStemMode]);
+  }, [canSplitFourStems, requestedStemMode]);
 
   const showUsageRow =
     !subscriptionInactive &&
@@ -267,7 +268,7 @@ export function ProcessingSettingsPanel({
         <StemCountSelector
           requestedStemMode={requestedStemMode}
           onStemModeChange={setRequestedStemMode}
-          canExpandToFourStems={canExpandToFourStems}
+          canSplitFourStems={canSplitFourStems}
           isSplitting={isSplitting}
           splitResultStemsLength={splitResultStemsLength}
           onUpgradeToPremium={onUpgradeToPremium}

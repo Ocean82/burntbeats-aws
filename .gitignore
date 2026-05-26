@@ -65,6 +65,7 @@ dist/
 .kiro/
 .claude
 .impeccable/
+.worktrees/
 .idea/
 .vscode/
 .vs/

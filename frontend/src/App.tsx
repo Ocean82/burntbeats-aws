@@ -143,8 +143,9 @@ export function App() {
     subscription,
     usageBalance,
     usageLoading,
-    isBasicPlan,
     stemQualityOptions,
+    canSplitFourStems,
+    canUsePremiumStemQualities,
     canExpandToFourStems,
     canUseBatchQueue,
   } = useAppSubscription({
@@ -152,8 +153,8 @@ export function App() {
     splitResultStemsLength: splitResultStems.length,
   });
   const splitQuality = useMemo(
-    () => (isBasicPlan ? "speed" : quality),
-    [isBasicPlan, quality],
+    () => (canUsePremiumStemQualities ? quality : "speed"),
+    [canUsePremiumStemQualities, quality],
   );
 
   // ── Stem data state ───────────────────────────────────────────────────────
@@ -237,7 +238,9 @@ export function App() {
     subscription,
     stopPreview,
     splitQuality,
-    isBasicPlan,
+    canSplitFourStems,
+    canExpandToFourStems,
+    canUsePremiumStemQualities,
   });
 
   // ── All stems (split + loaded) for mixer ───────────────────────────────────
@@ -730,7 +733,7 @@ export function App() {
         clearCompletedFromQueue={clearCompletedFromQueue}
         canUseBatchQueue={canUseBatchQueue}
         processNextInQueue={processNextInQueue}
-        canExpandToFourStems={canExpandToFourStems}
+        canSplitFourStems={canSplitFourStems}
         splitQuality={splitQuality}
         setUploadState={setUploadState}
         setSplitError={setSplitError}
@@ -845,6 +848,7 @@ export function App() {
                 onQualityChange: (next) =>
                   setUploadState((prev) => ({ ...prev, quality: next })),
                 stemQualityOptions,
+                canSplitFourStems,
                 canExpandToFourStems,
                 canUseBatchQueue,
                 onUpgradeToPremium: () =>

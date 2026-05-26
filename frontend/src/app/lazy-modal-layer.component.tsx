@@ -58,7 +58,7 @@ interface LazyModalLayerProps {
     onError: (msg: string) => void,
     onJobId?: (jobId: string) => void,
   ) => Promise<void>;
-  canExpandToFourStems: boolean;
+  canSplitFourStems: boolean;
   splitQuality: SplitQuality;
   setUploadState: AppState["setUploadState"];
   setSplitError: (msg: string | null) => void;
@@ -91,7 +91,7 @@ export function LazyModalLayer({
   clearCompletedFromQueue,
   canUseBatchQueue,
   processNextInQueue,
-  canExpandToFourStems,
+  canSplitFourStems,
   splitQuality,
   setUploadState,
   setSplitError,
@@ -154,7 +154,7 @@ export function LazyModalLayer({
               allowProcess={canUseBatchQueue}
               onProcessQueue={() =>
                 void processNextInQueue(
-                  canExpandToFourStems ? 4 : 2,
+                  canSplitFourStems ? 4 : 2,
                   splitQuality,
                   (stems) => {
                     onResetStemMediaState?.();
