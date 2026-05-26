@@ -16,19 +16,13 @@ from stem_service.config.paths import (
 )
 from stem_service.config.device import DEMUCS_SEGMENT_SEC
 
-# 4-stem: FOUR_STEM_BACKEND=auto tries PyTorch SCNet, ONNX, then Demucs hybrid.
-FOUR_STEM_BACKEND = os.environ.get("FOUR_STEM_BACKEND", "hybrid").strip().lower()
-if FOUR_STEM_BACKEND not in ("auto", "hybrid"):
-    FOUR_STEM_BACKEND = "hybrid"
+# 4-stem routing is deterministic in the CPU-only pipeline.
+FOUR_STEM_BACKEND = "hybrid"
 
 _HTDEMUCS_FT_MODEL_PREFIXES = ("f7e0c4bc", "d12395a8", "92cfc3b6", "04573f0d")
 DEMUCS_QUALITY_BAG_FAST_FT_NAME = "04573f0d-f3cf25b2__29d4388e"
 DEMUCS_QUALITY_BAG_FAST_FT_YAML = (
     DEMUCS_EXTRA_MODELS_DIR / f"{DEMUCS_QUALITY_BAG_FAST_FT_NAME}.yaml"
-)
-DEMUCS_QUALITY_BAG_BACKUP_NAME = "04573f0d-f3cf25b2__2aad324b"
-DEMUCS_QUALITY_BAG_BACKUP_YAML = (
-    DEMUCS_EXTRA_MODELS_DIR / f"{DEMUCS_QUALITY_BAG_BACKUP_NAME}.yaml"
 )
 DEMUCS_SPEED_4STEM_RANK28_REPO = DEMUCS_EXTRA_MODELS_DIR / "speed_4stem_rank28"
 DEMUCS_SPEED_4STEM_RANK29_REPO = DEMUCS_EXTRA_MODELS_DIR / "speed_4stem_rank29"
@@ -38,10 +32,8 @@ DEMUCS_SPEED_4STEM_CHECKPOINTS: tuple[tuple[str, str, str], ...] = (
     ("speed_4stem_rank28", "cfa93e08-61801ae1.th", "cfa93e08"),
 )
 DEMUCS_QUALITY_4STEM_RANK1_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank1"
-DEMUCS_QUALITY_4STEM_RANK2_REPO = DEMUCS_EXTRA_MODELS_DIR / "quality_4stem_rank2"
 DEMUCS_QUALITY_4STEM_CHECKPOINTS: tuple[tuple[str, str, str], ...] = (
     ("quality_4stem_rank1", "04573f0d-f3cf25b2__29d4388e.th", "04573f0d"),
-    ("quality_4stem_rank2", "04573f0d-f3cf25b2__2aad324b.th", "04573f0d"),
 )
 
 DEMUCS_QUALITY_BAG = (os.environ.get("DEMUCS_QUALITY_BAG", "single") or "single").strip()
@@ -108,7 +100,6 @@ def _auto_quality_bag_candidates() -> list[tuple[str, Path]]:
     ft_yaml = _htdemucs_ft_yaml_path()
     c: list[tuple[str, Path]] = [
         (DEMUCS_QUALITY_BAG_FAST_FT_NAME, DEMUCS_QUALITY_BAG_FAST_FT_YAML),
-        (DEMUCS_QUALITY_BAG_BACKUP_NAME, DEMUCS_QUALITY_BAG_BACKUP_YAML),
     ]
     if ft_yaml is not None:
         c.append(("htdemucs_ft", ft_yaml))
@@ -195,7 +186,7 @@ def demucs_speed_4stem_configs() -> list[tuple[str, Path, int, str, Path]]:
 
 def demucs_quality_4stem_configs() -> list[tuple[str, Path, int, str, Path]]:
     """
-    Single-checkpoint 4-stem quality (rank1 repo then rank2).
+    Deterministic single-checkpoint 4-stem quality.
     (demucs_n, repo, segment_sec, output_subdir, checkpoint_path).
     """
     out: list[tuple[str, Path, int, str, Path]] = []

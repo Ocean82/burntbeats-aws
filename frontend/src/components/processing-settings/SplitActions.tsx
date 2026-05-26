@@ -17,19 +17,16 @@ export interface SplitActionsProps {
   isUploading: boolean;
   queuePosition: number | null;
   splitElapsedSeconds?: number | null;
+  splitStageLabel?: string | null;
   uploadDurationSec?: number | null;
   splitResultStemsLength: number;
   onOpenWaitingGame?: () => void;
   hideSampleToggle?: boolean;
-  isExpanding: boolean;
-  onExpand: () => void;
-  canExpandToFourStems: boolean;
-  splitError: string | null;
   canUseBatchQueue: boolean;
   onAddToQueue: () => void;
 }
 
-/** Split button, Try-for-free toggle, progress bar, queue button, and expand button. */
+/** Split button, Try-for-free toggle, progress bar, and queue button. */
 export function SplitActions({
   uploadedFile,
   requestedStemMode,
@@ -42,12 +39,9 @@ export function SplitActions({
   isUploading,
   queuePosition,
   splitElapsedSeconds = null,
+  splitStageLabel = null,
   uploadDurationSec = null,
   splitResultStemsLength,
-  isExpanding,
-  onExpand,
-  canExpandToFourStems,
-  splitError,
   canUseBatchQueue,
   onAddToQueue,
   onOpenWaitingGame,
@@ -66,6 +60,7 @@ export function SplitActions({
         elapsedSeconds: splitElapsedSeconds,
         uploadDurationSec,
         stemCount,
+        progressStageLabel: splitStageLabel,
       }),
     [
       isUploading,
@@ -75,6 +70,7 @@ export function SplitActions({
       splitElapsedSeconds,
       uploadDurationSec,
       stemCount,
+      splitStageLabel,
     ],
   );
   // Announce progress at meaningful milestones to avoid spamming screen readers
@@ -82,12 +78,20 @@ export function SplitActions({
     if (!isSplitting) return null;
     if (isUploading) return `Uploading file: ${Math.round(uploadProgress)}% complete`;
     if (queuePosition != null) return `Queued at position ${queuePosition}`;
+    if (splitStageLabel) return splitStageLabel;
     if (splitProgress >= 100) return "Split complete!";
     if (splitProgress >= 75) return "Splitting audio: 75% complete";
     if (splitProgress >= 50) return "Splitting audio: 50% complete";
     if (splitProgress >= 25) return "Splitting audio: 25% complete";
     return "Splitting audio, please wait…";
-  }, [isSplitting, isUploading, uploadProgress, queuePosition, splitProgress]);
+  }, [
+    isSplitting,
+    isUploading,
+    uploadProgress,
+    queuePosition,
+    splitProgress,
+    splitStageLabel,
+  ]);
 
   return (
     <>
@@ -114,7 +118,7 @@ export function SplitActions({
                 ? "Upload a new file to run separation again. Each upload is a new job."
                 : undefined
             }
-            aria-busy={isSplitting}
+            aria-busy={isSplitting ? "true" : "false"}
             className="fire-button tap-feedback min-h-[44px] shrink-0 inline-flex items-center justify-center gap-xs px-lg py-sm text-sm font-semibold focus-visible:outline-none disabled:cursor-not-allowed"
           >
             {isSplitting ? (
@@ -138,7 +142,7 @@ export function SplitActions({
               type="button"
               onClick={onToggleSample}
               disabled={isSplitting || splitResultStemsLength > 0}
-              aria-pressed={isSample}
+              aria-pressed={isSample ? "true" : "false"}
               title="Process only the first 60 seconds — free, no tokens used"
               className={cn(
                 "tap-feedback min-h-[44px] inline-flex items-center gap-xs rounded-full border px-md py-xs text-xs font-semibold transition-[color,background-color,box-shadow,border-color] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]",
@@ -258,27 +262,6 @@ export function SplitActions({
         </div>
       </details>
 
-      {/* Expanding indicator */}
-      {isExpanding && (
-        <span className="shrink-0 text-xs text-primary-200/80">
-          Expanding to 4 stems…
-        </span>
-      )}
-
-      {/* Manual expand */}
-      {canExpandToFourStems &&
-        splitResultStemsLength === 2 &&
-        !isExpanding &&
-        !isSplitting &&
-        !splitError && (
-          <button
-            type="button"
-            onClick={() => onExpand()}
-            className="ghost-button tap-feedback shrink-0 min-h-[44px] rounded-xl border border-border px-sm py-xs text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none"
-          >
-            Expand → 4 stems
-          </button>
-        )}
     </>
   );
 }

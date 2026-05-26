@@ -13,15 +13,10 @@ import time
 from pathlib import Path
 from typing import Any
 
-from stem_service.config import (
-    QUALITY_ULTRA,
-    STEM_BACKEND,
-)
 from stem_service.hybrid import (
-    run_4stem_single_pass_or_hybrid,
-    run_demucs_only_2stem,
     run_expand_to_4stem,
     run_hybrid_2stem,
+    run_hybrid_4stem,
 )
 from stem_service.job_queue import (
     JobCancelledError,
@@ -33,15 +28,15 @@ from stem_service.job_utils import (
     OUTPUT_BASE,
     PROGRESS_FILENAME,
     append_metrics_log,
+    build_progress_payload,
     make_job_logger,
+    resolve_mode_name,
     safe_job_path,
-    schedule_s3_upload,
+    schedule_completion_artifacts,
     write_progress,
 )
 from stem_service.runtime_info import get_stem_runtime_versions
 from stem_service.sentry_init import job_span
-from stem_service.split import copy_stems_to_flat_dir, run_demucs
-from stem_service.ultra import run_ultra_2stem, run_ultra_4stem
 from stem_service.vocal_stage1 import get_2stem_stage1_preview
 
 logger = logging.getLogger(__name__)
@@ -91,14 +86,7 @@ def run_separation_sync(
     """Blocking separation; writes progress at stages. Called from worker thread."""
     correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
 
-    # Tiered Stage-1 model lane used by vocal/instrumental ONNX selectors.
-    # "balanced" is merged into "quality" — both use the same model waterfall.
-    if quality_mode == QUALITY_ULTRA:
-        model_tier = "quality"
-    elif prefer_speed:
-        model_tier = "fast"
-    else:
-        model_tier = "quality"
+    model_tier = "fast" if prefer_speed else "quality"
 
     # Register job for tracking (thread-safe)
     register_running_job(job_id)
@@ -139,29 +127,18 @@ def run_separation_sync(
         job_log.info("progress=%d%%  elapsed=%.1fs", pct, elapsed)
         write_progress(
             out_dir,
-            {
-                "status": "running",
-                "progress": pct,
-                "quality": quality_mode,
-                "elapsed_seconds": round(elapsed, 1),
-            },
+            build_progress_payload(
+                status="running",
+                progress=pct,
+                stem_count=stem_count,
+                quality_mode=quality_mode,
+                elapsed_seconds=round(elapsed, 1),
+            ),
         )
 
     models_used: list[str] = []
 
-    mode_name = (
-        "2_stem_ultra"
-        if quality_mode == QUALITY_ULTRA and stem_count == 2
-        else "4_stem_ultra"
-        if quality_mode == QUALITY_ULTRA and stem_count == 4
-        else "2_stem_speed"
-        if stem_count == 2 and prefer_speed
-        else "2_stem_quality"
-        if stem_count == 2
-        else "4_stem_speed"
-        if prefer_speed
-        else "4_stem_quality"
-    )
+    mode_name = resolve_mode_name(stem_count, quality_mode)
 
     try:
         _span_stack = contextlib.ExitStack()
@@ -174,89 +151,48 @@ def run_separation_sync(
             )
         )
 
-        # Ultra quality mode
-        if quality_mode == QUALITY_ULTRA:
-            job_log.info("Stage: ultra quality")
-            if stem_count == 2:
-                stem_list, models_used = run_ultra_2stem(
-                    input_path,
-                    out_dir,
-                    progress_callback=on_progress,
-                )
-            else:
-                stem_list, models_used = run_ultra_4stem(
-                    input_path,
-                    out_dir,
-                    progress_callback=on_progress,
-                )
-        # Standard hybrid or demucs_only mode
-        elif STEM_BACKEND == "hybrid":
-            if stem_count == 2:
-                path_kind, stage1_models = get_2stem_stage1_preview(
-                    prefer_speed=prefer_speed,
-                    model_tier=model_tier,
-                    stem_backend=STEM_BACKEND,
-                )
-                job_log.info(
-                    "Stage: hybrid 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
-                    prefer_speed,
-                    path_kind,
-                    stage1_models,
-                )
-                stem_list, models_used = run_hybrid_2stem(
-                    input_path,
-                    out_dir,
-                    prefer_speed=prefer_speed,
-                    model_tier=model_tier,
-                    progress_callback=on_progress,
-                    job_logger=job_log,
-                )
-            else:
-                job_log.info("Stage: hybrid 4-stem  prefer_speed=%s", prefer_speed)
-                stem_list, models_used = run_4stem_single_pass_or_hybrid(
-                    input_path,
-                    out_dir,
-                    prefer_speed=prefer_speed,
-                    progress_callback=on_progress,
-                    job_logger=job_log,
-                    model_tier=model_tier,
-                )
+        if stem_count == 2:
+            path_kind, stage1_models = get_2stem_stage1_preview(
+                prefer_speed=prefer_speed,
+                model_tier=model_tier,
+                stem_backend="hybrid",
+            )
+            job_log.info(
+                "Stage: hybrid 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
+                prefer_speed,
+                path_kind,
+                stage1_models,
+            )
+            stem_list, models_used = run_hybrid_2stem(
+                input_path,
+                out_dir,
+                prefer_speed=prefer_speed,
+                model_tier=model_tier,
+                progress_callback=on_progress,
+                job_logger=job_log,
+            )
         else:
-            # demucs_only: PyTorch Demucs (no Stage 1 ONNX waterfall)
-            if stem_count == 2:
-                path_kind, stage1_models = get_2stem_stage1_preview(
-                    prefer_speed=prefer_speed,
-                    model_tier=model_tier,
-                    stem_backend=STEM_BACKEND,
-                )
-                job_log.info(
-                    "Stage: demucs_only 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
-                    prefer_speed,
-                    path_kind,
-                    stage1_models,
-                )
-                stem_list, models_used = run_demucs_only_2stem(
-                    input_path,
-                    out_dir,
-                    prefer_speed=prefer_speed,
-                    progress_callback=on_progress,
-                    job_logger=job_log,
-                )
-            else:
-                flat_dir = out_dir / "stems"
-                flat_dir.mkdir(parents=True, exist_ok=True)
-                job_log.info("Stage: demucs subprocess 4-stem (htdemucs)")
-                stem_files = run_demucs(
-                    input_path, out_dir, stems=4, prefer_speed=prefer_speed
-                )
-                on_progress(50)
-                stem_list = copy_stems_to_flat_dir(stem_files, flat_dir)
-                models_used = ["htdemucs"]
-                on_progress(100)
+            job_log.info("Stage: hybrid 4-stem  prefer_speed=%s", prefer_speed)
+            stem_list, models_used = run_hybrid_4stem(
+                input_path,
+                out_dir,
+                prefer_speed=prefer_speed,
+                progress_callback=on_progress,
+                job_logger=job_log,
+                model_tier=model_tier,
+            )
 
         # Check if cancelled before marking complete
         if is_job_cancelled(job_id):
-            write_progress(out_dir, {"status": "cancelled", "progress": 0})
+            write_progress(
+                out_dir,
+                build_progress_payload(
+                    status="cancelled",
+                    progress=0,
+                    stem_count=stem_count,
+                    quality_mode=quality_mode,
+                ),
+            )
             job_log.info("=== JOB CANCELLED ===")
             CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
             return
@@ -276,51 +212,38 @@ def run_separation_sync(
             for stem_id, p in stem_list
         ]
 
-        # Optional BPM analysis (non-blocking — failure does not affect job success)
-        bpm_meta: dict[str, Any] | None = None
-        try:
-            from stem_service.bpm_analysis import estimate_bpm
+        analysis_source: Path | None = None
+        for stem_id, p in stem_list:
+            if stem_id in ("vocals", "drums", "instrumental"):
+                analysis_source = p
+                break
+        if analysis_source is None and stem_list:
+            analysis_source = stem_list[0][1]
 
-            analysis_source: Path | None = None
-            for stem_id, p in stem_list:
-                if stem_id in ("vocals", "drums", "instrumental"):
-                    analysis_source = p
-                    break
-            if analysis_source is None and stem_list:
-                analysis_source = stem_list[0][1]
-
-            if analysis_source and analysis_source.exists():
-                bpm_meta = estimate_bpm(analysis_source)
-                if bpm_meta:
-                    job_log.info(
-                        "BPM estimate: bpm=%.1f offset=%.3fs confidence=%.2f",
-                        bpm_meta.get("bpm", 0),
-                        bpm_meta.get("beat_offset_seconds", 0),
-                        bpm_meta.get("confidence", 0),
-                    )
-        except Exception as bpm_err:
-            job_log.debug("BPM analysis skipped (non-critical): %s", bpm_err)
-
-        progress_data: dict[str, Any] = {
-            "status": "completed",
-            "progress": 100,
-            "stems": stems_payload,
-            "elapsed_seconds": round(elapsed, 2),
-            "audio_duration_seconds": round(audio_duration_seconds, 2)
-            if audio_duration_seconds is not None
-            else None,
-            "realtime_factor": realtime_factor,
-            "stem_count": stem_count,
-            "quality_mode": quality_mode,
-            "prefer_speed": prefer_speed,
-            "mode_name": mode_name,
-            "models_used": models_used,
-            "stem_runtime": get_stem_runtime_versions(),
-        }
-        if bpm_meta:
-            progress_data["beat_grid"] = bpm_meta
-        schedule_s3_upload(job_id, out_dir / "stems", out_dir, progress_data)
+        progress_data: dict[str, Any] = build_progress_payload(
+            status="completed",
+            progress=100,
+            stem_count=stem_count,
+            quality_mode=quality_mode,
+            elapsed_seconds=round(elapsed, 2),
+            extra={
+                "stems": stems_payload,
+                "audio_duration_seconds": round(audio_duration_seconds, 2)
+                if audio_duration_seconds is not None
+                else None,
+                "realtime_factor": realtime_factor,
+                "prefer_speed": prefer_speed,
+                "models_used": models_used,
+                "stem_runtime": get_stem_runtime_versions(),
+                "artifact_delivery": "local_ready",
+            },
+        )
         write_progress(out_dir, progress_data)
+        schedule_completion_artifacts(
+            job_id=job_id,
+            out_dir=out_dir,
+            analysis_source=analysis_source,
+        )
 
         # Do not let metrics / logging failures overwrite a successful job
         try:
@@ -363,12 +286,29 @@ def run_separation_sync(
     except JobCancelledError:
         elapsed = time.monotonic() - t0
         job_log.info("=== JOB CANCELLED  elapsed=%.1fs ===", elapsed)
-        write_progress(out_dir, {"status": "cancelled", "progress": 0})
+        write_progress(
+            out_dir,
+            build_progress_payload(
+                status="cancelled",
+                progress=0,
+                stem_count=stem_count,
+                quality_mode=quality_mode,
+            ),
+        )
     except Exception as e:
         elapsed = time.monotonic() - t0
         job_log.exception("=== JOB FAILED  elapsed=%.1fs  error=%s ===", elapsed, e)
         logger.exception("Separation failed for job %s", job_id)
-        write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
+        write_progress(
+            out_dir,
+            build_progress_payload(
+                status="failed",
+                progress=0,
+                stem_count=stem_count,
+                quality_mode=quality_mode,
+                extra={"error": str(e)},
+            ),
+        )
     finally:
         _span_stack.close()
         unregister_running_job(job_id)
@@ -413,6 +353,7 @@ def run_expand_sync(
     source_job_id: str,
     out_dir: Path,
     prefer_speed: bool,
+    quality_mode: str = "quality",
     correlation_id: str = "unknown",
 ) -> None:
     """Blocking expand 2-stem → 4-stem; writes progress. Called from thread."""
@@ -431,7 +372,17 @@ def run_expand_sync(
     def on_progress(pct: int) -> None:
         if is_job_cancelled(expand_job_id):
             raise JobCancelledError("Job cancelled by user")
-        write_progress(out_dir, {"status": "running", "progress": pct})
+        write_progress(
+            out_dir,
+            build_progress_payload(
+                status="running",
+                progress=pct,
+                stem_count=4,
+                quality_mode=quality_mode,
+                job_type="expand",
+                extra={"prefer_speed": prefer_speed},
+            ),
+        )
 
     try:
         _span_stack = contextlib.ExitStack()
@@ -440,7 +391,7 @@ def run_expand_sync(
                 expand_job_id,
                 "stem_expand",
                 stem_count=4,
-                quality_mode="speed" if prefer_speed else "quality",
+                quality_mode=quality_mode,
             )
         )
 
@@ -452,7 +403,16 @@ def run_expand_sync(
             job_logger=job_log,
         )
         if is_job_cancelled(expand_job_id):
-            write_progress(out_dir, {"status": "cancelled", "progress": 0})
+            write_progress(
+                out_dir,
+                build_progress_payload(
+                    status="cancelled",
+                    progress=0,
+                    stem_count=4,
+                    quality_mode=quality_mode,
+                    job_type="expand",
+                ),
+            )
             return
 
         # Finalize: convert output stems to 16-bit PCM with TPDF dither.
@@ -477,28 +437,56 @@ def run_expand_sync(
                 job_log.debug(
                     "Could not read source beat_grid metadata for expand: %s", err
                 )
-        expand_progress: dict[str, Any] = {
-            "status": "completed",
-            "progress": 100,
-            "stems": stems_payload,
-            "elapsed_seconds": round(elapsed, 2),
-            "stem_count": 4,
-            "expand_from": source_job_id,
-            "models_used": models_used,
-        }
+        expand_progress: dict[str, Any] = build_progress_payload(
+            status="completed",
+            progress=100,
+            stem_count=4,
+            quality_mode=quality_mode,
+            job_type="expand",
+            elapsed_seconds=round(elapsed, 2),
+            extra={
+                "stems": stems_payload,
+                "expand_from": source_job_id,
+                "prefer_speed": prefer_speed,
+                "models_used": models_used,
+                "artifact_delivery": "local_ready",
+            },
+        )
         if inherited_beat_grid:
             expand_progress["beat_grid"] = inherited_beat_grid
-        schedule_s3_upload(expand_job_id, out_dir / "stems", out_dir, expand_progress)
         write_progress(out_dir, expand_progress)
+        schedule_completion_artifacts(
+            job_id=expand_job_id,
+            out_dir=out_dir,
+        )
         job_log.info(
             "=== EXPAND COMPLETE  elapsed=%.1fs  models=%s ===", elapsed, models_used
         )
     except JobCancelledError:
         job_log.info("=== EXPAND CANCELLED ===")
-        write_progress(out_dir, {"status": "cancelled", "progress": 0})
+        write_progress(
+            out_dir,
+            build_progress_payload(
+                status="cancelled",
+                progress=0,
+                stem_count=4,
+                quality_mode=quality_mode,
+                job_type="expand",
+            ),
+        )
     except Exception as e:
         job_log.exception("=== EXPAND FAILED  error=%s ===", e)
-        write_progress(out_dir, {"status": "failed", "progress": 0, "error": str(e)})
+        write_progress(
+            out_dir,
+            build_progress_payload(
+                status="failed",
+                progress=0,
+                stem_count=4,
+                quality_mode=quality_mode,
+                job_type="expand",
+                extra={"error": str(e)},
+            ),
+        )
     finally:
         _span_stack.close()
         CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)

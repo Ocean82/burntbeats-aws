@@ -48,13 +48,13 @@ expandRouter.post(
     /** @type {string | undefined} */
     const rawQuality = req.body && req.body.quality;
     // Validate quality before proxying
-    const VALID_QUALITY = new Set(["speed", "balanced", "quality", "ultra"]);
+    const VALID_QUALITY = new Set(["speed", "quality"]);
     if (rawQuality && !VALID_QUALITY.has(rawQuality)) {
       return res.status(400).json({
-        error: "quality must be 'speed', 'quality', or 'ultra'",
+        error: "quality must be 'speed' or 'quality'",
       });
     }
-    const quality = rawQuality === "balanced" ? "quality" : rawQuality;
+    const quality = rawQuality;
 
     const entitlementCheck = await requireExpandEntitlements(req);
     if (!entitlementCheck.ok) {
@@ -113,6 +113,10 @@ expandRouter.post(
         const response = {
           job_id: newJobId,
           status: data.data.status ?? "accepted",
+          queue_position:
+            typeof data.data.queue_position === "number"
+              ? data.data.queue_position
+              : undefined,
         };
         if (process.env.JOB_TOKEN_SECRET)
           response.job_token = issueJobToken(newJobId);

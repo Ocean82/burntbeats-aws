@@ -2,8 +2,10 @@
 Stem separation using Demucs, CPU-only.
 
 4-stem policy:
-- speed: rank 28 only, then fallback to htdemucs
-- quality/balanced: try mapped quality ranks (1 -> 2), then fallback to htdemucs
+- speed: one mapped speed checkpoint
+- quality: one mapped quality checkpoint
+
+There is no runtime fallback from a mapped 4-stem checkpoint to htdemucs.
 """
 
 from __future__ import annotations
@@ -89,7 +91,7 @@ def run_demucs(
     Run Demucs separation. Returns list of (stem_id, wav_path).
     stems: 2 -> vocals, instrumental; 4 -> vocals, drums, bass, other.
     2-stem always uses htdemucs.
-    4-stem uses mapped rank checkpoints first, then falls back to htdemucs.
+    4-stem uses one deterministic mapped checkpoint per tier.
     """
     if stems not in _VALID_STEMS:
         raise ValueError(f"stems must be 2 or 4, got {stems}")
@@ -104,40 +106,28 @@ def run_demucs(
             else demucs_quality_4stem_configs()
         )
         lane = "speed" if prefer_speed else "quality"
-        last_err: RuntimeError | None = None
-        for model_name, repo, segment, output_subdir, _ck in cfgs:
-            logger.info(
-                "Demucs: 4-stem %s trying %s (segment=%ds, repo=%s)",
-                lane,
-                model_name,
-                segment,
-                repo.name,
+        if not cfgs:
+            raise FileNotFoundError(
+                f"Demucs 4-stem {lane} checkpoint not found in configured models directory."
             )
-            try:
-                return _run_demucs_4stem_named_checkpoint(
-                    input_path,
-                    output_dir,
-                    model_name,
-                    repo,
-                    segment,
-                    output_subdir,
-                )
-            except RuntimeError as e:
-                last_err = e
-                logger.warning(
-                    "Demucs: 4-stem %s checkpoint %s failed: %s",
-                    lane,
-                    model_name,
-                    e,
-                )
-        if last_err is not None:
-            logger.info(
-                "Demucs: 4-stem %s checkpoints failed; fallback to htdemucs (%s)",
-                lane,
-                last_err,
-            )
+        model_name, repo, segment, output_subdir, _ck = cfgs[0]
+        logger.info(
+            "Demucs: 4-stem %s using %s (segment=%ds, repo=%s)",
+            lane,
+            model_name,
+            segment,
+            repo.name,
+        )
+        return _run_demucs_4stem_named_checkpoint(
+            input_path,
+            output_dir,
+            model_name,
+            repo,
+            segment,
+            output_subdir,
+        )
 
-    # Single htdemucs (2-stem or 4-stem fallback)
+    # Single htdemucs (2-stem only)
     if not htdemucs_available():
         raise FileNotFoundError(
             "Demucs model not found: put htdemucs.pth or htdemucs.th in models/. "

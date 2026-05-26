@@ -11,7 +11,7 @@ export interface QualitySelectorProps {
   splitResultStemsLength: number;
 }
 
-/** Quality tier radio buttons (Fast / Balanced / Quality). */
+/** Quality tier radio buttons (Fast / Quality). */
 export function QualitySelector({
   quality,
   onQualityChange,
@@ -33,19 +33,11 @@ export function QualitySelector({
         hint: "Quickest turnaround",
       },
       {
-        value: "balanced",
-        label: "Balanced",
-        enabled: canChoosePaidQuality,
-        hint: canChoosePaidQuality
-          ? "Good quality + speed balance"
-          : "Requires Premium or Studio",
-      },
-      {
         value: "quality",
         label: "Quality",
         enabled: canChoosePaidQuality,
         hint: canChoosePaidQuality
-          ? "Higher quality, slower than balanced"
+          ? "Higher quality, slower turnaround"
           : "Requires Premium or Studio",
       },
     ];

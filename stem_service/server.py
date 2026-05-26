@@ -26,26 +26,25 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from stem_service.config import (
     REPO_ROOT,
-    STEM_BACKEND,
+    FOUR_STEM_BACKEND,
     htdemucs_available,
     stem_allow_missing_htdemucs_at_startup,
-    QUALITY_ULTRA,
-    ultra_available_for_device,
     MAX_QUEUE_DEPTH,
+    log_cpu_budget,
 )
 from stem_service.runtime_info import (
     get_stem_runtime_versions,
     log_stem_runtime_versions,
     verify_torchaudio_can_load_wav,
 )
-from stem_service.mdx_onnx import get_available_vocal_onnx
-from stem_service.ultra import get_ultra_model_info
+from stem_service.mdx_onnx import get_available_vocal_onnx, resolve_single_vocal_onnx
 from stem_service.vocal_stage1 import get_2stem_stage1_preview
 
 from stem_service.job_queue import (
     cancel_all_running_jobs,
     cancel_job,
     cancel_queued_job,
+    enqueue_expand_job,
     enqueue_split_job,
     get_queue_condition,
     get_queued_splits,
@@ -57,6 +56,7 @@ from stem_service.job_utils import (
     PROGRESS_FILENAME,
     SUPPORTED_FORMATS,
     append_metrics_log,
+    build_progress_payload,
     safe_job_path,
     schedule_s3_upload,
     validate_audio_file,
@@ -74,6 +74,114 @@ _run_separation_sync = run_separation_sync
 _run_expand_sync = run_expand_sync
 _append_metrics_log = append_metrics_log
 _schedule_s3_upload = schedule_s3_upload
+
+
+def _supported_mode_health_snapshot() -> dict[str, object]:
+    """Return readiness for the four supported deterministic CPU modes."""
+    from stem_service.config import (
+        demucs_quality_4stem_configs,
+        demucs_speed_4stem_configs,
+    )
+
+    fast_vocal = resolve_single_vocal_onnx("UVR_MDXNET_3_9662.onnx")
+    quality_vocal = resolve_single_vocal_onnx("Kim_Vocal_2.onnx")
+    speed_4stem_cfgs = demucs_speed_4stem_configs()
+    quality_4stem_cfgs = demucs_quality_4stem_configs()
+    speed_4stem_ckpt = speed_4stem_cfgs[0][4] if speed_4stem_cfgs else None
+    quality_4stem_ckpt = quality_4stem_cfgs[0][4] if quality_4stem_cfgs else None
+
+    modes = {
+        "2_stem_speed": {
+            "ready": fast_vocal is not None,
+            "required_models": ["UVR_MDXNET_3_9662.onnx"],
+            "resolved_models": [fast_vocal.name] if fast_vocal is not None else [],
+            "missing_models": [] if fast_vocal is not None else ["UVR_MDXNET_3_9662.onnx"],
+        },
+        "2_stem_quality": {
+            "ready": quality_vocal is not None,
+            "required_models": ["Kim_Vocal_2.onnx"],
+            "resolved_models": [quality_vocal.name] if quality_vocal is not None else [],
+            "missing_models": [] if quality_vocal is not None else ["Kim_Vocal_2.onnx"],
+        },
+        "4_stem_speed": {
+            "ready": fast_vocal is not None and speed_4stem_ckpt is not None,
+            "required_models": [
+                "UVR_MDXNET_3_9662.onnx",
+                "speed_4stem_rank28/cfa93e08-61801ae1.th",
+            ],
+            "resolved_models": [
+                model_name
+                for model_name in (
+                    fast_vocal.name if fast_vocal is not None else None,
+                    str(speed_4stem_ckpt.name) if speed_4stem_ckpt is not None else None,
+                )
+                if model_name is not None
+            ],
+            "missing_models": [
+                model_name
+                for model_name, available in (
+                    ("UVR_MDXNET_3_9662.onnx", fast_vocal is not None),
+                    ("speed_4stem_rank28/cfa93e08-61801ae1.th", speed_4stem_ckpt is not None),
+                )
+                if not available
+            ],
+        },
+        "4_stem_quality": {
+            "ready": quality_vocal is not None and quality_4stem_ckpt is not None,
+            "required_models": [
+                "Kim_Vocal_2.onnx",
+                "quality_4stem_rank1/04573f0d-f3cf25b2__29d4388e.th",
+            ],
+            "resolved_models": [
+                model_name
+                for model_name in (
+                    quality_vocal.name if quality_vocal is not None else None,
+                    str(quality_4stem_ckpt.name) if quality_4stem_ckpt is not None else None,
+                )
+                if model_name is not None
+            ],
+            "missing_models": [
+                model_name
+                for model_name, available in (
+                    ("Kim_Vocal_2.onnx", quality_vocal is not None),
+                    (
+                        "quality_4stem_rank1/04573f0d-f3cf25b2__29d4388e.th",
+                        quality_4stem_ckpt is not None,
+                    ),
+                )
+                if not available
+            ],
+        },
+    }
+    return {
+        "all_ready": all(mode["ready"] for mode in modes.values()),
+        "supported_modes": modes,
+    }
+
+
+def _run_queued_job(job: dict) -> None:
+    """Dispatch a queued heavy job through the canonical worker surface."""
+    job_type = job.get("job_type", "split")
+    if job_type == "expand":
+        _run_expand_sync(
+            job["job_id"],
+            job["source_job_id"],
+            job["out_dir"],
+            job["prefer_speed"],
+            job.get("quality_mode", "quality"),
+            job["correlation_id"],
+        )
+        return
+
+    _run_separation_sync(
+        job["job_id"],
+        job["input_path"],
+        job["out_dir"],
+        job["stem_count"],
+        job["prefer_speed"],
+        job["quality_mode"],
+        job["correlation_id"],
+    )
 
 
 # ── Logging & Correlation ────────────────────────────────────────────────────
@@ -153,6 +261,7 @@ async def lifespan(app: FastAPI):
     init_sentry()
 
     log_stem_runtime_versions(logger)
+    log_cpu_budget(logger)
 
     try:
         verify_torchaudio_can_load_wav()
@@ -183,26 +292,45 @@ async def lifespan(app: FastAPI):
     if onnx_path:
         logger.info("ONNX Stage 1 available: %s", onnx_path.name)
     else:
-        logger.info("ONNX Stage 1 not available; Stage 1 will use Demucs 2-stem")
+        logger.info("ONNX Stage 1 not available; deterministic 2-stem will fail until models are installed")
 
-    path_kind, stage1_models = get_2stem_stage1_preview(stem_backend=STEM_BACKEND)
+    path_kind, stage1_models = get_2stem_stage1_preview()
     logger.info(
-        "2-stem Stage 1 waterfall preview (rank1→4): path=%s models=%s",
+        "2-stem Stage 1 preview: path=%s models=%s",
         path_kind,
         stage1_models,
     )
-
-    # Check ultra quality models
-    ultra_info = get_ultra_model_info()
-    if ultra_info["best_model"]:
-        logger.info("Ultra quality model available: %s", ultra_info["best_model"])
-    else:
-        logger.info("Ultra quality models not available (optional)")
+    mode_health = _supported_mode_health_snapshot()
+    for mode_name, details in mode_health["supported_modes"].items():
+        logger.info(
+            "Supported mode readiness: %s ready=%s resolved=%s missing=%s",
+            mode_name,
+            details["ready"],
+            details["resolved_models"],
+            details["missing_models"],
+        )
+    if not mode_health["all_ready"]:
+        missing_summary = "; ".join(
+            f"{mode_name}: {', '.join(details['missing_models'])}"
+            for mode_name, details in mode_health["supported_modes"].items()
+            if details["missing_models"]
+        )
+        if stem_allow_missing_htdemucs_at_startup():
+            logger.warning(
+                "Starting with incomplete deterministic mode matrix because STEM_ALLOW_MISSING_HTDEMUCS is set: %s",
+                missing_summary,
+            )
+        else:
+            raise RuntimeError(
+                "Deterministic CPU mode matrix is incomplete. Missing required models: "
+                f"{missing_summary}"
+            )
 
     logger.info(f"CORS allowed origins: {FRONTEND_ORIGINS}")
+    logger.info("4-stem runtime path: deterministic %s", FOUR_STEM_BACKEND)
 
     # Start the split job queue workers
-    await start_split_workers(run_separation_sync)
+    await start_split_workers(_run_queued_job)
 
     def graceful_shutdown(signal_name):
         logger.info(f"Received {signal_name}, initiating graceful shutdown...")
@@ -247,10 +375,8 @@ async def split(
     Poll GET /status/{job_id} for progress and stems when completed.
 
     quality options:
-    - "speed": fastest model tier + faster chunking
-    - "balanced" (default): middle model tier + quality chunking
-    - "quality": higher-quality model tier + quality chunking
-    - "ultra": Best separation via RoFormer checkpoints (audio-separator); slow on CPU
+    - "speed": fast runtime path
+    - "quality": higher-quality runtime path
     """
     _require_stem_service_api_token(request)
 
@@ -264,23 +390,8 @@ async def split(
     # Determine quality mode
     quality_lower = (quality or "").strip().lower()
     prefer_speed = quality_lower == "speed"
-    is_ultra = quality_lower == QUALITY_ULTRA
     is_sample = (sample or "").strip().lower() in ("true", "1", "yes")
-
-    if is_ultra and not ultra_available_for_device():
-        logger.info(
-            "Ultra requested on CPU. Will attempt; expect long processing times. "
-            "Set USE_ULTRA_ON_CPU=1 to suppress this warning."
-        )
-
-    # Determine effective quality mode for pipeline
-    # "balanced" is treated as "quality" — same pipeline, same models.
-    if is_ultra:
-        quality_mode = QUALITY_ULTRA
-    elif prefer_speed:
-        quality_mode = "speed"
-    else:
-        quality_mode = "quality"
+    quality_mode = "speed" if prefer_speed else "quality"
 
     logger.info(
         "Split request: stems=%s, quality=%s, sample=%s",
@@ -387,8 +498,7 @@ async def expand(
     quality: str | None = Form(None),
 ) -> dict:
     """
-    Expand a completed 2-stem job to 4 stems (vocals, drums, bass, other).
-    Uses existing vocals + instrumental; runs Demucs on instrumental only.
+    Queue a completed 2-stem job for canonical 4-stem expansion.
     Returns 202 with new job_id. Poll GET /status/{job_id} for progress.
     """
     _require_stem_service_api_token(request)
@@ -424,21 +534,26 @@ async def expand(
     expand_job_id = str(uuid.uuid4())
     out_dir = OUTPUT_BASE / expand_job_id
     out_dir.mkdir(parents=True, exist_ok=True)
-    write_progress(out_dir, {"status": "running", "progress": 0})
-
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    asyncio.create_task(
-        asyncio.to_thread(
-            run_expand_sync,
-            expand_job_id,
-            job_id,
-            out_dir,
-            prefer_speed,
-            correlation_id,
-        )
+    queue_position = await enqueue_expand_job(
+        {
+            "job_type": "expand",
+            "job_id": expand_job_id,
+            "source_job_id": job_id,
+            "out_dir": out_dir,
+            "stem_count": 4,
+            "prefer_speed": prefer_speed,
+            "quality_mode": "speed" if prefer_speed else "quality",
+            "correlation_id": correlation_id,
+        }
     )
     return JSONResponse(
-        content={"job_id": expand_job_id, "status": "accepted"}, status_code=202
+        content={
+            "job_id": expand_job_id,
+            "status": "accepted",
+            "queue_position": queue_position,
+        },
+        status_code=202,
     )
 
 
@@ -493,7 +608,17 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
 
     # Try to cancel running job
     if cancel_job(job_id):
-        write_progress(_safe_job_path(job_id), {"status": "cancelled", "progress": 0})
+        write_progress(
+            _safe_job_path(job_id),
+            build_progress_payload(
+                status="cancelled",
+                progress=0,
+                stem_count=int(data.get("stem_count", 2)),
+                quality_mode=str(data.get("quality_mode", "quality")),
+                job_type=str(data.get("job_type", "split")),
+                extra={"message": "Job cancellation requested"},
+            ),
+        )
         logger.info("Job %s cancelled by user", job_id)
         return {
             "job_id": job_id,
@@ -515,9 +640,12 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
 
 @app.get("/health")
 async def health() -> dict:
+    mode_health = _supported_mode_health_snapshot()
     payload: dict[str, object] = {
-        "status": "ok",
+        "status": "ok" if mode_health["all_ready"] else "degraded",
         "runtime": get_stem_runtime_versions(),
+        "four_stem_backend": FOUR_STEM_BACKEND,
+        "supported_modes": mode_health["supported_modes"],
     }
     if os.environ.get("NODE_ENV", "development").lower() != "production":
         payload["repo_root"] = str(REPO_ROOT)

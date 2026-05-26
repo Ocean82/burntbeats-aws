@@ -7,10 +7,11 @@ ROOT="$PWD"
 export STEM_OUTPUT_DIR="${STEM_OUTPUT_DIR:-$ROOT/tmp/stems}"
 mkdir -p "$STEM_OUTPUT_DIR"
 
-# CPU efficiency: limit OpenMP/MKL threads so ONNX + Demucs (sequential) don't oversubscribe.
-# Override OMP_NUM_THREADS / MKL_NUM_THREADS in env to tune (e.g. physical cores on NUMA).
-export OMP_NUM_THREADS="${OMP_NUM_THREADS:-$(nproc 2>/dev/null || echo 4)}"
-export MKL_NUM_THREADS="${MKL_NUM_THREADS:-$OMP_NUM_THREADS}"
+# CPU budget: keep one source of truth and let the Python service fan it out to
+# ONNX, Torch, and BLAS env vars. Override these for local profiling.
+export STEM_CPU_THREADS="${STEM_CPU_THREADS:-$(nproc 2>/dev/null || echo 4)}"
+export STEM_CPU_WORKERS="${STEM_CPU_WORKERS:-1}"
+export STEM_CPU_INTEROP_THREADS="${STEM_CPU_INTEROP_THREADS:-1}"
 
 if [ ! -f .venv/bin/activate ]; then
   echo "Create venv first: python3 -m venv .venv"
@@ -30,6 +31,7 @@ if ! python -c "import uvicorn" 2>/dev/null; then
 fi
 
 echo "Stem service at http://${STEM_SERVICE_HOST:-127.0.0.1}:5000 (output: $STEM_OUTPUT_DIR)"
+echo "Stem CPU budget: workers=${STEM_CPU_WORKERS} job_threads=${STEM_CPU_THREADS} interop=${STEM_CPU_INTEROP_THREADS}"
 mkdir -p "$ROOT/logs"
 # Production safety: bind to localhost by default so the Python service is not reachable
 # from the public internet. The backend Node proxy runs on the same host.

@@ -31,7 +31,7 @@ describe("LazyModalLayer", () => {
         canUseBatchQueue={false}
         processNextInQueue={vi.fn(async () => {})}
         canSplitFourStems={false}
-        splitQuality="balanced"
+        splitQuality="quality"
         setUploadState={vi.fn()}
         setSplitError={vi.fn()}
       />,

@@ -28,8 +28,8 @@ const TOUR_STEPS = [
   {
     icon: Sliders,
     title: "Configure Your Split",
-    description: "First split gives vocals + instrumental. Tap Expand → 4 stems to break out drums, bass & other.",
-    tip: "Use Quality (or Balanced) for the cleanest separation",
+    description: "Choose the exact mode you want up front: 2 stems or 4 stems, each in Fast or Quality mode.",
+    tip: "Use Quality for the cleanest separation",
     target: '[data-tour="quality-selector"]',
   },
   {

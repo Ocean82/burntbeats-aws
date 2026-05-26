@@ -69,6 +69,8 @@ append_if_missing .env SPEECH_DEVICE "SPEECH_DEVICE=cpu"
 append_if_missing .env SPEECH_MAX_UPLOAD_MB "SPEECH_MAX_UPLOAD_MB=100"
 append_if_missing .env DEV_BYPASS_UPLOAD_AUTH "DEV_BYPASS_UPLOAD_AUTH=0"
 
-append_if_missing stem_service/.env DEMUCS_CPU_THREADS "DEMUCS_CPU_THREADS=2"
+append_if_missing stem_service/.env STEM_CPU_WORKERS "STEM_CPU_WORKERS=1"
+append_if_missing stem_service/.env STEM_CPU_THREADS "STEM_CPU_THREADS=2"
+append_if_missing stem_service/.env STEM_CPU_INTEROP_THREADS "STEM_CPU_INTEROP_THREADS=1"
 
 echo "Done."

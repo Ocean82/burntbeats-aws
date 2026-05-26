@@ -137,10 +137,6 @@ export function SpeechCleanPanel({
             usageBalance={usageBalance}
             usageLoading={usageLoading}
             estimatedSplitTokens={estimatedTokens}
-            estimatedExpandTokens={null}
-            splitResultStemsLength={0}
-            isExpanding={false}
-            isSplitting={isEnhancing}
             isSample={false}
             jobLabel="This job"
             showBalance={false}

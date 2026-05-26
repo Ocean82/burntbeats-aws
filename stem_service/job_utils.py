@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,127 @@ METRICS_LOG = Path(
 SUPPORTED_FORMATS = SUPPORTED_AUDIO_FORMATS
 
 
+def resolve_mode_name(stem_count: int, quality_mode: str) -> str:
+    """Return the canonical supported mode label for split/expand jobs."""
+    lane = "speed" if quality_mode == "speed" else "quality"
+    return f"{stem_count}_stem_{lane}"
+
+
+def _split_running_stage(mode_name: str, progress: int) -> tuple[str, str]:
+    if mode_name == "2_stem_speed":
+        if progress < 5:
+            return ("starting", "Preparing job…")
+        if progress < 90:
+            return ("separating_vocals", "Separating vocals…")
+        if progress < 95:
+            return ("building_instrumental", "Building instrumental…")
+        return ("finalizing_stems", "Finalising stems…")
+
+    if mode_name == "2_stem_quality":
+        if progress < 5:
+            return ("starting", "Preparing job…")
+        if progress < 90:
+            return ("separating_vocals", "Separating vocals…")
+        if progress < 95:
+            return ("building_instrumental", "Building instrumental…")
+        return ("finalizing_stems", "Finalising stems…")
+
+    if mode_name == "4_stem_speed":
+        if progress < 5:
+            return ("starting", "Preparing job…")
+        if progress < 80:
+            return ("separating_vocals", "Separating vocals…")
+        if progress < 86:
+            return ("building_instrumental", "Building accompaniment…")
+        if progress < 97:
+            return ("splitting_accompaniment", "Splitting drums, bass & other…")
+        return ("finalizing_stems", "Finalising stems…")
+
+    if progress < 5:
+        return ("starting", "Preparing job…")
+    if progress < 88:
+        return ("separating_vocals", "Separating vocals…")
+    if progress < 92:
+        return ("building_instrumental", "Building accompaniment…")
+    if progress < 97:
+        return ("splitting_accompaniment", "Splitting drums, bass & other…")
+    return ("finalizing_stems", "Finalising stems…")
+
+
+def _expand_running_stage(progress: int) -> tuple[str, str]:
+    if progress < 5:
+        return ("starting", "Preparing expansion…")
+    if progress < 15:
+        return ("copying_vocals", "Copying vocals…")
+    if progress < 96:
+        return ("splitting_accompaniment", "Splitting drums, bass & other…")
+    return ("finalizing_stems", "Finalising stems…")
+
+
+def progress_stage_snapshot(
+    *,
+    status: str,
+    progress: int,
+    job_type: str,
+    mode_name: str,
+) -> tuple[str, str]:
+    """Map a job status payload to a stable stage code and user-facing label."""
+    if status == "queued":
+        if job_type == "expand":
+            return ("queued", "Waiting to expand to 4 stems…")
+        return ("queued", "Waiting for an available worker…")
+    if status == "completed":
+        if job_type == "expand":
+            return ("completed", "Expanded stems ready")
+        return ("completed", "Stems ready")
+    if status == "failed":
+        return ("failed", "Split failed")
+    if status == "cancelled":
+        return ("cancelled", "Split cancelled")
+    if job_type == "expand":
+        return _expand_running_stage(progress)
+    return _split_running_stage(mode_name, progress)
+
+
+def build_progress_payload(
+    *,
+    status: str,
+    progress: int,
+    stem_count: int,
+    quality_mode: str,
+    job_type: str = "split",
+    queue_position: int | None = None,
+    elapsed_seconds: float | None = None,
+    extra: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create a progress/status payload with canonical mode and stage metadata."""
+    mode_name = resolve_mode_name(stem_count, quality_mode)
+    stage_code, stage_label = progress_stage_snapshot(
+        status=status,
+        progress=progress,
+        job_type=job_type,
+        mode_name=mode_name,
+    )
+    payload: dict[str, Any] = {
+        "status": status,
+        "progress": progress,
+        "job_type": job_type,
+        "stem_count": stem_count,
+        "quality": quality_mode,
+        "quality_mode": quality_mode,
+        "mode_name": mode_name,
+        "progress_stage": stage_code,
+        "progress_stage_label": stage_label,
+    }
+    if queue_position is not None:
+        payload["queue_position"] = queue_position
+    if elapsed_seconds is not None:
+        payload["elapsed_seconds"] = elapsed_seconds
+    if extra:
+        payload.update(extra)
+    return payload
+
+
 def safe_job_path(job_id: str, *parts: str) -> Path:
     """Construct a path under OUTPUT_BASE for a job_id with traversal protection.
 
@@ -60,6 +182,19 @@ def append_metrics_log(record: dict) -> None:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except OSError as e:
         logger.warning("Could not append to metrics log %s: %s", METRICS_LOG, e)
+
+
+def _merge_progress(out_dir: Path, updates: dict[str, Any]) -> None:
+    """Merge fields into the current progress payload without regressing completion."""
+    progress_path = out_dir / PROGRESS_FILENAME
+    try:
+        current = json.loads(progress_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        current = {}
+    if current.get("status") != "completed":
+        return
+    current.update(updates)
+    write_progress(out_dir, current)
 
 
 def make_job_logger(job_id: str, out_dir: Path) -> logging.Logger:
@@ -97,25 +232,58 @@ def schedule_s3_upload(
     job_id: str,
     stems_dir: Path,
     out_dir: Path,
-    progress_data: dict[str, Any],
 ) -> None:
-    """Upload stems to S3 synchronously and patch progress.json with S3 metadata.
+    """Upload stems to S3 in the background and patch progress.json when ready."""
 
-    Previously this ran in a background thread, but that caused a race condition:
-    the frontend would poll GET /status/:job_id, see "completed" without S3 keys,
-    and the backend would record stems with s3_key=NULL in the database.
+    def _upload() -> None:
+        try:
+            s3_meta = upload_job_stems_to_s3(job_id, stems_dir)
+            if s3_meta:
+                _merge_progress(
+                    out_dir,
+                    {
+                        "s3": s3_meta,
+                        "artifact_delivery": "uploaded",
+                    },
+                )
+        except Exception:
+            logger.exception(
+                "S3 upload failed for job %s (stems still available on disk)", job_id
+            )
+            _merge_progress(out_dir, {"artifact_delivery": "upload_failed"})
 
-    Now the upload runs synchronously so progress.json always contains S3 metadata
-    by the time the status is written as "completed". The upload is best-effort —
-    if it fails, the job still completes and stems are served from local disk.
-    """
-    try:
-        s3_meta = upload_job_stems_to_s3(job_id, stems_dir)
-        if s3_meta:
-            progress_data["s3"] = s3_meta
-            write_progress(out_dir, progress_data)
-    except Exception:
-        logger.exception("S3 upload failed for job %s (stems still available on disk)", job_id)
+    threading.Thread(
+        target=_upload,
+        name=f"stem-s3-upload-{job_id}",
+        daemon=True,
+    ).start()
+
+
+def schedule_completion_artifacts(
+    job_id: str,
+    out_dir: Path,
+    analysis_source: Path | None = None,
+) -> None:
+    """Run optional post-completion enrichment without delaying local readiness."""
+
+    def _finalize_optional_artifacts() -> None:
+        if analysis_source and analysis_source.exists():
+            try:
+                from stem_service.bpm_analysis import estimate_bpm
+
+                bpm_meta = estimate_bpm(analysis_source)
+                if bpm_meta:
+                    _merge_progress(out_dir, {"beat_grid": bpm_meta})
+            except Exception as bpm_err:
+                logger.debug("BPM analysis skipped (non-critical): %s", bpm_err)
+
+        schedule_s3_upload(job_id, out_dir / "stems", out_dir)
+
+    threading.Thread(
+        target=_finalize_optional_artifacts,
+        name=f"stem-completion-{job_id}",
+        daemon=True,
+    ).start()
 
 
 def validate_audio_file(file_path: Path) -> tuple[bool, str]:

@@ -26,6 +26,8 @@ export interface AppState {
   queuePosition: number | null;
   /** Elapsed processing seconds from job status (running state). */
   splitElapsedSeconds: number | null;
+  /** Backend-reported stage label for the current split job. */
+  splitStageLabel: string | null;
   /** Master limiter toggle preference (UI state). */
   masterLimiterEnabled: boolean;
 
@@ -35,7 +37,7 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  quality: "balanced" as SplitQuality,
+  quality: "quality" as SplitQuality,
   uploadName: "",
   uploadedFile: null,
   splitResultStems: [],
@@ -53,6 +55,7 @@ export const useAppStore = create<AppState>((set) => ({
   beatGrid: null,
   queuePosition: null,
   splitElapsedSeconds: null,
+  splitStageLabel: null,
   masterLimiterEnabled: false,
 
   setUploadState: (update) =>

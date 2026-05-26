@@ -12,7 +12,7 @@ export type JobStatus =
   | "failed"
   | "cancelled";
 
-export type SplitQuality = "speed" | "balanced" | "quality" | "ultra";
+export type SplitQuality = "speed" | "quality";
 
 export interface StemResult {
   id: StemId;

@@ -102,11 +102,11 @@ splitRouter.post(
       await unlinkPromise(filePath).catch(() => {});
       return res.status(400).json({ error: "stems must be '2' or '4'" });
     }
-    const VALID_QUALITY = new Set(["speed", "balanced", "quality", "ultra"]);
+    const VALID_QUALITY = new Set(["speed", "quality"]);
     if (rawQuality && !VALID_QUALITY.has(rawQuality)) {
       await unlinkPromise(filePath).catch(() => {});
       return res.status(400).json({
-        error: "quality must be 'speed', 'balanced', 'quality', or 'ultra'",
+        error: "quality must be 'speed' or 'quality'",
       });
     }
     const quality = rawQuality;

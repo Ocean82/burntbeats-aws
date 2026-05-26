@@ -14,8 +14,8 @@ export function BillingRules({ className = "" }: BillingRulesProps) {
       <span className="font-semibold text-primary-200">
         1 token = 1 minute.
       </span>{" "}
-      Partial minutes round up. Split and expand are billed separately. Secure
-      Stripe checkout, cancel anytime.
+      Partial minutes round up. Pick the 2-stem or 4-stem mode you want and pay
+      once for that job. Secure Stripe checkout, cancel anytime.
     </div>
   );
 }

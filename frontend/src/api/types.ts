@@ -24,6 +24,13 @@ export interface StemJobStatus {
   stems?: StemResult[];
   error?: string;
   beat_grid?: BeatGridMetadata;
+  job_type?: "split" | "expand";
+  stem_count?: number;
+  quality_mode?: "speed" | "quality";
+  mode_name?: "2_stem_speed" | "2_stem_quality" | "4_stem_speed" | "4_stem_quality";
+  progress_stage?: string;
+  progress_stage_label?: string;
+  artifact_delivery?: "local_ready" | "uploaded" | "upload_failed";
   /** Queue position when status is "queued" (1 = next to run). */
   queue_position?: number;
   /** Elapsed processing seconds (emitted during running state). */

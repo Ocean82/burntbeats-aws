@@ -22,6 +22,7 @@ import numpy as np
 
 from stem_service.config import (
     TARGET_SAMPLE_RATE,
+    cpu_job_threads,
     get_onnx_providers,
     get_scnet_onnx_path,
 )
@@ -57,14 +58,11 @@ def _get_session(path: Path) -> Any | None:
             return _session_cache[key]
     try:
         import onnxruntime as ort
-        import os
 
         opts = ort.SessionOptions()
         opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        n = os.environ.get("ONNXRUNTIME_NUM_THREADS", "")
-        if n.isdigit() and int(n) >= 0:
-            opts.intra_op_num_threads = int(n)
-            opts.inter_op_num_threads = 1
+        opts.intra_op_num_threads = cpu_job_threads()
+        opts.inter_op_num_threads = 1
         sess = ort.InferenceSession(
             str(path), sess_options=opts, providers=get_onnx_providers()
         )

@@ -9,6 +9,7 @@ process.env.NODE_ENV = "test";
 process.env.API_KEY = "test-key";
 process.env.JOB_TOKEN_SECRET = ""; // disable job token auth for these basic tests
 process.env.STEM_SERVICE_API_TOKEN = "stem-service-test-token";
+process.env.DEV_BYPASS_UPLOAD_AUTH = "1";
 
 /** @type {string | undefined} */
 let lastStemServiceTokenHeader;
@@ -108,6 +109,20 @@ test("POST /api/stems/split forwards X-Stem-Service-Token to stem service", asyn
   assert.equal(lastStemServiceTokenHeader, process.env.STEM_SERVICE_API_TOKEN);
 });
 
+test("POST /api/stems/split rejects removed quality modes", async () => {
+  lastStemServiceTokenHeader = undefined;
+  const res = await request
+    .post("/api/stems/split")
+    .set("x-api-key", process.env.API_KEY)
+    .field("stems", "2")
+    .field("quality", "balanced")
+    .attach("file", minimalWavBuffer(), "sample.wav")
+    .expect(400);
+
+  assert.equal(res.body.error, "quality must be 'speed' or 'quality'");
+  assert.equal(lastStemServiceTokenHeader, undefined);
+});
+
 test("POST /api/stems/expand requires account auth before premium expand", async () => {
   lastStemServiceTokenHeader = undefined;
   const res = await request
@@ -117,6 +132,18 @@ test("POST /api/stems/expand requires account auth before premium expand", async
     .expect(401);
 
   assert.equal(res.body.error, "Unable to verify your account. Please sign in again.");
+  assert.equal(lastStemServiceTokenHeader, undefined);
+});
+
+test("POST /api/stems/expand rejects removed quality modes", async () => {
+  lastStemServiceTokenHeader = undefined;
+  const res = await request
+    .post("/api/stems/expand")
+    .set("x-api-key", process.env.API_KEY)
+    .send({ job_id: randomUUID(), quality: "ultra" })
+    .expect(400);
+
+  assert.equal(res.body.error, "quality must be 'speed' or 'quality'");
   assert.equal(lastStemServiceTokenHeader, undefined);
 });
 

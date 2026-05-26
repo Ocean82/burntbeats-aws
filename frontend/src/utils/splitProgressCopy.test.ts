@@ -15,7 +15,7 @@ describe("getSplitProgressMessage", () => {
     expect(msg.secondary).toBe("42%");
   });
 
-  it("returns queue position with ETA", () => {
+  it("returns queue position without guessed ETA", () => {
     const msg = getSplitProgressMessage({
       isUploading: false,
       uploadProgress: 0,
@@ -25,10 +25,10 @@ describe("getSplitProgressMessage", () => {
       uploadDurationSec: 300,
     });
     expect(msg.primary).toContain("Queue position 3");
-    expect(msg.secondary).toMatch(/~\d+ min/);
+    expect(msg.secondary).toBeUndefined();
   });
 
-  it("returns running stage and remaining ETA", () => {
+  it("returns running stage without a guessed remaining ETA", () => {
     const msg = getSplitProgressMessage({
       isUploading: false,
       uploadProgress: 0,
@@ -39,7 +39,7 @@ describe("getSplitProgressMessage", () => {
       stemCount: 2,
     });
     expect(msg.primary).toBe("Separating vocals…");
-    expect(msg.secondary).toMatch(/~\d+ min/);
+    expect(msg.secondary).toBeUndefined();
   });
 
   it("uses 4-stem stage labels", () => {
@@ -53,5 +53,20 @@ describe("getSplitProgressMessage", () => {
       stemCount: 4,
     });
     expect(msg.primary).toBe("Splitting drums & bass…");
+  });
+
+  it("prefers backend-reported stage labels when available", () => {
+    const msg = getSplitProgressMessage({
+      isUploading: false,
+      uploadProgress: 0,
+      queuePosition: null,
+      splitProgress: 85,
+      elapsedSeconds: 120,
+      uploadDurationSec: null,
+      stemCount: 4,
+      progressStageLabel: "Splitting drums, bass & other…",
+    });
+    expect(msg.primary).toBe("Splitting drums, bass & other…");
+    expect(msg.secondary).toBeUndefined();
   });
 });

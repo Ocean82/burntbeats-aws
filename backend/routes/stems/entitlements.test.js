@@ -47,7 +47,7 @@ test("requireSplitEntitlements allows premium users and returns the resolved use
     },
     {
       stems: "4",
-      quality: "ultra",
+      quality: "quality",
     },
     {
       verifyClerkBearer: async () => "user_premium",

@@ -36,7 +36,6 @@ export function ProcessingSettingsPanel({
   onQualityChange,
   stemQualityOptions = "full",
   canSplitFourStems = true,
-  canExpandToFourStems = true,
   onSplit,
   isSplitting,
   splitProgress = 0,
@@ -44,10 +43,9 @@ export function ProcessingSettingsPanel({
   isUploading = false,
   queuePosition = null,
   splitElapsedSeconds = null,
+  splitStageLabel = null,
   uploadDurationSec = null,
   splitResultStemsLength,
-  isExpanding,
-  onExpand,
   splitError,
   onDismissError,
   canUseBatchQueue = true,
@@ -58,7 +56,6 @@ export function ProcessingSettingsPanel({
   usageBalance = null,
   usageLoading = false,
   estimatedSplitTokens = null,
-  estimatedExpandTokens = null,
   isCollapsed = false,
   onNewSplit,
   onOpenWaitingGame,
@@ -89,10 +86,12 @@ export function ProcessingSettingsPanel({
 
   const canChoosePaidQuality = stemQualityOptions !== "speed_only";
 
-  // Safety: if state ever holds "ultra" (old localStorage/session), clamp to a supported UI option.
+  // Safety: clamp stale persisted quality values to the current supported UI surface.
   useEffect(() => {
-     
-    if (quality === "ultra") onQualityChange("quality");
+    const currentQuality = quality as string;
+    if (currentQuality !== "speed" && currentQuality !== "quality") {
+      onQualityChange("quality");
+    }
   }, [quality, onQualityChange]);
 
   useEffect(() => {
@@ -103,10 +102,7 @@ export function ProcessingSettingsPanel({
 
   const showUsageRow =
     !subscriptionInactive &&
-    (usageLoading ||
-      usageBalance !== null ||
-      estimatedSplitTokens !== null ||
-      (splitResultStemsLength === 2 && estimatedExpandTokens !== null));
+    (usageLoading || usageBalance !== null || estimatedSplitTokens !== null);
 
   return (
     <div data-testid="processing-settings-panel">
@@ -192,7 +188,7 @@ export function ProcessingSettingsPanel({
           data-testid="source-mode-split"
           type="button"
           onClick={() => onSourceModeChange("split")}
-          aria-pressed={sourceMode === "split"}
+          aria-pressed={sourceMode === "split" ? "true" : "false"}
           className={cn(
             "tap-feedback min-h-[44px] rounded-lg px-md py-xs text-xs font-medium transition-[color,background-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
             sourceMode === "split"
@@ -206,7 +202,7 @@ export function ProcessingSettingsPanel({
           data-testid="source-mode-load"
           type="button"
           onClick={() => onSourceModeChange("load")}
-          aria-pressed={sourceMode === "load"}
+          aria-pressed={sourceMode === "load" ? "true" : "false"}
           className={cn(
             "tap-feedback min-h-[44px] rounded-lg px-md py-xs text-xs font-medium transition-[color,background-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
             sourceMode === "load"
@@ -289,12 +285,9 @@ export function ProcessingSettingsPanel({
               isUploading={isUploading}
               queuePosition={queuePosition}
               splitElapsedSeconds={splitElapsedSeconds}
+              splitStageLabel={splitStageLabel}
               uploadDurationSec={uploadDurationSec}
               splitResultStemsLength={splitResultStemsLength}
-              isExpanding={isExpanding}
-              onExpand={onExpand}
-              canExpandToFourStems={canExpandToFourStems}
-              splitError={splitError}
               canUseBatchQueue={canUseBatchQueue}
               onAddToQueue={onAddToQueue}
               onOpenWaitingGame={onOpenWaitingGame}
@@ -313,13 +306,6 @@ export function ProcessingSettingsPanel({
           <span className="text-secondary-foreground">Change</span> or{" "}
           <span className="text-secondary-foreground">Clear</span> above and upload a new
           file — that starts a new job.
-          {splitResultStemsLength === 2 && canExpandToFourStems ? (
-            <>
-              {" "}
-              Use <span className="text-primary-200/90">Expand → 4 stems</span> if
-              you want four parts from this same separation.
-            </>
-          ) : null}
               </p>
             )}
 
@@ -328,10 +314,6 @@ export function ProcessingSettingsPanel({
                 usageBalance={usageBalance}
                 usageLoading={usageLoading}
                 estimatedSplitTokens={estimatedSplitTokens}
-                estimatedExpandTokens={estimatedExpandTokens}
-                splitResultStemsLength={splitResultStemsLength}
-                isExpanding={isExpanding}
-                isSplitting={isSplitting}
                 isSample={isSample}
                 showBalance={false}
               />

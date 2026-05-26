@@ -126,6 +126,7 @@ export function App() {
     isUploading,
     queuePosition,
     splitElapsedSeconds,
+    splitStageLabel,
     masterLimiterEnabled: persistedMasterLimiterEnabled,
     setUploadState,
     setSplitError,
@@ -146,7 +147,6 @@ export function App() {
     stemQualityOptions,
     canSplitFourStems,
     canUsePremiumStemQualities,
-    canExpandToFourStems,
     canUseBatchQueue,
   } = useAppSubscription({
     localDevFullApp,
@@ -233,13 +233,11 @@ export function App() {
     handleLoadStems,
     removeLoadedStem,
     triggerSplit,
-    triggerExpand,
   } = useStemSplitting({
     subscription,
     stopPreview,
     splitQuality,
     canSplitFourStems,
-    canExpandToFourStems,
     canUsePremiumStemQualities,
   });
 
@@ -849,7 +847,6 @@ export function App() {
                   setUploadState((prev) => ({ ...prev, quality: next })),
                 stemQualityOptions,
                 canSplitFourStems,
-                canExpandToFourStems,
                 canUseBatchQueue,
                 onUpgradeToPremium: () =>
                   void subscription.startCheckout("premium", {
@@ -871,10 +868,9 @@ export function App() {
                 isUploading,
                 queuePosition,
                 splitElapsedSeconds,
+                splitStageLabel,
                 onOpenWaitingGame: toggleGame,
                 splitResultStemsLength: splitResultStems.length,
-                isExpanding,
-                onExpand: () => void triggerExpand(),
                 splitError,
                 onDismissError: () => setSplitError(null),
                 onAddToQueue: () => addToBatchQueue(uploadedFile),
@@ -883,7 +879,6 @@ export function App() {
                 usageLoading,
                 uploadDurationSec,
                 estimatedSplitTokens,
-                estimatedExpandTokens: estimatedSplitTokens,
                 isCollapsed: splitResultStems.length > 0 && !isSplitting,
                 onNewSplit: handleClearUpload,
               }}

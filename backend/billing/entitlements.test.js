@@ -81,7 +81,7 @@ test("getSplitEntitlementError blocks four-stem and premium-quality requests for
     entitlements: limitedState,
   }), {
     status: 403,
-    error: "Balanced, Quality, and Ultra split modes require Premium or Studio.",
+    error: "Quality split mode requires Premium or Studio.",
   });
 
   assert.equal(

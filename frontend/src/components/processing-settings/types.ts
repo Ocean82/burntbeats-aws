@@ -32,7 +32,6 @@ export interface ProcessingSettingsPanelProps {
   onQualityChange: (next: SplitQuality) => void;
   stemQualityOptions?: "speed_only" | "full";
   canSplitFourStems?: boolean;
-  canExpandToFourStems?: boolean;
 
   onSplit: (requestedStemMode: 2 | 4, isSample?: boolean) => void;
   isSplitting: boolean;
@@ -44,9 +43,8 @@ export interface ProcessingSettingsPanelProps {
   /** Queue position when job is waiting (1 = next to run). */
   queuePosition?: number | null;
   splitElapsedSeconds?: number | null;
+  splitStageLabel?: string | null;
   splitResultStemsLength: number;
-  isExpanding: boolean;
-  onExpand: () => void;
 
   splitError: string | null;
   onDismissError: () => void;
@@ -68,8 +66,6 @@ export interface ProcessingSettingsPanelProps {
   uploadDurationSec?: number | null;
   /** Estimated tokens for the current split job (~minutes, ceil). */
   estimatedSplitTokens?: number | null;
-  /** Estimated tokens for expand 2→4 (same duration as split). */
-  estimatedExpandTokens?: number | null;
   /**
    * When true, the panel renders in a compact collapsed bar.
    * The user can expand it by clicking "Edit Source".

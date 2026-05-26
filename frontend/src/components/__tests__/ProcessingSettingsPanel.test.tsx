@@ -30,8 +30,6 @@ function renderSplitPanel() {
     onSplit: vi.fn(),
     isSplitting: false,
     splitResultStemsLength: 0,
-    isExpanding: false,
-    onExpand: vi.fn(),
     splitError: null,
     onDismissError: vi.fn(),
     onAddToQueue: vi.fn(),
@@ -56,5 +54,15 @@ describe("ProcessingSettingsPanel layout", () => {
     expect(qualityGroup.className).toContain("w-full");
     expect(splitButton.className).toContain("fire-button");
     expect(container.querySelector("[data-testid='processing-settings-panel']")).toBeInTheDocument();
+  });
+
+  it("does not offer the removed balanced quality mode", () => {
+    renderSplitPanel();
+
+    expect(screen.getByRole("button", { name: /fast/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /quality/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /balanced/i }),
+    ).not.toBeInTheDocument();
   });
 });

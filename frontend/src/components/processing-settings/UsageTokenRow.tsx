@@ -4,10 +4,6 @@ export interface UsageTokenRowProps {
   usageBalance: number | null;
   usageLoading: boolean;
   estimatedSplitTokens: number | null;
-  estimatedExpandTokens: number | null;
-  splitResultStemsLength: number;
-  isExpanding: boolean;
-  isSplitting: boolean;
   isSample: boolean;
   /** Label for job cost line (default "This split"). */
   jobLabel?: string;
@@ -20,10 +16,6 @@ export function UsageTokenRow({
   usageBalance,
   usageLoading,
   estimatedSplitTokens,
-  estimatedExpandTokens,
-  splitResultStemsLength,
-  isExpanding,
-  isSplitting,
   isSample,
   jobLabel = "This split",
   showBalance = true,
@@ -60,14 +52,6 @@ export function UsageTokenRow({
               )}
             </span>
           )}
-          {splitResultStemsLength === 2 &&
-            estimatedExpandTokens !== null &&
-            !isExpanding &&
-            !isSplitting && (
-              <span className="ml-2">
-                · Expand to 4: ~{estimatedExpandTokens} more
-              </span>
-            )}
           <span className="mt-1 block text-xs text-muted-foreground">
             1 token ≈ 1 minute of audio (partial minutes round up).
           </span>

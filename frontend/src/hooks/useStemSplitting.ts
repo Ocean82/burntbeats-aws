@@ -1,10 +1,9 @@
 /**
  * useStemSplitting: upload → split workflow.
  * Premium/Studio: choosing 4 stems calls the API once with stems=4 (single job).
- * Manual "Expand → 4 stems" still uses the expand endpoint after a 2-stem run.
  */
 import { useCallback, useEffect, useRef } from "react";
-import { splitStems, expandStems, type SplitQuality } from "../api";
+import { splitStems, type SplitQuality } from "../api";
 import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS, isAllowedAudioFile, ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
 import { useAppStore } from "../store/appStore";
 import type { UseSubscriptionResult } from "./useSubscription";
@@ -15,7 +14,6 @@ interface UseStemSplittingArgs {
   stopPreview: () => void;
   splitQuality: SplitQuality;
   canSplitFourStems: boolean;
-  canExpandToFourStems: boolean;
   canUsePremiumStemQualities: boolean;
 }
 
@@ -24,11 +22,9 @@ export function useStemSplitting({
   stopPreview,
   splitQuality,
   canSplitFourStems,
-  canExpandToFourStems,
   canUsePremiumStemQualities,
 }: UseStemSplittingArgs) {
   const setUploadState = useAppStore((s) => s.setUploadState);
-  const setSplitError = useAppStore((s) => s.setSplitError);
   const loadedUrlsRef = useRef<string[]>([]);
 
   // Revoke all tracked object URLs on unmount
@@ -80,6 +76,7 @@ export function useStemSplitting({
       splitResultStems: [],
       splitJobId: null,
       beatGrid: null,
+      splitStageLabel: null,
       loadedStems: prev.loadedStems.filter((stem) => {
         if (stem.id.startsWith("loaded_")) {
           URL.revokeObjectURL(stem.url);
@@ -161,6 +158,7 @@ export function useStemSplitting({
       splitError: null,
       isSample,
       splitElapsedSeconds: null,
+      splitStageLabel: null,
     }));
     try {
       // Premium/Studio: one server job for 4 stems (hybrid MDX + PyTorch Demucs / SCNet per backend).
@@ -183,6 +181,10 @@ export function useStemSplitting({
             s.status === "running" && s.elapsed_seconds != null
               ? s.elapsed_seconds
               : prev.splitElapsedSeconds,
+          splitStageLabel:
+            s.progress_stage_label != null
+              ? s.progress_stage_label
+              : prev.splitStageLabel,
         }));
         // Update document title for background awareness (visible in mobile tab switcher)
         if (s.status === "queued") {
@@ -206,6 +208,7 @@ export function useStemSplitting({
         beatGrid: res.beat_grid ?? null,
         queuePosition: null,
         splitElapsedSeconds: null,
+        splitStageLabel: null,
       }));
       document.title = "✓ Stems Ready — Burnt Beats";
       // Restore original title after a few seconds
@@ -225,6 +228,7 @@ export function useStemSplitting({
         pipelineIndex: 0,
         queuePosition: null,
         splitElapsedSeconds: null,
+        splitStageLabel: null,
       }));
       trackEvent("split_failed", {
         quality: splitQuality,
@@ -241,45 +245,5 @@ export function useStemSplitting({
     setUploadState,
   ]);
 
-  const triggerExpand = useCallback(async () => {
-    if (!canExpandToFourStems) {
-      setSplitError("4-stem expand requires Premium or Studio.");
-      trackEvent("expand_blocked_basic_plan");
-      return;
-    }
-    const { splitJobId, splitResultStems } = useAppStore.getState();
-    if (!splitJobId || splitResultStems.length !== 2) return;
-    trackEvent("expand_started", { quality: splitQuality, from_stems: splitResultStems.length });
-    setUploadState((prev) => ({ ...prev, splitError: null, isExpanding: true, splitProgress: 0, pipelineIndex: 0 }));
-    try {
-      const res = await expandStems(splitJobId, splitQuality, (s) => {
-        setUploadState((prev) => ({ ...prev, splitProgress: s.progress }));
-        if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
-        else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState((prev) => ({ ...prev, pipelineIndex: 2 }));
-        else if (s.progress > 0) setUploadState((prev) => ({ ...prev, pipelineIndex: 1 }));
-      });
-      setUploadState((prev) => ({
-        ...prev,
-        splitResultStems: res.stems,
-        splitJobId: res.job_id,
-        splitProgress: 100,
-        pipelineIndex: 3,
-        beatGrid: res.beat_grid ?? prev.beatGrid,
-      }));
-      trackEvent("expand_completed", { stems_count: res.stems.length, quality: splitQuality });
-    } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "Expand failed";
-      setUploadState((prev) => ({
-        ...prev,
-        splitError: errMsg,
-        splitProgress: 0,
-        pipelineIndex: 0,
-      }));
-      trackEvent("expand_failed", { error: errMsg.slice(0, 120), quality: splitQuality });
-    } finally {
-      setUploadState((prev) => ({ ...prev, isExpanding: false }));
-    }
-  }, [splitQuality, canExpandToFourStems, setSplitError, setUploadState]);
-
-  return { handleFile, handleLoadStems, removeLoadedStem, triggerSplit, triggerExpand };
+  return { handleFile, handleLoadStems, removeLoadedStem, triggerSplit };
 }

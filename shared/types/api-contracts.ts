@@ -33,6 +33,13 @@ export interface StemJobStatus {
     beat_offset_seconds: number;
     confidence: number;
   };
+  job_type?: "split" | "expand";
+  stem_count?: number;
+  quality_mode?: "speed" | "quality";
+  mode_name?: "2_stem_speed" | "2_stem_quality" | "4_stem_speed" | "4_stem_quality";
+  progress_stage?: string;
+  progress_stage_label?: string;
+  artifact_delivery?: "local_ready" | "uploaded" | "upload_failed";
   log?: string;
 }
 
@@ -47,6 +54,7 @@ export interface StemSplitAcceptResponse {
 export interface StemExpandAcceptResponse {
   job_id: string;
   status: "accepted";
+  queue_position: number;
   job_token?: string;
 }
 

@@ -1,11 +1,8 @@
 """
-4-stem separation pipelines: SCNet → hybrid (Stage 1 + Demucs subprocess).
+4-stem hybrid separation pipeline.
 
-Entry point: run_4stem_single_pass_or_hybrid (dispatches to SCNet or hybrid).
+Entry point: run_4stem_single_pass_or_hybrid (compat alias onto the canonical hybrid path).
 Core: run_hybrid_4stem (Stage 1 vocals → phase inversion → Stage 2 Demucs on instrumental).
-
-See docs/stem-pipeline.md for routing documentation.
-See docs/research/ONNX-RUNTIME.md for locked production policies.
 """
 
 from __future__ import annotations
@@ -15,18 +12,6 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
-from stem_service.config import (
-    four_stem_skip_scnet,
-    get_scnet_onnx_path,
-    scnet_available,
-    scnet_torch_available,
-)
-from stem_service.scnet_onnx import (
-    run_scnet_onnx_4stem,
-    scnet_onnx_disable_reason,
-    scnet_onnx_runtime_available,
-)
-from stem_service.scnet_torch import run_scnet_torch_4stem
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
@@ -46,63 +31,9 @@ def run_4stem_single_pass_or_hybrid(
     job_logger: "logging.Logger | None" = None,
     model_tier: str = "balanced",
 ) -> tuple[list[tuple[str, Path]], list[str]]:
-    """
-    Entry point for 4-stem separation.
-    - PyTorch htdemucs by default (FOUR_STEM_BACKEND=hybrid).
-    - With FOUR_STEM_BACKEND=auto, try SCNet ONNX first, then hybrid.
-    Returns [(stem_id, path), ...] in order: vocals, drums, bass, other.
-    """
-    output_dir = output_dir.resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    """Compatibility wrapper onto the canonical 4-stem hybrid path."""
     _log = job_logger or logger
-
-    flat_dir = output_dir / "stems"
-    flat_dir.mkdir(parents=True, exist_ok=True)
-
-    # 4-stem: default skips SCNet (FOUR_STEM_BACKEND=hybrid).
-    # auto tries PyTorch SCNet repo, then ONNX, then Demucs.
-    if not four_stem_skip_scnet() and scnet_available():
-        if scnet_torch_available():
-            if progress_callback:
-                progress_callback(5)
-            _log.info("4-stem: trying SCNet PyTorch (starrytong/SCNet)")
-            scnet_list = run_scnet_torch_4stem(
-                input_path, flat_dir, prefer_speed=prefer_speed
-            )
-            if scnet_list is not None:
-                if progress_callback:
-                    progress_callback(100)
-                _log.info("4-stem: SCNet PyTorch succeeded  models_used=[scnet_torch]")
-                return scnet_list, ["scnet_torch"]
-            _log.warning(
-                "4-stem: SCNet PyTorch failed or returned None; trying ONNX or Demucs"
-            )
-
-        onnx_path = get_scnet_onnx_path()
-        if onnx_path is not None and scnet_onnx_runtime_available():
-            if progress_callback:
-                progress_callback(5)
-            _log.info("4-stem: trying SCNet ONNX")
-            scnet_list = run_scnet_onnx_4stem(
-                input_path, flat_dir, prefer_speed=prefer_speed
-            )
-            if scnet_list is not None:
-                if progress_callback:
-                    progress_callback(100)
-                _log.info("4-stem: SCNet ONNX succeeded  models_used=[scnet_onnx]")
-                return scnet_list, ["scnet_onnx"]
-            _log.warning(
-                "4-stem: SCNet ONNX failed or returned None, falling back to Demucs"
-            )
-        elif onnx_path is not None:
-            _log.warning(
-                "4-stem: SCNet ONNX present but disabled by self-test (%s); using Demucs",
-                scnet_onnx_disable_reason(),
-            )
-    elif four_stem_skip_scnet():
-        _log.info("4-stem: FOUR_STEM_BACKEND=hybrid — skipping SCNet")
-
-    _log.info("4-stem: using hybrid pipeline (Stage 1 + PyTorch Demucs subprocess)")
+    _log.info("4-stem: using canonical hybrid pipeline")
     return run_hybrid_4stem(
         input_path,
         output_dir,
@@ -138,6 +69,8 @@ def run_hybrid_4stem(
     effective_input = _effective_input_path(input_path, output_dir)
 
     stage1_out = output_dir / "stage1"
+    stage1_end = 80 if prefer_speed else 88
+    instrumental_end = 86 if prefer_speed else 92
     if progress_callback:
         progress_callback(5)
     vocals_path, stage1_instrumental, stage1_models, inst_src = extract_vocals_stage1(
@@ -149,10 +82,10 @@ def run_hybrid_4stem(
         vocal_model_override=vocal_model_override,
         inst_model_override=inst_model_override,
         progress_callback=progress_callback,
-        progress_range=(5, 35),
+        progress_range=(5, stage1_end),
     )
     if progress_callback:
-        progress_callback(35)
+        progress_callback(stage1_end)
 
     instrumental_path = output_dir / "instrumental.wav"
     _materialize_stage1_instrumental(
@@ -164,14 +97,14 @@ def run_hybrid_4stem(
     )
 
     if progress_callback:
-        progress_callback(40)
+        progress_callback(instrumental_end)
 
     stage2_out = output_dir / "stage2"
     stem_files = run_demucs(
         instrumental_path, stage2_out, stems=4, prefer_speed=prefer_speed
     )
     if progress_callback:
-        progress_callback(80)
+        progress_callback(97)
 
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)

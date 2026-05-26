@@ -139,12 +139,10 @@ services:
       STEM_MODELS_DIR: ${STEM_MODELS_DIR:-models}
       STEM_OUTPUT_DIR: /repo/tmp/stems
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
-      # Thread settings MUST match the cpus limit (2.0) in deploy.resources below.
-      # If you change cpus, update these to match.
-      OMP_NUM_THREADS: ${OMP_NUM_THREADS:-2}
-      MKL_NUM_THREADS: ${MKL_NUM_THREADS:-2}
-      ONNXRUNTIME_NUM_THREADS: ${ONNXRUNTIME_NUM_THREADS:-2}
-      DEMUCS_CPU_THREADS: ${DEMUCS_CPU_THREADS:-2}
+      # One CPU budget surface for queue workers + per-job threads.
+      STEM_CPU_WORKERS: ${STEM_CPU_WORKERS:-1}
+      STEM_CPU_THREADS: ${STEM_CPU_THREADS:-2}
+      STEM_CPU_INTEROP_THREADS: ${STEM_CPU_INTEROP_THREADS:-1}
       S3_ENABLED: ${S3_ENABLED:-false}
       S3_BUCKET: ${S3_BUCKET:-}
       S3_REGION: ${S3_REGION:-us-east-1}

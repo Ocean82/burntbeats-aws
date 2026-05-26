@@ -54,7 +54,6 @@ def test_bug1_quality_mode_uses_075_overlap():
         with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
              patch.object(vs1_mod, "resolve_single_vocal_onnx", return_value=fake_model), \
              patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
-             patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
              patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
 
             try:

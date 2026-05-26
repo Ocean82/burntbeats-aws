@@ -1,22 +1,12 @@
 """
-Stage 1: Extract vocals and instrumental.
+Stage 1: deterministic vocal extraction for the canonical 2-stem/4-stem hybrid paths.
 
-CPU-only 2-stem waterfall (try rank N only if rank N-1 failed):
-  1. vocal_model_override (benchmark) if valid, else tier rank-1 vocal ONNX.
-     fast/balanced: UVR_MDXNET_3_9662
-     quality:       Kim_Vocal_2
-  2. tier rank-2 vocal ONNX fallback.
-     fast/balanced: UVR_MDXNET_KARA
-     quality:       Kim_Vocal_1
-  3. Optional ``USE_AUDIO_SEPARATOR_2STEM`` branch (before rank 1 ONNX).
-  4. PyTorch Demucs htdemucs --two-stems=vocals (last resort).
+Each runtime tier resolves to one required primary ONNX vocal model:
+  - fast: UVR_MDXNET_3_9662
+  - quality: Kim_Vocal_2
 
-MDX23C is intentionally excluded from this 2-stem waterfall.
-
-Instrumental = phase inversion (original − vocals). No second ONNX pass
-unless USE_TWO_STEM_INST_ONNX_PASS=1.
-
-Returns ``(vocals_path, instrumental_path | None, models_used, instrumental_source)``.
+No runtime waterfalls, audio-separator detours, or Demucs rescue paths remain here.
+If the required primary model is missing or fails, Stage 1 raises an explicit error.
 """
 
 from __future__ import annotations
@@ -42,11 +32,6 @@ from stem_service.config import (
     htdemucs_available,
 )
 from stem_service.demucs_subprocess import format_demucs_subprocess_failure
-from stem_service.audio_separator_2stem import (
-    audio_separator_2stem_enabled,
-    resolve_audio_separator_exe,
-    run_audio_separator_2stem,
-)
 from stem_service.mdx_onnx import (
     get_available_inst_onnx,
     resolve_declared_vocal_onnx_path,
@@ -60,20 +45,10 @@ logger = logging.getLogger(__name__)
 
 
 def _vocal_rank_candidates_for_tier(model_tier: str) -> list[str]:
-    """Ordered 2-stem vocal candidates by tier.
-
-    Aligned with docs/MODEL-SELECTION-AUTHORITY.md and benchmarks/ranked_practical_time_score.csv:
-    - speed: UVR_MDXNET_3_9662 (~27s) → UVR_MDXNET_KARA (~28s) — score 9, fastest
-    - quality: Kim_Vocal_2 (~68s) → Kim_Vocal_1 (~65s) — score 9, higher fidelity
-
-    "balanced" is merged into "quality" — the Kim models provide meaningfully better
-    separation at ~2.5x the time of the fast models, which is acceptable for the
-    default quality tier on CPU.
-    """
+    """Return the single required primary vocal model name for a tier."""
     if model_tier == "fast":
-        return ["UVR_MDXNET_3_9662.onnx", "UVR_MDXNET_KARA.onnx"]
-    # quality (default) — Kim models first, fast models as fallback
-    return ["Kim_Vocal_2.onnx", "Kim_Vocal_1.onnx", "UVR_MDXNET_3_9662.onnx", "UVR_MDXNET_KARA.onnx"]
+        return ["UVR_MDXNET_3_9662.onnx"]
+    return ["Kim_Vocal_2.onnx"]
 
 
 class InstrumentalSource(Enum):
@@ -274,11 +249,10 @@ def extract_vocals_stage1(
     allow_inst_onnx = _should_run_inst_onnx_pass(prefer_speed, model_tier)
     log = job_logger or logger
 
-    # Rank 0 intentionally removed.
-
     rank_candidates = _vocal_rank_candidates_for_tier(model_tier)
+    primary_model_name = rank_candidates[0]
 
-    # Rank 1 vocal path: benchmark override when valid, else tier rank-1.
+    # Deterministic primary vocal path: benchmark override when valid, else tier primary.
     rank1_vocal: Path | None = None
     if vocal_model_override is not None:
         if vocal_onnx_allowed_for_service(vocal_model_override):
@@ -289,80 +263,31 @@ def extract_vocals_stage1(
                 vocal_model_override.name,
             )
     if rank1_vocal is None:
-        rank1_vocal = resolve_single_vocal_onnx(rank_candidates[0])
+        rank1_vocal = resolve_single_vocal_onnx(primary_model_name)
 
-    # Optional: audio-separator CLI — native Vocals + Instrumental (see stem_bench / __model_testing).
-    if (
-        audio_separator_2stem_enabled()
-        and resolve_audio_separator_exe() is not None
-        and rank1_vocal is not None
-        and rank1_vocal.suffix.lower() in (".onnx", ".ort")
-    ):
-        sep = run_audio_separator_2stem(input_path, output_dir, rank1_vocal)
-        if sep is not None:
-            v_wav, i_wav = sep
-            log.info(
-                "Stage 1: audio-separator 2-stem (%s)",
-                rank1_vocal.name,
-            )
-            return (
-                v_wav,
-                i_wav,
-                ["audio_separator", rank1_vocal.name],
-                InstrumentalSource.AUDIO_SEPARATOR,
-            )
-
-    if rank1_vocal is not None:
-        got = _pair_vocal_with_inst_onnx(
-            input_path,
-            output_dir,
-            onnx_overlap,
-            rank1_vocal,
-            rank=1,
-            model_tier=model_tier,
-            inst_model_override=inst_model_override,
-            job_logger=job_logger,
-            allow_inst_onnx=allow_inst_onnx,
-            progress_callback=progress_callback,
-            progress_range=progress_range,
+    if rank1_vocal is None:
+        raise RuntimeError(
+            f"Required Stage 1 vocal model unavailable for tier '{model_tier}': {primary_model_name}"
         )
-        if got is not None:
-            return got
 
-    # Rank 2: tier-specific fallback
-    rank2_vocal = (
-        resolve_single_vocal_onnx(rank_candidates[1])
-        if len(rank_candidates) > 1
-        else None
+    got = _pair_vocal_with_inst_onnx(
+        input_path,
+        output_dir,
+        onnx_overlap,
+        rank1_vocal,
+        rank=1,
+        model_tier=model_tier,
+        inst_model_override=inst_model_override,
+        job_logger=job_logger,
+        allow_inst_onnx=allow_inst_onnx,
+        progress_callback=progress_callback,
+        progress_range=progress_range,
     )
-    if rank2_vocal is not None:
-        got = _pair_vocal_with_inst_onnx(
-            input_path,
-            output_dir,
-            onnx_overlap,
-            rank2_vocal,
-            rank=2,
-            model_tier=model_tier,
-            inst_model_override=inst_model_override,
-            job_logger=job_logger,
-            allow_inst_onnx=allow_inst_onnx,
-            progress_callback=progress_callback,
-            progress_range=progress_range,
+    if got is None:
+        raise RuntimeError(
+            f"Stage 1 vocal extraction failed for tier '{model_tier}' using {rank1_vocal.name}"
         )
-        if got is not None:
-            return got
-
-    # Final fallback: PyTorch Demucs htdemucs 2-stem
-    log.info("Stage 1 rank 4: Demucs 2-stem (htdemucs)")
-    vocals_path, no_vocals_path = _run_demucs_two_stem(
-        input_path, output_dir, prefer_speed=prefer_speed
-    )
-    return (
-        vocals_path,
-        no_vocals_path,
-        ["htdemucs"],
-        InstrumentalSource.DEMUCS_TWO_STEM,
-    )
+    return got
 
 
 def get_2stem_stage1_preview(
@@ -371,13 +296,12 @@ def get_2stem_stage1_preview(
     stem_backend: str | None = None,
 ) -> tuple[str, list[str]]:
     """
-    Preview the first 2-stem rank that would be attempted (on-disk checks only).
-    Waterfall: rank1 → rank2 (tier-specific) → htdemucs. MDX23C not in waterfall.
+    Preview the deterministic Stage 1 model required for 2-stem hybrid.
     """
     if stem_backend == "demucs_only":
         return ("demucs", ["htdemucs"])
 
-    tier = "fast" if prefer_speed else (model_tier or "balanced")
+    tier = "fast" if prefer_speed else (model_tier or "quality")
     allow_inst_onnx = _should_run_inst_onnx_pass(bool(prefer_speed), tier)
     rank_candidates = _vocal_rank_candidates_for_tier(tier)
 
@@ -385,18 +309,7 @@ def get_2stem_stage1_preview(
     if v1 is not None:
         inst = get_available_inst_onnx(tier=tier) if allow_inst_onnx else None
         if inst is not None:
-            return ("onnx_rank1", [v1.name, inst.name])
-        return ("onnx_rank1", [v1.name, "phase_inversion"])
+            return ("onnx_primary", [v1.name, inst.name])
+        return ("onnx_primary", [v1.name, "phase_inversion"])
 
-    v2 = (
-        resolve_single_vocal_onnx(rank_candidates[1])
-        if len(rank_candidates) > 1
-        else None
-    )
-    if v2 is not None:
-        inst = get_available_inst_onnx(tier=tier) if allow_inst_onnx else None
-        if inst is not None:
-            return ("onnx_rank2", [v2.name, inst.name])
-        return ("onnx_rank2", [v2.name, "phase_inversion"])
-
-    return ("demucs", ["htdemucs"])
+    return ("missing", [rank_candidates[0]])

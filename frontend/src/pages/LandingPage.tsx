@@ -365,8 +365,8 @@ export function LandingPage() {
               </p>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 1 token = 1 minute of audio. A 3-minute track costs 3 tokens to
-                split, and another 3 if you expand to 4 stems. Partial minutes
-                round up.
+                run in either 2-stem or 4-stem mode, depending on the split you
+                choose. Partial minutes round up.
               </p>
             </div>
             <div className="rounded-2xl border border-border bg-secondary/60 p-lg">

@@ -47,11 +47,10 @@ def test_preservation_speed_mode_uses_05_overlap():
         with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
              patch.object(vs1_mod, "resolve_single_vocal_onnx", return_value=fake_model), \
              patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
-             patch.object(vs1_mod, "audio_separator_2stem_enabled", return_value=False), \
              patch.object(vs1_mod, "resolve_declared_vocal_onnx_path", return_value=None):
 
-            # Test with multiple model_tier values — speed mode should always use 0.5
-            for tier in ("fast", "balanced", "quality"):
+            # Test with the supported model tiers — speed mode should always use 0.5
+            for tier in ("fast", "quality"):
                 captured_overlap.clear()
                 try:
                     vs1_mod.extract_vocals_stage1(

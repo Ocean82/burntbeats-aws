@@ -8,12 +8,11 @@ Thread-safe via lock. Session options follow docs/research/ONNX-RUNTIME.md.
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from pathlib import Path
 from typing import Any
 
-from stem_service.config import get_onnx_providers
+from stem_service.config import cpu_job_threads, get_onnx_providers
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +34,8 @@ def _onnx_session(model_path: Path) -> Any | None:
     try:
         opts = ort.SessionOptions()
         opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        n = os.environ.get("ONNXRUNTIME_NUM_THREADS", "")
-        if n.isdigit() and int(n) >= 0:
-            opts.intra_op_num_threads = int(n)
-            opts.inter_op_num_threads = 1
+        opts.intra_op_num_threads = cpu_job_threads()
+        opts.inter_op_num_threads = 1
         sess = ort.InferenceSession(
             str(model_path),
             sess_options=opts,

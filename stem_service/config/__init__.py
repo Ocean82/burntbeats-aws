@@ -92,13 +92,10 @@ from stem_service.config.demucs_bags import (  # noqa: F401
     FOUR_STEM_BACKEND,
     DEMUCS_QUALITY_BAG_FAST_FT_NAME,
     DEMUCS_QUALITY_BAG_FAST_FT_YAML,
-    DEMUCS_QUALITY_BAG_BACKUP_NAME,
-    DEMUCS_QUALITY_BAG_BACKUP_YAML,
     DEMUCS_SPEED_4STEM_RANK28_REPO,
     DEMUCS_SPEED_4STEM_RANK29_REPO,
     DEMUCS_SPEED_4STEM_CHECKPOINTS,
     DEMUCS_QUALITY_4STEM_RANK1_REPO,
-    DEMUCS_QUALITY_4STEM_RANK2_REPO,
     DEMUCS_QUALITY_4STEM_CHECKPOINTS,
     DEMUCS_QUALITY_BAG,
     resolve_demucs_quality_bag,
@@ -107,4 +104,13 @@ from stem_service.config.demucs_bags import (  # noqa: F401
     demucs_quality_4stem_configs,
     htdemucs_ft_weights_ready,
     ensure_htdemucs_ft_yaml,
+)
+
+from stem_service.config.cpu_budget import (  # noqa: F401
+    cpu_worker_concurrency,
+    cpu_job_threads,
+    cpu_interop_threads,
+    cpu_budget_settings,
+    apply_cpu_budget_env,
+    log_cpu_budget,
 )

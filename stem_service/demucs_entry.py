@@ -29,24 +29,15 @@ from __future__ import annotations
 import os
 import runpy
 
+from stem_service.config import cpu_interop_threads, cpu_job_threads
+
 
 def _thread_count_from_env() -> int | None:
-    raw = (
-        os.environ.get("DEMUCS_CPU_THREADS", "").strip()
-        or os.environ.get("TORCH_CPU_THREADS", "").strip()
-    )
-    if not raw.isdigit():
-        return None
-    n = int(raw)
-    return n if n > 0 else None
+    return cpu_job_threads()
 
 
 def _interop_threads_from_env() -> int | None:
-    raw = os.environ.get("DEMUCS_INTEROP_THREADS", "").strip()
-    if not raw.isdigit():
-        return None
-    n = int(raw)
-    return n if n > 0 else None
+    return cpu_interop_threads()
 
 
 def _apply_blas_thread_env(n: str) -> None:
