@@ -78,18 +78,58 @@ export interface MidiNote {
   velocity: number;
 }
 
+export interface MidiAnalysis {
+  estimated_key: string;
+  scale: string;
+  pitch_range: {
+    min: number;
+    max: number;
+    min_name: string;
+    max_name: string;
+  };
+  note_density: number;
+  suggested_bpm: number | null;
+  complexity_score: number;
+  total_notes: number;
+}
+
+export interface MidiPostProcessSummary {
+  quantization_applied?: boolean;
+  quantize_strength?: number;
+  notes_removed?: number;
+  velocities_normalized?: boolean;
+  max_note_duration_applied?: boolean;
+  transposed_semitones?: number;
+}
+
+export interface MidiFileAnalysis {
+  format: number;
+  track_count: number;
+  note_count: number;
+  tempo_bpm?: number | null;
+  time_signature?: [number, number] | null;
+  has_drums: boolean;
+  instrument_programs: number[];
+}
+
+export interface MidiJobResult {
+  piano_roll_notes: MidiNote[];
+  notes_detected: number;
+  inference_time_seconds: number;
+  duration_seconds: number;
+  tracks: number;
+  analysis?: MidiAnalysis | null;
+  post_process?: MidiPostProcessSummary;
+}
+
 export interface MidiJobStatus {
   status: JobStatus;
   progress: number;
   job_id?: string;
   queue_depth?: number;
   error?: string;
-  result?: {
-    piano_roll_notes: MidiNote[];
-    notes_detected: number;
-    inference_time_seconds: number;
-    duration_seconds: number;
-  };
+  message?: string;
+  result?: MidiJobResult;
 }
 
 export interface MidiConvertAcceptResponse {
@@ -109,6 +149,30 @@ export interface MidiMergeRequest {
     is_drum?: boolean;
   }>;
   bpm?: number;
+}
+
+export interface MidiArtifactMetadata {
+  job_id: string;
+  stem_job_id?: string | null;
+  stem_name?: string | null;
+  user_id?: string | null;
+  notes_detected: number;
+  duration_seconds: number;
+  created_at: string;
+  settings: {
+    min_confidence: number;
+    min_note_length_ms: number;
+    include_pitch_bends: boolean;
+    quantize: boolean;
+    quantize_grid: string;
+    quantize_bpm: number;
+    normalize_velocity: boolean;
+    target_velocity: number;
+    max_note_length_ms: number;
+    quantize_strength: number;
+  };
+  analysis?: MidiAnalysis | null;
+  midi_file_analysis?: MidiFileAnalysis;
 }
 
 // ── Health ───────────────────────────────────────────────────────────────────
@@ -142,9 +206,22 @@ export interface BackendHealthResponse {
 }
 
 export interface PythonServiceHealthResponse {
-  status: "ok";
+  status: "ok" | "degraded";
   version: string;
   uptime_seconds: number;
   queue_depth: number;
   last_job_completed_at: string | null;
+  basic_pitch_version?: string;
+  storage?: {
+    ok: boolean;
+    output_dir: string;
+    resolved_output_dir: string;
+    can_read: boolean;
+    can_write: boolean;
+    sentinel_filename: string;
+    error?: string;
+  };
+  auth?: {
+    token_required: boolean;
+  };
 }

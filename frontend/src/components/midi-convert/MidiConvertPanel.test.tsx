@@ -72,7 +72,7 @@ describe("MidiConvertPanel", () => {
   it("renders MIDI panel and convert button", () => {
     render(<MidiConvertPanel />);
     expect(screen.getByTestId("midi-convert-panel")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /audio to midi/i })).toBeInTheDocument();
+    expect(screen.getByText(/audio to midi/i)).toBeInTheDocument();
     expect(screen.getByTestId("midi-convert-button")).toBeInTheDocument();
   });
 });

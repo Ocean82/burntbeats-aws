@@ -74,6 +74,8 @@ End users of the public site do not read this repo; this file is for **direction
 4. MIDI file via **`GET /api/midi/file/:job_id/output.mid`**.
 5. Optional: **`POST /api/midi/merge`** combines multiple completed jobs into a multi-track MIDI Type 1 file.
 
+Generated MIDI job artifacts under **`tmp/midi/<job_id>/`** also include **`metadata.json`** with conversion settings, note analysis, and an additive **`midi_file_analysis`** subtree derived from the emitted **`output.mid`** file.
+
 ---
 
 ## Quick start (Docker Compose)

@@ -10,6 +10,7 @@ Fixtures provide:
 from __future__ import annotations
 
 import json
+from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -111,55 +112,76 @@ def _make_fake_progress(out_dir: Path, job_id: str) -> None:
 
 
 @pytest_asyncio.fixture
-async def client(tmp_path):
+async def client_factory(tmp_path):
     """
-    Async httpx client connected to the FastAPI app with mocked model/worker.
+    Build an async test client connected to the FastAPI app with configurable
+    worker/auth behavior.
 
-    The preload_model and worker are mocked so tests don't require Basic Pitch
-    to be installed or the model to be downloaded. The enqueue_job is replaced
-    to directly execute the fake conversion (bypassing the async worker loop).
+    The default path mirrors the legacy `client` fixture behavior. Individual
+    tests can override queue depth, enqueue failures, or service-token auth
+    without duplicating app setup in each test.
     """
-    output_dir = tmp_path / "midi_output"
-    output_dir.mkdir(parents=True, exist_ok=True)
 
-    def fake_run_job(job_id, input_path, out_dir, options):
-        _make_fake_progress(out_dir, job_id)
-
-    async def fake_start_worker(run_fn):
-        pass
-
-    async def fake_stop_worker():
-        pass
-
-    async def fake_enqueue(item):
-        """Directly run the fake conversion instead of queuing."""
-        job_id = item["job_id"]
-        out_dir = item["out_dir"]
-        input_path = Path(item["input_path"])
-        options = {
-            "min_confidence": item.get("min_confidence", 0.5),
-            "min_note_length_ms": item.get("min_note_length_ms", 58),
-            "include_pitch_bends": item.get("include_pitch_bends", True),
-        }
-        fake_run_job(job_id, input_path, out_dir, options)
-
-    with (
-        patch("midi_service.config.MIDI_OUTPUT_DIR", output_dir),
-        patch("midi_service.server.MIDI_OUTPUT_DIR", output_dir),
-        patch("midi_service.job_utils.MIDI_OUTPUT_DIR", output_dir),
-        patch("midi_service.server.preload_model"),
-        patch("midi_service.server.start_worker", side_effect=fake_start_worker),
-        patch("midi_service.server.stop_worker", side_effect=fake_stop_worker),
-        patch("midi_service.server.enqueue_job", side_effect=fake_enqueue),
-        patch("midi_service.server.get_queue_depth", return_value=0),
+    @asynccontextmanager
+    async def _make_client(
+        *,
+        queue_depth: int = 0,
+        enqueue_error: Exception | None = None,
+        service_api_token: str = "",
     ):
-        from midi_service.server import app
+        output_dir = tmp_path / "midi_output"
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-        transport = ASGITransport(app=app)
-        async with AsyncClient(
-            transport=transport, base_url="http://test"
-        ) as ac:
-            yield ac
+        def fake_run_job(job_id, input_path, out_dir, options):
+            _make_fake_progress(out_dir, job_id)
+
+        async def fake_start_worker(run_fn):
+            pass
+
+        async def fake_stop_worker():
+            pass
+
+        async def fake_enqueue(item):
+            """Directly run the fake conversion instead of queuing."""
+            if enqueue_error is not None:
+                raise enqueue_error
+
+            job_id = item["job_id"]
+            out_dir = item["out_dir"]
+            input_path = Path(item["input_path"])
+            options = {
+                "min_confidence": item.get("min_confidence", 0.5),
+                "min_note_length_ms": item.get("min_note_length_ms", 58),
+                "include_pitch_bends": item.get("include_pitch_bends", True),
+            }
+            fake_run_job(job_id, input_path, out_dir, options)
+
+        with (
+            patch("midi_service.app.MIDI_OUTPUT_DIR", output_dir),
+            patch("midi_service.app.MIDI_SERVICE_API_TOKEN", service_api_token),
+            patch("midi_service.app.preload_model"),
+            patch("midi_service.app.start_worker", side_effect=fake_start_worker),
+            patch("midi_service.app.stop_worker", side_effect=fake_stop_worker),
+            patch("midi_service.app.enqueue_job", side_effect=fake_enqueue),
+            patch("midi_service.app.get_queue_depth", return_value=queue_depth),
+        ):
+            from midi_service.app import create_app
+
+            app = create_app()
+            transport = ASGITransport(app=app)
+            async with AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as ac:
+                setattr(ac, "_test_midi_output_dir", output_dir)
+                yield ac
+
+    yield _make_client
+
+
+@pytest_asyncio.fixture
+async def client(client_factory):
+    async with client_factory() as ac:
+        yield ac
 
 
 @pytest_asyncio.fixture
@@ -174,12 +196,11 @@ async def integration_client(tmp_path):
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with (
-        patch("midi_service.config.MIDI_OUTPUT_DIR", output_dir),
-        patch("midi_service.server.MIDI_OUTPUT_DIR", output_dir),
-        patch("midi_service.job_utils.MIDI_OUTPUT_DIR", output_dir),
+        patch("midi_service.app.MIDI_OUTPUT_DIR", output_dir),
     ):
-        from midi_service.server import app
+        from midi_service.app import create_app
 
+        app = create_app()
         transport = ASGITransport(app=app)
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             yield ac

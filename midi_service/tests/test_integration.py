@@ -19,6 +19,7 @@ Run integration tests (requires Basic Pitch):
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -260,6 +261,128 @@ class TestHealthEndpoint:
         assert body["storage"]["can_write"] is True
         assert "auth" in body
         assert "token_required" in body["auth"]
+
+
+# ---------------------------------------------------------------------------
+# Additional contract coverage for Phase 1 refactor safety
+# ---------------------------------------------------------------------------
+
+
+def _write_merge_job_artifacts(
+    output_dir: Path,
+    job_id: str,
+    *,
+    status: str = "completed",
+    notes: list[dict] | None = None,
+) -> None:
+    job_dir = output_dir / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    notes = notes or [
+        {"pitch": 60, "start": 0.0, "duration": 0.5, "velocity": 90},
+        {"pitch": 64, "start": 0.5, "duration": 0.5, "velocity": 92},
+    ]
+    progress = {
+        "status": status,
+        "job_id": job_id,
+        "progress": 100 if status == "completed" else 50,
+        "message": "Conversion complete" if status == "completed" else "Processing",
+        "result": {"piano_roll_notes": notes} if status == "completed" else {},
+    }
+    (job_dir / "progress.json").write_text(json.dumps(progress), encoding="utf-8")
+
+
+class TestServiceTokenAuth:
+    async def test_status_requires_service_token_when_configured(self, client_factory):
+        async with client_factory(service_api_token="secret-token") as client:
+            job_id = "00000000-0000-0000-0000-000000000000"
+
+            unauthorized = await client.get(f"/status/{job_id}")
+            assert unauthorized.status_code == 401
+            assert unauthorized.json()["detail"] == "Unauthorized"
+
+            authorized = await client.get(
+                f"/status/{job_id}",
+                headers={"X-Midi-Service-Token": "secret-token"},
+            )
+            assert authorized.status_code == 404
+
+    async def test_merge_requires_service_token_when_configured(self, client_factory):
+        async with client_factory(service_api_token="secret-token") as client:
+            job_id = "11111111-1111-4111-8111-111111111111"
+            _write_merge_job_artifacts(
+                Path(getattr(client, "_test_midi_output_dir")),
+                job_id,
+            )
+
+            unauthorized = await client.post(
+                "/merge",
+                json={"jobs": [{"job_id": job_id, "stem_name": "vocals"}]},
+            )
+            assert unauthorized.status_code == 401
+            assert unauthorized.json()["detail"] == "Unauthorized"
+
+            authorized = await client.post(
+                "/merge",
+                json={"jobs": [{"job_id": job_id, "stem_name": "vocals"}]},
+                headers={"X-Midi-Service-Token": "secret-token"},
+            )
+            assert authorized.status_code == 200
+            assert authorized.content[:4] == b"MThd"
+
+
+class TestQueueAndMergeContracts:
+    async def test_convert_returns_503_when_queue_is_full(
+        self, client_factory, piano_wav_path: Path
+    ):
+        async with client_factory(enqueue_error=RuntimeError("queue full")) as client:
+            with open(piano_wav_path, "rb") as f:
+                response = await client.post(
+                    "/convert",
+                    files={"file": ("piano_c_major.wav", f, "audio/wav")},
+                )
+
+        assert response.status_code == 503
+        assert response.json()["detail"] == "MIDI service queue is full"
+
+    async def test_merge_returns_multitrack_midi_and_track_header(self, client):
+        output_dir = Path(getattr(client, "_test_midi_output_dir"))
+        first_job_id = "22222222-2222-4222-8222-222222222222"
+        second_job_id = "33333333-3333-4333-8333-333333333333"
+        _write_merge_job_artifacts(output_dir, first_job_id)
+        _write_merge_job_artifacts(
+            output_dir,
+            second_job_id,
+            notes=[{"pitch": 36, "start": 0.0, "duration": 0.25, "velocity": 110}],
+        )
+
+        response = await client.post(
+            "/merge",
+            json={
+                "jobs": [
+                    {"job_id": first_job_id, "stem_name": "vocals", "program": 52},
+                    {"job_id": second_job_id, "stem_name": "drums", "is_drum": True},
+                ],
+                "bpm": 128,
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("audio/midi")
+        assert response.headers["x-merge-tracks"] == "2"
+        assert response.content[:4] == b"MThd"
+
+    async def test_merge_rejects_jobs_that_are_not_completed(self, client):
+        output_dir = Path(getattr(client, "_test_midi_output_dir"))
+        job_id = "44444444-4444-4444-8444-444444444444"
+        _write_merge_job_artifacts(output_dir, job_id, status="processing")
+
+        response = await client.post(
+            "/merge",
+            json={"jobs": [{"job_id": job_id, "stem_name": "vocals"}]},
+        )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == f"Job not completed: {job_id}"
 
 
 # ---------------------------------------------------------------------------
