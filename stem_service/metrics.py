@@ -56,7 +56,7 @@ active_jobs = Gauge(
 def record_job_completed(
     duration_seconds: float,
     operation: str = "split",
-    quality: str = "balanced",
+    quality: str = "quality",
     stems: str = "2",
 ) -> None:
     """Record a completed job's duration and increment the success counter."""

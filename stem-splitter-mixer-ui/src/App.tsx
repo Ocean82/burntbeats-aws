@@ -4,7 +4,7 @@ import WaveSurfer from 'wavesurfer.js';
 
 // Define types for our application
 type StemType = 'vocals' | 'instrumental' | 'bass' | 'drums' | 'other';
-type QualitySetting = 'fast' | 'balanced' | 'high';
+type QualitySetting = 'fast' | 'quality';
 
 interface Stem {
   id: StemType;
@@ -229,8 +229,8 @@ const StemSplitterApp = () => {
                 {/* Quality Selection */}
                 <div>
                   <label className="block text-gray-300 mb-2">Quality vs Speed</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['fast', 'balanced', 'high'] as QualitySetting[]).map((q) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['fast', 'quality'] as QualitySetting[]).map((q) => (
                       <button
                         key={q}
                         className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${

@@ -29,7 +29,7 @@ def run_4stem_single_pass_or_hybrid(
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
-    model_tier: str = "balanced",
+    model_tier: str = "quality",
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """Compatibility wrapper onto the canonical 4-stem hybrid path."""
     _log = job_logger or logger
@@ -48,7 +48,7 @@ def run_hybrid_4stem(
     input_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
-    model_tier: str = "balanced",
+    model_tier: str = "quality",
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,

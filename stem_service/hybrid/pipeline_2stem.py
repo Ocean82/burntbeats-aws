@@ -27,7 +27,7 @@ def run_hybrid_2stem(
     input_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
-    model_tier: str = "balanced",
+    model_tier: str = "quality",
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,

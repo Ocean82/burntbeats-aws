@@ -84,7 +84,7 @@ def _should_run_inst_onnx_pass(prefer_speed: bool, model_tier: str) -> bool:
     if raw in ("0", "false", "no", "off"):
         return False
     # Default policy: skip second pass for all tiers until explicitly enabled.
-    # This keeps 2-stem speed and balanced/quality behavior aligned with
+    # This keeps 2-stem speed and quality behavior aligned with
     # product expectations on CPU-first deployments.
     _ = (prefer_speed, model_tier)  # placeholders for future tier-specific logic
     return False
@@ -222,7 +222,7 @@ def extract_vocals_stage1(
     input_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
-    model_tier: str = "balanced",
+    model_tier: str = "quality",
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,
     inst_model_override: Path | None = None,

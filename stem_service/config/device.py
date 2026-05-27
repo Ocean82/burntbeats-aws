@@ -71,8 +71,7 @@ DEFAULT_STEM_COUNT = 4
 ALLOWED_STEM_COUNTS = (2, 4)
 DEFAULT_QUALITY = "quality"
 
-# Quality tiers — "balanced" is merged into "quality" (same pipeline behavior).
-# Only "speed" and "quality" are distinct tiers at runtime.
+# Quality tiers — only "speed" and "quality" exist.
 QUALITY_SPEED = "speed"
 QUALITY_QUALITY = "quality"
 QUALITY_ULTRA = "ultra"

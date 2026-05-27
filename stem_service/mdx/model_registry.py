@@ -80,16 +80,10 @@ DEREVERB_MODEL_PATHS: list[Path] = [
 
 # ---------------------------------------------------------------------------
 # CPU-only single-model tier assignments — MUST match docs/MODEL-SELECTION-AUTHORITY.md.
-# "balanced" is merged into "quality" — both use the same model waterfall.
+# Only "fast" and "quality" tiers exist.
 # ---------------------------------------------------------------------------
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
     "fast": [
-        "UVR_MDXNET_3_9662.onnx",
-        "UVR_MDXNET_KARA.onnx",
-    ],
-    "balanced": [
-        "Kim_Vocal_2.onnx",
-        "Kim_Vocal_1.onnx",
         "UVR_MDXNET_3_9662.onnx",
         "UVR_MDXNET_KARA.onnx",
     ],
@@ -103,7 +97,6 @@ _VOCAL_TIER_NAMES: dict[str, list[str]] = {
 
 _INST_TIER_NAMES: dict[str, list[str]] = {
     "fast": ["UVR-MDX-NET-Inst_HQ_5.onnx"],
-    "balanced": ["UVR-MDX-NET-Inst_HQ_5.onnx"],
     "quality": ["UVR-MDX-NET-Inst_HQ_5.onnx"],
 }
 
@@ -217,7 +210,7 @@ def _candidate_paths_by_names(names: list[str]) -> list[Path]:
 
 def _normalize_tier(tier: str | None) -> str:
     t = (tier or "").strip().lower()
-    return t if t in ("fast", "balanced", "quality") else "balanced"
+    return t if t in ("fast", "quality") else "quality"
 
 
 def get_available_vocal_onnx(tier: str | None = None) -> Path | None:
