@@ -94,7 +94,7 @@ test("backend stem API auth gates (job_token)", async () => {
   const backendBaseUrl = `http://127.0.0.1:${backendPort}`;
 
   try {
-    // Unauthorized status/file
+    // Unauthorized status/file (no job token → 401)
     {
       const s = await fetch(`${backendBaseUrl}/api/stems/status/${jobId1}`);
       assert.equal(s.status, 401);
@@ -103,7 +103,7 @@ test("backend stem API auth gates (job_token)", async () => {
       assert.equal(f.status, 401);
     }
 
-    // Split returns job_token
+    // Split returns job_token (non-premium: speed + 2 stems bypasses entitlement gate)
     let jobToken;
     {
       const body = new FormData();
@@ -143,26 +143,26 @@ test("backend stem API auth gates (job_token)", async () => {
       assert.equal(fileRes.headers.get("content-type"), "audio/wav");
     }
 
-    // Expand requires the source job token and returns a new job token
-    let newJobToken;
+    // Expand requires Clerk auth for entitlements (job token alone is not sufficient)
     {
       const expandRes = await fetch(`${backendBaseUrl}/api/stems/expand`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-job-token": jobToken },
         body: JSON.stringify({ job_id: jobId1, quality: "quality" }),
       });
-      assert.equal(expandRes.status, 202);
-      const expandJson = await expandRes.json();
-      assert.equal(expandJson.job_id, jobId2);
-      assert.ok(typeof expandJson.job_token === "string" && expandJson.job_token.length > 0);
-      newJobToken = expandJson.job_token;
+      // Expand requires Clerk bearer auth for premium entitlements;
+      // job token passes jobTokenMiddleware but entitlement check rejects without Clerk.
+      assert.equal(expandRes.status, 401);
     }
 
+    // Expand without job token is also rejected (jobTokenMiddleware)
     {
-      const statusRes2 = await fetch(`${backendBaseUrl}/api/stems/status/${jobId2}`, {
-        headers: { "x-job-token": newJobToken },
+      const expandNoToken = await fetch(`${backendBaseUrl}/api/stems/expand`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId1, quality: "quality" }),
       });
-      assert.equal(statusRes2.status, 200);
+      assert.equal(expandNoToken.status, 401);
     }
 
     // Cleanup route semantics + API_KEY guard
@@ -186,4 +186,3 @@ test("backend stem API auth gates (job_token)", async () => {
     }
   }
 });
-
