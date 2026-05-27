@@ -58,15 +58,13 @@ expandRouter.post(
 
     /** @type {string | null} */
     let entitlementUserId = null;
-    if (!DEV_BYPASS_UPLOAD_AUTH) {
-      const entitlementCheck = await requireExpandEntitlements(req);
-      if (!entitlementCheck.ok) {
-        return res
-          .status(entitlementCheck.status)
-          .json({ error: entitlementCheck.error });
-      }
-      entitlementUserId = entitlementCheck.userId;
+    const entitlementCheck = await requireExpandEntitlements(req);
+    if (!entitlementCheck.ok) {
+      return res
+        .status(entitlementCheck.status)
+        .json({ error: entitlementCheck.error });
     }
+    entitlementUserId = entitlementCheck.userId;
 
     /** @type {string | null} */
     let usageUserId = entitlementUserId;
