@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pretty_midi
 
@@ -54,6 +54,8 @@ def merge_jobs_to_multitrack(
     output_path: Path,
     *,
     bpm: int = 120,
+    time_mode: Literal["absolute_seconds", "bars_beats"] = "absolute_seconds",
+    tempo_map: Any | None = None,
 ) -> dict[str, Any]:
     """
     Merge multiple conversion job results into a single multi-track MIDI file.
@@ -71,6 +73,13 @@ def merge_jobs_to_multitrack(
         Where to write the merged .mid file.
     bpm : int
         Tempo for the merged file.
+    time_mode : {\"absolute_seconds\", \"bars_beats\"}
+        How note timing is interpreted. In ``\"absolute_seconds\"`` mode,
+        ``start`` and ``duration`` are assumed to be in seconds (current
+        behavior). In ``\"bars_beats\"`` mode, callers may pass bar/beat
+        based structures and must also supply a compatible ``tempo_map``.
+    tempo_map :
+        Optional tempo map object used when ``time_mode=\"bars_beats\"``.
 
     Returns
     -------
@@ -100,8 +109,26 @@ def merge_jobs_to_multitrack(
 
         for note in notes:
             pitch = max(0, min(127, int(note["pitch"]) + transpose))
-            start = float(note["start"])
-            duration = max(float(note["duration"]), 0.01)
+
+            # Interpret timing according to the selected mode. For now
+            # we only support seconds directly; bar/beat modes can be
+            # added later alongside richer timing metadata in `note`.
+            if time_mode == "absolute_seconds":
+                start = float(note["start"])
+                duration = float(note["duration"])
+            else:
+                if tempo_map is None:
+                    raise ValueError(
+                        "tempo_map is required when time_mode='bars_beats'"
+                    )
+                # Future extension point: convert bar/beat fields on
+                # the note dict into seconds using `tempo_map`.
+                start = float(note.get("start_seconds", 0.0))
+                duration = float(note.get("duration_seconds", 0.0))
+
+            # Enforce sane duration lower bound.
+            duration = max(duration, 0.01)
+
             velocity = max(1, min(127, int(note["velocity"])))
             end = start + duration
 

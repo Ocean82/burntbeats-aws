@@ -22,6 +22,8 @@ from midi_service.pipeline import preload_model, run_midi_convert_sync
 from midi_service.routes.convert import build_convert_router
 from midi_service.routes.jobs import build_jobs_router
 from midi_service.routes.merge import build_merge_router
+from midi_service.routes.waveform import build_waveform_router
+from midi_service.routes.export import build_export_router
 from midi_service.routes.ops import build_ops_router
 from midi_service.services.storage import probe_storage, write_storage_sentinel
 
@@ -91,6 +93,8 @@ def create_app() -> FastAPI:
     )
     app.include_router(build_jobs_router())
     app.include_router(build_merge_router())
+    app.include_router(build_waveform_router())
+    app.include_router(build_export_router())
     return app
 
 
