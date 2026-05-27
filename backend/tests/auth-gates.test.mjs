@@ -82,6 +82,7 @@ test("backend stem API auth gates (job_token)", async () => {
   process.env.API_KEY = ""; // so cleanup requires config
   process.env.JOB_TOKEN_SECRET = "test-job-token-secret";
   process.env.JOB_TOKEN_TTL_MS = "3600000";
+  process.env.DEV_BYPASS_UPLOAD_AUTH = "1";
 
   const backendModule = await import("../server.js");
   const { app } = backendModule;
@@ -108,7 +109,7 @@ test("backend stem API auth gates (job_token)", async () => {
       const body = new FormData();
       body.append("file", new Blob([DUMMY_STEM_BYTES], { type: "audio/wav" }), "test.wav");
       body.append("stems", "2");
-      body.append("quality", "quality");
+      body.append("quality", "speed");
 
       const splitRes = await fetch(`${backendBaseUrl}/api/stems/split`, {
         method: "POST",
