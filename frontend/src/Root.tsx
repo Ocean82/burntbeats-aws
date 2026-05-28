@@ -22,6 +22,9 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { LegalAcceptanceGate } from "./components/LegalAcceptanceGate";
 import { trackEvent } from "./analytics/events";
 
+import { AudioProvider } from "./contexts/AudioContext";
+import { WorkflowProvider } from "./contexts/WorkflowContext";
+
 /** Shown while Clerk loads session — avoids a blank screen (perceived hang). */
 function ClerkLoadingShell() {
   return (
@@ -55,9 +58,13 @@ function LocalDevRoot() {
   return (
     <ErrorBoundary>
       <LegalAcceptanceGate>
-        <AppShell>
-          <App />
-        </AppShell>
+        <WorkflowProvider>
+          <AudioProvider>
+            <AppShell>
+              <App />
+            </AppShell>
+          </AudioProvider>
+        </WorkflowProvider>
       </LegalAcceptanceGate>
     </ErrorBoundary>
   );
@@ -103,9 +110,13 @@ function AuthenticatedRoot() {
 
   return (
     <ErrorBoundary>
-      <AppShell>
-        <App />
-      </AppShell>
+      <WorkflowProvider>
+        <AudioProvider>
+          <AppShell>
+            <App />
+          </AppShell>
+        </AudioProvider>
+      </WorkflowProvider>
     </ErrorBoundary>
   );
 }

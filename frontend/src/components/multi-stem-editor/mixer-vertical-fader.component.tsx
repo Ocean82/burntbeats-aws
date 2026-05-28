@@ -93,18 +93,27 @@ export const MixerVerticalFader = memo(function MixerVerticalFader({
         disabled && "opacity-40",
         muted && "opacity-50",
       )}
-      style={{ height, width: 28, "--fader-accent": accentColor } as React.CSSProperties}
+      style={{ height, width: 32, "--fader-accent": accentColor } as React.CSSProperties}
     >
       <div
-        className="mixer-vertical-fader__slot absolute inset-y-1 left-1/2 w-[7px] -translate-x-1/2"
+        className="fader-groove absolute inset-y-0 left-1/2 w-[10px] -translate-x-1/2"
         aria-hidden
       />
       <div
-        className="mixer-vertical-fader__thumb pointer-events-none absolute left-1/2 z-[1] w-[18px] -translate-x-1/2"
-        style={{ bottom: thumbBottom }}
+        className="mixer-vertical-fader__thumb pointer-events-none absolute left-1/2 z-[1] w-[24px] -translate-x-1/2"
+        style={{ 
+          bottom: thumbBottom,
+          background: `linear-gradient(180deg, #444 0%, #222 100%)`,
+          boxShadow: isDragging 
+            ? `0 0 15px ${accentColor}88, 0 4px 8px rgba(0,0,0,0.5)` 
+            : `0 4px 8px rgba(0,0,0,0.5)`
+        }}
         aria-hidden
       >
-        <span className="mixer-vertical-fader__thumb-line" />
+        <div 
+          className="absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2" 
+          style={{ background: accentColor, boxShadow: `0 0 8px ${accentColor}` }}
+        />
       </div>
       <input
         type="range"

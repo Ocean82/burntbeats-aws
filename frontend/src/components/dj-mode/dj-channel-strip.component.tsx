@@ -82,33 +82,33 @@ export const DjChannelStrip = memo(function DjChannelStrip({
   return (
     <div
       className={cn(
-        "dj-channel-strip flex min-w-[5.5rem] w-[5.5rem] flex-col items-center overflow-visible rounded-xl border px-sm py-sm transition-all duration-200 ease",
-        "bg-gradient-to-b from-white/[0.06] to-black/50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]",
-        showEq ? "min-h-[20rem] sm:min-h-[22rem]" : "min-h-[16rem] sm:min-h-[18rem]",
+        "dj-channel-strip hardware-panel flex min-w-[6rem] w-[6rem] flex-col items-center overflow-visible rounded-xl border px-sm py-sm transition-all duration-200 ease",
+        showEq ? "min-h-[22rem] sm:min-h-[24rem]" : "min-h-[18rem] sm:min-h-[20rem]",
         isActive
-          ? "dj-channel-strip--active border-border ring-2 ring-offset-1 ring-offset-black/80"
-          : "border-border hover:border-border",
+          ? "border-primary-500/50 ring-1 ring-primary-500/20 shadow-[0_0_30px_rgba(255,100,0,0.1)]"
+          : "border-white/5",
       )}
       style={
         {
           "--stem-glow": stem.glow,
           "--stem-glow-soft": stem.glowSoft,
+          "--led-color": stem.glow,
         } as React.CSSProperties
       }
     >
       <button
         type="button"
         className={cn(
-          "dj-channel-strip__header flex w-full shrink-0 cursor-pointer items-center justify-center gap-xs border-b border-border pb-2 transition-colors",
-          isActive && "bg-muted/[0.04]",
+          "dj-channel-strip__header flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-xs border-b border-white/5 pb-3 transition-colors",
+          isActive && "bg-white/[0.02]",
         )}
         onClick={handleActivate}
         onKeyDown={handleHeaderKeyDown}
         aria-label={`Select ${stem.label} channel`}
         aria-pressed={isActive}
       >
-        <span className="dj-channel-strip__dot h-2 w-2 shrink-0 rounded-full" aria-hidden />
-        <span className="truncate text-[9px] font-bold uppercase tracking-wider text-secondary-foreground">
+        <div className={cn("led-indicator mb-1", isActive && "led-indicator--active")} aria-hidden />
+        <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-secondary-foreground">
           {stem.label}
         </span>
       </button>

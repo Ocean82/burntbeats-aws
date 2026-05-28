@@ -2,79 +2,44 @@ import { Suspense, lazy, type RefObject } from "react";
 import { cn } from "../utils/cn";
 import { Skeleton } from "../components/ui/skeleton";
 import { ProgressWidget } from "../components/ProgressWidget";
-import type { StemDefinition } from "../types";
-import type { StemEditorState } from "../stem-editor-state";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
-import type { SeekPhase } from "../types/playbackSeek";
-import type { BeatGridMetadata } from "../api";
 import {
   ENABLE_ONBOARDING_QUEST,
   ENABLE_PROGRESS_WIDGET,
 } from "../config/uiFlags";
+import { useAudio } from "../contexts/AudioContext";
+import { useWorkflow } from "../contexts/WorkflowContext";
+import { useAppStore } from "../store/appStore";
+import { useUiStore } from "../store/uiStore";
+import { useOnboarding } from "../hooks/ui/useOnboarding";
+import { useResolvedStems } from "../hooks/workflow/useResolvedStems";
 
 type OnboardingStep = { id: number; label: string; done: boolean };
-type StemWithOptionalUrl = StemDefinition & { url?: string };
 
 interface MixerWorkspaceProps {
   mixerSectionRef: RefObject<HTMLDivElement | null>;
   onPointerDownMixer: React.PointerEventHandler<HTMLDivElement>;
   guidanceTarget: string | null;
   guidanceRingClass: string;
-  /** @deprecated No entrance animation in product surfaces */
-  reduceMotion?: boolean;
-  onboardingSteps: OnboardingStep[];
-  hasCompletedFirstExport: boolean;
   subscription: Pick<UseSubscriptionResult, "status" | "plan">;
   setActiveView: (view: "editor" | "pricing") => void;
-  splitResultStemsLength: number;
-  mixStemsLength: number;
-  /* MixerPanel props */
-  mixStemCount: number;
-  splitStemCount?: 2 | 4 | null;
-  isPlayingMix: boolean;
-  onPlayStop: () => void;
-  onStopMix: () => void;
-  onSeekMix: (pct: number, opts?: { phase?: SeekPhase }) => void;
-  isExporting: boolean;
-  onExport: () => void;
-  isComparingExport: boolean;
-  onCompareExport?: () => void;
+  hasCompletedFirstExport: boolean;
+  
+  // These props remain for now as they are very specific to the current App.tsx orchestrator
   onResetLevels: () => void;
   onResetSingleStem?: (stemId: string) => void;
-  hasStemBuffers: boolean;
-  stems: StemWithOptionalUrl[];
-  waveforms: Record<string, number[]>;
-  durations: Record<string, number>;
-  stemStates: Record<string, StemEditorState>;
-  getPlayheadPosition: () => number;
-  subscribePlayheadPosition: (listener: () => void) => () => void;
   isLoadingStems: boolean;
   loadingError: string | null;
   onRetryLoadStems?: () => void;
   activeStemId: string | undefined;
   onActiveStemChange: (stemId: string) => void;
-  onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
+  onStemStateChange: (stemId: string, patch: Partial<import("../stem-editor-state").StemEditorState>) => void;
   onPreviewStem: (stemId: string) => void;
-  playingStemId: string | null;
-  loadingPreviewStemId: string | null;
-  getMasterAnalyserTimeDomainData: () => Uint8Array | null;
-  getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
-  getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
-  getMasterAnalyserFrequencyData: () => Uint8Array | null;
-  getStemAnalyserTimeDomainData: (stemId: string) => Uint8Array | null;
-  masterVolume: number;
-  onMasterVolumeChange: (value: number) => void;
-  masterLimiterEnabled: boolean;
-  onMasterLimiterEnabledChange: (enabled: boolean) => void;
-  /** Optional beat-grid metadata from backend BPM analysis. */
-  beatGrid?: BeatGridMetadata | null;
-  /** Whether loop playback is enabled. */
-  loopEnabled?: boolean;
-  /** Callback to toggle loop playback. */
-  onLoopToggle?: (enabled: boolean) => void;
-  /* Status toasts */
+  onExport: () => void;
+  isExporting: boolean;
+  isComparingExport: boolean;
+  onCompareExport?: () => void;
   exportCompareSummary: string | null;
-  undoToast: string | null;
 }
 
 const MixerPanel = lazy(
@@ -86,31 +51,11 @@ export function MixerWorkspace({
   onPointerDownMixer,
   guidanceTarget,
   guidanceRingClass,
-  onboardingSteps,
-  hasCompletedFirstExport,
   subscription,
   setActiveView,
-  splitResultStemsLength,
-  mixStemsLength,
-  mixStemCount,
-  splitStemCount = null,
-  isPlayingMix,
-  onPlayStop,
-  onStopMix,
-  onSeekMix,
-  isExporting,
-  onExport,
-  isComparingExport,
-  onCompareExport,
+  hasCompletedFirstExport,
   onResetLevels,
   onResetSingleStem,
-  hasStemBuffers,
-  stems,
-  waveforms,
-  durations,
-  stemStates,
-  getPlayheadPosition,
-  subscribePlayheadPosition,
   isLoadingStems,
   loadingError,
   onRetryLoadStems,
@@ -118,23 +63,22 @@ export function MixerWorkspace({
   onActiveStemChange,
   onStemStateChange,
   onPreviewStem,
-  playingStemId,
-  loadingPreviewStemId,
-  getMasterAnalyserTimeDomainData,
-  getMasterAnalyserTimeDomainDataLeft,
-  getMasterAnalyserTimeDomainDataRight,
-  getMasterAnalyserFrequencyData,
-  getStemAnalyserTimeDomainData,
-  masterVolume,
-  onMasterVolumeChange,
-  masterLimiterEnabled,
-  onMasterLimiterEnabledChange,
-  beatGrid,
-  loopEnabled,
-  onLoopToggle,
+  onExport,
+  isExporting,
+  isComparingExport,
+  onCompareExport,
   exportCompareSummary,
-  undoToast,
 }: MixerWorkspaceProps) {
+  const audio = useAudio();
+  const { stemStates, stemBuffers } = useWorkflow();
+  const { splitResultStems, uploadedFile, beatGrid } = useAppStore((s) => ({
+    splitResultStems: s.splitResultStems,
+    uploadedFile: s.uploadedFile,
+    beatGrid: s.beatGrid,
+  }));
+  const { undoToast } = useUiStore();
+  const { mixStems, visibleStems } = useResolvedStems();
+
   return (
     <div
       ref={mixerSectionRef}
@@ -144,116 +88,6 @@ export function MixerWorkspace({
         guidanceTarget === "mixer" && guidanceRingClass,
       )}
     >
-      {/* Onboarding checklist */}
-      <div className="mb-md flex flex-col gap-xs rounded-2xl border border-border bg-muted px-sm py-xs text-helper text-secondary-foreground">
-        <div className="flex flex-wrap items-center justify-between gap-xs">
-          <div className="flex items-center gap-xs">
-            <span className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">
-              {ENABLE_ONBOARDING_QUEST
-                ? "First project quest"
-                : "Getting started"}
-            </span>
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary-400 transition-[width]"
-                style={{
-                  width: `${
-                    (onboardingSteps.filter((s) => s.done).length /
-                      onboardingSteps.length) *
-                    100
-                  }%`,
-                }}
-              />
-            </div>
-          </div>
-          {ENABLE_ONBOARDING_QUEST && (
-            <span className="text-meta text-muted-foreground">
-              Step {onboardingSteps.filter((s) => s.done).length}{" "}
-              of {onboardingSteps.length}
-            </span>
-          )}
-        </div>
-        <p className="text-meta text-muted-foreground">
-          Press{" "}
-          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-secondary-foreground">
-            ?
-          </kbd>{" "}
-          or <span className="text-muted-foreground">Help</span> in the
-          header for keyboard shortcuts.
-        </p>
-        <div className="flex flex-wrap gap-xs">
-          {onboardingSteps.map((step) => (
-            <span
-              key={step.id}
-              className={cn(
-                "inline-flex items-center gap-2xs rounded-full border px-sm py-1",
-                step.done
-                  ? "border-success-400/40 bg-success-500/15 text-success-100"
-                  : "border-border bg-muted text-muted-foreground",
-              )}
-            >
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  step.done ? "bg-success-300" : "bg-secondary",
-                )}
-              />
-              {step.label}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {ENABLE_PROGRESS_WIDGET && (
-        <div className="mb-md">
-          <ProgressWidget
-            milestones={[
-              {
-                id: "first-split",
-                label: "First split",
-                done: splitResultStemsLength > 0,
-              },
-              {
-                id: "first-export",
-                label: "First export",
-                done: hasCompletedFirstExport,
-              },
-              {
-                id: "three-projects",
-                label: "3 projects this week",
-                done: mixStemsLength >= 3,
-              },
-            ]}
-            onViewPlans={
-              subscription.status === "inactive"
-                ? () => setActiveView("pricing")
-                : undefined
-            }
-          />
-        </div>
-      )}
-
-      {ENABLE_ONBOARDING_QUEST &&
-        hasCompletedFirstExport &&
-        subscription.status === "inactive" && (
-          <div className="mb-md rounded-2xl border border-primary-400/50 bg-primary-500/15 px-sm py-xs text-sm text-primary-100">
-            <p className="mb-1 font-semibold">
-              Nice — you just finished your first stem.
-            </p>
-            <p className="mb-xs text-primary-100/85">
-              If you&apos;ll be doing this more than a couple of
-              times a month, a plan usually pays for itself.
-            </p>
-            <button
-              type="button"
-              onClick={() => setActiveView("pricing")}
-              className="rounded-full bg-primary-400 px-sm py-1.5 text-xs font-semibold text-black hover:bg-primary-300"
-            >
-              See which plan fits you
-            </button>
-          </div>
-        )}
-
       <Suspense
         fallback={
           <div className="rounded-2xl border border-border bg-secondary px-md py-lg">
@@ -280,50 +114,54 @@ export function MixerWorkspace({
         }
       >
         <MixerPanel
-          mixStemCount={mixStemCount}
-          splitStemCount={splitStemCount}
-          isPlayingMix={isPlayingMix}
-          onPlayStop={onPlayStop}
-          onStopMix={onStopMix}
-          onSeekMix={onSeekMix}
+          mixStemCount={mixStems.length}
+          isPlayingMix={audio.isPlayingMix}
+          onPlayStop={() => audio.handlePlayMix(splitResultStems, stemStates, stemBuffers)}
+          onStopMix={audio.handleStopMix}
+          onSeekMix={audio.handleSeekMix}
           isExporting={isExporting}
           onExport={onExport}
           isComparingExport={isComparingExport}
           onCompareExport={onCompareExport}
           onResetLevels={onResetLevels}
           onResetSingleStem={onResetSingleStem}
-          hasStemBuffers={hasStemBuffers}
-          stems={stems}
-          waveforms={waveforms}
-          durations={durations}
+          hasStemBuffers={Object.keys(stemBuffers).length > 0}
+          stems={visibleStems as any}
+          waveforms={stemWaveforms}
+          durations={Object.fromEntries(
+            visibleStems.map((s) => [
+              s.id,
+              stemBuffers[s.id]?.duration ?? 0,
+            ]),
+          )}
           stemStates={stemStates}
-          getPlayheadPosition={getPlayheadPosition}
-          subscribePlayheadPosition={subscribePlayheadPosition}
+          getPlayheadPosition={audio.getPlayheadPosition}
+          subscribePlayheadPosition={audio.subscribePlayheadPosition}
           isLoadingStems={isLoadingStems}
           loadingError={loadingError}
-          onRetryLoadStems={onRetryLoadStems}
+          onRetryLoadStems={retryLoadStems}
           activeStemId={activeStemId ?? ""}
           onActiveStemChange={onActiveStemChange}
           onStemStateChange={onStemStateChange}
           onPreviewStem={onPreviewStem}
-          playingStemId={playingStemId}
-          loadingPreviewStemId={loadingPreviewStemId}
-          getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
+          playingStemId={audio.playingStem}
+          loadingPreviewStemId={audio.loadingPreviewStemId}
+          getMasterAnalyserTimeDomainData={audio.getMasterAnalyserTimeDomainData}
           getMasterAnalyserTimeDomainDataLeft={
-            getMasterAnalyserTimeDomainDataLeft
+            audio.getMasterAnalyserTimeDomainDataLeft
           }
           getMasterAnalyserTimeDomainDataRight={
-            getMasterAnalyserTimeDomainDataRight
+            audio.getMasterAnalyserTimeDomainDataRight
           }
-          getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
-          getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
-          masterVolume={masterVolume}
-          onMasterVolumeChange={onMasterVolumeChange}
-          masterLimiterEnabled={masterLimiterEnabled}
-          onMasterLimiterEnabledChange={onMasterLimiterEnabledChange}
+          getMasterAnalyserFrequencyData={audio.getMasterAnalyserFrequencyData}
+          getStemAnalyserTimeDomainData={audio.getStemAnalyserTimeDomainData}
+          masterVolume={audio.masterVolume}
+          onMasterVolumeChange={audio.setMasterVolume}
+          masterLimiterEnabled={audio.masterLimiterEnabled}
+          onMasterLimiterEnabledChange={audio.setMasterLimiterEnabled}
           beatGrid={beatGrid}
-          loopEnabled={loopEnabled}
-          onLoopToggle={onLoopToggle}
+          loopEnabled={audio.loopEnabled}
+          onLoopToggle={audio.setLoopEnabled}
         />
       </Suspense>
       {exportCompareSummary && (

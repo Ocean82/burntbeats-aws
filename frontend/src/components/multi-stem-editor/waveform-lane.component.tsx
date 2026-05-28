@@ -253,7 +253,7 @@ export function WaveformLane({
           alphaOdd: alpha,
           gapPx: 1,
           heightScale: 0.9,
-          playedFraction: playheadFraction,
+          playedFraction: -1, // DECOUPLE: Don't draw playhead in static layer
           analyserData,
         });
         rafId = requestAnimationFrame(draw);
@@ -272,9 +272,9 @@ export function WaveformLane({
       alphaOdd: alpha,
       gapPx: 1,
       heightScale: 0.9,
-      playedFraction: playheadFraction,
+      playedFraction: -1, // DECOUPLE
     });
-  }, [slice, isMuted, isActive, stem.glow, playheadFraction, getAnalyserData]);
+  }, [slice, isMuted, isActive, stem.glow, getAnalyserData]); // Remove playheadFraction from dependencies
 
   return (
     <div

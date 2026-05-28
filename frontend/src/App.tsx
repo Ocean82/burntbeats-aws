@@ -19,30 +19,21 @@ const OnboardingTour = lazy(() =>
   importOnboardingTour().then((m) => ({ default: m.OnboardingTour })),
 );
 import { useAppSubscription } from "./hooks/useAppSubscription";
-import type { StemDefinition, StemId, MixerState, TrimState } from "./types";
-import { useAudioPlayback } from "./hooks/useAudioPlayback";
+import type { StemDefinition, StemId } from "./types";
 import { useWaveformCompute } from "./hooks/useWaveformCompute";
 import { useExport } from "./hooks/useExport";
 import { useBatchQueue } from "./hooks/useBatchQueue";
-import { useHistory } from "./hooks/useHistory";
 import { useMixerWorkspace } from "./hooks/useMixerWorkspace";
 import { useStemSplitting } from "./hooks/useStemSplitting";
 import { useStemLoading } from "./hooks/useStemLoading";
 import { useLoadHistoryJob } from "./hooks/useLoadHistoryJob";
-import {
-  stemDefinitions,
-  getStemDefinition,
-  getLoadedStemDefinition,
-} from "./data/stemDefinitions";
 import type { MixerPreset } from "./components/MixerPresetsModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { isLocalDevFullApp } from "./config";
-import type { StemEditorState } from "./stem-editor-state";
 
 import { useAppStore } from "./store/appStore";
 import { useToast } from "./store/toastStore";
 import { useEventBus, useAppEvent } from "./store/eventBus";
-import { useUiModals } from "./hooks/useUiModals";
 import { useGuidanceSystem } from "./hooks/useGuidanceSystem";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts";
 import { useExportCompare } from "./hooks/useExportCompare";
@@ -55,9 +46,6 @@ import { PricingPage } from "./components/PricingPage";
 import { MyStemsPage } from "./components/MyStemsPage";
 import { UpsellModal } from "./components/UpsellModal";
 import { FeedbackChip } from "./components/FeedbackChip";
-import {
-  ENABLE_ONBOARDING_QUEST,
-} from "./config/uiFlags";
 import { useAudioFileDuration } from "./hooks/useAudioFileDuration";
 import { computeTokensFromDurationSeconds } from "./utils/tokenCost";
 import { EditorHeader } from "./app/editor-header.component";
@@ -67,9 +55,16 @@ import { LazyModalLayer } from "./app/lazy-modal-layer.component";
 import { AppBackgroundOrbs } from "./app/app-background-orbs.component";
 import { EditorFloatingOverlays } from "./app/editor-floating-overlays.component";
 import { EditorMainView } from "./app/editor-main-view.component";
+import { SessionSidebar } from "./app/session-sidebar.component";
 import { SpeechCleanPage } from "./pages/SpeechCleanPage";
 import { MidiConvertPage } from "./pages/MidiConvertPage";
 import { useHeaderVisibility } from "./hooks/useHeaderVisibility";
+
+import { useAudio } from "./contexts/AudioContext";
+import { useWorkflow } from "./contexts/WorkflowContext";
+import { useUiStore } from "./store/uiStore";
+import { useCheckoutNotice } from "./hooks/ui/useCheckoutNotice";
+import { useResolvedStems } from "./hooks/workflow/useResolvedStems";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
@@ -94,17 +89,34 @@ export function App() {
   const reduceMotion = useReducedMotion();
   const emit = useEventBus((s) => s.emit);
 
+  // ── Contexts ──
+  const audio = useAudio();
+  const { 
+    stemStates, 
+    setStemStates, 
+    undoStemStates, 
+    redoStemStates, 
+    canUndo, 
+    canRedo, 
+    resetStemStates 
+  } = useWorkflow();
+  const {
+    activeModals,
+    openModal,
+    closeModal,
+    pricingInitialTab,
+    setPricingInitialTab,
+  } = useUiStore();
+
+  const showHelpModal = !!activeModals.help;
+  const showExportModal = !!activeModals.export;
+  const showPresetsModal = !!activeModals.presets;
+  const showGame = !!activeModals.game;
+  const toggleGame = () => useUiStore.getState().toggleModal("game");
+
   // ── Smart Sticky Header State ─────────────────────────────────────────────
   const { headerVisible } = useHeaderVisibility();
-  const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    const msg = window.sessionStorage.getItem("burntbeats_checkout_notice");
-    if (!msg) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time init from sessionStorage
-    setCheckoutNotice(msg);
-    window.sessionStorage.removeItem("burntbeats_checkout_notice");
-  }, []);
+  const { checkoutNotice } = useCheckoutNotice();
 
   // ── Upload / split state ──────────────────────────────────────────────────
   const uploadState = useAppStore();
@@ -147,66 +159,29 @@ export function App() {
     stemQualityOptions,
     canSplitFourStems,
     canUsePremiumStemQualities,
+    canUsePremiumMidiExport,
     canUseBatchQueue,
   } = useAppSubscription({
     localDevFullApp,
     splitResultStemsLength: splitResultStems.length,
-  });
+  }) as any; // Cast as any for now until useAppSubscription is updated with canUsePremiumMidiExport
+
   const splitQuality = useMemo(
     () => (canUsePremiumStemQualities ? quality : "speed"),
     [canUsePremiumStemQualities, quality],
   );
 
-  // ── Stem data state ───────────────────────────────────────────────────────
-  const {
-    state: stemStates,
-    set: setStemStates,
-    undo: undoStemStates,
-    redo: redoStemStates,
-    canUndo,
-    canRedo,
-    reset: resetStemStates,
-  } = useHistory<Record<string, StemEditorState>>({});
-
-  // ── Audio playback hook ───────────────────────────────────────────────────
-  const {
-    isPlayingMix,
-    playingStem,
-    loadingPreviewStemId,
-    getPlayheadPosition,
-    subscribePlayheadPosition,
-    audioContextRef,
-    handlePlayMix,
-    handleSeekMix,
-    handleStopMix,
-    handlePreviewStem,
-    stopPreview,
-    getMasterAnalyserTimeDomainData,
-    getMasterAnalyserTimeDomainDataLeft,
-    getMasterAnalyserTimeDomainDataRight,
-    getMasterAnalyserFrequencyData,
-    getStemAnalyserTimeDomainData,
-    masterVolume,
-    setMasterVolume,
-    masterLimiterEnabled,
-    setMasterLimiterEnabled: setRuntimeMasterLimiterEnabled,
-    loopEnabled,
-    setLoopEnabled,
-  } = useAudioPlayback({
-    onError: (message) => setSplitError(message),
-    stemStates,
-  });
-
+  // ── Audio playback sync ───────────────────────────────────────────────────
   useEffect(() => {
-    setRuntimeMasterLimiterEnabled(persistedMasterLimiterEnabled);
-  }, [persistedMasterLimiterEnabled, setRuntimeMasterLimiterEnabled]);
+    audio.setMasterLimiterEnabled(persistedMasterLimiterEnabled);
+  }, [persistedMasterLimiterEnabled, audio]);
 
   const handleMasterLimiterEnabledChange = useCallback(
     (enabled: boolean) => {
-      setRuntimeMasterLimiterEnabled(enabled);
+      audio.setMasterLimiterEnabled(enabled);
       setPersistedMasterLimiterEnabled(enabled);
     },
-    [setPersistedMasterLimiterEnabled, setRuntimeMasterLimiterEnabled],
+    [setPersistedMasterLimiterEnabled, audio],
   );
 
   // ── Export hook ───────────────────────────────────────────────────────────
@@ -235,29 +210,13 @@ export function App() {
     triggerSplit,
   } = useStemSplitting({
     subscription,
-    stopPreview,
+    stopPreview: audio.stopPreview,
     splitQuality,
     canSplitFourStems,
     canUsePremiumStemQualities,
   });
 
-  // ── All stems (split + loaded) for mixer ───────────────────────────────────
-  const allStemEntries = useMemo(
-    () => [
-      ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-      ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
-    ],
-    [splitResultStems, loadedStems],
-  );
-
-  const mixStems = useMemo(
-    () =>
-      [...splitResultStems, ...loadedStems] as Array<{
-        id: string;
-        url: string;
-      }>,
-    [splitResultStems, loadedStems],
-  );
+  const { mixStems, visibleStems } = useResolvedStems();
 
   /** Per-stem file export only works for job-backed URLs from separation — not blob-loaded files. */
   const exportAllowStemBundleTargets = useMemo(
@@ -274,8 +233,11 @@ export function App() {
     loadingError,
     retryLoadStems,
   } = useStemLoading({
-    allStemEntries,
-    audioContextRef,
+    allStemEntries: [
+      ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
+      ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
+    ],
+    audioContextRef: audio.audioContextRef,
     setStemStates,
     setSplitError,
   });
@@ -318,25 +280,16 @@ export function App() {
     resetTrackAdjustments,
     resetSingleStem,
   } = useMixerWorkspace({
-    playingStem,
+    playingStem: audio.playingStem,
     mixStems,
     stemStates,
     stemBuffers,
     setStemBuffers,
     setStemStates,
-    handlePreviewStem,
+    handlePreviewStem: audio.handlePreviewStem,
   });
 
   // ── UI state ──────────────────────────────────────────────────────────────
-  const {
-    showHelp: showHelpModal,
-    showExport: showExportModal,
-    showPresets: showPresetsModal,
-    showGame,
-    openModal,
-    closeModal,
-    toggleGame,
-  } = useUiModals();
   const { latencyStats, resetLatencyStats } = useUiLatencyMonitor();
   const { toast } = useToast();
   const [sourceMode, setSourceMode] = useState<"split" | "load">("split");
@@ -347,8 +300,8 @@ export function App() {
   // Derived shims for modals (single pass over stemStates)
   const { trimMap, mixerState, mutedStems, pitchMap, timeStretchMap, fadeMap } =
     useMemo(() => {
-      const trim: Record<string, TrimState> = {};
-      const mixer: Record<string, MixerState> = {};
+      const trim: Record<string, import("./types").TrimState> = {};
+      const mixer: Record<string, import("./types").MixerState> = {};
       const muted: Record<string, boolean> = {};
       const pitch: Record<string, number> = {};
       const stretch: Record<string, number> = {};
@@ -387,7 +340,6 @@ export function App() {
   useEffect(() => {
     if (!canPreloadChunks()) return;
     const timer = window.setTimeout(() => {
-      // Light, likely-next interactions after initial paint.
       void importOnboardingTour();
       void importHelpModal();
       void importExportOptionsModal();
@@ -422,24 +374,11 @@ export function App() {
     }
   }, [splitJobId, resetStemMediaState]);
 
-  useWaveformCompute(stemBuffers, allStemEntries, setStemWaveformsState);
+  useWaveformCompute(stemBuffers, [
+    ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
+    ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
+  ], setStemWaveformsState);
 
-  const visibleStems = useMemo(() => {
-    const fromSplit = splitResultStems.map((s) => ({
-      ...getStemDefinition(s.id),
-      id: s.id as StemId,
-      url: s.url,
-    }));
-    const fromLoaded = loadedStems.map((s) => ({
-      ...getLoadedStemDefinition(s.id, s.label),
-      id: s.id as StemId,
-      url: s.url,
-    }));
-    if (fromSplit.length > 0 || fromLoaded.length > 0)
-      return [...fromSplit, ...fromLoaded];
-    // Before splitting, show the full default rack (helps solo/mute keyboard shortcuts).
-    return stemDefinitions.map((s) => ({ ...s, id: s.id as StemId }));
-  }, [splitResultStems, loadedStems]);
   const resolvedActiveStemId = useMemo(
     () =>
       activeStemId && visibleStems.some((stem) => stem.id === activeStemId)
@@ -458,13 +397,11 @@ export function App() {
   const setActiveView = useCallback((view: "editor" | "speech" | "midi" | "pricing" | "my-stems") => {
     navigate(view === "editor" ? "/" : `/${view}`);
   }, [navigate]);
-  const [pricingInitialTab, setPricingInitialTab] = useState<"subscriptions" | "packs">("subscriptions");
 
   // ── Upsell modal state ────────────────────────────────────────────────────
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [upsellTrigger, setUpsellTrigger] = useState<"sample_complete" | "low_balance">("sample_complete");
 
-  // Track previous splitting/sample state to detect completion
   const prevSplittingRef = useRef(false);
   const prevIsSampleRef = useRef(false);
 
@@ -474,29 +411,22 @@ export function App() {
     prevSplittingRef.current = isSplitting;
     prevIsSampleRef.current = isSample;
 
-    // Detect split just completed
     if (wasSplitting && !isSplitting && splitResultStems.length > 0) {
       if (wasSample) {
-        // Sample split completed — prompt to upgrade
         setUpsellTrigger("sample_complete");
         setUpsellOpen(true);
       } else if (usageBalance !== null && usageBalance < 2) {
-        // Paid split completed but balance is low — prompt to add more
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: detecting state transition to trigger upsell UI
         setUpsellTrigger("low_balance");
         setUpsellOpen(true);
       }
     }
   }, [isSplitting, isSample, splitResultStems.length, usageBalance]);
 
-  // Ref for auto-scrolling to the mixer when a split completes
   const mixerSectionRef = useRef<HTMLDivElement | null>(null);
-  // Track previous splitting state to detect the transition
   const wasSplittingRef = useRef(false);
 
   useEffect(() => {
     if (wasSplittingRef.current && !isSplitting && splitResultStems.length > 0) {
-      // Small delay lets the collapse animation start first
       const t = window.setTimeout(() => {
         mixerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 320);
@@ -505,7 +435,6 @@ export function App() {
     wasSplittingRef.current = isSplitting;
   }, [isSplitting, splitResultStems.length]);
 
-  // Subscribe to app-wide "open-pricing" event via typed event bus
   useAppEvent("open-pricing", () => setActiveView("pricing"));
 
   const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
@@ -517,44 +446,6 @@ export function App() {
     return () => window.clearTimeout(t);
   }, [exportNotice]);
 
-  const onboardingSteps = useMemo(() => {
-    const base = [
-      {
-        id: 1,
-        label: "Upload a track",
-        done: !!uploadedFile,
-      },
-      {
-        id: 2,
-        label: "Split into stems",
-        done: splitResultStems.length > 0,
-      },
-      {
-        id: 3,
-        label: "Mix & tweak",
-        done: mixStems.length > 0,
-      },
-    ];
-    if (!ENABLE_ONBOARDING_QUEST) return base;
-    return [
-      ...base,
-      {
-        id: 4,
-        label: "Export a master mix",
-        done: hasCompletedFirstExport,
-      },
-    ];
-  }, [
-    uploadedFile,
-    splitResultStems.length,
-    mixStems.length,
-    hasCompletedFirstExport,
-  ]);
-
-  // Pipeline index is now driven by real progress from the SSE stream (useStemSplitting).
-  // The old timer-based animation has been removed to avoid conflicting with real data.
-
-  // ── File input handlers ───────────────────────────────────────────────────
   const handleFileFromInput = useCallback(
     (file: File | null) => {
       handleFile(file);
@@ -660,7 +551,6 @@ export function App() {
     [resetSingleStem, toast],
   );
 
-  // ── Keyboard shortcuts ────────────────────────────────────────────────────
   useAppKeyboardShortcuts({
     visibleStems,
     resolvedActiveStemId,
@@ -668,26 +558,21 @@ export function App() {
     stemStates,
     stemBuffers,
     setStemStates,
-    handlePlayMix,
-    handleStopMix,
+    handlePlayMix: audio.handlePlayMix,
+    handleStopMix: audio.handleStopMix,
     openModal,
     closeModal,
     showHelpModal,
     showExportModal,
     showPresetsModal,
-    isPlayingMix,
+    isPlayingMix: audio.isPlayingMix,
     undoStemStates,
     redoStemStates,
-    loopEnabled,
-    setLoopEnabled,
+    loopEnabled: audio.loopEnabled,
+    setLoopEnabled: audio.setLoopEnabled,
     setActiveView,
     onTriggerSplit: () => {
-      if (
-        uploadedFile &&
-        !isSplitting &&
-        splitResultStems.length === 0 &&
-        activeView === "editor"
-      ) {
+      if (uploadedFile && !isSplitting && splitResultStems.length === 0 && activeView === "editor") {
         void triggerSplit(2, isSample);
       }
     },
@@ -739,6 +624,7 @@ export function App() {
       />
 
       <AppBackgroundOrbs />
+      <SessionSidebar />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1600px] flex-col gap-lg px-md py-md sm:px-lg lg:px-xl">
         <EditorHeader
@@ -770,7 +656,6 @@ export function App() {
           aria-label="Main content"
           className="outline-none focus-visible:ring-2 focus-visible:ring-primary-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] rounded-[2rem]"
         >
-          {/* Either show the main editor view or the dedicated pricing page */}
           {activeView === "pricing" ? (
             <motion.section {...viewSwitchMotion(Boolean(reduceMotion))}>
               <PricingPage
@@ -887,24 +772,18 @@ export function App() {
                 onPointerDownMixer: handleGuidancePanelInteract,
                 guidanceTarget,
                 guidanceRingClass,
-                reduceMotion: reduceMotion ?? false,
-                onboardingSteps,
                 hasCompletedFirstExport,
                 subscription,
                 setActiveView,
-                splitResultStemsLength: splitResultStems.length,
-                mixStemsLength: mixStems.length,
-                mixStemCount: mixStems.length,
-                splitStemCount:
-                  splitResultStems.length === 2 || splitResultStems.length === 4
-                    ? (splitResultStems.length as 2 | 4)
-                    : null,
-                isPlayingMix,
-                onPlayStop: () =>
-                  void handlePlayMix(mixStems, stemStates, stemBuffers),
-                onStopMix: handleStopMix,
-                onSeekMix: handleSeekMix,
-                isExporting,
+                onResetLevels: resetTrackAdjustments,
+                onResetSingleStem: handleResetSingleStem,
+                isLoadingStems,
+                loadingError,
+                onRetryLoadStems: retryLoadStems,
+                activeStemId,
+                onActiveStemChange: setActiveStemId,
+                onStemStateChange: handleStemStateChange,
+                onPreviewStem: handlePreviewStemFromMixer,
                 onExport: () => {
                   if (isSample) {
                     setActiveView("pricing");
@@ -912,46 +791,10 @@ export function App() {
                     openModal("export");
                   }
                 },
+                isExporting,
                 isComparingExport,
                 onCompareExport,
-                onResetLevels: resetTrackAdjustments,
-                onResetSingleStem: handleResetSingleStem,
-                hasStemBuffers: Object.keys(stemBuffers).length > 0,
-                stems: visibleStems as StemWithOptionalUrl[],
-                waveforms: stemWaveforms,
-                durations: Object.fromEntries(
-                  visibleStems.map((s) => [
-                    s.id,
-                    stemBuffers[s.id]?.duration ?? 0,
-                  ]),
-                ),
-                stemStates,
-                getPlayheadPosition,
-                subscribePlayheadPosition,
-                isLoadingStems,
-                loadingError,
-                onRetryLoadStems: retryLoadStems,
-                activeStemId: resolvedActiveStemId,
-                onActiveStemChange: setActiveStemId,
-                onStemStateChange: handleStemStateChange,
-                onPreviewStem: handlePreviewStemFromMixer,
-                playingStemId: playingStem,
-                loadingPreviewStemId,
-                getMasterAnalyserTimeDomainData,
-                getMasterAnalyserTimeDomainDataLeft,
-                getMasterAnalyserTimeDomainDataRight,
-                getMasterAnalyserFrequencyData,
-                getStemAnalyserTimeDomainData,
-                masterVolume,
-                onMasterVolumeChange: setMasterVolume,
-                masterLimiterEnabled,
-                onMasterLimiterEnabledChange:
-                  handleMasterLimiterEnabledChange,
-                beatGrid,
-                loopEnabled,
-                onLoopToggle: setLoopEnabled,
                 exportCompareSummary,
-                undoToast: null,
               }}
             />
           )}
@@ -976,7 +819,6 @@ export function App() {
       />
       {activeView === "editor" && <FeedbackChip />}
 
-      {/* Upsell modal — shown after sample split or when balance is low */}
       <UpsellModal
         open={upsellOpen}
         onClose={() => setUpsellOpen(false)}
