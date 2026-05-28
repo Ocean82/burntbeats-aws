@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ENABLE_ONBOARDING_QUEST } from "../config/uiFlags";
+import { ENABLE_ONBOARDING_QUEST } from "../../config/uiFlags";
 
 interface OnboardingArgs {
   uploadedFile: File | null;

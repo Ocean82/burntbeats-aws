@@ -245,48 +245,49 @@ export function LandingPage() {
         </motion.section>
 
         <motion.section
-          className="grid gap-md py-[clamp(2rem,5vw,4rem)] text-left sm:grid-cols-2"
+          className="grid gap-md py-[clamp(2rem,5vw,4rem)] text-left sm:grid-cols-2 md:gap-lg"
           {...brandScrollSection(reduceMotion)}
         >
-          <div className="sm:col-span-2">
+          {/** Header spans full width */}
+          <div className="sm:col-span-2 min-w-0">
             <p className="eyebrow mb-sm">Why Burnt Beats is different</p>
             <p className="max-w-3xl font-display text-[clamp(1.25rem,3vw,1.9rem)] font-bold leading-tight text-secondary-foreground">
               Most stem splitters stop at the download. Burnt Beats keeps the
               workflow moving.
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+          <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
             <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
               In-browser mixer and editor
             </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
               After the split, you can level, trim, and shape the result without
               immediately bouncing into another tool.
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+          <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
             <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
               Reopen past stem jobs
             </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
               Your splits are not disposable downloads. Return to old jobs from
               My Stems and keep working from the same library.
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+          <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
             <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
               Stem-to-MIDI workflow built in
             </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
               Move from separated audio into MIDI conversion inside the same
               product instead of breaking your workflow across multiple apps.
             </p>
           </div>
-          <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+          <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
             <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
               Built for producers and DJs
             </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
               Burnt Beats is designed like a lightweight browser workstation,
               not a one-click converter. The value is in the workflow, not just
               the split.
@@ -318,62 +319,62 @@ export function LandingPage() {
             />
           </div>
 
-          <div className="mt-12 grid gap-md text-left sm:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+          <div className="mt-12 grid gap-md text-left sm:grid-cols-2 md:gap-lg">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
               <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 Why producers pay for more than the split
               </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 Burnt Beats is not just a file drop. You can split a track, keep
                 working in the browser, shape the mix, and export without
                 treating the separation step like a dead end.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
               <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 What happens after the split?
               </p>
-              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 Your work does not vanish into a downloads folder. Reopen past
                 stem jobs from My Stems, return to earlier projects, and keep
                 building from the same library.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
               <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 Can I turn stems into MIDI?
               </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 Yes. Burnt Beats includes a stem-to-MIDI workflow so you can move
                 from separated audio into note data without breaking the session
                 across multiple tools.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
               <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 Will this work on my laptop?
               </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 Yes. Burnt Beats runs in your browser with CPU-based
                 processing, so you do not need a GPU, a plugin install, or a
                 dedicated production machine to use it.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
               <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 How do tokens map to songs?
               </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 1 token = 1 minute of audio. A 3-minute track costs 3 tokens to
                 run in either 2-stem or 4-stem mode, depending on the split you
                 choose. Partial minutes round up.
               </p>
             </div>
-            <div className="rounded-2xl border border-border bg-secondary/60 p-lg">
+            <div className="rounded-2xl border border-border bg-secondary/60 p-lg min-w-0">
               <p className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
                 Do I have to subscribe?
               </p>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="text-sm leading-relaxed text-pretty text-muted-foreground">
                 No. If you only need stems occasionally, buy a one-time Top-Up
                 pack instead of a monthly plan. Subscribe when Burnt Beats
                 becomes part of your regular workflow.

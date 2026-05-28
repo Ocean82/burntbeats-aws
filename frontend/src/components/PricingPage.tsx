@@ -138,10 +138,10 @@ export function PricingPage({
             </p>
             <BillingRules />
             <ul className="grid gap-xs text-sm text-secondary-foreground sm:grid-cols-2">
-              <li className="rounded-lg border border-border bg-muted px-sm py-xs">
+              <li className="min-w-0 rounded-lg border border-border bg-muted px-sm py-xs">
                 Top-Up Pack: one-time credits, no subscription.
               </li>
-              <li className="rounded-lg border border-border bg-muted px-sm py-xs">
+              <li className="min-w-0 rounded-lg border border-border bg-muted px-sm py-xs">
                 Monthly plans: more tokens and faster workflow.
               </li>
             </ul>
@@ -220,38 +220,38 @@ export function PricingPage({
 
       {/* FAQ / objections reducer */}
       <section className="grid gap-md rounded-2xl border border-border bg-secondary p-md text-sm text-secondary-foreground sm:grid-cols-2 sm:p-lg">
-        <div>
+        <div className="min-w-0">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             What happens if I run out of tokens?
           </p>
-          <p>
+          <p className="text-pretty">
             You can either top up with a one-time credit pack or upgrade to a
             higher plan. We&apos;ll never auto-charge you for overages.
           </p>
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             Can I switch plans later?
           </p>
-          <p>
+          <p className="text-pretty">
             Yes. Upgrade or downgrade at any time — changes take effect on your
             next billing cycle and you keep access to any remaining tokens.
           </p>
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             Is there a long-term contract?
           </p>
-          <p>
+          <p className="text-pretty">
             No contracts. All plans are month-to-month, and you can cancel
             whenever you like from your billing portal.
           </p>
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             Do you offer refunds?
           </p>
-          <p>
+          <p className="text-pretty">
             If anything goes wrong with billing, reach out and we&apos;ll make
             it right. If you&apos;re unsure, start small with a Top-Up Pack
             first.

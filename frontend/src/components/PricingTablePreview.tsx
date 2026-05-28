@@ -118,13 +118,14 @@ export function PricingTablePreview({
         className="grid gap-md sm:grid-cols-2 lg:grid-cols-3"
       >
         {plans.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            onSelect={onSelectPlan}
-            ctaButton={ctaButtonRenderer?.(plan)}
-            isCurrentPlan={currentPlan === plan.id}
-          />
+          <div key={plan.id} className="min-w-0">
+            <PlanCard
+              plan={plan}
+              onSelect={onSelectPlan}
+              ctaButton={ctaButtonRenderer?.(plan)}
+              isCurrentPlan={currentPlan === plan.id}
+            />
+          </div>
         ))}
       </div>
       <div className="rounded-3xl border border-border bg-muted p-lg text-sm text-secondary-foreground">

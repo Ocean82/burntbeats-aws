@@ -43,4 +43,3 @@ export const useWorkflowStore = create<WorkflowStore>((set) => ({
   redo: () => {},
   reset: (initialState) => set({ stemStates: initialState, canUndo: false, canRedo: false }),
 }));
-创新: I'll stick to the Context for history for now, but I'll fix the circular dependency by not importing AudioContext in WorkflowContext.

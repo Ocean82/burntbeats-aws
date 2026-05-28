@@ -18,13 +18,13 @@ const OnboardingTour = lazy(() =>
   importOnboardingTour().then((m) => ({ default: m.OnboardingTour })),
 );
 import { useAppSubscription } from "./hooks/useAppSubscription";
-import type { StemDefinition, StemId } from "./types";
 import { useWaveformCompute } from "./hooks/useWaveformCompute";
 import { useExport } from "./hooks/useExport";
 import { useBatchQueue } from "./hooks/useBatchQueue";
 import { useMixerWorkspace } from "./hooks/useMixerWorkspace";
 import { useStemSplitting } from "./hooks/useStemSplitting";
 import { useStemLoading } from "./hooks/useStemLoading";
+import { useStemStateMaps } from "./hooks/useStemStateMaps";
 import { useLoadHistoryJob } from "./hooks/useLoadHistoryJob";
 import type { MixerPreset } from "./components/MixerPresetsModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -68,11 +68,16 @@ import { useEditorViewRouting } from "./hooks/workflow/useEditorViewRouting";
 import { useUpsellTriggers } from "./hooks/ui/useUpsellTriggers";
 import { useSplitSessionLifecycle } from "./hooks/workflow/useSplitSessionLifecycle";
 
-type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
   saveData?: boolean;
   effectiveType?: string;
 };
+
+const PRELOAD_CHUNK_DELAY_MS = 1200;
+const FOCUS_MIXER_DELAY_MS = 200;
+const DEFAULT_SPLIT_STEM_COUNT = 2;
+const HISTORY_LOADED_PIPELINE_INDEX = 3;
+const SPLIT_PROGRESS_COMPLETE = 100;
 
 function canPreloadChunks(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -114,7 +119,7 @@ export function App() {
   const showExportModal = !!activeModals.export;
   const showPresetsModal = !!activeModals.presets;
   const showGame = !!activeModals.game;
-  const toggleGame = () => useUiStore.getState().toggleModal("game");
+  const toggleGame = () => closeModal("game");
 
   // ── Smart Sticky Header State ─────────────────────────────────────────────
   const { headerVisible } = useHeaderVisibility();
@@ -161,12 +166,11 @@ export function App() {
     stemQualityOptions,
     canSplitFourStems,
     canUsePremiumStemQualities,
-    canUsePremiumMidiExport,
     canUseBatchQueue,
   } = useAppSubscription({
     localDevFullApp,
     splitResultStemsLength: splitResultStems.length,
-  }) as any; // Cast as any for now until useAppSubscription is updated with canUsePremiumMidiExport
+  });
 
   const splitQuality = useMemo(
     () => (canUsePremiumStemQualities ? quality : "speed"),
@@ -220,6 +224,15 @@ export function App() {
 
   const { mixStems, visibleStems } = useResolvedStems();
 
+  /** Build stem entries for loading/waveform computation from split results and loaded stems. */
+  const stemEntries = useMemo(
+    () => [
+      ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
+      ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
+    ],
+    [splitResultStems, loadedStems],
+  );
+
   /** Per-stem file export only works for job-backed URLs from separation — not blob-loaded files. */
   const exportAllowStemBundleTargets = useMemo(
     () => mixStems.some((s) => s.url.includes("/api/stems/file/")),
@@ -235,18 +248,11 @@ export function App() {
     loadingError,
     retryLoadStems,
   } = useStemLoading({
-    allStemEntries: [
-      ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-      ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
-    ],
+    allStemEntries: stemEntries,
     audioContextRef: audio.audioContextRef,
     setStemStates,
     setSplitError,
   });
-  function handleSuccessfulExport() {
-    setExportNotice("Download started — check your browser’s downloads folder.");
-    setHasCompletedFirstExport(true);
-  }
 
   const { isComparingExport, exportCompareSummary, onCompareExport } =
     useExportCompare({
@@ -258,6 +264,12 @@ export function App() {
       stemStates,
       uploadName,
     });
+
+  const handleSuccessfulExport = useCallback(() => {
+    setExportNotice("Download started — check your browser's downloads folder.");
+    setHasCompletedFirstExport(true);
+  }, [setExportNotice, setHasCompletedFirstExport]);
+
   const handleExportFromModal = useExportModalAction({
     handleExportWithOptions,
     stemBuffers,
@@ -298,32 +310,8 @@ export function App() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const loadStemsInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Derived shims for modals (single pass over stemStates)
   const { trimMap, mixerState, mutedStems, pitchMap, timeStretchMap, fadeMap } =
-    useMemo(() => {
-      const trim: Record<string, import("./types").TrimState> = {};
-      const mixer: Record<string, import("./types").MixerState> = {};
-      const muted: Record<string, boolean> = {};
-      const pitch: Record<string, number> = {};
-      const stretch: Record<string, number> = {};
-      const fades: Record<string, { fadeIn: number; fadeOut: number }> = {};
-      for (const [id, s] of Object.entries(stemStates)) {
-        trim[id] = s.trim;
-        mixer[id] = s.mixer;
-        muted[id] = s.muted;
-        pitch[id] = s.pitchSemitones ?? 0;
-        stretch[id] = s.timeStretch ?? 1;
-        fades[id] = { fadeIn: s.fadeIn ?? 0, fadeOut: s.fadeOut ?? 0 };
-      }
-      return {
-        trimMap: trim,
-        mixerState: mixer,
-        mutedStems: muted,
-        pitchMap: pitch,
-        timeStretchMap: stretch,
-        fadeMap: fades,
-      };
-    }, [stemStates]);
+    useStemStateMaps(stemStates);
 
   const {
     guidanceTarget,
@@ -344,7 +332,7 @@ export function App() {
       void importOnboardingTour();
       void importHelpModal();
       void importExportOptionsModal();
-    }, 1200);
+    }, PRELOAD_CHUNK_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -380,10 +368,7 @@ export function App() {
     onFocusMixer: focusMixerSection,
   });
 
-  useWaveformCompute(stemBuffers, [
-    ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-    ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
-  ], setStemWaveformsState);
+  useWaveformCompute(stemBuffers, stemEntries, setStemWaveformsState);
 
   const resolvedActiveStemId = useMemo(
     () =>
@@ -441,8 +426,8 @@ export function App() {
         loadedStems: [],
         splitError: null,
         isSplitting: false,
-        splitProgress: 100,
-        pipelineIndex: 3,
+        splitProgress: SPLIT_PROGRESS_COMPLETE,
+        pipelineIndex: HISTORY_LOADED_PIPELINE_INDEX,
       }));
     },
     [resetStemMediaState, setUploadState],
@@ -454,7 +439,7 @@ export function App() {
       setActiveView("editor");
       window.setTimeout(() => {
         focusMixerSection();
-      }, 200);
+      }, FOCUS_MIXER_DELAY_MS);
     },
     onError: (msg) => setSplitError(msg),
   });
@@ -469,12 +454,10 @@ export function App() {
     });
 
   const exportTrackDurationSec = useMemo(() => {
-    let max = 0;
-    for (const s of visibleStems) {
-      const d = stemBuffers[s.id]?.duration ?? 0;
-      if (d > max) max = d;
-    }
-    return max;
+    return visibleStems.reduce(
+      (max, s) => Math.max(max, stemBuffers[s.id]?.duration ?? 0),
+      0,
+    );
   }, [visibleStems, stemBuffers]);
 
   const handleLoadPreset = useCallback((preset: MixerPreset) => {
@@ -532,7 +515,7 @@ export function App() {
     setActiveView,
     onTriggerSplit: () => {
       if (uploadedFile && !isSplitting && splitResultStems.length === 0 && activeView === "editor") {
-        void triggerSplit(2, isSample);
+        void triggerSplit(DEFAULT_SPLIT_STEM_COUNT, isSample);
       }
     },
   });
@@ -616,7 +599,7 @@ export function App() {
           className="outline-none focus-visible:ring-2 focus-visible:ring-primary-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] rounded-[2rem]"
         >
           {activeView === "pricing" ? (
-            <motion.section {...viewSwitchMotion(Boolean(reduceMotion))}>
+            <motion.section {...viewSwitchMotion(reduceMotion)}>
               <PricingPage
                 subscription={subscription}
                 onClose={() => setActiveView("editor")}
@@ -637,7 +620,7 @@ export function App() {
             />
           ) : activeView === "speech" ? (
             <SpeechCleanPage
-              reduceMotion={Boolean(reduceMotion)}
+              reduceMotion={reduceMotion}
               subscription={subscription}
               usageBalance={usageBalance}
               usageLoading={usageLoading}
@@ -646,7 +629,7 @@ export function App() {
             />
           ) : activeView === "midi" ? (
             <MidiConvertPage
-              reduceMotion={Boolean(reduceMotion)}
+              reduceMotion={reduceMotion}
               subscription={subscription}
               usageBalance={usageBalance}
               usageLoading={usageLoading}
@@ -655,7 +638,7 @@ export function App() {
             />
           ) : (
             <EditorMainView
-              reduceMotion={Boolean(reduceMotion)}
+              reduceMotion={reduceMotion}
               chrome={{
                 guidanceTarget,
                 guidanceRingClass,
@@ -764,7 +747,7 @@ export function App() {
       <WaitingGamePanel
         showGame={showGame}
         isSplitting={isSplitting}
-        reduceMotion={Boolean(reduceMotion)}
+        reduceMotion={reduceMotion}
         onToggle={toggleGame}
         onClose={() => closeModal("game")}
       />
@@ -774,7 +757,7 @@ export function App() {
       />
 
       <EditorFloatingOverlays
-        reduceMotion={Boolean(reduceMotion)}
+        reduceMotion={reduceMotion}
         exportNotice={exportNotice}
       />
       {activeView === "editor" && <FeedbackChip />}
