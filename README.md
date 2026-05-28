@@ -73,6 +73,11 @@ End users of the public site do not read this repo; this file is for **direction
 3. Browser polls **`GET /api/midi/status/:job_id`** (includes piano roll note data on completion).
 4. MIDI file via **`GET /api/midi/file/:job_id/output.mid`**.
 5. Optional: **`POST /api/midi/merge`** combines multiple completed jobs into a multi-track MIDI Type 1 file.
+6. Optional export orchestration:
+   - **`POST /api/midi/export`** with `mode`, `selected_stems`, and `source_jobs`.
+   - Returns **202** + `export_id` and `export_token`.
+   - Poll **`GET /api/midi/export/status/:export_id`**.
+   - Download archive via **`GET /api/midi/export/file/:export_id/stems.zip`** (v1 `mode=stems`).
 
 Generated MIDI job artifacts under **`tmp/midi/<job_id>/`** also include **`metadata.json`** with conversion settings, note analysis, and an additive **`midi_file_analysis`** subtree derived from the emitted **`output.mid`** file.
 

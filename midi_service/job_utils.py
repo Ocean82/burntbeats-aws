@@ -32,6 +32,16 @@ def write_progress(out_dir: Path, data: dict) -> None:
     _write_progress(out_dir, data)
 
 
+def find_job_input_audio_path(job_dir: Path) -> Path | None:
+    """Return the first upload path matching input.* inside a job directory."""
+    if not job_dir.is_dir():
+        return None
+    for path in sorted(job_dir.iterdir()):
+        if path.is_file() and path.name.startswith("input."):
+            return path
+    return None
+
+
 def validate_audio_file(path: Path) -> None:
     """Validate that the file exists, is within size limit, has a supported format, and valid sample rate."""
     import soundfile as sf

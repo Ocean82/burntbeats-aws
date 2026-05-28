@@ -65,7 +65,14 @@ async def _worker_loop(run_fn: Callable[..., None]) -> None:
         job_id: str = item["job_id"]
         try:
             loop = asyncio.get_running_loop()
-            options = options_from_job_item(item)
+            job_kind = str(item.get("job_kind") or "convert")
+            if job_kind == "export":
+                options = {
+                    "job_kind": "export",
+                    "export_request": item.get("export_request") or {},
+                }
+            else:
+                options = options_from_job_item(item)
             await loop.run_in_executor(
                 _executor,
                 run_fn,

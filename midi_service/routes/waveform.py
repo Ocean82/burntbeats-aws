@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
+from midi_service.job_utils import find_job_input_audio_path
 from midi_service.services.storage import safe_job_path
 
 from .common import UUID_REGEX, get_output_dir, require_api_token
@@ -27,8 +28,8 @@ def build_waveform_router() -> APIRouter:
 
         output_dir = get_output_dir(request)
         job_dir = safe_job_path(output_dir, job_id)
-        audio_path = job_dir / "input.wav"
-        if not audio_path.is_file():
+        audio_path = find_job_input_audio_path(job_dir)
+        if audio_path is None:
             raise HTTPException(status_code=404, detail="Audio not found for job")
 
         data = compute_waveform(audio_path, display_points=points)
@@ -46,8 +47,8 @@ def build_waveform_router() -> APIRouter:
 
         output_dir = get_output_dir(request)
         job_dir = safe_job_path(output_dir, job_id)
-        audio_path = job_dir / "input.wav"
-        if not audio_path.is_file():
+        audio_path = find_job_input_audio_path(job_dir)
+        if audio_path is None:
             raise HTTPException(status_code=404, detail="Audio not found for job")
 
         data = compute_spectrum(audio_path, fft_size=fft_size)

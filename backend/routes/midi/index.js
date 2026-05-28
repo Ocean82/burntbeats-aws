@@ -7,6 +7,7 @@ import { midiFileRouter } from "./file-serve.js";
 import { midiHistoryRouter } from "./history.js";
 import { midiCleanupRouter } from "./cleanup.js";
 import { midiMergeRouter } from "./merge.js";
+import { midiExportRouter } from "./export.js";
 
 export const midiRouter = Router();
 
@@ -16,3 +17,4 @@ midiRouter.use("/file", midiFileRouter);
 midiRouter.use("/history", midiHistoryRouter);
 midiRouter.use("/cleanup", midiCleanupRouter);
 midiRouter.use("/merge", midiMergeRouter);
+midiRouter.use("/export", midiExportRouter);

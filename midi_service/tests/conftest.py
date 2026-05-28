@@ -146,6 +146,19 @@ async def client_factory(tmp_path):
             if enqueue_error is not None:
                 raise enqueue_error
 
+            if item.get("job_kind") == "export":
+                from midi_service.export.model import parse_export_request
+                from midi_service.services.export import run_export_sync
+
+                export_request = parse_export_request(item.get("export_request") or {})
+                run_export_sync(
+                    job_id=item["job_id"],
+                    out_dir=item["out_dir"],
+                    request=export_request,
+                    output_dir=output_dir,
+                )
+                return
+
             job_id = item["job_id"]
             out_dir = item["out_dir"]
             input_path = Path(item["input_path"])

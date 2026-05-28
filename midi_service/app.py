@@ -19,12 +19,14 @@ from midi_service.correlation import (
 )
 from midi_service.job_queue import enqueue_job, get_queue_depth, start_worker, stop_worker
 from midi_service.pipeline import preload_model, run_midi_convert_sync
+from midi_service.export.model import parse_export_request
 from midi_service.routes.convert import build_convert_router
 from midi_service.routes.jobs import build_jobs_router
 from midi_service.routes.merge import build_merge_router
 from midi_service.routes.waveform import build_waveform_router
 from midi_service.routes.export import build_export_router
 from midi_service.routes.ops import build_ops_router
+from midi_service.services.export import run_export_sync
 from midi_service.services.storage import probe_storage, write_storage_sentinel
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,15 @@ def _run_job(
     out_dir: Path,
     options: dict,
 ) -> None:
+    if options.get("job_kind") == "export":
+        export_request = parse_export_request(options.get("export_request") or {})
+        run_export_sync(
+            job_id=job_id,
+            out_dir=out_dir,
+            request=export_request,
+            output_dir=MIDI_OUTPUT_DIR,
+        )
+        return
     run_midi_convert_sync(job_id, input_path, out_dir, options)
 
 
@@ -94,7 +105,12 @@ def create_app() -> FastAPI:
     app.include_router(build_jobs_router())
     app.include_router(build_merge_router())
     app.include_router(build_waveform_router())
-    app.include_router(build_export_router())
+    app.include_router(
+        build_export_router(
+            enqueue_job=enqueue_job,
+            get_queue_depth=get_queue_depth,
+        )
+    )
     return app
 
 

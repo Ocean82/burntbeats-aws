@@ -5,7 +5,6 @@
  */
 import { AlertCircle, Check, Download, Layers, Loader2, Music, RefreshCw, X } from "lucide-react";
 import { useCallback, useState } from "react";
-import JSZip from "jszip";
 import { useMidiConvert } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
 import { MidiSourceSelector } from "./MidiSourceSelector";
@@ -93,28 +92,81 @@ export function MidiConvertPanel({
     usageBalance >= batchCost;
   const isBatchInProgress = isBatchMode && batchJobs.some((j) => j.status === "converting" || j.status === "pending");
 
-  // ZIP download state
-  const [isZipping, setIsZipping] = useState(false);
+  // Export ZIP state
+  const [isExportingZip, setIsExportingZip] = useState(false);
 
   const downloadAllAsZip = useCallback(async () => {
-    const completedJobs = batchJobs.filter((j) => j.status === "completed" && j.fileUrl && j.jobToken);
+    const completedJobs = batchJobs.filter(
+      (j) => j.status === "completed" && j.fileUrl && j.jobToken && j.jobId,
+    );
     if (completedJobs.length === 0) return;
 
-    setIsZipping(true);
+    setIsExportingZip(true);
     try {
-      const zip = new JSZip();
-
-      for (const job of completedJobs) {
-        const headers = await authHeaders();
-        const res = await fetch(job.fileUrl!, {
-          headers: { ...headers, "x-job-token": job.jobToken! },
-        });
-        if (!res.ok) continue;
-        const blob = await res.blob();
-        zip.file(`${job.stemName}.mid`, blob);
+      const headers = await authHeaders();
+      const payload = {
+        mode: "stems",
+        format: "midi1",
+        selected_stems: completedJobs.map((job) => job.stemName),
+        source_jobs: completedJobs.map((job) => ({
+          job_id: job.jobId,
+          stem_name: job.stemName,
+          bpm: settings.quantizeBpm || 120,
+        })),
+      };
+      const createRes = await fetch(`${API_BASE}/api/midi/export`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!createRes.ok) {
+        const data = await createRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create export job");
+      }
+      const created = (await createRes.json()) as {
+        export_id: string;
+        export_token: string;
+        status_url?: string;
+        archive_url?: string;
+      };
+      const statusUrl = created.status_url;
+      const archiveUrl = created.archive_url;
+      if (!statusUrl || !archiveUrl || !created.export_token) {
+        throw new Error("Export service returned incomplete response");
       }
 
-      const zipBlob = await zip.generateAsync({ type: "blob" });
+      let attempts = 0;
+      while (attempts < 160) {
+        const statusRes = await fetch(statusUrl, {
+          headers: { ...headers, "x-job-token": created.export_token },
+        });
+        if (!statusRes.ok) {
+          const data = await statusRes.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to poll export status");
+        }
+        const statusData = (await statusRes.json()) as {
+          status: string;
+          error?: string;
+        };
+        if (statusData.status === "completed") break;
+        if (statusData.status === "failed") {
+          throw new Error(statusData.error || "Export job failed");
+        }
+        attempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      if (attempts >= 160) {
+        throw new Error("Export timed out");
+      }
+
+      const archiveRes = await fetch(archiveUrl, {
+        headers: { ...headers, "x-job-token": created.export_token },
+      });
+      if (!archiveRes.ok) {
+        const data = await archiveRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to download stems zip");
+      }
+      const zipBlob = await archiveRes.blob();
       const url = URL.createObjectURL(zipBlob);
       const a = document.createElement("a");
       a.href = url;
@@ -123,12 +175,13 @@ export function MidiConvertPanel({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      // Silently fail — individual downloads still available
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "ZIP export failed";
+      setError(msg);
     } finally {
-      setIsZipping(false);
+      setIsExportingZip(false);
     }
-  }, [batchJobs]);
+  }, [batchJobs, settings.quantizeBpm, setError]);
 
   const downloadSingleBatchMidi = useCallback(async (fileUrl: string, token: string, stemName: string) => {
     try {
@@ -423,13 +476,13 @@ export function MidiConvertPanel({
                 type="button"
                 data-testid="midi-batch-download-zip"
                 onClick={() => void downloadAllAsZip()}
-                disabled={isZipping}
+                disabled={isExportingZip}
                 className="midi-btn text-sm"
               >
-                {isZipping ? (
+                {isExportingZip ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Zipping…
+                    Exporting ZIP…
                   </>
                 ) : (
                   <>
