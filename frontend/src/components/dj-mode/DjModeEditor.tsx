@@ -70,6 +70,11 @@ export interface DjModeEditorProps {
   getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   isExporting?: boolean;
   onExport?: () => void;
+  /** Recording state and callbacks. */
+  isRecording?: boolean;
+  recordingDuration?: number;
+  onStartRecording?: () => void;
+  onStopRecording?: () => void;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -115,6 +120,10 @@ export function DjModeEditor({
   getMasterAnalyserTimeDomainDataRight,
   isExporting = false,
   onExport,
+  isRecording = false,
+  recordingDuration = 0,
+  onStartRecording,
+  onStopRecording,
 }: DjModeEditorProps) {
   const [consoleCollapsed, setConsoleCollapsed] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
@@ -258,6 +267,10 @@ export function DjModeEditor({
         isExporting={isExporting}
         exportReady={playbackReady}
         onExport={onExport}
+        isRecording={isRecording}
+        recordingDuration={recordingDuration}
+        onStartRecording={onStartRecording}
+        onStopRecording={onStopRecording}
       />
 
       {/* ── Waveform Section (full width, taller lanes, dark bg) ── */}

@@ -52,6 +52,11 @@ export interface MixerPanelProps {
   loopEnabled?: boolean;
   /** Callback to toggle loop playback. */
   onLoopToggle?: (enabled: boolean) => void;
+  /** Recording state and callbacks. */
+  isRecording?: boolean;
+  recordingDuration?: number;
+  onStartRecording?: () => void;
+  onStopRecording?: () => void;
 }
 
 export function MixerPanel({
@@ -95,6 +100,10 @@ export function MixerPanel({
   beatGrid,
   loopEnabled = false,
   onLoopToggle,
+  isRecording = false,
+  recordingDuration = 0,
+  onStartRecording,
+  onStopRecording,
 }: MixerPanelProps) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [masterMuted, setMasterMuted] = useState(false);
@@ -239,6 +248,10 @@ export function MixerPanel({
         beatGrid={beatGrid}
         loopEnabled={loopEnabled}
         onLoopToggle={onLoopToggle}
+        isRecording={isRecording}
+        recordingDuration={recordingDuration}
+        onStartRecording={onStartRecording}
+        onStopRecording={onStopRecording}
         masterVolume={masterVolume}
         masterMuted={masterMuted}
         masterLimiterEnabled={masterLimiterEnabled}

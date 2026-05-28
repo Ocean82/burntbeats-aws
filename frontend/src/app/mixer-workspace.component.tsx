@@ -8,12 +8,15 @@ import {
   ENABLE_PROGRESS_WIDGET,
 } from "../config/uiFlags";
 import { useAudio } from "../contexts/AudioContext";
+import { useAudioContext } from "../hooks/audio";
 import { useWorkflow } from "../contexts/WorkflowContext";
 import { useAppStore } from "../store/appStore";
 import { useUiStore } from "../store/uiStore";
 import { useOnboarding } from "../hooks/ui/useOnboarding";
 import { useResolvedStems } from "../hooks/workflow/useResolvedStems";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import { useMixRecorder } from "../hooks/audio/useMixRecorder";
+import { downloadBlob } from "../utils/downloadHelper";
 
 type OnboardingStep = { id: number; label: string; done: boolean };
 
@@ -81,6 +84,22 @@ export function MixerWorkspace({
   }));
   const { undoToast } = useUiStore();
   const { mixStems, visibleStems } = useResolvedStems();
+  const { getMasterRecordingStream } = useAudioContext();
+  const {
+    isRecording,
+    duration: recordingDuration,
+    startRecording,
+    stopRecording,
+  } = useMixRecorder({
+    onRecordingComplete: (blob, filename) => {
+      void downloadBlob(blob, filename);
+    },
+  });
+
+  const handleStartRecording = () => {
+    const stream = getMasterRecordingStream();
+    if (stream) startRecording(stream);
+  };
 
   return (
     <div
@@ -168,6 +187,10 @@ export function MixerWorkspace({
           beatGrid={beatGrid}
           loopEnabled={audio.loopEnabled}
           onLoopToggle={audio.setLoopEnabled}
+          isRecording={isRecording}
+          recordingDuration={recordingDuration}
+          onStartRecording={handleStartRecording}
+          onStopRecording={stopRecording}
           />
         </Suspense>
       </ErrorBoundary>

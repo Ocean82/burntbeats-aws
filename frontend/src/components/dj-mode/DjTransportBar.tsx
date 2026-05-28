@@ -2,7 +2,7 @@
  * DjTransportBar — Compact transport controls for DJ mode.
  * Play/Stop, Loop, Zoom, Beat Grid, Timecode display.
  */
-import { Download, Grid, Play, Repeat, Square, ZoomIn, ZoomOut } from "lucide-react";
+import { Circle, Download, Grid, Play, Repeat, Square, StopCircle, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 interface DjTransportBarProps {
@@ -25,6 +25,14 @@ interface DjTransportBarProps {
   isExporting?: boolean;
   exportReady?: boolean;
   onExport?: () => void;
+  /** Whether the recorder is actively capturing audio. */
+  isRecording?: boolean;
+  /** Recording duration in seconds (displayed while recording). */
+  recordingDuration?: number;
+  /** Start recording the master mix output. */
+  onStartRecording?: () => void;
+  /** Stop recording and trigger WAV conversion/download. */
+  onStopRecording?: () => void;
 }
 
 function formatTimecode(seconds: number): string {
@@ -56,6 +64,10 @@ export function DjTransportBar({
   isExporting = false,
   exportReady = false,
   onExport,
+  isRecording = false,
+  recordingDuration = 0,
+  onStartRecording,
+  onStopRecording,
 }: DjTransportBarProps) {
   const currentTime = (playheadPct / 100) * maxDuration;
 
@@ -81,6 +93,36 @@ export function DjTransportBar({
       >
         {isPlaying ? <Square className="h-3.5 w-3.5" /> : <Play className="h-4 w-4 ml-0.5" />}
       </button>
+
+      {/* Record */}
+      {onStartRecording && onStopRecording && (
+        <button
+          type="button"
+          onClick={isRecording ? onStopRecording : onStartRecording}
+          disabled={!playbackReady}
+          aria-label={isRecording ? "Stop recording" : "Start recording"}
+          className={cn(
+            "flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full border transition relative",
+            isRecording
+              ? "border-destructive-400/60 bg-destructive-500/20 text-destructive-200 shadow-[0_0_12px_rgba(255,0,0,0.3)] animate-pulse"
+              : "border-border bg-muted text-muted-foreground hover:text-destructive-300 hover:border-destructive-400/40",
+            !playbackReady && "opacity-40",
+          )}
+        >
+          {isRecording ? (
+            <StopCircle className="h-4 w-4" />
+          ) : (
+            <>
+              <Circle className="h-3 w-3 fill-current" />
+              {recordingDuration > 0 && (
+                <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-destructive-300 tabular-nums whitespace-nowrap">
+                  {Math.floor(recordingDuration / 60)}:{String(Math.floor(recordingDuration % 60)).padStart(2, "0")}
+                </span>
+              )}
+            </>
+          )}
+        </button>
+      )}
 
       {/* Loop */}
       <button

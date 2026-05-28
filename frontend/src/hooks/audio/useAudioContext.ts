@@ -15,6 +15,7 @@ export interface MasterBusRefs {
   masterAnalyserLeftRef: React.MutableRefObject<AnalyserNode | null>;
   masterAnalyserRightRef: React.MutableRefObject<AnalyserNode | null>;
   masterLimiterEnabledRef: React.MutableRefObject<boolean>;
+  masterStreamDestRef: React.MutableRefObject<MediaStreamAudioDestinationNode | null>;
 }
 
 export interface UseAudioContextReturn {
@@ -38,6 +39,8 @@ export interface UseAudioContextReturn {
   /** Master limiter state and setter (true = engaged). */
   masterLimiterEnabled: boolean;
   setMasterLimiterEnabled: (enabled: boolean) => void;
+  /** Get the master bus MediaStream for recording (MediaRecorder input). */
+  getMasterRecordingStream: () => MediaStream | null;
   /** Tear down context and null all refs (for unmount). */
   destroyContext: () => void;
 }
@@ -54,8 +57,9 @@ export function useAudioContext(): UseAudioContextReturn {
   const masterAnalyserLeftRef = useRef<AnalyserNode | null>(null);
   const masterAnalyserRightRef = useRef<AnalyserNode | null>(null);
   const masterLimiterEnabledRef = useRef(false);
+  const masterStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
-  const reconnectMasterBus = useCallback((ctx: AudioContext) => {
+    const reconnectMasterBus = useCallback((ctx: AudioContext) => {
     const g = masterGainRef.current;
     const an = masterAnalyserRef.current;
     const limiter = masterLimiterRef.current;
@@ -88,6 +92,12 @@ export function useAudioContext(): UseAudioContextReturn {
     splitter.connect(left, 0);
     splitter.connect(right, 1);
     an.connect(ctx.destination);
+
+    // Tap master output to MediaStreamDestination for recording
+    const dest = masterStreamDestRef.current;
+    if (dest) {
+      g.connect(dest);
+    }
   }, []);
 
   const ensureMasterBus = useCallback(
@@ -98,7 +108,8 @@ export function useAudioContext(): UseAudioContextReturn {
         masterLimiterRef.current &&
         masterSplitterRef.current &&
         masterAnalyserLeftRef.current &&
-        masterAnalyserRightRef.current
+        masterAnalyserRightRef.current &&
+        masterStreamDestRef.current
       ) {
         reconnectMasterBus(ctx);
         return masterGainRef.current;
@@ -122,6 +133,7 @@ export function useAudioContext(): UseAudioContextReturn {
       const right = ctx.createAnalyser();
       right.fftSize = 2048;
       right.smoothingTimeConstant = 0.7;
+      const streamDest = ctx.createMediaStreamDestination();
 
       masterGainRef.current = g;
       masterLimiterRef.current = limiter;
@@ -129,6 +141,7 @@ export function useAudioContext(): UseAudioContextReturn {
       masterSplitterRef.current = splitter;
       masterAnalyserLeftRef.current = left;
       masterAnalyserRightRef.current = right;
+      masterStreamDestRef.current = streamDest;
       reconnectMasterBus(ctx);
       return masterGainRef.current;
     },
@@ -197,6 +210,7 @@ export function useAudioContext(): UseAudioContextReturn {
       masterSplitterRef.current = null;
       masterAnalyserLeftRef.current = null;
       masterAnalyserRightRef.current = null;
+      masterStreamDestRef.current = null;
       audioContextRef.current = new AudioContextCtor();
     }
     const ctx = audioContextRef.current!;
@@ -227,6 +241,7 @@ export function useAudioContext(): UseAudioContextReturn {
     masterSplitterRef.current = null;
     masterAnalyserLeftRef.current = null;
     masterAnalyserRightRef.current = null;
+    masterStreamDestRef.current = null;
   }, []);
 
   const masterBusRefs: MasterBusRefs = {
@@ -237,7 +252,12 @@ export function useAudioContext(): UseAudioContextReturn {
     masterAnalyserLeftRef,
     masterAnalyserRightRef,
     masterLimiterEnabledRef,
+    masterStreamDestRef,
   };
+
+  const getMasterRecordingStream = useCallback((): MediaStream | null => {
+    return masterStreamDestRef.current?.stream ?? null;
+  }, []);
 
   return {
     audioContextRef,
@@ -253,6 +273,7 @@ export function useAudioContext(): UseAudioContextReturn {
     setMasterVolume,
     masterLimiterEnabled,
     setMasterLimiterEnabled,
+    getMasterRecordingStream,
     destroyContext,
   };
 }
