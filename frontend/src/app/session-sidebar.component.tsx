@@ -20,6 +20,7 @@ export function SessionSidebar() {
     mixStemsLength: mixStems.length,
     hasCompletedFirstExport
   });
+  const showPromo = splitResultStems.length === 0;
 
   if (!isSidebarOpen) {
     return (
@@ -27,6 +28,7 @@ export function SessionSidebar() {
         onClick={() => setSidebarOpen(true)}
         className="fixed left-4 top-1/2 z-40 -translate-y-1/2 rounded-full border border-white/10 bg-black/60 p-3 text-primary-400 backdrop-blur-md transition hover:bg-black/80 hover:scale-110 shadow-xl"
         title="Open Session Hub"
+        aria-label="Open session hub"
       >
         <LayoutPanelLeft className="h-6 w-6" />
       </button>
@@ -43,6 +45,7 @@ export function SessionSidebar() {
         <button 
           onClick={() => setSidebarOpen(false)}
           className="rounded-lg p-1 text-muted-foreground hover:bg-white/5 hover:text-foreground transition"
+          aria-label="Close session hub"
         >
           <X className="h-5 w-5" />
         </button>
@@ -65,34 +68,41 @@ export function SessionSidebar() {
           </div>
         </div>
 
-        <nav className="flex flex-col gap-sm">
-          {onboardingSteps.map((step) => (
-            <div 
-              key={step.id}
-              className={cn(
-                "flex items-center gap-sm rounded-xl p-sm transition-all",
-                step.done ? "bg-primary-500/5 text-primary-100" : "bg-white/[0.02] text-muted-foreground"
-              )}
-            >
-              {step.done ? (
-                <CheckCircle2 className="h-5 w-5 text-primary-400" />
-              ) : (
-                <Circle className="h-5 w-5 opacity-20" />
-              )}
-              <span className="text-sm font-medium">{step.label}</span>
-            </div>
-          ))}
-        </nav>
+        <details className="rounded-xl border border-white/10 bg-white/[0.02] p-sm" open={uploadedFile == null}>
+          <summary className="cursor-pointer text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            Session status
+          </summary>
+          <nav className="mt-sm flex flex-col gap-sm">
+            {onboardingSteps.map((step) => (
+              <div
+                key={step.id}
+                className={cn(
+                  "flex items-center gap-sm rounded-xl p-sm transition-all",
+                  step.done ? "bg-primary-500/5 text-primary-100" : "bg-white/[0.02] text-muted-foreground"
+                )}
+              >
+                {step.done ? (
+                  <CheckCircle2 className="h-5 w-5 text-primary-400" />
+                ) : (
+                  <Circle className="h-5 w-5 opacity-20" />
+                )}
+                <span className="text-sm font-medium">{step.label}</span>
+              </div>
+            ))}
+          </nav>
+        </details>
       </div>
 
-      <div className="mt-auto rounded-2xl bg-white/[0.03] p-md border border-white/5">
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Unlock your full potential with a <span className="text-primary-300 font-bold">Pro</span> subscription. Get 4-stem split, HQ quality, and MIDI export.
-        </p>
-        <button className="mt-md w-full rounded-xl bg-primary-500 py-2.5 text-sm font-bold text-black hover:bg-primary-400 transition active:scale-95">
-          Upgrade Now
-        </button>
-      </div>
+      {showPromo && (
+        <div className="mt-auto rounded-2xl bg-white/[0.03] p-md border border-white/5">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Unlock your full potential with a <span className="text-primary-300 font-bold">Pro</span> subscription. Get 4-stem split, HQ quality, and MIDI export.
+          </p>
+          <button className="mt-md w-full rounded-xl bg-primary-500 py-2.5 text-sm font-bold text-black hover:bg-primary-400 transition active:scale-95">
+            Upgrade Now
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

@@ -54,6 +54,38 @@ export function EditorMainView({
   processingProps,
   mixerProps,
 }: EditorMainViewProps) {
+  const mixerReady = mixStemsLength > 0;
+
+  const processingSection = (
+    <div
+      onPointerDown={handleGuidancePanelInteract}
+      className={cn(
+        "rounded-2xl border border-border bg-muted/20 px-lg py-md sm:px-lg",
+        guidanceTarget === "source" && guidanceRingClass,
+        processingProps.isSplitting && "splitting-scan-glow",
+      )}
+    >
+      <SplitErrorBoundary>
+        <ProcessingSettingsPanel {...processingProps} />
+        {subscription.status === "inactive" && (
+          <div className="mt-sm border-t border-border pt-sm">
+            <PaywallBanner subscription={subscription} variant="teaser" onViewPlans={onViewPlans} />
+          </div>
+        )}
+        {subscription.billingError && (
+          <div className="mt-sm rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300">
+            {subscription.billingError}
+          </div>
+        )}
+        {checkoutNotice && (
+          <div className="mt-sm rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100">
+            {checkoutNotice}
+          </div>
+        )}
+      </SplitErrorBoundary>
+    </div>
+  );
+
   return (
     <>
       {/* Pipeline breadcrumb — shows current workflow step */}
@@ -116,35 +148,22 @@ export function EditorMainView({
       </div>
 
       <section className="flex flex-col gap-md">
-        <div
-          onPointerDown={handleGuidancePanelInteract}
-          className={cn(
-            "rounded-2xl border border-border bg-muted/20 px-lg py-md sm:px-lg",
-            guidanceTarget === "source" && guidanceRingClass,
-            processingProps.isSplitting && "splitting-scan-glow",
-          )}
-        >
-          <SplitErrorBoundary>
-            <ProcessingSettingsPanel {...processingProps} />
-            {subscription.status === "inactive" && (
-              <div className="mt-sm border-t border-border pt-sm">
-                <PaywallBanner subscription={subscription} variant="teaser" onViewPlans={onViewPlans} />
-              </div>
-            )}
-            {subscription.billingError && (
-              <div className="mt-sm rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300">
-                {subscription.billingError}
-              </div>
-            )}
-            {checkoutNotice && (
-              <div className="mt-sm rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100">
-                {checkoutNotice}
-              </div>
-            )}
-          </SplitErrorBoundary>
-        </div>
-
-        <MixerWorkspace {...mixerProps} />
+        {mixerReady ? (
+          <>
+            <MixerWorkspace {...mixerProps} />
+            <details className="rounded-2xl border border-border bg-muted/20 px-lg py-md sm:px-lg">
+              <summary className="cursor-pointer text-sm font-medium text-secondary-foreground">
+                Processing and upload options
+              </summary>
+              <div className="mt-sm">{processingSection}</div>
+            </details>
+          </>
+        ) : (
+          <>
+            {processingSection}
+            <MixerWorkspace {...mixerProps} />
+          </>
+        )}
       </section>
     </>
   );

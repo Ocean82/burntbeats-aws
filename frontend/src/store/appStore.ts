@@ -3,6 +3,33 @@ import type { SplitQuality } from "../api";
 import type { StemResult } from "../types";
 import type { BeatGridMetadata } from "../api";
 
+const VALID_QUALITIES: readonly SplitQuality[] = ["speed", "quality"] as const;
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function sanitizePartialState(update: Partial<AppState>): Partial<AppState> {
+  const sanitized: Partial<AppState> = { ...update };
+  if (typeof update.splitProgress === "number") {
+    sanitized.splitProgress = clampPercent(update.splitProgress);
+  }
+  if (typeof update.uploadProgress === "number") {
+    sanitized.uploadProgress = clampPercent(update.uploadProgress);
+  }
+  if (typeof update.pipelineIndex === "number") {
+    sanitized.pipelineIndex = Math.max(0, Math.round(update.pipelineIndex));
+  }
+  if (
+    typeof update.quality === "string" &&
+    !VALID_QUALITIES.includes(update.quality as SplitQuality)
+  ) {
+    sanitized.quality = "quality";
+  }
+  return sanitized;
+}
+
 export interface AppState {
   quality: SplitQuality;
   uploadName: string;
@@ -59,9 +86,10 @@ export const useAppStore = create<AppState>((set) => ({
   masterLimiterEnabled: false,
 
   setUploadState: (update) =>
-    set((state) =>
-      typeof update === "function" ? update(state) : update
-    ),
+    set((state) => {
+      const next = typeof update === "function" ? update(state) : update;
+      return sanitizePartialState(next);
+    }),
   setSplitError: (msg) => set({ splitError: msg }),
   setMasterLimiterEnabled: (enabled) => set({ masterLimiterEnabled: enabled }),
 }));

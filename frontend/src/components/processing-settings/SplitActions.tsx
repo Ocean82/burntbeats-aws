@@ -118,7 +118,6 @@ export function SplitActions({
                 ? "Upload a new file to run separation again. Each upload is a new job."
                 : undefined
             }
-            aria-busy={isSplitting ? "true" : "false"}
             className="fire-button tap-feedback min-h-[44px] shrink-0 inline-flex items-center justify-center gap-xs px-lg py-sm text-sm font-semibold focus-visible:outline-none disabled:cursor-not-allowed"
           >
             {isSplitting ? (
@@ -142,7 +141,6 @@ export function SplitActions({
               type="button"
               onClick={onToggleSample}
               disabled={isSplitting || splitResultStemsLength > 0}
-              aria-pressed={isSample ? "true" : "false"}
               title="Process only the first 60 seconds — free, no tokens used"
               className={cn(
                 "tap-feedback min-h-[44px] inline-flex items-center gap-xs rounded-full border px-md py-xs text-xs font-semibold transition-[color,background-color,box-shadow,border-color] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]",
@@ -196,7 +194,7 @@ export function SplitActions({
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <motion.div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,#ff633d_0%,#ffbb61_44%,#ffe3a0_100%)]"
+                    className="h-full rounded-full bg-primary"
                     initial={{ width: "0%" }}
                     animate={{
                       width: isUploading

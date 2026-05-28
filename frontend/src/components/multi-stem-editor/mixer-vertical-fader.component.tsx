@@ -39,7 +39,7 @@ export const MixerVerticalFader = memo(function MixerVerticalFader({
   step = 0.5,
   disabled = false,
   height = 160,
-  accentColor = "#f59e0b",
+  accentColor = "var(--primary-400)",
   ariaLabel,
   muted = false,
   formatValue = formatDb,
@@ -103,7 +103,7 @@ export const MixerVerticalFader = memo(function MixerVerticalFader({
         className="mixer-vertical-fader__thumb pointer-events-none absolute left-1/2 z-[1] w-[24px] -translate-x-1/2"
         style={{ 
           bottom: thumbBottom,
-          background: `linear-gradient(180deg, #444 0%, #222 100%)`,
+          background: "linear-gradient(180deg, var(--muted) 0%, var(--bg) 100%)",
           boxShadow: isDragging 
             ? `0 0 15px ${accentColor}88, 0 4px 8px rgba(0,0,0,0.5)` 
             : `0 4px 8px rgba(0,0,0,0.5)`

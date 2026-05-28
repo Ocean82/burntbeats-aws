@@ -9,7 +9,6 @@ import {
 } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { viewSwitchMotion } from "./motion/presets";
-import { useLocation } from "wouter";
 
 const importHelpModal = () => import("./components/HelpModal");
 const importExportOptionsModal = () =>
@@ -65,6 +64,9 @@ import { useWorkflow } from "./contexts/WorkflowContext";
 import { useUiStore } from "./store/uiStore";
 import { useCheckoutNotice } from "./hooks/ui/useCheckoutNotice";
 import { useResolvedStems } from "./hooks/workflow/useResolvedStems";
+import { useEditorViewRouting } from "./hooks/workflow/useEditorViewRouting";
+import { useUpsellTriggers } from "./hooks/ui/useUpsellTriggers";
+import { useSplitSessionLifecycle } from "./hooks/workflow/useSplitSessionLifecycle";
 
 type StemWithOptionalUrl = StemDefinition & { url?: string };
 type NavigatorConnection = {
@@ -241,6 +243,10 @@ export function App() {
     setStemStates,
     setSplitError,
   });
+  function handleSuccessfulExport() {
+    setExportNotice("Download started — check your browser’s downloads folder.");
+    setHasCompletedFirstExport(true);
+  }
 
   const { isComparingExport, exportCompareSummary, onCompareExport } =
     useExportCompare({
@@ -263,12 +269,7 @@ export function App() {
     loadedStemCount: loadedStems.length,
     splitJobId,
     splitResultStems,
-    onSuccessfulExport: () => {
-      setExportNotice(
-        "Download started — check your browser’s downloads folder.",
-      );
-      setHasCompletedFirstExport(true);
-    },
+    onSuccessfulExport: handleSuccessfulExport,
   });
 
   // ── Mixer workspace ───────────────────────────────────────────────────────
@@ -360,19 +361,24 @@ export function App() {
     clearStemWaveforms();
     resetStemStates({});
   }, [clearStemLoadingState, clearStemWaveforms, resetStemStates]);
-
-  const prevSplitJobIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (splitJobId && splitJobId !== prevSplitJobIdRef.current) {
-      if (prevSplitJobIdRef.current != null) {
-        resetStemMediaState();
-      }
-      prevSplitJobIdRef.current = splitJobId;
-    }
-    if (!splitJobId) {
-      prevSplitJobIdRef.current = null;
-    }
-  }, [splitJobId, resetStemMediaState]);
+  const mixerSectionRef = useRef<HTMLDivElement | null>(null);
+  const focusMixerSection = useCallback(() => {
+    mixerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    mixerSectionRef.current?.focus({ preventScroll: true });
+  }, []);
+  const {
+    prevSplitJobIdRef,
+    hasCompletedFirstExport,
+    setHasCompletedFirstExport,
+    exportNotice,
+    setExportNotice,
+  } = useSplitSessionLifecycle({
+    isSplitting,
+    splitResultStemsLength: splitResultStems.length,
+    splitJobId,
+    onResetStemMediaState: resetStemMediaState,
+    onFocusMixer: focusMixerSection,
+  });
 
   useWaveformCompute(stemBuffers, [
     ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
@@ -387,64 +393,17 @@ export function App() {
     [activeStemId, visibleStems],
   );
 
-  const [location, navigate] = useLocation();
-  const activeView: "editor" | "speech" | "midi" | "pricing" | "my-stems" =
-    location === "/pricing" ? "pricing" :
-    location === "/my-stems" ? "my-stems" :
-    location === "/speech" ? "speech" :
-    location === "/midi" ? "midi" :
-    "editor";
-  const setActiveView = useCallback((view: "editor" | "speech" | "midi" | "pricing" | "my-stems") => {
-    navigate(view === "editor" ? "/" : `/${view}`);
-  }, [navigate]);
+  const { activeView, setActiveView } = useEditorViewRouting();
 
   // ── Upsell modal state ────────────────────────────────────────────────────
-  const [upsellOpen, setUpsellOpen] = useState(false);
-  const [upsellTrigger, setUpsellTrigger] = useState<"sample_complete" | "low_balance">("sample_complete");
-
-  const prevSplittingRef = useRef(false);
-  const prevIsSampleRef = useRef(false);
-
-  useEffect(() => {
-    const wasSplitting = prevSplittingRef.current;
-    const wasSample = prevIsSampleRef.current;
-    prevSplittingRef.current = isSplitting;
-    prevIsSampleRef.current = isSample;
-
-    if (wasSplitting && !isSplitting && splitResultStems.length > 0) {
-      if (wasSample) {
-        setUpsellTrigger("sample_complete");
-        setUpsellOpen(true);
-      } else if (usageBalance !== null && usageBalance < 2) {
-        setUpsellTrigger("low_balance");
-        setUpsellOpen(true);
-      }
-    }
-  }, [isSplitting, isSample, splitResultStems.length, usageBalance]);
-
-  const mixerSectionRef = useRef<HTMLDivElement | null>(null);
-  const wasSplittingRef = useRef(false);
-
-  useEffect(() => {
-    if (wasSplittingRef.current && !isSplitting && splitResultStems.length > 0) {
-      const t = window.setTimeout(() => {
-        mixerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 320);
-      return () => window.clearTimeout(t);
-    }
-    wasSplittingRef.current = isSplitting;
-  }, [isSplitting, splitResultStems.length]);
+  const { upsellOpen, setUpsellOpen, upsellTrigger } = useUpsellTriggers({
+    isSplitting,
+    isSample,
+    splitResultStemsLength: splitResultStems.length,
+    usageBalance,
+  });
 
   useAppEvent("open-pricing", () => setActiveView("pricing"));
-
-  const [hasCompletedFirstExport, setHasCompletedFirstExport] = useState(false);
-  const [exportNotice, setExportNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!exportNotice) return;
-    const t = window.setTimeout(() => setExportNotice(null), 6000);
-    return () => window.clearTimeout(t);
-  }, [exportNotice]);
 
   const handleFileFromInput = useCallback(
     (file: File | null) => {
@@ -494,7 +453,7 @@ export function App() {
       applyHistoryStemsToStore(payload);
       setActiveView("editor");
       window.setTimeout(() => {
-        mixerSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        focusMixerSection();
       }, 200);
     },
     onError: (msg) => setSplitError(msg),
@@ -780,6 +739,7 @@ export function App() {
                 isLoadingStems,
                 loadingError,
                 onRetryLoadStems: retryLoadStems,
+                stemWaveforms,
                 activeStemId,
                 onActiveStemChange: setActiveStemId,
                 onStemStateChange: handleStemStateChange,

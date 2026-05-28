@@ -116,7 +116,7 @@ export function DjModeEditor({
   isExporting = false,
   onExport,
 }: DjModeEditorProps) {
-  const [consoleCollapsed, setConsoleCollapsed] = useState(true);
+  const [consoleCollapsed, setConsoleCollapsed] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
   const [showToolbarSettings, setShowToolbarSettings] = useState(false);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(

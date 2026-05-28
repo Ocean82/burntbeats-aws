@@ -85,6 +85,7 @@ export function WaveformLane({
   const rootRef = useRef<HTMLDivElement>(null);
   const laneRef = useRef<HTMLDivElement>(null);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const draggingRef = useRef<"start" | "end" | "seek" | null>(null);
   const didDragRef = useRef(false);
   const trimRef = useRef(trim);
@@ -238,31 +239,7 @@ export function WaveformLane({
     const canvas = waveformCanvasRef.current;
     if (!canvas) return;
     const alpha = isMuted ? 0.3 : isActive ? 0.9 : 0.5;
-
-    // If we have a live analyser, run an rAF loop for modulation
-    if (getAnalyserData) {
-      let rafId: number;
-      const draw = () => {
-        const analyserData = getAnalyserData() ?? undefined;
-        drawWaveformBars({
-          canvas,
-          values: slice,
-          color: stem.glow,
-          minimumBarHeightPx: 8,
-          alphaEven: alpha,
-          alphaOdd: alpha,
-          gapPx: 1,
-          heightScale: 0.9,
-          playedFraction: -1, // DECOUPLE: Don't draw playhead in static layer
-          analyserData,
-        });
-        rafId = requestAnimationFrame(draw);
-      };
-      rafId = requestAnimationFrame(draw);
-      return () => cancelAnimationFrame(rafId);
-    }
-
-    // Static draw (no playback)
+    // Static waveform layer only; avoid repainting per animation frame.
     drawWaveformBars({
       canvas,
       values: slice,
@@ -272,9 +249,47 @@ export function WaveformLane({
       alphaOdd: alpha,
       gapPx: 1,
       heightScale: 0.9,
-      playedFraction: -1, // DECOUPLE
+      playedFraction: -1,
     });
-  }, [slice, isMuted, isActive, stem.glow, getAnalyserData]); // Remove playheadFraction from dependencies
+  }, [slice, isMuted, isActive, stem.glow]);
+
+  useEffect(() => {
+    const canvas = overlayCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let rafId = 0;
+    const draw = () => {
+      const { width, height } = canvas;
+      ctx.clearRect(0, 0, width, height);
+      if (playheadFraction != null) {
+        const x = clamp(playheadFraction, 0, 1) * width;
+        let glowAlpha = 0.25;
+        if (getAnalyserData) {
+          const data = getAnalyserData();
+          if (data && data.length > 0) {
+            let sum = 0;
+            for (let i = 0; i < data.length; i++) {
+              sum += Math.abs(data[i] - 128);
+            }
+            const rms = sum / data.length / 128;
+            glowAlpha = 0.2 + Math.min(rms, 1) * 0.35;
+          }
+        }
+        ctx.strokeStyle = `rgba(255, 255, 255, ${glowAlpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      rafId = requestAnimationFrame(draw);
+    };
+
+    rafId = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafId);
+  }, [playheadFraction, getAnalyserData]);
 
   return (
     <div
@@ -379,6 +394,11 @@ export function WaveformLane({
       <canvas
         ref={waveformCanvasRef}
         className="absolute inset-0 h-full w-full px-0.5"
+        aria-hidden="true"
+      />
+      <canvas
+        ref={overlayCanvasRef}
+        className="pointer-events-none absolute inset-0 h-full w-full px-0.5"
         aria-hidden="true"
       />
 

@@ -41,7 +41,7 @@ export const MixerStrips = memo(function MixerStrips({
   stemStates,
   activeStemId,
   playbackReady,
-  isLoadingStems: _isLoadingStems,
+  isLoadingStems,
   isPlayingMix,
   playingStemId,
   getStemAnalyserTimeDomainData,
@@ -75,6 +75,7 @@ export const MixerStrips = memo(function MixerStrips({
       className="flex gap-xs overflow-x-auto overflow-y-visible pb-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10"
       role="region"
       aria-label="Mixer channel strips"
+      aria-busy={isLoadingStems}
     >
       {stems.map((stem) => {
         const state = stemStates[stem.id] ?? defaultStemState();

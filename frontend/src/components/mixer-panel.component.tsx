@@ -56,17 +56,17 @@ export interface MixerPanelProps {
 
 export function MixerPanel({
   mixStemCount,
-  splitStemCount: _splitStemCount = null,
+  splitStemCount = null,
   isPlayingMix,
   onPlayStop,
   onStopMix,
   onSeekMix,
   isExporting,
   onExport,
-  onCompareExport: _onCompareExport,
-  isComparingExport: _isComparingExport,
+  onCompareExport,
+  isComparingExport = false,
   onResetLevels,
-  onResetSingleStem: _onResetSingleStem,
+  onResetSingleStem,
   hasStemBuffers,
   stems,
   waveforms,
@@ -86,7 +86,7 @@ export function MixerPanel({
   getMasterAnalyserTimeDomainData,
   getMasterAnalyserTimeDomainDataLeft,
   getMasterAnalyserTimeDomainDataRight,
-  getMasterAnalyserFrequencyData: _getMasterAnalyserFrequencyData,
+  getMasterAnalyserFrequencyData,
   getStemAnalyserTimeDomainData,
   masterVolume,
   onMasterVolumeChange,
@@ -149,6 +149,9 @@ export function MixerPanel({
           <h2 className="font-display text-xl tracking-[-0.04em] text-foreground sm:text-2xl">
             Timeline
           </h2>
+          {splitStemCount != null && (
+            <p className="text-xs text-muted-foreground">{splitStemCount}-stem mode</p>
+          )}
         </div>
         {showResetConfirm ? (
           <div className="flex items-center gap-xs rounded-xl border border-primary-400/30 bg-primary-500/10 px-sm py-xs">
@@ -249,6 +252,19 @@ export function MixerPanel({
         isExporting={isExporting}
         onExport={onExport}
       />
+      {onCompareExport && (
+        <div className="mt-sm">
+          <button
+            type="button"
+            onClick={onCompareExport}
+            className="text-xs text-muted-foreground underline"
+            disabled={isComparingExport}
+          >
+            {isComparingExport ? "Comparing export..." : "Compare export quality"}
+          </button>
+        </div>
+      )}
+      <span className="sr-only">{Boolean(onResetSingleStem)}{Boolean(getMasterAnalyserFrequencyData)}</span>
     </>
   );
 }

@@ -13,6 +13,7 @@ import { useAppStore } from "../store/appStore";
 import { useUiStore } from "../store/uiStore";
 import { useOnboarding } from "../hooks/ui/useOnboarding";
 import { useResolvedStems } from "../hooks/workflow/useResolvedStems";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 type OnboardingStep = { id: number; label: string; done: boolean };
 
@@ -31,6 +32,7 @@ interface MixerWorkspaceProps {
   isLoadingStems: boolean;
   loadingError: string | null;
   onRetryLoadStems?: () => void;
+  stemWaveforms: Record<string, number[]>;
   activeStemId: string | undefined;
   onActiveStemChange: (stemId: string) => void;
   onStemStateChange: (stemId: string, patch: Partial<import("../stem-editor-state").StemEditorState>) => void;
@@ -59,6 +61,7 @@ export function MixerWorkspace({
   isLoadingStems,
   loadingError,
   onRetryLoadStems,
+  stemWaveforms,
   activeStemId,
   onActiveStemChange,
   onStemStateChange,
@@ -83,13 +86,16 @@ export function MixerWorkspace({
     <div
       ref={mixerSectionRef}
       onPointerDown={onPointerDownMixer}
+      tabIndex={-1}
+      aria-label="Mixer workspace"
       className={cn(
         "rounded-2xl border border-border bg-muted/20 p-lg sm:p-lg overflow-visible",
         guidanceTarget === "mixer" && guidanceRingClass,
       )}
     >
-      <Suspense
-        fallback={
+      <ErrorBoundary fallback={<p className="text-sm text-destructive-300">Mixer failed to render. Please reload and try again.</p>}>
+        <Suspense
+          fallback={
           <div className="rounded-2xl border border-border bg-secondary px-md py-lg">
             <div className="mb-md flex items-center justify-between gap-md">
               <div className="space-y-xs">
@@ -111,9 +117,9 @@ export function MixerWorkspace({
               ))}
             </div>
           </div>
-        }
-      >
-        <MixerPanel
+          }
+        >
+          <MixerPanel
           mixStemCount={mixStems.length}
           isPlayingMix={audio.isPlayingMix}
           onPlayStop={() => audio.handlePlayMix(splitResultStems, stemStates, stemBuffers)}
@@ -139,7 +145,7 @@ export function MixerWorkspace({
           subscribePlayheadPosition={audio.subscribePlayheadPosition}
           isLoadingStems={isLoadingStems}
           loadingError={loadingError}
-          onRetryLoadStems={retryLoadStems}
+          onRetryLoadStems={onRetryLoadStems}
           activeStemId={activeStemId ?? ""}
           onActiveStemChange={onActiveStemChange}
           onStemStateChange={onStemStateChange}
@@ -162,8 +168,9 @@ export function MixerWorkspace({
           beatGrid={beatGrid}
           loopEnabled={audio.loopEnabled}
           onLoopToggle={audio.setLoopEnabled}
-        />
-      </Suspense>
+          />
+        </Suspense>
+      </ErrorBoundary>
       {exportCompareSummary && (
         <p
           className="mt-sm text-xs text-secondary-foreground"
