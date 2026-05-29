@@ -8,10 +8,12 @@ import { midiToNoteName } from "../../utils/musicTheory";
 import { snapDuration, snapDeltaTime, snapToGrid } from "../../utils/midiEditorSnap";
 import { cn } from "../../utils/cn";
 import {
+  clampEditorZoom,
   isBlackKeyPitch,
   PIANO_ROLL,
   secondsPerBar,
 } from "./pianoRollTheme";
+import { useEditorCanvasZoomGestures } from "./useEditorCanvasZoomGestures";
 
 const LEFT_MARGIN = 48;
 const RULER_HEIGHT = 22;
@@ -42,6 +44,8 @@ interface MidiEditorCanvasProps {
   playheadTime?: number | null;
   /** Timeline zoom multiplier (0.5–2). */
   zoomLevel?: number;
+  /** Pinch or ctrl+wheel on the timeline scroller. */
+  onZoomLevelChange?: (level: number) => void;
 }
 
 interface NoteRect {
@@ -103,10 +107,13 @@ export function MidiEditorCanvas({
   onResizeNote,
   playheadTime = null,
   zoomLevel = 1,
+  onZoomLevelChange,
 }: MidiEditorCanvasProps) {
-  const pixelsPerSecond = BASE_PIXELS_PER_SECOND * Math.max(0.5, Math.min(2, zoomLevel));
+  const pixelsPerSecond =
+    BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  useEditorCanvasZoomGestures(scrollRef, zoomLevel, onZoomLevelChange);
   const [viewportWidth, setViewportWidth] = useState(600);
   const [dragState, setDragState] = useState<DragState | null>(null);
 
@@ -215,7 +222,7 @@ export function MidiEditorCanvas({
       labels.push({ x: timeToScreen(t), label: formatTimeLabel(t) });
     }
     return labels;
-  }, [timelineWidth, totalDuration, timeToScreen]);
+  }, [timelineWidth, totalDuration, timeToScreen, pixelsPerSecond]);
 
   const hitTestNote = useCallback(
     (x: number, y: number): { noteRect: NoteRect; isResizeHandle: boolean } | null => {
@@ -440,11 +447,21 @@ export function MidiEditorCanvas({
 
       setDragState(null);
     },
-    [dragState, getMoveDelta, noteRects, onMoveNotes, onResizeNote, onSelectNotes, bpm, snapGrid],
+    [
+      dragState,
+      getMoveDelta,
+      noteRects,
+      onMoveNotes,
+      onResizeNote,
+      onSelectNotes,
+      bpm,
+      snapGrid,
+      pixelsPerSecond,
+    ],
   );
 
   const cursorClass =
-    tool === "draw" ? "cursor-crosshair" : "cursor-default";
+    tool === "draw" || tool === "erase" ? "cursor-crosshair" : "cursor-default";
 
   const renderNoteRect = (
     r: NoteRect,
@@ -548,7 +565,14 @@ export function MidiEditorCanvas({
             "min-w-0 flex-1",
             isScrollable && "overflow-x-auto overflow-y-hidden",
           )}
-          title={isScrollable ? "Scroll horizontally to view the full timeline" : undefined}
+          title={
+            isScrollable
+              ? "Scroll horizontally · pinch or Ctrl+wheel to zoom"
+              : onZoomLevelChange
+                ? "Pinch or Ctrl+wheel to zoom timeline"
+                : undefined
+          }
+          style={{ touchAction: onZoomLevelChange ? "pan-x" : undefined }}
         >
           <svg
             width={timelineWidth}

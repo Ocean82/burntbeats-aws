@@ -240,32 +240,33 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
         <div className="rounded-xl border border-slate-800/60 bg-slate-900/70 px-4 py-3">
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={isPlaying ? pause : play}
               disabled={!engineReady}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white transition-all disabled:opacity-40"
-              style={engineReady ? {
-                background: 'linear-gradient(135deg, #f97316, #38bdf8)',
-              } : { background: '#1e293b' }}
+              className="ppt-transport-play flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold text-white transition-all disabled:opacity-40"
+              aria-label={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? '⏸' : '▶'}
             </button>
 
-            <button onClick={stop} disabled={!engineReady}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all disabled:opacity-40">
+            <button
+              type="button"
+              onClick={stop}
+              disabled={!engineReady}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-sm text-slate-400 transition-all hover:bg-slate-700 hover:text-white disabled:opacity-40"
+              aria-label="Stop"
+            >
               ⏹
             </button>
 
-            <div className="flex-1 flex items-center gap-2">
-              <span className="text-xs font-mono text-slate-500 w-8">{fmt(currentTime)}</span>
-              <div className="flex-1 relative bg-slate-800 rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-2 rounded-full transition-none"
-                  style={{
-                    background: 'linear-gradient(90deg, #f97316, #38bdf8)',
-                    width: `${(currentTime / Math.max(duration, 1)) * 100}%`,
-                  }}
-                />
-              </div>
+            <div className="flex flex-1 items-center gap-2">
+              <span className="w-8 font-mono text-xs text-slate-500">{fmt(currentTime)}</span>
+              <progress
+                className="ppt-transport-progress"
+                value={currentTime}
+                max={Math.max(duration, 0.001)}
+                aria-label="Playback position"
+              />
               <span className="text-xs font-mono text-slate-500 w-8 text-right">
                 {globalTempo !== 1.0
                   ? <span className="text-blue-400">{fmt(adjustedDuration)}</span>

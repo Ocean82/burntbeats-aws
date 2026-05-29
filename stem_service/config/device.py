@@ -71,10 +71,9 @@ DEFAULT_STEM_COUNT = 4
 ALLOWED_STEM_COUNTS = (2, 4)
 DEFAULT_QUALITY = "quality"
 
-# Quality tiers — only "speed" and "quality" exist.
+# Quality tiers — only "speed" and "quality" exist (API rejects other values).
 QUALITY_SPEED = "speed"
 QUALITY_QUALITY = "quality"
-QUALITY_ULTRA = "ultra"
 
 # =======================
 # Audio Validation

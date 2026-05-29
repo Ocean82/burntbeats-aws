@@ -26,10 +26,11 @@ export function SpectrumAnalyzer({
 
     const dpr = window.devicePixelRatio || 1;
     const wCss = container.clientWidth;
+    const hCss = container.clientHeight || height;
     canvas.width = Math.max(1, Math.floor(wCss * dpr));
-    canvas.height = Math.floor(height * dpr);
+    canvas.height = Math.floor(hCss * dpr);
     canvas.style.width = `${wCss}px`;
-    canvas.style.height = `${height}px`;
+    canvas.style.height = `${hCss}px`;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -37,7 +38,7 @@ export function SpectrumAnalyzer({
     ctx.scale(dpr, dpr);
 
     const w = wCss;
-    const h = height;
+    const h = hCss;
     const barW = w / barCount - 1;
 
     if (peakRef.current.length !== barCount) {
@@ -92,7 +93,13 @@ export function SpectrumAnalyzer({
   }, [getFrequencyData, isPlaying, height, barCount]);
 
   return (
-    <div ref={containerRef} className="w-full min-w-[120px]" style={{ height }} role="img" aria-label="Audio frequency spectrum">
+    <div
+      ref={containerRef}
+      className="spectrum-analyzer w-full min-w-[120px]"
+      data-height={height}
+      role="img"
+      aria-label="Audio frequency spectrum"
+    >
       <canvas ref={canvasRef} className="block w-full" aria-hidden />
     </div>
   );

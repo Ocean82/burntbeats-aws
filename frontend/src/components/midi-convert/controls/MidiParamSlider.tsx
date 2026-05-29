@@ -1,9 +1,8 @@
 /**
- * MidiParamSlider — horizontal DAW-style parameter slider.
- * Physical groove track, knurled thumb, value readout, and optional tick marks.
- * Designed for the MIDI conversion settings panel.
+ * MidiParamSlider — horizontal DAW-style parameter slider (native range input).
+ * Decorative groove + ticks; knurled thumb via CSS on type="range".
  */
-import { useCallback, useRef, useState } from "react";
+import { useId, useMemo } from "react";
 
 export interface MidiParamSliderProps {
   label: string;
@@ -28,92 +27,59 @@ export function MidiParamSlider({
   hint,
   formatValue,
 }: MidiParamSliderProps) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
+  const inputId = useId();
   const range = max - min;
   const pct = range > 0 ? ((value - min) / range) * 100 : 0;
-
   const displayValue = formatValue ? formatValue(value) : String(value);
 
-  const valueFromPointer = useCallback(
-    (clientX: number) => {
-      if (!trackRef.current) return;
-      const rect = trackRef.current.getBoundingClientRect();
-      const raw = (clientX - rect.left) / rect.width;
-      const clamped = Math.max(0, Math.min(1, raw));
-      const rawValue = min + clamped * range;
-      const steps = Math.round(rawValue / step);
-      const snapped = Math.max(min, Math.min(max, steps * step));
-      // Avoid floating-point drift: round to step precision
-      const decimals = step.toString().split(".")[1]?.length ?? 0;
-      onChange(parseFloat(snapped.toFixed(decimals)));
-    },
-    [min, max, range, step, onChange],
-  );
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (disabled) return;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    setIsDragging(true);
-    valueFromPointer(e.clientX);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging || disabled) return;
-    valueFromPointer(e.clientX);
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-  };
-
-  // Generate tick marks
-  const tickCount = Math.min(Math.floor(range / step) + 1, 21);
-  const ticks = [];
-  for (let i = 0; i < tickCount; i++) {
-    const tickPct = (i / (tickCount - 1)) * 100;
-    ticks.push(
-      <div
-        key={i}
-        className="midi-param-slider__tick"
-        style={{ left: `${tickPct}%` }}
-        aria-hidden
-      />,
-    );
-  }
+  const ticks = useMemo(() => {
+    const tickCount = Math.min(Math.floor(range / step) + 1, 21);
+    const items: { pct: number; key: number }[] = [];
+    for (let i = 0; i < tickCount; i++) {
+      items.push({ pct: tickCount > 1 ? (i / (tickCount - 1)) * 100 : 0, key: i });
+    }
+    return items;
+  }, [range, step]);
 
   return (
-    <div className={`midi-param-slider${isDragging ? " midi-param-slider--dragging" : ""}${disabled ? " midi-param-slider--disabled" : ""}`}>
+    <div
+      className={`midi-param-slider${disabled ? " midi-param-slider--disabled" : ""}`}
+    >
       <div className="midi-param-slider__header">
-        <span className="midi-param-slider__label">{label}</span>
-        <span className="midi-param-slider__value">{displayValue}</span>
+        <label htmlFor={inputId} className="midi-param-slider__label">
+          {label}
+        </label>
+        <span className="midi-param-slider__value" aria-hidden>
+          {displayValue}
+        </span>
       </div>
-      <div
-        ref={trackRef}
-        className="midi-param-slider__track"
-        role="slider"
-        aria-label={label}
-        aria-valuenow={value}
-        aria-valuemin={min}
-        aria-valuemax={max}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-      >
+      <div className="midi-param-slider__track">
         <div className="midi-param-slider__ticks" aria-hidden>
-          {ticks}
+          {ticks.map((t) => (
+            <div
+              key={t.key}
+              className="midi-param-slider__tick"
+              style={{ left: `${t.pct}%` }}
+            />
+          ))}
         </div>
         <div className="midi-param-slider__groove" aria-hidden />
         <div
           className="midi-param-slider__fill"
-          style={{ width: `${pct}%` }}
+          style={{ width: `calc(${pct}% - 4px)` }}
           aria-hidden
         />
-        <div
-          className="midi-param-slider__thumb"
-          style={{ left: `${pct}%` }}
-          aria-hidden
+        <input
+          id={inputId}
+          type="range"
+          className="midi-param-slider__input"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          aria-valuetext={displayValue}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
         />
       </div>
       {hint && <span className="midi-param-slider__hint">{hint}</span>}

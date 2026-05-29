@@ -2,6 +2,97 @@
 
 /* Pitch-Plug-in custom styles */
 
+/* Demo app shell (App.tsx) — ember / ice brand */
+.ppt-demo-app {
+  background: linear-gradient(160deg, #050510 0%, #0c1424 45%, #050510 100%);
+}
+
+.ppt-demo-grid {
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(249, 115, 22, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.ppt-demo-logo {
+  background: linear-gradient(135deg, #f97316 0%, #38bdf8 100%);
+  box-shadow: 0 4px 20px rgba(249, 115, 22, 0.35);
+}
+
+.ppt-demo-title {
+  background: linear-gradient(90deg, #fb923c, #38bdf8, #7dd3fc);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ppt-demo-tab--active {
+  background: linear-gradient(135deg, #f97316, #38bdf8);
+  box-shadow: 0 2px 12px rgba(249, 115, 22, 0.25);
+}
+
+/* PitchTempoWidget transport */
+.ppt-transport-play {
+  background: linear-gradient(135deg, #f97316, #38bdf8);
+}
+
+.ppt-transport-play:disabled {
+  background: #1e293b;
+}
+
+.ppt-transport-progress {
+  display: block;
+  flex: 1;
+  height: 0.5rem;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  border: none;
+  border-radius: 9999px;
+  background: rgb(30 41 59);
+  overflow: hidden;
+}
+
+.ppt-transport-progress::-webkit-progress-bar {
+  border-radius: 9999px;
+  background: rgb(30 41 59);
+}
+
+.ppt-transport-progress::-webkit-progress-value {
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #f97316, #38bdf8);
+  transition: width 0.05s linear;
+}
+
+.ppt-transport-progress::-moz-progress-bar {
+  border-radius: 9999px;
+  background: rgb(30 41 59);
+}
+
+.ppt-transport-progress::-moz-progress-value {
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #f97316, #38bdf8);
+}
+
+/* SpectrumAnalyzer — display height (canvas height attr sets resolution) */
+.ppt-spectrum-analyzer {
+  display: block;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.ppt-spectrum-analyzer--h48 {
+  height: 48px;
+}
+
+.ppt-spectrum-analyzer--h72 {
+  height: 72px;
+}
+
+.ppt-spectrum-analyzer--h80 {
+  height: 80px;
+}
+
 * {
   box-sizing: border-box;
 }

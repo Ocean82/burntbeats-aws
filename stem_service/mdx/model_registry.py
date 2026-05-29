@@ -73,11 +73,6 @@ INST_MODEL_PATHS: list[Path] = [
     resolve_models_root_file("UVR-MDX-NET-Inst_HQ_4.onnx"),
 ]
 
-DEREVERB_MODEL_PATHS: list[Path] = [
-    MDXNET_MODELS_DIR / "Reverb_HQ_By_FoxJoy.onnx",
-    resolve_models_root_file("Reverb_HQ_By_FoxJoy.onnx"),
-]
-
 # ---------------------------------------------------------------------------
 # CPU-only single-model tier assignments — MUST match docs/MODEL-SELECTION-AUTHORITY.md.
 # Only "fast" and "quality" tiers exist.
@@ -280,12 +275,4 @@ def get_available_inst_onnx(tier: str | None = None) -> Path | None:
         ort = path.with_suffix(".ort")
         if ort.is_file():
             return ort
-    return None
-
-
-def get_available_dereverb_onnx() -> Path | None:
-    """Return first existing de-reverb ONNX path."""
-    for path in DEREVERB_MODEL_PATHS:
-        if path.exists():
-            return path
     return None

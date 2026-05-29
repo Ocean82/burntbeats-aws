@@ -15,6 +15,17 @@ export function secondsPerBar(bpm: number): number {
   return (60 / bpm) * 4;
 }
 
+export const EDITOR_ZOOM_MIN = 0.5;
+export const EDITOR_ZOOM_MAX = 2;
+
+/** Clamp editor timeline zoom (toolbar buttons and pinch). */
+export function clampEditorZoom(level: number): number {
+  return Math.max(
+    EDITOR_ZOOM_MIN,
+    Math.min(EDITOR_ZOOM_MAX, Math.round(level * 100) / 100),
+  );
+}
+
 export const PIANO_ROLL = {
   surface: "#1a1917",
   ruler: "#22211e",

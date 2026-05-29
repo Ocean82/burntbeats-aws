@@ -49,18 +49,12 @@ export function MidiConvertProgress({
           )}
         </div>
       </div>
-      <div
+      <progress
         className="midi-status-panel__meter"
-        role="progressbar"
-        aria-valuenow={barPercent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div
-          className="midi-status-panel__meter-fill"
-          style={{ width: `${Math.max(barPercent, 2)}%` }}
-        />
-      </div>
+        value={Math.min(100, Math.max(2, barPercent))}
+        max={100}
+        aria-label={label}
+      />
     </div>
   );
 }

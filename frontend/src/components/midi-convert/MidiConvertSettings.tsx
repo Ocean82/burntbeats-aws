@@ -210,8 +210,11 @@ export function MidiConvertSettings({
           <div className="ml-lg border-l-2 border-accent-midi/20 pl-sm">
             <div className="flex flex-col gap-xs px-sm py-1">
               <div className="flex items-center justify-between">
-                <span className="midi-param-slider__label">Grid Division</span>
+                <label htmlFor="midi-quantize-grid" className="midi-param-slider__label">
+                  Grid Division
+                </label>
                 <select
+                  id="midi-quantize-grid"
                   value={settings.quantizeGrid}
                   onChange={(e) => handleChange({ quantizeGrid: e.target.value })}
                   disabled={disabled}
@@ -225,8 +228,11 @@ export function MidiConvertSettings({
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="midi-param-slider__label">BPM</span>
+                <label htmlFor="midi-quantize-bpm" className="midi-param-slider__label">
+                  BPM
+                </label>
                 <input
+                  id="midi-quantize-bpm"
                   type="number"
                   min={40}
                   max={300}

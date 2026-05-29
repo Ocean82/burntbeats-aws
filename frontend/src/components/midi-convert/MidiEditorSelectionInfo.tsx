@@ -21,7 +21,7 @@ export function MidiEditorSelectionInfo({
 }: MidiEditorSelectionInfoProps) {
   if (selectedNotes.length === 0) return null;
 
-  const selectionKey = selectedNotes.map((n) => `${n.id}:${n.velocity}`).join(",");
+  const selectionKey = selectedNotes.map((n) => n.id).join(",");
 
   return (
     <MidiEditorSelectionInfoBody
@@ -51,6 +51,8 @@ function MidiEditorSelectionInfoBody({
   const [velocityOverride, setVelocityOverride] = useState<number | null>(null);
 
   const sliderValue = velocityOverride ?? (allSameVelocity ? velocities[0] : avgVelocity);
+  const displayVelocity =
+    velocityOverride ?? (allSameVelocity ? velocities[0] : null);
 
   return (
     <div className="flex flex-wrap items-center gap-sm px-sm py-xs text-xs">
@@ -111,7 +113,9 @@ function MidiEditorSelectionInfoBody({
           }
         />
         <span className="min-w-[2.5rem] font-mono text-[10px] text-muted-foreground">
-          {allSameVelocity ? velocities[0] : `${avgVelocity}*`}
+          {displayVelocity != null
+            ? displayVelocity
+            : `${avgVelocity}*`}
         </span>
       </div>
 

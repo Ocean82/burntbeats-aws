@@ -98,29 +98,37 @@ export function ExportOptionsModal({
     normalize: true,
     masteringPresetId: null,
   });
-  const [masteringPresets, setMasteringPresets] = useState<MasteringPresetSummary[]>(
-    [],
-  );
-  const [presetsLoading, setPresetsLoading] = useState(false);
+  const [masteringPresets, setMasteringPresets] = useState<
+    MasteringPresetSummary[] | null
+  >(null);
+  const presetFetchFailedRef = useRef(false);
+  const presetsLoading = masteringPresets === null;
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (
+      !isOpen ||
+      (masteringPresets !== null && !presetFetchFailedRef.current)
+    ) {
+      return;
+    }
     let cancelled = false;
-    setPresetsLoading(true);
     void fetchMasteringPresets()
       .then((list) => {
-        if (!cancelled) setMasteringPresets(list);
+        if (!cancelled) {
+          presetFetchFailedRef.current = false;
+          setMasteringPresets(list);
+        }
       })
       .catch(() => {
-        if (!cancelled) setMasteringPresets([]);
-      })
-      .finally(() => {
-        if (!cancelled) setPresetsLoading(false);
+        if (!cancelled) {
+          presetFetchFailedRef.current = true;
+          setMasteringPresets([]);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, masteringPresets]);
 
   // Default to MP3 on mobile devices (smaller files, less memory pressure)
   useEffect(() => {
@@ -337,7 +345,7 @@ export function ExportOptionsModal({
                       aria-label="Mastering preset"
                     >
                       <option value="">None (mix only)</option>
-                      {masteringPresets.map((p) => (
+                      {(masteringPresets ?? []).map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name} — {p.genre}
                         </option>

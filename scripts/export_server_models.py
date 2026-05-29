@@ -167,8 +167,7 @@ def main() -> None:
     for fp in optional_files:
         _copy_one(fp, required=False)
 
-    # 6. model_data/ — needed by ultra.py (_get_roformer_config) and check_models.py tooling.
-    #    Optional: ultra is GPU-only and may not be deployed everywhere.
+    # 6. model_data/ — optional UVR JSON metadata for tooling (see docs/MODEL-PARAMS.md).
     model_data_src = config.MDX_NET_MODELS_DIR / "model_data"
     if model_data_src.is_dir():
         model_data_dst = target_dir / "MDX_Net_Models" / "model_data"

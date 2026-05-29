@@ -6,10 +6,6 @@ from pathlib import Path
 from stem_service.config.paths import (
     HTDEMUCS_PTH,
     HTDEMUCS_TH,
-    MDX23C_CKPT,
-    BS_ROFORMER_317_CKPT,
-    BS_ROFORMER_937_CKPT,
-    MEL_BAND_ROFORMER_CKPT,
     MODELS_BY_TYPE_DIR,
     USE_SCNET,
     get_scnet_onnx_path,
@@ -84,21 +80,6 @@ def demucs_quality_yaml_bags_allowed() -> bool:
     return _DEMUCS_QUALITY_BAG_KEY != "single"
 
 
-def mdx23c_available() -> bool:
-    """True if MDX23C model is available for ultra quality."""
-    return MDX23C_CKPT.exists()
-
-
-def bs_roformer_available() -> bool:
-    """True if Band-Split Roformer model is available for ultra quality."""
-    return BS_ROFORMER_317_CKPT.exists() or BS_ROFORMER_937_CKPT.exists()
-
-
-def mel_band_roformer_available() -> bool:
-    """True if Mel Band Roformer model is available for ultra quality (best quality)."""
-    return MEL_BAND_ROFORMER_CKPT.exists()
-
-
 def mdx23c_vocal_available() -> bool:
     """True if MDX23C vocal ONNX model is available (or sibling ``.ort``)."""
     p = resolve_models_root_file("mdx23c_vocal.onnx")
@@ -133,22 +114,3 @@ def bs_roformer_vocal_available() -> bool:
 def bs_roformer_inst_available() -> bool:
     """True if BS-Roformer instrumental ONNX model is available."""
     return resolve_models_root_file("bs_roformer_instrumental.onnx").is_file()
-
-
-def get_best_ultra_model() -> Path | None:
-    """Return the best available ultra quality model path (GPU-only; avoid on CPU)."""
-    if MEL_BAND_ROFORMER_CKPT.exists():
-        return MEL_BAND_ROFORMER_CKPT
-    elif BS_ROFORMER_317_CKPT.exists():
-        return BS_ROFORMER_317_CKPT
-    elif BS_ROFORMER_937_CKPT.exists():
-        return BS_ROFORMER_937_CKPT
-    elif MDX23C_CKPT.exists():
-        return MDX23C_CKPT
-    return None
-
-
-def ultra_available_for_device() -> bool:
-    """True if an ultra model file exists. Ultra runs on CPU but is slow.
-    The caller (ultra.py) raises a clear error if the inference library is missing."""
-    return get_best_ultra_model() is not None

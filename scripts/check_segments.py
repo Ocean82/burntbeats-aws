@@ -57,42 +57,8 @@ def make_test_wav() -> Path:
 
 
 def segment_vad() -> bool:
-    """Test VAD: model load, get_speech_timestamps, merge_speech_segments, get_speech_span_seconds, trim."""
-    from stem_service.vad import (
-        get_speech_span_seconds,
-        get_speech_timestamps,
-        is_vad_available,
-        merge_speech_segments,
-        trim_audio_to_speech_span,
-    )
-
-    _log("  [VAD] Checking model load...", end=" ")
-    if not is_vad_available():
-        _log("SKIP (no silero_vad.onnx)")
-        return True
-    _log("OK")
-
-    _log("  [VAD] get_speech_timestamps on test WAV...", end=" ")
-    segs = get_speech_timestamps(TEST_WAV, return_seconds=True)
-    _log("OK")
-    _log("    -> segments:", len(segs) if segs else 0)
-
-    _log("  [VAD] merge_speech_segments (synthetic)...", end=" ")
-    synthetic = [{"start": 0.0, "end": 1.0}, {"start": 1.2, "end": 2.0}]  # 200ms gap
-    merged = merge_speech_segments(synthetic, max_gap_sec=0.3)
-    assert len(merged) == 1 and merged[0]["start"] == 0.0 and merged[0]["end"] == 2.0
-    _log("OK")
-
-    _log("  [VAD] get_speech_span_seconds...", end=" ")
-    span = get_speech_span_seconds(TEST_WAV)
-    _log("OK" if span is None or (len(span) == 2 and span[0] <= span[1]) else "FAIL")
-
-    _log("  [VAD] trim_audio_to_speech_span (no speech = no trim)...", end=" ")
-    out = TEST_DIR / "vad_trimmed.wav"
-    result = trim_audio_to_speech_span(TEST_WAV, out, padding_sec=0.3)
-    if result is not None:
-        assert out.exists()
-    _log("OK")
+    """VAD pre-trim was removed (Silero is speech-tuned, not music-vocal-tuned)."""
+    _log("  [VAD] SKIP (module removed; pre-trim disabled in hybrid pipeline)")
     return True
 
 

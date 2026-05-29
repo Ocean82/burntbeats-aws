@@ -4,8 +4,15 @@ interface SpectrumAnalyzerProps {
   analyserNode: AnalyserNode | null;
   isPlaying: boolean;
   color?: string;
-  height?: number;
+  /** Display height in px — use 48, 72, or 80 (default). */
+  height?: 48 | 72 | 80;
 }
+
+const HEIGHT_CLASS: Record<48 | 72 | 80, string> = {
+  48: 'ppt-spectrum-analyzer--h48',
+  72: 'ppt-spectrum-analyzer--h72',
+  80: 'ppt-spectrum-analyzer--h80',
+};
 
 export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   analyserNode,
@@ -108,8 +115,9 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
       ref={canvasRef}
       width={600}
       height={height}
-      className="w-full rounded-lg"
-      style={{ height: `${height}px` }}
+      className={`ppt-spectrum-analyzer ${HEIGHT_CLASS[height]}`}
+      role="img"
+      aria-label="Audio frequency spectrum"
     />
   );
 };

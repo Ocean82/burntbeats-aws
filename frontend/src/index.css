@@ -328,7 +328,7 @@
       /* crystalline polished top rim */
       radial-gradient(ellipse 90% 35% at 50% 0%, rgba(255, 255, 255, 0.26), transparent 58%);
     pointer-events: none;
-    mix-blend-mode: plus-lighter;
+    mix-blend-mode: screen;
   }
 
   /* Animated drifting glint — subtle reflective surface catch */
@@ -346,7 +346,7 @@
       rgba(180, 240, 255, 0.08) 54%,
       transparent 60%);
     pointer-events: none;
-    mix-blend-mode: plus-lighter;
+    mix-blend-mode: screen;
     animation: mirrorDrift 14s ease-in-out infinite;
     will-change: transform, opacity;
   }
@@ -1169,7 +1169,7 @@
     width: min(92vw, 860px);
     height: auto;
     max-height: min(52vh, 480px);
-    mix-blend-mode: plus-lighter;
+    mix-blend-mode: screen;
   }
 
   .lightning-collision-path--fire {
@@ -1344,7 +1344,7 @@
       linear-gradient(65deg, transparent 44%, rgba(220, 255, 255, 0.06) 45%, transparent 46%);
     pointer-events: none;
     opacity: 0.65;
-    mix-blend-mode: plus-lighter;
+    mix-blend-mode: screen;
     animation: iceSparkle 7s ease-in-out infinite alternate;
     border-radius: inherit;
   }
@@ -1371,8 +1371,18 @@
         transparent 40%,
         rgba(190, 230, 255, 0.05) 100%);
     pointer-events: none;
-    mix-blend-mode: plus-lighter;
+    mix-blend-mode: screen;
     border-radius: inherit;
+  }
+
+  @supports (mix-blend-mode: plus-lighter) {
+    .mirror-sheen::before,
+    .mirror-sheen::after,
+    .lightning-collision-svg,
+    .ice-shimmer::after,
+    .brushed-metal::before {
+      mix-blend-mode: plus-lighter;
+    }
   }
 
   /* ── Burning surface ────────────────────────────────────────────────────────
@@ -1550,6 +1560,7 @@
       rgba(0, 0, 0, 0.72) 0%,
       rgba(0, 0, 0, 0.88) 100%
     );
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -1690,6 +1701,7 @@
     box-shadow: 
       inset 0 1px 1px rgba(255, 255, 255, 0.05),
       0 10px 30px rgba(0, 0, 0, 0.5);
+    -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
   }
 
@@ -2483,4 +2495,33 @@
     opacity: 0.3;
     filter: blur(60px);
   }
+}
+
+/* SpectrumAnalyzer — container height via data-height (default 48px) */
+.spectrum-analyzer {
+  height: 48px;
+}
+
+.spectrum-analyzer[data-height="36"] {
+  height: 36px;
+}
+
+.spectrum-analyzer[data-height="48"] {
+  height: 48px;
+}
+
+.spectrum-analyzer[data-height="56"] {
+  height: 56px;
+}
+
+.spectrum-analyzer[data-height="64"] {
+  height: 64px;
+}
+
+.spectrum-analyzer[data-height="72"] {
+  height: 72px;
+}
+
+.spectrum-analyzer[data-height="80"] {
+  height: 80px;
 }

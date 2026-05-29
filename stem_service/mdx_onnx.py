@@ -12,7 +12,6 @@ from stem_service.mdx import (  # noqa: F401
     _MDX_CONFIGS,
     VOCAL_MODEL_PATHS,
     INST_MODEL_PATHS,
-    DEREVERB_MODEL_PATHS,
     SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX,
     _VOCAL_TIER_NAMES,
     _INST_TIER_NAMES,
@@ -25,7 +24,6 @@ from stem_service.mdx import (  # noqa: F401
     resolve_declared_vocal_onnx_path,
     get_available_vocal_onnx,
     get_available_inst_onnx,
-    get_available_dereverb_onnx,
     _get_hann_window,
     _stft,
     _istft,
@@ -33,5 +31,4 @@ from stem_service.mdx import (  # noqa: F401
     _run_mdx_onnx,
     run_vocal_onnx,
     run_inst_onnx,
-    run_dereverb_onnx,
 )

@@ -2,7 +2,7 @@
 MDX-Net ONNX inference pipelines.
 
 Core chunked inference following the UVR5 / audio-separator reference exactly.
-Public API: run_vocal_onnx, run_inst_onnx, run_dereverb_onnx.
+Public API: run_vocal_onnx, run_inst_onnx.
 
 The model takes a spectrogram chunk (batch, 4, dim_f, dim_t) and outputs a
 separated spectrogram of the same shape. The output is fed directly to iSTFT —
@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 from stem_service.mdx.model_registry import (
     _get_config,
     _logical_onnx_name,
-    get_available_dereverb_onnx,
     get_available_inst_onnx,
     get_available_vocal_onnx,
     vocal_onnx_allowed_for_service,
@@ -371,57 +370,3 @@ def run_inst_onnx(
         progress_callback=progress_callback,
         progress_range=progress_range,
     )
-
-
-def run_dereverb_onnx(
-    input_path: Path,
-    output_path: Path,
-    overlap: float = 0.75,
-    job_logger: "logging.Logger | None" = None,
-) -> Path | None:
-    """
-    Remove reverb/room resonance from a vocal stem using Reverb_HQ_By_FoxJoy.
-
-    The model outputs the reverb component (what to remove). We subtract it from
-    the input to produce a dry, clean vocal.
-
-    overlap: 0.5 for speed, 0.75 for quality.
-    Returns output_path on success, None if model unavailable or inference fails.
-    """
-    import numpy as np
-    import soundfile as sf
-
-    _log = job_logger or logger
-    model_path = get_available_dereverb_onnx()
-    if model_path is None:
-        logger.debug("No de-reverb ONNX model found — skipping reverb removal")
-        return None
-
-    # Run model to get the reverb component
-    reverb_path = output_path.parent / "_reverb_component.wav"
-    reverb_result = _run_mdx_onnx(
-        input_path, reverb_path, model_path, overlap=overlap, job_logger=job_logger
-    )
-    if reverb_result is None:
-        return None
-
-    # dry = input - reverb_component
-    try:
-        wet, sr = sf.read(str(input_path), dtype="float32", always_2d=True)
-        reverb, _ = sf.read(str(reverb_path), dtype="float32", always_2d=True)
-
-        # Align lengths (reverb output may differ by a few samples)
-        min_len = min(len(wet), len(reverb))
-        dry = wet[:min_len] - reverb[:min_len]
-        dry = np.clip(dry, -1.0, 1.0)
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        write_wav_16bit(output_path, dry, sr)
-        _log.info("dereverb: wrote dry vocal %s", output_path.name)
-
-        # Clean up intermediate file
-        reverb_path.unlink(missing_ok=True)
-        return output_path
-    except Exception as e:
-        _log.warning("dereverb: subtraction failed: %s", e)
-        return None

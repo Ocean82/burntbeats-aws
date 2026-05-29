@@ -15,6 +15,7 @@ import { MidiEditorShell } from "./MidiEditorShell";
 import { MidiTransportBar } from "./MidiTransportBar";
 import { MarkerStrip, createMarker, type SectionMarker } from "./MarkerStrip";
 import { MidiSmartPanel } from "./MidiSmartPanel";
+import { clampEditorZoom } from "./pianoRollTheme";
 
 interface MidiNoteEditorProps {
   initialNotes: MidiNoteEvent[];
@@ -52,7 +53,7 @@ export function MidiNoteEditor({
     return { minStart: min, duration: Math.max(max - min, 0.25) };
   }, [editor.notes]);
 
-  const pixelsPerSecond = BASE_PPS * Math.max(0.5, Math.min(2, zoomLevel));
+  const pixelsPerSecond = BASE_PPS * clampEditorZoom(zoomLevel);
 
   const playheadTime = useMemo(() => {
     if (!playback.isPlaying && playback.currentTime === 0) return null;
@@ -107,11 +108,15 @@ export function MidiNoteEditor({
   }, [editor, initialNotes, playback]);
 
   const handleZoomIn = useCallback(() => {
-    setZoomLevel((z) => Math.min(2, Math.round((z + 0.25) * 100) / 100));
+    setZoomLevel((z) => clampEditorZoom(z + 0.25));
   }, []);
 
   const handleZoomOut = useCallback(() => {
-    setZoomLevel((z) => Math.max(0.5, Math.round((z - 0.25) * 100) / 100));
+    setZoomLevel((z) => clampEditorZoom(z - 0.25));
+  }, []);
+
+  const handleZoomLevelChange = useCallback((level: number) => {
+    setZoomLevel(clampEditorZoom(level));
   }, []);
 
   const handleAddMarker = useCallback((time: number, label: string) => {
@@ -286,6 +291,7 @@ export function MidiNoteEditor({
               drawVelocity={editor.drawVelocity}
               playheadTime={playheadTime}
               zoomLevel={zoomLevel}
+              onZoomLevelChange={handleZoomLevelChange}
               onSelectNote={editor.selectNote}
               onSelectNotes={editor.selectNotes}
               onDeselectAll={editor.deselectAll}

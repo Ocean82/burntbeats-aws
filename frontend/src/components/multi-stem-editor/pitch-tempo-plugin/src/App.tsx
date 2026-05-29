@@ -13,12 +13,6 @@ import type { StemInput, PitchTempoEngineState } from './types';
 
 type ActiveTab = 'player' | 'tests' | 'docs';
 
-/** Ember / ice brand tokens (no violet). */
-const EMBER = '#f97316';
-const EMBER_SOFT = '#fb923c';
-const ICE = '#38bdf8';
-const ICE_SOFT = '#7dd3fc';
-
 export default function App() {
   const [tab, setTab] = useState<ActiveTab>('player');
   const [stemInputs, setStemInputs] = useState<StemInput[]>([]);
@@ -51,31 +45,18 @@ export default function App() {
   const memoizedStems = useMemo(() => stemInputs, [stemInputs]);
 
   return (
-    <div className="min-h-screen text-white" style={{
-      background: 'linear-gradient(160deg, #050510 0%, #0c1424 45%, #050510 100%)',
-    }}>
-      <div className="fixed inset-0 pointer-events-none opacity-30" style={{
-        backgroundImage: `
-          linear-gradient(rgba(56,189,248,0.06) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(249,115,22,0.05) 1px, transparent 1px)
-        `,
-        backgroundSize: '40px 40px',
-      }} />
+    <div className="ppt-demo-app min-h-screen text-white">
+      <div className="ppt-demo-grid fixed inset-0 pointer-events-none opacity-30" />
 
       <div className="relative max-w-5xl mx-auto px-4 py-6 space-y-4">
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
-              style={{
-                background: `linear-gradient(135deg, ${EMBER} 0%, ${ICE} 100%)`,
-                boxShadow: '0 4px 20px rgba(249,115,22,0.35)',
-              }}>
+            <div className="ppt-demo-logo flex h-12 w-12 items-center justify-center rounded-2xl text-2xl">
               🎛️
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight"
-                style={{ background: `linear-gradient(90deg, ${EMBER_SOFT}, ${ICE}, ${ICE_SOFT})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <h1 className="ppt-demo-title text-3xl font-black tracking-tight">
                 Pitch-Plug-in
               </h1>
               <p className="text-xs text-slate-500 font-mono">
@@ -101,15 +82,11 @@ export default function App() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-semibold transition-all ${
                 tab === t.id
-                  ? 'text-white shadow-lg'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
+                  ? 'ppt-demo-tab--active text-white shadow-lg'
+                  : 'text-slate-500 hover:bg-slate-800/40 hover:text-slate-300'
               }`}
-              style={tab === t.id ? {
-                background: `linear-gradient(135deg, ${EMBER}, ${ICE})`,
-                boxShadow: '0 2px 12px rgba(249,115,22,0.25)',
-              } : {}}
             >
               {t.icon} {t.label}
             </button>

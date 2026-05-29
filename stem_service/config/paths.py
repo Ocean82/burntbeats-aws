@@ -66,23 +66,26 @@ MDX_NET_MODELS_DIR = MODELS_DIR / "MDX_Net_Models"
 MDXNET_MODELS_DIR = MODELS_DIR / "mdxnet_models"
 SILERO_VAD_ONNX = resolve_models_root_file("silero_vad.onnx")
 
-# SCNet: ONNX under models/scnet_models/ or models/scnet.onnx/; optional PyTorch.
+# SCNet: ONNX under models/scnet-models/, models/scnet_models/, or models_by_type/onnx/; optional PyTorch.
 SCNET_MODELS_DIR = MODELS_DIR / "scnet_models"
+SCNET_MODELS_ALT_DIR = MODELS_DIR / "scnet-models"
 SCNET_PACKAGED_CONFIG = STEM_SERVICE_DIR / "scnet_musdb_default.yaml"
 USE_SCNET = os.environ.get("USE_SCNET", "1").strip().lower() in ("1", "true", "yes")
 
 
 def get_scnet_onnx_path() -> Path | None:
-    """Resolve SCNet ONNX: env SCNET_ONNX, scnet_models/scnet.onnx, nested scnet.onnx/."""
+    """Resolve SCNet ONNX: env SCNET_ONNX, scnet-models/, scnet_models/, or models_by_type/onnx/."""
     raw = os.environ.get("SCNET_ONNX", "").strip()
     if raw:
         p = Path(raw).expanduser()
         if p.is_file():
             return p.resolve()
     for p in (
+        SCNET_MODELS_ALT_DIR / "scnet.onnx",
         SCNET_MODELS_DIR / "scnet.onnx",
         MODELS_DIR / "scnet.onnx" / "scnet.onnx",
         MODELS_BY_TYPE_DIR / "onnx" / "scnet.onnx",
+        MODELS_BY_TYPE_DIR / "onnx" / "scnet_base_fp16.onnx",
     ):
         if p.is_file():
             return p.resolve()
@@ -98,6 +101,8 @@ def scnet_torch_repo_root() -> Path | None:
         [
             MODELS_DIR / "SCNet",
             MODELS_DIR / "SCNet-main",
+            SCNET_MODELS_ALT_DIR / "SCNet-main",
+            SCNET_MODELS_ALT_DIR / "SCNet",
             SCNET_MODELS_DIR / "SCNet",
             SCNET_MODELS_DIR / "SCNet-main",
         ]
@@ -116,7 +121,14 @@ def scnet_torch_checkpoint_path() -> Path:
     raw = os.environ.get("SCNET_TORCH_CHECKPOINT", "").strip()
     if raw:
         return Path(raw).expanduser().resolve()
-    return (SCNET_MODELS_DIR / "scnet.th").resolve()
+    for ck in (
+        SCNET_MODELS_ALT_DIR / "scnet.th",
+        SCNET_MODELS_ALT_DIR / "SCNet-large.th",
+        SCNET_MODELS_DIR / "scnet.th",
+    ):
+        if ck.is_file():
+            return ck.resolve()
+    return (SCNET_MODELS_ALT_DIR / "scnet.th").resolve()
 
 
 def scnet_torch_config_path() -> Path | None:
@@ -124,9 +136,12 @@ def scnet_torch_config_path() -> Path | None:
     if raw:
         p = Path(raw).expanduser().resolve()
         return p if p.is_file() else None
-    p = SCNET_MODELS_DIR / "config.yaml"
-    if p.is_file():
-        return p.resolve()
+    for cfg in (
+        SCNET_MODELS_ALT_DIR / "SCNet-main" / "conf" / "config.yaml",
+        SCNET_MODELS_DIR / "config.yaml",
+    ):
+        if cfg.is_file():
+            return cfg.resolve()
     if SCNET_PACKAGED_CONFIG.is_file():
         return SCNET_PACKAGED_CONFIG.resolve()
     return None

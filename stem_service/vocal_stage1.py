@@ -12,26 +12,11 @@ If the required primary model is missing or fails, Stage 1 raises an explicit er
 from __future__ import annotations
 
 import logging
-from enum import Enum
-from typing import Callable
 import os
-import subprocess
-import sys
+from enum import Enum
 from pathlib import Path
+from typing import Callable
 
-from stem_service.config import (
-    DEMUCS_DEVICE,
-    DEMUCS_OVERLAP,
-    DEMUCS_SEGMENT_SEC,
-    DEMUCS_SHIFTS_QUALITY,
-    MODELS_DIR,
-    REPO_ROOT,
-    USE_DEMUCS_SHIFTS_0,
-    demucs_cli_module,
-    ensure_htdemucs_th,
-    htdemucs_available,
-)
-from stem_service.demucs_subprocess import format_demucs_subprocess_failure
 from stem_service.mdx_onnx import (
     get_available_inst_onnx,
     resolve_declared_vocal_onnx_path,
@@ -56,8 +41,6 @@ class InstrumentalSource(Enum):
 
     PHASE_INVERSION_PENDING = "phase_inversion_pending"
     ONNX_SEPARATE_INST = "onnx_separate_inst"
-    DEMUCS_TWO_STEM = "demucs_two_stem"
-    AUDIO_SEPARATOR = "audio_separator"
 
     def needs_hybrid_phase_inversion(self) -> bool:
         return self is InstrumentalSource.PHASE_INVERSION_PENDING
@@ -88,64 +71,6 @@ def _should_run_inst_onnx_pass(prefer_speed: bool, model_tier: str) -> bool:
     # product expectations on CPU-first deployments.
     _ = (prefer_speed, model_tier)  # placeholders for future tier-specific logic
     return False
-
-
-def _run_demucs_two_stem(
-    input_path: Path,
-    output_dir: Path,
-    prefer_speed: bool = False,
-) -> tuple[Path, Path]:
-    """
-    Run Demucs --two-stems=vocals. Returns (vocals_path, no_vocals_path).
-    Both stems are model-native and phase-aligned — no subtraction needed.
-    """
-    output_dir.mkdir(parents=True, exist_ok=True)
-    if not htdemucs_available():
-        raise FileNotFoundError(
-            "Demucs model not found. Place htdemucs.pth or htdemucs.th in models/."
-        )
-    ensure_htdemucs_th()
-    shifts = 0 if (USE_DEMUCS_SHIFTS_0 or prefer_speed) else DEMUCS_SHIFTS_QUALITY
-    cmd = [
-        sys.executable,
-        "-m",
-        demucs_cli_module(),
-        "-n",
-        "htdemucs",
-        "-o",
-        str(output_dir),
-        "-d",
-        DEMUCS_DEVICE,
-        "--shifts",
-        str(shifts),
-        "--overlap",
-        str(DEMUCS_OVERLAP),
-        "--segment",
-        str(DEMUCS_SEGMENT_SEC),
-        "--two-stems",
-        "vocals",
-        "--repo",
-        str(MODELS_DIR),
-        str(input_path),
-    ]
-    from stem_service.config import DEMUCS_TIMEOUT_SEC
-
-    result = subprocess.run(
-        cmd, capture_output=True, text=True, cwd=str(REPO_ROOT),
-        timeout=DEMUCS_TIMEOUT_SEC,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"Demucs 2-stem failed.\n{format_demucs_subprocess_failure(result)}"
-        )
-    base = output_dir / "htdemucs" / input_path.stem
-    vocals = base / "vocals.wav"
-    no_vocals = base / "no_vocals.wav"
-    if not vocals.exists():
-        raise RuntimeError(f"Demucs did not produce {vocals}")
-    if not no_vocals.exists():
-        raise RuntimeError(f"Demucs did not produce {no_vocals}")
-    return vocals, no_vocals
 
 
 def _pair_vocal_with_inst_onnx(

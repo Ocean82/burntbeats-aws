@@ -7,7 +7,12 @@
   --midi-surface-raised: #201e1a;
   --midi-surface-inset: #131210;
   --midi-border: rgba(255, 245, 220, 0.1);
-  --midi-border-focus: color-mix(in oklch, var(--accent-midi) 55%, transparent);
+  /* rgba fallbacks: accent-midi ≈ oklch(68% 0.14 75) — color-mix needs Chrome 111+ */
+  --midi-border-accent: rgba(205, 165, 60, 0.28);
+  --midi-border-accent-subtle: rgba(205, 165, 60, 0.22);
+  --midi-border-accent-strong: rgba(205, 165, 60, 0.35);
+  --midi-border-focus: rgba(205, 165, 60, 0.55);
+  --midi-callout-bg: #151310;
   --midi-text: rgba(255, 248, 230, 0.92);
   --midi-text-muted: rgba(255, 245, 220, 0.45);
   --midi-accent: var(--accent-midi);
@@ -19,6 +24,29 @@
     0 1px 0 rgba(255, 245, 220, 0.08) inset;
   --midi-shadow-pressed: 0 1px 3px rgba(0, 0, 0, 0.5) inset,
     0 0 0 1px rgba(0, 0, 0, 0.2) inset;
+}
+
+@supports (color: color-mix(in oklch, red, transparent)) {
+  .midi-workspace,
+  .midi-editor-root {
+    --midi-border-accent: color-mix(in oklch, var(--accent-midi) 28%, transparent);
+    --midi-border-accent-subtle: color-mix(
+      in oklch,
+      var(--accent-midi) 22%,
+      transparent
+    );
+    --midi-border-accent-strong: color-mix(
+      in oklch,
+      var(--accent-midi) 35%,
+      transparent
+    );
+    --midi-border-focus: color-mix(in oklch, var(--accent-midi) 55%, transparent);
+    --midi-callout-bg: color-mix(
+      in oklch,
+      var(--accent-midi) 8%,
+      var(--midi-surface-inset)
+    );
+  }
 }
 
 .midi-editor-shell {
@@ -79,6 +107,7 @@
   cursor: pointer;
   transition: transform var(--midi-motion), box-shadow var(--midi-motion),
     border-color var(--midi-motion), filter var(--midi-motion);
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -250,12 +279,8 @@
   background: var(--midi-surface-inset);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) inset;
   transition: box-shadow 0.15s ease;
+  -webkit-user-select: none;
   user-select: none;
-}
-
-.midi-param-slider--dragging {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5) inset,
-    0 0 0 1px rgba(205, 165, 60, 0.15);
 }
 
 .midi-param-slider--disabled {
@@ -298,7 +323,80 @@
   height: 28px;
   display: flex;
   align-items: center;
+}
+
+.midi-param-slider__input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
   cursor: pointer;
+}
+
+.midi-param-slider__input:focus {
+  outline: none;
+}
+
+.midi-param-slider__input:focus-visible {
+  outline: 2px solid var(--midi-border-focus);
+  outline-offset: 2px;
+}
+
+.midi-param-slider__input::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+
+.midi-param-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 22px;
+  margin-top: -8px;
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 40%),
+    linear-gradient(180deg, #4a4840 0%, #2e2c28 50%, #262420 100%);
+  border: 1px solid rgba(255, 245, 220, 0.15);
+  border-top-color: rgba(255, 245, 220, 0.25);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(255, 245, 220, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.3) inset;
+}
+
+.midi-param-slider__input:active::-webkit-slider-thumb {
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(205, 165, 60, 0.3),
+    0 0 12px rgba(205, 165, 60, 0.15);
+}
+
+.midi-param-slider__input::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border: none;
+}
+
+.midi-param-slider__input::-moz-range-thumb {
+  width: 16px;
+  height: 22px;
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 40%),
+    linear-gradient(180deg, #4a4840 0%, #2e2c28 50%, #262420 100%);
+  border: 1px solid rgba(255, 245, 220, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.midi-param-slider__track:focus-within {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5) inset,
+    0 0 0 1px rgba(205, 165, 60, 0.15);
+  border-radius: 4px;
 }
 
 .midi-param-slider__ticks {
@@ -346,65 +444,6 @@
   box-shadow: 0 0 6px rgba(205, 165, 60, 0.25);
   pointer-events: none;
   transition: width 0.05s linear;
-}
-
-.midi-param-slider__thumb {
-  position: absolute;
-  top: 50%;
-  width: 16px;
-  height: 22px;
-  border-radius: 4px;
-  background:
-    /* top highlight */
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, transparent 40%),
-    /* face gradient */
-    linear-gradient(180deg, #4a4840 0%, #2e2c28 50%, #262420 100%);
-  border: 1px solid rgba(255, 245, 220, 0.15);
-  border-top-color: rgba(255, 245, 220, 0.25);
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.5),
-    0 1px 0 rgba(255, 245, 220, 0.06) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.3) inset;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  transition: transform 0.05s linear, box-shadow 0.15s ease;
-}
-
-/* Knurling lines on thumb */
-.midi-param-slider__thumb::before {
-  content: "";
-  position: absolute;
-  inset: 4px 5px;
-  background:
-    repeating-linear-gradient(
-      0deg,
-      transparent 0px,
-      transparent 1.5px,
-      rgba(255, 245, 220, 0.08) 1.5px,
-      rgba(255, 245, 220, 0.08) 2px
-    );
-  pointer-events: none;
-}
-
-/* Center ridge on thumb */
-.midi-param-slider__thumb::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 2px;
-  height: 10px;
-  border-radius: 1px;
-  background: rgba(205, 165, 60, 0.35);
-  box-shadow: 0 0 4px rgba(205, 165, 60, 0.2);
-}
-
-.midi-param-slider--dragging .midi-param-slider__thumb {
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(205, 165, 60, 0.3),
-    0 0 12px rgba(205, 165, 60, 0.15);
 }
 
 .midi-param-slider__hint {
@@ -486,6 +525,7 @@
   padding: 4px 0;
   font-size: 12px;
   color: var(--midi-text);
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -585,7 +625,7 @@
   gap: 10px;
   padding: 12px 14px;
   border-radius: 8px;
-  border: 1px solid color-mix(in oklch, var(--accent-midi) 28%, transparent);
+  border: 1px solid var(--midi-border-accent);
   background: var(--midi-surface-inset);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) inset;
 }
@@ -616,16 +656,39 @@
 }
 
 .midi-status-panel__meter {
-  position: relative;
+  display: block;
+  width: 100%;
   height: 8px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
   border-radius: 4px;
   background: var(--midi-surface-raised);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) inset;
   overflow: hidden;
 }
 
-.midi-status-panel__meter-fill {
-  height: 100%;
+.midi-status-panel__meter::-webkit-progress-bar {
+  border-radius: 4px;
+  background: var(--midi-surface-raised);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) inset;
+}
+
+.midi-status-panel__meter::-webkit-progress-value {
+  border-radius: 4px;
+  background: linear-gradient(90deg, #6a5520, var(--midi-accent));
+  box-shadow: 0 0 10px rgba(205, 165, 60, 0.35);
+  transition: width 0.12s ease-out;
+}
+
+.midi-status-panel__meter::-moz-progress-bar {
+  border-radius: 4px;
+  background: var(--midi-surface-raised);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) inset;
+}
+
+.midi-status-panel__meter::-moz-progress-value {
   border-radius: 4px;
   background: linear-gradient(90deg, #6a5520, var(--midi-accent));
   box-shadow: 0 0 10px rgba(205, 165, 60, 0.35);
@@ -653,8 +716,8 @@
 .midi-callout {
   padding: 12px 14px;
   border-radius: 8px;
-  border: 1px solid color-mix(in oklch, var(--accent-midi) 22%, transparent);
-  background: color-mix(in oklch, var(--accent-midi) 8%, var(--midi-surface-inset));
+  border: 1px solid var(--midi-border-accent-subtle);
+  background: var(--midi-callout-bg);
 }
 
 .midi-callout__title {
@@ -676,8 +739,17 @@
   gap: 12px;
   padding: 12px 14px;
   border-radius: 8px;
-  border: 1px solid color-mix(in oklch, var(--accent-midi) 35%, transparent);
+  border: 1px solid var(--midi-border-accent-strong);
   background: var(--midi-surface);
+}
+
+/* Piano roll preview (MidiPianoRoll) — colors match pianoRollTheme PIANO_ROLL */
+.midi-piano-roll {
+  background-color: #1a1917;
+}
+
+.midi-piano-roll__scroll-hint {
+  background-color: #22211e;
 }
 
 .midi-batch-panel {

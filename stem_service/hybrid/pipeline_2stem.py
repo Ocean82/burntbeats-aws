@@ -34,25 +34,11 @@ def run_hybrid_2stem(
     inst_model_override: Path | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
-    2-stem separation: vocals + instrumental.
+    2-stem separation: vocals + instrumental via Stage 1 ONNX + phase inversion (or inst ONNX pass).
 
-    Speed mode (prefer_speed=True):
-      - VAD pre-trim to vocal span (same as 4-stem speed path)
-      - 50% ONNX overlap (faster processing)
-    Quality mode (prefer_speed=False):
-      - Full file, no trim
-      - 75% ONNX overlap (smoother chunk boundaries, less bleed)
+    Speed: 50% ONNX overlap. Quality: 75% overlap. VAD pre-trim is disabled (full file).
 
-    Stage 1 waterfall: rank1 UVR_MDXNET_3_9662 (or vocal_model_override) → rank2 KARA →
-    rank3 MDX23C pair → rank4 PyTorch htdemucs 2-stem.
-
-    Progress budget:
-      0–5%   → job start / VAD trim
-      5–90%  → Stage 1 ONNX vocal extraction (chunk-level granularity)
-      90–95% → phase inversion / instrumental copy
-      95–100% → copy to flat stems dir
-
-    Returns [(stem_id, path), ...]: [("vocals", ...), ("instrumental", ...)].
+    Progress: 5–90% Stage 1 ONNX; 90–95% instrumental; 95–100% copy to stems/.
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -60,14 +46,12 @@ def run_hybrid_2stem(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
-    # Speed mode: VAD pre-trim to vocal span (skip silence at start/end)
-    # Quality mode: process full file for best boundary accuracy
     effective_input = _effective_input_path(input_path, output_dir)
 
     if progress_callback:
         progress_callback(5)
 
-    # Stage 1: ranked ONNX then Demucs (see vocal_stage1.extract_vocals_stage1)
+    # Stage 1: single primary ONNX per tier (see vocal_stage1.extract_vocals_stage1)
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental, stage1_models, inst_src = extract_vocals_stage1(
         effective_input,
