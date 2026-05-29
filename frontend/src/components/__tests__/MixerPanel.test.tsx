@@ -120,7 +120,7 @@ describe("MixerPanel", () => {
   it("renders mixer header and controls when stems exist", () => {
     renderMixer();
 
-    expect(screen.getByRole("heading", { name: /Timeline/i })).toBeInTheDocument();
+    expect(screen.getByRole("toolbar", { name: /transport controls/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Play$/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Export mix/i })).toBeInTheDocument();
   });
@@ -135,12 +135,14 @@ describe("MixerPanel", () => {
   it("shows empty state when mixStemCount is 0", () => {
     renderMixer({ mixStemCount: 0 });
 
-    expect(screen.getByText(/Split a track or load stem files above to start mixing and exporting/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: /timeline waiting for stems/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Timeline opens after split/i)).toBeInTheDocument();
   });
 
   it("resets master volume on double click and toggles limiter", () => {
     const { handlers } = renderMixer();
-    fireEvent.click(screen.getByRole("button", { name: /Expand mixer console/i }));
     const slider = screen.getByRole("slider", { name: /master output volume/i });
     fireEvent.doubleClick(slider);
     expect(handlers.onMasterVolumeChange).toHaveBeenCalledWith(1);

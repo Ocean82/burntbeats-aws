@@ -43,7 +43,7 @@ export const TestPanel: React.FC = () => {
           className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${
             running
               ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-              : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/30'
+              : 'bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-500/30'
           }`}
         >
           {running ? (

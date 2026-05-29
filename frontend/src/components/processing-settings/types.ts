@@ -72,4 +72,9 @@ export interface ProcessingSettingsPanelProps {
    */
   isCollapsed?: boolean;
   onOpenWaitingGame?: () => void;
+
+  canExpandToFourStems?: boolean;
+  isExpanding?: boolean;
+  onExpandToFourStems?: () => void;
+  splitJobId?: string | null;
 }

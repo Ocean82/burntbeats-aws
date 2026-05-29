@@ -42,6 +42,8 @@ process.env.MIDI_SERVICE_URL = `http://127.0.0.1:${midiServiceServer.address().p
 const { app } = await import("../server.js");
 const request = supertest(app);
 
+app.locals.verifyClerkBearer = async () => "user_test_merge";
+
 test("POST /api/midi/merge streams merged MIDI and forwards auth header", async () => {
   lastMergeBody = undefined;
   lastMidiServiceTokenHeader = undefined;

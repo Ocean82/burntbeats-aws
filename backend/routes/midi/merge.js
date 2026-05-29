@@ -9,6 +9,8 @@ import http from "http";
 import { authMiddleware } from "../../middleware/auth.js";
 import {
   MIDI_SERVICE_URL,
+  readMidiJobMetadata,
+  verifyMidiOwner,
   withMidiServiceAuthHeader,
 } from "./shared.js";
 
@@ -34,6 +36,32 @@ midiMergeRouter.post("/", authMiddleware, async (req, res) => {
     if (!job.job_id || !/^[0-9a-f-]{36}$/i.test(job.job_id)) {
       return res.status(400).json({
         error: `Invalid or missing job_id in merge request: ${job.job_id || "undefined"}`,
+      });
+    }
+  }
+
+  let authenticatedUserId;
+  try {
+    authenticatedUserId = await verifyMidiOwner(req);
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e && typeof e.status === "number"
+        ? e.status
+        : 401;
+    return res.status(status).json({ error: "Authentication required" });
+  }
+
+  for (const job of jobs) {
+    const metadata = await readMidiJobMetadata(job.job_id);
+    const ownerUserId =
+      metadata &&
+      typeof metadata.user_id === "string" &&
+      metadata.user_id.trim()
+        ? metadata.user_id.trim()
+        : null;
+    if (ownerUserId && ownerUserId !== authenticatedUserId) {
+      return res.status(403).json({
+        error: `You do not have access to job ${job.job_id}.`,
       });
     }
   }

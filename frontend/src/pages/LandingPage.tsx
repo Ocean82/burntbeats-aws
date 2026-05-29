@@ -2,6 +2,9 @@ import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ShieldCheck, Library, Piano } from "lucide-react";
+import { WorkflowStepper } from "../components/ui";
+import { StemLaneGhostPreview } from "../components/editor/StemLaneGhostPreview";
+import { EDITOR_WORKFLOW_STEPS } from "../hooks/workflow/useEditorWorkflowSteps";
 import type { PlanConfig, PricingTableType } from "../data/plans";
 import { PricingTablePreview } from "../components/PricingTablePreview";
 import { PricingTabToggle } from "../components/PricingTabToggle";
@@ -12,50 +15,6 @@ import {
   brandHeroItemVariants,
   brandScrollSection,
 } from "../motion/brandPresets";
-
-/** Stem visualization bars for the hero teaser */
-function StemTeaser({ reduceMotion }: { reduceMotion: boolean }) {
-  const stems = [
-    { label: "VOX", color: "var(--stem-vocals)", height: "68%" },
-    { label: "DRM", color: "var(--stem-drums)", height: "82%" },
-    { label: "BAS", color: "var(--stem-bass)", height: "55%" },
-    { label: "MEL", color: "var(--stem-melody)", height: "72%" },
-  ];
-  return (
-    <div className="flex items-end justify-center gap-[clamp(0.75rem,2vw,1.5rem)] h-[clamp(4rem,12vw,7rem)]">
-      {stems.map((stem, i) => (
-        <motion.div
-          key={stem.label}
-          className="relative flex flex-col items-center gap-xs"
-          initial={reduceMotion ? false : { opacity: 0, scaleY: 0 }}
-          animate={{ opacity: 1, scaleY: 1 }}
-          transition={
-            reduceMotion
-              ? { duration: 0 }
-              : { delay: 1.2 + i * 0.12, duration: 0.7, ease: [0.16, 1, 0.3, 1] }
-          }
-          style={{ transformOrigin: "bottom" }}
-        >
-          <div
-            className="w-[clamp(2rem,4vw,3.5rem)] rounded-t-md"
-            style={{
-              height: stem.height,
-              background: `linear-gradient(180deg, ${stem.color}, transparent)`,
-              opacity: 0.7,
-              boxShadow: `0 0 20px color-mix(in srgb, ${stem.color} 40%, transparent)`,
-            }}
-          />
-          <span
-            className="text-[9px] font-bold tracking-[0.2em] uppercase"
-            style={{ color: stem.color, opacity: 0.8 }}
-          >
-            {stem.label}
-          </span>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
 
 export function LandingPage() {
   const { isSignedIn } = useAuth();
@@ -76,7 +35,7 @@ export function LandingPage() {
             source: "landing_pricing",
           });
         }}
-        className="w-full rounded-lg border border-primary-400/30 bg-primary-500/20 px-md py-sm font-medium text-primary-200 transition hover:border-primary-400/50 hover:bg-primary-500/30"
+        className="fire-button tap-feedback w-full px-md py-sm text-sm font-semibold"
       >
         {plan.cta}
       </button>
@@ -211,13 +170,20 @@ export function LandingPage() {
             </SignInButton>
           </motion.div>
 
-          {/* Stem teaser visualization */}
+          <motion.div variants={heroItem} className="mt-lg w-full max-w-lg px-md">
+            <WorkflowStepper
+              steps={[...EDITOR_WORKFLOW_STEPS]}
+              activeStepId="upload"
+              completedStepIds={[]}
+            />
+          </motion.div>
+
           <motion.div
             variants={heroItem}
-            className="mt-xl w-full max-w-md"
+            className="mt-md w-full max-w-md"
             aria-hidden="true"
           >
-            <StemTeaser reduceMotion={reduceMotion} />
+            <StemLaneGhostPreview variant="hero" />
           </motion.div>
 
           {/* Proof strip */}

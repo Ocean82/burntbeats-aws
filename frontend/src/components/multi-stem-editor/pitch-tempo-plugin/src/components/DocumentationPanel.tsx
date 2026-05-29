@@ -32,11 +32,11 @@ plugin.outputNode.connect(ctx.destination);
 plugin.setPitchSemitones(+2);   // ↑ pitch 2 semitones
 plugin.setTempoRatio(1.05);      // ↑ tempo 5%
 plugin.bypass(false);            // enable processing`}</pre>
-          <p className="font-semibold text-violet-300">Multi-stem (global mode):</p>
+          <p className="font-semibold text-orange-300">Multi-stem (global mode):</p>
           <pre className="bg-black/50 rounded-lg p-3 text-xs font-mono text-blue-300 overflow-x-auto whitespace-pre">{`import { StemPluginManager } from './PitchTempoPlugin';
 
 const stems = [
-  { id: 'vocals', label: 'Vocals', color: '#8b5cf6' },
+  { id: 'vocals', label: 'Vocals', color: '#f97316' },
   { id: 'drums',  label: 'Drums',  color: '#ef4444' },
 ];
 const mgr = new StemPluginManager(ctx, stems, 'global');
@@ -54,7 +54,7 @@ mgr.setGlobalTempo(0.95);   // all stems: -5% tempo`}</pre>
         <div className="space-y-3 text-sm text-slate-300">
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-black/30 rounded-lg p-3">
-              <div className="font-semibold text-violet-300 mb-2">Phase Vocoder</div>
+              <div className="font-semibold text-orange-300 mb-2">Phase Vocoder</div>
               <ul className="space-y-1 text-xs text-slate-400">
                 <li>• FFT size: 2048 samples</li>
                 <li>• Hop size: 512 (75% overlap)</li>

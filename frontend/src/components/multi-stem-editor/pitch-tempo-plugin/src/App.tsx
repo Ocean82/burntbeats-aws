@@ -13,19 +13,22 @@ import type { StemInput, PitchTempoEngineState } from './types';
 
 type ActiveTab = 'player' | 'tests' | 'docs';
 
+/** Ember / ice brand tokens (no violet). */
+const EMBER = '#f97316';
+const EMBER_SOFT = '#fb923c';
+const ICE = '#38bdf8';
+const ICE_SOFT = '#7dd3fc';
+
 export default function App() {
   const [tab, setTab] = useState<ActiveTab>('player');
   const [stemInputs, setStemInputs] = useState<StemInput[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastState, setLastState] = useState<PitchTempoEngineState | null>(null);
 
-  // Simulate receiving stems from a stem splitter
-  // In a real app, this would come from props or an API call
   useEffect(() => {
     let cancelled = false;
     const ctx = new AudioContext({ sampleRate: 44100 });
 
-    // Wrap in microtask so setState is not synchronous in the effect body
     void Promise.resolve().then(() => {
       if (cancelled) return;
       const stemData = generateStemBuffers(ctx);
@@ -45,37 +48,34 @@ export default function App() {
     return () => { cancelled = true; ctx.close().catch(() => {}); };
   }, []);
 
-  // Memoize to avoid re-init on every render
   const memoizedStems = useMemo(() => stemInputs, [stemInputs]);
 
   return (
     <div className="min-h-screen text-white" style={{
-      background: 'linear-gradient(160deg, #050510 0%, #0c0c28 45%, #050510 100%)',
+      background: 'linear-gradient(160deg, #050510 0%, #0c1424 45%, #050510 100%)',
     }}>
-      {/* Grid overlay */}
       <div className="fixed inset-0 pointer-events-none opacity-30" style={{
         backgroundImage: `
-          linear-gradient(rgba(139,92,246,0.06) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(139,92,246,0.06) 1px, transparent 1px)
+          linear-gradient(rgba(56,189,248,0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(249,115,22,0.05) 1px, transparent 1px)
         `,
         backgroundSize: '40px 40px',
       }} />
 
       <div className="relative max-w-5xl mx-auto px-4 py-6 space-y-4">
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
               style={{
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
-                boxShadow: '0 4px 20px rgba(139,92,246,0.5)',
+                background: `linear-gradient(135deg, ${EMBER} 0%, ${ICE} 100%)`,
+                boxShadow: '0 4px 20px rgba(249,115,22,0.35)',
               }}>
               🎛️
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-tight"
-                style={{ background: 'linear-gradient(90deg, #a78bfa, #60a5fa, #34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                style={{ background: `linear-gradient(90deg, ${EMBER_SOFT}, ${ICE}, ${ICE_SOFT})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 Pitch-Plug-in
               </h1>
               <p className="text-xs text-slate-500 font-mono">
@@ -84,7 +84,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Integration state indicator */}
           {lastState && (
             <div className="text-xs font-mono text-slate-500 text-right">
               <div>Engine: {lastState.engineReady ? '✓ ready' : '… loading'}</div>
@@ -93,7 +92,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1.5 p-1.5 rounded-xl bg-slate-900/70 border border-slate-800/60 backdrop-blur-sm">
           {([
             { id: 'player', icon: '🎚️', label: 'Player' },
@@ -109,8 +107,8 @@ export default function App() {
                   : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
               }`}
               style={tab === t.id ? {
-                background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
-                boxShadow: '0 2px 12px rgba(139,92,246,0.35)',
+                background: `linear-gradient(135deg, ${EMBER}, ${ICE})`,
+                boxShadow: '0 2px 12px rgba(249,115,22,0.25)',
               } : {}}
             >
               {t.icon} {t.label}
@@ -118,11 +116,10 @@ export default function App() {
           ))}
         </div>
 
-        {/* Content */}
         {tab === 'player' && (
           loading ? (
             <div className="text-center py-12 text-slate-500">
-              <div className="animate-spin inline-block w-6 h-6 border-2 border-violet-500/30 border-t-violet-500 rounded-full mb-3" />
+              <div className="animate-spin inline-block w-6 h-6 border-2 border-sky-500/30 border-t-sky-400 rounded-full mb-3" />
               <div className="text-sm">Waiting for stems from splitter…</div>
             </div>
           ) : (

@@ -104,7 +104,8 @@ describe("DjMixerConsole", () => {
     );
 
     expect(screen.getByRole("slider", { name: /master output volume/i })).toBeInTheDocument();
-    expect(screen.getByText("Master")).toBeInTheDocument();
+    expect(screen.getByText("Channels")).toBeInTheDocument();
+    expect(screen.getAllByText("Master").length).toBeGreaterThanOrEqual(1);
   });
 
   it("hides MASTER column when master tool is disabled", () => {

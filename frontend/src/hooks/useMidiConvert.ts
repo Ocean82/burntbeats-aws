@@ -50,6 +50,24 @@ export interface MidiAnalysis {
   total_notes: number;
 }
 
+export interface MidiTrackInfo {
+  index: number;
+  name: string;
+  instrument?: number | null;
+  instrument_name?: string | null;
+  notes: number;
+  is_drum: boolean;
+}
+
+export interface MidiFileAnalysisDetail {
+  has_drums: boolean;
+  genre_hints?: string[];
+  track_info?: MidiTrackInfo[];
+  complexity_score?: number;
+  tempo_bpm?: number | null;
+  key_signature?: string;
+}
+
 export interface MidiNoteEvent {
   pitch: number;
   start: number;
@@ -64,6 +82,7 @@ export interface MidiConvertResult {
   inferenceTimeSeconds: number;
   pianoRollNotes: MidiNoteEvent[];
   analysis: MidiAnalysis | null;
+  fileAnalysis: MidiFileAnalysisDetail | null;
 }
 
 export interface BatchJob {
@@ -82,6 +101,7 @@ interface PollResponse {
   progress: number;
   message?: string;
   error?: string;
+  midi_file_analysis?: MidiFileAnalysisDetail;
   result?: {
     notes_detected: number;
     duration_seconds: number;
@@ -89,6 +109,50 @@ interface PollResponse {
     inference_time_seconds: number;
     piano_roll_notes: MidiNoteEvent[];
     analysis?: MidiAnalysis;
+    midi_file_analysis?: MidiFileAnalysisDetail;
+  };
+}
+
+const DRUMS_PRESET_PARTIAL: Partial<MidiConvertSettings> = {
+  minConfidence: 0.35,
+  minNoteLengthMs: 20,
+  includePitchBends: false,
+  maxNoteLengthMs: 500,
+};
+
+const BATCH_CONCURRENCY = 2;
+
+function parseFileAnalysis(
+  raw: MidiFileAnalysisDetail | undefined,
+): MidiFileAnalysisDetail | null {
+  if (!raw || typeof raw !== "object") return null;
+  return {
+    has_drums: raw.has_drums === true,
+    genre_hints: Array.isArray(raw.genre_hints) ? raw.genre_hints : undefined,
+    track_info: Array.isArray(raw.track_info) ? raw.track_info : undefined,
+    complexity_score:
+      typeof raw.complexity_score === "number" ? raw.complexity_score : undefined,
+    tempo_bpm: raw.tempo_bpm ?? undefined,
+    key_signature:
+      typeof raw.key_signature === "string" ? raw.key_signature : undefined,
+  };
+}
+
+function buildConvertResult(
+  poll: PollResponse,
+): MidiConvertResult | null {
+  if (!poll.result) return null;
+  const fileAnalysis =
+    parseFileAnalysis(poll.midi_file_analysis) ??
+    parseFileAnalysis(poll.result.midi_file_analysis);
+  return {
+    notesDetected: poll.result.notes_detected,
+    durationSeconds: poll.result.duration_seconds,
+    tracks: poll.result.tracks,
+    inferenceTimeSeconds: poll.result.inference_time_seconds,
+    pianoRollNotes: poll.result.piano_roll_notes || [],
+    analysis: poll.result.analysis ?? null,
+    fileAnalysis,
   };
 }
 
@@ -173,9 +237,11 @@ export function useMidiConvert() {
   const [result, setResult] = useState<MidiConvertResult | null>(null);
   const [midiFileUrl, setMidiFileUrl] = useState<string | null>(null);
   const [jobToken, setJobToken] = useState<string | null>(null);
+  const [activeMidiJobId, setActiveMidiJobId] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const drumsPresetAppliedRef = useRef(false);
 
   const sourceMode: MidiSourceMode = useMemo(() => {
     const hasSplit = splitResultStems.length > 0;
@@ -232,14 +298,24 @@ export function useMidiConvert() {
     [],
   );
 
+  const maybeApplyDrumsPreset = useCallback(
+    (fileAnalysis: MidiFileAnalysisDetail | null) => {
+      if (!fileAnalysis?.has_drums || drumsPresetAppliedRef.current) return;
+      drumsPresetAppliedRef.current = true;
+      setSettings((prev) => ({ ...prev, ...DRUMS_PRESET_PARTIAL }));
+    },
+    [],
+  );
+
   const acceptFile = useCallback((file: File | null) => {
     if (!file) {
       setUploadedFile(null);
       setUploadName("");
       setError(null);
-      setResult(null);
-      setMidiFileUrl(null);
-      return;
+    setResult(null);
+    setMidiFileUrl(null);
+    drumsPresetAppliedRef.current = false;
+    return;
     }
     if (!isAllowedMidiAudioFile(file.name)) {
       const ext = file.name.includes(".")
@@ -282,6 +358,8 @@ export function useMidiConvert() {
     setError(null);
     setResult(null);
     setMidiFileUrl(null);
+    setActiveMidiJobId(null);
+    drumsPresetAppliedRef.current = false;
     setProgress(0);
     setUploadProgress(0);
     setStatusMessage("");
@@ -322,14 +400,11 @@ export function useMidiConvert() {
           if (data.status === "completed" && data.result) {
             stopPolling();
             setIsConverting(false);
-            setResult({
-              notesDetected: data.result.notes_detected,
-              durationSeconds: data.result.duration_seconds,
-              tracks: data.result.tracks,
-              inferenceTimeSeconds: data.result.inference_time_seconds,
-              pianoRollNotes: data.result.piano_roll_notes || [],
-              analysis: data.result.analysis ?? null,
-            });
+            const built = buildConvertResult(data);
+            if (built) {
+              maybeApplyDrumsPreset(built.fileAnalysis);
+              setResult(built);
+            }
             trackEvent("midi_convert_completed", {
               notes_detected: data.result.notes_detected,
               duration_seconds: data.result.duration_seconds,
@@ -342,6 +417,12 @@ export function useMidiConvert() {
             trackEvent("midi_convert_failed", {
               error: (data.error || "unknown").slice(0, 120),
             });
+          } else if (data.status === "cancelled") {
+            stopPolling();
+            setIsConverting(false);
+            setActiveMidiJobId(null);
+            setProgress(0);
+            setStatusMessage("");
           }
         } catch (e) {
           stopPolling();
@@ -353,7 +434,7 @@ export function useMidiConvert() {
       pollRef.current = setInterval(poll, 1500);
       void poll();
     },
-    [stopPolling],
+    [stopPolling, maybeApplyDrumsPreset],
   );
 
   const submitConvertJob = useCallback(
@@ -480,6 +561,7 @@ export function useMidiConvert() {
         const data = await submitConvertJob(formData, usesFileUpload);
         const token = data.job_token;
         setJobToken(token);
+        setActiveMidiJobId(data.job_id);
         storeJobToken(data.job_id, token);
         setMidiFileUrl(normalizeFileUrl(data.file_url));
         setStatusMessage("Queued...");
@@ -526,6 +608,29 @@ export function useMidiConvert() {
       window.open(midiFileUrl, "_blank");
     }
   }, [midiFileUrl, jobToken]);
+
+  const cancelConvert = useCallback(async () => {
+    stopPolling();
+    setIsUploading(false);
+
+    if (activeMidiJobId && jobToken) {
+      try {
+        const headers = await authHeaders();
+        await fetch(`${API_BASE}/api/midi/jobs/${activeMidiJobId}`, {
+          method: "DELETE",
+          headers: { ...headers, "x-job-token": jobToken },
+        });
+      } catch {
+        /* best-effort cancel */
+      }
+    }
+
+    setIsConverting(false);
+    setActiveMidiJobId(null);
+    setProgress(0);
+    setStatusMessage("");
+    setError(null);
+  }, [activeMidiJobId, jobToken, stopPolling]);
 
   const [batchJobs, setBatchJobs] = useState<BatchJob[]>([]);
   const [isBatchMode, setIsBatchMode] = useState(false);
@@ -588,21 +693,17 @@ export function useMidiConvert() {
       const fileUrl = normalizeFileUrl(data.file_url);
       const pollResult = await pollBatchJob(data.job_id, token);
 
+      const built = buildConvertResult(pollResult);
+      if (!built) throw new Error("Conversion completed without result");
+      maybeApplyDrumsPreset(built.fileAnalysis);
       return {
         jobId: data.job_id,
         token,
         fileUrl,
-        result: {
-          notesDetected: pollResult.result!.notes_detected,
-          durationSeconds: pollResult.result!.duration_seconds,
-          tracks: pollResult.result!.tracks,
-          inferenceTimeSeconds: pollResult.result!.inference_time_seconds,
-          pianoRollNotes: pollResult.result!.piano_roll_notes || [],
-          analysis: pollResult.result!.analysis ?? null,
-        },
+        result: built,
       };
     },
-    [settings, pollBatchJob, submitConvertJob],
+    [settings, pollBatchJob, submitConvertJob, maybeApplyDrumsPreset],
   );
 
   const triggerBatchConvert = useCallback(
@@ -626,16 +727,15 @@ export function useMidiConvert() {
         stem_count: stemNames.length,
       });
 
-      for (let i = 0; i < stemNames.length; i++) {
-        if (batchAbortRef.current) break;
-
-        const stemName = stemNames[i];
+      let nextIndex = 0;
+      const runOne = async (index: number) => {
+        if (batchAbortRef.current) return;
+        const stemName = stemNames[index];
         setBatchJobs((prev) =>
           prev.map((job, idx) =>
-            idx === i ? { ...job, status: "converting" } : job,
+            idx === index ? { ...job, status: "converting" } : job,
           ),
         );
-
         try {
           const {
             jobId,
@@ -643,10 +743,9 @@ export function useMidiConvert() {
             fileUrl,
             result: stemResult,
           } = await convertSingleStem(splitJobId, stemName);
-
           setBatchJobs((prev) =>
             prev.map((job, idx) =>
-              idx === i
+              idx === index
                 ? {
                     ...job,
                     status: "completed",
@@ -662,7 +761,7 @@ export function useMidiConvert() {
           const errorMsg = e instanceof Error ? e.message : "Conversion failed";
           setBatchJobs((prev) =>
             prev.map((job, idx) =>
-              idx === i ? { ...job, status: "failed", error: errorMsg } : job,
+              idx === index ? { ...job, status: "failed", error: errorMsg } : job,
             ),
           );
           trackEvent("midi_batch_stem_failed", {
@@ -670,7 +769,19 @@ export function useMidiConvert() {
             error: errorMsg.slice(0, 120),
           });
         }
-      }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(BATCH_CONCURRENCY, stemNames.length) },
+        async () => {
+          while (nextIndex < stemNames.length && !batchAbortRef.current) {
+            const i = nextIndex;
+            nextIndex += 1;
+            await runOne(i);
+          }
+        },
+      );
+      await Promise.all(workers);
 
       trackEvent("midi_batch_convert_finished", {
         stem_count: stemNames.length,
@@ -768,6 +879,8 @@ export function useMidiConvert() {
     setError,
     result,
     midiFileUrl,
+    activeMidiJobId,
+    jobToken,
     downloadMidi,
     triggerConvert,
     batchJobs,
@@ -776,5 +889,6 @@ export function useMidiConvert() {
     triggerBatchConvert,
     retryBatchJob,
     clearBatch,
+    cancelConvert,
   };
 }

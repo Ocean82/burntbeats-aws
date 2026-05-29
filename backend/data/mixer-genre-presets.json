@@ -1,0 +1,406 @@
+{
+  "presets": [
+    {
+      "id": "rock-mix",
+      "name": "Rock Mix",
+      "description": "Classic rock mixing preset with punchy drums and warm guitars",
+      "category": "rock",
+      "bpm": 120,
+      "key": "C",
+      "stems": {
+        "drums": {
+          "gain": 0.85,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": 2,
+            "lowFreq": 80,
+            "midGain": -1,
+            "midFreq": 400,
+            "midQ": 1.2,
+            "highGain": 3,
+            "highFreq": 6000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -14,
+            "ratio": 4,
+            "attack": 5,
+            "release": 80,
+            "knee": 4,
+            "makeup": 2
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.25,
+            "dampening": 0.6,
+            "wetLevel": 0.12,
+            "dryLevel": 0.88,
+            "width": 0.4
+          }
+        },
+        "bass": {
+          "gain": 0.75,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": 3,
+            "lowFreq": 100,
+            "midGain": 0,
+            "midFreq": 800,
+            "midQ": 1,
+            "highGain": -2,
+            "highFreq": 5000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -16,
+            "ratio": 3.5,
+            "attack": 15,
+            "release": 120,
+            "knee": 3,
+            "makeup": 1.5
+          },
+          "reverb": {
+            "enabled": false,
+            "roomSize": 0.3,
+            "dampening": 0.5,
+            "wetLevel": 0.05,
+            "dryLevel": 0.95,
+            "width": 0.3
+          }
+        },
+        "guitar": {
+          "gain": 0.8,
+          "pan": -0.2,
+          "eq": {
+            "enabled": true,
+            "lowGain": -1,
+            "lowFreq": 120,
+            "midGain": 2,
+            "midFreq": 2500,
+            "midQ": 0.9,
+            "highGain": 2,
+            "highFreq": 8000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -18,
+            "ratio": 3,
+            "attack": 8,
+            "release": 100,
+            "knee": 2,
+            "makeup": 1
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.35,
+            "dampening": 0.55,
+            "wetLevel": 0.18,
+            "dryLevel": 0.82,
+            "width": 0.55
+          }
+        },
+        "vocals": {
+          "gain": 0.9,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": -2,
+            "lowFreq": 100,
+            "midGain": 1.5,
+            "midFreq": 3500,
+            "midQ": 1.1,
+            "highGain": 2,
+            "highFreq": 10000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -15,
+            "ratio": 4,
+            "attack": 6,
+            "release": 90,
+            "knee": 3,
+            "makeup": 2
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.4,
+            "dampening": 0.5,
+            "wetLevel": 0.22,
+            "dryLevel": 0.78,
+            "width": 0.5
+          }
+        }
+      }
+    },
+    {
+      "id": "hiphop-mix",
+      "name": "Hip Hop Mix",
+      "description": "Bass-heavy hip hop mix with clear vocals and punchy drums",
+      "category": "hiphop",
+      "bpm": 90,
+      "key": "C",
+      "stems": {
+        "drums": {
+          "gain": 0.9,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": 4,
+            "lowFreq": 60,
+            "midGain": -2,
+            "midFreq": 300,
+            "midQ": 1.3,
+            "highGain": 4,
+            "highFreq": 8000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -12,
+            "ratio": 5,
+            "attack": 2,
+            "release": 60,
+            "knee": 4,
+            "makeup": 3
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.2,
+            "dampening": 0.7,
+            "wetLevel": 0.08,
+            "dryLevel": 0.92,
+            "width": 0.35
+          }
+        },
+        "bass": {
+          "gain": 0.85,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": 5,
+            "lowFreq": 55,
+            "midGain": 1,
+            "midFreq": 200,
+            "midQ": 1.2,
+            "highGain": -3,
+            "highFreq": 4000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -14,
+            "ratio": 4.5,
+            "attack": 10,
+            "release": 150,
+            "knee": 3,
+            "makeup": 2.5
+          },
+          "reverb": {
+            "enabled": false,
+            "roomSize": 0.15,
+            "dampening": 0.8,
+            "wetLevel": 0.03,
+            "dryLevel": 0.97,
+            "width": 0.2
+          }
+        },
+        "vocals": {
+          "gain": 0.95,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": -3,
+            "lowFreq": 120,
+            "midGain": 2,
+            "midFreq": 4000,
+            "midQ": 1,
+            "highGain": 3,
+            "highFreq": 12000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -13,
+            "ratio": 5,
+            "attack": 4,
+            "release": 70,
+            "knee": 3,
+            "makeup": 2.5
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.28,
+            "dampening": 0.6,
+            "wetLevel": 0.15,
+            "dryLevel": 0.85,
+            "width": 0.45
+          }
+        },
+        "effects": {
+          "gain": 0.6,
+          "pan": 0.15,
+          "eq": {
+            "enabled": true,
+            "lowGain": -4,
+            "lowFreq": 200,
+            "midGain": 0,
+            "midFreq": 2000,
+            "midQ": 1,
+            "highGain": 2,
+            "highFreq": 10000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -20,
+            "ratio": 2.5,
+            "attack": 12,
+            "release": 100,
+            "knee": 2,
+            "makeup": 1
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.5,
+            "dampening": 0.4,
+            "wetLevel": 0.35,
+            "dryLevel": 0.65,
+            "width": 0.7
+          }
+        }
+      }
+    },
+    {
+      "id": "electronic-mix",
+      "name": "Electronic Mix",
+      "description": "Modern electronic mix with wide stereo and heavy bass",
+      "category": "electronic",
+      "bpm": 128,
+      "key": "C",
+      "stems": {
+        "drums": {
+          "gain": 0.8,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": 3,
+            "lowFreq": 70,
+            "midGain": -1,
+            "midFreq": 350,
+            "midQ": 1.1,
+            "highGain": 4,
+            "highFreq": 9000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -10,
+            "ratio": 6,
+            "attack": 1,
+            "release": 50,
+            "knee": 4,
+            "makeup": 3
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.22,
+            "dampening": 0.65,
+            "wetLevel": 0.1,
+            "dryLevel": 0.9,
+            "width": 0.4
+          }
+        },
+        "bass": {
+          "gain": 0.9,
+          "pan": 0,
+          "eq": {
+            "enabled": true,
+            "lowGain": 4,
+            "lowFreq": 50,
+            "midGain": 0.5,
+            "midFreq": 250,
+            "midQ": 1,
+            "highGain": -2,
+            "highFreq": 5000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -12,
+            "ratio": 5,
+            "attack": 8,
+            "release": 120,
+            "knee": 3,
+            "makeup": 2
+          },
+          "reverb": {
+            "enabled": false,
+            "roomSize": 0.2,
+            "dampening": 0.7,
+            "wetLevel": 0.04,
+            "dryLevel": 0.96,
+            "width": 0.25
+          }
+        },
+        "synth": {
+          "gain": 0.75,
+          "pan": 0.25,
+          "eq": {
+            "enabled": true,
+            "lowGain": -2,
+            "lowFreq": 150,
+            "midGain": 1,
+            "midFreq": 1500,
+            "midQ": 0.8,
+            "highGain": 3,
+            "highFreq": 12000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -16,
+            "ratio": 3,
+            "attack": 6,
+            "release": 80,
+            "knee": 2,
+            "makeup": 1.5
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.45,
+            "dampening": 0.45,
+            "wetLevel": 0.28,
+            "dryLevel": 0.72,
+            "width": 0.75
+          }
+        },
+        "effects": {
+          "gain": 0.7,
+          "pan": -0.2,
+          "eq": {
+            "enabled": true,
+            "lowGain": -3,
+            "lowFreq": 180,
+            "midGain": 0,
+            "midFreq": 3000,
+            "midQ": 1,
+            "highGain": 4,
+            "highFreq": 14000
+          },
+          "compressor": {
+            "enabled": true,
+            "threshold": -18,
+            "ratio": 2.5,
+            "attack": 10,
+            "release": 90,
+            "knee": 2,
+            "makeup": 1
+          },
+          "reverb": {
+            "enabled": true,
+            "roomSize": 0.55,
+            "dampening": 0.35,
+            "wetLevel": 0.4,
+            "dryLevel": 0.6,
+            "width": 0.85
+          }
+        }
+      }
+    }
+  ]
+}

@@ -19,7 +19,7 @@ const CONTENT_TOP = RULER_HEIGHT + 2;
 const BOTTOM_MARGIN = 24;
 const MIN_HEIGHT = 300;
 const MAX_HEIGHT = 500;
-const PIXELS_PER_SECOND = 80;
+const BASE_PIXELS_PER_SECOND = 80;
 const NOTE_BORDER_RADIUS = 2;
 const RESIZE_HANDLE_WIDTH = 6;
 
@@ -40,6 +40,8 @@ interface MidiEditorCanvasProps {
   onResizeNote: (noteId: string, newDuration: number) => void;
   /** Absolute timeline seconds for playhead (null = hidden). */
   playheadTime?: number | null;
+  /** Timeline zoom multiplier (0.5–2). */
+  zoomLevel?: number;
 }
 
 interface NoteRect {
@@ -100,7 +102,9 @@ export function MidiEditorCanvas({
   onMoveNotes,
   onResizeNote,
   playheadTime = null,
+  zoomLevel = 1,
 }: MidiEditorCanvasProps) {
+  const pixelsPerSecond = BASE_PIXELS_PER_SECOND * Math.max(0.5, Math.min(2, zoomLevel));
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState(600);
@@ -135,21 +139,21 @@ export function MidiEditorCanvas({
 
   const timelineWidth = Math.max(
     viewportWidth - LEFT_MARGIN,
-    Math.ceil(totalDuration * PIXELS_PER_SECOND),
+    Math.ceil(totalDuration * pixelsPerSecond),
   );
   const drawHeight = height - CONTENT_TOP - BOTTOM_MARGIN;
   const rowHeight = drawHeight / pitchRange;
   const noteHeight = Math.max(6, Math.min(16, rowHeight - 1));
   const isScrollable = timelineWidth > viewportWidth - LEFT_MARGIN;
 
-  const timeToScreen = useCallback((time: number) => time * PIXELS_PER_SECOND, []);
+  const timeToScreen = useCallback((time: number) => time * pixelsPerSecond, [pixelsPerSecond]);
 
   const playheadX = useMemo(() => {
     if (playheadTime == null || playheadTime < 0) return null;
     return timeToScreen(playheadTime);
   }, [playheadTime, timeToScreen]);
 
-  const screenToTime = useCallback((x: number) => x / PIXELS_PER_SECOND, []);
+  const screenToTime = useCallback((x: number) => x / pixelsPerSecond, [pixelsPerSecond]);
 
   const screenToPitch = useCallback(
     (y: number) => {
@@ -185,10 +189,10 @@ export function MidiEditorCanvas({
         note,
         x: timeToScreen(note.start),
         y: pitchToScreen(note.pitch) - noteHeight / 2,
-        w: Math.max(4, note.duration * PIXELS_PER_SECOND),
+        w: Math.max(4, note.duration * pixelsPerSecond),
         h: noteHeight,
       })),
-    [notes, timeToScreen, pitchToScreen, noteHeight],
+    [notes, timeToScreen, pitchToScreen, noteHeight, pixelsPerSecond],
   );
 
   const gridLines = useMemo(() => {
@@ -203,7 +207,7 @@ export function MidiEditorCanvas({
   }, [gridSizeSeconds, totalDuration, timeToScreen, bpm]);
 
   const timeLabels = useMemo(() => {
-    const visibleSeconds = timelineWidth / PIXELS_PER_SECOND;
+    const visibleSeconds = timelineWidth / pixelsPerSecond;
     const step =
       visibleSeconds > 120 ? 30 : visibleSeconds > 60 ? 15 : visibleSeconds > 20 ? 5 : visibleSeconds > 8 ? 2 : 1;
     const labels: { x: number; label: string }[] = [];
@@ -231,11 +235,11 @@ export function MidiEditorCanvas({
     (state: Extract<DragState, { type: "move" }>) => {
       const dx = state.currentX - state.startX;
       const dy = state.currentY - state.startY;
-      const deltaTime = snapDeltaTime(dx / PIXELS_PER_SECOND, bpm, snapGrid);
+      const deltaTime = snapDeltaTime(dx / pixelsPerSecond, bpm, snapGrid);
       const deltaPitch = -Math.round(dy / rowHeight);
       return { deltaTime, deltaPitch, dx, dy };
     },
-    [bpm, snapGrid, rowHeight],
+    [bpm, snapGrid, rowHeight, pixelsPerSecond],
   );
 
   const dragPreviewRects = useMemo((): NoteRect[] => {
@@ -256,7 +260,7 @@ export function MidiEditorCanvas({
           note: { id: orig.id, pitch, start, duration, velocity: origNote?.velocity ?? 80 },
           x: timeToScreen(start),
           y: pitchToScreen(pitch) - noteHeight / 2,
-          w: Math.max(4, duration * PIXELS_PER_SECOND),
+          w: Math.max(4, duration * pixelsPerSecond),
           h: noteHeight,
         };
       });
@@ -267,7 +271,7 @@ export function MidiEditorCanvas({
       if (Math.abs(dx) <= 3) return [];
       const rawDuration = Math.max(
         0.01,
-        dragState.originalDuration + dx / PIXELS_PER_SECOND,
+        dragState.originalDuration + dx / pixelsPerSecond,
       );
       const duration = snapDuration(rawDuration, bpm, snapGrid);
       const note = notes.find((n) => n.id === dragState.noteId);
@@ -277,14 +281,14 @@ export function MidiEditorCanvas({
           note: { ...note, duration },
           x: timeToScreen(note.start),
           y: pitchToScreen(note.pitch) - noteHeight / 2,
-          w: Math.max(4, duration * PIXELS_PER_SECOND),
+          w: Math.max(4, duration * pixelsPerSecond),
           h: noteHeight,
         },
       ];
     }
 
     return [];
-  }, [dragState, getMoveDelta, notes, timeToScreen, pitchToScreen, noteHeight, bpm, snapGrid]);
+  }, [dragState, getMoveDelta, notes, timeToScreen, pitchToScreen, noteHeight, bpm, snapGrid, pixelsPerSecond]);
 
   const draggingNoteIds = useMemo(() => {
     if (!dragState) return new Set<string>();
@@ -413,7 +417,7 @@ export function MidiEditorCanvas({
         if (Math.abs(dx) > 3) {
           const rawDuration = Math.max(
             0.01,
-            dragState.originalDuration + dx / PIXELS_PER_SECOND,
+            dragState.originalDuration + dx / pixelsPerSecond,
           );
           const newDuration = snapDuration(rawDuration, bpm, snapGrid);
           onResizeNote(dragState.noteId, newDuration);

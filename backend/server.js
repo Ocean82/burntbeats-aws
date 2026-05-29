@@ -33,6 +33,9 @@ import { stemHistoryRouter } from "./routes/stems/history.js";
 import { healthRouter } from "./routes/health.js";
 import { legalRouter } from "./routes/legal.js";
 import { historyRouter } from "./routes/history.js";
+import { masterRouter } from "./routes/master/index.js";
+import { previewRouter } from "./routes/preview/index.js";
+import { catalogRouter } from "./routes/catalog/index.js";
 
 // ── Startup env validation ──────────────────────────────────────────────────
 const REQUIRED_ENV_WARNINGS = [];
@@ -143,6 +146,9 @@ app.use("/api/stems/history", stemHistoryRouter);
 app.use("/api/stems", stemsRouter);
 app.use("/api/speech", speechRouter);
 app.use("/api/midi", midiRouter);
+app.use("/api/master", masterRouter);
+app.use("/api/preview", previewRouter);
+app.use("/api/catalog", catalogRouter);
 app.use("/api/legal", legalRouter);
 app.use("/api/health", healthRouter);
 app.use("/api", historyRouter);

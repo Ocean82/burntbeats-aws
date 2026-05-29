@@ -8,7 +8,7 @@
  *
  * <PitchTempoWidget
  *   stems={[
- *     { id: 'vocals', label: 'Vocals', color: '#8b5cf6', buffer: vocalsBuffer },
+ *     { id: 'vocals', label: 'Vocals', color: '#f97316', buffer: vocalsBuffer },
  *     { id: 'drums',  label: 'Drums',  color: '#ef4444', buffer: drumsBuffer },
  *   ]}
  *   audioContext={sharedAudioContext}  // optional
@@ -126,14 +126,14 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
           <SpectrumAnalyzer
             analyserNode={getAnalyserNode()}
             isPlaying={isPlaying}
-            color="#8b5cf6"
+            color="#38bdf8"
             height={compact ? 48 : 72}
           />
         </div>
       )}
 
       {/* ── Global controls ── */}
-      <div className="rounded-xl border border-violet-500/20 bg-slate-900/70 p-4">
+      <div className="rounded-xl border border-orange-500/25 bg-slate-900/70 p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-bold text-slate-200">Pitch & Tempo</span>
           <div className="flex items-center gap-2">
@@ -164,11 +164,11 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
               defaultValue={0}
               formatValue={pitchToSemitonesStr}
               onChange={handleLinkedPitchChange}
-              color="#a78bfa"
+              color="#fb923c"
               size={compact ? 72 : 100}
               disabled={globalBypass}
             />
-            <div className="text-xs font-mono text-violet-300">
+            <div className="text-xs font-mono text-orange-300">
               ×{pitchRatio.toFixed(4)}
             </div>
           </div>
@@ -179,7 +179,7 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
               onClick={() => setLinked(!linked)}
               className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-lg transition-all ${
                 linked
-                  ? 'border-violet-500 bg-violet-500/20'
+                  ? 'border-sky-500 bg-sky-500/20'
                   : 'border-slate-700 bg-slate-800/80 text-slate-500 hover:border-slate-600'
               }`}
               title={linked ? 'Unlink' : 'Link pitch & tempo'}
@@ -213,10 +213,10 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
         {/* Metadata bar */}
         {showSection('metadata') && !compact && (
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-            <div className="rounded-lg p-2 bg-violet-500/10 border border-violet-500/20">
+            <div className="rounded-lg p-2 bg-orange-500/10 border border-orange-500/20">
               <div className="flex justify-between">
                 <span className="text-slate-500">Pitch</span>
-                <span className="font-mono text-violet-300">{pitchToSemitonesStr(globalPitch)}</span>
+                <span className="font-mono text-orange-300">{pitchToSemitonesStr(globalPitch)}</span>
               </div>
               <div className="text-slate-600 font-mono mt-0.5">
                 440Hz → {(440 * pitchRatio).toFixed(1)}Hz
@@ -244,7 +244,7 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
               disabled={!engineReady}
               className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-white transition-all disabled:opacity-40"
               style={engineReady ? {
-                background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
+                background: 'linear-gradient(135deg, #f97316, #38bdf8)',
               } : { background: '#1e293b' }}
             >
               {isPlaying ? '⏸' : '▶'}
@@ -261,7 +261,7 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
                 <div
                   className="h-2 rounded-full transition-none"
                   style={{
-                    background: 'linear-gradient(90deg, #7c3aed, #2563eb)',
+                    background: 'linear-gradient(90deg, #f97316, #38bdf8)',
                     width: `${(currentTime / Math.max(duration, 1)) * 100}%`,
                   }}
                 />
@@ -278,7 +278,7 @@ export const PitchTempoWidget: React.FC<PitchTempoPluginProps> = ({
                 <button key={m} onClick={() => setStemMode(m)}
                   className={`px-2 py-1 rounded text-xs font-bold transition-all ${
                     stemMode === m
-                      ? 'text-white bg-violet-600'
+                      ? 'text-white bg-orange-600'
                       : 'text-slate-500 hover:text-slate-300'
                   }`}>
                   {m === 'global' ? '🌐' : '🎛'}

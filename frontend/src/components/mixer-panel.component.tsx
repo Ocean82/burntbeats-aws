@@ -1,10 +1,12 @@
-import { RotateCcw, Sliders, RefreshCw } from "lucide-react";
+import { RotateCcw, RefreshCw } from "lucide-react";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import type { StemDefinition } from "../types";
 import type { StemEditorState } from "../stem-editor-state";
 import type { BeatGridMetadata } from "../api";
 import { DjModeEditor } from "./dj-mode";
 import type { SeekPhase } from "../types/playbackSeek";
+import type { MixerPreset } from "./MixerPresetsModal";
+import { ForgeTimelineEmpty } from "./editor/ForgeTimelineEmpty";
 
 export interface MixerPanelProps {
   mixStemCount: number;
@@ -40,23 +42,18 @@ export interface MixerPanelProps {
   getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
   getStemAnalyserTimeDomainData: (stemId: string) => Uint8Array | null;
-  /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
   masterVolume: number;
-  /** Callback to update master output gain. */
   onMasterVolumeChange: (value: number) => void;
   masterLimiterEnabled: boolean;
   onMasterLimiterEnabledChange: (enabled: boolean) => void;
-  /** Optional beat-grid metadata from backend BPM analysis. */
   beatGrid?: BeatGridMetadata | null;
-  /** Whether loop playback is enabled. */
   loopEnabled?: boolean;
-  /** Callback to toggle loop playback. */
   onLoopToggle?: (enabled: boolean) => void;
-  /** Recording state and callbacks. */
   isRecording?: boolean;
   recordingDuration?: number;
   onStartRecording?: () => void;
   onStopRecording?: () => void;
+  onLoadGenrePreset?: (preset: MixerPreset) => void;
 }
 
 export function MixerPanel({
@@ -104,6 +101,7 @@ export function MixerPanel({
   recordingDuration = 0,
   onStartRecording,
   onStopRecording,
+  onLoadGenrePreset,
 }: MixerPanelProps) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [masterMuted, setMasterMuted] = useState(false);
@@ -127,41 +125,21 @@ export function MixerPanel({
   const playheadPct = useSyncExternalStore(
     subscribePlayheadPosition,
     getPlayheadPosition,
-    () => 0
+    () => 0,
   );
 
   if (mixStemCount === 0) {
-    return (
-      <>
-        <p className="eyebrow">Stems</p>
-        <h2 className="font-display mb-lg text-2xl tracking-[-0.04em] text-foreground">Timeline</h2>
-        <div 
-          className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/[0.02] py-12 text-center"
-          role="region"
-          aria-label="Empty timeline - no stems loaded"
-        >
-          <Sliders className="h-10 w-10 text-muted-foreground mb-md" strokeWidth={1.5} />
-          <p className="text-muted-foreground text-sm font-medium mb-1">Timeline</p>
-          <p className="text-muted-foreground text-xs text-pretty">
-            Split a track or load stem files above to start mixing and exporting.
-          </p>
-        </div>
-      </>
-    );
+    return <ForgeTimelineEmpty />;
   }
 
   return (
     <>
-      <div className="mb-sm flex flex-wrap items-center justify-between gap-sm">
-        <div>
-          <p className="eyebrow">Stems</p>
-          <h2 className="font-display text-xl tracking-[-0.04em] text-foreground sm:text-2xl">
-            Timeline
-          </h2>
-          {splitStemCount != null && (
-            <p className="text-xs text-muted-foreground">{splitStemCount}-stem mode</p>
-          )}
-        </div>
+      <div className="mb-sm flex flex-wrap items-center justify-end gap-sm">
+        {splitStemCount != null ? (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {splitStemCount}-stem mode
+          </span>
+        ) : null}
         {showResetConfirm ? (
           <div className="flex items-center gap-xs rounded-xl border border-primary-400/30 bg-primary-500/10 px-sm py-xs">
             <span className="text-xs text-primary-200">Reset all levels?</span>
@@ -197,15 +175,19 @@ export function MixerPanel({
         )}
       </div>
 
-      {/* Loading error with retry */}
-      {loadingError && (
-        <div className="mb-md rounded-xl border border-destructive-400/30 bg-destructive-950/30 px-md py-sm" role="alert">
+      {loadingError ? (
+        <div
+          className="mb-md rounded-xl border border-destructive-400/30 bg-destructive-950/30 px-md py-sm"
+          role="alert"
+        >
           <div className="flex items-center justify-between gap-sm">
             <div>
-              <p className="text-sm font-medium text-destructive-200">Failed to load stems</p>
+              <p className="text-sm font-medium text-destructive-200">
+                Failed to load stems
+              </p>
               <p className="mt-0.5 text-xs text-destructive-300/90">{loadingError}</p>
             </div>
-            {onRetryLoadStems && (
+            {onRetryLoadStems ? (
               <button
                 type="button"
                 onClick={onRetryLoadStems}
@@ -215,10 +197,10 @@ export function MixerPanel({
                 <RefreshCw className="h-3.5 w-3.5" />
                 Retry
               </button>
-            )}
+            ) : null}
           </div>
         </div>
-      )}
+      ) : null}
 
       <DjModeEditor
         stems={stems}
@@ -262,23 +244,17 @@ export function MixerPanel({
         getMasterAnalyserTimeDomainData={getMasterAnalyserTimeDomainData}
         getMasterAnalyserTimeDomainDataLeft={getMasterAnalyserTimeDomainDataLeft}
         getMasterAnalyserTimeDomainDataRight={getMasterAnalyserTimeDomainDataRight}
+        getMasterAnalyserFrequencyData={getMasterAnalyserFrequencyData}
+        onLoadGenrePreset={onLoadGenrePreset}
         isExporting={isExporting}
         onExport={onExport}
+        onCompareExport={onCompareExport}
+        isComparingExport={isComparingExport}
       />
-      {onCompareExport && (
-        <div className="mt-sm">
-          <button
-            type="button"
-            onClick={onCompareExport}
-            className="text-xs text-muted-foreground underline"
-            disabled={isComparingExport}
-          >
-            {isComparingExport ? "Comparing export..." : "Compare export quality"}
-          </button>
-        </div>
-      )}
-      <span className="sr-only">{Boolean(onResetSingleStem)}{Boolean(getMasterAnalyserFrequencyData)}</span>
+      <span className="sr-only">
+        {Boolean(onResetSingleStem)}
+        {Boolean(getMasterAnalyserFrequencyData)}
+      </span>
     </>
   );
 }
-

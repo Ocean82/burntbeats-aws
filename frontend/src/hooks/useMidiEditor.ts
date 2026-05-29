@@ -218,6 +218,44 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
     });
   }, [pushHistory]);
 
+  const duplicateSelected = useCallback(() => {
+    setState((s) => {
+      if (s.selectedIds.size === 0) return s;
+      const offset = snapDuration(0.25, s.bpm, s.snapGrid);
+      const duplicates: EditableNote[] = [];
+      const newIds = new Set<string>();
+      for (const n of s.notes) {
+        if (!s.selectedIds.has(n.id)) continue;
+        const dup: EditableNote = {
+          ...n,
+          id: generateNoteId(),
+          start: n.start + offset,
+        };
+        duplicates.push(dup);
+        newIds.add(dup.id);
+      }
+      const notes = [...s.notes, ...duplicates];
+      const h = pushHistory(notes, newIds);
+      return { ...s, notes, selectedIds: newIds, isModified: true, ...h };
+    });
+  }, [pushHistory]);
+
+  const quantizeSelected = useCallback(() => {
+    setState((s) => {
+      if (s.selectedIds.size === 0) return s;
+      const notes = s.notes.map((n) => {
+        if (!s.selectedIds.has(n.id)) return n;
+        return {
+          ...n,
+          start: snapToGrid(n.start, s.bpm, s.snapGrid),
+          duration: snapDuration(n.duration, s.bpm, s.snapGrid),
+        };
+      });
+      const h = pushHistory(notes, s.selectedIds);
+      return { ...s, notes, isModified: true, ...h };
+    });
+  }, [pushHistory]);
+
   // --- Undo / Redo ---
   // Derive canUndo/canRedo from state fields (not refs) to avoid reading refs during render.
   const canUndo = state.historyIndex > 0;
@@ -298,6 +336,8 @@ export function useMidiEditor(initialNotes: MidiNoteEvent[], initialBpm: number)
     resizeNote,
     setSelectedVelocity,
     transposeSelected,
+    duplicateSelected,
+    quantizeSelected,
     undo,
     redo,
     resetToOriginal,

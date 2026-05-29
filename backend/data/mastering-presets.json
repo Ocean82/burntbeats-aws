@@ -1,0 +1,240 @@
+{
+  "presets": [
+    {
+      "id": "rock_modern",
+      "name": "Modern Rock",
+      "genre": "rock",
+      "description": "Punchy, aggressive mastering for modern rock with tight dynamics",
+      "settings": {
+        "eq": {
+          "enabled": true,
+          "lowShelf": { "frequency": 80, "gain": 1.5, "q": 0.7 },
+          "lowMid": { "frequency": 250, "gain": -1.0, "q": 1.0 },
+          "highMid": { "frequency": 3000, "gain": 2.0, "q": 0.8 },
+          "highShelf": { "frequency": 10000, "gain": 1.0, "q": 0.7 },
+          "presence": { "frequency": 5000, "gain": 1.5, "q": 1.2 }
+        },
+        "compressor": {
+          "enabled": true,
+          "threshold": -12,
+          "ratio": 4.0,
+          "attack": 3,
+          "release": 100,
+          "knee": 2.0,
+          "makeupGain": 3.0
+        },
+        "multibandCompressor": {
+          "enabled": true,
+          "lowBand": { "threshold": -15, "ratio": 3.0, "attack": 10, "release": 150 },
+          "midBand": { "threshold": -12, "ratio": 4.0, "attack": 3, "release": 80 },
+          "highBand": { "threshold": -10, "ratio": 3.5, "attack": 1, "release": 50 }
+        },
+        "limiter": {
+          "enabled": true,
+          "threshold": -1.0,
+          "ceiling": -0.3,
+          "release": 50,
+          "lookahead": 5
+        },
+        "stereoEnhancer": {
+          "enabled": true,
+          "width": 120,
+          "bassMonoFreq": 120
+        },
+        "exciter": {
+          "enabled": true,
+          "amount": 25,
+          "frequency": 8000,
+          "harmonics": 2
+        },
+        "loudness": {
+          "targetLUFS": -11,
+          "truePeak": -0.3,
+          "dynamicRange": 6
+        },
+        "advanced": {
+          "dithering": true,
+          "oversampleRate": 4,
+          "linearPhase": false
+        }
+      }
+    },
+    {
+      "id": "hiphop",
+      "name": "Modern Hip-Hop",
+      "genre": "hiphop",
+      "description": "Heavy bass, crisp highs, and punchy dynamics for modern hip-hop",
+      "settings": {
+        "eq": {
+          "enabled": true,
+          "lowShelf": { "frequency": 60, "gain": 3.0, "q": 0.8 },
+          "lowMid": { "frequency": 200, "gain": 1.0, "q": 1.2 },
+          "highMid": { "frequency": 2500, "gain": 1.5, "q": 0.9 },
+          "highShelf": { "frequency": 12000, "gain": 2.0, "q": 0.7 },
+          "presence": { "frequency": 4000, "gain": 0.5, "q": 1.0 }
+        },
+        "compressor": {
+          "enabled": true,
+          "threshold": -10,
+          "ratio": 6.0,
+          "attack": 1,
+          "release": 80,
+          "knee": 3.0,
+          "makeupGain": 4.0
+        },
+        "multibandCompressor": {
+          "enabled": true,
+          "lowBand": { "threshold": -8, "ratio": 4.0, "attack": 15, "release": 200 },
+          "midBand": { "threshold": -12, "ratio": 3.0, "attack": 5, "release": 100 },
+          "highBand": { "threshold": -15, "ratio": 2.5, "attack": 2, "release": 60 }
+        },
+        "limiter": {
+          "enabled": true,
+          "threshold": -0.5,
+          "ceiling": -0.1,
+          "release": 30,
+          "lookahead": 3
+        },
+        "stereoEnhancer": {
+          "enabled": true,
+          "width": 110,
+          "bassMonoFreq": 80
+        },
+        "exciter": {
+          "enabled": true,
+          "amount": 35,
+          "frequency": 10000,
+          "harmonics": 3
+        },
+        "loudness": {
+          "targetLUFS": -8,
+          "truePeak": -0.1,
+          "dynamicRange": 4
+        },
+        "advanced": {
+          "dithering": true,
+          "oversampleRate": 2,
+          "linearPhase": false
+        }
+      }
+    },
+    {
+      "id": "edm",
+      "name": "Electronic Dance",
+      "genre": "electronic",
+      "description": "Loud, punchy, and wide mastering for electronic dance music",
+      "settings": {
+        "eq": {
+          "enabled": true,
+          "lowShelf": { "frequency": 50, "gain": 2.5, "q": 0.9 },
+          "lowMid": { "frequency": 150, "gain": 0.5, "q": 1.0 },
+          "highMid": { "frequency": 8000, "gain": 1.8, "q": 0.8 },
+          "highShelf": { "frequency": 15000, "gain": 1.5, "q": 0.6 },
+          "presence": { "frequency": 6000, "gain": 1.0, "q": 1.1 }
+        },
+        "compressor": {
+          "enabled": true,
+          "threshold": -8,
+          "ratio": 8.0,
+          "attack": 0.5,
+          "release": 50,
+          "knee": 4.0,
+          "makeupGain": 5.0
+        },
+        "multibandCompressor": {
+          "enabled": true,
+          "lowBand": { "threshold": -6, "ratio": 6.0, "attack": 20, "release": 250 },
+          "midBand": { "threshold": -10, "ratio": 4.0, "attack": 2, "release": 70 },
+          "highBand": { "threshold": -12, "ratio": 3.0, "attack": 1, "release": 40 }
+        },
+        "limiter": {
+          "enabled": true,
+          "threshold": -0.3,
+          "ceiling": 0,
+          "release": 25,
+          "lookahead": 2
+        },
+        "stereoEnhancer": {
+          "enabled": true,
+          "width": 140,
+          "bassMonoFreq": 100
+        },
+        "exciter": {
+          "enabled": true,
+          "amount": 40,
+          "frequency": 12000,
+          "harmonics": 2
+        },
+        "loudness": {
+          "targetLUFS": -6,
+          "truePeak": 0,
+          "dynamicRange": 3
+        },
+        "advanced": {
+          "dithering": true,
+          "oversampleRate": 8,
+          "linearPhase": true
+        }
+      }
+    },
+    {
+      "id": "classical_audiophile",
+      "name": "Classical Audiophile",
+      "genre": "classical",
+      "description": "Natural, transparent mastering preserving dynamics for classical music",
+      "settings": {
+        "eq": {
+          "enabled": true,
+          "lowShelf": { "frequency": 40, "gain": 0.5, "q": 0.5 },
+          "lowMid": { "frequency": 300, "gain": 0.0, "q": 0.8 },
+          "highMid": { "frequency": 4000, "gain": 0.5, "q": 0.7 },
+          "highShelf": { "frequency": 8000, "gain": 0.8, "q": 0.5 },
+          "presence": { "frequency": 3000, "gain": 0.3, "q": 0.9 }
+        },
+        "compressor": {
+          "enabled": true,
+          "threshold": -18,
+          "ratio": 2.0,
+          "attack": 10,
+          "release": 200,
+          "knee": 1.0,
+          "makeupGain": 1.0
+        },
+        "multibandCompressor": {
+          "enabled": false,
+          "lowBand": { "threshold": -20, "ratio": 1.5, "attack": 50, "release": 300 },
+          "midBand": { "threshold": -18, "ratio": 2.0, "attack": 20, "release": 200 },
+          "highBand": { "threshold": -20, "ratio": 1.8, "attack": 10, "release": 150 }
+        },
+        "limiter": {
+          "enabled": true,
+          "threshold": -3.0,
+          "ceiling": -1.0,
+          "release": 100,
+          "lookahead": 10
+        },
+        "stereoEnhancer": {
+          "enabled": true,
+          "width": 105,
+          "bassMonoFreq": 60
+        },
+        "exciter": {
+          "enabled": false,
+          "amount": 10,
+          "frequency": 15000,
+          "harmonics": 2
+        },
+        "loudness": {
+          "targetLUFS": -18,
+          "truePeak": -1.0,
+          "dynamicRange": 15
+        },
+        "advanced": {
+          "dithering": true,
+          "oversampleRate": 4,
+          "linearPhase": true
+        }
+      }
+    }
+  ]
+}

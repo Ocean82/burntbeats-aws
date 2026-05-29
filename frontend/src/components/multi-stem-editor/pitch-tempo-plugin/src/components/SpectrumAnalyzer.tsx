@@ -10,7 +10,7 @@ interface SpectrumAnalyzerProps {
 export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
   analyserNode,
   isPlaying,
-  color = '#8b5cf6',
+  color = '#38bdf8',
   height = 80,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,7 +33,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({
         ctx.fillStyle = 'rgba(0,0,0,0.5)';
         ctx.fillRect(0, 0, W, H);
         // Draw idle grid
-        ctx.strokeStyle = 'rgba(139,92,246,0.08)';
+        ctx.strokeStyle = 'rgba(56,189,248,0.08)';
         ctx.lineWidth = 1;
         for (let i = 0; i < 8; i++) {
           ctx.beginPath();

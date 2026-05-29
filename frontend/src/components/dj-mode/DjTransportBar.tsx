@@ -25,6 +25,8 @@ interface DjTransportBarProps {
   isExporting?: boolean;
   exportReady?: boolean;
   onExport?: () => void;
+  onCompareExport?: () => void;
+  isComparingExport?: boolean;
   /** Whether the recorder is actively capturing audio. */
   isRecording?: boolean;
   /** Recording duration in seconds (displayed while recording). */
@@ -64,6 +66,8 @@ export function DjTransportBar({
   isExporting = false,
   exportReady = false,
   onExport,
+  onCompareExport,
+  isComparingExport = false,
   isRecording = false,
   recordingDuration = 0,
   onStartRecording,
@@ -153,7 +157,24 @@ export function DjTransportBar({
       {/* Spacer */}
       <div className="hidden sm:flex sm:flex-1" />
 
-      {onExport && (
+      {onCompareExport ? (
+        <button
+          type="button"
+          onClick={onCompareExport}
+          disabled={!exportReady || isComparingExport}
+          className={cn(
+            "tap-feedback hidden min-h-[44px] items-center rounded-lg border px-sm py-xs text-xs font-medium transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98] sm:inline-flex",
+            exportReady && !isComparingExport
+              ? "border-border bg-muted text-muted-foreground hover:text-foreground hover:border-border"
+              : "cursor-not-allowed border-border bg-muted text-muted-foreground opacity-50",
+          )}
+          aria-label="Compare export quality"
+        >
+          {isComparingExport ? "Comparing…" : "Compare"}
+        </button>
+      ) : null}
+
+      {onExport ? (
         <button
           type="button"
           onClick={onExport}
@@ -169,7 +190,7 @@ export function DjTransportBar({
           <Download className="h-3.5 w-3.5" aria-hidden />
           {isExporting ? "Exporting…" : "Export"}
         </button>
-      )}
+      ) : null}
 
       {/* Beat Grid */}
       {hasBeatGrid && (

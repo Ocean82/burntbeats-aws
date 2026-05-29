@@ -68,8 +68,8 @@ describe('pitch-tempo-plugin-integration properties', () => {
           PARAM_META.pitchSemitones.min,
           Math.min(PARAM_META.pitchSemitones.max, value),
         );
-        expect(clamped).toBeGreaterThanOrEqual(-3);
-        expect(clamped).toBeLessThanOrEqual(3);
+        expect(clamped).toBeGreaterThanOrEqual(PARAM_META.pitchSemitones.min - 1e-9);
+        expect(clamped).toBeLessThanOrEqual(PARAM_META.pitchSemitones.max + 1e-9);
       },
     );
   });

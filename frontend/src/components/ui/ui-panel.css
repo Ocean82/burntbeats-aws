@@ -1,0 +1,114 @@
+/* Shared studio panel primitives — forge thermal palette, no purple/violet */
+
+.ui-panel {
+  border: 1px solid oklch(28% 0.016 42 / 40%);
+  background: oklch(11% 0.014 38 / 74%);
+  border-radius: 16px;
+}
+
+.ui-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid oklch(28% 0.016 42 / 35%);
+}
+
+.ui-section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: oklch(72% 0.014 48);
+}
+
+.ui-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid oklch(28% 0.016 42 / 30%);
+  background: oklch(9% 0.013 38 / 60%);
+}
+
+.ui-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  color: oklch(72% 0.014 48);
+}
+
+.ui-job-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ui-job-chip--queued {
+  border: 1px solid oklch(72% 0.12 205 / 35%);
+  color: oklch(78% 0.11 205);
+  background: oklch(72% 0.12 205 / 10%);
+}
+
+.ui-job-chip--running {
+  border: 1px solid oklch(63% 0.21 38 / 45%);
+  color: oklch(69% 0.18 38);
+  background: oklch(63% 0.21 38 / 12%);
+}
+
+.ui-job-chip--done {
+  border: 1px solid oklch(62% 0.14 155 / 40%);
+  color: oklch(72% 0.12 155);
+  background: oklch(62% 0.14 155 / 10%);
+}
+
+.ui-job-chip--error {
+  border: 1px solid oklch(58% 0.2 25 / 45%);
+  color: oklch(68% 0.16 25);
+  background: oklch(58% 0.2 25 / 12%);
+}
+
+.ui-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.ui-stepper-step {
+  flex: 1;
+  min-width: 72px;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 1px solid oklch(28% 0.016 42 / 40%);
+  color: oklch(72% 0.014 48);
+  background: oklch(9% 0.013 38 / 50%);
+}
+
+.ui-stepper-step--active {
+  border-color: oklch(68% 0.14 75 / 50%);
+  color: oklch(88% 0.08 75);
+  background: oklch(68% 0.14 75 / 12%);
+}
+
+.ui-stepper-step--done {
+  border-color: oklch(62% 0.14 155 / 35%);
+  color: oklch(78% 0.12 155);
+}

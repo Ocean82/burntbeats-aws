@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchMasteringPresets, type MasteringPresetSummary } from "../api/master";
 import {
   estimateExportBytes,
   formatExportBytes,
@@ -28,12 +29,16 @@ interface ExportOptionsModalProps {
   isSample?: boolean;
   /** Longest stem duration in seconds (for size estimate). */
   trackDurationSec?: number;
+  /** Stem split job id — enables server mastering on master export. */
+  splitJobId?: string | null;
 }
 
 export interface ExportOptions {
   format: ExportFormat;
   target: ExportTarget;
   normalize: boolean;
+  /** Server-side genre mastering preset (master export only). */
+  masteringPresetId?: string | null;
 }
 
 const FORMAT_OPTIONS: {
@@ -80,6 +85,7 @@ export function ExportOptionsModal({
   allowStemBundleTargets = true,
   isSample,
   trackDurationSec = 0,
+  splitJobId = null,
 }: ExportOptionsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const motionCfg = useProductMotion();
@@ -90,7 +96,31 @@ export function ExportOptionsModal({
     format: "wav",
     target: "master",
     normalize: true,
+    masteringPresetId: null,
   });
+  const [masteringPresets, setMasteringPresets] = useState<MasteringPresetSummary[]>(
+    [],
+  );
+  const [presetsLoading, setPresetsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setPresetsLoading(true);
+    void fetchMasteringPresets()
+      .then((list) => {
+        if (!cancelled) setMasteringPresets(list);
+      })
+      .catch(() => {
+        if (!cancelled) setMasteringPresets([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPresetsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   // Default to MP3 on mobile devices (smaller files, less memory pressure)
   useEffect(() => {
@@ -287,6 +317,37 @@ export function ExportOptionsModal({
                   )}
                 </div>
               )}
+
+              {(options.target === "master" || options.target === "all") &&
+                splitJobId && (
+                  <fieldset className="mb-lg">
+                    <legend className="mb-xs block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Mastering preset
+                    </legend>
+                    <select
+                      value={options.masteringPresetId ?? ""}
+                      onChange={(e) =>
+                        setOptions((o) => ({
+                          ...o,
+                          masteringPresetId: e.target.value || null,
+                        }))
+                      }
+                      disabled={isExporting || presetsLoading}
+                      className="w-full rounded-xl border border-border bg-muted px-sm py-sm text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label="Mastering preset"
+                    >
+                      <option value="">None (mix only)</option>
+                      {masteringPresets.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} — {p.genre}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-xs text-helper text-muted-foreground">
+                      Applies genre-aware EQ, compression, and limiting on export.
+                    </p>
+                  </fieldset>
+                )}
 
               {/* Normalize Toggle */}
               <div className="mb-lg flex items-center justify-between gap-sm rounded-xl border border-border bg-muted px-md py-sm">

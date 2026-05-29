@@ -72,6 +72,8 @@ export interface SubscriptionCapabilities {
   canExpandToFourStems: boolean;
   canUsePremiumStemQualities: boolean;
   canUseBatchQueue: boolean;
+  canDownloadFullPreview: boolean;
+  canShareCleanPreview: boolean;
 }
 
 export const NO_SUBSCRIPTION_CAPABILITIES: SubscriptionCapabilities = {
@@ -79,6 +81,8 @@ export const NO_SUBSCRIPTION_CAPABILITIES: SubscriptionCapabilities = {
   canExpandToFourStems: false,
   canUsePremiumStemQualities: false,
   canUseBatchQueue: false,
+  canDownloadFullPreview: false,
+  canShareCleanPreview: false,
 };
 
 function premiumCapabilities(): SubscriptionCapabilities {
@@ -87,6 +91,8 @@ function premiumCapabilities(): SubscriptionCapabilities {
     canExpandToFourStems: true,
     canUsePremiumStemQualities: true,
     canUseBatchQueue: true,
+    canDownloadFullPreview: true,
+    canShareCleanPreview: true,
   };
 }
 
@@ -98,6 +104,8 @@ function normalizeCapabilities(
     canExpandToFourStems: value?.canExpandToFourStems === true,
     canUsePremiumStemQualities: value?.canUsePremiumStemQualities === true,
     canUseBatchQueue: value?.canUseBatchQueue === true,
+    canDownloadFullPreview: value?.canDownloadFullPreview === true,
+    canShareCleanPreview: value?.canShareCleanPreview === true,
   };
 }
 

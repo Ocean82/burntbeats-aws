@@ -2,6 +2,7 @@
  * MIDI editor tool row — tools, snap, undo, draw velocity, export.
  */
 import {
+  Copy,
   Download,
   Eraser,
   Magnet,
@@ -9,7 +10,10 @@ import {
   Pencil,
   Redo2,
   RotateCcw,
+  Save,
   Undo2,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import type { EditorTool, SnapGrid } from "../../hooks/useMidiEditor";
@@ -25,6 +29,11 @@ interface MidiEditorToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   isModified: boolean;
+  hasSelection: boolean;
+  zoomLevel: number;
+  metronomeEnabled: boolean;
+  canSaveToJob: boolean;
+  isSaving?: boolean;
   onToolChange: (tool: EditorTool) => void;
   onSnapGridChange: (grid: SnapGrid) => void;
   onBpmChange: (bpm: number) => void;
@@ -33,6 +42,12 @@ interface MidiEditorToolbarProps {
   onRedo: () => void;
   onExport: () => void;
   onReset: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onToggleMetronome: () => void;
+  onQuantizeSelection: () => void;
+  onDuplicateSelection: () => void;
+  onSaveToJob?: () => void;
 }
 
 const TOOLS: { id: EditorTool; icon: typeof MousePointer2 }[] = [
@@ -57,6 +72,11 @@ export function MidiEditorToolbar({
   canUndo,
   canRedo,
   isModified,
+  hasSelection,
+  zoomLevel,
+  metronomeEnabled,
+  canSaveToJob,
+  isSaving = false,
   onToolChange,
   onSnapGridChange,
   onBpmChange,
@@ -65,6 +85,12 @@ export function MidiEditorToolbar({
   onRedo,
   onExport,
   onReset,
+  onZoomIn,
+  onZoomOut,
+  onToggleMetronome,
+  onQuantizeSelection,
+  onDuplicateSelection,
+  onSaveToJob,
 }: MidiEditorToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-xs">
@@ -165,6 +191,51 @@ export function MidiEditorToolbar({
         ariaLabel="Draw velocity for new notes"
       />
 
+      <div className="h-5 w-px bg-muted" aria-hidden />
+
+      <div className="inline-flex items-center gap-0.5 rounded-md border border-border p-0.5">
+        <MidiPhysicalButton variant="icon" onClick={onZoomOut} title="Zoom out" aria-label="Zoom out">
+          <ZoomOut className="h-3.5 w-3.5" />
+        </MidiPhysicalButton>
+        <span className="min-w-[2.5rem] text-center text-[10px] tabular-nums text-muted-foreground">
+          {Math.round(zoomLevel * 100)}%
+        </span>
+        <MidiPhysicalButton variant="icon" onClick={onZoomIn} title="Zoom in" aria-label="Zoom in">
+          <ZoomIn className="h-3.5 w-3.5" />
+        </MidiPhysicalButton>
+      </div>
+
+      <MidiPhysicalButton
+        variant="icon"
+        pressed={metronomeEnabled}
+        onClick={onToggleMetronome}
+        title="Metronome click track"
+        aria-label="Toggle metronome"
+        aria-pressed={metronomeEnabled}
+      >
+        <span className="text-[10px] font-bold">♩</span>
+      </MidiPhysicalButton>
+
+      <MidiPhysicalButton
+        variant="icon"
+        onClick={onQuantizeSelection}
+        disabled={!hasSelection}
+        title="Quantize selection to grid"
+        aria-label="Quantize selection"
+      >
+        <Magnet className="h-3.5 w-3.5" />
+      </MidiPhysicalButton>
+
+      <MidiPhysicalButton
+        variant="icon"
+        onClick={onDuplicateSelection}
+        disabled={!hasSelection}
+        title="Duplicate selection (Ctrl+D)"
+        aria-label="Duplicate selection"
+      >
+        <Copy className="h-3.5 w-3.5" />
+      </MidiPhysicalButton>
+
       <div className="flex-1" />
 
       {isModified && (
@@ -175,6 +246,18 @@ export function MidiEditorToolbar({
         >
           <RotateCcw className="h-3 w-3" />
           Revert
+        </MidiPhysicalButton>
+      )}
+
+      {canSaveToJob && onSaveToJob && (
+        <MidiPhysicalButton
+          onClick={onSaveToJob}
+          disabled={isSaving}
+          title="Save edited MIDI to conversion job"
+          aria-label="Save to job"
+        >
+          <Save className="h-3.5 w-3.5" />
+          {isSaving ? "Saving…" : "Save to job"}
         </MidiPhysicalButton>
       )}
 

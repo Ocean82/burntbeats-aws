@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { AppShell } from "./app/app-shell.component";
 import { App } from "./App";
+import { AudioProvider } from "./contexts/AudioContext";
+import { WorkflowProvider } from "./contexts/WorkflowContext";
 
 // Mock Clerk so App can render without ClerkProvider in tests
 vi.mock("@clerk/react", () => ({
@@ -36,25 +38,31 @@ beforeEach(() => {
 });
 
 describe("App flow", () => {
-  it("renders and shows stem splitter UI", () => {
-    render(
-      <AppShell>
-        <App />
-      </AppShell>
+  function renderApp() {
+    return render(
+      <WorkflowProvider>
+        <AudioProvider>
+          <AppShell>
+            <App />
+          </AppShell>
+        </AudioProvider>
+      </WorkflowProvider>,
     );
+  }
+
+  it("renders and shows stem splitter UI", () => {
+    renderApp();
     expect(
       screen.getByRole("button", { name: /upload audio file/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^split$/i })).toBeInTheDocument();
   });
 
-  it("shows upload and split pipeline copy", () => {
-    render(
-      <AppShell>
-        <App />
-      </AppShell>
-    );
-    const uploadSplit = screen.getAllByText(/Upload|Split/i);
-    expect(uploadSplit.length).toBeGreaterThan(0);
+  it("shows workflow stepper labels", () => {
+    renderApp();
+    const stepper = screen.getByRole("list", { name: /workflow steps/i });
+    expect(within(stepper).getByText("Upload")).toBeInTheDocument();
+    expect(within(stepper).getByText("Split")).toBeInTheDocument();
+    expect(within(stepper).getByText("Mix")).toBeInTheDocument();
   });
 });

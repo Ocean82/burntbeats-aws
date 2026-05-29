@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "generated_at": "2026-05-29T00:00:00.000Z",
+  "statistics": {
+    "total_entries": 12,
+    "by_genre": {
+      "rock": 3,
+      "pop": 2,
+      "jazz": 2,
+      "classical": 2,
+      "electronic": 2,
+      "hiphop": 1
+    }
+  },
+  "entries": [
+    {
+      "id": "midi-001",
+      "title": "Classic Rock Progression I-V-vi-IV",
+      "filename": "rock-progression-1.mid",
+      "category": {
+        "type": "progression",
+        "genre": "rock",
+        "key": "E major",
+        "time_signature": "4/4",
+        "complexity": "beginner",
+        "tempo": "moderate"
+      },
+      "analysis": {
+        "estimatedTempo": 120,
+        "length": 16,
+        "track_count": 1,
+        "note_count": 32
+      },
+      "tags": ["rock", "progression", "guitar"]
+    },
+    {
+      "id": "midi-002",
+      "title": "Blues Shuffle in A",
+      "filename": "blues-shuffle-a.mid",
+      "category": {
+        "type": "groove",
+        "genre": "rock",
+        "key": "A major",
+        "time_signature": "4/4",
+        "complexity": "intermediate",
+        "tempo": "moderate"
+      },
+      "analysis": {
+        "estimatedTempo": 110,
+        "length": 24,
+        "track_count": 2,
+        "note_count": 64
+      },
+      "tags": ["blues", "shuffle", "bass"]
+    },
+    {
+      "id": "midi-003",
+      "title": "Power Ballad Arpeggio",
+      "filename": "power-ballad.mid",
+      "category": {
+        "type": "progression",
+        "genre": "rock",
+        "key": "D major",
+        "time_signature": "4/4",
+        "complexity": "intermediate",
+        "tempo": "slow"
+      },
+      "analysis": {
+        "estimatedTempo": 72,
+        "length": 32,
+        "track_count": 2,
+        "note_count": 48
+      },
+      "tags": ["ballad", "piano", "strings"]
+    },
+    {
+      "id": "midi-004",
+      "title": "Pop Hook in C",
+      "filename": "pop-hook-c.mid",
+      "category": {
+        "type": "melody",
+        "genre": "pop",
+        "key": "C major",
+        "time_signature": "4/4",
+        "complexity": "beginner",
+        "tempo": "fast"
+      },
+      "analysis": {
+        "estimatedTempo": 128,
+        "length": 12,
+        "track_count": 1,
+        "note_count": 28
+      },
+      "tags": ["pop", "hook", "vocals"]
+    },
+    {
+      "id": "midi-005",
+      "title": "Synthwave Loop",
+      "filename": "synthwave-loop.mid",
+      "category": {
+        "type": "loop",
+        "genre": "electronic",
+        "key": "A minor",
+        "time_signature": "4/4",
+        "complexity": "intermediate",
+        "tempo": "fast"
+      },
+      "analysis": {
+        "estimatedTempo": 118,
+        "length": 8,
+        "track_count": 3,
+        "note_count": 96
+      },
+      "tags": ["synth", "electronic", "loop"]
+    },
+    {
+      "id": "midi-006",
+      "title": "EDM Build Drop",
+      "filename": "edm-build.mid",
+      "category": {
+        "type": "arrangement",
+        "genre": "electronic",
+        "key": "F minor",
+        "time_signature": "4/4",
+        "complexity": "advanced",
+        "tempo": "fast"
+      },
+      "analysis": {
+        "estimatedTempo": 128,
+        "length": 48,
+        "track_count": 4,
+        "note_count": 180
+      },
+      "tags": ["edm", "build", "drop"]
+    },
+    {
+      "id": "midi-007",
+      "title": "Jazz ii-V-I in Bb",
+      "filename": "jazz-251-bb.mid",
+      "category": {
+        "type": "progression",
+        "genre": "jazz",
+        "key": "Bb major",
+        "time_signature": "4/4",
+        "complexity": "intermediate",
+        "tempo": "moderate"
+      },
+      "analysis": {
+        "estimatedTempo": 100,
+        "length": 16,
+        "track_count": 2,
+        "note_count": 56
+      },
+      "tags": ["jazz", "251", "piano"]
+    },
+    {
+      "id": "midi-008",
+      "title": "Bossa Nova Pattern",
+      "filename": "bossa-nova.mid",
+      "category": {
+        "type": "groove",
+        "genre": "jazz",
+        "key": "F major",
+        "time_signature": "4/4",
+        "complexity": "advanced",
+        "tempo": "moderate"
+      },
+      "analysis": {
+        "estimatedTempo": 120,
+        "length": 20,
+        "track_count": 3,
+        "note_count": 88
+      },
+      "tags": ["bossa", "guitar", "latin"]
+    },
+    {
+      "id": "midi-009",
+      "title": "Hip-Hop Beat Pattern",
+      "filename": "hiphop-beat.mid",
+      "category": {
+        "type": "groove",
+        "genre": "hiphop",
+        "key": "C minor",
+        "time_signature": "4/4",
+        "complexity": "beginner",
+        "tempo": "slow"
+      },
+      "analysis": {
+        "estimatedTempo": 90,
+        "length": 8,
+        "track_count": 2,
+        "note_count": 40
+      },
+      "tags": ["hiphop", "drums", "808"]
+    },
+    {
+      "id": "midi-010",
+      "title": "Minuet in G Fragment",
+      "filename": "minuet-g.mid",
+      "category": {
+        "type": "classical",
+        "genre": "classical",
+        "key": "G major",
+        "time_signature": "3/4",
+        "complexity": "beginner",
+        "tempo": "moderate"
+      },
+      "analysis": {
+        "estimatedTempo": 96,
+        "length": 24,
+        "track_count": 1,
+        "note_count": 72
+      },
+      "tags": ["classical", "piano", "baroque"]
+    },
+    {
+      "id": "midi-011",
+      "title": "String Quartet Theme",
+      "filename": "string-quartet.mid",
+      "category": {
+        "type": "classical",
+        "genre": "classical",
+        "key": "D major",
+        "time_signature": "4/4",
+        "complexity": "advanced",
+        "tempo": "moderate"
+      },
+      "analysis": {
+        "estimatedTempo": 88,
+        "length": 40,
+        "track_count": 4,
+        "note_count": 210
+      },
+      "tags": ["strings", "quartet", "orchestral"]
+    },
+    {
+      "id": "midi-012",
+      "title": "Pop Ballad Verse",
+      "filename": "pop-ballad.mid",
+      "category": {
+        "type": "progression",
+        "genre": "pop",
+        "key": "G major",
+        "time_signature": "4/4",
+        "complexity": "intermediate",
+        "tempo": "slow"
+      },
+      "analysis": {
+        "estimatedTempo": 68,
+        "length": 28,
+        "track_count": 2,
+        "note_count": 52
+      },
+      "tags": ["pop", "ballad", "piano"]
+    }
+  ]
+}

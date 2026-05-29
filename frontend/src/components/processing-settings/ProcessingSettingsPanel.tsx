@@ -14,6 +14,9 @@ import { SplitActions } from "./SplitActions";
 import { UsageTokenRow } from "./UsageTokenRow";
 import { SplitErrorAlert } from "./SplitErrorAlert";
 import { NewSplitConfirmDialog } from "./NewSplitConfirmDialog";
+import { ExpandStemsAction } from "./ExpandStemsAction";
+import { SharePreviewButton } from "../SharePreviewButton";
+import { SegmentedControl } from "../ui/SegmentedControl";
 
 export function ProcessingSettingsPanel({
   sourceMode,
@@ -59,6 +62,10 @@ export function ProcessingSettingsPanel({
   isCollapsed = false,
   onNewSplit,
   onOpenWaitingGame,
+  canExpandToFourStems = false,
+  isExpanding = false,
+  onExpandToFourStems,
+  splitJobId = null,
 }: ProcessingSettingsPanelProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const collapse = collapseMotion(reduceMotion);
@@ -127,6 +134,9 @@ export function ProcessingSettingsPanel({
               <span className="shrink-0 rounded-full border border-success-400/40 bg-success-500/15 px-sm py-0.5 text-meta font-semibold uppercase tracking-wide text-success-200">
                 {splitResultStemsLength} stems ready
               </span>
+              {splitJobId && (
+                <SharePreviewButton jobId={splitJobId} className="shrink-0" />
+              )}
               {onNewSplit && (
                 <button
                   type="button"
@@ -179,40 +189,17 @@ export function ProcessingSettingsPanel({
         </div>
       )}
 
-      {/* ── Mode toggle ── */}
-      <div
-        data-testid="source-mode-toggle"
-        className="mb-md flex w-fit rounded-xl border border-border bg-muted p-0.5"
-      >
-        <button
-          data-testid="source-mode-split"
-          type="button"
-          onClick={() => onSourceModeChange("split")}
-          aria-pressed={sourceMode === "split" ? "true" : "false"}
-          className={cn(
-            "tap-feedback min-h-[44px] rounded-lg px-md py-xs text-xs font-medium transition-[color,background-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
-            sourceMode === "split"
-              ? "bg-primary-500/20 text-primary-200"
-              : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-          )}
-        >
-          Split
-        </button>
-        <button
-          data-testid="source-mode-load"
-          type="button"
-          onClick={() => onSourceModeChange("load")}
-          aria-pressed={sourceMode === "load" ? "true" : "false"}
-          className={cn(
-            "tap-feedback min-h-[44px] rounded-lg px-md py-xs text-xs font-medium transition-[color,background-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]",
-            sourceMode === "load"
-              ? "bg-primary-500/20 text-primary-200"
-              : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-          )}
-        >
-          Load
-        </button>
-      </div>
+      <SegmentedControl
+        testId="source-mode-toggle"
+        aria-label="Source mode"
+        value={sourceMode}
+        onChange={onSourceModeChange}
+        options={[
+          { value: "split", label: "Split", testId: "source-mode-split" },
+          { value: "load", label: "Load", testId: "source-mode-load" },
+        ]}
+        className="mb-md"
+      />
 
       {/* ── Upload drop zone (split mode) ── */}
       {sourceMode === "split" && (
@@ -234,82 +221,78 @@ export function ProcessingSettingsPanel({
       <AnimatePresence>
         {(uploadedFile != null || sourceMode === "load") && (
           <motion.div key="settings-revealed" {...collapse}>
-            <div className="flex flex-wrap items-center gap-sm lg:flex-nowrap">
-
-        {/* Load mode zone */}
-        {sourceMode === "load" && (
-          <LoadStemsZone
-            loadedStemCount={loadedStemCount}
-            loadStemsInputRef={loadStemsInputRef}
-            onLoadStems={onLoadStems}
-            loadedStems={loadedStems}
-            onRemoveLoadedStem={onRemoveLoadedStem}
-            isDragging={isDragging}
-            onSetIsDragging={onSetIsDragging}
-            loadExpanded={loadExpanded}
-            onToggleLoadExpanded={() => setLoadExpanded((v) => !v)}
-          />
-        )}
-
-        {/* Quality selector */}
-        <QualitySelector
-          quality={quality}
-          onQualityChange={onQualityChange}
-          canChoosePaidQuality={canChoosePaidQuality}
-          isSplitting={isSplitting}
-          splitResultStemsLength={splitResultStemsLength}
-        />
-
-        {/* Stem count */}
-        <StemCountSelector
-          requestedStemMode={requestedStemMode}
-          onStemModeChange={setRequestedStemMode}
-          canSplitFourStems={canSplitFourStems}
-          isSplitting={isSplitting}
-          splitResultStemsLength={splitResultStemsLength}
-          onUpgradeToPremium={onUpgradeToPremium}
-        />
-
-        {/* Split actions (split mode only) */}
-        {sourceMode === "split" && (
-          <>
-            <SplitActions
-              uploadedFile={uploadedFile}
-              requestedStemMode={requestedStemMode}
-              isSample={isSample}
-              onToggleSample={() => setIsSample((v) => !v)}
-              onSplit={onSplit}
-              isSplitting={isSplitting}
-              splitProgress={splitProgress}
-              uploadProgress={uploadProgress}
-              isUploading={isUploading}
-              queuePosition={queuePosition}
-              splitElapsedSeconds={splitElapsedSeconds}
-              splitStageLabel={splitStageLabel}
-              uploadDurationSec={uploadDurationSec}
-              splitResultStemsLength={splitResultStemsLength}
-              canUseBatchQueue={canUseBatchQueue}
-              onAddToQueue={onAddToQueue}
-              onOpenWaitingGame={onOpenWaitingGame}
-              hideSampleToggle={false}
-            />
-          </>
-        )}
-            </div>{/* end flex row */}
-
-            {sourceMode === "split" && splitResultStemsLength > 0 && (
-              <p className="mt-sm rounded-xl border border-border bg-muted px-md py-sm text-xs leading-relaxed text-muted-foreground">
-          <span className="font-medium text-secondary-foreground">
-            This upload is finished.
-          </span>{" "}
-          To separate a different track, use{" "}
-          <span className="text-secondary-foreground">Change</span> or{" "}
-          <span className="text-secondary-foreground">Clear</span> above and upload a new
-          file — that starts a new job.
-              </p>
+            {sourceMode === "load" ? (
+              <LoadStemsZone
+                loadedStemCount={loadedStemCount}
+                loadStemsInputRef={loadStemsInputRef}
+                onLoadStems={onLoadStems}
+                loadedStems={loadedStems}
+                onRemoveLoadedStem={onRemoveLoadedStem}
+                isDragging={isDragging}
+                onSetIsDragging={onSetIsDragging}
+                loadExpanded={loadExpanded}
+                onToggleLoadExpanded={() => setLoadExpanded((v) => !v)}
+              />
+            ) : (
+              <div className="grid gap-sm lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)] lg:items-end">
+                <QualitySelector
+                  quality={quality}
+                  onQualityChange={onQualityChange}
+                  canChoosePaidQuality={canChoosePaidQuality}
+                  isSplitting={isSplitting}
+                  splitResultStemsLength={splitResultStemsLength}
+                />
+                <StemCountSelector
+                  requestedStemMode={requestedStemMode}
+                  onStemModeChange={setRequestedStemMode}
+                  canSplitFourStems={canSplitFourStems}
+                  isSplitting={isSplitting}
+                  splitResultStemsLength={splitResultStemsLength}
+                  onUpgradeToPremium={onUpgradeToPremium}
+                />
+                <SplitActions
+                  uploadedFile={uploadedFile}
+                  requestedStemMode={requestedStemMode}
+                  isSample={isSample}
+                  onToggleSample={() => setIsSample((v) => !v)}
+                  onSplit={onSplit}
+                  isSplitting={isSplitting}
+                  splitProgress={splitProgress}
+                  uploadProgress={uploadProgress}
+                  isUploading={isUploading}
+                  queuePosition={queuePosition}
+                  splitElapsedSeconds={splitElapsedSeconds}
+                  splitStageLabel={splitStageLabel}
+                  uploadDurationSec={uploadDurationSec}
+                  splitResultStemsLength={splitResultStemsLength}
+                  canUseBatchQueue={canUseBatchQueue}
+                  onAddToQueue={onAddToQueue}
+                  onOpenWaitingGame={onOpenWaitingGame}
+                  hideSampleToggle={false}
+                />
+              </div>
             )}
 
-            {showUsageRow && sourceMode === "split" && (
+            {sourceMode === "split" &&
+              splitResultStemsLength > 0 &&
+              onExpandToFourStems && (
+                <details className="mt-sm rounded-xl border border-border/60 bg-muted/30 px-sm py-xs">
+                  <summary className="cursor-pointer px-xs py-xs text-xs font-medium text-muted-foreground hover:text-foreground">
+                    More options
+                  </summary>
+                  <div className="px-xs pb-xs pt-sm">
+                    <ExpandStemsAction
+                      canExpand={canExpandToFourStems}
+                      isExpanding={isExpanding}
+                      splitResultStemsLength={splitResultStemsLength}
+                      onExpand={onExpandToFourStems}
+                      onUpgrade={onUpgradeToPremium}
+                    />
+                  </div>
+                </details>
+              )}
+
+            {showUsageRow && sourceMode === "split" ? (
               <UsageTokenRow
                 usageBalance={usageBalance}
                 usageLoading={usageLoading}
@@ -317,7 +300,7 @@ export function ProcessingSettingsPanel({
                 isSample={isSample}
                 showBalance={false}
               />
-            )}
+            ) : null}
           </motion.div>
         )}
       </AnimatePresence>

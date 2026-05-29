@@ -7,6 +7,7 @@ import { AlertCircle, Check, Download, Layers, Loader2, Music, RefreshCw, X } fr
 import { useCallback, useState } from "react";
 import { useMidiConvert } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
+import { WorkflowStepper } from "../ui/WorkflowStepper";
 import { MidiSourceSelector } from "./MidiSourceSelector";
 import { MidiSourcePreview } from "./MidiSourcePreview";
 import { MidiConvertSettings } from "./MidiConvertSettings";
@@ -14,6 +15,7 @@ import { MidiConvertProgress } from "./MidiConvertProgress";
 import { MidiResultPanel } from "./MidiResultPanel";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
+import { MidiExportDashboard } from "../library/MidiExportDashboard";
 import "./midi-tokens.css";
 
 export interface MidiConvertPanelProps {
@@ -67,6 +69,9 @@ export function MidiConvertPanel({
     triggerBatchConvert,
     retryBatchJob,
     clearBatch,
+    activeMidiJobId,
+    jobToken,
+    cancelConvert,
   } = useMidiConvert();
 
   const canConvert =
@@ -91,6 +96,22 @@ export function MidiConvertPanel({
     usageBalance !== null &&
     usageBalance >= batchCost;
   const isBatchInProgress = isBatchMode && batchJobs.some((j) => j.status === "converting" || j.status === "pending");
+
+  const workflowActiveId = result
+    ? "result"
+    : isConverting || isUploading || isBatchInProgress
+      ? "convert"
+      : hasSourceSelected
+        ? "settings"
+        : "source";
+  const workflowCompleted = [
+    ...(hasSourceSelected ? ["source"] : []),
+    ...(hasSourceSelected && !isConverting && !isUploading ? ["settings"] : []),
+    ...(result || batchJobs.some((j) => j.status === "completed")
+      ? ["convert"]
+      : []),
+    ...(result ? ["result"] : []),
+  ];
 
   // Export ZIP state
   const [isExportingZip, setIsExportingZip] = useState(false);
@@ -250,21 +271,9 @@ export function MidiConvertPanel({
     }
   }, [batchJobs, settings.quantizeBpm, setError]);
 
-  return (
-    <div data-testid="midi-convert-panel" className="midi-rack-panel">
-      {/* Header */}
-      <div className="midi-rack-panel__header">
-        <span className="midi-rack-panel__header-dot" aria-hidden />
-        <span className="midi-rack-panel__header-label">Audio to MIDI</span>
-        <span className="ml-auto shrink-0 rounded-full border border-accent-midi/35 bg-accent-midi/10 px-sm py-1 text-meta font-bold uppercase tracking-wider text-accent-midi-200">
-          MIDI Convert
-        </span>
-      </div>
-
-      {/* Body */}
-      <div className="midi-rack-panel__body">
-        {/* Source selection */}
-        <MidiSourceSelector
+  const sourceAndSettings = (
+    <>
+      <MidiSourceSelector
         sourceMode={sourceMode}
         onSourceModeChange={setSourceMode}
         selectedStem={selectedStem}
@@ -289,15 +298,46 @@ export function MidiConvertPanel({
         splitStemUrl={selectedSplitStemUrl}
         loadedStemUrl={selectedLoadedStem?.url ?? null}
         loadedStemLabel={selectedLoadedStem?.label}
+        midiJobId={activeMidiJobId}
         disabled={isConverting || isUploading}
       />
 
-      {/* Settings */}
       <MidiConvertSettings
         settings={settings}
         onUpdate={updateSettings}
         disabled={isConverting || isUploading}
       />
+    </>
+  );
+
+  return (
+    <div data-testid="midi-convert-panel" className="midi-workspace flex flex-col gap-md">
+      <WorkflowStepper
+        steps={[
+          { id: "source", label: "Source" },
+          { id: "settings", label: "Settings" },
+          { id: "convert", label: "Convert" },
+          { id: "result", label: "Result" },
+        ]}
+        activeStepId={workflowActiveId}
+        completedStepIds={workflowCompleted}
+      />
+
+      {result && !isConverting ? (
+        <details className="group rounded-lg border border-border/50 bg-chrome/20">
+          <summary className="cursor-pointer list-none px-sm py-sm text-sm font-medium text-secondary-foreground [&::-webkit-details-marker]:hidden">
+            <span className="inline-flex items-center gap-xs">
+              Source and conversion settings
+              <span className="text-muted-foreground transition-transform group-open:rotate-90">
+                ›
+              </span>
+            </span>
+          </summary>
+          <div className="border-t border-border/40 px-sm pb-sm pt-sm">{sourceAndSettings}</div>
+        </details>
+      ) : (
+        <div className="midi-workspace-section">{sourceAndSettings}</div>
+      )}
 
       {/* Usage info */}
       {!subscriptionInactive && !usageLoading && (
@@ -327,12 +367,10 @@ export function MidiConvertPanel({
       {/* Convert button */}
       <div className="flex flex-wrap items-center gap-sm">
         {subscriptionInactive ? (
-          <div className="midi-param-slider rounded-lg border border-primary-400/20 bg-primary-500/5">
-            <p className="text-sm font-medium text-primary-100">
-              Subscribe to unlock MIDI conversion
-            </p>
-            <p className="text-xs text-primary-100/60">
-              All paid plans include access to Audio-to-MIDI. Each conversion uses 1 token from your balance.
+          <div className="midi-callout">
+            <p className="midi-callout__title">Subscribe to unlock MIDI conversion</p>
+            <p className="midi-callout__body">
+              Paid plans include Audio-to-MIDI. Each conversion uses 1 token from your balance.
             </p>
           </div>
         ) : (
@@ -385,7 +423,7 @@ export function MidiConvertPanel({
 
       {/* Batch progress UI */}
       {isBatchMode && batchJobs.length > 0 && (
-        <div className="midi-param-slider">
+        <div className="midi-batch-panel">
           {/* Progress summary */}
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-foreground">
@@ -526,6 +564,7 @@ export function MidiConvertPanel({
         uploadProgress={uploadProgress}
         progress={progress}
         statusMessage={statusMessage}
+        onCancel={cancelConvert}
       />
 
       {/* Error */}
@@ -547,17 +586,27 @@ export function MidiConvertPanel({
       )}
 
       {/* Result */}
-      {result && !isConverting && (
+      {result && !isConverting ? (
         <MidiResultPanel
           result={result}
           onDownload={downloadMidi}
           onNewConversion={handleClear}
+          jobId={activeMidiJobId}
+          jobToken={jobToken}
           onApplySuggestedBpm={(bpm) => {
             updateSettings({ quantizeBpm: bpm, quantize: true });
           }}
         />
-      )}
-      </div>
+      ) : null}
+
+      <details className="rounded-lg border border-border/50 bg-chrome/15">
+        <summary className="cursor-pointer px-sm py-sm text-sm font-medium text-muted-foreground hover:text-secondary-foreground">
+          Export history and batch jobs
+        </summary>
+        <div className="border-t border-border/40 p-sm">
+          <MidiExportDashboard />
+        </div>
+      </details>
     </div>
   );
 }

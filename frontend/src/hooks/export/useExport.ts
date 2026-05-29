@@ -6,6 +6,7 @@
 import { useCallback, useRef, useState } from "react";
 import JSZip from "jszip";
 import { fetchStemWavAsBlob, serverExportMasterWav } from "../../api";
+import { renderMasteredWav } from "../../api/master";
 import { SERVER_EXPORT_ENABLED } from "../../config";
 import type { StemResult } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
@@ -143,6 +144,7 @@ export function useExport(): UseExportReturn {
       if (options.target === "master" || options.target === "all") {
         const normalize = options.normalize;
         const format = options.format;
+        const masteringPresetId = options.masteringPresetId?.trim() || null;
 
         const canTryServer =
           SERVER_EXPORT_ENABLED &&
@@ -153,7 +155,17 @@ export function useExport(): UseExportReturn {
 
         let curBlob: Blob | undefined;
         try {
-          if (format === "mp3") {
+          if (
+            masteringPresetId &&
+            format === "wav" &&
+            typeof serverExportJobId === "string" &&
+            serverExportJobId.length > 0
+          ) {
+            curBlob = await renderMasteredWav({
+              jobId: serverExportJobId,
+              presetId: masteringPresetId,
+            });
+          } else if (format === "mp3") {
             const wavB = await renderClientMasterWavBlob({ normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
             curBlob = encodeWavToMp3(await wavB.arrayBuffer());
           } else if (canTryServer) {

@@ -57,6 +57,8 @@ import { EditorMainView } from "./app/editor-main-view.component";
 import { SessionSidebar } from "./app/session-sidebar.component";
 import { SpeechCleanPage } from "./pages/SpeechCleanPage";
 import { MidiConvertPage } from "./pages/MidiConvertPage";
+import { LibraryPage } from "./pages/LibraryPage";
+import { TunerPage } from "./pages/TunerPage";
 import { useHeaderVisibility } from "./hooks/useHeaderVisibility";
 
 import { useAudio } from "./contexts/AudioContext";
@@ -165,6 +167,7 @@ export function App() {
     usageLoading,
     stemQualityOptions,
     canSplitFourStems,
+    canExpandToFourStems,
     canUsePremiumStemQualities,
     canUseBatchQueue,
   } = useAppSubscription({
@@ -214,11 +217,13 @@ export function App() {
     handleLoadStems,
     removeLoadedStem,
     triggerSplit,
+    triggerExpand,
   } = useStemSplitting({
     subscription,
     stopPreview: audio.stopPreview,
     splitQuality,
     canSplitFourStems,
+    canExpandToFourStems,
     canUsePremiumStemQualities,
   });
 
@@ -264,25 +269,6 @@ export function App() {
       stemStates,
       uploadName,
     });
-
-  const handleSuccessfulExport = useCallback(() => {
-    setExportNotice("Download started — check your browser's downloads folder.");
-    setHasCompletedFirstExport(true);
-  }, [setExportNotice, setHasCompletedFirstExport]);
-
-  const handleExportFromModal = useExportModalAction({
-    handleExportWithOptions,
-    stemBuffers,
-    mixStems,
-    stemStates,
-    uploadName,
-    setSplitError,
-    closeExportModal: () => closeModal("export"),
-    loadedStemCount: loadedStems.length,
-    splitJobId,
-    splitResultStems,
-    onSuccessfulExport: handleSuccessfulExport,
-  });
 
   // ── Mixer workspace ───────────────────────────────────────────────────────
   const {
@@ -366,6 +352,25 @@ export function App() {
     splitJobId,
     onResetStemMediaState: resetStemMediaState,
     onFocusMixer: focusMixerSection,
+  });
+
+  const handleSuccessfulExport = useCallback(() => {
+    setExportNotice("Download started — check your browser's downloads folder.");
+    setHasCompletedFirstExport(true);
+  }, [setExportNotice, setHasCompletedFirstExport]);
+
+  const handleExportFromModal = useExportModalAction({
+    handleExportWithOptions,
+    stemBuffers,
+    mixStems,
+    stemStates,
+    uploadName,
+    setSplitError,
+    closeExportModal: () => closeModal("export"),
+    loadedStemCount: loadedStems.length,
+    splitJobId,
+    splitResultStems,
+    onSuccessfulExport: handleSuccessfulExport,
   });
 
   useWaveformCompute(stemBuffers, stemEntries, setStemWaveformsState);
@@ -544,6 +549,7 @@ export function App() {
         exportAllowStemBundleTargets={exportAllowStemBundleTargets}
         isSample={isSample}
         exportTrackDurationSec={exportTrackDurationSec}
+        splitJobId={splitJobId}
         handleLoadPreset={handleLoadPreset}
         mixerState={mixerState}
         trimMap={trimMap}
@@ -566,7 +572,10 @@ export function App() {
       />
 
       <AppBackgroundOrbs />
-      <SessionSidebar />
+      <SessionSidebar
+        hasCompletedFirstExport={hasCompletedFirstExport}
+        onViewPlans={() => setActiveView("pricing")}
+      />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1600px] flex-col gap-lg px-md py-md sm:px-lg lg:px-xl">
         <EditorHeader
@@ -590,6 +599,16 @@ export function App() {
           usageLoading={usageLoading}
           openFeedback={() => emit("open-feedback")}
           openOnboarding={() => emit("open-onboarding")}
+          editorWorkflow={
+            activeView === "editor"
+              ? {
+                  uploadedFile,
+                  isSplitting,
+                  mixStemsLength: mixStems.length,
+                  isExporting,
+                }
+              : null
+          }
         />
 
         <main
@@ -636,6 +655,21 @@ export function App() {
               checkoutNotice={checkoutNotice}
               onViewPlans={() => setActiveView("pricing")}
             />
+          ) : activeView === "library" ? (
+            <LibraryPage
+              reduceMotion={reduceMotion}
+              subscription={subscription}
+              checkoutNotice={checkoutNotice}
+              onViewPlans={() => setActiveView("pricing")}
+            />
+          ) : activeView === "tuner" ? (
+            <TunerPage
+              reduceMotion={reduceMotion}
+              subscription={subscription}
+              checkoutNotice={checkoutNotice}
+              onViewPlans={() => setActiveView("pricing")}
+              onGoToEditor={() => setActiveView("editor")}
+            />
           ) : (
             <EditorMainView
               reduceMotion={reduceMotion}
@@ -649,7 +683,6 @@ export function App() {
                 isSplitting,
                 mixStemsLength: mixStems.length,
                 isExporting,
-                onViewPlans: () => setActiveView("pricing"),
               }}
               processingProps={{
                 sourceMode,
@@ -708,6 +741,10 @@ export function App() {
                 estimatedSplitTokens,
                 isCollapsed: splitResultStems.length > 0 && !isSplitting,
                 onNewSplit: handleClearUpload,
+                canExpandToFourStems,
+                isExpanding,
+                onExpandToFourStems: () => void triggerExpand(),
+                splitJobId,
               }}
               mixerProps={{
                 mixerSectionRef,
@@ -738,6 +775,7 @@ export function App() {
                 isComparingExport,
                 onCompareExport,
                 exportCompareSummary,
+                onLoadGenrePreset: handleLoadPreset,
               }}
             />
           )}

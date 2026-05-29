@@ -37,6 +37,7 @@ import { API_BASE } from "../config";
 import { authHeaders } from "../api/auth";
 import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
 import { MyStemsPageSkeleton } from "./MyStemsPageSkeleton";
+import { SharePreviewButton } from "./SharePreviewButton";
 import { useToast } from "../store/toastStore";
 
 // ---------------------------------------------------------------------------
@@ -460,7 +461,7 @@ export function MyStemsPage({
                             </span>
                           )}
                           {hasMidi && (
-                            <span className="rounded-full bg-purple-500/15 px-xs py-0.5 text-xs font-medium text-purple-400">
+                            <span className="rounded-full bg-accent-midi/15 px-xs py-0.5 text-xs font-medium text-accent-midi-300">
                               MIDI
                             </span>
                           )}
@@ -532,7 +533,7 @@ export function MyStemsPage({
                             {/* MIDI Files Section */}
                             {hasMidi && (
                               <div className="mt-sm">
-                                <h4 className="mb-xs flex items-center gap-xs text-xs font-medium text-purple-400">
+                                <h4 className="mb-xs flex items-center gap-xs text-xs font-medium text-accent-midi-400">
                                   <Music className="h-3.5 w-3.5" />
                                   MIDI Files
                                 </h4>
@@ -544,7 +545,7 @@ export function MyStemsPage({
                                     return (
                                       <li
                                         key={midi.job_id}
-                                        className="flex items-center justify-between gap-sm rounded-xl bg-purple-500/5 px-sm py-sm sm:px-md"
+                                        className="flex items-center justify-between gap-sm rounded-xl bg-accent-midi-500/5 px-sm py-sm sm:px-md"
                                       >
                                         <div className="min-w-0 flex-1">
                                           <span className="block truncate text-sm text-foreground capitalize">
@@ -559,7 +560,7 @@ export function MyStemsPage({
                                             handleDownloadMidi(midi.job_id, midi.stem_name)
                                           }
                                           disabled={midiDownloading || midiUnavailable}
-                                          className="flex h-9 shrink-0 items-center gap-xs rounded-lg bg-purple-500/20 px-sm text-xs font-medium text-purple-400 transition hover:bg-purple-500/30 disabled:opacity-50"
+                                          className="flex h-9 shrink-0 items-center gap-xs rounded-lg bg-accent-midi-500/20 px-sm text-xs font-medium text-accent-midi-400 transition hover:bg-accent-midi-500/30 disabled:opacity-50"
                                           aria-label={`Download MIDI for ${midi.stem_name || "audio"}`}
                                         >
                                           {midiDownloading ? (
@@ -623,6 +624,10 @@ export function MyStemsPage({
                                     )}
                                   </button>
                                 )}
+                                <SharePreviewButton
+                                  jobId={job.job_id}
+                                  className="w-full sm:w-auto"
+                                />
                               </div>
                             )}
 

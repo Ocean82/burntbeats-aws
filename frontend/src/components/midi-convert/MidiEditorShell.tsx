@@ -21,7 +21,7 @@ export function MidiEditorShell({
 }: MidiEditorShellProps) {
   return (
     <div className="midi-editor-root">
-      <div className="midi-editor-shell">
+      <div className="midi-editor-shell midi-editor-shell--wide">
         {transport}
         <div className="midi-editor-panel">
           {toolbar}

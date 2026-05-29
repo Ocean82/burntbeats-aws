@@ -16,6 +16,8 @@ import {
  *   canExpandToFourStems: boolean;
  *   canUsePremiumStemQualities: boolean;
  *   canUseBatchQueue: boolean;
+ *   canDownloadFullPreview: boolean;
+ *   canShareCleanPreview: boolean;
  * }} StemEntitlementCapabilities
  *
  * @typedef {{
@@ -30,6 +32,8 @@ const PREMIUM_CAPABILITIES = Object.freeze({
   canExpandToFourStems: true,
   canUsePremiumStemQualities: true,
   canUseBatchQueue: true,
+  canDownloadFullPreview: true,
+  canShareCleanPreview: true,
 });
 
 const LIMITED_CAPABILITIES = Object.freeze({
@@ -37,6 +41,8 @@ const LIMITED_CAPABILITIES = Object.freeze({
   canExpandToFourStems: false,
   canUsePremiumStemQualities: false,
   canUseBatchQueue: false,
+  canDownloadFullPreview: false,
+  canShareCleanPreview: false,
 });
 
 const PREMIUM_STEM_QUALITIES = new Set(["quality"]);

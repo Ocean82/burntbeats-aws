@@ -13,7 +13,7 @@ from midi_service.services.midi_artifact_analysis import analyze_midi_artifact
 from midi_service.services.model_runtime import get_model_path
 from midi_service.services.storage import OUTPUT_FILENAME, write_metadata, write_progress
 
-logger = logging.getLogger(__name__)
+from midi_service.job_queue import is_job_cancelled
 
 
 def build_metadata_payload(
@@ -97,6 +97,9 @@ def run_conversion_sync(
     quantize_bpm = max(40, min(300, quantize_bpm))
 
     t_start = time.perf_counter()
+
+    if is_job_cancelled(job_id):
+        raise RuntimeError("Job cancelled")
 
     _model_output, midi_data, note_events = predict(
         str(input_path),

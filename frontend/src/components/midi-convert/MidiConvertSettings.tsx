@@ -60,17 +60,10 @@ export function MidiConvertSettings({
   };
 
   return (
-    <div className="midi-rack-panel">
-      {/* Header */}
-      <div className="midi-rack-panel__header">
-        <span className="midi-rack-panel__header-dot" aria-hidden />
-        <span className="midi-rack-panel__header-label">Conversion Engine</span>
-      </div>
-
-      {/* Body */}
-      <div className="midi-rack-panel__body">
-        {/* Presets row */}
-        <div className="flex flex-wrap gap-xs px-sm pt-sm">
+    <div className="midi-inspector" data-testid="midi-convert-settings">
+      <p className="midi-inspector__title">Conversion settings</p>
+      <div className="flex flex-col gap-xs">
+        <div className="flex flex-wrap gap-xs">
           {Object.entries(PRESETS).map(([key, { label, hint }]) => (
             <button
               key={key}

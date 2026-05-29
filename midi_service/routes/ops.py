@@ -7,6 +7,8 @@ from starlette.responses import Response as StarletteResponse
 
 from midi_service.services.storage import probe_storage
 
+from midi_service.job_queue import get_last_job_completed_at
+
 from .common import get_output_dir
 
 
@@ -37,7 +39,8 @@ def build_ops_router(get_queue_depth: Callable[[], int]) -> APIRouter:
             "basic_pitch_version": basic_pitch_version,
             "last_job_completed_at": getattr(
                 request.app.state, "last_job_completed_at", None
-            ),
+            )
+            or get_last_job_completed_at(),
             "storage": storage,
             "auth": {
                 "token_required": bool(

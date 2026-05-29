@@ -2,11 +2,11 @@
  * MidiResultPanel — shows conversion results: piano roll, stats, download button.
  * Includes View/Edit toggle for the interactive MIDI note editor.
  */
-import { Download, Edit3, Eye, RotateCcw, Music, Play, Square } from "lucide-react";
+import { Download, RotateCcw, Music, Play, Square } from "lucide-react";
 import { useState } from "react";
 import type { MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
-import { cn } from "../../utils/cn";
+import { SegmentedControl } from "../ui";
 import { MidiAnalysisPanel } from "./MidiAnalysisPanel";
 import { MidiNoteEditor } from "./MidiNoteEditor";
 import { MidiPianoRoll } from "./MidiPianoRoll";
@@ -17,6 +17,8 @@ interface MidiResultPanelProps {
   onDownload: () => void;
   onNewConversion: () => void;
   onApplySuggestedBpm?: (bpm: number) => void;
+  jobId?: string | null;
+  jobToken?: string | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -30,6 +32,8 @@ export function MidiResultPanel({
   onDownload,
   onNewConversion,
   onApplySuggestedBpm,
+  jobId = null,
+  jobToken = null,
 }: MidiResultPanelProps) {
   const { isPlaying, currentTime, play, stop, isSupported } = useMidiPlayback();
   const [mode, setMode] = useState<"view" | "edit">("view");
@@ -37,43 +41,24 @@ export function MidiResultPanel({
   const suggestedBpm = result.analysis?.suggested_bpm ?? 120;
 
   return (
-    <div className="midi-param-slider">
-      <div className="flex items-center justify-between gap-sm">
+    <div className="midi-result-surface" data-testid="midi-result-panel">
+      <div className="flex flex-wrap items-center justify-between gap-sm">
         <div className="flex min-w-0 items-center gap-xs">
           <Music className="h-4 w-4 shrink-0 text-accent-midi-300" aria-hidden />
-          <h3 className="midi-param-slider__label">Conversion Complete</h3>
+          <h3 className="text-sm font-semibold text-secondary-foreground">Conversion complete</h3>
         </div>
 
-        {/* View / Edit toggle */}
         {result.pianoRollNotes.length > 0 && (
-          <div className="flex items-center gap-2xs rounded-lg border border-border bg-muted p-2xs">
-            <button
-              type="button"
-              onClick={() => setMode("view")}
-              className={cn(
-                "flex items-center gap-xs rounded-md px-sm py-1 text-xs font-medium transition",
-                mode === "view"
-                  ? "bg-accent-midi-500/25 text-accent-midi-100"
-                  : "text-muted-foreground hover:text-secondary-foreground",
-              )}
-            >
-              <Eye className="h-3 w-3" />
-              View
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("edit")}
-              className={cn(
-                "flex items-center gap-xs rounded-md px-sm py-1 text-xs font-medium transition",
-                mode === "edit"
-                  ? "bg-accent-midi-500/25 text-accent-midi-100"
-                  : "text-muted-foreground hover:text-secondary-foreground",
-              )}
-            >
-              <Edit3 className="h-3 w-3" />
-              Edit
-            </button>
-          </div>
+          <SegmentedControl
+            aria-label="Result view mode"
+            value={mode}
+            onChange={setMode}
+            testId="midi-result-mode"
+            options={[
+              { value: "view", label: "View", testId: "midi-result-mode-view" },
+              { value: "edit", label: "Edit", testId: "midi-result-mode-edit" },
+            ]}
+          />
         )}
       </div>
 
@@ -87,12 +72,15 @@ export function MidiResultPanel({
         <MidiNoteEditor
           initialNotes={result.pianoRollNotes}
           bpm={suggestedBpm}
+          jobId={jobId}
+          jobToken={jobToken}
         />
       )}
 
       {result.analysis && mode === "view" && (
         <MidiAnalysisPanel
           analysis={result.analysis}
+          fileAnalysis={result.fileAnalysis}
           onApplySuggestedBpm={onApplySuggestedBpm}
         />
       )}

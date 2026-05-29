@@ -8,6 +8,8 @@ import { midiHistoryRouter } from "./history.js";
 import { midiCleanupRouter } from "./cleanup.js";
 import { midiMergeRouter } from "./merge.js";
 import { midiExportRouter } from "./export.js";
+import { midiWaveformRouter, midiSpectrumRouter } from "./waveform.js";
+import { midiJobsRouter } from "./jobs.js";
 
 export const midiRouter = Router();
 
@@ -18,3 +20,6 @@ midiRouter.use("/history", midiHistoryRouter);
 midiRouter.use("/cleanup", midiCleanupRouter);
 midiRouter.use("/merge", midiMergeRouter);
 midiRouter.use("/export", midiExportRouter);
+midiRouter.use("/waveform", midiWaveformRouter);
+midiRouter.use("/spectrum", midiSpectrumRouter);
+midiRouter.use("/jobs", midiJobsRouter);

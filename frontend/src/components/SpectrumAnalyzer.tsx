@@ -67,7 +67,7 @@ export function SpectrumAnalyzer({
         const x = i * (barW + 1);
         const y = h - barH;
 
-        const hue = 260 + (i / barCount) * 60;
+        const hue = 25 + (i / barCount) * 35;
         const alpha = 0.4 + val * 0.6;
         ctx.fillStyle = `hsla(${hue}, 80%, 65%, ${alpha})`;
         ctx.fillRect(x, y, barW, barH);

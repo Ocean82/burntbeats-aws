@@ -30,6 +30,9 @@ import { WaveformTimeline } from "../multi-stem-editor/waveform-timeline.compone
 import { DjMixerConsole } from "./DjMixerConsole";
 import { DjTransportBar } from "./DjTransportBar";
 import { DjToolbarSettings } from "./DjToolbarSettings";
+import { SpectrumAnalyzer } from "../SpectrumAnalyzer";
+import { MixerGenreQuickApply } from "../MixerGenreQuickApply";
+import type { MixerPreset } from "../MixerPresetsModal";
 import {
   recordTimelinePerformanceSample,
 } from "../../utils/timelinePerformance";
@@ -68,8 +71,12 @@ export interface DjModeEditorProps {
   getMasterAnalyserTimeDomainData: () => Uint8Array | null;
   getMasterAnalyserTimeDomainDataLeft: () => Uint8Array | null;
   getMasterAnalyserTimeDomainDataRight: () => Uint8Array | null;
+  getMasterAnalyserFrequencyData?: () => Uint8Array | null;
+  onLoadGenrePreset?: (preset: MixerPreset) => void;
   isExporting?: boolean;
   onExport?: () => void;
+  onCompareExport?: () => void;
+  isComparingExport?: boolean;
   /** Recording state and callbacks. */
   isRecording?: boolean;
   recordingDuration?: number;
@@ -118,8 +125,12 @@ export function DjModeEditor({
   getMasterAnalyserTimeDomainData,
   getMasterAnalyserTimeDomainDataLeft,
   getMasterAnalyserTimeDomainDataRight,
+  getMasterAnalyserFrequencyData,
+  onLoadGenrePreset,
   isExporting = false,
   onExport,
+  onCompareExport,
+  isComparingExport = false,
   isRecording = false,
   recordingDuration = 0,
   onStartRecording,
@@ -267,6 +278,8 @@ export function DjModeEditor({
         isExporting={isExporting}
         exportReady={playbackReady}
         onExport={onExport}
+        onCompareExport={onCompareExport}
+        isComparingExport={isComparingExport}
         isRecording={isRecording}
         recordingDuration={recordingDuration}
         onStartRecording={onStartRecording}
@@ -310,7 +323,7 @@ export function DjModeEditor({
       {/* ── Collapsible Mixer Console ── */}
       <div className="dj-console-section overflow-visible border-t border-border/[0.08]">
         {/* Console header — always visible */}
-        <div className="flex items-center justify-between px-md py-xs bg-secondary">
+        <div className="flex flex-wrap items-center justify-between gap-sm px-md py-xs bg-secondary">
           <div className="flex items-center gap-sm">
             <button
               type="button"
@@ -322,6 +335,19 @@ export function DjModeEditor({
               Mixer Console
             </button>
           </div>
+          {onLoadGenrePreset && (
+            <MixerGenreQuickApply onApply={onLoadGenrePreset} />
+          )}
+          {getMasterAnalyserFrequencyData && (
+            <div className="hidden min-w-[140px] flex-1 sm:block lg:max-w-xs">
+              <SpectrumAnalyzer
+                getFrequencyData={getMasterAnalyserFrequencyData}
+                isPlaying={isAnalyserOutputActive}
+                height={36}
+                barCount={48}
+              />
+            </div>
+          )}
           <button
             type="button"
             onClick={() => setShowToolbarSettings((v) => !v)}

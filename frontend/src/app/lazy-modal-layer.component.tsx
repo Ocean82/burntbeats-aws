@@ -38,6 +38,7 @@ interface LazyModalLayerProps {
   exportAllowStemBundleTargets: boolean;
   isSample: boolean;
   exportTrackDurationSec: number;
+  splitJobId: string | null;
   handleLoadPreset: (preset: MixerPreset) => void;
   mixerState: Record<string, MixerState>;
   trimMap: Record<string, TrimState>;
@@ -77,6 +78,7 @@ export function LazyModalLayer({
   exportAllowStemBundleTargets,
   isSample,
   exportTrackDurationSec,
+  splitJobId,
   handleLoadPreset,
   mixerState,
   trimMap,
@@ -119,6 +121,7 @@ export function LazyModalLayer({
               allowStemBundleTargets={exportAllowStemBundleTargets}
               isSample={isSample}
               trackDurationSec={exportTrackDurationSec}
+              splitJobId={splitJobId}
             />
           </Suspense>
         ) : null}

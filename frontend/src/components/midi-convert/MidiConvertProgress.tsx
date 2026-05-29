@@ -1,7 +1,7 @@
 /**
  * MidiConvertProgress — progress bar during MIDI conversion.
  */
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 
 interface MidiConvertProgressProps {
   isConverting: boolean;
@@ -9,6 +9,7 @@ interface MidiConvertProgressProps {
   uploadProgress?: number;
   progress: number;
   statusMessage: string;
+  onCancel?: () => void;
 }
 
 export function MidiConvertProgress({
@@ -17,6 +18,7 @@ export function MidiConvertProgress({
   uploadProgress = 0,
   progress,
   statusMessage,
+  onCancel,
 }: MidiConvertProgressProps) {
   if (!isConverting && !isUploading) return null;
 
@@ -26,20 +28,37 @@ export function MidiConvertProgress({
     : statusMessage || "Processing...";
 
   return (
-    <div className="midi-param-slider">
-      <div className="midi-param-slider__header">
-        <span className="flex items-center gap-xs text-sm text-accent-midi-100/80">
+    <div className="midi-status-panel" role="status" aria-live="polite">
+      <div className="midi-status-panel__header">
+        <span className="midi-status-panel__label">
           <Loader2 className="h-4 w-4 animate-spin text-accent-midi-400" aria-hidden />
           <span>{label}</span>
         </span>
-        <span className="midi-param-slider__value">{barPercent}%</span>
+        <div className="flex items-center gap-sm">
+          <span className="midi-status-panel__percent">{barPercent}%</span>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={() => void onCancel()}
+              className="flex h-9 min-w-[44px] items-center justify-center gap-xs rounded-lg border border-border/60 px-sm text-xs font-medium text-muted-foreground transition hover:border-destructive-500/40 hover:text-destructive-200"
+              aria-label="Abandon conversion"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+              Abandon
+            </button>
+          )}
+        </div>
       </div>
-      <div className="midi-param-slider__track" role="progressbar" aria-valuenow={barPercent} aria-valuemin={0} aria-valuemax={100}>
-        <div className="midi-param-slider__groove" aria-hidden />
+      <div
+        className="midi-status-panel__meter"
+        role="progressbar"
+        aria-valuenow={barPercent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
         <div
-          className="midi-param-slider__fill"
+          className="midi-status-panel__meter-fill"
           style={{ width: `${Math.max(barPercent, 2)}%` }}
-          aria-hidden
         />
       </div>
     </div>

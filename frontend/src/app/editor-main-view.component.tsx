@@ -4,23 +4,20 @@ import type { GuidanceTarget } from "../hooks/useGuidanceSystem";
 import { cn } from "../utils/cn";
 import { SplitErrorBoundary } from "../components/ErrorBoundary";
 import { ProcessingSettingsPanel } from "../components/ProcessingSettingsPanel";
-import { PaywallBanner } from "../components/PaywallBanner";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
+import { PanelHeader } from "../components/ui";
 import { MixerWorkspace } from "./mixer-workspace.component";
 
 export interface EditorChromeProps {
   guidanceTarget: GuidanceTarget;
   guidanceRingClass: string;
-  /** Panel pointer handler for collapsing guidance pulse. */
   handleGuidancePanelInteract: React.PointerEventHandler<HTMLDivElement>;
   subscription: UseSubscriptionResult;
   checkoutNotice: string | null;
-  /** Pipeline state for breadcrumb */
   uploadedFile: File | null;
   isSplitting: boolean;
   mixStemsLength: number;
   isExporting: boolean;
-  onViewPlans?: () => void;
 }
 
 export type EditorMixerWorkspaceProps = ComponentProps<typeof MixerWorkspace>;
@@ -30,14 +27,13 @@ export type EditorProcessingProps = ComponentProps<
 >;
 
 export interface EditorMainViewProps {
-  /** @deprecated Motion is static in product; kept for call-site compatibility */
   reduceMotion?: boolean;
   chrome: EditorChromeProps;
   processingProps: EditorProcessingProps;
   mixerProps: EditorMixerWorkspaceProps;
 }
 
-/** Marquee, processing/settings rail, and mixer workspace — editor home (non-pricing) body. */
+/** Processing rail + mixer workspace inside a single forge workspace panel. */
 export function EditorMainView({
   chrome: {
     guidanceTarget,
@@ -45,126 +41,97 @@ export function EditorMainView({
     handleGuidancePanelInteract,
     subscription,
     checkoutNotice,
-    uploadedFile,
-    isSplitting,
     mixStemsLength,
-    isExporting,
-    onViewPlans,
   },
   processingProps,
   mixerProps,
 }: EditorMainViewProps) {
   const mixerReady = mixStemsLength > 0;
 
-  const processingSection = (
-    <div
+  const sourceSection = (
+    <section
+      aria-label="Source"
       onPointerDown={handleGuidancePanelInteract}
       className={cn(
-        "rounded-2xl border border-border bg-muted/20 px-lg py-md sm:px-lg",
         guidanceTarget === "source" && guidanceRingClass,
         processingProps.isSplitting && "splitting-scan-glow",
       )}
     >
-      <SplitErrorBoundary>
-        <ProcessingSettingsPanel {...processingProps} />
-        {subscription.status === "inactive" && (
-          <div className="mt-sm border-t border-border pt-sm">
-            <PaywallBanner subscription={subscription} variant="teaser" onViewPlans={onViewPlans} />
-          </div>
-        )}
-        {subscription.billingError && (
-          <div className="mt-sm rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300">
-            {subscription.billingError}
-          </div>
-        )}
-        {checkoutNotice && (
-          <div className="mt-sm rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100">
-            {checkoutNotice}
-          </div>
-        )}
-      </SplitErrorBoundary>
-    </div>
+      <PanelHeader
+        title="Source"
+        subtitle={
+          mixerReady
+            ? "Change upload or split settings"
+            : "Upload audio or load existing stems"
+        }
+      />
+      <div className="px-md pb-md sm:px-lg">
+        <SplitErrorBoundary>
+          <ProcessingSettingsPanel {...processingProps} />
+          {subscription.billingError ? (
+            <div
+              className="mt-sm rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300"
+              role="alert"
+            >
+              {subscription.billingError}
+            </div>
+          ) : null}
+          {checkoutNotice ? (
+            <div className="mt-sm rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100">
+              {checkoutNotice}
+            </div>
+          ) : null}
+        </SplitErrorBoundary>
+      </div>
+    </section>
+  );
+
+  const timelineSection = (
+    <section
+      aria-label="Timeline"
+      className={cn(
+        "border-t border-border/50",
+        guidanceTarget === "mixer" && guidanceRingClass,
+      )}
+      onPointerDown={mixerProps.onPointerDownMixer}
+    >
+      <PanelHeader
+        title="Timeline"
+        subtitle={
+          mixerReady
+            ? `${mixStemsLength} stems in the mix`
+            : "Split or load stems to open the mixer"
+        }
+      />
+      <div className="px-md pb-md sm:px-lg">
+        <MixerWorkspace {...mixerProps} embedded />
+      </div>
+    </section>
   );
 
   return (
-    <>
-      {/* Pipeline breadcrumb — shows current workflow step */}
-      <div className="flex flex-wrap items-center gap-xs text-xs text-secondary-foreground sm:text-sm">
-        <span
-          className={cn(
-            "flex items-center gap-xs rounded-full px-sm py-1.5 border transition-all",
-            !uploadedFile
-              ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
-              : "border-border bg-muted text-muted-foreground",
-          )}
-        >
-          <span
-            className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              !uploadedFile ? "bg-primary-400" : "bg-secondary",
-            )}
-          />
-          Upload
-        </span>
-        <span className="text-muted-foreground" aria-hidden>→</span>
-        <span
-          className={cn(
-            "flex items-center gap-xs rounded-full px-sm py-1.5 border transition-all",
-            isSplitting
-              ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
-              : "border-border bg-muted text-muted-foreground",
-          )}
-        >
-          <span
-            className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              isSplitting ? "bg-primary-400 animate-pulse" : "bg-secondary",
-            )}
-          />
-          Split
-        </span>
-        <span className="text-muted-foreground" aria-hidden>→</span>
-        <span
-          className={cn(
-            "flex items-center gap-xs rounded-full px-sm py-1.5 border transition-all",
-            mixStemsLength > 0 && !isExporting
-              ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
-              : "border-border bg-muted text-muted-foreground",
-          )}
-        >
-          <span
-            className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              mixStemsLength > 0 ? "bg-primary-400" : "bg-secondary",
-            )}
-          />
-          Mix & Export
-        </span>
-        {mixStemsLength > 0 && (
-          <span className="ml-1 text-xs text-success-400/80">
-            {mixStemsLength} stems ready
-          </span>
-        )}
-      </div>
-
-      <section className="flex flex-col gap-md">
-        {mixerReady ? (
-          <>
-            <MixerWorkspace {...mixerProps} />
-            <details className="rounded-2xl border border-border bg-muted/20 px-lg py-md sm:px-lg">
-              <summary className="cursor-pointer text-sm font-medium text-secondary-foreground">
-                Processing and upload options
-              </summary>
-              <div className="mt-sm">{processingSection}</div>
-            </details>
-          </>
-        ) : (
-          <>
-            {processingSection}
-            <MixerWorkspace {...mixerProps} />
-          </>
-        )}
-      </section>
-    </>
+    <div className="glass-panel ui-panel overflow-hidden rounded-2xl">
+      {mixerReady ? (
+        <>
+          {timelineSection}
+          <details className="group border-t border-border/50">
+            <summary className="cursor-pointer list-none px-md py-sm text-sm font-medium text-secondary-foreground transition hover:text-foreground sm:px-lg [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-xs">
+                Source and upload options
+                <span className="text-muted-foreground group-open:rotate-90 transition-transform">
+                  ›
+                </span>
+              </span>
+            </summary>
+            <div className="border-t border-border/40">{sourceSection}</div>
+          </details>
+        </>
+      ) : (
+        <>
+          {sourceSection}
+          {timelineSection}
+        </>
+      )}
+    </div>
   );
 }

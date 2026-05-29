@@ -61,6 +61,9 @@ vi.mock("../../hooks/useMidiConvert", () => ({
     triggerBatchConvert: vi.fn(),
     retryBatchJob: vi.fn(),
     clearBatch: vi.fn(),
+    activeMidiJobId: null,
+    jobToken: null,
+    cancelConvert: vi.fn(),
   }),
 }));
 
@@ -72,7 +75,7 @@ describe("MidiConvertPanel", () => {
   it("renders MIDI panel and convert button", () => {
     render(<MidiConvertPanel />);
     expect(screen.getByTestId("midi-convert-panel")).toBeInTheDocument();
-    expect(screen.getByText(/audio to midi/i)).toBeInTheDocument();
+    expect(screen.getByText("Source")).toBeInTheDocument();
     expect(screen.getByTestId("midi-convert-button")).toBeInTheDocument();
   });
 });

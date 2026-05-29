@@ -3,7 +3,7 @@
  * Premium/Studio: choosing 4 stems calls the API once with stems=4 (single job).
  */
 import { useCallback, useEffect, useRef } from "react";
-import { splitStems, type SplitQuality } from "../api";
+import { splitStems, expandStems, type SplitQuality } from "../api";
 import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS, isAllowedAudioFile, ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
 import { useAppStore } from "../store/appStore";
 import type { UseSubscriptionResult } from "./useSubscription";
@@ -14,6 +14,7 @@ interface UseStemSplittingArgs {
   stopPreview: () => void;
   splitQuality: SplitQuality;
   canSplitFourStems: boolean;
+  canExpandToFourStems: boolean;
   canUsePremiumStemQualities: boolean;
 }
 
@@ -22,6 +23,7 @@ export function useStemSplitting({
   stopPreview,
   splitQuality,
   canSplitFourStems,
+  canExpandToFourStems,
   canUsePremiumStemQualities,
 }: UseStemSplittingArgs) {
   const setUploadState = useAppStore((s) => s.setUploadState);
@@ -245,5 +247,74 @@ export function useStemSplitting({
     setUploadState,
   ]);
 
-  return { handleFile, handleLoadStems, removeLoadedStem, triggerSplit };
+  const triggerExpand = useCallback(async () => {
+    if (!canExpandToFourStems) {
+      setUploadState((prev) => ({
+        ...prev,
+        splitError: "Expand to 4 stems requires Premium or Studio.",
+      }));
+      return;
+    }
+    const jobId = useAppStore.getState().splitJobId;
+    if (!jobId) {
+      setUploadState((prev) => ({
+        ...prev,
+        splitError: "No split job to expand.",
+      }));
+      return;
+    }
+    stopPreview();
+    setUploadState((prev) => ({
+      ...prev,
+      isExpanding: true,
+      splitError: null,
+      splitProgress: 0,
+      splitStageLabel: "Expanding to 4 stems…",
+    }));
+    trackEvent("expand_started", { source_job_id: jobId });
+    try {
+      const res = await expandStems(jobId, splitQuality, (s) => {
+        setUploadState((prev) => ({
+          ...prev,
+          splitProgress: s.progress,
+          splitStageLabel:
+            s.progress_stage_label ?? prev.splitStageLabel ?? "Expanding…",
+        }));
+      });
+      setUploadState((prev) => ({
+        ...prev,
+        splitResultStems: res.stems,
+        splitJobId: res.job_id,
+        beatGrid: res.beat_grid ?? prev.beatGrid,
+        splitProgress: 100,
+        splitStageLabel: null,
+      }));
+      trackEvent("expand_completed", { stems_count: res.stems.length });
+    } catch (err) {
+      const errMsg =
+        err instanceof Error ? err.message : "Expand to 4 stems failed.";
+      setUploadState((prev) => ({
+        ...prev,
+        splitError: errMsg,
+        splitProgress: 0,
+        splitStageLabel: null,
+      }));
+      trackEvent("expand_failed", { error: errMsg.slice(0, 120) });
+    } finally {
+      setUploadState((prev) => ({ ...prev, isExpanding: false }));
+    }
+  }, [
+    canExpandToFourStems,
+    splitQuality,
+    stopPreview,
+    setUploadState,
+  ]);
+
+  return {
+    handleFile,
+    handleLoadStems,
+    removeLoadedStem,
+    triggerSplit,
+    triggerExpand,
+  };
 }

@@ -34,3 +34,9 @@ def test_analyze_midi_artifact_extracts_tempo_tracks_and_programs(tmp_path):
     assert analysis["time_signature"] == [4, 4]
     assert analysis["has_drums"] is False
     assert analysis["instrument_programs"] == [52]
+    assert "genre_hints" in analysis
+    assert "track_info" in analysis
+    assert "complexity_score" in analysis
+    assert "instrument_names" in analysis
+    assert analysis["instrument_names"] == ["Choir Aahs"]
+    assert analysis["track_info"][1]["instrument_name"] == "Choir Aahs"

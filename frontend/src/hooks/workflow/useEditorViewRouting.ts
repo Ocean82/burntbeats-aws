@@ -1,11 +1,20 @@
 import { useCallback } from "react";
 import { useLocation } from "wouter";
 
-export type AppView = "editor" | "speech" | "midi" | "pricing" | "my-stems";
+export type AppView =
+  | "editor"
+  | "speech"
+  | "midi"
+  | "library"
+  | "tuner"
+  | "pricing"
+  | "my-stems";
 
 function locationToView(location: string): AppView {
   if (location === "/pricing") return "pricing";
   if (location === "/my-stems") return "my-stems";
+  if (location === "/library") return "library";
+  if (location === "/tuner") return "tuner";
   if (location === "/speech") return "speech";
   if (location === "/midi") return "midi";
   return "editor";

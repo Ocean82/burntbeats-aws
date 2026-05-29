@@ -16,7 +16,7 @@ describe("VUMeter", () => {
 
     await waitFor(() => {
       const led = container.querySelector('[role="status"]');
-      expect(led?.className).toContain("bg-red-500");
+      expect(led?.className).toContain("bg-destructive-500");
     });
   });
 });

@@ -9,6 +9,7 @@ import { defaultStemState } from "../../stem-editor-state";
 import type { DjToolSlot } from "../../hooks/useDjToolbarConfig";
 import { DjChannelStrip } from "./dj-channel-strip.component";
 import { DjMasterStrip } from "./dj-master-strip.component";
+import { SectionLabel } from "../ui/SectionLabel";
 
 export interface DjMixerConsoleProps {
   stems: StemDefinition[];
@@ -67,11 +68,13 @@ export const DjMixerConsole = memo(function DjMixerConsole({
 
   return (
     <div
-      className="dj-mixer-console flex items-stretch gap-xs overflow-x-auto overflow-y-visible px-md py-sm pb-md"
+      className="dj-mixer-console flex flex-col gap-xs overflow-visible px-md py-sm pb-md"
       role="region"
       aria-label="DJ mixer console"
     >
-      {stems.map((stem) => {
+      <SectionLabel>Channels</SectionLabel>
+      <div className="flex items-stretch gap-xs overflow-x-auto overflow-y-visible">
+        {stems.map((stem) => {
         const state = stemStates[stem.id] ?? defaultStemState();
         const isActive = stem.id === activeStemId;
         const isMeterPlaying =
@@ -95,8 +98,10 @@ export const DjMixerConsole = memo(function DjMixerConsole({
           />
         );
       })}
+      </div>
       {showMaster && (
-        <>
+        <div className="flex items-stretch gap-xs overflow-x-auto border-t border-border/40 pt-sm">
+          <SectionLabel>Master</SectionLabel>
           <div className="mx-1 w-px self-stretch bg-muted" role="separator" aria-orientation="vertical" />
           <DjMasterStrip
           masterVolume={masterVolume}
@@ -112,7 +117,7 @@ export const DjMixerConsole = memo(function DjMixerConsole({
           getMasterAnalyserDataLeft={getMasterAnalyserTimeDomainDataLeft}
           getMasterAnalyserDataRight={getMasterAnalyserTimeDomainDataRight}
         />
-        </>
+        </div>
       )}
     </div>
   );

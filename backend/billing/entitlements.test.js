@@ -23,6 +23,8 @@ test("buildEntitlementState grants premium stem capabilities for premium and stu
     assert.equal(state.capabilities.canExpandToFourStems, true);
     assert.equal(state.capabilities.canUsePremiumStemQualities, true);
     assert.equal(state.capabilities.canUseBatchQueue, true);
+    assert.equal(state.capabilities.canDownloadFullPreview, true);
+    assert.equal(state.capabilities.canShareCleanPreview, true);
   }
 });
 
@@ -39,6 +41,8 @@ test("buildEntitlementState keeps usage-token basic access limited", () => {
     canExpandToFourStems: false,
     canUsePremiumStemQualities: false,
     canUseBatchQueue: false,
+    canDownloadFullPreview: false,
+    canShareCleanPreview: false,
   });
 });
 
