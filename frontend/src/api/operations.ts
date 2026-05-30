@@ -9,7 +9,7 @@ import { streamStemJobUntilDone } from "./jobStatus";
 import { uploadWithProgress, type UploadProgressEvent } from "../utils/uploadWithProgress";
 import type { SplitIntent } from "@shared/types";
 import type { SplitResponse, SplitQuality, StemJobStatus, ServerExportMasterRequest } from "./types";
-import { legacyStemsFromIntent, withIntentQuality } from "../utils/splitIntent";
+import { withIntentQuality } from "../utils/splitIntent";
 
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(import.meta.env.VITE_SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 

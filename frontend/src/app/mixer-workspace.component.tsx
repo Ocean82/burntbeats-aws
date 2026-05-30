@@ -72,6 +72,7 @@ export function MixerWorkspace({
   const { stemStates, stemBuffers } = useWorkflow();
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const beatGrid = useAppStore((s) => s.beatGrid);
+  const setPersistedMasterLimiterEnabled = useAppStore((s) => s.setMasterLimiterEnabled);
   const { undoToast } = useUiStore();
   const { mixStems, visibleStems } = useResolvedStems();
   const { getMasterRecordingStream } = useAudioContext();
@@ -140,7 +141,7 @@ export function MixerWorkspace({
             onResetLevels={onResetLevels}
             onResetSingleStem={onResetSingleStem}
             hasStemBuffers={Object.keys(stemBuffers).length > 0}
-            stems={visibleStems as any}
+            stems={visibleStems}
             waveforms={stemWaveforms}
             durations={Object.fromEntries(
               visibleStems.map((s) => [s.id, stemBuffers[s.id]?.duration ?? 0]),
@@ -169,7 +170,10 @@ export function MixerWorkspace({
             masterVolume={audio.masterVolume}
             onMasterVolumeChange={audio.setMasterVolume}
             masterLimiterEnabled={audio.masterLimiterEnabled}
-            onMasterLimiterEnabledChange={audio.setMasterLimiterEnabled}
+            onMasterLimiterEnabledChange={(enabled) => {
+              audio.setMasterLimiterEnabled(enabled);
+              setPersistedMasterLimiterEnabled(enabled);
+            }}
             beatGrid={beatGrid}
             loopEnabled={audio.loopEnabled}
             onLoopToggle={audio.setLoopEnabled}

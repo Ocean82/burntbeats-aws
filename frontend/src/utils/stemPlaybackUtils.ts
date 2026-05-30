@@ -1,5 +1,5 @@
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
-import type { PitchTempoPlugin } from "pitch-plugin";
+import { PitchTempoPlugin } from "pitch-plugin";
 /** Mute, solo, pitch, time stretch, fade — hot-swap mix immediately when these change. */
 export function stemRoutingSignature(states: Record<string, StemEditorState>, stemIds: string[]): string {
   return stemIds

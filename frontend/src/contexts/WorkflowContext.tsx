@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 import { useHistory } from "../hooks/useHistory";
 import type { StemEditorState } from "../stem-editor-state";
 import { useAppStore } from "../store/appStore";

@@ -240,7 +240,7 @@ export function OnboardingTour({
                   onClick={prevStep}
                   disabled={currentStep === 0}
                   className={cn(
-                    "tap-feedback flex min-h-[44px] items-center gap-2xs rounded-lg px-md py-xs text-sm transition-[color,background-color,transform] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed",
+                    "tap-feedback flex min-h-[44px] items-center gap-2xs rounded-lg px-md py-xs text-sm transition-[color,background-color,transform] duration-(--motion-fast) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed",
                     currentStep === 0
                       ? "text-muted-foreground/40"
                       : "text-secondary-foreground hover:bg-muted hover:text-foreground"
@@ -273,7 +273,7 @@ export function OnboardingTour({
                 <button
                   type="button"
                   onClick={nextStep}
-                  className="tap-feedback flex min-h-[44px] items-center gap-2xs rounded-lg bg-primary px-md py-xs text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-[var(--motion-fast)] hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
+                  className="tap-feedback flex min-h-[44px] items-center gap-2xs rounded-lg bg-primary px-md py-xs text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-(--motion-fast) hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
                 >
                   {currentStep === TOUR_STEPS.length - 1 ? "Get Started" : "Next"}
                   {currentStep < TOUR_STEPS.length - 1 && <ChevronRight className="h-4 w-4" />}

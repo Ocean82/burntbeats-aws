@@ -235,8 +235,7 @@ export function MidiEditorToolbar(props: MidiEditorToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-xs">
       <div
-        className="inline-flex rounded-md border border-border p-0.5"
-        style={{ background: "var(--midi-surface-inset)" }}
+        className="midi-toolbar-tool-group inline-flex rounded-md border border-border p-0.5"
         role="toolbar"
         aria-label="Editor tools"
       >

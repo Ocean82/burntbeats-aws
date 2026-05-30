@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { StemDefinition, StemId } from "../types";
+import type { StemId } from "../../types";
 import { getStemDefinition, getLoadedStemDefinition, stemDefinitions } from "../../data/stemDefinitions";
 import { useAppStore } from "../../store/appStore";
 

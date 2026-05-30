@@ -133,27 +133,29 @@ export function MidiResultPanel({
             )}
           </button>
         )}
-        {mode === "view" && (
+        {mode === "view" && isDownloading ? (
+          <button
+            type="button"
+            disabled
+            className="midi-btn"
+            aria-busy="true"
+            aria-label="Downloading MIDI file"
+          >
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            Downloading…
+          </button>
+        ) : null}
+        {mode === "view" && !isDownloading ? (
           <button
             type="button"
             onClick={onDownload}
-            disabled={isDownloading}
             className="midi-btn"
-            aria-busy={isDownloading}
+            aria-label="Download MIDI file"
           >
-            {isDownloading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Downloading…
-              </>
-            ) : (
-              <>
-                <Download className="h-4 w-4" aria-hidden />
-                Download .mid
-              </>
-            )}
+            <Download className="h-4 w-4" aria-hidden />
+            Download .mid
           </button>
-        )}
+        ) : null}
         <button
           type="button"
           onClick={onNewConversion}

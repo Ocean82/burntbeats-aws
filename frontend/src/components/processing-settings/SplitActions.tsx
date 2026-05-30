@@ -51,7 +51,7 @@ export function SplitActions({
 }: SplitActionsProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const collapse = collapseMotion(reduceMotion);
-  const stemCount: 2 | 4 = legacyStemsFromIntent(splitIntent);
+  const stemCount: 2 | 4 = legacyStemsFromIntent(splitIntent) === "4" ? 4 : 2;
   const actionLabel = intentLabel(splitIntent);
   const progressCopy = useMemo(
     () =>

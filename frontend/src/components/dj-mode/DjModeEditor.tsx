@@ -147,6 +147,7 @@ export function DjModeEditor({
   const [showBeatGrid, setShowBeatGrid] = useState(false);
   const [showToolbarSettings, setShowToolbarSettings] = useState(false);
   const [activePanel, setActivePanel] = useState<StemProcessingPanelId | null>(null);
+  const effectiveActivePanel = playbackReady ? activePanel : null;
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
     stems[0]?.id ?? null,
   );
@@ -218,10 +219,6 @@ export function DjModeEditor({
   const activeState = activeStem
     ? stemStates[activeStem.id] ?? defaultStemState()
     : defaultStemState();
-
-  useEffect(() => {
-    if (!playbackReady) setActivePanel(null);
-  }, [playbackReady]);
 
   const maxDuration = useMemo(
     () => Math.max(...stems.map((s) => durations[s.id] ?? 0), 0),
@@ -309,7 +306,7 @@ export function DjModeEditor({
       {/* ── Stem processing tools (pitch / EQ / time / FX) ── */}
       <div className="flex flex-wrap items-center gap-xs border-b border-border/[0.06] bg-chrome px-sm py-xs">
         <StemProcessingToolbar
-          activePanel={activePanel}
+          activePanel={effectiveActivePanel}
           playbackReady={playbackReady}
           onPanelChange={setActivePanel}
         />
@@ -321,9 +318,9 @@ export function DjModeEditor({
         className="dj-waveform-section relative flex min-h-0 flex-1 flex-col overflow-hidden bg-chrome px-sm py-xs touch-none"
       >
         <TimelineRuler ticks={ticks} formatTime={formatTime} />
-        {activePanel && activeStem ? (
+        {effectiveActivePanel && activeStem ? (
           <StemProcessingPanel
-            activePanel={activePanel}
+            activePanel={effectiveActivePanel}
             stems={stems}
             activeStem={activeStem}
             activeState={activeState}
@@ -338,7 +335,7 @@ export function DjModeEditor({
         <div
           className={cn(
             "relative min-h-[12rem] flex-1 transition-[margin] duration-300",
-            activePanel ? "md:me-72" : "",
+            effectiveActivePanel ? "md:me-72" : "",
           )}
         >
           <WaveformTimeline
@@ -367,9 +364,9 @@ export function DjModeEditor({
             onActivate={handleActivate}
             onStemStateChange={onStemStateChange}
           />
-          {activePanel && activeStem ? (
+          {effectiveActivePanel && activeStem ? (
             <StemProcessingPanel
-              activePanel={activePanel}
+              activePanel={effectiveActivePanel}
               stems={stems}
               activeStem={activeStem}
               activeState={activeState}

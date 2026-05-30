@@ -68,8 +68,7 @@ export function MidiTransportBar({
       </span>
 
       <span
-        className="rounded px-xs py-1 font-mono text-xs tabular-nums text-muted-foreground max-sm:min-w-[2.5rem] max-sm:text-center"
-        style={{ background: "var(--midi-surface-inset)" }}
+        className="midi-transport-bpm rounded px-xs py-1 font-mono text-xs tabular-nums text-muted-foreground max-sm:min-w-10 max-sm:text-center"
         title="Tempo"
       >
         <span className="hidden sm:inline">{bpm} BPM</span>

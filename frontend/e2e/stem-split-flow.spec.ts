@@ -203,23 +203,39 @@ test.describe("Stem split flow", () => {
 
   test("progress UI appears during split", async ({ page }) => {
     await mockSplitSuccess(page);
+
+    // Slow the SSE stream so the in-progress UI is observable (mock otherwise completes instantly).
+    await page.route(
+      "**/api/stems/status/mock-job-e2e-001/stream",
+      async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        await route.fulfill({
+          status: 200,
+          contentType: "text/event-stream",
+          headers: {
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+          body: `data: ${JSON.stringify({ status: "running", progress: 25 })}\n\n`,
+        });
+      },
+    );
+
     await page.goto("/");
 
-    // Upload file
     await page.getByLabel("Choose audio file").setInputFiles({
       name: "test-song.wav",
       mimeType: "audio/wav",
       buffer: minimalWavBuffer(),
     });
 
-    // Click split
-    await page
+    const splitBtn = page
       .getByTestId("processing-settings-panel")
       .locator("button.fire-button")
-      .first()
-      .click();
+      .first();
 
-    // Status should show "Splitting…" during the process
+    await splitBtn.click();
+
     await expect(page.getByText(/splitting/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
@@ -240,18 +256,9 @@ test.describe("Stem split flow", () => {
       .first()
       .click();
 
-    // After split completes, the "Splitting…" status should disappear
-    // and stem labels (vocals, instrumental) should appear in the UI.
-    // Wait for the splitting indicator to go away first.
-    await expect(page.getByText(/splitting/i).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/splitting/i).first()).not.toBeVisible({
-      timeout: 20_000,
-    });
-
-    // Stem labels should be visible somewhere in the page (mixer, waveform lanes, etc.)
-    await expect(
-      page.getByText(/vocals/i).first(),
-    ).toBeVisible({ timeout: 5_000 });
+    // Mock SSE can finish before progress copy paints; wait for stems in the mixer.
+    await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/instrumental/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test("error state shown on split failure", async ({ page }) => {

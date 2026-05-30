@@ -29,7 +29,7 @@ export function initSentry(): void {
     tracesSampleRate: 0.1,
     sendDefaultPii: false,
     integrations: [Sentry.browserTracingIntegration()],
-    beforeBreadcrumb(breadcrumb) {
+    beforeBreadcrumb(breadcrumb: Sentry.Breadcrumb) {
       if (breadcrumb.category === "xhr" || breadcrumb.category === "fetch") {
         if (breadcrumb.data) {
           if (typeof breadcrumb.data.url === "string") {

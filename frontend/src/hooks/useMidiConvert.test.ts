@@ -152,7 +152,7 @@ describe("useMidiConvert acceptFile", () => {
 
     const midiBlob = new Blob(["MThd"], { type: "audio/midi" });
     let downloadCalls = 0;
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/midi/convert")) {
         return {

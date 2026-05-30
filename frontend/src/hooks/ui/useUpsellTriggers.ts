@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 type UpsellTrigger = "sample_complete" | "low_balance";
 
@@ -18,14 +18,14 @@ export function useUpsellTriggers({
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [upsellTrigger, setUpsellTrigger] =
     useState<UpsellTrigger>("sample_complete");
-  const prevSplittingRef = useRef(false);
-  const prevIsSampleRef = useRef(false);
+  const [prevIsSplitting, setPrevIsSplitting] = useState(isSplitting);
+  const [prevIsSample, setPrevIsSample] = useState(isSample);
 
-  useEffect(() => {
-    const wasSplitting = prevSplittingRef.current;
-    const wasSample = prevIsSampleRef.current;
-    prevSplittingRef.current = isSplitting;
-    prevIsSampleRef.current = isSample;
+  if (isSplitting !== prevIsSplitting || isSample !== prevIsSample) {
+    const wasSplitting = prevIsSplitting;
+    const wasSample = prevIsSample;
+    setPrevIsSplitting(isSplitting);
+    setPrevIsSample(isSample);
 
     if (wasSplitting && !isSplitting && splitResultStemsLength > 0) {
       if (wasSample) {
@@ -36,7 +36,7 @@ export function useUpsellTriggers({
         setUpsellOpen(true);
       }
     }
-  }, [isSplitting, isSample, splitResultStemsLength, usageBalance]);
+  }
 
   return { upsellOpen, setUpsellOpen, upsellTrigger };
 }

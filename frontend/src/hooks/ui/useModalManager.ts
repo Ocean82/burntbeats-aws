@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import type { ModalKey } from "./useUiModals";
 
 export function useModalManager() {
   const [activeModals, setActiveModals] = useState<Record<string, boolean>>({});

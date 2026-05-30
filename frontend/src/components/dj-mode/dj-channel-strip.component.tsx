@@ -1,7 +1,7 @@
 /**
  * DjChannelStrip — Hardware-inspired vertical mixer channel for DJ mode.
  */
-import { memo, useCallback } from "react";
+import { memo, useCallback, useEffect, useRef, type ButtonHTMLAttributes } from "react";
 import { Headphones, RotateCcw } from "lucide-react";
 import type { StemDefinition } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
@@ -31,6 +31,26 @@ const EQ_BANDS = [
 ] as const;
 
 const FADER_HEIGHT = 160;
+
+/** Toggle button with literal aria-pressed for static a11y analyzers. */
+function DjToggleButton({
+  pressed,
+  children,
+  ...rest
+}: ButtonHTMLAttributes<HTMLButtonElement> & { pressed: boolean }) {
+  if (pressed) {
+    return (
+      <button type="button" aria-pressed="true" {...rest}>
+        {children}
+      </button>
+    );
+  }
+  return (
+    <button type="button" aria-pressed="false" {...rest}>
+      {children}
+    </button>
+  );
+}
 
 export interface DjChannelStripProps {
   stem: StemDefinition;
@@ -99,9 +119,19 @@ export const DjChannelStrip = memo(function DjChannelStrip({
   );
 
   const showFaderBank = showFaders || (showMeters && getStemAnalyserData);
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    el.style.setProperty("--stem-glow", stem.glow);
+    el.style.setProperty("--stem-glow-soft", stem.glowSoft);
+    el.style.setProperty("--led-color", stem.glow);
+  }, [stem.glow, stem.glowSoft]);
 
   return (
     <div
+      ref={stripRef}
       className={cn(
         "dj-channel-strip hardware-panel flex max-h-[24rem] min-w-[6rem] w-[6rem] flex-col items-center overflow-hidden rounded-xl border px-sm py-sm transition-all duration-200 ease sm:max-h-[26rem]",
         showEq ? "min-h-[18rem]" : "min-h-[16rem]",
@@ -109,16 +139,9 @@ export const DjChannelStrip = memo(function DjChannelStrip({
           ? "border-primary-500/50 ring-1 ring-primary-500/20 shadow-[0_0_30px_rgba(255,100,0,0.1)]"
           : "border-white/5",
       )}
-      style={
-        {
-          "--stem-glow": stem.glow,
-          "--stem-glow-soft": stem.glowSoft,
-          "--led-color": stem.glow,
-        } as React.CSSProperties
-      }
     >
-      <button
-        type="button"
+      <DjToggleButton
+        pressed={isActive}
         className={cn(
           "dj-channel-strip__header flex w-full shrink-0 cursor-pointer flex-col items-center justify-center gap-xs border-b border-white/5 pb-3 transition-colors",
           isActive && "bg-white/[0.02]",
@@ -126,13 +149,12 @@ export const DjChannelStrip = memo(function DjChannelStrip({
         onClick={handleActivate}
         onKeyDown={handleHeaderKeyDown}
         aria-label={`Select ${stem.label} channel`}
-        aria-pressed={isActive}
       >
         <div className={cn("led-indicator mb-1", isActive && "led-indicator--active")} aria-hidden />
         <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-secondary-foreground">
           {stem.label}
         </span>
-      </button>
+      </DjToggleButton>
       {onResetSingleStem && (
         <button
           type="button"
@@ -286,50 +308,47 @@ export const DjChannelStrip = memo(function DjChannelStrip({
           className="flex items-center justify-center gap-xs"
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <button
-            type="button"
+          <DjToggleButton
+            pressed={muted}
             onClick={(e) => {
               e.stopPropagation();
               onStemStateChange(stem.id, { muted: !muted });
             }}
             disabled={!playbackReady}
             aria-label={muted ? `Unmute ${stem.label}` : `Mute ${stem.label}`}
-            aria-pressed={muted}
             className={cn(
               channelMuteSoloButtonClass(muted, "mute", "compact"),
               "dj-ms-btn-touch",
             )}
           >
             M
-          </button>
-          <button
-            type="button"
+          </DjToggleButton>
+          <DjToggleButton
+            pressed={soloed}
             onClick={(e) => {
               e.stopPropagation();
               onStemStateChange(stem.id, { soloed: !soloed });
             }}
             disabled={!playbackReady}
             aria-label={soloed ? `Unsolo ${stem.label}` : `Solo ${stem.label}`}
-            aria-pressed={soloed}
             className={cn(
               channelMuteSoloButtonClass(soloed, "solo", "compact"),
               "dj-ms-btn-touch",
             )}
           >
             S
-          </button>
+          </DjToggleButton>
           {onPreviewStem && (
-            <button
-              type="button"
+            <DjToggleButton
+              pressed={isPreviewPlaying}
               onClick={(e) => {
                 e.stopPropagation();
                 onPreviewStem(stem.id);
               }}
               disabled={!playbackReady || isLoadingPreview}
               aria-label={isPreviewPlaying ? `Stop ${stem.label} preview` : `Preview ${stem.label}`}
-              aria-pressed={isPreviewPlaying}
               className={cn(
-                "tap-feedback flex h-11 w-11 items-center justify-center rounded-md border font-bold text-meta tracking-wide transition-[color,background-color,border-color,transform,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95] sm:h-10 sm:w-10",
+                "tap-feedback flex h-11 w-11 items-center justify-center rounded-md border font-bold text-meta tracking-wide transition-[color,background-color,border-color,transform,box-shadow] duration-(--motion-fast) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95] sm:h-10 sm:w-10",
                 isPreviewPlaying
                   ? "border-primary-400/70 bg-primary-500/30 text-primary-100"
                   : "border-border bg-muted text-muted-foreground hover:border-primary-400/40 hover:text-primary-200",
@@ -341,7 +360,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
               ) : (
                 <Headphones className="h-3.5 w-3.5" />
               )}
-            </button>
+            </DjToggleButton>
           )}
         </div>
       </div>

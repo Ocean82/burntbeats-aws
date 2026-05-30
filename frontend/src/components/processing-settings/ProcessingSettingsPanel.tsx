@@ -3,7 +3,6 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { collapseMotion } from "../../motion/presets";
 import { Music2, Settings2, RotateCcw } from "lucide-react";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
-import { cn } from "../../utils/cn";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
 import type { ProcessingSettingsPanelProps } from "./types";
 import { UploadDropZone } from "./UploadDropZone";

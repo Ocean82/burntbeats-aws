@@ -1,7 +1,7 @@
 import { render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WaveformLane } from "./waveform-lane.component";
-import { defaultMixer } from "../../types";
+import { defaultMixer, type StemId } from "../../types";
 
 const drawWaveformBars = vi.fn();
 vi.mock("../../utils/waveformCanvas", () => ({
@@ -31,7 +31,6 @@ describe("WaveformLane rendering strategy", () => {
     );
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
 
-    const originalGetContext = HTMLCanvasElement.prototype.getContext;
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
       function getContext(this: HTMLCanvasElement) {
         const ctx = mockCanvasContext();
@@ -39,7 +38,7 @@ describe("WaveformLane rendering strategy", () => {
         Object.defineProperty(this, "clientHeight", { value: 80, configurable: true });
         this.width = 320;
         this.height = 80;
-        return ctx as unknown as ReturnType<typeof originalGetContext>;
+        return ctx as unknown as CanvasRenderingContext2D;
       },
     );
   });
@@ -47,7 +46,7 @@ describe("WaveformLane rendering strategy", () => {
   it("does not redraw static waveform when only playhead changes", () => {
     const baseProps = {
       stem: {
-        id: "vocals",
+        id: "vocals" as StemId,
         label: "Vocals",
         subtitle: "Lead",
         flavor: "Bright",

@@ -102,8 +102,11 @@ export function useBatchQueue(): UseBatchQueueReturn {
             splitQuality,
             false,
             (status) => {
-            updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, progress: status.progress } : i));
-          },
+              updateQueue((q) =>
+                q.map((i) => (i.id === queued.id ? { ...i, progress: status.progress } : i)),
+              );
+            },
+            undefined,
             intent,
           );
           updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "complete" as const, progress: 100 } : i));

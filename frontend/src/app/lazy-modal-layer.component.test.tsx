@@ -16,6 +16,7 @@ describe("LazyModalLayer", () => {
         exportAllowStemBundleTargets={false}
         isSample={false}
         exportTrackDurationSec={0}
+        splitJobId={null}
         handleLoadPreset={vi.fn()}
         mixerState={{}}
         trimMap={{}}
@@ -30,7 +31,6 @@ describe("LazyModalLayer", () => {
         clearCompletedFromQueue={vi.fn()}
         canUseBatchQueue={false}
         processNextInQueue={vi.fn(async () => {})}
-        canSplitFourStems={false}
         splitQuality="quality"
         setUploadState={vi.fn()}
         setSplitError={vi.fn()}

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { minimalWavFile } from "./fixtures/minimal-wav";
+import { mockSplitSuccess } from "./helpers/mock-split-success";
 
 test.describe("Export options modal", () => {
   test.beforeEach(async ({ page }) => {
@@ -22,7 +23,10 @@ test.describe("Export options modal", () => {
       minimalWavFile("drums.wav"),
     ]);
 
-    await expect(page.getByText(/2 stems loaded/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("load-upload-dropzone")).toContainText(
+      /2 stems loaded/i,
+      { timeout: 15_000 },
+    );
 
     const exportBtn = page.getByRole("button", { name: "Export mix" });
     await expect(exportBtn).toBeEnabled({ timeout: 20_000 });
@@ -47,8 +51,6 @@ test.describe("Export options modal", () => {
   });
 
   test("mastering preset picker visible after split job completes", async ({ page }) => {
-    const jobId = "mock-job-export-master";
-
     await page.route("**/api/master/presets**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -66,65 +68,23 @@ test.describe("Export options modal", () => {
       });
     });
 
-    await page.route("**/api/stems/split", async (route) => {
-      await route.fulfill({
-        status: 202,
-        contentType: "application/json",
-        body: JSON.stringify({
-          job_id: jobId,
-          job_token: "tok_export_master",
-        }),
-      });
-    });
-
-    await page.route(`**/api/stems/status/${jobId}/stream`, async (route) => {
-      const sseBody = [
-        `data: ${JSON.stringify({ status: "running", progress: 50 })}\n\n`,
-        `data: ${JSON.stringify({
-          status: "completed",
-          progress: 100,
-          stems: [
-            { id: "vocals", url: "/mock-stems/vocals.wav" },
-            { id: "drums", url: "/mock-stems/drums.wav" },
-          ],
-        })}\n\n`,
-      ].join("");
-      await route.fulfill({
-        status: 200,
-        contentType: "text/event-stream",
-        body: sseBody,
-      });
-    });
-
-    await page.route(`**/api/stems/status/${jobId}`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          status: "completed",
-          progress: 100,
-          stems: [
-            { id: "vocals", url: "/mock-stems/vocals.wav" },
-            { id: "drums", url: "/mock-stems/drums.wav" },
-          ],
-        }),
-      });
-    });
-
-    await page.route("**/mock-stems/**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "audio/wav",
-        body: minimalWavFile("stem.wav"),
-      });
-    });
+    await mockSplitSuccess(page);
 
     await page.goto("/");
     await page.getByLabel("Choose audio file").setInputFiles(minimalWavFile("e2e-split.wav"));
-    await page.getByRole("button", { name: /^split$/i }).click();
+    await page
+      .getByTestId("processing-settings-panel")
+      .locator("button.fire-button")
+      .first()
+      .click();
+
+    await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByRole("button", { name: /^Play$/i })).toBeEnabled({
+      timeout: 45_000,
+    });
 
     const exportBtn = page.getByRole("button", { name: "Export mix" });
-    await expect(exportBtn).toBeEnabled({ timeout: 20_000 });
+    await expect(exportBtn).toBeEnabled({ timeout: 15_000 });
     await exportBtn.click();
 
     const dialog = page.getByRole("dialog", { name: /export options/i });

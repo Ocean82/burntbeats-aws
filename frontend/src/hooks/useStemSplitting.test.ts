@@ -60,6 +60,8 @@ describe("useStemSplitting", () => {
             canExpandToFourStems: false,
             canUsePremiumStemQualities: false,
             canUseBatchQueue: false,
+            canDownloadFullPreview: false,
+            canShareCleanPreview: false,
           },
           billingError: null,
           startCheckout: vi.fn(),

@@ -53,7 +53,10 @@ test.describe("Catalog to MIDI workflow smoke", () => {
       timeout: 10_000,
     });
 
-    await page.getByRole("button", { name: /^MIDI$/i }).click();
+    await page
+      .getByLabel("Workspace tabs")
+      .getByRole("button", { name: /MIDI/i })
+      .click();
     await expect(page.getByTestId("midi-convert-panel")).toBeVisible({
       timeout: 10_000,
     });

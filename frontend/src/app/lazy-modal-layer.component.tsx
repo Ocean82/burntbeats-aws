@@ -62,7 +62,6 @@ interface LazyModalLayerProps {
     onError: (msg: string) => void,
     onJobId?: (jobId: string) => void,
   ) => Promise<void>;
-  canSplitFourStems: boolean;
   splitQuality: SplitQuality;
   setUploadState: AppState["setUploadState"];
   setSplitError: (msg: string | null) => void;
@@ -96,7 +95,6 @@ export function LazyModalLayer({
   clearCompletedFromQueue,
   canUseBatchQueue,
   processNextInQueue,
-  canSplitFourStems,
   splitQuality,
   splitIntent = DEFAULT_SPLIT_INTENT,
   setUploadState,

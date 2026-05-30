@@ -1,4 +1,4 @@
-import type { SplitIntent, SplitQuality } from "@shared/types";
+import type { SplitIntent, SplitQuality, SplitTarget } from "@shared/types";
 
 export type { SplitIntent };
 
@@ -68,7 +68,7 @@ export const QUICK_INTENTS: { id: string; label: string; intent: SplitIntent }[]
   },
 ];
 
-export const ADVANCED_TARGETS: SplitIntent["targets"] = [
+export const ADVANCED_TARGETS: SplitTarget[] = [
   "vocals",
   "drums",
   "bass",

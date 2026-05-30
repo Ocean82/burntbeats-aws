@@ -96,7 +96,7 @@ function canPreloadChunks(): boolean {
 
 export function App() {
   const localDevFullApp = isLocalDevFullApp();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReducedMotion() ?? false;
   const emit = useEventBus((s) => s.emit);
 
   // ── Contexts ──
@@ -143,7 +143,6 @@ export function App() {
     isDragging,
     isSplitting,
     isExpanding,
-    beatGrid,
     splitProgress,
     uploadProgress,
     isUploading,
@@ -153,7 +152,6 @@ export function App() {
     masterLimiterEnabled: persistedMasterLimiterEnabled,
     setUploadState,
     setSplitError,
-    setMasterLimiterEnabled: setPersistedMasterLimiterEnabled,
   } = uploadState;
 
   const uploadDurationSec = useAudioFileDuration(uploadedFile);
@@ -186,14 +184,6 @@ export function App() {
   useEffect(() => {
     audio.setMasterLimiterEnabled(persistedMasterLimiterEnabled);
   }, [persistedMasterLimiterEnabled, audio]);
-
-  const handleMasterLimiterEnabledChange = useCallback(
-    (enabled: boolean) => {
-      audio.setMasterLimiterEnabled(enabled);
-      setPersistedMasterLimiterEnabled(enabled);
-    },
-    [setPersistedMasterLimiterEnabled, audio],
-  );
 
   // ── Export hook ───────────────────────────────────────────────────────────
   const {
@@ -437,7 +427,7 @@ export function App() {
         pipelineIndex: HISTORY_LOADED_PIPELINE_INDEX,
       }));
     },
-    [resetStemMediaState, setUploadState],
+    [resetStemMediaState, setUploadState, prevSplitJobIdRef],
   );
 
   const { loadHistoryJob, loadingJobId } = useLoadHistoryJob({
@@ -567,7 +557,6 @@ export function App() {
         canUseBatchQueue={canUseBatchQueue}
         processNextInQueue={processNextInQueue}
         splitIntent={splitIntent}
-        canSplitFourStems={canSplitFourStems}
         splitQuality={splitQuality}
         setUploadState={setUploadState}
         setSplitError={setSplitError}

@@ -3,7 +3,7 @@
  */
 import { Lock, Unlock } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
-import * as Tone from "tone";
+import { PolySynth, start, Synth } from "tone";
 import {
   getDiatonicChords,
   midiToFreq,
@@ -33,14 +33,14 @@ export function MidiSmartPanel({
   const [root, setRoot] = useState<RootNote>(initialRoot);
   const [scale, setScale] = useState<Scale>(initialScale);
   const [scaleLock, setScaleLock] = useState(true);
-  const synthRef = useRef<Tone.PolySynth | null>(null);
+  const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
 
   const chords = useMemo(() => getDiatonicChords(root, scale), [root, scale]);
 
   const previewChord = useCallback(async (midiNotes: number[]) => {
-    await Tone.start();
+    await start();
     if (!synthRef.current) {
-      synthRef.current = new Tone.PolySynth(Tone.Synth, {
+      synthRef.current = new PolySynth(Synth, {
         oscillator: { type: "sine" },
         envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 0.5 },
       }).toDestination();

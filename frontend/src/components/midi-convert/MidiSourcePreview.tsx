@@ -86,11 +86,10 @@ export function MidiSourcePreview({
     };
   }, [sourceMode, uploadedFile, splitStemUrl, loadedStemUrl]);
 
+  const displayWaveform = midiJobId ? waveform : null;
+
   useEffect(() => {
-    if (!midiJobId) {
-      setWaveform(null);
-      return;
-    }
+    if (!midiJobId) return;
     let cancelled = false;
     const loadWaveform = async () => {
       try {
@@ -116,7 +115,7 @@ export function MidiSourcePreview({
 
   const drawWaveform = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !waveform?.length) return;
+    if (!canvas || !displayWaveform?.length) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const w = canvas.width;
@@ -125,25 +124,25 @@ export function MidiSourcePreview({
     ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
     ctx.fillRect(0, 0, w, h);
     const mid = h / 2;
-    const step = w / waveform.length;
+    const step = w / displayWaveform.length;
     ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let i = 0; i < waveform.length; i++) {
-      const amp = (waveform[i] ?? 0) * mid * 0.9;
+    for (let i = 0; i < displayWaveform.length; i++) {
+      const amp = (displayWaveform[i] ?? 0) * mid * 0.9;
       const x = i * step;
       if (i === 0) ctx.moveTo(x, mid - amp);
       else ctx.lineTo(x, mid - amp);
     }
-    for (let i = waveform.length - 1; i >= 0; i--) {
-      const amp = (waveform[i] ?? 0) * mid * 0.9;
+    for (let i = displayWaveform.length - 1; i >= 0; i--) {
+      const amp = (displayWaveform[i] ?? 0) * mid * 0.9;
       ctx.lineTo(i * step, mid + amp);
     }
     ctx.closePath();
     ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
     ctx.fill();
     ctx.stroke();
-  }, [waveform]);
+  }, [displayWaveform]);
 
   useEffect(() => {
     drawWaveform();
@@ -178,7 +177,7 @@ export function MidiSourcePreview({
         )}
       </div>
 
-      {waveform && waveform.length > 0 && (
+      {displayWaveform && displayWaveform.length > 0 && (
         <canvas
           ref={canvasRef}
           width={512}

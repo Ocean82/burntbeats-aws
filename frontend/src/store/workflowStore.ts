@@ -1,12 +1,6 @@
 import { create } from "zustand";
 import type { StemEditorState } from "../stem-editor-state";
 
-interface HistoryState {
-  past: Record<string, StemEditorState>[];
-  present: Record<string, StemEditorState>;
-  future: Record<string, StemEditorState>[];
-}
-
 interface WorkflowStore {
   stemStates: Record<string, StemEditorState>;
   canUndo: boolean;
@@ -17,8 +11,6 @@ interface WorkflowStore {
   redo: () => void;
   reset: (initialState: Record<string, StemEditorState>) => void;
 }
-
-const MAX_HISTORY = 50;
 
 export const useWorkflowStore = create<WorkflowStore>((set) => ({
   stemStates: {},

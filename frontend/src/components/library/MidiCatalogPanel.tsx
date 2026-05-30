@@ -4,23 +4,32 @@
 import { Download, Loader2, Music2, Pause, Play, Search } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Tone from "tone";
+import { PolySynth } from "tone";
 import { authHeaders } from "../../api/auth";
 import { catalogFileUrl, useMidiCatalog } from "../../hooks/useMidiCatalog";
 import type { MidiCatalogEntry } from "../../hooks/useMidiCatalog";
 import { parseMidiBuffer } from "../../utils/parseMidiNotes";
 import { cn } from "../../utils/cn";
-import { EmptyState, FilterBar, SectionLabel } from "../ui";
+import { EmptyState, FilterBar } from "../ui";
 
 const EMBER = "text-primary-300";
 const ICE = "text-accent-midi-200";
 const GOLD = "text-warning-300";
+
+const catalogTabClass = (active: boolean) =>
+  cn(
+    "rounded px-sm py-1 text-xs font-medium capitalize transition",
+    active
+      ? "bg-primary-500/20 text-primary-200"
+      : "text-muted-foreground hover:text-secondary-foreground",
+  );
 
 export function MidiCatalogPanel() {
   const catalog = useMidiCatalog();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const synthRef = useRef<Tone.PolySynth | null>(null);
+  const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
   const scheduledRef = useRef<number[]>([]);
 
   const stopPreview = useCallback(() => {
@@ -54,7 +63,7 @@ export function MidiCatalogPanel() {
         if (!notes.length) return;
 
         if (!synthRef.current) {
-          synthRef.current = new Tone.PolySynth(Tone.Synth, {
+          synthRef.current = new PolySynth(Tone.Synth, {
             oscillator: { type: "triangle" },
             envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.3 },
           }).toDestination();
@@ -70,7 +79,7 @@ export function MidiCatalogPanel() {
         for (const note of notes) {
           const t = note.start - minStart;
           const freq = Tone.Frequency(note.pitch, "midi").toFrequency();
-          const eventId = transport.schedule((time) => {
+          const eventId = transport.schedule((time: number) => {
             synthRef.current?.triggerAttackRelease(
               freq,
               Math.max(note.duration, 0.05),
@@ -121,23 +130,48 @@ export function MidiCatalogPanel() {
     <div data-testid="midi-catalog-panel">
       <FilterBar>
         <div className="inline-flex rounded-md border border-border p-0.5" role="tablist">
-          {(["progression", "rhythm"] as const).map((tab) => (
+          {catalog.filters.tab === "progression" ? (
             <button
-              key={tab}
               type="button"
               role="tab"
-              aria-selected={catalog.filters.tab === tab}
-              onClick={() => catalog.setTab(tab)}
-              className={cn(
-                "rounded px-sm py-1 text-xs font-medium capitalize transition",
-                catalog.filters.tab === tab
-                  ? "bg-primary-500/20 text-primary-200"
-                  : "text-muted-foreground hover:text-secondary-foreground",
-              )}
+              aria-selected="true"
+              onClick={() => catalog.setTab("progression")}
+              className={catalogTabClass(true)}
             >
-              {tab === "progression" ? "Progressions" : "Rhythms"}
+              Progressions
             </button>
-          ))}
+          ) : (
+            <button
+              type="button"
+              role="tab"
+              aria-selected="false"
+              onClick={() => catalog.setTab("progression")}
+              className={catalogTabClass(false)}
+            >
+              Progressions
+            </button>
+          )}
+          {catalog.filters.tab === "rhythm" ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected="true"
+              onClick={() => catalog.setTab("rhythm")}
+              className={catalogTabClass(true)}
+            >
+              Rhythms
+            </button>
+          ) : (
+            <button
+              type="button"
+              role="tab"
+              aria-selected="false"
+              onClick={() => catalog.setTab("rhythm")}
+              className={catalogTabClass(false)}
+            >
+              Rhythms
+            </button>
+          )}
         </div>
 
         <div className="relative min-w-[140px] flex-1">
@@ -269,20 +303,26 @@ export function MidiCatalogPanel() {
                     <Play className="h-3.5 w-3.5" />
                   )}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void downloadEntry(entry)}
-                  disabled={downloadingId === entry.id}
-                  className="midi-btn text-xs"
-                  aria-label="Download MIDI"
-                  aria-busy={downloadingId === entry.id}
-                >
-                  {downloadingId === entry.id ? (
+                {downloadingId === entry.id ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="midi-btn text-xs"
+                    aria-label="Downloading MIDI"
+                    aria-busy="true"
+                  >
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void downloadEntry(entry)}
+                    className="midi-btn text-xs"
+                    aria-label="Download MIDI"
+                  >
                     <Download className="h-3.5 w-3.5" />
-                  )}
-                </button>
+                  </button>
+                )}
               </div>
             </li>
           ))}
