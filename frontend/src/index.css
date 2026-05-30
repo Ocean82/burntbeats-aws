@@ -388,6 +388,35 @@
     color: rgba(255, 243, 229, 0.45);
   }
 
+  /* Landing/marketing copy — block width; avoid flex min-content collapse on motion wrappers */
+  .landing-prose {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 42rem;
+    margin-inline: auto;
+    overflow-wrap: break-word;
+    word-break: normal;
+    white-space: normal;
+  }
+
+  .landing-prose-lg {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 48rem;
+    overflow-wrap: break-word;
+    word-break: normal;
+    white-space: normal;
+  }
+
+  .landing-hero {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .status-light {
     height: 0.65rem;
     width: 0.65rem;

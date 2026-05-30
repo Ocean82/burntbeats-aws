@@ -45,11 +45,10 @@ export function brandHeroItemVariants(reduceMotion: boolean): Variants {
     };
   }
   return {
-    hidden: { opacity: 0, y: 28, scale: 0.97 },
+    hidden: { opacity: 0, y: 28 },
     visible: {
       opacity: 1,
       y: 0,
-      scale: 1,
       transition: brandTransition(false, brandMotionMs.entrance),
     },
   };
