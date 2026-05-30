@@ -8,16 +8,16 @@ export interface ForgeTimelineEmptyProps {
 export function ForgeTimelineEmpty({ onFocusSource }: ForgeTimelineEmptyProps) {
   return (
     <div
-      className="flex flex-col items-center justify-center gap-lg rounded-xl border border-border/60 bg-chrome/40 px-lg py-10 text-center"
+      className="flex w-full flex-col items-stretch justify-center gap-lg rounded-xl border border-border/60 bg-chrome/40 px-lg py-10 text-center"
       role="region"
       aria-label="Timeline waiting for stems"
     >
-      <StemLaneGhostPreview variant="compact" />
-      <div className="max-w-sm space-y-xs">
+      <StemLaneGhostPreview variant="compact" className="mx-auto" />
+      <div className="copy-block-sm mx-auto space-y-xs">
         <p className="text-sm font-semibold text-secondary-foreground">
           Timeline opens after split
         </p>
-        <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Upload a track or load stem files in Source above. Lanes appear here ready
           to mix and export.
         </p>

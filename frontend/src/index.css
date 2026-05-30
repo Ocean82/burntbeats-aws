@@ -388,7 +388,8 @@
     color: rgba(255, 243, 229, 0.45);
   }
 
-  /* Landing/marketing copy — block width; avoid flex min-content collapse on motion wrappers */
+  /* Readable copy blocks — full width inside flex columns (avoids 1–2 chars per line) */
+  .copy-block,
   .landing-prose {
     display: block;
     width: 100%;
@@ -400,7 +401,19 @@
     white-space: normal;
   }
 
-  .landing-prose-lg {
+  .copy-block-sm {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 24rem;
+    margin-inline: auto;
+    overflow-wrap: break-word;
+    word-break: normal;
+    white-space: normal;
+  }
+
+  .landing-prose-lg,
+  .copy-block-lg {
     display: block;
     width: 100%;
     min-width: 0;

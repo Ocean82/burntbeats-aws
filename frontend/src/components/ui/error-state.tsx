@@ -93,23 +93,21 @@ export function ErrorState({
       role="alert"
       aria-live="assertive"
       className={cn(
-        "flex flex-col items-center gap-md rounded-2xl border px-lg py-xl text-center",
+        "flex w-full flex-col items-stretch gap-md rounded-2xl border px-lg py-xl text-center",
         config.accentClass,
         className,
       )}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-current/10">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-current/10">
         <Icon className="h-6 w-6" aria-hidden="true" />
       </div>
 
-      <div className="flex flex-col gap-xs">
+      <div className="copy-block mx-auto flex w-full max-w-md flex-col gap-xs">
         <h3 className="text-base font-semibold text-foreground">
           {displayTitle}
         </h3>
         {description && (
-          <p className="text-pretty text-sm text-muted-foreground">
-            {description}
-          </p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         )}
       </div>
 

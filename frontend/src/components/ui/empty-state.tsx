@@ -41,20 +41,18 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-md rounded-2xl border border-border/50 bg-muted/10 px-lg py-2xl text-center",
+        "flex w-full flex-col items-stretch gap-md rounded-2xl border border-border/50 bg-muted/10 px-lg py-2xl text-center",
         className,
       )}
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border/40 bg-muted/30 text-muted-foreground">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-border/40 bg-muted/30 text-muted-foreground">
         {icon}
       </div>
 
-      <div className="flex flex-col gap-xs">
+      <div className="copy-block mx-auto flex w-full max-w-md flex-col gap-xs">
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         {description && (
-          <p className="max-w-md text-sm text-muted-foreground">
-            {description}
-          </p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         )}
       </div>
 
