@@ -46,8 +46,10 @@ checkoutRouter.post("/checkout", async (req, res) => {
     const returnBase = resolveStripeReturnUrl(req, req.body?.returnUrl);
 
     const isOneTime = plan === "topup" || plan === "single";
-    const session = await stripe.checkout.sessions.create({
+    /** @type {import("stripe").Stripe.Checkout.SessionCreateParams} */
+    const sessionParams = {
       customer: customerId,
+      client_reference_id: userId,
       mode: isOneTime ? "payment" : "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${returnBase}?checkout=success&plan=${plan}`,
@@ -58,7 +60,17 @@ checkoutRouter.post("/checkout", async (req, res) => {
         source,
         intent,
       },
-    });
+    };
+    if (!isOneTime) {
+      sessionParams.subscription_data = {
+        metadata: {
+          clerkUserId: userId,
+          plan,
+        },
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     console.log(
       `[billing/checkout] created user=${userId} plan=${plan} source=${source} intent=${intent} mode=${isOneTime ? "payment" : "subscription"} session=${session.id}`,

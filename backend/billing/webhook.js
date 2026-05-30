@@ -6,15 +6,15 @@
  * Handles signature verification, idempotency (claim/release), and event dispatch.
  *
  * Supported events:
- *   - customer.subscription.created/updated → credit subscription allowance
- *   - customer.subscription.deleted → log only
- *   - invoice.payment_succeeded → credit subscription allowance (renewal)
- *   - checkout.session.completed (payment mode) → credit topup tokens
+ *   - customer.subscription.created/updated → credit subscription allowance (active only)
+ *   - customer.subscription.deleted → structured log (entitlements resolve on next API read)
+ *   - invoice.payment_succeeded → credit subscription allowance (renewal, active only)
+ *   - checkout.session.completed (payment) → credit topup tokens
+ *   - checkout.session.completed (subscription) → credit initial subscription allowance
  */
 import express from "express";
 import { getStripe } from "./stripeClient.js";
 import {
-  creditSubscriptionAllowance,
   creditTopupTokens,
   tokensPerTopupFromPrice,
 } from "../usageTokens.js";
@@ -22,8 +22,64 @@ import {
   tryClaimWebhookEvent,
   releaseWebhookEventClaim,
 } from "../stripeRedis.js";
+import {
+  creditActiveSubscriptionAllowance,
+  resolveClerkUserIdFromCustomerRef,
+} from "./stripeWebhookUtils.js";
 
 export const webhookRouter = express.Router();
+
+/**
+ * @param {import("stripe").Stripe} stripe
+ * @param {import("stripe").Stripe.Checkout.Session} session
+ * @param {string} stripeEventId
+ */
+async function handleCheckoutSessionCompleted(stripe, session, stripeEventId) {
+  if (session.mode === "payment") {
+    const clerkUserId = await resolveClerkUserIdFromCustomerRef(
+      stripe,
+      session.customer,
+    );
+    if (!clerkUserId) return;
+
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
+      limit: 20,
+    });
+    let grant = 0;
+    for (const li of lineItems.data) {
+      const p = li.price;
+      if (!p?.id) continue;
+      const price = await stripe.prices.retrieve(p.id);
+      const unit = tokensPerTopupFromPrice(price);
+      const qty = Number(li.quantity) || 1;
+      grant += unit * Math.max(1, qty);
+    }
+    if (grant > 0) {
+      await creditTopupTokens(clerkUserId, grant);
+      console.log(
+        `[billing/webhook] topup credited user=${clerkUserId} amount=${grant}`,
+      );
+    }
+    return;
+  }
+
+  if (session.mode === "subscription") {
+    const subRef = session.subscription;
+    const subId =
+      typeof subRef === "string" ? subRef : subRef && "id" in subRef ? subRef.id : null;
+    if (!subId) {
+      console.warn(
+        `[billing/webhook] checkout.session.completed subscription missing subscription id session=${session.id}`,
+      );
+      return;
+    }
+    const sub = await stripe.subscriptions.retrieve(subId);
+    await creditActiveSubscriptionAllowance(stripe, sub, { stripeEventId });
+    console.log(
+      `[billing/webhook] subscription checkout credited sub=${sub.id} status=${sub.status}`,
+    );
+  }
+}
 
 // ── POST /webhook ─────────────────────────────────────────────────────────────
 webhookRouter.post("/webhook", async (req, res) => {
@@ -62,26 +118,29 @@ webhookRouter.post("/webhook", async (req, res) => {
         console.log(
           `[billing/webhook] ${event.type} customer=${sub.customer} status=${sub.status}`,
         );
-        if (sub.status === "active" && stripe) {
-          const custId =
-            typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-          const customer = await stripe.customers.retrieve(custId);
-          const clerkUserId = /** @type {any} */ (customer).metadata
-            ?.clerkUserId;
-          if (clerkUserId) {
-            await creditSubscriptionAllowance(clerkUserId, sub, stripe, {
-              stripeEventId: event.id,
-            });
-          }
-        }
+        await creditActiveSubscriptionAllowance(stripe, sub, {
+          stripeEventId: event.id,
+        });
         break;
       }
       case "customer.subscription.deleted": {
         const sub = /** @type {import("stripe").Stripe.Subscription} */ (
           event.data.object
         );
+        let clerkUserId = null;
+        try {
+          clerkUserId = await resolveClerkUserIdFromCustomerRef(
+            stripe,
+            sub.customer,
+          );
+        } catch (err) {
+          console.warn(
+            "[billing/webhook] subscription.deleted customer lookup failed:",
+            err instanceof Error ? err.message : err,
+          );
+        }
         console.log(
-          `[billing/webhook] ${event.type} customer=${sub.customer} status=${sub.status}`,
+          `[billing/webhook] ${event.type} customer=${sub.customer} clerkUserId=${clerkUserId ?? "unknown"} — subscription entitlements end; usage token balance unchanged`,
         );
         break;
       }
@@ -90,21 +149,13 @@ webhookRouter.post("/webhook", async (req, res) => {
           event.data.object
         );
         const subId = /** @type {any} */ (inv).subscription;
-        if (subId && stripe) {
-          const sub = await stripe.subscriptions.retrieve(
-            typeof subId === "string" ? subId : subId.id,
-          );
-          const custId =
-            typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-          const customer = await stripe.customers.retrieve(custId);
-          const clerkUserId = /** @type {any} */ (customer).metadata
-            ?.clerkUserId;
-          if (clerkUserId) {
-            await creditSubscriptionAllowance(clerkUserId, sub, stripe, {
-              stripeEventId: event.id,
-            });
-          }
-        }
+        if (!subId) break;
+        const sub = await stripe.subscriptions.retrieve(
+          typeof subId === "string" ? subId : subId.id,
+        );
+        await creditActiveSubscriptionAllowance(stripe, sub, {
+          stripeEventId: event.id,
+        });
         break;
       }
       case "checkout.session.completed": {
@@ -115,38 +166,7 @@ webhookRouter.post("/webhook", async (req, res) => {
         console.log(
           `[billing/webhook] checkout.session.completed customer=${session.customer} mode=${session.mode}`,
         );
-        if (session.mode === "payment" && stripe) {
-          const customerId =
-            typeof session.customer === "string"
-              ? session.customer
-              : session.customer?.id;
-          if (customerId) {
-            const customer = await stripe.customers.retrieve(customerId);
-            const clerkUserId = /** @type {any} */ (customer).metadata
-              ?.clerkUserId;
-            if (clerkUserId) {
-              const lineItems = await stripe.checkout.sessions.listLineItems(
-                session.id,
-                { limit: 20 },
-              );
-              let grant = 0;
-              for (const li of lineItems.data) {
-                const p = li.price;
-                if (!p?.id) continue;
-                const price = await stripe.prices.retrieve(p.id);
-                const unit = tokensPerTopupFromPrice(price);
-                const qty = Number(li.quantity) || 1;
-                grant += unit * Math.max(1, qty);
-              }
-              if (grant > 0) {
-                await creditTopupTokens(clerkUserId, grant);
-                console.log(
-                  `[billing/webhook] topup credited user=${clerkUserId} amount=${grant}`,
-                );
-              }
-            }
-          }
-        }
+        await handleCheckoutSessionCompleted(stripe, session, event.id);
         break;
       }
       default:

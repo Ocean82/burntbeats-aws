@@ -70,7 +70,9 @@ async function main() {
   const clerkKey = env.CLERK_SECRET_KEY || "";
   const defaultMonthly = Number(env.USAGE_DEFAULT_TOKENS_PER_MONTH) || 0;
 
-  if (!stripeKey.startsWith("sk_")) throw new Error("Invalid STRIPE_SECRET_KEY");
+  if (!/^sk_(live|test)_/.test(stripeKey) && !/^rk_(live|test)_/.test(stripeKey)) {
+    throw new Error("Invalid STRIPE_SECRET_KEY (expected sk_* or rk_*)");
+  }
   if (!clerkKey.startsWith("sk_")) throw new Error("Invalid CLERK_SECRET_KEY");
 
   const stripeHeaders = { Authorization: `Bearer ${stripeKey}` };
