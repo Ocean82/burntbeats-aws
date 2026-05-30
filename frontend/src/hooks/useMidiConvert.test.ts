@@ -146,4 +146,70 @@ describe("useMidiConvert acceptFile", () => {
     expect(removeChildSpy).toHaveBeenCalled();
     expect(revokeObjectURLSpy).toHaveBeenCalledWith("blob:mock-midi");
   });
+
+  it("blocks duplicate download while a download is in flight", async () => {
+    mockStore.splitResultStems = [{ id: "vocals", url: "/stems/vocals.wav" }];
+
+    const midiBlob = new Blob(["MThd"], { type: "audio/midi" });
+    let downloadCalls = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/api/midi/convert")) {
+        return {
+          ok: true,
+          json: async () => ({
+            job_id: "midi-job-dup",
+            job_token: "job-token-dup",
+            file_url: "/api/midi/file/midi-job-dup/output.mid",
+          }),
+        };
+      }
+      if (url.endsWith("/api/midi/status/midi-job-dup")) {
+        return {
+          ok: true,
+          json: async () => ({
+            status: "completed",
+            job_id: "midi-job-dup",
+            progress: 100,
+            result: {
+              notes_detected: 1,
+              duration_seconds: 1,
+              tracks: 1,
+              inference_time_seconds: 0.1,
+              piano_roll_notes: [{ pitch: 60, start: 0, duration: 1, velocity: 90 }],
+              analysis: null,
+            },
+          }),
+        };
+      }
+      if (url.endsWith("/api/midi/file/midi-job-dup/output.mid")) {
+        downloadCalls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return { ok: true, blob: async () => midiBlob };
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useMidiConvert());
+
+    await act(async () => {
+      await result.current.triggerConvert("split-job-1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.result?.notesDetected).toBe(1);
+    });
+
+    await act(async () => {
+      void result.current.downloadMidi();
+      void result.current.downloadMidi();
+    });
+
+    await waitFor(() => {
+      expect(downloadCalls).toBe(1);
+    });
+  });
 });

@@ -43,4 +43,18 @@ test.describe("Ship polish layout", () => {
       .filter({ hasText: "Pitch Shift" });
     await expect(desktopRail).toBeHidden();
   });
+
+  test("MIDI convert page is usable at mobile width", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/");
+    await page
+      .getByLabel("Workspace tabs")
+      .getByRole("button", { name: /MIDI/i })
+      .click();
+    await expect(page.getByTestId("midi-convert-page")).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("midi-convert-panel")).toBeVisible();
+    await expect(page.getByText(/Audio to MIDI/i)).toBeVisible();
+  });
 });

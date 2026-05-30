@@ -14,6 +14,7 @@ import {
 } from "../config";
 import { useAppStore } from "../store/appStore";
 import { uploadWithProgress } from "../utils/uploadWithProgress";
+import { userFacingApiError, userFacingHttpError } from "../userFacingError";
 
 export type MidiSourceMode = "split" | "upload" | "loaded";
 
@@ -121,6 +122,12 @@ const DRUMS_PRESET_PARTIAL: Partial<MidiConvertSettings> = {
 };
 
 const BATCH_CONCURRENCY = 2;
+
+function resolveUserFacingError(raw: unknown, fallback: string): string {
+  if (raw instanceof Error) return userFacingApiError(raw.message, fallback);
+  if (typeof raw === "string") return userFacingApiError(raw, fallback);
+  return fallback;
+}
 
 function parseFileAnalysis(
   raw: MidiFileAnalysisDetail | undefined,
@@ -233,6 +240,7 @@ export function useMidiConvert() {
   const [progress, setProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isDownloadingMidi, setIsDownloadingMidi] = useState(false);
 
   const [result, setResult] = useState<MidiConvertResult | null>(null);
   const [midiFileUrl, setMidiFileUrl] = useState<string | null>(null);
@@ -242,6 +250,7 @@ export function useMidiConvert() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const drumsPresetAppliedRef = useRef(false);
+  const isDownloadingMidiRef = useRef(false);
 
   const sourceMode: MidiSourceMode = useMemo(() => {
     const hasSplit = splitResultStems.length > 0;
@@ -389,7 +398,11 @@ export function useMidiConvert() {
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             throw new Error(
-              data.error || `Status check failed (${res.status})`,
+              userFacingHttpError(
+                res.status,
+                typeof data.error === "string" ? data.error : null,
+                `Status check failed (${res.status})`,
+              ),
             );
           }
           const data: PollResponse = await res.json();
@@ -413,7 +426,9 @@ export function useMidiConvert() {
           } else if (data.status === "failed") {
             stopPolling();
             setIsConverting(false);
-            setError(data.error || "Conversion failed");
+            setError(
+              userFacingApiError(data.error, "MIDI conversion failed. Please try again."),
+            );
             trackEvent("midi_convert_failed", {
               error: (data.error || "unknown").slice(0, 120),
             });
@@ -427,7 +442,7 @@ export function useMidiConvert() {
         } catch (e) {
           stopPolling();
           setIsConverting(false);
-          setError(e instanceof Error ? e.message : "Polling failed");
+          setError(resolveUserFacingError(e, "Could not check conversion status. Please try again."));
         }
       };
 
@@ -569,7 +584,7 @@ export function useMidiConvert() {
       } catch (e) {
         setIsConverting(false);
         setIsUploading(false);
-        const msg = e instanceof Error ? e.message : "Conversion failed";
+        const msg = resolveUserFacingError(e, "MIDI conversion failed. Please try again.");
         setError(msg);
         trackEvent("midi_convert_failed", { error: msg.slice(0, 120) });
       }
@@ -587,14 +602,20 @@ export function useMidiConvert() {
   );
 
   const downloadMidi = useCallback(async () => {
-    if (!midiFileUrl || !jobToken) return;
+    if (!midiFileUrl || !jobToken || isDownloadingMidiRef.current) return;
+    isDownloadingMidiRef.current = true;
+    setIsDownloadingMidi(true);
     trackEvent("midi_download_started");
     try {
       const headers = await authHeaders();
       const res = await fetch(midiFileUrl, {
         headers: { ...headers, "x-job-token": jobToken },
       });
-      if (!res.ok) throw new Error("Download failed");
+      if (!res.ok) {
+        throw new Error(
+          userFacingHttpError(res.status, null, "Download failed"),
+        );
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -606,6 +627,9 @@ export function useMidiConvert() {
       URL.revokeObjectURL(url);
     } catch {
       window.open(midiFileUrl, "_blank");
+    } finally {
+      isDownloadingMidiRef.current = false;
+      setIsDownloadingMidi(false);
     }
   }, [midiFileUrl, jobToken]);
 
@@ -882,6 +906,7 @@ export function useMidiConvert() {
     activeMidiJobId,
     jobToken,
     downloadMidi,
+    isDownloadingMidi,
     triggerConvert,
     batchJobs,
     isBatchMode,

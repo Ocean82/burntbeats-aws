@@ -68,15 +68,18 @@ export function MidiTransportBar({
       </span>
 
       <span
-        className="rounded px-xs py-1 font-mono text-xs tabular-nums text-muted-foreground"
+        className="rounded px-xs py-1 font-mono text-xs tabular-nums text-muted-foreground max-sm:min-w-[2.5rem] max-sm:text-center"
         style={{ background: "var(--midi-surface-inset)" }}
         title="Tempo"
       >
-        {bpm} BPM
+        <span className="hidden sm:inline">{bpm} BPM</span>
+        <span className="sm:hidden">{bpm}</span>
       </span>
 
       {!isSupported && (
-        <span className="text-meta text-primary-300/80">Preview unavailable in this browser</span>
+        <span className="hidden text-meta text-primary-300/80 md:inline">
+          Preview unavailable in this browser
+        </span>
       )}
     </div>
   );

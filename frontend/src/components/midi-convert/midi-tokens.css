@@ -73,7 +73,32 @@
   flex-direction: column;
   gap: 8px;
   padding: 8px 12px 10px;
-  min-height: 240px;
+  min-height: 0;
+}
+
+@media (max-width: 767px) {
+  .midi-editor-panel {
+    min-height: 240px;
+  }
+
+  .midi-piano-roll {
+    min-height: 240px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .midi-btn {
+    transition: none;
+  }
+
+  .midi-btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .midi-status-panel__meter::-webkit-progress-value,
+  .midi-status-panel__meter::-moz-progress-value {
+    transition: none;
+  }
 }
 
 .midi-inspector-wrap {

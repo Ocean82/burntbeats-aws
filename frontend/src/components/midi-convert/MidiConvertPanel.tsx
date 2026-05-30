@@ -62,6 +62,7 @@ export function MidiConvertPanel({
     setError,
     result,
     downloadMidi,
+    isDownloadingMidi,
     triggerConvert,
     batchJobs,
     isBatchMode,
@@ -590,6 +591,7 @@ export function MidiConvertPanel({
         <MidiResultPanel
           result={result}
           onDownload={downloadMidi}
+          isDownloading={isDownloadingMidi}
           onNewConversion={handleClear}
           jobId={activeMidiJobId}
           jobToken={jobToken}

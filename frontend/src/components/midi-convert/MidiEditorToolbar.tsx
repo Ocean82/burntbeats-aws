@@ -1,11 +1,13 @@
 /**
  * MIDI editor tool row — tools, snap, undo, draw velocity, export.
+ * Primary controls stay visible; secondary controls collapse into a menu below md.
  */
 import {
   Copy,
   Download,
   Eraser,
   Magnet,
+  MoreHorizontal,
   MousePointer2,
   Pencil,
   Redo2,
@@ -64,26 +66,24 @@ const GRIDS: { value: SnapGrid; label: string }[] = [
   { value: "free", label: "Off" },
 ];
 
-export function MidiEditorToolbar({
-  tool,
+type SecondaryToolbarProps = Omit<
+  MidiEditorToolbarProps,
+  "onToolChange" | "onUndo" | "onRedo" | "onExport"
+>;
+
+function SecondaryToolbarControls({
   snapGrid,
   bpm,
   drawVelocity,
-  canUndo,
-  canRedo,
   isModified,
   hasSelection,
   zoomLevel,
   metronomeEnabled,
   canSaveToJob,
   isSaving = false,
-  onToolChange,
   onSnapGridChange,
   onBpmChange,
   onDrawVelocityChange,
-  onUndo,
-  onRedo,
-  onExport,
   onReset,
   onZoomIn,
   onZoomOut,
@@ -91,58 +91,19 @@ export function MidiEditorToolbar({
   onQuantizeSelection,
   onDuplicateSelection,
   onSaveToJob,
-}: MidiEditorToolbarProps) {
+  layout = "row",
+}: SecondaryToolbarProps & { layout?: "row" | "stack" }) {
+  const stack = layout === "stack";
+
   return (
-    <div className="flex flex-wrap items-center gap-xs">
+    <>
       <div
-        className="inline-flex rounded-md border border-border p-0.5"
-        style={{ background: "var(--midi-surface-inset)" }}
-        role="toolbar"
-        aria-label="Editor tools"
+        className={cn(
+          "flex items-center gap-xs",
+          stack && "w-full justify-between",
+        )}
+        title="Grid snap"
       >
-        {TOOLS.map(({ id, icon: Icon }) => {
-          const meta = EDITOR_TOOLS[id];
-          return (
-            <MidiPhysicalButton
-              key={id}
-              variant="tool"
-              pressed={tool === id}
-              onClick={() => onToolChange(id)}
-              title={`${meta.label} (${meta.shortcut}) — ${meta.hint}`}
-              aria-label={meta.label}
-              className="!min-w-[2rem] !px-xs"
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span className="hidden sm:inline">{meta.label}</span>
-            </MidiPhysicalButton>
-          );
-        })}
-      </div>
-
-      <div className="h-5 w-px bg-muted" aria-hidden />
-
-      <MidiPhysicalButton
-        variant="icon"
-        onClick={onUndo}
-        disabled={!canUndo}
-        title="Undo (Ctrl+Z)"
-        aria-label="Undo"
-      >
-        <Undo2 className="h-3.5 w-3.5" />
-      </MidiPhysicalButton>
-      <MidiPhysicalButton
-        variant="icon"
-        onClick={onRedo}
-        disabled={!canRedo}
-        title="Redo (Ctrl+Y)"
-        aria-label="Redo"
-      >
-        <Redo2 className="h-3.5 w-3.5" />
-      </MidiPhysicalButton>
-
-      <div className="h-5 w-px bg-muted" aria-hidden />
-
-      <div className="flex items-center gap-xs" title="Grid snap">
         <Magnet
           className={cn(
             "h-3.5 w-3.5 shrink-0",
@@ -164,7 +125,7 @@ export function MidiEditorToolbar({
         </select>
       </div>
 
-      <div className="flex items-center gap-xs">
+      <div className={cn("flex items-center gap-xs", stack && "w-full justify-between")}>
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
           BPM
         </span>
@@ -190,8 +151,6 @@ export function MidiEditorToolbar({
         onChange={onDrawVelocityChange}
         ariaLabel="Draw velocity for new notes"
       />
-
-      <div className="h-5 w-px bg-muted" aria-hidden />
 
       <div className="inline-flex items-center gap-0.5 rounded-md border border-border p-0.5">
         <MidiPhysicalButton variant="icon" onClick={onZoomOut} title="Zoom out" aria-label="Zoom out">
@@ -236,8 +195,6 @@ export function MidiEditorToolbar({
         <Copy className="h-3.5 w-3.5" />
       </MidiPhysicalButton>
 
-      <div className="flex-1" />
-
       {isModified && (
         <MidiPhysicalButton
           onClick={onReset}
@@ -260,6 +217,90 @@ export function MidiEditorToolbar({
           {isSaving ? "Saving…" : "Save to job"}
         </MidiPhysicalButton>
       )}
+    </>
+  );
+}
+
+export function MidiEditorToolbar(props: MidiEditorToolbarProps) {
+  const {
+    tool,
+    canUndo,
+    canRedo,
+    onToolChange,
+    onUndo,
+    onRedo,
+    onExport,
+  } = props;
+
+  return (
+    <div className="flex flex-wrap items-center gap-xs">
+      <div
+        className="inline-flex rounded-md border border-border p-0.5"
+        style={{ background: "var(--midi-surface-inset)" }}
+        role="toolbar"
+        aria-label="Editor tools"
+      >
+        {TOOLS.map(({ id, icon: Icon }) => {
+          const meta = EDITOR_TOOLS[id];
+          return (
+            <MidiPhysicalButton
+              key={id}
+              variant="tool"
+              pressed={tool === id}
+              onClick={() => onToolChange(id)}
+              title={`${meta.label} (${meta.shortcut}) — ${meta.hint}`}
+              aria-label={meta.label}
+              className="!min-w-[2rem] !px-xs"
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="hidden sm:inline">{meta.label}</span>
+            </MidiPhysicalButton>
+          );
+        })}
+      </div>
+
+      <div className="h-5 w-px bg-muted max-md:hidden" aria-hidden />
+
+      <MidiPhysicalButton
+        variant="icon"
+        onClick={onUndo}
+        disabled={!canUndo}
+        title="Undo (Ctrl+Z)"
+        aria-label="Undo"
+      >
+        <Undo2 className="h-3.5 w-3.5" />
+      </MidiPhysicalButton>
+      <MidiPhysicalButton
+        variant="icon"
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Redo (Ctrl+Y)"
+        aria-label="Redo"
+      >
+        <Redo2 className="h-3.5 w-3.5" />
+      </MidiPhysicalButton>
+
+      <div className="hidden md:flex md:flex-wrap md:items-center md:gap-xs">
+        <div className="h-5 w-px bg-muted" aria-hidden />
+        <SecondaryToolbarControls {...props} layout="row" />
+      </div>
+
+      <details className="relative md:hidden">
+        <summary
+          className="midi-btn midi-btn--icon cursor-pointer list-none [&::-webkit-details-marker]:hidden"
+          aria-label="More editor tools"
+        >
+          <MoreHorizontal className="h-4 w-4" aria-hidden />
+        </summary>
+        <div
+          className="absolute right-0 top-full z-20 mt-1 flex min-w-[12rem] flex-col gap-sm rounded-md border border-border bg-popover p-sm shadow-elevation-md"
+          role="menu"
+        >
+          <SecondaryToolbarControls {...props} layout="stack" />
+        </div>
+      </details>
+
+      <div className="flex-1" />
 
       <MidiPhysicalButton
         variant="play"
@@ -268,7 +309,7 @@ export function MidiEditorToolbar({
         aria-label="Export edited MIDI"
       >
         <Download className="h-3.5 w-3.5" />
-        Export .mid
+        <span className="hidden sm:inline">Export .mid</span>
       </MidiPhysicalButton>
     </div>
   );

@@ -2,7 +2,7 @@
  * MidiResultPanel — shows conversion results: piano roll, stats, download button.
  * Includes View/Edit toggle for the interactive MIDI note editor.
  */
-import { Download, RotateCcw, Music, Play, Square } from "lucide-react";
+import { Download, Loader2, RotateCcw, Music, Play, Square } from "lucide-react";
 import { useState } from "react";
 import type { MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
@@ -15,6 +15,7 @@ import "./midi-tokens.css";
 interface MidiResultPanelProps {
   result: MidiConvertResult;
   onDownload: () => void;
+  isDownloading?: boolean;
   onNewConversion: () => void;
   onApplySuggestedBpm?: (bpm: number) => void;
   jobId?: string | null;
@@ -30,6 +31,7 @@ function formatDuration(seconds: number): string {
 export function MidiResultPanel({
   result,
   onDownload,
+  isDownloading = false,
   onNewConversion,
   onApplySuggestedBpm,
   jobId = null,
@@ -135,10 +137,21 @@ export function MidiResultPanel({
           <button
             type="button"
             onClick={onDownload}
+            disabled={isDownloading}
             className="midi-btn"
+            aria-busy={isDownloading}
           >
-            <Download className="h-4 w-4" aria-hidden />
-            Download .mid
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Downloading…
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" aria-hidden />
+                Download .mid
+              </>
+            )}
           </button>
         )}
         <button

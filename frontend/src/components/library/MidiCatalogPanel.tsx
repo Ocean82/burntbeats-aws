@@ -19,6 +19,7 @@ export function MidiCatalogPanel() {
   const catalog = useMidiCatalog();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const scheduledRef = useRef<number[]>([]);
 
@@ -94,6 +95,8 @@ export function MidiCatalogPanel() {
   );
 
   const downloadEntry = useCallback(async (entry: MidiCatalogEntry) => {
+    if (downloadingId) return;
+    setDownloadingId(entry.id);
     try {
       const headers = await authHeaders();
       const res = await fetch(catalogFileUrl(entry.id), { headers });
@@ -109,8 +112,10 @@ export function MidiCatalogPanel() {
       URL.revokeObjectURL(url);
     } catch {
       /* download failed */
+    } finally {
+      setDownloadingId(null);
     }
-  }, []);
+  }, [downloadingId]);
 
   return (
     <div data-testid="midi-catalog-panel">
@@ -267,10 +272,16 @@ export function MidiCatalogPanel() {
                 <button
                   type="button"
                   onClick={() => void downloadEntry(entry)}
+                  disabled={downloadingId === entry.id}
                   className="midi-btn text-xs"
                   aria-label="Download MIDI"
+                  aria-busy={downloadingId === entry.id}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  {downloadingId === entry.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
                 </button>
               </div>
             </li>

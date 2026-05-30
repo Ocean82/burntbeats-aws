@@ -31,6 +31,10 @@ export function SplitIntentAdvanced({
       <span className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">
         Advanced
       </span>
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        Isolate specific stems from a 2-stem split, or combine targets (e.g. drums +
+        bass). Cleaner extracts with Quality mode or a 4-stem separation.
+      </p>
       <label className="flex items-center gap-2 text-xs text-secondary-foreground">
         <input
           type="checkbox"

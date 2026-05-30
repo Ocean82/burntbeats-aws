@@ -37,8 +37,8 @@ export function QualitySelector({
         label: "Quality",
         enabled: canChoosePaidQuality,
         hint: canChoosePaidQuality
-          ? "Higher quality, slower turnaround"
-          : "Requires Premium or Studio",
+          ? "Higher fidelity models — best for dense mixes"
+          : "Premium unlocks higher-fidelity separation models",
       },
     ];
     return opts;
@@ -89,8 +89,8 @@ export function QualitySelector({
         ))}
       </div>
       {!canChoosePaidQuality && (
-        <span className="ml-2 text-meta font-medium uppercase tracking-wide text-muted-foreground">
-          Premium/Studio to unlock
+        <span className="text-meta font-medium uppercase tracking-wide text-muted-foreground">
+          Premium unlocks Quality mode — cleaner stems for complex mixes
         </span>
       )}
     </div>
