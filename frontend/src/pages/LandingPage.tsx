@@ -111,7 +111,7 @@ export function LandingPage() {
 
         {/* Hero — ignition sequence */}
         <motion.section
-          className="relative flex flex-col items-center gap-xl py-[clamp(3rem,8vw,6rem)] text-center"
+          className="relative flex w-full flex-col items-stretch gap-xl py-[clamp(3rem,8vw,6rem)] text-center"
           {...brandHeroContainer(reduceMotion)}
         >
           <motion.div
@@ -133,14 +133,14 @@ export function LandingPage() {
 
           <motion.h1
             variants={heroItem}
-            className="logo-burnt max-w-5xl text-[clamp(3.5rem,10vw,8rem)] font-bold leading-[0.92] tracking-[-0.05em]"
+            className="logo-burnt mx-auto w-full max-w-5xl text-[clamp(3.5rem,10vw,8rem)] font-bold leading-[0.92] tracking-[-0.05em]"
           >
             <span className="logo-burnt-fire">Burnt Beats</span>
           </motion.h1>
 
           <motion.p
             variants={heroItem}
-            className="max-w-2xl text-pretty text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground"
+            className="mx-auto w-full max-w-2xl text-pretty text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground"
           >
             Burnt Beats is the browser workstation for producers and DJs who
             need more than isolated files. Split tracks into stems, shape the
