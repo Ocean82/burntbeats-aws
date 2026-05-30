@@ -250,9 +250,9 @@ export function MixerPanel({
         onExport={onExport}
         onCompareExport={onCompareExport}
         isComparingExport={isComparingExport}
+        onResetSingleStem={onResetSingleStem}
       />
       <span className="sr-only">
-        {Boolean(onResetSingleStem)}
         {Boolean(getMasterAnalyserFrequencyData)}
       </span>
     </>

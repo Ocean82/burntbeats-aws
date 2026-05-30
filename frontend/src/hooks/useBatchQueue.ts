@@ -4,6 +4,8 @@
  */
 import { useCallback, useRef, useState } from "react";
 import { splitStems, type SplitQuality } from "../api";
+import type { SplitIntent } from "@shared/types";
+import { legacyStemsFromIntent } from "../utils/splitIntent";
 import type { StemResult } from "../types";
 import type { QueueItemStatus } from "../components";
 
@@ -24,7 +26,7 @@ interface UseBatchQueueReturn {
   removeFromBatchQueue: (id: string) => void;
   clearCompletedFromQueue: () => void;
   processNextInQueue: (
-    stemCount: 2 | 4,
+    intent: SplitIntent,
     splitQuality: SplitQuality,
     onStemsReady: (stems: StemResult[]) => void,
     onError: (msg: string) => void,
@@ -66,7 +68,7 @@ export function useBatchQueue(): UseBatchQueueReturn {
   }, [updateQueue]);
 
   const processNextInQueue = useCallback(async (
-    stemCount: 2 | 4,
+    intent: SplitIntent,
     splitQuality: SplitQuality,
     onStemsReady: (stems: StemResult[]) => void,
     onError: (msg: string) => void,
@@ -93,9 +95,17 @@ export function useBatchQueue(): UseBatchQueueReturn {
 
         updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "processing" as const, progress: 0 } : i));
         try {
-          const res = await splitStems(file, String(stemCount) as "2" | "4", splitQuality, false, (status) => {
+          const stemsArg = legacyStemsFromIntent(intent);
+          const res = await splitStems(
+            file,
+            stemsArg,
+            splitQuality,
+            false,
+            (status) => {
             updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, progress: status.progress } : i));
-          });
+          },
+            intent,
+          );
           updateQueue((q) => q.map((i) => i.id === queued.id ? { ...i, status: "complete" as const, progress: 100 } : i));
           onStemsReady(res.stems);
           if (res.job_id && onJobId) onJobId(res.job_id);

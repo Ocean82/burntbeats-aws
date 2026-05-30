@@ -3,14 +3,16 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { collapseMotion, productTransition } from "../../motion/presets";
 import { Gamepad2, Loader2, Lock, Sparkles } from "lucide-react";
 import { cn } from "../../utils/cn";
+import type { SplitIntent } from "@shared/types";
 import { getSplitProgressMessage } from "../../utils/splitProgressCopy";
+import { intentLabel, legacyStemsFromIntent } from "../../utils/splitIntent";
 
 export interface SplitActionsProps {
   uploadedFile: File | null;
-  requestedStemMode: 2 | 4;
+  splitIntent: SplitIntent;
   isSample: boolean;
   onToggleSample: () => void;
-  onSplit: (requestedStemMode: 2 | 4, isSample?: boolean) => void;
+  onSplit: (intent: SplitIntent, isSample?: boolean) => void;
   isSplitting: boolean;
   splitProgress: number;
   uploadProgress: number;
@@ -29,7 +31,7 @@ export interface SplitActionsProps {
 /** Split button, Try-for-free toggle, progress bar, and queue button. */
 export function SplitActions({
   uploadedFile,
-  requestedStemMode,
+  splitIntent,
   isSample,
   onToggleSample,
   onSplit,
@@ -49,7 +51,8 @@ export function SplitActions({
 }: SplitActionsProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const collapse = collapseMotion(reduceMotion);
-  const stemCount: 2 | 4 = requestedStemMode;
+  const stemCount: 2 | 4 = legacyStemsFromIntent(splitIntent);
+  const actionLabel = intentLabel(splitIntent);
   const progressCopy = useMemo(
     () =>
       getSplitProgressMessage({
@@ -109,7 +112,7 @@ export function SplitActions({
         <div className="flex flex-wrap items-center gap-xs">
           <button
             type="button"
-            onClick={() => onSplit(requestedStemMode, isSample)}
+            onClick={() => onSplit(splitIntent, isSample)}
             disabled={
               !uploadedFile || isSplitting || splitResultStemsLength > 0
             }
@@ -130,10 +133,8 @@ export function SplitActions({
               </>
             ) : splitResultStemsLength > 0 ? (
               "New file to split again"
-            ) : requestedStemMode === 4 ? (
-              "Split → 4 stems"
             ) : (
-              "Split stems"
+              actionLabel
             )}
           </button>
           {!hideSampleToggle && (

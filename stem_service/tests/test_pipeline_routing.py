@@ -35,7 +35,9 @@ def test_run_separation_sync_ignores_legacy_backend_switch_for_2stem(
             "rank1-quality",
         ]
 
-    monkeypatch.setattr(job_worker, "run_hybrid_2stem", fake_hybrid_2stem)
+    monkeypatch.setattr(
+        "stem_service.routing.executor.run_hybrid_2stem", fake_hybrid_2stem
+    )
     monkeypatch.setattr(
         job_worker, "schedule_completion_artifacts", lambda *_args, **_kwargs: None
     )

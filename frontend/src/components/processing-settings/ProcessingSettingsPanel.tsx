@@ -9,7 +9,20 @@ import type { ProcessingSettingsPanelProps } from "./types";
 import { UploadDropZone } from "./UploadDropZone";
 import { LoadStemsZone } from "./LoadStemsZone";
 import { QualitySelector } from "./QualitySelector";
-import { StemCountSelector } from "./StemCountSelector";
+import { SplitIntentQuickActions } from "./SplitIntentQuickActions";
+import {
+  SplitIntentAdvanced,
+  advancedSelectionToIntent,
+} from "./SplitIntentAdvanced";
+import {
+  FullSeparationOptions,
+  fullSeparationIntent,
+} from "./FullSeparationOptions";
+import type { SplitIntent, SplitTarget } from "@shared/types";
+import {
+  DEFAULT_SPLIT_INTENT,
+  withIntentQuality,
+} from "../../utils/splitIntent";
 import { SplitActions } from "./SplitActions";
 import { UsageTokenRow } from "./UsageTokenRow";
 import { SplitErrorAlert } from "./SplitErrorAlert";
@@ -69,7 +82,10 @@ export function ProcessingSettingsPanel({
 }: ProcessingSettingsPanelProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const collapse = collapseMotion(reduceMotion);
-  const [requestedStemMode, setRequestedStemMode] = useState<2 | 4>(2);
+  const [splitIntent, setSplitIntent] = useState<SplitIntent>(DEFAULT_SPLIT_INTENT);
+  const [advancedTargets, setAdvancedTargets] = useState<SplitTarget[]>([]);
+  const [removeVocalsMode, setRemoveVocalsMode] = useState(false);
+  const [fullSepMode, setFullSepMode] = useState<"2" | "4">("2");
   const [loadExpanded, setLoadExpanded] = useState(false);
   const [isSample, setIsSample] = useState(false);
   // Local override: user can re-expand the panel after auto-collapse
@@ -102,10 +118,21 @@ export function ProcessingSettingsPanel({
   }, [quality, onQualityChange]);
 
   useEffect(() => {
-    if (!canSplitFourStems && requestedStemMode !== 2)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp stem mode when expansion unavailable
-      setRequestedStemMode(2);
-  }, [canSplitFourStems, requestedStemMode]);
+    if (!canSplitFourStems && fullSepMode === "4")
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clamp full separation mode
+      setFullSepMode("2");
+  }, [canSplitFourStems, fullSepMode]);
+
+  const resolvedSplitIntent = ((): SplitIntent => {
+    const advanced = advancedSelectionToIntent(advancedTargets, removeVocalsMode);
+    if (advanced && advancedTargets.length > 0) {
+      return withIntentQuality(advanced, quality);
+    }
+    if (splitIntent.task === "full_separation") {
+      return withIntentQuality(fullSeparationIntent(fullSepMode), quality);
+    }
+    return withIntentQuality(splitIntent, quality);
+  })();
 
   const showUsageRow =
     !subscriptionInactive &&
@@ -234,7 +261,7 @@ export function ProcessingSettingsPanel({
                 onToggleLoadExpanded={() => setLoadExpanded((v) => !v)}
               />
             ) : (
-              <div className="grid gap-sm lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)] lg:items-end">
+              <div className="flex flex-col gap-md">
                 <QualitySelector
                   quality={quality}
                   onQualityChange={onQualityChange}
@@ -242,17 +269,37 @@ export function ProcessingSettingsPanel({
                   isSplitting={isSplitting}
                   splitResultStemsLength={splitResultStemsLength}
                 />
-                <StemCountSelector
-                  requestedStemMode={requestedStemMode}
-                  onStemModeChange={setRequestedStemMode}
+                <SplitIntentQuickActions
+                  selected={splitIntent}
+                  onSelect={(intent) => {
+                    setSplitIntent(intent);
+                    setAdvancedTargets([]);
+                    setRemoveVocalsMode(false);
+                  }}
+                  disabled={isSplitting || splitResultStemsLength > 0}
+                />
+                <SplitIntentAdvanced
+                  targets={advancedTargets}
+                  removeVocals={removeVocalsMode}
+                  onTargetsChange={setAdvancedTargets}
+                  onRemoveVocalsChange={setRemoveVocalsMode}
+                  disabled={isSplitting || splitResultStemsLength > 0}
+                />
+                <FullSeparationOptions
+                  mode={fullSepMode}
+                  onModeChange={(mode) => {
+                    setFullSepMode(mode);
+                    setSplitIntent(fullSeparationIntent(mode));
+                    setAdvancedTargets([]);
+                    setRemoveVocalsMode(false);
+                  }}
                   canSplitFourStems={canSplitFourStems}
-                  isSplitting={isSplitting}
-                  splitResultStemsLength={splitResultStemsLength}
+                  disabled={isSplitting || splitResultStemsLength > 0}
                   onUpgradeToPremium={onUpgradeToPremium}
                 />
                 <SplitActions
                   uploadedFile={uploadedFile}
-                  requestedStemMode={requestedStemMode}
+                  splitIntent={resolvedSplitIntent}
                   isSample={isSample}
                   onToggleSample={() => setIsSample((v) => !v)}
                   onSplit={onSplit}
@@ -312,7 +359,7 @@ export function ProcessingSettingsPanel({
           onDismissError={onDismissError}
           onRetry={() => {
             onDismissError();
-            onSplit(requestedStemMode);
+            onSplit(resolvedSplitIntent);
           }}
         />
       )}

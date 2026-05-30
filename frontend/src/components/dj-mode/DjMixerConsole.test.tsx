@@ -108,6 +108,27 @@ describe("DjMixerConsole", () => {
     expect(screen.getAllByText("Master").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("renders preview control when onPreviewStem is provided", () => {
+    render(
+      <DjMixerConsole
+        stems={stems}
+        stemStates={{ vocals: defaultStemState() }}
+        activeStemId="vocals"
+        playbackReady
+        isPlaying={false}
+        playingStemId={null}
+        visibleTools={allTools}
+        getStemAnalyserTimeDomainData={() => new Uint8Array(128)}
+        onStemStateChange={() => {}}
+        onActiveStemChange={() => {}}
+        onPreviewStem={() => {}}
+        {...masterProps}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /preview vocals/i })).toBeInTheDocument();
+  });
+
   it("hides MASTER column when master tool is disabled", () => {
     render(
       <DjMixerConsole

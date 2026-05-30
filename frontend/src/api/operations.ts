@@ -7,7 +7,9 @@ import { tryParseJson, getApiErrorMessage, isAcceptedJobIdResponse } from "./val
 import { userFacingApiError, userFacingHttpError } from "../userFacingError";
 import { streamStemJobUntilDone } from "./jobStatus";
 import { uploadWithProgress, type UploadProgressEvent } from "../utils/uploadWithProgress";
+import type { SplitIntent } from "@shared/types";
 import type { SplitResponse, SplitQuality, StemJobStatus, ServerExportMasterRequest } from "./types";
+import { legacyStemsFromIntent, withIntentQuality } from "../utils/splitIntent";
 
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(import.meta.env.VITE_SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 
@@ -17,7 +19,8 @@ export async function startStemSplit(
   stems: "2" | "4",
   quality?: SplitQuality,
   isSample?: boolean,
-  onUploadProgress?: (event: UploadProgressEvent) => void
+  onUploadProgress?: (event: UploadProgressEvent) => void,
+  intent?: SplitIntent,
 ): Promise<{ job_id: string }> {
   if (!file || !(file instanceof File) || file.size === 0) {
     throw new Error("No file provided. Upload an audio file first.");
@@ -31,6 +34,12 @@ export async function startStemSplit(
   form.append("file", file);
   form.append("stems", stems);
   if (quality) form.append("quality", quality);
+  if (intent) {
+    const payload = quality
+      ? withIntentQuality(intent, quality)
+      : intent;
+    form.append("intent", JSON.stringify(payload));
+  }
   if (isSample) form.append("sample", "true");
 
   const controller = new AbortController();
@@ -84,9 +93,17 @@ export async function splitStems(
   quality?: SplitQuality,
   isSample?: boolean,
   onProgress?: (status: StemJobStatus) => void,
-  onUploadProgress?: (event: UploadProgressEvent) => void
+  onUploadProgress?: (event: UploadProgressEvent) => void,
+  intent?: SplitIntent,
 ): Promise<SplitResponse> {
-  const { job_id } = await startStemSplit(file, stems, quality, isSample, onUploadProgress);
+  const { job_id } = await startStemSplit(
+    file,
+    stems,
+    quality,
+    isSample,
+    onUploadProgress,
+    intent,
+  );
   const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s));
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };

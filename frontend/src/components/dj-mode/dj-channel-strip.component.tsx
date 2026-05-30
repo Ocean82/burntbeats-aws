@@ -2,10 +2,20 @@
  * DjChannelStrip — Hardware-inspired vertical mixer channel for DJ mode.
  */
 import { memo, useCallback } from "react";
+import { Headphones, RotateCcw } from "lucide-react";
 import type { StemDefinition } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { cn } from "../../utils/cn";
 import { formatDb } from "../../utils/mixer-format";
+import {
+  PITCH_MIN,
+  PITCH_MAX,
+  PITCH_STEP,
+  TIME_STRETCH_MIN,
+  TIME_STRETCH_MAX,
+  TIME_STRETCH_STEP,
+  timeStretchToDisplayPercent,
+} from "../../constants/mixerRanges";
 import { channelMuteSoloButtonClass } from "../multi-stem-editor/mixer-channel-controls";
 import { PanKnob } from "../multi-stem-editor/pan-knob.component";
 import { EqKnob } from "../multi-stem-editor/eq-knob.component";
@@ -15,6 +25,7 @@ import { MixerSectionLabel } from "../multi-stem-editor/mixer-section-label.comp
 
 const EQ_BANDS = [
   { key: "eqLow" as const, label: "Lo" },
+  { key: "eqLowMid" as const, label: "LM" },
   { key: "eqMid" as const, label: "Mid" },
   { key: "eqHigh" as const, label: "Hi" },
 ] as const;
@@ -29,11 +40,16 @@ export interface DjChannelStripProps {
   showFaders: boolean;
   showEq: boolean;
   showPan: boolean;
+  showFx: boolean;
   showMeters: boolean;
   isMeterPlaying: boolean;
+  isPreviewPlaying: boolean;
+  isLoadingPreview: boolean;
   getStemAnalyserData?: (stemId: string) => Uint8Array | null;
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onActiveStemChange: (stemId: string) => void;
+  onPreviewStem?: (stemId: string) => void;
+  onResetSingleStem?: (stemId: string) => void;
 }
 
 export const DjChannelStrip = memo(function DjChannelStrip({
@@ -44,13 +60,18 @@ export const DjChannelStrip = memo(function DjChannelStrip({
   showFaders,
   showEq,
   showPan,
+  showFx,
   showMeters,
   isMeterPlaying,
+  isPreviewPlaying,
+  isLoadingPreview,
   getStemAnalyserData,
   onStemStateChange,
   onActiveStemChange,
+  onPreviewStem,
+  onResetSingleStem,
 }: DjChannelStripProps) {
-  const { mixer, muted, soloed } = state;
+  const { mixer, muted, soloed, pitchSemitones, timeStretch } = state;
 
   const handleActivate = useCallback(() => {
     onActiveStemChange(stem.id);
@@ -112,6 +133,67 @@ export const DjChannelStrip = memo(function DjChannelStrip({
           {stem.label}
         </span>
       </button>
+      {onResetSingleStem && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onResetSingleStem(stem.id);
+          }}
+          disabled={!playbackReady}
+          className="mt-1 flex h-8 w-full items-center justify-center gap-1 rounded-md border border-border/60 text-[9px] uppercase tracking-wider text-muted-foreground transition hover:border-primary-400/30 hover:text-primary-200 disabled:opacity-40"
+          aria-label={`Reset ${stem.label} channel`}
+        >
+          <RotateCcw className="h-3 w-3" />
+          Reset
+        </button>
+      )}
+
+      {showFx && (
+        <div
+          className="dj-channel-strip__fx flex w-full shrink-0 flex-col items-stretch gap-1 border-b border-border px-1 py-2"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <MixerSectionLabel>Pitch</MixerSectionLabel>
+          <input
+            type="range"
+            min={PITCH_MIN}
+            max={PITCH_MAX}
+            step={PITCH_STEP}
+            value={pitchSemitones}
+            disabled={!playbackReady}
+            onChange={(e) =>
+              onStemStateChange(stem.id, { pitchSemitones: Number(e.target.value) })
+            }
+            onDoubleClick={() => onStemStateChange(stem.id, { pitchSemitones: 0 })}
+            className="stem-accent-slider w-full"
+            aria-label={`${stem.label} pitch shift`}
+          />
+          <span className="text-center font-mono text-[9px] tabular-nums text-muted-foreground">
+            {pitchSemitones > 0 ? "+" : ""}
+            {pitchSemitones.toFixed(1)} st
+          </span>
+          <MixerSectionLabel>Tempo</MixerSectionLabel>
+          <input
+            type="range"
+            min={TIME_STRETCH_MIN}
+            max={TIME_STRETCH_MAX}
+            step={TIME_STRETCH_STEP}
+            value={timeStretch}
+            disabled={!playbackReady}
+            onChange={(e) =>
+              onStemStateChange(stem.id, { timeStretch: Number(e.target.value) })
+            }
+            onDoubleClick={() => onStemStateChange(stem.id, { timeStretch: 1.0 })}
+            className="stem-accent-slider w-full"
+            aria-label={`${stem.label} tempo`}
+          />
+          <span className="text-center font-mono text-[9px] tabular-nums text-muted-foreground">
+            {timeStretchToDisplayPercent(timeStretch) >= 0 ? "+" : ""}
+            {timeStretchToDisplayPercent(timeStretch)}%
+          </span>
+        </div>
+      )}
 
       {showPan && (
         <div
@@ -233,6 +315,31 @@ export const DjChannelStrip = memo(function DjChannelStrip({
           >
             S
           </button>
+          {onPreviewStem && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreviewStem(stem.id);
+              }}
+              disabled={!playbackReady || isLoadingPreview}
+              aria-label={isPreviewPlaying ? `Stop ${stem.label} preview` : `Preview ${stem.label}`}
+              aria-pressed={isPreviewPlaying}
+              className={cn(
+                "tap-feedback flex h-11 w-11 items-center justify-center rounded-md border font-bold text-meta tracking-wide transition-[color,background-color,border-color,transform,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95] sm:h-10 sm:w-10",
+                isPreviewPlaying
+                  ? "border-primary-400/70 bg-primary-500/30 text-primary-100"
+                  : "border-border bg-muted text-muted-foreground hover:border-primary-400/40 hover:text-primary-200",
+                !playbackReady && "cursor-not-allowed opacity-40",
+              )}
+            >
+              {isLoadingPreview ? (
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-border border-t-white" />
+              ) : (
+                <Headphones className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

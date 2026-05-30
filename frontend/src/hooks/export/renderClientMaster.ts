@@ -1,42 +1,79 @@
 /**
  * Client-side master WAV rendering via OfflineAudioContext.
- * Mixes audible stems with the **full DSP chain** (gain, EQ, compressor,
- * reverb, delay, pan, width, rate, trim) — matching real-time playback exactly.
+ * Mixes audible stems with the full DSP chain (gain, EQ, compressor,
+ * reverb, delay, pan, width, trim) and PitchTempoPlugin when pitch/tempo
+ * are adjusted — matching real-time playback.
  */
 import type { StemResult } from "../../types";
-import { audioBufferToWav, normalizeAudioBuffer, trimToSeconds, createStemDspChain, createFadeEnvelopeNode } from "../../utils/audio";
-import { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../../stem-editor-state";
+import {
+  audioBufferToWav,
+  normalizeAudioBuffer,
+  trimToSeconds,
+  createStemDspChain,
+  maxTrimWallDurationSeconds,
+  getStemTrimWallDurationSeconds,
+} from "../../utils/audio";
+import { defaultStemState, type StemEditorState } from "../../stem-editor-state";
 import { filterStemsForAudibleMix } from "../../utils/stemAudibility";
+import {
+  createStemPluginPool,
+  destroyStemPluginPool,
+  stemNeedsPlugin,
+} from "../../utils/stemPlaybackUtils";
+import { buildStemSource } from "../../utils/stemSourceGraph";
 
 /** Extra seconds appended to offline render to capture reverb/delay tails. */
 const EFFECT_TAIL_SECONDS = 2.0;
+
+interface StemRenderData {
+  stemId: string;
+  buffer: AudioBuffer;
+  st: StemEditorState;
+  trimStart: number;
+  trimEnd: number;
+}
 
 export async function renderClientMasterWavBlob(
   options: { normalize?: boolean },
   stemBuffers: Record<string, AudioBuffer>,
   splitResultStems: StemResult[],
   stemStates: Record<string, StemEditorState>,
-  _uploadName: string
+  _uploadName: string,
 ): Promise<Blob> {
   const stemsToMix = filterStemsForAudibleMix(splitResultStems, stemStates);
 
-  let maxDuration = 0;
-  const stemData: { buffer: AudioBuffer; st: StemEditorState; rate: number; trimStart: number; trimEnd: number }[] = [];
-
+  const stemData: StemRenderData[] = [];
   for (const stem of stemsToMix) {
     const buffer = stemBuffers[stem.id];
     if (!buffer) continue;
     const st = stemStates[stem.id] ?? defaultStemState();
     const { trimStart, trimEnd } = trimToSeconds(buffer, st.trim);
-    const rate = getStemEffectiveRate(st);
-    const wallDuration = (trimEnd - trimStart) / rate;
-    maxDuration = Math.max(maxDuration, wallDuration);
-    stemData.push({ buffer, st, rate, trimStart, trimEnd });
+    if (trimEnd - trimStart <= 0) continue;
+    stemData.push({ stemId: stem.id, buffer, st, trimStart, trimEnd });
   }
 
-  if (maxDuration === 0) throw new Error("No valid stems to export (missing buffers?).");
+  if (stemData.length === 0) {
+    throw new Error("No valid stems to export (missing buffers?).");
+  }
 
-  // Determine if any stem uses reverb or delay — if so, extend render for tails
+  const sampleRate = stemData[0]?.buffer.sampleRate ?? 44100;
+  const anyNeedsPlugin = stemData.some(({ st }) => stemNeedsPlugin(st));
+
+  const legacyMaxDuration = maxTrimWallDurationSeconds(
+    stemsToMix,
+    stemBuffers,
+    stemStates,
+    false,
+  );
+  const pluginMaxDuration = anyNeedsPlugin
+    ? maxTrimWallDurationSeconds(stemsToMix, stemBuffers, stemStates, true)
+    : legacyMaxDuration;
+  const maxDuration = Math.max(legacyMaxDuration, pluginMaxDuration);
+
+  if (maxDuration <= 0) {
+    throw new Error("No valid stems to export (empty trim regions?).");
+  }
+
   const hasEffectTails = stemData.some(
     ({ st }) => st.mixer.reverbWet > 0 || st.mixer.delayWet > 0,
   );
@@ -44,52 +81,54 @@ export async function renderClientMasterWavBlob(
     ? maxDuration + EFFECT_TAIL_SECONDS
     : maxDuration;
 
-  // Use the native sample rate from the source buffers to avoid unnecessary
-  // resampling. All stems from the same split share a sample rate, so we take
-  // the first buffer's rate. This matches the live AudioContext behavior and
-  // prevents subtle quality differences between playback and export.
-  const sampleRate = stemData[0]?.buffer.sampleRate ?? 44100;
-  const context = new OfflineAudioContext(2, Math.ceil(renderDuration * sampleRate), sampleRate);
+  const context = new OfflineAudioContext(
+    2,
+    Math.ceil(renderDuration * sampleRate),
+    sampleRate,
+  );
 
-  for (const { buffer, st, rate, trimStart, trimEnd } of stemData) {
-    const gainLinear = Math.pow(10, st.mixer.gain / 20);
-    const dsp = createStemDspChain(context, st.mixer, gainLinear, { metering: false });
+  const { plugins, available: pluginAvailable } = await createStemPluginPool(
+    context,
+    stemData.map(({ stemId, st }) => ({ id: stemId, st })),
+  );
 
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.playbackRate.value = rate;
+  try {
+    for (const { stemId, buffer, st, trimStart, trimEnd } of stemData) {
+      const gainLinear = Math.pow(10, st.mixer.gain / 20);
+      const dsp = createStemDspChain(context, st.mixer, gainLinear, {
+        metering: false,
+      });
 
-    // Apply fade envelope if configured
-    const hasFade = (st.fadeIn ?? 0) > 0 || (st.fadeOut ?? 0) > 0;
-    const wallDuration = (trimEnd - trimStart) / rate;
-    if (hasFade && wallDuration > 0) {
-      const fadeNode = createFadeEnvelopeNode(
+      const usePlugin = pluginAvailable && stemNeedsPlugin(st);
+      const plugin = usePlugin ? plugins.get(stemId) ?? null : null;
+      const wallDuration = getStemTrimWallDurationSeconds(buffer, st, usePlugin);
+
+      buildStemSource(
         context,
-        st.fadeIn ?? 0,
-        st.fadeOut ?? 0,
+        buffer,
+        st,
+        trimStart,
+        trimEnd,
+        dsp.input,
+        plugin,
         wallDuration,
-        0, // startTime = 0 for offline context
-        0, // elapsedWall = 0 (rendering from start)
+        0,
       );
-      source.connect(fadeNode);
-      fadeNode.connect(dsp.input);
-    } else {
-      source.connect(dsp.input);
+
+      dsp.output.connect(context.destination);
     }
 
-    dsp.output.connect(context.destination);
-    source.start(0, trimStart, trimEnd - trimStart);
+    let rendered = await context.startRendering();
+
+    if (hasEffectTails) {
+      rendered = trimTrailingSilence(rendered, maxDuration, sampleRate);
+    }
+
+    if (options.normalize) rendered = normalizeAudioBuffer(rendered);
+    return audioBufferToWav(rendered);
+  } finally {
+    destroyStemPluginPool(plugins);
   }
-
-  let rendered = await context.startRendering();
-
-  // If we added tail time, trim silence from the end to keep file size reasonable
-  if (hasEffectTails) {
-    rendered = trimTrailingSilence(rendered, maxDuration, sampleRate);
-  }
-
-  if (options.normalize) rendered = normalizeAudioBuffer(rendered);
-  return audioBufferToWav(rendered);
 }
 
 /**
@@ -104,7 +143,7 @@ function trimTrailingSilence(
 ): AudioBuffer {
   const minSamples = Math.ceil(minDuration * sampleRate);
   const { numberOfChannels, length } = buffer;
-  const threshold = 1e-5; // ~ -100 dBFS
+  const threshold = 1e-5;
 
   let lastNonSilent = minSamples;
   for (let ch = 0; ch < numberOfChannels; ch++) {
@@ -117,7 +156,6 @@ function trimTrailingSilence(
     }
   }
 
-  // Add a tiny fade-out (10ms) to avoid clicks
   const fadeOutSamples = Math.min(Math.floor(sampleRate * 0.01), lastNonSilent);
   const trimLength = Math.min(length, lastNonSilent + fadeOutSamples);
 
@@ -132,7 +170,6 @@ function trimTrailingSilence(
     const src = buffer.getChannelData(ch);
     const dst = trimmed.getChannelData(ch);
     dst.set(src.subarray(0, trimLength));
-    // Apply fade-out on the tail
     for (let i = 0; i < fadeOutSamples; i++) {
       const idx = trimLength - fadeOutSamples + i;
       dst[idx] *= 1 - i / fadeOutSamples;

@@ -34,6 +34,7 @@ import {
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
+import { parseSplitRequestBody } from "../../helpers/splitIntent.js";
 import {
   isPremiumSplitRequest,
   requireSplitEntitlements,
@@ -94,25 +95,30 @@ splitRouter.post(
       return res.status(415).json({ error: sniff.message });
     }
 
-    const stems = (req.body && req.body.stems) || "4";
-    /** @type {string | undefined} */
-    const rawQuality = req.body && req.body.quality;
-    // Validate stems and quality before proxying to Python service
-    if (stems !== "2" && stems !== "4") {
+    const parsed = parseSplitRequestBody(
+      /** @type {Record<string, unknown> | undefined} */ (req.body),
+    );
+    if (parsed.error) {
       await unlinkPromise(filePath).catch(() => {});
-      return res.status(400).json({ error: "stems must be '2' or '4'" });
+      return res.status(400).json({ error: parsed.error });
     }
-    const VALID_QUALITY = new Set(["speed", "quality"]);
-    if (rawQuality && !VALID_QUALITY.has(rawQuality)) {
-      await unlinkPromise(filePath).catch(() => {});
-      return res.status(400).json({
-        error: "quality must be 'speed' or 'quality'",
-      });
+    const { intent, stems, quality, intentJson } = parsed;
+    if (!intent) {
+      if (stems !== "2" && stems !== "4") {
+        await unlinkPromise(filePath).catch(() => {});
+        return res.status(400).json({ error: "stems must be '2' or '4'" });
+      }
+      const VALID_QUALITY = new Set(["speed", "quality"]);
+      if (quality && !VALID_QUALITY.has(quality)) {
+        await unlinkPromise(filePath).catch(() => {});
+        return res.status(400).json({
+          error: "quality must be 'speed' or 'quality'",
+        });
+      }
     }
-    const quality = rawQuality;
     /** @type {string | null} */
     let entitlementUserId = null;
-    if (isPremiumSplitRequest(stems, quality)) {
+    if (isPremiumSplitRequest(stems, quality, intent)) {
       const entitlementCheck = await requireSplitEntitlements(req, {
         stems,
         quality,
@@ -187,6 +193,7 @@ splitRouter.post(
     });
     form.append("stems", stems);
     if (quality) form.append("quality", quality);
+    if (intentJson) form.append("intent", intentJson);
     if (isSample) form.append("sample", "true");
 
     try {

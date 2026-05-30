@@ -48,7 +48,7 @@ describe("useStemSplitting", () => {
     });
   });
 
-  it("downgrades 4-stem split requests when server capabilities disallow them", async () => {
+  it("downgrades 4-stem full separation when server capabilities disallow them", async () => {
     const { result } = renderHook(() =>
       useStemSplitting({
         subscription: {
@@ -69,12 +69,16 @@ describe("useStemSplitting", () => {
         stopPreview: vi.fn(),
         splitQuality: "speed",
         canSplitFourStems: false,
+        canExpandToFourStems: false,
         canUsePremiumStemQualities: false,
       }),
     );
 
     await act(async () => {
-      await result.current.triggerSplit(4, false);
+      await result.current.triggerSplit(
+        { task: "full_separation", mode: "4", quality: "fast" },
+        false,
+      );
     });
 
     expect(splitStemsMock).toHaveBeenCalledWith(
@@ -84,6 +88,7 @@ describe("useStemSplitting", () => {
       false,
       expect.any(Function),
       expect.any(Function),
+      expect.objectContaining({ task: "full_separation", mode: "4" }),
     );
   });
 });

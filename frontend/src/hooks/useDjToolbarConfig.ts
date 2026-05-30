@@ -14,10 +14,11 @@ export interface DjToolSlot {
 
 const STORAGE_KEY = "burntbeats_dj_toolbar_config";
 
-/** Tools shown in Configure panel (FX hidden until implemented). */
+/** Tools shown in Configure panel. */
 export const CONFIGURABLE_TOOL_IDS: DjToolId[] = [
   "faders",
   "eq",
+  "fx",
   "pan",
   "meters",
   "master",
@@ -27,7 +28,7 @@ const DEFAULT_SLOTS: DjToolSlot[] = [
   { id: "faders", label: "Faders", visible: true },
   { id: "eq", label: "EQ", visible: true },
   { id: "pan", label: "Pan", visible: true },
-  { id: "fx", label: "FX", visible: false },
+  { id: "fx", label: "FX", visible: true },
   { id: "meters", label: "Meters", visible: true },
   { id: "master", label: "Master", visible: true },
 ];

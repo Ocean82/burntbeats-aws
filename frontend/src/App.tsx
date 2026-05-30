@@ -75,9 +75,10 @@ type NavigatorConnection = {
   effectiveType?: string;
 };
 
+import { DEFAULT_SPLIT_INTENT } from "./utils/splitIntent";
+
 const PRELOAD_CHUNK_DELAY_MS = 1200;
 const FOCUS_MIXER_DELAY_MS = 200;
-const DEFAULT_SPLIT_STEM_COUNT = 2;
 const HISTORY_LOADED_PIPELINE_INDEX = 3;
 const SPLIT_PROGRESS_COMPLETE = 100;
 
@@ -130,6 +131,7 @@ export function App() {
   // ── Upload / split state ──────────────────────────────────────────────────
   const uploadState = useAppStore();
   const {
+    splitIntent,
     quality,
     uploadName,
     uploadedFile,
@@ -520,7 +522,7 @@ export function App() {
     setActiveView,
     onTriggerSplit: () => {
       if (uploadedFile && !isSplitting && splitResultStems.length === 0 && activeView === "editor") {
-        void triggerSplit(DEFAULT_SPLIT_STEM_COUNT, isSample);
+        void triggerSplit(splitIntent ?? DEFAULT_SPLIT_INTENT, isSample);
       }
     },
   });
@@ -564,6 +566,7 @@ export function App() {
         clearCompletedFromQueue={clearCompletedFromQueue}
         canUseBatchQueue={canUseBatchQueue}
         processNextInQueue={processNextInQueue}
+        splitIntent={splitIntent}
         canSplitFourStems={canSplitFourStems}
         splitQuality={splitQuality}
         setUploadState={setUploadState}
@@ -718,9 +721,9 @@ export function App() {
                     source: "split_gate",
                     intent: "continue_from_split_blocker",
                   }),
-                onSplit: (requestedStemMode, sample) => {
+                onSplit: (intent, sample) => {
                   startUiLatencyMark("mixer-ready-after-stems");
-                  void triggerSplit(requestedStemMode, sample);
+                  void triggerSplit(intent, sample);
                 },
                 isSplitting,
                 splitProgress,

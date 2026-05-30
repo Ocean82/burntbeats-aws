@@ -18,10 +18,13 @@ export interface DjMixerConsoleProps {
   playbackReady: boolean;
   isPlaying: boolean;
   playingStemId: string | null;
+  loadingPreviewStemId?: string | null;
   visibleTools: DjToolSlot[];
   getStemAnalyserTimeDomainData?: (stemId: string) => Uint8Array | null;
   onStemStateChange: (stemId: string, patch: Partial<StemEditorState>) => void;
   onActiveStemChange: (stemId: string) => void;
+  onPreviewStem?: (stemId: string) => void;
+  onResetSingleStem?: (stemId: string) => void;
   masterVolume: number;
   masterMuted: boolean;
   masterLimiterEnabled: boolean;
@@ -41,10 +44,13 @@ export const DjMixerConsole = memo(function DjMixerConsole({
   playbackReady,
   isPlaying,
   playingStemId,
+  loadingPreviewStemId = null,
   visibleTools,
   getStemAnalyserTimeDomainData,
   onStemStateChange,
   onActiveStemChange,
+  onPreviewStem,
+  onResetSingleStem,
   masterVolume,
   masterMuted,
   masterLimiterEnabled,
@@ -61,6 +67,7 @@ export const DjMixerConsole = memo(function DjMixerConsole({
   const showFaders = visibleTools.some((t) => t.id === "faders");
   const showEq = visibleTools.some((t) => t.id === "eq");
   const showPan = visibleTools.some((t) => t.id === "pan");
+  const showFx = visibleTools.some((t) => t.id === "fx");
   const showMeters = visibleTools.some((t) => t.id === "meters");
   const showMaster = visibleTools.some((t) => t.id === "master");
   const isMasterMeterPlaying =
@@ -90,11 +97,16 @@ export const DjMixerConsole = memo(function DjMixerConsole({
             showFaders={showFaders}
             showEq={showEq}
             showPan={showPan}
+            showFx={showFx}
             showMeters={showMeters}
             isMeterPlaying={isMeterPlaying}
+            isPreviewPlaying={playingStemId === stem.id}
+            isLoadingPreview={loadingPreviewStemId === stem.id}
             getStemAnalyserData={getStemAnalyserTimeDomainData}
             onStemStateChange={onStemStateChange}
             onActiveStemChange={onActiveStemChange}
+            onPreviewStem={onPreviewStem}
+            onResetSingleStem={onResetSingleStem}
           />
         );
       })}

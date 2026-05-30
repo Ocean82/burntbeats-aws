@@ -23,7 +23,12 @@ import type { BeatGridMetadata } from "../../api";
 import { cn } from "../../utils/cn";
 import { useTimelineViewport } from "../../hooks/useTimelineViewport";
 import { usePinchZoom } from "../../hooks/usePinchZoom";
-import type { StemEditorState } from "../../stem-editor-state";
+import { defaultStemState, type StemEditorState } from "../../stem-editor-state";
+import {
+  StemProcessingPanel,
+  StemProcessingToolbar,
+  type StemProcessingPanelId,
+} from "../multi-stem-editor/stem-processing-panel.component";
 import { computeBeatGridPcts, shouldRenderBeatGrid } from "../../utils/beatGrid";
 import { TimelineRuler } from "../multi-stem-editor/timeline-ruler.component";
 import { WaveformTimeline } from "../multi-stem-editor/waveform-timeline.component";
@@ -82,6 +87,7 @@ export interface DjModeEditorProps {
   recordingDuration?: number;
   onStartRecording?: () => void;
   onStopRecording?: () => void;
+  onResetSingleStem?: (stemId: string) => void;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -106,9 +112,9 @@ export function DjModeEditor({
   onStemStateChange,
   onSeek,
   onPlayPause,
-  // onPreviewStem — reserved for future DJ console preview buttons
+  onPreviewStem,
   playingStemId,
-  // loadingPreviewStemId — reserved for future DJ console preview buttons
+  loadingPreviewStemId,
   activeStemId: controlledActiveStemId,
   onActiveStemChange,
   getAnalyserData,
@@ -135,10 +141,12 @@ export function DjModeEditor({
   recordingDuration = 0,
   onStartRecording,
   onStopRecording,
+  onResetSingleStem,
 }: DjModeEditorProps) {
   const [consoleCollapsed, setConsoleCollapsed] = useState(false);
   const [showBeatGrid, setShowBeatGrid] = useState(false);
   const [showToolbarSettings, setShowToolbarSettings] = useState(false);
+  const [activePanel, setActivePanel] = useState<StemProcessingPanelId | null>(null);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
     stems[0]?.id ?? null,
   );
@@ -202,6 +210,18 @@ export function DjModeEditor({
     () => (activeStemId && stems.some((s) => s.id === activeStemId) ? activeStemId : stems[0]?.id ?? ""),
     [activeStemId, stems],
   );
+
+  const activeStem = useMemo(
+    () => stems.find((s) => s.id === resolvedActiveStemId),
+    [stems, resolvedActiveStemId],
+  );
+  const activeState = activeStem
+    ? stemStates[activeStem.id] ?? defaultStemState()
+    : defaultStemState();
+
+  useEffect(() => {
+    if (!playbackReady) setActivePanel(null);
+  }, [playbackReady]);
 
   const maxDuration = useMemo(
     () => Math.max(...stems.map((s) => durations[s.id] ?? 0), 0),
@@ -286,12 +306,28 @@ export function DjModeEditor({
         onStopRecording={onStopRecording}
       />
 
+      {/* ── Stem processing tools (pitch / EQ / time / FX) ── */}
+      <div className="flex flex-wrap items-center gap-xs border-b border-border/[0.06] bg-chrome px-sm py-xs">
+        <StemProcessingToolbar
+          activePanel={activePanel}
+          playbackReady={playbackReady}
+          onPanelChange={setActivePanel}
+        />
+      </div>
+
       {/* ── Waveform Section (full width, taller lanes, dark bg) ── */}
       <div
         ref={pinchZoomRef}
         className="dj-waveform-section relative min-h-0 flex-1 overflow-hidden bg-chrome px-sm py-xs touch-none"
+        style={{ minHeight: activePanel ? 320 : undefined }}
       >
         <TimelineRuler ticks={ticks} formatTime={formatTime} />
+        <div
+          className={cn(
+            "relative transition-all duration-300",
+            activePanel ? "md:mr-72" : "",
+          )}
+        >
         <WaveformTimeline
           stems={stems}
           waveforms={waveforms}
@@ -318,6 +354,21 @@ export function DjModeEditor({
           onActivate={handleActivate}
           onStemStateChange={onStemStateChange}
         />
+        {activePanel && activeStem && (
+          <StemProcessingPanel
+            activePanel={activePanel}
+            stems={stems}
+            activeStem={activeStem}
+            activeState={activeState}
+            activeStemId={resolvedActiveStemId}
+            stemStates={stemStates}
+            onStemStateChange={onStemStateChange}
+            onActiveStemChange={setActiveStemId}
+            onClose={() => setActivePanel(null)}
+            className="absolute inset-x-0 top-0 z-20 animate-in slide-in-from-right duration-300 md:inset-x-auto md:right-0 md:w-72"
+          />
+        )}
+        </div>
       </div>
 
       {/* ── Collapsible Mixer Console ── */}
@@ -381,10 +432,13 @@ export function DjModeEditor({
             playbackReady={playbackReady}
             isPlaying={isPlaying}
             playingStemId={playingStemId}
+            loadingPreviewStemId={loadingPreviewStemId}
             visibleTools={toolbarConfig.visibleSlots}
             getStemAnalyserTimeDomainData={getStemAnalyserTimeDomainData}
             onStemStateChange={onStemStateChange}
             onActiveStemChange={setActiveStemId}
+            onPreviewStem={onPreviewStem}
+            onResetSingleStem={onResetSingleStem}
             masterVolume={masterVolume}
             masterMuted={masterMuted}
             masterLimiterEnabled={masterLimiterEnabled}

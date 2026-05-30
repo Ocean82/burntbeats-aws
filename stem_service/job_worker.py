@@ -13,11 +13,14 @@ import time
 from pathlib import Path
 from typing import Any
 
-from stem_service.hybrid import (
-    run_expand_to_4stem,
-    run_hybrid_2stem,
-    run_hybrid_4stem,
+from stem_service.hybrid import run_expand_to_4stem
+from stem_service.routing import (
+    SplitIntent,
+    execute_plan,
+    intent_from_legacy,
+    route_intent,
 )
+from stem_service.routing.schema import parse_intent_dict
 from stem_service.job_queue import (
     JobCancelledError,
     is_job_cancelled,
@@ -37,8 +40,6 @@ from stem_service.job_utils import (
 )
 from stem_service.runtime_info import get_stem_runtime_versions
 from stem_service.sentry_init import job_span
-from stem_service.vocal_stage1 import get_2stem_stage1_preview
-
 logger = logging.getLogger(__name__)
 
 CORRELATION_ID_CONTEXT_VAR: contextvars.ContextVar[str] = contextvars.ContextVar(
@@ -74,6 +75,16 @@ def _finalize_stems_to_16bit(stem_list: list[tuple[str, Path]]) -> None:
 
 
 
+def _resolve_split_intent(
+    intent_payload: dict | None,
+    stem_count: int,
+    quality_mode: str,
+) -> SplitIntent:
+    if intent_payload:
+        return parse_intent_dict(intent_payload)
+    return intent_from_legacy(stem_count, quality_mode)
+
+
 def run_separation_sync(
     job_id: str,
     input_path: Path,
@@ -82,9 +93,17 @@ def run_separation_sync(
     prefer_speed: bool,
     quality_mode: str = "quality",
     correlation_id: str = "unknown",
+    intent_payload: dict | None = None,
 ) -> None:
     """Blocking separation; writes progress at stages. Called from worker thread."""
     correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
+
+    split_intent = _resolve_split_intent(intent_payload, stem_count, quality_mode)
+    prefer_speed = split_intent.prefer_speed()
+    quality_mode = split_intent.quality_mode()
+    stem_count = split_intent.legacy_stem_count()
+    if split_intent.task != "full_separation":
+        stem_count = len(split_intent.output_stem_ids())
 
     model_tier = "fast" if prefer_speed else "quality"
 
@@ -110,12 +129,13 @@ def run_separation_sync(
         file_size_mb = 0.0
 
     job_log.info(
-        "=== JOB START  job_id=%s  stems=%d  quality=%s  prefer_speed=%s  model_tier=%s  file=%.2fMB ===",
+        "=== JOB START  job_id=%s  stems=%d  quality=%s  prefer_speed=%s  model_tier=%s  intent=%s  file=%.2fMB ===",
         job_id,
         stem_count,
         quality_mode,
         prefer_speed,
         model_tier,
+        split_intent.to_json_dict(),
         file_size_mb,
     )
     logger.info("Started job %s (quality: %s)", job_id, quality_mode)
@@ -151,36 +171,21 @@ def run_separation_sync(
             )
         )
 
-        if stem_count == 2:
-            path_kind, stage1_models = get_2stem_stage1_preview(
-                prefer_speed=prefer_speed,
-                model_tier=model_tier,
-                stem_backend="hybrid",
-            )
-            job_log.info(
-                "Stage: hybrid 2-stem  prefer_speed=%s  Stage1 path=%s models=%s",
-                prefer_speed,
-                path_kind,
-                stage1_models,
-            )
-            stem_list, models_used = run_hybrid_2stem(
-                input_path,
-                out_dir,
-                prefer_speed=prefer_speed,
-                model_tier=model_tier,
-                progress_callback=on_progress,
-                job_logger=job_log,
-            )
-        else:
-            job_log.info("Stage: hybrid 4-stem  prefer_speed=%s", prefer_speed)
-            stem_list, models_used = run_hybrid_4stem(
-                input_path,
-                out_dir,
-                prefer_speed=prefer_speed,
-                progress_callback=on_progress,
-                job_logger=job_log,
-                model_tier=model_tier,
-            )
+        plan = route_intent(split_intent)
+        job_log.info(
+            "Intent routing: task=%s targets=%s jobs=%s notes=%s",
+            split_intent.task,
+            split_intent.targets or split_intent.mode,
+            [j.kind for j in plan.jobs],
+            plan.routing_notes,
+        )
+        stem_list, models_used = execute_plan(
+            plan,
+            input_path,
+            out_dir,
+            progress_callback=on_progress,
+            job_logger=job_log,
+        )
 
         # Check if cancelled before marking complete
         if is_job_cancelled(job_id):
@@ -236,6 +241,8 @@ def run_separation_sync(
                 "models_used": models_used,
                 "stem_runtime": get_stem_runtime_versions(),
                 "artifact_delivery": "local_ready",
+                "intent": split_intent.to_json_dict(),
+                "routing_notes": plan.routing_notes,
             },
         )
         write_progress(out_dir, progress_data)

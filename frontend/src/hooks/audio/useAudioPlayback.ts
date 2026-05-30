@@ -10,7 +10,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchStemWavAsArrayBuffer } from "../../api";
 import type { StemResult } from "../../types";
 import {
-  createFadeEnvelopeNode,
   createStemPreviewBuffer,
   createStemDspChain,
   getStemTrimWallDurationSeconds,
@@ -21,18 +20,19 @@ import {
 } from "../../utils/audio";
 import {
   defaultStemState,
-  getStemEffectiveRate,
   type StemEditorState,
 } from "../../stem-editor-state";
 import { PitchTempoPlugin } from "pitch-plugin";
 import { filterStemsForAudibleMix } from "../../utils/stemAudibility";
 import {
   stemMuteSoloSignature,
+  stemNeedsPlugin,
   stemPitchTempoSignature,
   stemPreviewStructuralSignature,
   stemRoutingSignature,
   stemTrimSignature,
 } from "../../utils/stemPlaybackUtils";
+import { buildStemSource } from "../../utils/stemSourceGraph";
 import type { SeekPhase } from "../../types/playbackSeek";
 import type { StemId } from "../../types";
 
@@ -76,77 +76,9 @@ async function getOrCreatePlugin(
   }
 }
 
-/**
- * Determine whether a stem's current state requires the phase vocoder plugin.
- * At default values (pitch=0, timeStretch=1.0) the plugin adds unnecessary
- * spectral processing that introduces metallic/phasey artifacts. Only route
- * through the plugin when the user has actually adjusted pitch or tempo.
- */
-function stemNeedsPlugin(st: StemEditorState): boolean {
-  const pitchActive = Math.abs(st.pitchSemitones) > 0.01;
-  const tempoActive = Math.abs(st.timeStretch - 1.0) > 0.001;
-  return pitchActive || tempoActive;
-}
-
 function destroyAllPlugins(pool: Map<string, PitchTempoPlugin>): void {
   pool.forEach((plugin) => plugin.destroy());
   pool.clear();
-}
-
-function buildStemSource(
-  ctx: AudioContext,
-  buffer: AudioBuffer,
-  st: StemEditorState,
-  trimStart: number,
-  trimEnd: number,
-  dspInput: AudioNode,
-  plugin: PitchTempoPlugin | null,
-  wallDuration?: number,
-  elapsedWall?: number,
-): { source: AudioBufferSourceNode; fadeNode: GainNode | null } {
-  const source = ctx.createBufferSource();
-  source.buffer = buffer;
-
-  // Only route through the phase vocoder plugin when pitch or tempo are
-  // actually adjusted. At default values (pitch=0, timeStretch=1.0) the
-  // plugin's STFT/OLA pipeline introduces audible metallic artifacts from
-  // phase accumulation and spectral windowing — bypass it entirely.
-  const usePlugin = plugin !== null && stemNeedsPlugin(st);
-
-  // Create fade envelope node if fade-in or fade-out is configured
-  const hasFade = (st.fadeIn ?? 0) > 0 || (st.fadeOut ?? 0) > 0;
-  let fadeNode: GainNode | null = null;
-  let targetNode: AudioNode = dspInput;
-
-  if (hasFade && wallDuration && wallDuration > 0) {
-    fadeNode = createFadeEnvelopeNode(
-      ctx,
-      st.fadeIn ?? 0,
-      st.fadeOut ?? 0,
-      wallDuration,
-      ctx.currentTime,
-      elapsedWall ?? 0,
-    );
-    fadeNode.connect(dspInput);
-    targetNode = fadeNode;
-  }
-
-  if (usePlugin) {
-    // Plugin handles pitch + tempo — source runs at unity rate
-    source.playbackRate.value = 1.0;
-    source.connect(plugin.inputNode);
-    plugin.outputNode.connect(targetNode);
-    // Apply current state to plugin
-    plugin.setPitchSemitones(st.pitchSemitones);
-    plugin.setTempoRatio(timeStretchToTempoRatio(st.timeStretch));
-  } else {
-    // Legacy: coupled pitch+tempo via playbackRate
-    source.playbackRate.value = getStemEffectiveRate(st);
-    source.connect(targetNode);
-  }
-
-  source.start(0, trimStart, trimEnd - trimStart);
-  return { source, fadeNode };
 }
 
 function stopMixStemRuntime(r: MixStemRuntime) {

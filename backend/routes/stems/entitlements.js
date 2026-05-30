@@ -8,6 +8,7 @@ import {
   isPremiumStemQuality,
   resolveEntitlementStateForUser,
 } from "../../billing/entitlements.js";
+import { isPremiumIntentRequest } from "../../helpers/splitIntent.js";
 
 /**
  * @param {unknown} err
@@ -50,7 +51,16 @@ function entitlementAuthFailure(err, logPrefix) {
  * @param {string | undefined} quality
  * @returns {boolean}
  */
-export function isPremiumSplitRequest(stems, quality) {
+/**
+ * @param {string} stems
+ * @param {string | undefined} quality
+ * @param {import("../../helpers/splitIntent.js").SplitIntent | null} [intent]
+ * @returns {boolean}
+ */
+export function isPremiumSplitRequest(stems, quality, intent = null) {
+  if (intent) {
+    return isPremiumIntentRequest(intent, stems, quality);
+  }
   return stems === "4" || isPremiumStemQuality(quality);
 }
 

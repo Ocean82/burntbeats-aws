@@ -4,6 +4,12 @@
  */
 import { useCallback, useEffect, useRef } from "react";
 import { splitStems, expandStems, type SplitQuality } from "../api";
+import type { SplitIntent } from "@shared/types";
+import {
+  DEFAULT_SPLIT_INTENT,
+  legacyStemsFromIntent,
+  withIntentQuality,
+} from "../utils/splitIntent";
 import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS, isAllowedAudioFile, ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
 import { useAppStore } from "../store/appStore";
 import type { UseSubscriptionResult } from "./useSubscription";
@@ -116,11 +122,16 @@ export function useStemSplitting({
     });
   }, [setUploadState]);
 
-  const triggerSplit = useCallback(async (requestedStemMode: 2 | 4 = 2, isSample = false) => {
+  const triggerSplit = useCallback(async (
+    intent: SplitIntent = DEFAULT_SPLIT_INTENT,
+    isSample = false,
+  ) => {
+    const resolvedIntent = withIntentQuality(intent, splitQuality);
+    const stemsArg = legacyStemsFromIntent(resolvedIntent);
     const { status } = subscription;
     if (status !== "active" && !isSample) {
       trackEvent("split_blocked_subscription_inactive", {
-        requested_stems: requestedStemMode,
+        intent_task: resolvedIntent.task,
       });
       trackEvent("checkout_preprompt_shown", {
         source: "split_gate",
@@ -137,7 +148,7 @@ export function useStemSplitting({
     const file = useAppStore.getState().uploadedFile;
     if (!file || !(file instanceof File) || file.size === 0) {
       setUploadState((prev) => ({ ...prev, splitError: "Upload an audio file first." }));
-      trackEvent("split_failed_validation", { reason: "missing_upload", requested_stems: requestedStemMode });
+      trackEvent("split_failed_validation", { reason: "missing_upload", intent_task: resolvedIntent.task });
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
@@ -145,7 +156,7 @@ export function useStemSplitting({
       setUploadState((prev) => ({ ...prev, splitError: `File too large. Maximum size is ${mb}MB.` }));
       trackEvent("split_failed_validation", {
         reason: "file_too_large",
-        requested_stems: requestedStemMode,
+        intent_task: resolvedIntent.task,
         max_upload_mb: mb,
       });
       return;
@@ -163,17 +174,20 @@ export function useStemSplitting({
       splitStageLabel: null,
     }));
     try {
-      // Premium/Studio: one server job for 4 stems (hybrid MDX + PyTorch Demucs / SCNet per backend).
-      // Basic: 2-stem only.
-      const stemsArg =
-        requestedStemMode === 4 && canSplitFourStems ? ("4" as const) : ("2" as const);
+      const effectiveStems =
+        stemsArg === "4" && !canSplitFourStems ? ("2" as const) : stemsArg;
       trackEvent("split_started", {
-        requested_stems: requestedStemMode,
-        actual_stems: Number(stemsArg),
+        intent_task: resolvedIntent.task,
+        actual_stems: Number(effectiveStems),
         quality: splitQuality,
         plan: subscription.plan ?? "none",
       });
-      const res = await splitStems(file, stemsArg, splitQuality, isSample, (s) => {
+      const res = await splitStems(
+        file,
+        effectiveStems,
+        splitQuality,
+        isSample,
+        (s) => {
         setUploadState((prev) => ({
           ...prev,
           isUploading: false,
@@ -197,10 +211,14 @@ export function useStemSplitting({
         if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step3) setUploadState((prev) => ({ ...prev, pipelineIndex: 3 }));
         else if (s.progress >= PIPELINE_PROGRESS_THRESHOLDS.step2) setUploadState((prev) => ({ ...prev, pipelineIndex: 2 }));
         else if (s.progress > 0) setUploadState((prev) => ({ ...prev, pipelineIndex: 1 }));
-      }, (uploadEvt) => {
+      },
+        (uploadEvt) => {
         setUploadState((prev) => ({ ...prev, uploadProgress: uploadEvt.percent }));
         document.title = `(Uploading ${uploadEvt.percent}%) — Burnt Beats`;
-      });
+      },
+        resolvedIntent,
+      );
+      setUploadState((prev) => ({ ...prev, splitIntent: resolvedIntent }));
       setUploadState((prev) => ({
         ...prev,
         splitResultStems: res.stems,

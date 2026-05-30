@@ -1,4 +1,5 @@
 import type React from "react";
+import type { SplitIntent } from "@shared/types";
 import type { SplitQuality } from "../../api";
 
 export interface LoadedStem {
@@ -33,7 +34,7 @@ export interface ProcessingSettingsPanelProps {
   stemQualityOptions?: "speed_only" | "full";
   canSplitFourStems?: boolean;
 
-  onSplit: (requestedStemMode: 2 | 4, isSample?: boolean) => void;
+  onSplit: (intent: SplitIntent, isSample?: boolean) => void;
   isSplitting: boolean;
   splitProgress?: number;
   /** Upload progress (0–100) during file transfer to server. */

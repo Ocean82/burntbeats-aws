@@ -181,6 +181,7 @@ def _run_queued_job(job: dict) -> None:
         job["prefer_speed"],
         job["quality_mode"],
         job["correlation_id"],
+        job.get("intent"),
     )
 
 
@@ -369,6 +370,10 @@ async def split(
     stems: str = Form("2"),
     quality: str | None = Form(None),
     sample: str | None = Form(None),
+    intent: str | None = Form(None),
+    task: str | None = Form(None),
+    targets: str | None = Form(None),
+    mode: str | None = Form(None),
 ) -> dict:
     """
     Start stem separation. Returns 202 with job_id. Separation runs in background.
@@ -380,24 +385,47 @@ async def split(
     """
     _require_stem_service_api_token(request)
 
-    stems_str = (stems or "").strip()
-    if stems_str not in ("2", "4"):
-        raise HTTPException(
-            status_code=400, detail="Invalid stems value. Must be '2' or '4'."
-        )
-    stem_count = int(stems_str)
+    from stem_service.routing.schema import parse_intent_form
 
-    # Determine quality mode
-    quality_lower = (quality or "").strip().lower()
-    prefer_speed = quality_lower == "speed"
+    parsed_intent = None
+    try:
+        parsed_intent = parse_intent_form(
+            intent_json=intent,
+            task=task,
+            targets_csv=targets,
+            mode=mode,
+            quality=quality,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    stems_str = (stems or "").strip()
+    if parsed_intent is None:
+        if stems_str not in ("2", "4"):
+            raise HTTPException(
+                status_code=400, detail="Invalid stems value. Must be '2' or '4'."
+            )
+        stem_count = int(stems_str)
+        quality_lower = (quality or "").strip().lower()
+        prefer_speed = quality_lower == "speed"
+        quality_mode = "speed" if prefer_speed else "quality"
+        intent_payload = None
+    else:
+        stem_count = parsed_intent.legacy_stem_count()
+        if parsed_intent.task != "full_separation":
+            stem_count = len(parsed_intent.output_stem_ids())
+        prefer_speed = parsed_intent.prefer_speed()
+        quality_mode = parsed_intent.quality_mode()
+        intent_payload = parsed_intent.to_json_dict()
+
     is_sample = (sample or "").strip().lower() in ("true", "1", "yes")
-    quality_mode = "speed" if prefer_speed else "quality"
 
     logger.info(
-        "Split request: stems=%s, quality=%s, sample=%s",
+        "Split request: stems=%s, quality=%s, sample=%s, intent=%s",
         stem_count,
         quality_mode,
         is_sample,
+        intent_payload,
     )
 
     queue_condition = get_queue_condition()
@@ -469,17 +497,18 @@ async def split(
                 )
 
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    queue_position = await enqueue_split_job(
-        {
-            "job_id": job_id,
-            "input_path": input_path,
-            "out_dir": out_dir,
-            "stem_count": stem_count,
-            "prefer_speed": prefer_speed,
-            "quality_mode": quality_mode,
-            "correlation_id": correlation_id,
-        }
-    )
+    job_payload: dict = {
+        "job_id": job_id,
+        "input_path": input_path,
+        "out_dir": out_dir,
+        "stem_count": stem_count,
+        "prefer_speed": prefer_speed,
+        "quality_mode": quality_mode,
+        "correlation_id": correlation_id,
+    }
+    if intent_payload is not None:
+        job_payload["intent"] = intent_payload
+    queue_position = await enqueue_split_job(job_payload)
 
     return JSONResponse(
         content={
@@ -641,11 +670,17 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
 @app.get("/health")
 async def health() -> dict:
     mode_health = _supported_mode_health_snapshot()
+    from stem_service.routing.model_bag import intent_routing_health
+
     payload: dict[str, object] = {
         "status": "ok" if mode_health["all_ready"] else "degraded",
         "runtime": get_stem_runtime_versions(),
         "four_stem_backend": FOUR_STEM_BACKEND,
         "supported_modes": mode_health["supported_modes"],
+        "intent_routing": {
+            "fast": intent_routing_health("fast"),
+            "high": intent_routing_health("high"),
+        },
     }
     if os.environ.get("NODE_ENV", "development").lower() != "production":
         payload["repo_root"] = str(REPO_ROOT)

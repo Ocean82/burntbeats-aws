@@ -3,7 +3,9 @@ import type { MixerPreset } from "../components/MixerPresetsModal";
 import type { QueueItem } from "../hooks/useBatchQueue";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import type { ModalKey } from "../hooks/useUiModals";
+import type { SplitIntent } from "@shared/types";
 import type { SplitQuality } from "../api";
+import { DEFAULT_SPLIT_INTENT } from "../utils/splitIntent";
 import type { AppState } from "../store/appStore";
 import type { MixerState, TrimState } from "../types";
 import type { ExportOptions } from "../components/ExportOptionsModal";
@@ -52,8 +54,9 @@ interface LazyModalLayerProps {
   removeFromBatchQueue: (id: string) => void;
   clearCompletedFromQueue: () => void;
   canUseBatchQueue: boolean;
+  splitIntent?: SplitIntent;
   processNextInQueue: (
-    stemCount: 2 | 4,
+    intent: SplitIntent,
     splitQuality: SplitQuality,
     onStemsReady: (stems: StemResult[]) => void,
     onError: (msg: string) => void,
@@ -95,6 +98,7 @@ export function LazyModalLayer({
   processNextInQueue,
   canSplitFourStems,
   splitQuality,
+  splitIntent = DEFAULT_SPLIT_INTENT,
   setUploadState,
   setSplitError,
   onResetStemMediaState,
@@ -157,7 +161,7 @@ export function LazyModalLayer({
               allowProcess={canUseBatchQueue}
               onProcessQueue={() =>
                 void processNextInQueue(
-                  canSplitFourStems ? 4 : 2,
+                  splitIntent,
                   splitQuality,
                   (stems) => {
                     onResetStemMediaState?.();

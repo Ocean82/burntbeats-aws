@@ -1,7 +1,9 @@
 import { create } from "zustand";
+import type { SplitIntent } from "@shared/types";
 import type { SplitQuality } from "../api";
 import type { StemResult } from "../types";
 import type { BeatGridMetadata } from "../api";
+import { DEFAULT_SPLIT_INTENT } from "../utils/splitIntent";
 
 const VALID_QUALITIES: readonly SplitQuality[] = ["speed", "quality"] as const;
 
@@ -31,6 +33,7 @@ function sanitizePartialState(update: Partial<AppState>): Partial<AppState> {
 }
 
 export interface AppState {
+  splitIntent: SplitIntent;
   quality: SplitQuality;
   uploadName: string;
   uploadedFile: File | null;
@@ -64,6 +67,7 @@ export interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  splitIntent: DEFAULT_SPLIT_INTENT,
   quality: "quality" as SplitQuality,
   uploadName: "",
   uploadedFile: null,

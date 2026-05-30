@@ -9,6 +9,7 @@ export const ALLOWED_STEM_IDS = new Set([
   "drums",
   "bass",
   "other",
+  "guitar",
   "instrumental",
 ]);
 

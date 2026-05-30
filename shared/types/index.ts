@@ -3,7 +3,13 @@
  * This file should be used by both frontend and backend to ensure type consistency.
  */
 
-export type StemId = "vocals" | "drums" | "bass" | "other" | "instrumental";
+export type StemId =
+  | "vocals"
+  | "drums"
+  | "bass"
+  | "other"
+  | "guitar"
+  | "instrumental";
 
 export type JobStatus =
   | "queued"
@@ -13,6 +19,24 @@ export type JobStatus =
   | "cancelled";
 
 export type SplitQuality = "speed" | "quality";
+
+export type SplitTask = "extract" | "remove" | "full_separation";
+
+export type SplitTarget =
+  | "vocals"
+  | "drums"
+  | "bass"
+  | "guitar"
+  | "other"
+  | "instrumental";
+
+/** Intent-driven split request (mirrors stem_service.routing.schema). */
+export interface SplitIntent {
+  task: SplitTask;
+  targets?: SplitTarget[];
+  mode?: "2" | "4";
+  quality?: "fast" | "high";
+}
 
 export interface StemResult {
   id: StemId;
