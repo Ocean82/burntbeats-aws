@@ -217,7 +217,9 @@ async function main() {
   const env = parseEnv(envPath);
   const stripeKey = env.STRIPE_SECRET_KEY || "";
   const clerkKey = env.CLERK_SECRET_KEY || "";
-  if (!stripeKey.startsWith("sk_")) throw new Error("Invalid STRIPE_SECRET_KEY in backend/.env");
+  if (!/^sk_(live|test)_/.test(stripeKey) && !/^rk_(live|test)_/.test(stripeKey)) {
+    throw new Error("Invalid STRIPE_SECRET_KEY in backend/.env (expected sk_* or rk_*)");
+  }
   if (!clerkKey.startsWith("sk_")) throw new Error("Invalid CLERK_SECRET_KEY in backend/.env");
 
   const stripeHeaders = { Authorization: `Bearer ${stripeKey}` };

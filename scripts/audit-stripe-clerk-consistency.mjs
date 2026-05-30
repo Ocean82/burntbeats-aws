@@ -69,8 +69,10 @@ async function main() {
       .filter(Boolean),
   );
 
-  if (!stripeKey.startsWith("sk_")) {
-    console.error("Invalid/missing STRIPE_SECRET_KEY in backend/.env");
+  if (!/^sk_(live|test)_/.test(stripeKey) && !/^rk_(live|test)_/.test(stripeKey)) {
+    console.error(
+      "Invalid/missing STRIPE_SECRET_KEY in backend/.env (expected sk_* or rk_*)",
+    );
     process.exit(1);
   }
   if (!clerkKey.startsWith("sk_")) {

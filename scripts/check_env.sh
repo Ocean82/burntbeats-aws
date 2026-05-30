@@ -88,7 +88,7 @@ check_b() {
 }
 
 check_b "CLERK_SECRET_KEY"      '^sk_(live|test)_[A-Za-z0-9+/=]{10,}' "CLERK_SECRET_KEY"
-check_b "STRIPE_SECRET_KEY"     '^sk_(live|test)_[A-Za-z0-9]{20,}'     "STRIPE_SECRET_KEY"
+check_b "STRIPE_SECRET_KEY"     '^(sk|rk)_(live|test)_[A-Za-z0-9]{20,}' "STRIPE_SECRET_KEY"
 check_b "STRIPE_WEBHOOK_SECRET" '^whsec_[A-Za-z0-9]{10,}'              "STRIPE_WEBHOOK_SECRET"
 check_b "STRIPE_PRICE_ID_BASIC"   '^price_[A-Za-z0-9]{10,}' "STRIPE_PRICE_ID_BASIC"
 check_b "STRIPE_PRICE_ID_PREMIUM" '^price_[A-Za-z0-9]{10,}' "STRIPE_PRICE_ID_PREMIUM"

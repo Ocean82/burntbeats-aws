@@ -34,16 +34,16 @@ function assertTestModeKeys() {
     process.exit(1);
   }
   const be = readFileSync(backendEnv, "utf8");
-  if (/^STRIPE_SECRET_KEY=sk_live_/m.test(be)) {
+  if (/^STRIPE_SECRET_KEY=(sk|rk)_live_/m.test(be)) {
     console.error(
-      "Refusing to continue: backend/.env has STRIPE_SECRET_KEY=sk_live_...\n" +
-        "Use Test mode in the Stripe Dashboard and sk_test_... for local testing (no real charges).",
+      "Refusing to continue: backend/.env has STRIPE_SECRET_KEY with a live key...\n" +
+        "Use Test mode in the Stripe Dashboard and sk_test_... or rk_test_... for local testing (no real charges).",
     );
     process.exit(1);
   }
-  if (!/^STRIPE_SECRET_KEY=sk_test_/m.test(be)) {
+  if (!/^STRIPE_SECRET_KEY=(sk|rk)_test_/m.test(be)) {
     console.warn(
-      "[warn] backend/.env STRIPE_SECRET_KEY should be sk_test_... for local testing without real charges.",
+      "[warn] backend/.env STRIPE_SECRET_KEY should be sk_test_... or rk_test_... for local testing without real charges.",
     );
   }
   if (existsSync(frontendEnv)) {
