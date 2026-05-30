@@ -144,47 +144,51 @@ export function ProcessingSettingsPanel({
       <AnimatePresence initial={false}>
         {panelCollapsed && (
           <motion.div key="collapsed-bar" {...collapse}>
-            <div className="flex items-center gap-sm rounded-xl border border-border bg-muted px-md py-sm">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-500/15">
-                <Music2 className="h-3.5 w-3.5 text-primary-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-secondary-foreground">
-                  {uploadName || "Loaded stems"}
-                </span>
-                {collapsedMeta ? (
-                  <span className="mt-0.5 block truncate text-xs tabular-nums text-muted-foreground">
-                    {collapsedMeta}
+            <div className="flex flex-col gap-sm rounded-xl border border-border bg-muted px-md py-sm sm:flex-row sm:items-center">
+              <div className="flex min-w-0 flex-1 items-center gap-sm">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-500/15">
+                  <Music2 className="h-3.5 w-3.5 text-primary-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-secondary-foreground">
+                    {uploadName || "Loaded stems"}
                   </span>
-                ) : null}
+                  {collapsedMeta ? (
+                    <span className="mt-0.5 block truncate text-xs tabular-nums text-muted-foreground">
+                      {collapsedMeta}
+                    </span>
+                  ) : null}
+                </div>
               </div>
-              <span className="shrink-0 rounded-full border border-success-400/40 bg-success-500/15 px-sm py-0.5 text-meta font-semibold uppercase tracking-wide text-success-200">
-                {splitResultStemsLength} stems ready
-              </span>
-              {splitJobId && (
-                <SharePreviewButton jobId={splitJobId} className="shrink-0" />
-              )}
-              {onNewSplit && (
+              <div className="flex flex-wrap items-center justify-end gap-xs sm:shrink-0">
+                <span className="rounded-full border border-success-400/40 bg-success-500/15 px-sm py-0.5 text-meta font-semibold uppercase tracking-wide text-success-200">
+                  {splitResultStemsLength} stems ready
+                </span>
+                {splitJobId ? (
+                  <SharePreviewButton jobId={splitJobId} className="shrink-0" />
+                ) : null}
+                {onNewSplit ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewSplitConfirm(true)}
+                    className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-destructive-400/30 bg-destructive-500/10 px-sm py-xs text-xs font-medium text-destructive-200/90 transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-destructive-400/50 hover:bg-destructive-500/20 hover:text-destructive-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+                    aria-label="Start a new split"
+                    title="Clear current split and load a new track"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    New Split
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  onClick={() => setShowNewSplitConfirm(true)}
-                  className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-destructive-400/30 bg-destructive-500/10 px-sm py-xs text-xs font-medium text-destructive-200/90 transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-destructive-400/50 hover:bg-destructive-500/20 hover:text-destructive-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
-                  aria-label="Start a new split"
-                  title="Clear current split and load a new track"
+                  onClick={() => setUserExpanded(true)}
+                  className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-border bg-muted px-sm py-xs text-xs font-medium text-muted-foreground transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-border hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+                  aria-label="Edit source settings"
                 >
-                  <RotateCcw className="h-3 w-3" />
-                  New Split
+                  <Settings2 className="h-3 w-3" />
+                  Edit Source
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setUserExpanded(true)}
-                className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-border bg-muted px-sm py-xs text-xs font-medium text-muted-foreground transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-border hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
-                aria-label="Edit source settings"
-              >
-                <Settings2 className="h-3 w-3" />
-                Edit Source
-              </button>
+              </div>
             </div>
           </motion.div>
         )}

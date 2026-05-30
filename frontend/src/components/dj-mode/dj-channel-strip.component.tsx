@@ -103,8 +103,8 @@ export const DjChannelStrip = memo(function DjChannelStrip({
   return (
     <div
       className={cn(
-        "dj-channel-strip hardware-panel flex min-w-[6rem] w-[6rem] flex-col items-center overflow-visible rounded-xl border px-sm py-sm transition-all duration-200 ease",
-        showEq ? "min-h-[22rem] sm:min-h-[24rem]" : "min-h-[18rem] sm:min-h-[20rem]",
+        "dj-channel-strip hardware-panel flex max-h-[24rem] min-w-[6rem] w-[6rem] flex-col items-center overflow-hidden rounded-xl border px-sm py-sm transition-all duration-200 ease sm:max-h-[26rem]",
+        showEq ? "min-h-[18rem]" : "min-h-[16rem]",
         isActive
           ? "border-primary-500/50 ring-1 ring-primary-500/20 shadow-[0_0_30px_rgba(255,100,0,0.1)]"
           : "border-white/5",
@@ -141,7 +141,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
             onResetSingleStem(stem.id);
           }}
           disabled={!playbackReady}
-          className="mt-1 flex h-8 w-full items-center justify-center gap-1 rounded-md border border-border/60 text-[9px] uppercase tracking-wider text-muted-foreground transition hover:border-primary-400/30 hover:text-primary-200 disabled:opacity-40"
+          className="mt-1 flex h-8 w-full shrink-0 items-center justify-center gap-1 rounded-md border border-border/60 text-[9px] uppercase tracking-wider text-muted-foreground transition hover:border-primary-400/30 hover:text-primary-200 disabled:opacity-40"
           aria-label={`Reset ${stem.label} channel`}
         >
           <RotateCcw className="h-3 w-3" />
@@ -149,6 +149,7 @@ export const DjChannelStrip = memo(function DjChannelStrip({
         </button>
       )}
 
+      <div className="flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto overflow-x-visible">
       {showFx && (
         <div
           className="dj-channel-strip__fx flex w-full shrink-0 flex-col items-stretch gap-1 border-b border-border px-1 py-2"
@@ -266,6 +267,8 @@ export const DjChannelStrip = memo(function DjChannelStrip({
           </div>
         </div>
       )}
+
+      </div>
 
       <div className="dj-channel-strip__footer mt-auto flex w-full shrink-0 flex-col items-center gap-2xs pt-1">
         {showFaders && (

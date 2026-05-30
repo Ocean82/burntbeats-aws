@@ -103,6 +103,7 @@ def _refresh_queue_progress_locked() -> None:
                 quality_mode=quality_mode,
                 job_type=item.get("job_type", "split"),
                 queue_position=idx + 1,
+                intent=item.get("intent"),
             ),
         )
 
@@ -194,6 +195,7 @@ async def start_split_workers(run_job_fn) -> None:
                     stem_count=int(job.get("stem_count", 2)),
                     quality_mode=job.get("quality_mode", "quality"),
                     job_type=job.get("job_type", "split"),
+                    intent=job.get("intent"),
                 ),
             )
             await asyncio.to_thread(run_job_fn, job)

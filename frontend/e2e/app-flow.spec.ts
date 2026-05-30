@@ -28,17 +28,21 @@ test.describe("Burnt Beats app (local full app mode)", () => {
   test("mixer prompts before stems exist", async ({ page }) => {
     await page.goto("/");
     await expect(
-      page.getByText(/Split a track or load stem files above to start mixing and exporting/i),
+      page.getByRole("region", { name: /timeline waiting for stems/i }),
     ).toBeVisible();
+    await expect(page.getByText(/Timeline opens after split/i)).toBeVisible();
   });
 
-  test("quality and stem controls are available in Load mode without upload", async ({
+  test("load mode shows stem dropzone without requiring upload", async ({
     page,
   }) => {
     await page.goto("/");
     await page.getByTestId("source-mode-load").click();
-    await expect(page.getByRole("button", { name: "Fast" })).toBeVisible();
-    await expect(page.getByRole("slider", { name: "Number of stems" })).toBeVisible();
+    await expect(page.getByTestId("load-upload-dropzone")).toBeVisible();
+    await expect(
+      page.getByText(/click to load stems or drag/i),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Browse" })).toBeVisible();
   });
 
   test("file input for upload exists", async ({ page }) => {

@@ -64,6 +64,7 @@ export function SplitActions({
         uploadDurationSec,
         stemCount,
         progressStageLabel: splitStageLabel,
+        splitIntent,
       }),
     [
       isUploading,
@@ -74,6 +75,7 @@ export function SplitActions({
       uploadDurationSec,
       stemCount,
       splitStageLabel,
+      splitIntent,
     ],
   );
   // Announce progress at meaningful milestones to avoid spamming screen readers

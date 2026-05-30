@@ -318,43 +318,10 @@ export function DjModeEditor({
       {/* ── Waveform Section (full width, taller lanes, dark bg) ── */}
       <div
         ref={pinchZoomRef}
-        className="dj-waveform-section relative min-h-0 flex-1 overflow-hidden bg-chrome px-sm py-xs touch-none"
-        style={{ minHeight: activePanel ? 320 : undefined }}
+        className="dj-waveform-section relative flex min-h-0 flex-1 flex-col overflow-hidden bg-chrome px-sm py-xs touch-none"
       >
         <TimelineRuler ticks={ticks} formatTime={formatTime} />
-        <div
-          className={cn(
-            "relative transition-all duration-300",
-            activePanel ? "md:mr-72" : "",
-          )}
-        >
-        <WaveformTimeline
-          stems={stems}
-          waveforms={waveforms}
-          durations={durations}
-          stemStates={stemStates}
-          isLoadingStems={isLoadingStems}
-          zoom={zoom}
-          scrollPct={scrollPct}
-          activeStemId={resolvedActiveStemId}
-          playheadVisiblePct={playheadVisiblePct}
-          showPlayhead={playheadPct > 0}
-          isPlaying={isAnalyserOutputActive}
-          getStemAnalyserTimeDomainData={
-            getStemAnalyserTimeDomainData ??
-            (getAnalyserData
-              ? (_stemId: string) => getAnalyserData()
-              : undefined)
-          }
-          tickPcts={ticks.map((t) => t.pct)}
-          beatGridPcts={beatGridPcts}
-          beatGrid={beatGrid}
-          onTrimChange={handleTrimChange}
-          onSeek={instrumentedOnSeek}
-          onActivate={handleActivate}
-          onStemStateChange={onStemStateChange}
-        />
-        {activePanel && activeStem && (
+        {activePanel && activeStem ? (
           <StemProcessingPanel
             activePanel={activePanel}
             stems={stems}
@@ -365,9 +332,55 @@ export function DjModeEditor({
             onStemStateChange={onStemStateChange}
             onActiveStemChange={setActiveStemId}
             onClose={() => setActivePanel(null)}
-            className="absolute inset-x-0 top-0 z-20 animate-in slide-in-from-right duration-300 md:inset-x-auto md:right-0 md:w-72"
+            className="z-20 max-h-[min(40vh,20rem)] w-full shrink-0 overflow-y-auto border-b border-border/60 bg-chrome md:hidden"
           />
-        )}
+        ) : null}
+        <div
+          className={cn(
+            "relative min-h-[12rem] flex-1 transition-[margin] duration-300",
+            activePanel ? "md:me-72" : "",
+          )}
+        >
+          <WaveformTimeline
+            stems={stems}
+            waveforms={waveforms}
+            durations={durations}
+            stemStates={stemStates}
+            isLoadingStems={isLoadingStems}
+            zoom={zoom}
+            scrollPct={scrollPct}
+            activeStemId={resolvedActiveStemId}
+            playheadVisiblePct={playheadVisiblePct}
+            showPlayhead={playheadPct > 0}
+            isPlaying={isAnalyserOutputActive}
+            getStemAnalyserTimeDomainData={
+              getStemAnalyserTimeDomainData ??
+              (getAnalyserData
+                ? (_stemId: string) => getAnalyserData()
+                : undefined)
+            }
+            tickPcts={ticks.map((t) => t.pct)}
+            beatGridPcts={beatGridPcts}
+            beatGrid={beatGrid}
+            onTrimChange={handleTrimChange}
+            onSeek={instrumentedOnSeek}
+            onActivate={handleActivate}
+            onStemStateChange={onStemStateChange}
+          />
+          {activePanel && activeStem ? (
+            <StemProcessingPanel
+              activePanel={activePanel}
+              stems={stems}
+              activeStem={activeStem}
+              activeState={activeState}
+              activeStemId={resolvedActiveStemId}
+              stemStates={stemStates}
+              onStemStateChange={onStemStateChange}
+              onActiveStemChange={setActiveStemId}
+              onClose={() => setActivePanel(null)}
+              className="absolute inset-y-0 right-0 z-20 hidden w-72 overflow-y-auto border-l border-border/60 bg-chrome shadow-[-8px_0_24px_rgba(0,0,0,0.45)] md:block"
+            />
+          ) : null}
         </div>
       </div>
 

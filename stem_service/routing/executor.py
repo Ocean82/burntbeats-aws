@@ -7,6 +7,20 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+
+def _call_progress(
+    progress_callback: Callable[..., None] | None,
+    pct: int,
+    *,
+    job_kind: str | None = None,
+) -> None:
+    if progress_callback is None:
+        return
+    try:
+        progress_callback(pct, job_kind)
+    except TypeError:
+        progress_callback(pct)
+
 from stem_service.hybrid import run_hybrid_2stem, run_hybrid_4stem
 from stem_service.routing.pipelines.parallel_mdx import run_parallel_mdx_targets
 from stem_service.routing.pipelines.single_stem import run_mdx_target_stem
@@ -53,7 +67,7 @@ def execute_plan(
     input_path: Path,
     output_dir: Path,
     *,
-    progress_callback: Callable[[int], None] | None = None,
+    progress_callback: Callable[..., None] | None = None,
     job_logger: logging.Logger | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     prefer_speed = plan.intent.prefer_speed()
@@ -66,12 +80,16 @@ def execute_plan(
     for idx, job in enumerate(jobs):
         base_pct = int(100 * idx / job_count)
         end_pct = int(100 * (idx + 1) / job_count)
+        job_kind = job.kind
 
-        def sub_progress(pct: int, _b: int = base_pct, _e: int = end_pct) -> None:
-            if progress_callback is None:
-                return
+        def sub_progress(
+            pct: int,
+            _b: int = base_pct,
+            _e: int = end_pct,
+            _kind: str = job_kind,
+        ) -> None:
             mapped = _b + int((_e - _b) * pct / 100)
-            progress_callback(mapped)
+            _call_progress(progress_callback, mapped, job_kind=_kind)
 
         if job.kind == "vocals_only":
             stems, models = run_vocals_only(

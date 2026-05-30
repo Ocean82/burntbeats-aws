@@ -74,7 +74,10 @@ def test_run_separation_sync_quality_does_not_use_uninitialized_model_tier(monke
     def fake_run_hybrid_2stem(*_args, **_kwargs):
         return [("vocals", vocal_path), ("instrumental", inst_path)], ["fake-model"]
 
-    monkeypatch.setattr(job_worker, "run_hybrid_2stem", fake_run_hybrid_2stem)
+    monkeypatch.setattr(
+        "stem_service.routing.executor.run_hybrid_2stem", fake_run_hybrid_2stem
+    )
+    monkeypatch.setattr(job_worker, "_finalize_stems_to_16bit", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         job_worker, "schedule_completion_artifacts", lambda *_args, **_kwargs: None
     )
@@ -109,10 +112,13 @@ def test_run_separation_sync_marks_local_ready_before_optional_artifacts(monkeyp
     inst_path.write_bytes(b"i")
 
     monkeypatch.setattr(
-        job_worker,
-        "run_hybrid_2stem",
-        lambda *_args, **_kwargs: ([("vocals", vocal_path), ("instrumental", inst_path)], ["fake-model"]),
+        "stem_service.routing.executor.run_hybrid_2stem",
+        lambda *_args, **_kwargs: (
+            [("vocals", vocal_path), ("instrumental", inst_path)],
+            ["fake-model"],
+        ),
     )
+    monkeypatch.setattr(job_worker, "_finalize_stems_to_16bit", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(job_worker, "append_metrics_log", lambda *_args, **_kwargs: None)
 
     scheduled: dict[str, object] = {}
@@ -215,7 +221,8 @@ def test_run_separation_sync_ignores_demucs_only_2stem_backend_switch(monkeypatc
         called.append("hybrid")
         return [("vocals", vocal_path), ("instrumental", inst_path)], ["fake"]
 
-    monkeypatch.setattr(job_worker, "run_hybrid_2stem", fake_hybrid)
+    monkeypatch.setattr("stem_service.routing.executor.run_hybrid_2stem", fake_hybrid)
+    monkeypatch.setattr(job_worker, "_finalize_stems_to_16bit", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         job_worker, "schedule_completion_artifacts", lambda *_args, **_kwargs: None
     )

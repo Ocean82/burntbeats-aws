@@ -1,7 +1,7 @@
 /**
- * LayoutModeContext — Controls whether the app renders in "dj" or "classic" mode.
- * DJ mode is the default: full-width waveforms on top, collapsible mixer console below.
- * Classic mode preserves the original layout for users who prefer it.
+ * LayoutModeContext — DJ mixer layout is the shipped editor surface.
+ * Classic MultiStemEditor remains in the codebase but is not user-selectable until
+ * product re-enables a layout toggle (localStorage is normalized to "dj" on load).
  */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 

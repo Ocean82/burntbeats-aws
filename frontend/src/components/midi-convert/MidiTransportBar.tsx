@@ -57,14 +57,18 @@ export function MidiTransportBar({
         <Square className="h-3.5 w-3.5 fill-current" aria-hidden />
       </MidiPhysicalButton>
 
-      <span className="midi-time-display" aria-live="polite" aria-label="Playhead position">
+      <span
+        className="midi-time-display tabular-nums"
+        aria-live="polite"
+        aria-label="Playhead position"
+      >
         {formatTransportTime(currentTime)}
         <span className="opacity-45"> / </span>
         {formatTransportTime(duration)}
       </span>
 
       <span
-        className="rounded px-xs py-1 font-mono text-xs text-muted-foreground"
+        className="rounded px-xs py-1 font-mono text-xs tabular-nums text-muted-foreground"
         style={{ background: "var(--midi-surface-inset)" }}
         title="Tempo"
       >

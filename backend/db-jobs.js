@@ -42,6 +42,7 @@ export async function ensureUser(clerkUserId, meta = {}) {
  *   originalFilename: string | null,
  *   durationSeconds: number | null,
  *   tokenCost: number,
+ *   splitIntent?: Record<string, unknown> | null,
  * }} params
  */
 export async function insertJob(params) {
@@ -52,8 +53,8 @@ export async function insertJob(params) {
       await ensureUser(params.clerkUserId);
     }
     await pool.query(
-      `INSERT INTO jobs (job_id, clerk_user_id, status, stems, quality, is_sample, original_filename, duration_seconds, token_cost)
-       VALUES ($1, $2, 'accepted', $3, $4, $5, $6, $7, $8)
+      `INSERT INTO jobs (job_id, clerk_user_id, status, stems, quality, is_sample, original_filename, duration_seconds, token_cost, split_intent)
+       VALUES ($1, $2, 'accepted', $3, $4, $5, $6, $7, $8, $9::jsonb)
        ON CONFLICT (job_id) DO NOTHING`,
       [
         params.jobId,
@@ -64,6 +65,7 @@ export async function insertJob(params) {
         params.originalFilename || null,
         params.durationSeconds,
         params.tokenCost,
+        params.splitIntent ? JSON.stringify(params.splitIntent) : null,
       ],
     );
   } catch (err) {
@@ -155,7 +157,7 @@ export async function getJobHistory(clerkUserId, opts = {}) {
   try {
     const result = await pool.query(
       `SELECT job_id, status, stems, quality, is_sample, original_filename,
-              duration_seconds, token_cost, model_name, error_message,
+              duration_seconds, token_cost, split_intent, model_name, error_message,
               created_at, started_at, completed_at
        FROM jobs
        WHERE clerk_user_id = $1
@@ -194,7 +196,7 @@ export async function getJobHistoryWithStems(clerkUserId, opts = {}) {
     const result = await pool.query(
       `SELECT 
         j.job_id, j.status, j.stems, j.quality, j.original_filename,
-        j.duration_seconds, j.token_cost, j.model_name, j.created_at, j.completed_at,
+        j.duration_seconds, j.token_cost, j.split_intent, j.model_name, j.created_at, j.completed_at,
         COALESCE(
           json_agg(
             json_build_object(

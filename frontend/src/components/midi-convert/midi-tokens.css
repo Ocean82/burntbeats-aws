@@ -73,6 +73,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 8px 12px 10px;
+  min-height: 240px;
 }
 
 .midi-inspector-wrap {
@@ -772,5 +773,38 @@
 @media (min-width: 1024px) {
   .midi-editor-shell--wide .midi-editor-panel {
     min-height: 280px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .midi-editor-shell--wide {
+    display: grid;
+    grid-template-areas:
+      "transport transport"
+      "editor inspector"
+      "shortcuts shortcuts";
+    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-rows: auto minmax(280px, 1fr) auto;
+  }
+
+  .midi-editor-shell--wide > .midi-transport-bar {
+    grid-area: transport;
+  }
+
+  .midi-editor-shell--wide > .midi-editor-panel {
+    grid-area: editor;
+    min-height: 0;
+  }
+
+  .midi-editor-shell--wide > .midi-inspector-wrap {
+    grid-area: inspector;
+    border-top: none;
+    border-left: 1px solid var(--midi-border);
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .midi-editor-shell--wide > .midi-shortcuts {
+    grid-area: shortcuts;
   }
 }

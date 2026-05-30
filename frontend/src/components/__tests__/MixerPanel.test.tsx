@@ -141,6 +141,19 @@ describe("MixerPanel", () => {
     expect(screen.getByText(/Timeline opens after split/i)).toBeInTheDocument();
   });
 
+  it("shows loading error alert with retry when stems fail to load", () => {
+    const onRetryLoadStems = vi.fn();
+    renderMixer({
+      loadingError: "Network error loading stem buffers",
+      onRetryLoadStems,
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/failed to load stems/i);
+    expect(screen.getByText(/network error loading stem buffers/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /retry loading stems/i }));
+    expect(onRetryLoadStems).toHaveBeenCalledTimes(1);
+  });
+
   it("resets master volume on double click and toggles limiter", () => {
     const { handlers } = renderMixer();
     const slider = screen.getByRole("slider", { name: /master output volume/i });

@@ -214,6 +214,7 @@ splitRouter.post(
           originalFilename: req.file?.originalname || null,
           durationSeconds,
           tokenCost: usageCost,
+          splitIntent: intent ?? null,
         }).catch((err) => console.error("[split] db insertJob error:", err));
         // Mark as processing immediately (sets started_at)
         updateJobStatus(jobId, "processing").catch(() => {});

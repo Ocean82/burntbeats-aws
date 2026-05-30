@@ -177,7 +177,7 @@ export function MidiEditorToolbar({
             const val = parseInt(e.target.value, 10);
             if (!isNaN(val)) onBpmChange(val);
           }}
-          className="midi-input-num"
+          className="midi-input-num tabular-nums"
           aria-label="BPM"
         />
       </div>

@@ -101,11 +101,19 @@ def progress_stage_snapshot(
     progress: int,
     job_type: str,
     mode_name: str,
+    intent: dict[str, Any] | None = None,
+    active_job_kind: str | None = None,
 ) -> tuple[str, str]:
     """Map a job status payload to a stable stage code and user-facing label."""
     if status == "queued":
         if job_type == "expand":
             return ("queued", "Waiting to expand to 4 stems…")
+        if intent and job_type == "split":
+            from stem_service.routing.progress_stages import intent_queued_label
+
+            queued = intent_queued_label(intent)
+            if queued:
+                return ("queued", queued)
         return ("queued", "Waiting for an available worker…")
     if status == "completed":
         if job_type == "expand":
@@ -117,6 +125,16 @@ def progress_stage_snapshot(
         return ("cancelled", "Split cancelled")
     if job_type == "expand":
         return _expand_running_stage(progress)
+    if intent and job_type == "split":
+        from stem_service.routing.progress_stages import (
+            intent_running_stage,
+            should_use_intent_stages,
+        )
+
+        if should_use_intent_stages(intent):
+            return intent_running_stage(
+                intent, progress, active_job_kind=active_job_kind
+            )
     return _split_running_stage(mode_name, progress)
 
 
@@ -129,6 +147,8 @@ def build_progress_payload(
     job_type: str = "split",
     queue_position: int | None = None,
     elapsed_seconds: float | None = None,
+    intent: dict[str, Any] | None = None,
+    active_job_kind: str | None = None,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Create a progress/status payload with canonical mode and stage metadata."""
@@ -138,6 +158,8 @@ def build_progress_payload(
         progress=progress,
         job_type=job_type,
         mode_name=mode_name,
+        intent=intent,
+        active_job_kind=active_job_kind,
     )
     payload: dict[str, Any] = {
         "status": status,
@@ -154,6 +176,10 @@ def build_progress_payload(
         payload["queue_position"] = queue_position
     if elapsed_seconds is not None:
         payload["elapsed_seconds"] = elapsed_seconds
+    if intent is not None:
+        payload["intent"] = intent
+    if active_job_kind is not None:
+        payload["active_job_kind"] = active_job_kind
     if extra:
         payload.update(extra)
     return payload

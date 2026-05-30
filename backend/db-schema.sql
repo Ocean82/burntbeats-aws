@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   original_filename TEXT,
   duration_seconds REAL,
   token_cost       INTEGER NOT NULL DEFAULT 0,
+  split_intent     JSONB,                            -- task, targets, mode, quality
   model_name       TEXT,
   error_message    TEXT,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),

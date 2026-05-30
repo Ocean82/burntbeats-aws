@@ -140,7 +140,10 @@ def run_separation_sync(
     )
     logger.info("Started job %s (quality: %s)", job_id, quality_mode)
 
-    def on_progress(pct: int) -> None:
+    intent_dict = split_intent.to_json_dict()
+    mode_name = resolve_mode_name(stem_count, quality_mode)
+
+    def on_progress(pct: int, job_kind: str | None = None) -> None:
         if is_job_cancelled(job_id):
             raise JobCancelledError("Job cancelled by user")
         elapsed = time.monotonic() - t0
@@ -153,12 +156,12 @@ def run_separation_sync(
                 stem_count=stem_count,
                 quality_mode=quality_mode,
                 elapsed_seconds=round(elapsed, 1),
+                intent=intent_dict,
+                active_job_kind=job_kind,
             ),
         )
 
     models_used: list[str] = []
-
-    mode_name = resolve_mode_name(stem_count, quality_mode)
 
     try:
         _span_stack = contextlib.ExitStack()
@@ -231,6 +234,7 @@ def run_separation_sync(
             stem_count=stem_count,
             quality_mode=quality_mode,
             elapsed_seconds=round(elapsed, 2),
+            intent=intent_dict,
             extra={
                 "stems": stems_payload,
                 "audio_duration_seconds": round(audio_duration_seconds, 2)
@@ -241,7 +245,6 @@ def run_separation_sync(
                 "models_used": models_used,
                 "stem_runtime": get_stem_runtime_versions(),
                 "artifact_delivery": "local_ready",
-                "intent": split_intent.to_json_dict(),
                 "routing_notes": plan.routing_notes,
             },
         )

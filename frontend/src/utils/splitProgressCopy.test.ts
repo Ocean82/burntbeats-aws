@@ -55,6 +55,19 @@ describe("getSplitProgressMessage", () => {
     expect(msg.primary).toBe("Splitting drums & bass…");
   });
 
+  it("uses intent fallback for extract vocals when no backend label", () => {
+    const msg = getSplitProgressMessage({
+      isUploading: false,
+      uploadProgress: 0,
+      queuePosition: null,
+      splitProgress: 50,
+      elapsedSeconds: null,
+      uploadDurationSec: null,
+      splitIntent: { task: "extract", targets: ["vocals"], quality: "fast" },
+    });
+    expect(msg.primary).toBe("Extracting vocals…");
+  });
+
   it("prefers backend-reported stage labels when available", () => {
     const msg = getSplitProgressMessage({
       isUploading: false,

@@ -46,7 +46,9 @@ describe("ProcessingSettingsPanel layout", () => {
     const qualityFastButton = screen.getByRole("button", { name: /fast/i });
     const uploadDropZone = screen.getByTestId("split-upload-dropzone");
     const qualityGroup = screen.getByTestId("quality-controls");
-    const splitButton = screen.getByRole("button", { name: /split stems/i });
+    const splitButton = screen.getByRole("button", {
+      name: /full separation \(2 stems\)/i,
+    });
 
     expect(uploadDropZone).toContainElement(changeFileButton);
     expect(qualityGroup).toContainElement(qualityFastButton);

@@ -35,7 +35,7 @@ export function MidiConvertProgress({
           <span>{label}</span>
         </span>
         <div className="flex items-center gap-sm">
-          <span className="midi-status-panel__percent">{barPercent}%</span>
+          <span className="midi-status-panel__percent tabular-nums">{barPercent}%</span>
           {onCancel && (
             <button
               type="button"
