@@ -12,10 +12,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY speech_service/requirements.txt ./speech_service/requirements.txt
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r speech_service/requirements.txt \
-        --extra-index-url https://download.pytorch.org/whl/cpu
+COPY pyproject.toml uv.lock ./
+COPY stem_service/pyproject.toml ./stem_service/pyproject.toml
+COPY midi_service/pyproject.toml ./midi_service/pyproject.toml
+COPY speech_service/pyproject.toml ./speech_service/pyproject.toml
+
+RUN pip install --no-cache-dir uv \
+    && UV_SYSTEM_PYTHON=1 uv sync --frozen --package burntbeats-speech --no-install-project
 
 COPY Speech/ ./Speech/
 COPY speech_service/ ./speech_service/

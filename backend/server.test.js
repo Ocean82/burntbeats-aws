@@ -5,6 +5,10 @@ import http from "http";
 
 import supertest from "supertest";
 
+// HTTP tests use a mock stem service; do not write to a real Postgres from backend/.env.
+// Use empty string (not delete) so later test helpers do not reload DATABASE_URL from .env.
+process.env.DATABASE_URL = "";
+
 process.env.NODE_ENV = "test";
 process.env.API_KEY = "test-key";
 process.env.JOB_TOKEN_SECRET = ""; // disable job token auth for these basic tests

@@ -90,6 +90,7 @@ logs/
 server_models/
 benchmark_out/
 benchmark_out_*/
+session-artifacts/
 
 # Speech enhancement (LavaSR) — weights bind-mounted at runtime (see speech_models/LAYOUT.txt)
 speech_models/*

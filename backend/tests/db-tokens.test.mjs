@@ -9,47 +9,30 @@
  *
  * Requirements:
  *   - DATABASE_URL pointing to a test-safe Postgres instance
- *   - Schema already applied (node backend/db-migrate.js)
  */
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 
-// Load backend/.env for DATABASE_URL (same approach as db-migrate.js)
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const envPath = path.join(__dirname, "..", ".env");
-try {
-  const lines = readFileSync(envPath, "utf-8").split("\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq < 1) continue;
-    const key = trimmed.slice(0, eq).trim();
-    const val = trimmed.slice(eq + 1).trim();
-    if (!process.env[key]) process.env[key] = val;
-  }
-} catch {
-  // .env not found — rely on environment
-}
+import {
+  ensureDatabaseMigrated,
+  getTestDatabaseUrl,
+  loadBackendEnvForTests,
+} from "./db-test-setup.mjs";
 
-// Skip entire suite if no DATABASE_URL (CI without Postgres, local dev without RDS)
-const DATABASE_URL = (process.env.DATABASE_URL || "").trim();
+loadBackendEnvForTests();
+
+const DATABASE_URL = getTestDatabaseUrl();
 if (!DATABASE_URL) {
   test("db-tokens: SKIPPED (no DATABASE_URL configured)", () => {
-    console.log("⚠️  Skipping db-tokens tests — set DATABASE_URL to run them.");
+    console.log("Skipping db-tokens tests — set DATABASE_URL to run them.");
   });
-  // Exit early so Node test runner doesn't report failures
   process.exit(0);
 }
 
-// Ensure test env
 process.env.NODE_ENV = "test";
+await ensureDatabaseMigrated();
 
-// Dynamic imports after env is loaded
 const { getPool } = await import("../db.js");
 const {
   isDbTokensAvailable,

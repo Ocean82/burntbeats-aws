@@ -1,12 +1,26 @@
+[project]
+name = "burntbeats"
+version = "0.0.0"
+description = "Burnt Beats monorepo — Python workspace root (stem, speech, MIDI services)"
+requires-python = ">=3.11,<3.13"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["stem_service", "midi_service", "speech_service"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.0",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.23.0,<0.28.0",
+]
+
 [tool.pyrefly]
-# Tell Pyrefly where to find third-party packages.
-# The .venv was created under WSL — on Windows, point to the site-packages directly.
 search_path = [
+    ".venv/lib/python3.11/site-packages",
     ".venv/lib/python3.12/site-packages",
     ".",
 ]
-
-# Project source roots so imports like `speech_service.config` resolve correctly.
 source_path = ["."]
-
-python_version = "3.12"
+python_version = "3.11"

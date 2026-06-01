@@ -109,6 +109,41 @@ function normalizeCapabilities(
   };
 }
 
+function isPremiumPlan(plan: ServerPlan | null | undefined): boolean {
+  return plan === "premium" || plan === "studio";
+}
+
+/** Map GET /api/billing/subscription — supports legacy responses without capabilities. */
+export function resolveCapabilitiesFromSubscription(data: {
+  active: boolean;
+  plan: ServerPlan | null;
+  capabilities?: Partial<SubscriptionCapabilities>;
+}): SubscriptionCapabilities {
+  if (!data.active) return NO_SUBSCRIPTION_CAPABILITIES;
+  const fromApi = normalizeCapabilities(data.capabilities);
+  const hasExplicitCaps =
+    data.capabilities != null &&
+    typeof data.capabilities === "object" &&
+    Object.keys(data.capabilities).length > 0;
+  if (hasExplicitCaps) return fromApi;
+  if (isPremiumPlan(data.plan)) return premiumCapabilities();
+  return NO_SUBSCRIPTION_CAPABILITIES;
+}
+
+function parseEntitlementSource(
+  raw: EntitlementSource | "usage_tokens" | undefined,
+  active: boolean,
+  plan: ServerPlan | null,
+): EntitlementSource {
+  if (!active) return "none";
+  if (raw === "subscription" || raw === "usage_tokens" || raw === "none") {
+    return raw === "usage_tokens" ? "usage_tokens" : raw;
+  }
+  if (plan === "basic") return "usage_tokens";
+  if (plan != null) return "subscription";
+  return "none";
+}
+
 type CheckoutSource =
   | "split_gate"
   | "paywall_banner"
@@ -199,16 +234,21 @@ export function useSubscription(): UseSubscriptionResult {
         active: boolean;
         plan: ServerPlan | null;
         entitlementSource?: EntitlementSource;
+        /** @deprecated Legacy backend field — same as entitlementSource */
+        entitlement?: "usage_tokens";
         capabilities?: Partial<SubscriptionCapabilities>;
       };
+      const activePlan = data.active ? data.plan : null;
       setStatus(data.active ? "active" : "inactive");
-      setPlan(data.active ? data.plan : null);
-      setEntitlementSource(data.active ? (data.entitlementSource ?? "none") : "none");
-      setCapabilities(
-        data.active
-          ? normalizeCapabilities(data.capabilities)
-          : NO_SUBSCRIPTION_CAPABILITIES,
+      setPlan(activePlan);
+      setEntitlementSource(
+        parseEntitlementSource(
+          data.entitlementSource ?? data.entitlement,
+          data.active,
+          activePlan,
+        ),
       );
+      setCapabilities(resolveCapabilitiesFromSubscription(data));
       setBillingError(null);
     } catch (err) {
       trackEvent("subscription_fetch_failed", {

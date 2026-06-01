@@ -167,7 +167,7 @@ export function useExport(): UseExportReturn {
             });
           } else if (format === "mp3") {
             const wavB = await renderClientMasterWavBlob({ normalize }, stemBuffers, splitResultStems, stemStates, uploadName);
-            curBlob = encodeWavToMp3(await wavB.arrayBuffer());
+            curBlob = await encodeWavToMp3(await wavB.arrayBuffer());
           } else if (canTryServer) {
             try {
               const stemStatesSubset: Record<string, StemEditorState> = {};
@@ -230,7 +230,7 @@ export function useExport(): UseExportReturn {
           for (const stem of jobBacked) {
             let blob = await fetchStemWavAsBlob(stem.url);
             if (stemFormat === "mp3") {
-              blob = encodeWavToMp3(await blob.arrayBuffer());
+              blob = await encodeWavToMp3(await blob.arrayBuffer());
             }
             stemResults.push({ id: stem.id, blob });
           }
@@ -239,7 +239,7 @@ export function useExport(): UseExportReturn {
             jobBacked.map(async (stem) => {
               let blob = await fetchStemWavAsBlob(stem.url);
               if (stemFormat === "mp3") {
-                blob = encodeWavToMp3(await blob.arrayBuffer());
+                blob = await encodeWavToMp3(await blob.arrayBuffer());
               }
               return { id: stem.id, blob };
             })

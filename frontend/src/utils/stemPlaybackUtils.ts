@@ -66,15 +66,38 @@ export async function createStemPluginPool(
   if (!needsAny) return { plugins, available: false };
 
   try {
-    for (const { id, st } of stems) {
-      if (!stemNeedsPlugin(st)) continue;
-      const plugin = new PitchTempoPlugin({
-        // OfflineAudioContext satisfies runtime needs; types expect AudioContext.
-        audioContext: ctx as AudioContext,
-      });
-      await plugin.ready();
-      plugins.set(id, plugin);
+    // Parallelize plugin initialization: create all plugin instances first,
+    // then call ready() in parallel. This reduces wall-clock time when many
+    // stems require plugins while still allowing per-plugin failures.
+    const entries = stems.filter(({ st }) => stemNeedsPlugin(st));
+    if (entries.length === 0) return { plugins, available: false };
+
+    const instances = new Map<string, PitchTempoPlugin>();
+    for (const { id } of entries) {
+      const plugin = new PitchTempoPlugin({ audioContext: ctx as AudioContext });
+      instances.set(id, plugin);
     }
+
+    // Call ready() in parallel and collect successes.
+    const settles = await Promise.allSettled(
+      Array.from(instances.entries()).map(([id, plugin]) =>
+        plugin.ready().then(() => id),
+      ),
+    );
+
+    for (const s of settles) {
+      if (s.status === "fulfilled") {
+        const id = s.value as string;
+        const plugin = instances.get(id)!;
+        plugins.set(id, plugin);
+      }
+    }
+
+    // Destroy any instances that failed to initialize.
+    for (const [id, inst] of instances.entries()) {
+      if (!plugins.has(id)) inst.destroy();
+    }
+
     return { plugins, available: plugins.size > 0 };
   } catch (err) {
     console.warn("[createStemPluginPool] PitchTempoPlugin init failed, using legacy playbackRate:", err);

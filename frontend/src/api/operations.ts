@@ -13,6 +13,23 @@ import { withIntentQuality } from "../utils/splitIntent";
 
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(import.meta.env.VITE_SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 
+/** Get presigned S3 upload URL. */
+export async function getUploadUrl(filename: string, contentType: string): Promise<{ upload_url: string; s3_key: string; job_id: string }> {
+  const res = await fetch(`${API_BASE}/api/stems/upload-url`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(await authHeaders()),
+    },
+    body: JSON.stringify({ filename, contentType }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to get upload URL: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
 /** Start stem separation; returns job_id. Separation runs in background. */
 export async function startStemSplit(
   file: File,
@@ -30,7 +47,58 @@ export async function startStemSplit(
     throw new Error(`File too large. Maximum size is ${mb}MB.`);
   }
 
+  // ── Optimization: S3 Direct Upload ──────────────────────────────────────────
+  // If enabled, we upload to S3 first, then notify the backend.
+  // This offloads heavy binary transfer from the API server.
+  const useS3Direct = import.meta.env.VITE_USE_S3_DIRECT_UPLOAD === "true";
+
+  if (useS3Direct && !isSample) {
+    try {
+      const { upload_url, s3_key } = await getUploadUrl(file.name, file.type);
+      
+      // Perform direct PUT to S3
+      const uploadRes = await fetch(upload_url, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      
+      if (!uploadRes.ok) throw new Error(`S3 upload failed: ${uploadRes.status}`);
+
+      // Notify backend to start processing
+      const res = await fetch(`${API_BASE}/api/stems/split`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(await authHeaders()),
+        },
+        body: JSON.stringify({
+          s3_key,
+          filename: file.name,
+          stems,
+          quality,
+          intent: intent ? (quality ? withIntentQuality(intent, quality) : intent) : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Processing request failed: ${res.status} ${text}`);
+      }
+
+      const json = await res.json();
+      if (typeof json.job_token === "string" && json.job_token) {
+        setJobToken(json.job_id, json.job_token);
+      }
+      return { job_id: json.job_id };
+    } catch (err) {
+      console.warn("[split] S3 direct upload failed, falling back to proxy:", err);
+      // Fall through to original multipart proxy flow
+    }
+  }
+
   const form = new FormData();
+// ...
   form.append("file", file);
   form.append("stems", stems);
   if (quality) form.append("quality", quality);

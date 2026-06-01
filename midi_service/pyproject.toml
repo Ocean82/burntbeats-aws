@@ -1,0 +1,20 @@
+[project]
+name = "burntbeats-midi"
+version = "1.0.0"
+description = "Burnt Beats audio-to-MIDI service (Basic Pitch)"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "basic-pitch>=0.3.0",
+    "numpy>=1.24.0",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "python-multipart>=0.0.6",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+    "mido>=1.3.0",
+    "pretty-midi>=0.2.10",
+    "prometheus-client>=0.20.0",
+]
+
+[tool.uv]
+package = false

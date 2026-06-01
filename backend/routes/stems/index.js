@@ -13,9 +13,13 @@ import { expandRouter } from "./expand.js";
 import { serverExportRouter } from "./server-export.js";
 import { fileServeRouter } from "./file-serve.js";
 import { cleanupRouter } from "./cleanup.js";
+import { uploadUrlRouter } from "./upload-url.js";
 import { STEM_OUTPUT_DIR } from "./shared.js";
 
 export const stemsRouter = Router();
+
+// POST /api/stems/upload-url
+stemsRouter.use("/upload-url", uploadUrlRouter);
 
 // POST /api/stems/split
 stemsRouter.use("/split", splitRouter);

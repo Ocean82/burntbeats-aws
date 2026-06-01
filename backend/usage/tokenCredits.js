@@ -54,7 +54,11 @@ export async function creditSubscriptionAllowance(
       stripeEventId:
         typeof options.stripeEventId === "string" ? options.stripeEventId : undefined,
     });
-    if (!dbResult.success || !dbResult.credited) return;
+    if (!dbResult.success) {
+      throw new Error(`Database ledger failure: failed to credit subscription for user ${clerkUserId}`);
+    }
+    if (!dbResult.credited) return; // Idempotent skip (already credited)
+
     if (dbResult.balanceAfter != null) {
       try {
         await updateClerkBalanceCache(clerkUserId, dbResult.balanceAfter);
@@ -197,7 +201,9 @@ export async function creditTopupTokens(clerkUserId, grant) {
   // Primary: DB
   if (isDbTokensAvailable()) {
     const dbResult = await creditDbTopup(clerkUserId, grant);
-    if (!dbResult.success) return;
+    if (!dbResult.success) {
+      throw new Error(`Database ledger failure: failed to credit topup for user ${clerkUserId}`);
+    }
     if (dbResult.balanceAfter != null) {
       try {
         await updateClerkBalanceCache(clerkUserId, dbResult.balanceAfter);

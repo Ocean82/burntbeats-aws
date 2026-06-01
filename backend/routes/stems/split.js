@@ -5,8 +5,10 @@
 import { Router } from "express";
 import FormData from "form-data";
 import { createReadStream, unlink } from "fs";
-import { unlink as unlinkPromise } from "fs/promises";
+import { unlink as unlinkPromise, writeFile } from "fs/promises";
 import path from "path";
+import { randomUUID } from "crypto";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import {
   authMiddleware,
@@ -14,6 +16,7 @@ import {
   issueJobToken,
   DEV_BYPASS_UPLOAD_AUTH,
 } from "../../middleware/auth.js";
+// ... (rest of imports)
 import { proxyFormRequest } from "../../middleware/proxy.js";
 import { upload, MAX_UPLOAD_MB } from "../../middleware/upload.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
@@ -46,7 +49,12 @@ splitRouter.post(
   "/",
   authMiddleware,
   requireUsageAuthPreUpload,
-  (req, res, next) => {
+  async (req, res, next) => {
+    // If user provides s3_key, skip multer and handle as JSON/body
+    if (req.body?.s3_key || req.query?.s3_key) {
+      return next();
+    }
+    // Otherwise, handle as traditional file upload
     upload.single("file")(req, res, (err) => {
       if (err) {
         if (err.code === "LIMIT_FILE_SIZE") {
@@ -69,26 +77,44 @@ splitRouter.post(
     });
   },
   async (req, res) => {
-    if (!req.file) {
-      const ct = req.get("content-type") || "";
-      console.warn(
-        "[POST /api/stems/split] 400: no file (field must be 'file'); Content-Type:",
-        ct.slice(0, 50),
-      );
+    let filePath = req.file?.path || "";
+    let s3Key = req.body?.s3_key || req.query?.s3_key;
+    let originalFilename = req.file?.originalname || req.body?.filename || "audio.wav";
+
+    // If s3_key provided, download it to temp disk for processing
+    if (s3Key && !filePath) {
+      const bucket = process.env.S3_UPLOAD_BUCKET;
+      if (!bucket) return res.status(501).json({ error: "S3 processing not configured" });
+      
+      const tmpPath = path.join(path.dirname(STEM_OUTPUT_DIR), "burntbeats-upload", `s3-${randomUUID()}-${path.basename(s3Key)}`);
+      try {
+        const s3 = new S3Client({ region: process.env.S3_REGION || "us-east-1" });
+        const obj = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: s3Key }));
+        if (!obj.Body) throw new Error("Empty S3 body");
+        // @ts-expect-error stream type
+        const buffer = await obj.Body.transformToByteArray();
+        await writeFile(tmpPath, buffer);
+        filePath = tmpPath;
+      } catch (err) {
+        console.error("[split] S3 download failed:", err.message);
+        return res.status(400).json({ error: "Failed to retrieve file from S3 storage" });
+      }
+    }
+
+    if (!filePath) {
       return res.status(400).json({
-        error: "Missing file. Upload an audio file and use form field 'file'.",
+        error: "Missing file or s3_key. Upload an audio file or provide S3 reference.",
       });
     }
-    const filePath = req.file.path;
     const declaredExt =
-      path.extname(req.file.originalname || "").toLowerCase() ||
+      path.extname(originalFilename).toLowerCase() ||
       path.extname(filePath).toLowerCase();
     const sniff = verifyUploadMatchesExtension(filePath, declaredExt);
     if (!sniff.ok) {
       console.warn(
         "[POST /api/stems/split] sniff failed: ext=%s filename=%s message=%s",
         declaredExt,
-        req.file?.originalname || "unknown",
+        originalFilename,
         sniff.message,
       );
       await unlinkPromise(filePath).catch(() => {});
@@ -189,7 +215,7 @@ splitRouter.post(
     // Stream from disk to Python using form-data pipe
     const form = new FormData();
     form.append("file", createReadStream(filePath), {
-      filename: req.file.originalname || "audio.wav",
+      filename: originalFilename,
     });
     form.append("stems", stems);
     if (quality) form.append("quality", quality);
@@ -204,18 +230,25 @@ splitRouter.post(
 
       if (data.statusCode === 202) {
         const jobId = data.data.job_id;
-        // Record job in database (non-blocking, best-effort)
-        insertJob({
-          jobId,
-          clerkUserId: usageUserId,
-          stems: Number(stems),
-          quality: quality || null,
-          isSample: !!isSample,
-          originalFilename: req.file?.originalname || null,
-          durationSeconds,
-          tokenCost: usageCost,
-          splitIntent: intent ?? null,
-        }).catch((err) => console.error("[split] db insertJob error:", err));
+        // Record job in database (blocking, ensure persistence)
+        try {
+          await insertJob({
+            jobId,
+            clerkUserId: usageUserId,
+            stems: Number(stems),
+            quality: quality || null,
+            isSample: !!isSample,
+            originalFilename: originalFilename,
+            durationSeconds,
+            tokenCost: usageCost,
+            splitIntent: intent ?? null,
+          });
+        } catch (dbErr) {
+          console.error("[split] critical: failed to persist job to DB:", dbErr.message);
+          // If we reserved tokens but failed to record the job, we have a ledger mismatch.
+          // In a high-resilience system we might want to trigger a compensating refund here.
+        }
+
         // Mark as processing immediately (sets started_at)
         updateJobStatus(jobId, "processing").catch(() => {});
         const response = {

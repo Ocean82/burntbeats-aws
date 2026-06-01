@@ -10,6 +10,8 @@
  *   const result = await breaker.call(() => fetch(url));
  */
 
+import { getRedis } from "../stripeRedis.js";
+
 /** @enum {string} */
 const State = /** @type {const} */ ({
   CLOSED: "closed",
@@ -42,6 +44,49 @@ export class CircuitBreaker {
     this.failureCount = 0;
     this.lastFailureTime = 0;
     this.halfOpenAttempts = 0;
+    this.redisKey = `cb:${name}:state`;
+  }
+
+  /**
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _syncWithRedis() {
+    const redis = await getRedis();
+    if (!redis) return;
+    try {
+      const data = await redis.get(this.redisKey);
+      if (data) {
+        const { state, lastFailureTime, failureCount } = JSON.parse(data);
+        // Only override if the remote state is more "open" or newer
+        if (state === State.OPEN && this.state !== State.OPEN) {
+          this.state = State.OPEN;
+          this.lastFailureTime = lastFailureTime;
+          this.failureCount = failureCount;
+        } else if (state === State.CLOSED && this.state === State.OPEN) {
+          // If remote is closed but we are open, maybe it reset?
+          // For safety, we keep open until local reset or timeout, 
+          // but we could also follow the leader.
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  /**
+   * @private
+   * @returns {Promise<void>}
+   */
+  async _saveToRedis() {
+    const redis = await getRedis();
+    if (!redis) return;
+    try {
+      await redis.set(this.redisKey, JSON.stringify({
+        state: this.state,
+        lastFailureTime: this.lastFailureTime,
+        failureCount: this.failureCount,
+        updatedAt: Date.now(),
+      }), { EX: Math.ceil(this.resetTimeout / 1000) * 2 });
+    } catch { /* ignore */ }
   }
 
   /**
@@ -52,13 +97,17 @@ export class CircuitBreaker {
    * @throws {CircuitOpenError} When circuit is open and rejecting requests.
    */
   async call(fn) {
+    await this._syncWithRedis();
+
     if (this.state === State.OPEN) {
       if (Date.now() - this.lastFailureTime >= this.resetTimeout) {
         this._transitionTo(State.HALF_OPEN);
+        await this._saveToRedis();
       } else {
         throw new CircuitOpenError(this.name, this.resetTimeout);
       }
     }
+// ...
 
     if (this.state === State.HALF_OPEN) {
       if (this.halfOpenAttempts >= this.halfOpenMaxAttempts) {
@@ -69,12 +118,44 @@ export class CircuitBreaker {
 
     try {
       const result = await fn();
-      this._onSuccess();
+      await this._onSuccess();
       return result;
     } catch (error) {
-      this._onFailure();
+      await this._onFailure();
       throw error;
     }
+  }
+
+  /** @returns {typeof State[keyof typeof State]} */
+  getState() {
+// ...
+  /** @private */
+  async _onSuccess() {
+    if (this.state === State.HALF_OPEN) {
+      this._transitionTo(State.CLOSED);
+    }
+    this.failureCount = 0;
+    this.halfOpenAttempts = 0;
+    await this._saveToRedis();
+  }
+
+  /** @private */
+  async _onFailure() {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+
+    if (this.state === State.HALF_OPEN) {
+      this._transitionTo(State.OPEN);
+      await this._saveToRedis();
+      return;
+    }
+
+    if (this.failureCount >= this.failureThreshold) {
+      this._transitionTo(State.OPEN);
+      await this._saveToRedis();
+    }
+  }
+
   }
 
   /** @returns {typeof State[keyof typeof State]} */

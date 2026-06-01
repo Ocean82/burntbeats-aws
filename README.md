@@ -127,6 +127,30 @@ Helpers:
 - `bash scripts/check-segments.sh`
 - `bash scripts/test-stem-splits.sh`
 
+### Python dependencies (uv workspace)
+
+From repo root (requires [uv](https://docs.astral.sh/uv/)):
+
+```bash
+uv sync --package burntbeats-stem    # stem service only (recommended for daily dev)
+uv sync --package burntbeats-midi    # MIDI service
+uv sync --package burntbeats-speech  # speech service
+```
+
+Install all workspace packages into one venv only when you need every service locally (`uv sync --all-packages` — large download).
+
+Lockfile: `uv lock` at repo root (`.python-version` pins **3.11** to match Docker/CI); CI verifies with `uv lock --check`.
+
+### Database migrations
+
+When `DATABASE_URL` is set (RDS or local Postgres), apply schema and incremental migrations after pulling schema changes:
+
+```bash
+cd backend && npm run db:migrate
+```
+
+Safe to re-run. New databases get the full schema from `backend/db-schema.sql`; existing databases get `backend/migrations/*.sql` (e.g. `jobs.split_intent`).
+
 ---
 
 ## Environment variables (operator cheat sheet)
@@ -159,6 +183,8 @@ Typical loop (Ubuntu + Docker):
 
 ```bash
 git pull --ff-only origin main
+# After backend schema changes (new columns, tables):
+cd backend && npm run db:migrate && cd ..
 docker compose build --no-cache backend frontend stem_service speech_service midi_service
 docker compose up -d
 docker compose ps

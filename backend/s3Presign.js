@@ -3,7 +3,7 @@
  * Presigned GET URLs so the browser can load stems from S3 after GET /api/stems/file redirects.
  * Requires the same AWS credentials as uploads (IAM role or S3_ACCESS_KEY / S3_SECRET_KEY).
  */
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /** @type {Map<string, S3Client>} */
@@ -35,4 +35,24 @@ export async function presignStemGetUrl(bucket, key, region) {
   const expires = Number(process.env.S3_PRESIGN_EXPIRES_SECONDS);
   const expiresIn = Number.isFinite(expires) && expires > 0 ? expires : 3600;
   return getSignedUrl(client, cmd, { expiresIn });
+}
+
+/**
+ * Presigned URL for uploading a file directly to S3.
+ * @param {string} bucket
+ * @param {string} key
+ * @param {string} contentType
+ * @param {string} [region]
+ * @returns {Promise<string>}
+ */
+export async function presignStemPutUrl(bucket, key, contentType, region) {
+  const r = region || process.env.S3_REGION || process.env.AWS_REGION || "us-east-1";
+  const client = getClient(r);
+  const cmd = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ContentType: contentType,
+  });
+  // Upload URLs usually expire faster than download URLs for security
+  return getSignedUrl(client, cmd, { expiresIn: 600 }); // 10 minutes
 }

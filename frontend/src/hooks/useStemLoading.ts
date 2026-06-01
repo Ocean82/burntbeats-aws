@@ -86,21 +86,29 @@ export function useStemLoading({
     );
 
     if (needsLoad.length > 0) {
-      const settled = await Promise.allSettled(
-        needsLoad.map(async (stem) => {
-          if (loadIdRef.current !== currentLoadId) {
-            throw new Error("ABORTED");
+      // Limit concurrent fetch+decode to avoid CPU/memory spikes when many stems are loaded.
+      const HW = typeof navigator !== "undefined" && (navigator as any).hardwareConcurrency ? (navigator as any).hardwareConcurrency : 4;
+      const CONCURRENCY = Math.max(1, Math.min(4, HW - 1));
+      const results: PromiseSettledResult<{ id: string; url: string; buf: AudioBuffer }>[] = new Array(needsLoad.length);
+      let cursor = 0;
+      const worker = async () => {
+        while (true) {
+          const idx = cursor++;
+          if (idx >= needsLoad.length) break;
+          const stem = needsLoad[idx];
+          try {
+            if (loadIdRef.current !== currentLoadId) throw new Error("ABORTED");
+            const ab = await resolveStemAudioArrayBuffer(stemEntryToAudioSource(stem));
+            if (loadIdRef.current !== currentLoadId) throw new Error("ABORTED");
+            const buf = await ctx.decodeAudioData(ab.slice(0));
+            results[idx] = { status: "fulfilled", value: { id: stem.id, url: stem.url, buf } } as const;
+          } catch (err) {
+            results[idx] = { status: "rejected", reason: err } as const;
           }
-          const ab = await resolveStemAudioArrayBuffer(
-            stemEntryToAudioSource(stem),
-          );
-          if (loadIdRef.current !== currentLoadId) {
-            throw new Error("ABORTED");
-          }
-          const buf = await ctx.decodeAudioData(ab.slice(0));
-          return { id: stem.id, url: stem.url, buf };
-        }),
-      );
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, needsLoad.length) }, () => worker()));
+      const settled = results;
 
       if (loadIdRef.current !== currentLoadId) {
         return;

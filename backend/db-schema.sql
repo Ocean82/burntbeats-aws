@@ -1,6 +1,7 @@
 -- ============================================================================
 -- BurntBeats RDS schema  (PostgreSQL 14+)
--- Run once via:  node backend/db-migrate.js
+-- Apply via:  cd backend && npm run db:migrate
+-- (runs this file plus backend/migrations/*.sql for existing databases)
 -- ============================================================================
 
 -- ── Extensions ──────────────────────────────────────────────────────────────

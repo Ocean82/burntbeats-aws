@@ -1,0 +1,31 @@
+[project]
+name = "burntbeats-speech"
+version = "1.0.0"
+description = "Burnt Beats speech enhancement service (LavaSR)"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "torch>=2.0.0,<2.9",
+    "torchaudio>=2.0.0,<2.9",
+    "soundfile>=0.12.0",
+    "librosa>=0.10.0",
+    "safetensors>=0.4.0",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "python-multipart>=0.0.6",
+    "einops>=0.7.0",
+    "vocos",
+    "prometheus-client>=0.20.0",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+vocos = { git = "https://github.com/langtech-bsc/vocos.git", rev = "matcha" }

@@ -1,6 +1,6 @@
-# CPU-only stem splitting (no CUDA). Reproducible installs: use stem_service/requirements.lock.txt with
-#   pip install -r stem_service/requirements.lock.txt --extra-index-url https://download.pytorch.org/whl/cpu
-# (see stem_service/Dockerfile and Makefile). For ad-hoc CPU: pip install torch --index-url https://download.pytorch.org/whl/cpu then this file.
+# Source of truth: stem_service/pyproject.toml and repo-root uv.lock
+# Reproducible install:  uv sync --package burntbeats-stem  (from repo root)
+# Legacy pip: requirements.lock.txt (deprecated; regenerate via uv export if needed)
 #
 # IMPORTANT: Always activate the project venv before running pip or python:
 #   source .venv/bin/activate   (WSL/Ubuntu/Linux)

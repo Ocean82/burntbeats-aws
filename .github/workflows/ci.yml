@@ -91,51 +91,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
+      - name: Verify uv.lock is up to date
+        run: uv lock --check
       - name: Python syntax smoke
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install ruff
-          python -m py_compile stem_service/server.py
-          ruff check stem_service --select E9,F63,F7,F82 --quiet
-      - name: Python requirements lock drift check
-        run: |
-          python scripts/check_stem_requirements_lock_sync.py
+          uv sync --frozen --package burntbeats-stem --no-install-project
+          uv sync --frozen --group dev
+          uv run ruff check stem_service --select E9,F63,F7,F82 --quiet
+          uv run python -m py_compile stem_service/server.py
       - name: Python stem dependency smoke
-        run: |
-          python -m pip install numpy soundfile pyyaml
-          python -c "from stem_service.config import scnet_available; print('scnet_available', scnet_available())"
-      - name: Install stem_service locked deps (CPU PyTorch)
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libsndfile1
-          python -m pip install -r stem_service/requirements.lock.txt \
-            --extra-index-url https://download.pytorch.org/whl/cpu
+          uv sync --frozen --package burntbeats-stem --no-install-project
+          uv run python -c "from stem_service.config import scnet_available; print('scnet_available', scnet_available())"
       - name: Torchaudio I/O smoke
-        run: python scripts/smoke_torchaudio_io.py
+        run: uv run python scripts/smoke_torchaudio_io.py
       - name: Stem service unit tests
         env:
           STEM_ALLOW_MISSING_HTDEMUCS: "1"
-        run: python -m pytest stem_service/tests -q
+        run: uv run pytest stem_service/tests -q
 
   midi-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.11"
       - name: Install midi_service test dependencies
         run: |
-          python -m pip install --upgrade pip
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libsndfile1 ffmpeg
-          python -m pip install -r midi_service/requirements.txt
-          python -m pip install pytest pytest-asyncio httpx
+          uv sync --frozen --package burntbeats-midi --no-install-project
+          uv sync --frozen --group dev
       - name: MIDI service unit tests
-        run: python -m pytest midi_service/tests -q -m "not integration"
+        run: uv run pytest midi_service/tests -q -m "not integration"
 
   stem-docker:
     runs-on: ubuntu-latest

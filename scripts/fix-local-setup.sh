@@ -33,11 +33,19 @@ echo ""
 # ── 2. Fix torch/torchaudio mismatch ─────────────────────────────────────────
 echo "── Checking torch/torchaudio compatibility ──"
 
-if [ ! -f .venv/bin/activate ]; then
-  fail "No .venv found — run: python3 -m venv .venv && source .venv/bin/activate && pip install -r stem_service/requirements.txt"
+if command -v uv >/dev/null 2>&1; then
+  uv sync --package burntbeats-stem
+elif [ -f .venv/bin/activate ]; then
+  # shellcheck disable=SC1091
+  source .venv/bin/activate
+else
+  fail "No .venv found — run: uv sync --package burntbeats-stem (or python3 -m venv .venv)"
   exit 1
 fi
-source .venv/bin/activate
+if [ -f .venv/bin/activate ]; then
+  # shellcheck disable=SC1091
+  source .venv/bin/activate
+fi
 
 # Check if torchaudio loads cleanly
 if python -c "import torchaudio" 2>/dev/null; then

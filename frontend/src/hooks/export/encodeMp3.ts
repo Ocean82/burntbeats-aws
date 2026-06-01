@@ -1,10 +1,42 @@
 /**
- * WAV → MP3 encoding using lamejs.
- * Expects 16-bit PCM mono or stereo WAV input.
+ * WAV → MP3 encoding using lamejs, offloaded to a worker when available.
+ * Returns a Promise<Blob> (async) to avoid blocking the main thread.
  */
-import lamejs from "lamejs";
 
-export function encodeWavToMp3(wavBuffer: ArrayBuffer, kbps = 192): Blob {
+export async function encodeWavToMp3(wavBuffer: ArrayBuffer, kbps = 192): Promise<Blob> {
+  // Prefer worker-based encoding (non-blocking). Fall back to in-thread encode if worker fails.
+  if (typeof window !== "undefined" && typeof Worker !== "undefined") {
+    try {
+      const worker = new Worker(new URL("../../workers/encodeMp3Worker.ts", import.meta.url), { type: "module" });
+      const mp3Buf = await new Promise<ArrayBuffer>((resolve, reject) => {
+        const onMsg = (ev: MessageEvent) => {
+          const d = ev.data as any;
+          if (d?.mp3Buffer) {
+            worker.removeEventListener("message", onMsg);
+            worker.terminate();
+            resolve(d.mp3Buffer as ArrayBuffer);
+          } else if (d?.error) {
+            worker.removeEventListener("message", onMsg);
+            worker.terminate();
+            reject(new Error(d.error));
+          }
+        };
+        worker.addEventListener("message", onMsg);
+        // Transfer the wav buffer to the worker for zero-copy
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        worker.postMessage({ wavBuffer, kbps }, [wavBuffer]);
+      });
+      return new Blob([new Uint8Array(mp3Buf)], { type: "audio/mpeg" });
+    } catch (err) {
+      // Fall through to main-thread encode on error
+      console.warn("MP3 worker failed, falling back to main-thread encode:", err);
+    }
+  }
+
+  // Fallback: synchronous in-thread encode (keeps original behavior)
+  // Import lamejs dynamically to avoid bundling cost unless used.
+  const { default: lamejs } = await import("lamejs");
   const wavView = new DataView(wavBuffer);
   const riff = String.fromCharCode(
     wavView.getUint8(0),
@@ -20,7 +52,6 @@ export function encodeWavToMp3(wavBuffer: ArrayBuffer, kbps = 192): Blob {
   if (bitsPerSample !== 16) throw new Error("Only 16-bit WAV is supported for MP3 export");
   if (numChannels !== 1 && numChannels !== 2) throw new Error("Only mono/stereo WAV is supported for MP3 export");
 
-  // Find "data" chunk (do not assume fixed 44-byte PCM header).
   let dataOffset = -1;
   let dataLength = 0;
   let offset = 12;

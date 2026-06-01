@@ -1,13 +1,29 @@
-# Stem service CI parity (Linux/macOS). On Windows see scripts/dev-stem.ps1.
-.PHONY: stem-install-ci stem-smoke stem-test
+# Stem / Python workspace helpers (Linux/macOS). On Windows use WSL or uv directly.
+.PHONY: uv-lock uv-lock-check uv-sync-stem uv-sync-midi uv-sync-speech uv-sync-all stem-install-ci stem-smoke stem-test
 
-stem-install-ci:
-	python -m pip install --upgrade pip
-	python -m pip install -r stem_service/requirements.lock.txt \
-		--extra-index-url https://download.pytorch.org/whl/cpu
+uv-lock:
+	uv lock
 
-stem-smoke: stem-install-ci
-	python scripts/smoke_torchaudio_io.py
+uv-lock-check:
+	uv lock --check
+
+uv-sync-stem:
+	uv sync --package burntbeats-stem
+
+uv-sync-midi:
+	uv sync --package burntbeats-midi
+
+uv-sync-speech:
+	uv sync --package burntbeats-speech
+
+uv-sync-all:
+	uv sync --all-packages
+
+# CI parity (Linux/macOS)
+stem-install-ci: uv-sync-stem
+
+stem-smoke: uv-sync-stem
+	uv run python scripts/smoke_torchaudio_io.py
 
 stem-test: stem-smoke
-	STEM_ALLOW_MISSING_HTDEMUCS=1 python -m pytest stem_service/tests -q
+	STEM_ALLOW_MISSING_HTDEMUCS=1 uv run pytest stem_service/tests -q

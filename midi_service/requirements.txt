@@ -1,3 +1,4 @@
+# Source of truth: midi_service/pyproject.toml (burntbeats-midi). Install: uv sync --package burntbeats-midi
 basic-pitch>=0.3.0
 numpy>=1.24.0
 fastapi>=0.109.0

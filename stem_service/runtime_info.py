@@ -80,9 +80,8 @@ def verify_torchaudio_can_load_wav(work_dir: Path | None = None) -> None:
             raise RuntimeError(f"torchaudio.load sr mismatch: got {sr2}, expected {sr}")
     except Exception as e:
         raise RuntimeError(
-            "torchaudio I/O smoke failed (install CPU torch/torchaudio per "
-            "stem_service/requirements.lock.txt and use --extra-index-url "
-            "https://download.pytorch.org/whl/cpu). "
+            "torchaudio I/O smoke failed (from repo root run: "
+            "uv sync --package burntbeats-stem). "
             f"Original error: {e}"
         ) from e
     finally:

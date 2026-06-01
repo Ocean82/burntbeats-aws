@@ -70,6 +70,7 @@ export async function insertJob(params) {
     );
   } catch (err) {
     console.error("[db-jobs] insertJob failed:", err instanceof Error ? err.message : err);
+    throw err; // Re-throw so caller knows persistence failed
   }
 }
 

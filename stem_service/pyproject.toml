@@ -1,0 +1,38 @@
+[project]
+name = "burntbeats-stem"
+version = "1.0.0"
+description = "Burnt Beats CPU stem separation service (Demucs / MDX / hybrid)"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "torch>=2.0.0,<2.9",
+    "torchaudio>=2.0.0,<2.9",
+    "soundfile>=0.12.0",
+    "imageio-ffmpeg>=0.4.0",
+    "demucs>=4.0.0",
+    "diffq>=0.2.0",
+    "onnxruntime>=1.14.0",
+    "numpy>=1.24.0,<2.6",
+    "scipy>=1.9.0",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.22.0",
+    "python-multipart>=0.0.27",
+    "boto3>=1.28.0",
+    "sentry-sdk[fastapi]>=2.0.0",
+    "pyyaml>=6.0",
+    "prometheus-client>=0.20.0",
+    "pytest>=8.0",
+    "requests>=2.31.0",
+    "httpx>=0.23.0,<0.28.0",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }

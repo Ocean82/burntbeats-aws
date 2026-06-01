@@ -12,12 +12,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY stem_service/requirements.lock.txt ./stem_service/requirements.lock.txt
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r stem_service/requirements.lock.txt \
-        --extra-index-url https://download.pytorch.org/whl/cpu
+COPY pyproject.toml uv.lock ./
+COPY stem_service/pyproject.toml ./stem_service/pyproject.toml
+COPY midi_service/pyproject.toml ./midi_service/pyproject.toml
+COPY speech_service/pyproject.toml ./speech_service/pyproject.toml
 
-# Application package (imports like `from stem_service.config` require this layout)
+RUN pip install --no-cache-dir uv \
+    && UV_SYSTEM_PYTHON=1 uv sync --frozen --package burntbeats-stem --no-install-project
+
 COPY stem_service/ ./stem_service/
 
 EXPOSE 5000

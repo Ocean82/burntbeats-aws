@@ -127,12 +127,31 @@ previewRouter.post("/generate", authMiddleware, async (req, res) => {
   }
 
   await mkdir(PREVIEW_DIR, { recursive: true });
-  const previewId = randomUUID();
-  const outputPath = path.join(
-    PREVIEW_DIR,
-    `${watermarked ? "preview" : "clean_preview"}_${previewId}.mp3`,
-  );
-  const metaPath = path.join(PREVIEW_DIR, `${previewId}.json`);
+
+  // ── Caching Logic ──────────────────────────────────────────────────────────
+  // Check if a preview for this job/duration/watermark already exists.
+  const previewId = `${jobId}_${durationSec}_${watermarked ? "w" : "c"}`;
+  const outputPath = path.join(PREVIEW_DIR, `audio_${previewId}.mp3`);
+  const metaPath = path.join(PREVIEW_DIR, `meta_${previewId}.json`);
+
+  try {
+    if (existsSync(metaPath) && existsSync(outputPath)) {
+      const fileStat = await stat(outputPath);
+      // Basic expiry check (24h)
+      if (Date.now() - fileStat.mtimeMs < 24 * 60 * 60 * 1000) {
+        return res.status(200).json({
+          preview_id: previewId,
+          job_id: jobId,
+          watermarked,
+          duration_seconds: durationSec,
+          download_url: `/api/preview/${previewId}/download`,
+          cached: true,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("[preview/cache] read error:", e instanceof Error ? e.message : e);
+  }
 
   try {
     await renderPreviewFile(inputPath, outputPath, watermarked, durationSec);
@@ -166,11 +185,11 @@ previewRouter.post("/generate", authMiddleware, async (req, res) => {
 
 previewRouter.get("/:preview_id/download", authMiddleware, async (req, res) => {
   const previewId = req.params.preview_id;
-  if (!previewId || !UUID_REGEX.test(previewId)) {
+  if (!previewId) {
     return res.status(400).json({ error: "Invalid preview_id" });
   }
 
-  const metaPath = path.join(PREVIEW_DIR, `${previewId}.json`);
+  const metaPath = path.join(PREVIEW_DIR, `meta_${previewId}.json`);
   try {
     await access(metaPath);
   } catch {
