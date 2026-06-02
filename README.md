@@ -120,6 +120,7 @@ Scripts under `scripts/` (run from repo root, bash):
 - `bash scripts/run-midi-service.sh` (port **5002**)
 - `bash scripts/run-backend.sh`
 - `bash scripts/run-frontend.sh`
+- `node scripts/ci-preflight.mjs` (runs the same key lint/typecheck/unit/build + backend test subset as CI)
 
 Helpers:
 
