@@ -27,6 +27,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from stem_service.config import (
     REPO_ROOT,
     FOUR_STEM_BACKEND,
+    DEMUCS_EXECUTION_MODE,
     htdemucs_available,
     stem_allow_missing_htdemucs_at_startup,
     MAX_QUEUE_DEPTH,
@@ -59,6 +60,7 @@ from stem_service.job_utils import (
     build_progress_payload,
     safe_job_path,
     schedule_s3_upload,
+    summarize_demucs_metrics,
     validate_audio_file,
     write_progress,
 )
@@ -66,6 +68,7 @@ from stem_service.job_worker import (
     run_expand_sync,
     run_separation_sync,
 )
+from stem_service.demucs_rpc import ensure_rpc_server_started, stop_rpc_server
 from stem_service.sentry_init import init_sentry
 
 # Backward-compatible aliases for test monkeypatching.
@@ -332,6 +335,8 @@ async def lifespan(app: FastAPI):
 
     # Start the split job queue workers
     await start_split_workers(_run_queued_job)
+    if DEMUCS_EXECUTION_MODE in ("rpc", "hybrid"):
+        ensure_rpc_server_started()
 
     def graceful_shutdown(signal_name):
         logger.info(f"Received {signal_name}, initiating graceful shutdown...")
@@ -345,6 +350,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("Shutting down stem service...")
     await stop_split_workers()
+    stop_rpc_server()
 
 
 # ── App creation ─────────────────────────────────────────────────────────────
@@ -680,6 +686,10 @@ async def health() -> dict:
         "intent_routing": {
             "fast": intent_routing_health("fast"),
             "high": intent_routing_health("high"),
+        },
+        "demucs_execution": {
+            "mode": DEMUCS_EXECUTION_MODE,
+            "metrics": summarize_demucs_metrics(),
         },
     }
     if os.environ.get("NODE_ENV", "development").lower() != "production":

@@ -411,7 +411,6 @@
     overflow-wrap: break-word;
     word-break: normal;
     hyphens: none;
-    text-wrap: pretty;
   }
 
   /* Wrapping-only variant: safe for spans/inline-flex containers */
@@ -420,7 +419,6 @@
     overflow-wrap: break-word;
     word-break: normal;
     hyphens: none;
-    text-wrap: pretty;
   }
 
   .text-wrap-readable-tight {

@@ -12,6 +12,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
@@ -30,6 +31,9 @@ def run_4stem_single_pass_or_hybrid(
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
     model_tier: str = "quality",
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    job_id: str | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """Compatibility wrapper onto the canonical 4-stem hybrid path."""
     _log = job_logger or logger
@@ -41,6 +45,9 @@ def run_4stem_single_pass_or_hybrid(
         model_tier=model_tier,
         progress_callback=progress_callback,
         job_logger=_log,
+        cancel_check=cancel_check,
+        health_callback=health_callback,
+        job_id=job_id,
     )
 
 
@@ -53,6 +60,9 @@ def run_hybrid_4stem(
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,
     inst_model_override: Path | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    job_id: str | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Stage 1: Extract vocals via 2-stem waterfall (MDX ranks 1–3, then Demucs htdemucs 2-stem).
@@ -101,7 +111,13 @@ def run_hybrid_4stem(
 
     stage2_out = output_dir / "stage2"
     stem_files = run_demucs(
-        instrumental_path, stage2_out, stems=4, prefer_speed=prefer_speed
+        instrumental_path,
+        stage2_out,
+        stems=4,
+        prefer_speed=prefer_speed,
+        cancel_check=cancel_check,
+        health_callback=health_callback,
+        job_id=job_id,
     )
     if progress_callback:
         progress_callback(97)

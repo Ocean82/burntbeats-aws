@@ -12,11 +12,17 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 import sys
 from pathlib import Path
+from typing import Callable
 
 from stem_service.demucs_subprocess import format_demucs_subprocess_failure
+from stem_service.demucs_process import (
+    DemucsHealthMarker,
+    DemucsProcessCancelledError,
+    DemucsProcessTimeoutError,
+    run_supervised_subprocess,
+)
 from stem_service.config import (
     MODELS_DIR,
     REPO_ROOT,
@@ -25,14 +31,18 @@ from stem_service.config import (
     DEMUCS_SHIFTS_QUALITY,
     DEMUCS_OVERLAP,
     DEMUCS_SEGMENT_SEC,
-    DEMUCS_TIMEOUT_SEC,
+    DEMUCS_TIMEOUT_HARD_SEC,
+    DEMUCS_TIMEOUT_ACTIVITY_SEC,
+    DEMUCS_TIMEOUT_STARTUP_GRACE_SEC,
     demucs_cli_module,
     demucs_speed_4stem_configs,
     demucs_quality_4stem_configs,
     ensure_htdemucs_th,
     htdemucs_available,
     DEMUCS_DEVICE,
+    DEMUCS_EXECUTION_MODE,
 )
+from stem_service.demucs_rpc import choose_route, run_demucs_via_rpc
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +50,16 @@ logger = logging.getLogger(__name__)
 # With --two-stems=vocals: <out_dir>/htdemucs/<track_name>/{vocals,no_vocals}.wav
 
 _VALID_STEMS = {2, 4}
+_LAST_EXECUTION_ROUTE = "legacy"
+
+
+def get_last_execution_route() -> str:
+    return _LAST_EXECUTION_ROUTE
+
+
+def _set_last_execution_route(route: str) -> None:
+    global _LAST_EXECUTION_ROUTE
+    _LAST_EXECUTION_ROUTE = route
 
 
 def _run_demucs_4stem_named_checkpoint(
@@ -49,6 +69,8 @@ def _run_demucs_4stem_named_checkpoint(
     repo: Path,
     segment: int,
     output_subdir: str,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
 ) -> list[tuple[str, Path]]:
     """Run demucs -n <model_name> against one mapped checkpoint folder."""
     cmd = _build_demucs_cmd(
@@ -60,13 +82,20 @@ def _run_demucs_4stem_named_checkpoint(
         repo=repo,
         two_stems=False,
     )
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        cwd=str(REPO_ROOT),
-        timeout=DEMUCS_TIMEOUT_SEC,
-    )
+    try:
+        result = run_supervised_subprocess(
+            cmd=cmd,
+            cwd=REPO_ROOT,
+            hard_timeout_seconds=DEMUCS_TIMEOUT_HARD_SEC,
+            activity_timeout_seconds=DEMUCS_TIMEOUT_ACTIVITY_SEC,
+            startup_grace_seconds=DEMUCS_TIMEOUT_STARTUP_GRACE_SEC,
+            cancel_check=cancel_check,
+            health_callback=health_callback,
+        )
+    except DemucsProcessCancelledError as exc:
+        raise RuntimeError(str(exc)) from exc
+    except DemucsProcessTimeoutError as exc:
+        raise RuntimeError(str(exc)) from exc
     if result.returncode != 0:
         raise RuntimeError(format_demucs_subprocess_failure(result))
     track_name = input_path.stem
@@ -81,11 +110,13 @@ def _run_demucs_4stem_named_checkpoint(
     return stem_files
 
 
-def run_demucs(
+def run_demucs_legacy(
     input_path: Path,
     output_dir: Path,
     stems: int = 4,
     prefer_speed: bool = False,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
 ) -> list[tuple[str, Path]]:
     """
     Run Demucs separation. Returns list of (stem_id, wav_path).
@@ -125,6 +156,8 @@ def run_demucs(
             repo,
             segment,
             output_subdir,
+            cancel_check=cancel_check,
+            health_callback=health_callback,
         )
 
     # Single htdemucs (2-stem only)
@@ -155,13 +188,20 @@ def run_demucs(
         repo=MODELS_DIR,
         two_stems=(stems == 2),
     )
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True,
-        cwd=str(REPO_ROOT),
-        timeout=DEMUCS_TIMEOUT_SEC,
-    )
+    try:
+        result = run_supervised_subprocess(
+            cmd=cmd,
+            cwd=REPO_ROOT,
+            hard_timeout_seconds=DEMUCS_TIMEOUT_HARD_SEC,
+            activity_timeout_seconds=DEMUCS_TIMEOUT_ACTIVITY_SEC,
+            startup_grace_seconds=DEMUCS_TIMEOUT_STARTUP_GRACE_SEC,
+            cancel_check=cancel_check,
+            health_callback=health_callback,
+        )
+    except DemucsProcessCancelledError as exc:
+        raise RuntimeError(str(exc)) from exc
+    except DemucsProcessTimeoutError as exc:
+        raise RuntimeError(str(exc)) from exc
     if result.returncode != 0:
         raise RuntimeError(format_demucs_subprocess_failure(result))
     track_name = input_path.stem
@@ -184,6 +224,62 @@ def run_demucs(
                 stem_files.append((name, wav))
 
     return stem_files
+
+
+def run_demucs(
+    input_path: Path,
+    output_dir: Path,
+    stems: int = 4,
+    prefer_speed: bool = False,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    job_id: str | None = None,
+) -> list[tuple[str, Path]]:
+    """Execute Demucs via selected execution mode with safe fallback behavior."""
+    resolved_job_id = job_id or f"{input_path.name}:{stems}:{'speed' if prefer_speed else 'quality'}"
+    decision = choose_route(
+        execution_mode=DEMUCS_EXECUTION_MODE,
+        prefer_speed=prefer_speed,
+        job_id=resolved_job_id,
+    )
+
+    if decision.route == "legacy":
+        _set_last_execution_route("legacy")
+        return run_demucs_legacy(
+            input_path=input_path,
+            output_dir=output_dir,
+            stems=stems,
+            prefer_speed=prefer_speed,
+            cancel_check=cancel_check,
+            health_callback=health_callback,
+        )
+
+    request = {
+        "job_id": resolved_job_id,
+        "input_path": str(input_path),
+        "output_dir": str(output_dir),
+        "stems": stems,
+        "prefer_speed": prefer_speed,
+    }
+    try:
+        response = run_demucs_via_rpc(request)
+        if response.get("status") != "completed":
+            raise RuntimeError(response.get("error", "RPC Demucs failed"))
+        _set_last_execution_route("rpc")
+        return [(stem_id, Path(path)) for stem_id, path in response.get("stems", [])]
+    except Exception as exc:
+        if not decision.fallback_on_error:
+            raise
+        logger.warning("Demucs RPC failed; falling back to legacy subprocess: %s", exc)
+        _set_last_execution_route("rpc_fallback_legacy")
+        return run_demucs_legacy(
+            input_path=input_path,
+            output_dir=output_dir,
+            stems=stems,
+            prefer_speed=prefer_speed,
+            cancel_check=cancel_check,
+            health_callback=health_callback,
+        )
 
 
 def _build_demucs_cmd(

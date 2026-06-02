@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+from stem_service.demucs_process import DemucsHealthMarker
 
 def _call_progress(
     progress_callback: Callable[..., None] | None,
@@ -69,6 +70,9 @@ def execute_plan(
     *,
     progress_callback: Callable[..., None] | None = None,
     job_logger: logging.Logger | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    job_id: str | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     prefer_speed = plan.intent.prefer_speed()
     model_tier = "fast" if prefer_speed else "quality"
@@ -108,6 +112,8 @@ def execute_plan(
                 model_tier=model_tier,
                 progress_callback=sub_progress,
                 job_logger=job_logger,
+                cancel_check=cancel_check,
+                health_callback=health_callback,
             )
             stems = _filter_stems(stems, ("instrumental",))
         elif job.kind == "hybrid_2":
@@ -127,6 +133,9 @@ def execute_plan(
                 model_tier=model_tier,
                 progress_callback=sub_progress,
                 job_logger=job_logger,
+                cancel_check=cancel_check,
+                health_callback=health_callback,
+                job_id=job_id,
             )
             if job.kind == "demucs_4_fallback":
                 models = list(models) + ["routing_fallback:demucs_4stem_extract"]

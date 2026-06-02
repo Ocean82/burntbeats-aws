@@ -210,6 +210,75 @@ def append_metrics_log(record: dict) -> None:
         logger.warning("Could not append to metrics log %s: %s", METRICS_LOG, e)
 
 
+def _percentile(sorted_values: list[float], p: float) -> float | None:
+    if not sorted_values:
+        return None
+    idx = max(0, min(len(sorted_values) - 1, int(round((len(sorted_values) - 1) * p))))
+    return round(sorted_values[idx], 3)
+
+
+def summarize_demucs_metrics(max_rows: int = 500) -> dict[str, Any]:
+    """Summarize latency/error/timeout/routing metrics from recent JSONL job records."""
+    if not METRICS_LOG.exists():
+        return {
+            "count": 0,
+            "latency_p50_s": None,
+            "latency_p95_s": None,
+            "timeout_rate": 0.0,
+            "error_rate": 0.0,
+            "routes": {},
+        }
+
+    rows: list[dict[str, Any]] = []
+    try:
+        lines = METRICS_LOG.read_text(encoding="utf-8").splitlines()
+        for line in lines[-max_rows:]:
+            try:
+                rows.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    except OSError:
+        return {
+            "count": 0,
+            "latency_p50_s": None,
+            "latency_p95_s": None,
+            "timeout_rate": 0.0,
+            "error_rate": 0.0,
+            "routes": {},
+        }
+
+    durations: list[float] = []
+    timed_out = 0
+    failed = 0
+    routes: dict[str, int] = {}
+    total = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        total += 1
+        elapsed = row.get("elapsed_seconds")
+        if isinstance(elapsed, (int, float)):
+            durations.append(float(elapsed))
+        error_text = str(row.get("error", "")).lower()
+        status = str(row.get("status", "")).lower()
+        if "timeout" in error_text or status == "timeout":
+            timed_out += 1
+        if status == "failed" or row.get("failed") is True:
+            failed += 1
+        route = str(row.get("demucs_execution_route", "unknown"))
+        routes[route] = routes.get(route, 0) + 1
+
+    durations.sort()
+    return {
+        "count": total,
+        "latency_p50_s": _percentile(durations, 0.5),
+        "latency_p95_s": _percentile(durations, 0.95),
+        "timeout_rate": round((timed_out / total), 4) if total else 0.0,
+        "error_rate": round((failed / total), 4) if total else 0.0,
+        "routes": routes,
+    }
+
+
 def _merge_progress(out_dir: Path, updates: dict[str, Any]) -> None:
     """Merge fields into the current progress payload without regressing completion."""
     progress_path = out_dir / PROGRESS_FILENAME

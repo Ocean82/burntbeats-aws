@@ -12,6 +12,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
@@ -32,6 +33,8 @@ def run_hybrid_2stem(
     job_logger: "logging.Logger | None" = None,
     vocal_model_override: Path | None = None,
     inst_model_override: Path | None = None,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     2-stem separation: vocals + instrumental via Stage 1 ONNX + phase inversion (or inst ONNX pass).
@@ -42,6 +45,7 @@ def run_hybrid_2stem(
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    del cancel_check, health_callback
 
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
@@ -95,6 +99,9 @@ def run_demucs_only_2stem(
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    job_id: str | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     2-stem separation using PyTorch Demucs only (no MDX ONNX Stage 1 waterfall).
@@ -112,7 +119,13 @@ def run_demucs_only_2stem(
         prefer_speed,
     )
     stem_files = run_demucs(
-        effective_input, stage_out, stems=2, prefer_speed=prefer_speed
+        effective_input,
+        stage_out,
+        stems=2,
+        prefer_speed=prefer_speed,
+        cancel_check=cancel_check,
+        health_callback=health_callback,
+        job_id=job_id,
     )
     if progress_callback:
         progress_callback(50)

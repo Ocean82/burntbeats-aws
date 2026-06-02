@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
@@ -32,12 +33,21 @@ def _stage2_only(
     instrumental_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    job_id: str | None = None,
 ) -> list[tuple[str, Path]]:
     """Stage 2 only: Demucs 4-stem on instrumental. Returns drums, bass, other (no vocals)."""
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     stem_files = run_demucs(
-        instrumental_path, output_dir / "stage2", stems=4, prefer_speed=prefer_speed
+        instrumental_path,
+        output_dir / "stage2",
+        stems=4,
+        prefer_speed=prefer_speed,
+        cancel_check=cancel_check,
+        health_callback=health_callback,
+        job_id=job_id,
     )
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
@@ -57,6 +67,9 @@ def run_expand_to_4stem(
     prefer_speed: bool = False,
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
+    cancel_check: Callable[[], bool] | None = None,
+    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    job_id: str | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Expand a 2-stem job (vocals + instrumental) to 4 stems.
@@ -94,7 +107,12 @@ def run_expand_to_4stem(
         prefer_speed,
     )
     stem_files_rest = _stage2_only(
-        instrumental_src, target_output_dir, prefer_speed=prefer_speed
+        instrumental_src,
+        target_output_dir,
+        prefer_speed=prefer_speed,
+        cancel_check=cancel_check,
+        health_callback=health_callback,
+        job_id=job_id,
     )
     if progress_callback:
         progress_callback(96)

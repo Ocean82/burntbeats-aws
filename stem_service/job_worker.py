@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.hybrid import run_expand_to_4stem
 from stem_service.routing import (
     SplitIntent,
@@ -40,11 +41,23 @@ from stem_service.job_utils import (
 )
 from stem_service.runtime_info import get_stem_runtime_versions
 from stem_service.sentry_init import job_span
+from stem_service.split import get_last_execution_route
 logger = logging.getLogger(__name__)
 
 CORRELATION_ID_CONTEXT_VAR: contextvars.ContextVar[str] = contextvars.ContextVar(
     "correlation_id", default="unknown"
 )
+
+
+def _log_demucs_health(job_log: logging.Logger, marker: DemucsHealthMarker) -> None:
+    """Emit bounded health markers from supervised Demucs subprocess runs."""
+    job_log.info(
+        "demucs_health pid=%s elapsed=%.2fs silence=%.2fs last=%s",
+        marker.pid,
+        marker.elapsed_seconds,
+        marker.seconds_since_output,
+        marker.last_output_line or "(none)",
+    )
 
 
 def _finalize_stems_to_16bit(stem_list: list[tuple[str, Path]]) -> None:
@@ -188,6 +201,9 @@ def run_separation_sync(
             out_dir,
             progress_callback=on_progress,
             job_logger=job_log,
+            cancel_check=lambda: is_job_cancelled(job_id),
+            health_callback=lambda marker: _log_demucs_health(job_log, marker),
+            job_id=job_id,
         )
 
         # Check if cancelled before marking complete
@@ -243,6 +259,7 @@ def run_separation_sync(
                 "realtime_factor": realtime_factor,
                 "prefer_speed": prefer_speed,
                 "models_used": models_used,
+                "demucs_execution_route": get_last_execution_route(),
                 "stem_runtime": get_stem_runtime_versions(),
                 "artifact_delivery": "local_ready",
                 "routing_notes": plan.routing_notes,
@@ -271,6 +288,7 @@ def run_separation_sync(
                 "realtime_factor": realtime_factor,
                 "models_used": models_used,
                 "stem_runtime": get_stem_runtime_versions(),
+                "demucs_execution_route": get_last_execution_route(),
             }
             append_metrics_log(metrics_record)
 
@@ -296,6 +314,14 @@ def run_separation_sync(
     except JobCancelledError:
         elapsed = time.monotonic() - t0
         job_log.info("=== JOB CANCELLED  elapsed=%.1fs ===", elapsed)
+        append_metrics_log(
+            {
+                "job_id": job_id,
+                "status": "cancelled",
+                "elapsed_seconds": round(elapsed, 2),
+                "demucs_execution_route": get_last_execution_route(),
+            }
+        )
         write_progress(
             out_dir,
             build_progress_payload(
@@ -309,6 +335,16 @@ def run_separation_sync(
         elapsed = time.monotonic() - t0
         job_log.exception("=== JOB FAILED  elapsed=%.1fs  error=%s ===", elapsed, e)
         logger.exception("Separation failed for job %s", job_id)
+        append_metrics_log(
+            {
+                "job_id": job_id,
+                "status": "failed",
+                "failed": True,
+                "elapsed_seconds": round(elapsed, 2),
+                "error": str(e),
+                "demucs_execution_route": get_last_execution_route(),
+            }
+        )
         write_progress(
             out_dir,
             build_progress_payload(
@@ -411,6 +447,9 @@ def run_expand_sync(
             prefer_speed=prefer_speed,
             progress_callback=on_progress,
             job_logger=job_log,
+            cancel_check=lambda: is_job_cancelled(expand_job_id),
+            health_callback=lambda marker: _log_demucs_health(job_log, marker),
+            job_id=expand_job_id,
         )
         if is_job_cancelled(expand_job_id):
             write_progress(
@@ -459,6 +498,7 @@ def run_expand_sync(
                 "expand_from": source_job_id,
                 "prefer_speed": prefer_speed,
                 "models_used": models_used,
+                "demucs_execution_route": get_last_execution_route(),
                 "artifact_delivery": "local_ready",
             },
         )

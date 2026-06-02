@@ -95,6 +95,19 @@ DEMUCS_SEGMENT_SEC = 7
 DEMUCS_EXTRA_SEGMENT = 44
 # Timeout for Demucs subprocess (seconds). 10 min default.
 DEMUCS_TIMEOUT_SEC = int(os.environ.get("DEMUCS_TIMEOUT_SEC", "600"))
+# Demucs supervised execution timeouts (seconds).
+# hard: absolute cap for job runtime
+# activity: max silence window after startup grace
+# startup_grace: no activity timeout checks before this window
+DEMUCS_TIMEOUT_HARD_SEC = int(
+    os.environ.get("DEMUCS_TIMEOUT_HARD_SEC", str(DEMUCS_TIMEOUT_SEC))
+)
+DEMUCS_TIMEOUT_ACTIVITY_SEC = int(
+    os.environ.get("DEMUCS_TIMEOUT_ACTIVITY_SEC", "180")
+)
+DEMUCS_TIMEOUT_STARTUP_GRACE_SEC = int(
+    os.environ.get("DEMUCS_TIMEOUT_STARTUP_GRACE_SEC", "60")
+)
 
 # Maximum number of pending jobs in the separation queue.
 MAX_QUEUE_DEPTH = int(os.environ.get("MAX_QUEUE_DEPTH", "20"))
@@ -148,3 +161,36 @@ def get_onnx_providers() -> list[str]:
 # =======================
 VAD_PAD_SEC = 0.3
 VAD_MAX_GAP_TO_MERGE_SEC = 0.3
+
+
+def _bool_from_env(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+DEMUCS_EXECUTION_MODE = os.environ.get("DEMUCS_EXECUTION_MODE", "legacy").strip().lower()
+if DEMUCS_EXECUTION_MODE not in ("legacy", "rpc", "hybrid"):
+    _config_log.warning(
+        "DEMUCS_EXECUTION_MODE=%r is invalid; using legacy", DEMUCS_EXECUTION_MODE
+    )
+    DEMUCS_EXECUTION_MODE = "legacy"
+DEMUCS_RPC_CANARY_PERCENT = max(
+    0, min(100, int(os.environ.get("DEMUCS_RPC_CANARY_PERCENT", "0")))
+)
+DEMUCS_RPC_FALLBACK_ON_ERROR = _bool_from_env("DEMUCS_RPC_FALLBACK_ON_ERROR", True)
+DEMUCS_RPC_WORKERS = max(1, int(os.environ.get("DEMUCS_RPC_WORKERS", "1")))
+DEMUCS_RPC_SOCKET_HOST = os.environ.get("DEMUCS_RPC_SOCKET_HOST", "127.0.0.1")
+DEMUCS_RPC_SOCKET_PORT = int(os.environ.get("DEMUCS_RPC_SOCKET_PORT", "8733"))
+DEMUCS_RPC_REQUEST_TIMEOUT_SEC = int(
+    os.environ.get("DEMUCS_RPC_REQUEST_TIMEOUT_SEC", "300")
+)
+DEMUCS_RPC_HEARTBEAT_TIMEOUT_SEC = int(
+    os.environ.get("DEMUCS_RPC_HEARTBEAT_TIMEOUT_SEC", "20")
+)
+
+# Phase 3 optimization controls.
+DEMUCS_POLICY_QUALITY_ONLY = _bool_from_env("DEMUCS_POLICY_QUALITY_ONLY", False)
+DEMUCS_RPC_MAX_CONCURRENCY = max(1, int(os.environ.get("DEMUCS_RPC_MAX_CONCURRENCY", "1")))
+DEMUCS_RPC_DISABLE_RSS_MB = int(os.environ.get("DEMUCS_RPC_DISABLE_RSS_MB", "0"))
