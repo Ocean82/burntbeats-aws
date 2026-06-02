@@ -33,6 +33,7 @@ export function minimalWavBuffer(): Buffer {
 export function skipOnboarding(page: import("@playwright/test").Page) {
   return page.addInitScript(() => {
     localStorage.setItem("burnt-beats-onboarding-complete", "true");
+    localStorage.setItem("burntbeats_cookie_consent", "declined");
   });
 }
 
