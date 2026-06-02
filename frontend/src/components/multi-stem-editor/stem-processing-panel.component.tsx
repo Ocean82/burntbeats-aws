@@ -17,21 +17,19 @@ import {
 
 import type { StemDefinition } from "../../types";
 import { cn } from "../../utils/cn";
-import {
-  PITCH_MIN,
-  PITCH_MAX,
-  PITCH_STEP,
-  TIME_STRETCH_MIN,
-  TIME_STRETCH_MAX,
-  TIME_STRETCH_STEP,
-  timeStretchToDisplayPercent,
-} from "../../constants/mixerRanges";
 import { defaultStemState, type StemEditorState } from "../../stem-editor-state";
 import {
   applyMixerToAllStems,
   type CopySettingsScope,
 } from "../../utils/copyStemSettings";
 import { isStemModified } from "../../utils/isStemModified";
+import {
+  PitchPanel,
+  EQPanel,
+  AmplitudePanel,
+  TimePanel,
+  FXPanel,
+} from "./panels";
 
 export type StemProcessingPanelId = "pitch" | "eq" | "amplitude" | "time" | "fx";
 
@@ -206,292 +204,44 @@ export function StemProcessingPanel({
 
       <motion.div layout className="flex flex-col gap-lg p-md">
         {activePanel === "pitch" && (
-          <div className="space-y-md">
-            <input
-              type="range"
-              min={PITCH_MIN}
-              max={PITCH_MAX}
-              step={PITCH_STEP}
-              value={activeState.pitchSemitones}
-              onChange={(e) =>
-                onStemStateChange(activeStem.id, {
-                  pitchSemitones: Number(e.target.value),
-                })
-              }
-              onDoubleClick={() =>
-                onStemStateChange(activeStem.id, { pitchSemitones: 0 })
-              }
-              className="stem-accent-slider w-full"
-              aria-label={`${activeStem.label} pitch shift`}
-            />
-            <p className="text-center text-xs text-muted-foreground">
-              {activeState.pitchSemitones > 0 ? "+" : ""}
-              {activeState.pitchSemitones.toFixed(1)} st
-            </p>
-            <p className="text-center text-helper text-muted-foreground">
-              Double-click to reset
-            </p>
-          </div>
+          <PitchPanel
+            stemId={activeStem.id}
+            stemLabel={activeStem.label}
+            state={activeState}
+            onChange={onStemStateChange}
+          />
         )}
         {activePanel === "eq" && (
-          <div className="space-y-sm">
-            {([
-              { key: "eqLow" as const, label: "Low", freq: "200 Hz" },
-              { key: "eqLowMid" as const, label: "Low-Mid", freq: "400 Hz" },
-              { key: "eqMid" as const, label: "Mid", freq: "1 kHz" },
-              { key: "eqHigh" as const, label: "High", freq: "6 kHz" },
-            ]).map(({ key, label, freq }) => (
-              <div key={key} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
-                    {label} <span className="text-muted-foreground">{freq}</span>
-                  </span>
-                  <span className="font-mono text-meta tabular-nums text-muted-foreground">
-                    {activeState.mixer[key] > 0 ? "+" : ""}
-                    {activeState.mixer[key].toFixed(1)} dB
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={-12}
-                  max={12}
-                  step={0.5}
-                  value={activeState.mixer[key]}
-                  onChange={(e) =>
-                    onStemStateChange(activeStem.id, {
-                      mixer: {
-                        ...activeState.mixer,
-                        [key]: Number(e.target.value),
-                      },
-                    })
-                  }
-                  onDoubleClick={() =>
-                    onStemStateChange(activeStem.id, {
-                      mixer: { ...activeState.mixer, [key]: 0 },
-                    })
-                  }
-                  className="stem-accent-slider w-full"
-                  aria-label={`${activeStem.label} ${label} EQ (${freq})`}
-                />
-              </div>
-            ))}
-            <p className="text-center text-helper text-muted-foreground pt-1">
-              Double-click to reset
-            </p>
-          </div>
+          <EQPanel
+            stemId={activeStem.id}
+            stemLabel={activeStem.label}
+            state={activeState}
+            onChange={onStemStateChange}
+          />
         )}
         {activePanel === "amplitude" && (
-          <div className="space-y-md">
-            <input
-              type="range"
-              min={-20}
-              max={6}
-              step={0.5}
-              value={activeState.mixer.gain}
-              onChange={(e) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, gain: Number(e.target.value) },
-                })
-              }
-              onDoubleClick={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, gain: 0 },
-                })
-              }
-              className="stem-accent-slider w-full"
-              aria-label={`${activeStem.label} volume`}
-            />
-            <p className="text-center text-xs text-muted-foreground">
-              {activeState.mixer.gain > 0 ? "+" : ""}
-              {activeState.mixer.gain.toFixed(1)} dB
-            </p>
-            <p className="text-center text-helper text-muted-foreground">
-              Double-click to reset
-            </p>
-          </div>
+          <AmplitudePanel
+            stemId={activeStem.id}
+            stemLabel={activeStem.label}
+            state={activeState}
+            onChange={onStemStateChange}
+          />
         )}
         {activePanel === "time" && (
-          <div className="space-y-md">
-            <input
-              type="range"
-              min={TIME_STRETCH_MIN}
-              max={TIME_STRETCH_MAX}
-              step={TIME_STRETCH_STEP}
-              value={activeState.timeStretch}
-              onChange={(e) =>
-                onStemStateChange(activeStem.id, {
-                  timeStretch: Number(e.target.value),
-                })
-              }
-              onDoubleClick={() =>
-                onStemStateChange(activeStem.id, { timeStretch: 1.0 })
-              }
-              className="stem-accent-slider w-full"
-              aria-label={`${activeStem.label} tempo`}
-            />
-            <p className="text-center text-xs text-muted-foreground">
-              {timeStretchToDisplayPercent(activeState.timeStretch) >= 0 ? "+" : ""}
-              {timeStretchToDisplayPercent(activeState.timeStretch)}%
-            </p>
-            <p className="text-center text-helper text-muted-foreground">
-              Double-click to reset
-            </p>
-          </div>
+          <TimePanel
+            stemId={activeStem.id}
+            stemLabel={activeStem.label}
+            state={activeState}
+            onChange={onStemStateChange}
+          />
         )}
         {activePanel === "fx" && (
-          <div className="space-y-md">
-            <FxSlider
-              label="Warmth"
-              value={activeState.mixer.warmth}
-              min={0}
-              max={100}
-              unit="%"
-              stemLabel={activeStem.label}
-              onChange={(warmth) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, warmth },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, warmth: 0 },
-                })
-              }
-            />
-            <FxSlider
-              label="Presence"
-              value={activeState.mixer.presence}
-              min={-12}
-              max={12}
-              step={0.5}
-              unit=" dB"
-              stemLabel={activeStem.label}
-              onChange={(presence) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, presence },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, presence: 0 },
-                })
-              }
-            />
-            <FxSlider
-              label="Reverb"
-              value={activeState.mixer.reverbWet}
-              min={0}
-              max={100}
-              unit="%"
-              stemLabel={activeStem.label}
-              onChange={(reverbWet) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, reverbWet },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, reverbWet: 0 },
-                })
-              }
-            />
-            <FxSlider
-              label="Delay"
-              value={activeState.mixer.delayWet}
-              min={0}
-              max={100}
-              unit="%"
-              stemLabel={activeStem.label}
-              onChange={(delayWet) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, delayWet },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, delayWet: 0 },
-                })
-              }
-            />
-            <FxSlider
-              label="Comp Threshold"
-              value={activeState.mixer.compThreshold}
-              min={-60}
-              max={0}
-              unit=" dB"
-              stemLabel={activeStem.label}
-              onChange={(compThreshold) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compThreshold },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compThreshold: 0 },
-                })
-              }
-            />
-            <FxSlider
-              label="Comp Ratio"
-              value={activeState.mixer.compRatio}
-              min={1}
-              max={20}
-              step={0.5}
-              unit=":1"
-              format={(v) => v.toFixed(1)}
-              stemLabel={activeStem.label}
-              onChange={(compRatio) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compRatio },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compRatio: 1 },
-                })
-              }
-            />
-            <FxSlider
-              label="Comp Attack"
-              value={activeState.mixer.compAttackMs}
-              min={1}
-              max={200}
-              unit=" ms"
-              stemLabel={activeStem.label}
-              onChange={(compAttackMs) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compAttackMs },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compAttackMs: 10 },
-                })
-              }
-            />
-            <FxSlider
-              label="Comp Release"
-              value={activeState.mixer.compReleaseMs}
-              min={10}
-              max={1000}
-              step={10}
-              unit=" ms"
-              stemLabel={activeStem.label}
-              onChange={(compReleaseMs) =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compReleaseMs },
-                })
-              }
-              onReset={() =>
-                onStemStateChange(activeStem.id, {
-                  mixer: { ...activeState.mixer, compReleaseMs: 100 },
-                })
-              }
-            />
-            <p className="text-center text-helper text-muted-foreground pt-1">
-              Double-click to reset
-            </p>
-          </div>
+          <FXPanel
+            stemId={activeStem.id}
+            stemLabel={activeStem.label}
+            state={activeState}
+            onChange={onStemStateChange}
+          />
         )}
       </motion.div>
 
@@ -537,54 +287,4 @@ export function StemProcessingPanel({
   );
 }
 
-interface FxSliderProps {
-  label: string;
-  value: number;
-  min?: number;
-  max: number;
-  step?: number;
-  unit?: string;
-  stemLabel: string;
-  format?: (value: number) => string;
-  onChange: (value: number) => void;
-  onReset: () => void;
-}
 
-function FxSlider({
-  label,
-  value,
-  min = 0,
-  max,
-  step = 1,
-  unit = "",
-  stemLabel,
-  format,
-  onChange,
-  onReset,
-}: FxSliderProps) {
-  const display = format ? format(value) : String(value);
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-meta font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        <span className="font-mono text-meta tabular-nums text-muted-foreground">
-          {display}
-          {unit}
-        </span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        onDoubleClick={onReset}
-        className="stem-accent-slider w-full"
-        aria-label={`${stemLabel} ${label.toLowerCase()}`}
-      />
-    </div>
-  );
-}
