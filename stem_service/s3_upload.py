@@ -6,22 +6,36 @@ Keys: {S3_PREFIX}/{job_id}/stems/{filename}  e.g. stems/uuid/stems/vocals.wav
 
 from __future__ import annotations
 
+import atexit
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 logger = logging.getLogger(__name__)
 
 try:
     import boto3
+    from botocore.config import Config
     from botocore.exceptions import ClientError
 
     BOTO3_AVAILABLE = True
 except ImportError:
     boto3 = None
+    Config = None
     ClientError = Exception
     BOTO3_AVAILABLE = False
+
+_UPLOAD_MAX_WORKERS = max(
+    1, int(os.environ.get("STEM_S3_UPLOAD_MAX_WORKERS", "3"))
+)
+_UPLOAD_TIMEOUT_SEC = max(
+    5, int(os.environ.get("STEM_S3_UPLOAD_TIMEOUT_SEC", "120"))
+)
+
+_s3_client: Any = None
+_upload_executor: ThreadPoolExecutor | None = None
 
 
 def _cfg() -> dict[str, str]:
@@ -37,15 +51,59 @@ def _cfg() -> dict[str, str]:
     }
 
 
-def _client():
+def get_s3_client():
+    """Shared boto3 S3 client with retries and timeouts."""
+    global _s3_client
     if not BOTO3_AVAILABLE:
         raise ImportError("boto3 is required for S3 upload: pip install boto3")
+    if _s3_client is not None:
+        return _s3_client
     cfg = _cfg()
-    kwargs: dict[str, Any] = {"region_name": cfg["region"]}
+    botocore_config = Config(
+        connect_timeout=10,
+        read_timeout=_UPLOAD_TIMEOUT_SEC,
+        retries={"max_attempts": 3, "mode": "adaptive"},
+    )
+    kwargs: dict[str, Any] = {
+        "region_name": cfg["region"],
+        "config": botocore_config,
+    }
     if cfg["access_key"] and cfg["secret_key"]:
         kwargs["aws_access_key_id"] = cfg["access_key"]
         kwargs["aws_secret_access_key"] = cfg["secret_key"]
-    return boto3.client("s3", **kwargs)
+    _s3_client = boto3.client("s3", **kwargs)
+    return _s3_client
+
+
+def get_upload_executor() -> ThreadPoolExecutor:
+    global _upload_executor
+    if _upload_executor is None:
+        _upload_executor = ThreadPoolExecutor(
+            max_workers=_UPLOAD_MAX_WORKERS,
+            thread_name_prefix="stem-s3",
+        )
+        atexit.register(_shutdown_upload_executor)
+    return _upload_executor
+
+
+def _shutdown_upload_executor() -> None:
+    global _upload_executor
+    if _upload_executor is not None:
+        _upload_executor.shutdown(wait=False, cancel_futures=False)
+        _upload_executor = None
+
+
+def submit_background_task(fn: Callable[[], None], *, name: str = "stem-bg") -> None:
+    """Run fn on the bounded S3/artifact worker pool."""
+    get_upload_executor().submit(fn)
+
+
+def shutdown_upload_executor_for_tests(wait: bool = True) -> None:
+    """Drain worker pool in tests."""
+    global _upload_executor
+    if _upload_executor is not None:
+        _upload_executor.shutdown(wait=wait, cancel_futures=False)
+        _upload_executor = None
 
 
 def upload_job_stems_to_s3(job_id: str, stems_dir: Path) -> dict[str, Any] | None:
@@ -68,7 +126,7 @@ def upload_job_stems_to_s3(job_id: str, stems_dir: Path) -> dict[str, Any] | Non
         return None
 
     try:
-        s3 = _client()
+        s3 = get_s3_client()
     except ImportError as e:
         logger.warning("S3 upload skipped: %s", e)
         return None

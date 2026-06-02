@@ -15,6 +15,7 @@ import { randomUUID } from "crypto";
 import { authMiddleware } from "../../middleware/auth.js";
 import { serverExportRateLimitMiddleware } from "../../middleware/rateLimiter.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
+import { acquireExportSlot, getActiveExportCount } from "../../lib/exportSemaphore.js";
 
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
@@ -78,7 +79,6 @@ serverExportRouter.post(
       ? body.stem_ids.filter((x) => typeof x === "string")
       : Object.keys(stemStates).filter((k) => typeof k === "string");
 
-    // Solos override mutes (matches frontend filterStemsForAudibleMix).
     const anySolo = stemIds.some((id) => !!stemStates?.[id]?.soloed);
     const stemsToMix = stemIds.filter((id) => {
       const s = stemStates?.[id];
@@ -98,10 +98,23 @@ serverExportRouter.post(
       if (stemStates?.[id]) stemStatesSubset[id] = stemStates[id];
     }
 
-    // Charge usage tokens when enabled (same minute-basis as split/expand).
     let usageUserId = null;
     let usageCost = 0;
     let usageReserved = false;
+
+    async function refundIfReserved() {
+      if (!usageReserved || !usageUserId || usageCost <= 0) return;
+      usageReserved = false;
+      try {
+        await refundUsageTokens(usageUserId, usageCost);
+      } catch (refundErr) {
+        console.error(
+          "[POST /api/stems/server-export] usage refund failed:",
+          refundErr,
+        );
+      }
+    }
+
     if (isUsageTokensEnabled()) {
       try {
         usageUserId = await verifyClerkBearer(req);
@@ -141,7 +154,6 @@ serverExportRouter.post(
       "server_export.py",
     );
 
-    /** @type {{ stem_ids: string[], stem_states: Record<string, any>, normalize: boolean }} */
     const pythonPayload = {
       stem_ids: stemsToMix,
       stem_states: stemStatesSubset,
@@ -149,12 +161,46 @@ serverExportRouter.post(
     };
 
     const pyBin = process.env.PYTHON_BIN || "python";
-    const exportTimeoutMs = Number(process.env.SERVER_EXPORT_TIMEOUT_MS) || 300_000;
+    const exportTimeoutMs =
+      Number(process.env.SERVER_EXPORT_TIMEOUT_MS) || 300_000;
 
-    /** @type {string} */
+    const slot = await acquireExportSlot();
+    let slotReleased = false;
+    const releaseSlot = () => {
+      if (slotReleased) return;
+      slotReleased = true;
+      slot.release();
+    };
+
+    /** @type {import("child_process").ChildProcessWithoutNullStreams | null} */
+    let child = null;
+    let responseStarted = false;
+
+    const cleanupExportFile = () => {
+      unlink(exportOutPath, () => {});
+    };
+
+    const onClientAbort = () => {
+      if (responseStarted) return;
+      if (child && !child.killed) {
+        child.kill("SIGKILL");
+      }
+      cleanupExportFile();
+      releaseSlot();
+      void refundIfReserved();
+    };
+
+    req.on("close", onClientAbort);
+
     let stderrText = "";
     try {
-      const child = spawn(
+      console.info(
+        "[POST /api/stems/server-export] starting job_id=%s active_exports=%d",
+        jobId,
+        getActiveExportCount(),
+      );
+
+      child = spawn(
         pyBin,
         [
           pyScriptPath,
@@ -179,12 +225,11 @@ serverExportRouter.post(
       child.stdin.write(JSON.stringify(pythonPayload));
       child.stdin.end();
 
-      /** @type {number} */
       let exitCode;
       try {
         exitCode = await new Promise((resolve, reject) => {
           const timer = setTimeout(() => {
-            child.kill("SIGKILL");
+            if (child && !child.killed) child.kill("SIGKILL");
             reject(new Error("Server export timed out"));
           }, exportTimeoutMs);
 
@@ -203,6 +248,8 @@ serverExportRouter.post(
           "[POST /api/stems/server-export] timeout after %dms",
           exportTimeoutMs,
         );
+        await refundIfReserved();
+        releaseSlot();
         return res.status(504).json({
           error: "Server export timed out. Try a shorter track or fewer stems.",
         });
@@ -214,10 +261,14 @@ serverExportRouter.post(
           exitCode,
           stderrText ? stderrText.split("\n").slice(-40).join("\n") : "",
         );
+        await refundIfReserved();
+        releaseSlot();
         return res.status(500).json({ error: "Server export render failed" });
       }
 
       if (!existsSync(exportOutPath)) {
+        await refundIfReserved();
+        releaseSlot();
         return res.status(500).json({
           error: "Server export completed but output file was not produced.",
         });
@@ -225,31 +276,23 @@ serverExportRouter.post(
 
       const downloadName = `${uploadBaseName}_master.wav`;
       res.setHeader("Content-Type", "audio/wav");
+      responseStarted = true;
       return res.download(exportOutPath, downloadName, (err) => {
-        // Best-effort cleanup of temp export file.
-        unlink(exportOutPath, () => {});
-        if (err)
+        cleanupExportFile();
+        releaseSlot();
+        if (err) {
           console.error(
             "[POST /api/stems/server-export] download error:",
             err.message,
           );
+          void refundIfReserved();
+        }
       });
     } catch (e) {
-      if (usageReserved && usageUserId && usageCost > 0) {
-        try {
-          await refundUsageTokens(usageUserId, usageCost);
-        } catch (refundErr) {
-          console.error(
-            "[POST /api/stems/server-export] usage refund failed:",
-            refundErr,
-          );
-        }
-      }
-      try {
-        unlink(exportOutPath, () => {});
-      } catch {
-        /* ignore */
-      }
+      if (child && !child.killed) child.kill("SIGKILL");
+      cleanupExportFile();
+      await refundIfReserved();
+      releaseSlot();
       const msg = e instanceof Error ? e.message : String(e);
       console.error("[POST /api/stems/server-export] render exception:", msg);
       return res.status(500).json({ error: "Server export failed" });

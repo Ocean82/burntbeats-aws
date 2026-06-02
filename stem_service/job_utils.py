@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -24,7 +23,7 @@ from stem_service.config import (
     DEMUCS_SLO_MAX_ERROR_RATE,
     DEMUCS_SLO_AUTO_ROLLBACK,
 )
-from stem_service.s3_upload import upload_job_stems_to_s3
+from stem_service.s3_upload import submit_background_task, upload_job_stems_to_s3
 
 logger = logging.getLogger(__name__)
 
@@ -414,11 +413,7 @@ def schedule_s3_upload(
             )
             _merge_progress(out_dir, {"artifact_delivery": "upload_failed"})
 
-    threading.Thread(
-        target=_upload,
-        name=f"stem-s3-upload-{job_id}",
-        daemon=True,
-    ).start()
+    submit_background_task(_upload)
 
 
 def schedule_completion_artifacts(
@@ -441,11 +436,7 @@ def schedule_completion_artifacts(
 
         schedule_s3_upload(job_id, out_dir / "stems", out_dir)
 
-    threading.Thread(
-        target=_finalize_optional_artifacts,
-        name=f"stem-completion-{job_id}",
-        daemon=True,
-    ).start()
+    submit_background_task(_finalize_optional_artifacts)
 
 
 def validate_audio_file(file_path: Path) -> tuple[bool, str]:

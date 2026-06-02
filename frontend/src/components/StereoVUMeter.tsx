@@ -139,9 +139,26 @@ export function StereoVUMeter({
   }, [getAnalyserData, getAnalyserDataLeft, getAnalyserDataRight, isPlaying, height, width]);
 
   useEffect(() => {
+    if (!isPlaying) {
+      cancelAnimationFrame(animRef.current);
+      draw();
+      return () => cancelAnimationFrame(animRef.current);
+    }
+    if (document.hidden) {
+      return undefined;
+    }
     animRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [draw]);
+    const onVisibility = () => {
+      if (!document.hidden && isPlaying) {
+        animRef.current = requestAnimationFrame(draw);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [draw, isPlaying]);
 
   const dbLabels = [0, -6, -12, -18, -24, -30, -36, -42, -48, -60];
 

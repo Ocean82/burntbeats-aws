@@ -260,35 +260,82 @@ export function WaveformLane({
     if (!ctx) return;
 
     let rafId = 0;
-    const draw = () => {
+    let lastDrawnPlayhead: number | null = null;
+    let lastOverlayDrawMs = 0;
+    const PLAYHEAD_EPS = 0.0005;
+    const ANALYSER_MIN_INTERVAL_MS = 1000 / 30;
+
+    const paintOverlay = () => {
       const { width, height } = canvas;
       ctx.clearRect(0, 0, width, height);
-      if (playheadFraction != null) {
-        const x = clamp(playheadFraction, 0, 1) * width;
-        let glowAlpha = 0.25;
-        if (getAnalyserData) {
-          const data = getAnalyserData();
-          if (data && data.length > 0) {
-            let sum = 0;
-            for (let i = 0; i < data.length; i++) {
-              sum += Math.abs(data[i] - 128);
-            }
-            const rms = sum / data.length / 128;
-            glowAlpha = 0.2 + Math.min(rms, 1) * 0.35;
+      if (playheadFraction == null) return;
+      const x = clamp(playheadFraction, 0, 1) * width;
+      let glowAlpha = 0.25;
+      if (getAnalyserData) {
+        const data = getAnalyserData();
+        if (data && data.length > 0) {
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            sum += Math.abs(data[i] - 128);
           }
+          const rms = sum / data.length / 128;
+          glowAlpha = 0.2 + Math.min(rms, 1) * 0.35;
         }
-        ctx.strokeStyle = `rgba(255, 255, 255, ${glowAlpha})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
       }
+      ctx.strokeStyle = `rgba(255, 255, 255, ${glowAlpha})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+      lastDrawnPlayhead = playheadFraction;
+      lastOverlayDrawMs = performance.now();
+    };
+
+    const draw = () => {
+      if (document.hidden) {
+        rafId = requestAnimationFrame(draw);
+        return;
+      }
+
+      const now = performance.now();
+      const playheadMoved =
+        playheadFraction == null
+          ? lastDrawnPlayhead !== null
+          : lastDrawnPlayhead == null ||
+            Math.abs(playheadFraction - lastDrawnPlayhead) > PLAYHEAD_EPS;
+      const analyserDue =
+        !!getAnalyserData &&
+        now - lastOverlayDrawMs >= ANALYSER_MIN_INTERVAL_MS;
+
+      if (playheadFraction == null) {
+        if (lastDrawnPlayhead !== null) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          lastDrawnPlayhead = null;
+        }
+        rafId = requestAnimationFrame(draw);
+        return;
+      }
+
+      if (playheadMoved || analyserDue) {
+        paintOverlay();
+      }
+
       rafId = requestAnimationFrame(draw);
     };
 
+    const onVisibility = () => {
+      if (!document.hidden && playheadFraction != null) {
+        paintOverlay();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     rafId = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(rafId);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [playheadFraction, getAnalyserData]);
 
   return (

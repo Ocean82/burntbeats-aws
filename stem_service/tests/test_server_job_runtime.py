@@ -151,7 +151,6 @@ def test_run_separation_sync_marks_local_ready_before_optional_artifacts(monkeyp
 
 def test_schedule_s3_upload_merges_s3_metadata_after_completion(monkeypatch) -> None:
     import json
-    import threading
 
     from stem_service.job_utils import PROGRESS_FILENAME, schedule_s3_upload, write_progress
 
@@ -180,18 +179,14 @@ def test_schedule_s3_upload_merges_s3_metadata_after_completion(monkeypatch) -> 
         },
     }
 
-    class ImmediateThread:
-        def __init__(self, *, target, name, daemon):
-            self._target = target
-
-        def start(self):
-            self._target()
-
     monkeypatch.setattr(
         "stem_service.job_utils.upload_job_stems_to_s3",
         lambda _jid, _dir: s3_meta,
     )
-    monkeypatch.setattr(threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(
+        "stem_service.job_utils.submit_background_task",
+        lambda fn, **_: fn(),
+    )
     write_progress(out_dir, progress_data)
     schedule_s3_upload(job_id, stems_dir, out_dir)
 

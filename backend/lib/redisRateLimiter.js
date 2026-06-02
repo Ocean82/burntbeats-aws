@@ -10,7 +10,7 @@
  * Each request adds a member (timestamp) to a sorted set keyed by IP.
  * Count members in the current window to determine if limit is exceeded.
  */
-import { getRedis } from "../stripeRedis.js";
+import { getRedis } from "./redisClient.js";
 import { rateLimitHitsTotal } from "../metrics.js";
 
 /** Track whether we've logged a Redis fallback warning recently. */

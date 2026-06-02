@@ -8,22 +8,38 @@
  * so the app doesn't re-trigger on refresh.
  */
 import { useAuth } from "@clerk/react";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Route, Switch } from "wouter";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { AppShell } from "./app/app-shell.component";
-import { App } from "./App";
-import { LandingPage } from "./pages/LandingPage";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
-import { LegalPage } from "./pages/LegalPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import { LegalAcceptanceGate } from "./components/LegalAcceptanceGate";
 import { trackEvent } from "./analytics/events";
 
-import { AudioProvider } from "./contexts/AudioContext";
-import { WorkflowProvider } from "./contexts/WorkflowContext";
+const LandingPage = lazy(() =>
+  import("./pages/LandingPage").then((m) => ({ default: m.LandingPage })),
+);
+const LegalPage = lazy(() =>
+  import("./pages/LegalPage").then((m) => ({ default: m.LegalPage })),
+);
+const AppShell = lazy(() =>
+  import("./app/app-shell.component").then((m) => ({ default: m.AppShell })),
+);
+const App = lazy(() => import("./App").then((m) => ({ default: m.App })));
+const LegalAcceptanceGate = lazy(() =>
+  import("./components/LegalAcceptanceGate").then((m) => ({
+    default: m.LegalAcceptanceGate,
+  })),
+);
+const AudioProvider = lazy(() =>
+  import("./contexts/AudioContext").then((m) => ({ default: m.AudioProvider })),
+);
+const WorkflowProvider = lazy(() =>
+  import("./contexts/WorkflowContext").then((m) => ({
+    default: m.WorkflowProvider,
+  })),
+);
 
 /** Shown while Clerk loads session — avoids a blank screen (perceived hang). */
 function ClerkLoadingShell() {
@@ -49,14 +65,13 @@ function ClerkLoadingShell() {
   );
 }
 
-/** Local dev mode: full stem app without Clerk auth or Stripe billing. */
-function LocalDevRoot() {
-  useEffect(() => {
-    setTokenProvider(() => Promise.resolve(null));
-  }, []);
+function RouteLoadingShell() {
+  return <ClerkLoadingShell />;
+}
 
+function SignedInAppTree() {
   return (
-    <ErrorBoundary>
+    <Suspense fallback={<RouteLoadingShell />}>
       <LegalAcceptanceGate>
         <WorkflowProvider>
           <AudioProvider>
@@ -66,6 +81,19 @@ function LocalDevRoot() {
           </AudioProvider>
         </WorkflowProvider>
       </LegalAcceptanceGate>
+    </Suspense>
+  );
+}
+
+/** Local dev mode: full stem app without Clerk auth or Stripe billing. */
+function LocalDevRoot() {
+  useEffect(() => {
+    setTokenProvider(() => Promise.resolve(null));
+  }, []);
+
+  return (
+    <ErrorBoundary>
+      <SignedInAppTree />
     </ErrorBoundary>
   );
 }
@@ -103,20 +131,16 @@ function AuthenticatedRoot() {
   if (!isSignedIn) {
     return (
       <ErrorBoundary>
-        <LandingPage />
+        <Suspense fallback={<RouteLoadingShell />}>
+          <LandingPage />
+        </Suspense>
       </ErrorBoundary>
     );
   }
 
   return (
     <ErrorBoundary>
-      <WorkflowProvider>
-        <AudioProvider>
-          <AppShell>
-            <App />
-          </AppShell>
-        </AudioProvider>
-      </WorkflowProvider>
+      <SignedInAppTree />
     </ErrorBoundary>
   );
 }
@@ -125,30 +149,34 @@ export function Root() {
   return (
     <Switch>
       <Route path="/privacy-policy">
-        <LegalPage doc="privacy-policy" />
+        <Suspense fallback={<RouteLoadingShell />}>
+          <LegalPage doc="privacy-policy" />
+        </Suspense>
       </Route>
       <Route path="/terms-of-service">
-        <LegalPage doc="terms-of-service" />
+        <Suspense fallback={<RouteLoadingShell />}>
+          <LegalPage doc="terms-of-service" />
+        </Suspense>
       </Route>
-      <Route path="/" >
+      <Route path="/">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
-      <Route path="/speech" >
+      <Route path="/speech">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
-      <Route path="/midi" >
+      <Route path="/midi">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
-      <Route path="/pricing" >
+      <Route path="/pricing">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
-      <Route path="/my-stems" >
+      <Route path="/my-stems">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
-      <Route path="/library" >
+      <Route path="/library">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
-      <Route path="/tuner" >
+      <Route path="/tuner">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
       <Route>
