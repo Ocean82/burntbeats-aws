@@ -8,9 +8,13 @@ export async function encodeWavToMp3(wavBuffer: ArrayBuffer, kbps = 192): Promis
   if (typeof window !== "undefined" && typeof Worker !== "undefined") {
     try {
       const worker = new Worker(new URL("../../workers/encodeMp3Worker.ts", import.meta.url), { type: "module" });
+      interface EncodeMp3WorkerMessage {
+        mp3Buffer?: ArrayBuffer
+        error?: string
+      }
       const mp3Buf = await new Promise<ArrayBuffer>((resolve, reject) => {
-        const onMsg = (ev: MessageEvent) => {
-          const d = ev.data as any;
+        const onMsg = (ev: MessageEvent<EncodeMp3WorkerMessage>) => {
+          const d = ev.data;
           if (d?.mp3Buffer) {
             worker.removeEventListener("message", onMsg);
             worker.terminate();

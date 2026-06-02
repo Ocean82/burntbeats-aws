@@ -87,7 +87,10 @@ export function useStemLoading({
 
     if (needsLoad.length > 0) {
       // Limit concurrent fetch+decode to avoid CPU/memory spikes when many stems are loaded.
-      const HW = typeof navigator !== "undefined" && (navigator as any).hardwareConcurrency ? (navigator as any).hardwareConcurrency : 4;
+      const HW =
+        typeof navigator !== "undefined" && navigator.hardwareConcurrency
+          ? navigator.hardwareConcurrency
+          : 4;
       const CONCURRENCY = Math.max(1, Math.min(4, HW - 1));
       const results: PromiseSettledResult<{ id: string; url: string; buf: AudioBuffer }>[] = new Array(needsLoad.length);
       let cursor = 0;

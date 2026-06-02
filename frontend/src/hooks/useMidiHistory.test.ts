@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 import { useMidiHistory } from "./useMidiHistory";
 
@@ -46,7 +46,7 @@ describe("useMidiHistory", () => {
     expect(mockAuthHeaders).toHaveBeenCalled();
     expect(fetch).toHaveBeenCalled();
     // Accept any origin but ensure the path and headers are correct.
-    const firstCall = (fetch as any).mock.calls[0];
+    const firstCall = (fetch as unknown as Mock).mock.calls[0];
     const urlArg = firstCall[0];
     const optsArg = firstCall[1];
     expect(urlArg).toMatch(/\/api\/midi\/history$/);
