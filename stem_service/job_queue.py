@@ -1,6 +1,7 @@
 """
 Job queue management for heavy stem jobs: queuing, cancellation, worker loop.
-Provides a bounded async queue with configurable concurrency.
+Provides a bounded async queue with configurable concurrency and an explicit
+ThreadPoolExecutor that limits concurrent Demucs subprocess invocations.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ import logging
 import threading
 import time
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +28,11 @@ class JobCancelledError(Exception):
 # Job tracking for cancellation
 _running_jobs: dict[str, dict[str, Any]] = {}
 _jobs_lock = threading.Lock()
+
+# Dedicated thread-pool executor for Demucs subprocess invocations.
+# Bounded to split_worker_count() so concurrent subprocesses never exceed
+# the configured CPU budget. Created in start_split_workers, destroyed in stop_split_workers.
+_demucs_executor: ThreadPoolExecutor | None = None
 
 # Queue heavy jobs so one concurrency gate owns split + expand CPU work.
 _queued_jobs: deque[dict[str, Any]] = deque()
@@ -167,18 +174,26 @@ def split_worker_count() -> int:
 
 
 async def start_split_workers(run_job_fn) -> None:
-    """Initialize the queue condition and start worker tasks.
+    """Initialize the queue condition, thread pool, and start worker tasks.
+
+    The dedicated ThreadPoolExecutor is bounded to split_worker_count() so that
+    concurrent Demucs subprocess invocations never exceed the configured CPU budget.
 
     Args:
         run_job_fn: Blocking function that accepts a queued job dict and executes it.
     """
-    global _queue_condition, _split_worker_tasks
+    global _queue_condition, _split_worker_tasks, _demucs_executor
     _queue_condition = asyncio.Condition()
     worker_count = split_worker_count()
+    _demucs_executor = ThreadPoolExecutor(
+        max_workers=worker_count,
+        thread_name_prefix="demucs-worker",
+    )
 
     async def _worker_loop() -> None:
         if _queue_condition is None:
             return
+        loop = asyncio.get_running_loop()
         while True:
             async with _queue_condition:
                 while not _queued_jobs:
@@ -198,18 +213,18 @@ async def start_split_workers(run_job_fn) -> None:
                     intent=job.get("intent"),
                 ),
             )
-            await asyncio.to_thread(run_job_fn, job)
+            await loop.run_in_executor(_demucs_executor, run_job_fn, job)
 
     _split_worker_tasks = [
         asyncio.create_task(_worker_loop(), name=f"split-worker-{idx + 1}")
         for idx in range(worker_count)
     ]
-    logger.info("Split queue workers started: count=%d", worker_count)
+    logger.info("Split queue workers started: count=%d pool_max_workers=%d", worker_count, worker_count)
 
 
 async def stop_split_workers() -> None:
-    """Cancel all worker tasks (called during shutdown)."""
-    global _split_worker_tasks
+    """Cancel all worker tasks and shut down the thread pool executor."""
+    global _split_worker_tasks, _demucs_executor
     for task in _split_worker_tasks:
         task.cancel()
     for task in _split_worker_tasks:
@@ -218,3 +233,7 @@ async def stop_split_workers() -> None:
         except asyncio.CancelledError:
             pass
     _split_worker_tasks = []
+
+    if _demucs_executor is not None:
+        _demucs_executor.shutdown(wait=False)
+        _demucs_executor = None

@@ -11,6 +11,7 @@ import {
   authMiddleware,
   jobTokenMiddleware,
 } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import {
   stemFileRateLimitMiddleware,
 } from "../../middleware/rateLimiter.js";
@@ -30,7 +31,7 @@ export const fileServeRouter = Router();
 fileServeRouter.get(
   "/file/:job_id/:stemId",
   authMiddleware,
-  jobTokenMiddleware,
+  requireJobOwnership,
   stemFileRateLimitMiddleware,
   async (req, res) => {
     const { job_id, stemId } = req.params;

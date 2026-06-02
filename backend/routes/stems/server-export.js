@@ -149,6 +149,7 @@ serverExportRouter.post(
     };
 
     const pyBin = process.env.PYTHON_BIN || "python";
+    const exportTimeoutMs = Number(process.env.SERVER_EXPORT_TIMEOUT_MS) || 300_000;
 
     /** @type {string} */
     let stderrText = "";
@@ -178,9 +179,34 @@ serverExportRouter.post(
       child.stdin.write(JSON.stringify(pythonPayload));
       child.stdin.end();
 
-      const exitCode = await new Promise((resolve) => {
-        child.on("close", (code) => resolve(code ?? 1));
-      });
+      /** @type {number} */
+      let exitCode;
+      try {
+        exitCode = await new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            child.kill("SIGKILL");
+            reject(new Error("Server export timed out"));
+          }, exportTimeoutMs);
+
+          child.on("error", (err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+
+          child.on("close", (code) => {
+            clearTimeout(timer);
+            resolve(code ?? 1);
+          });
+        });
+      } catch (timeoutErr) {
+        console.error(
+          "[POST /api/stems/server-export] timeout after %dms",
+          exportTimeoutMs,
+        );
+        return res.status(504).json({
+          error: "Server export timed out. Try a shorter track or fewer stems.",
+        });
+      }
 
       if (exitCode !== 0) {
         console.error(

@@ -128,7 +128,23 @@ export class CircuitBreaker {
 
   /** @returns {typeof State[keyof typeof State]} */
   getState() {
-// ...
+    // Check if open circuit should transition to half-open
+    if (
+      this.state === State.OPEN &&
+      Date.now() - this.lastFailureTime >= this.resetTimeout
+    ) {
+      return State.HALF_OPEN;
+    }
+    return this.state;
+  }
+
+  /** Reset the circuit to closed state (e.g., for testing or manual recovery). */
+  reset() {
+    this._transitionTo(State.CLOSED);
+    this.failureCount = 0;
+    this.halfOpenAttempts = 0;
+  }
+
   /** @private */
   async _onSuccess() {
     if (this.state === State.HALF_OPEN) {
@@ -153,51 +169,6 @@ export class CircuitBreaker {
     if (this.failureCount >= this.failureThreshold) {
       this._transitionTo(State.OPEN);
       await this._saveToRedis();
-    }
-  }
-
-  }
-
-  /** @returns {typeof State[keyof typeof State]} */
-  getState() {
-    // Check if open circuit should transition to half-open
-    if (
-      this.state === State.OPEN &&
-      Date.now() - this.lastFailureTime >= this.resetTimeout
-    ) {
-      return State.HALF_OPEN;
-    }
-    return this.state;
-  }
-
-  /** Reset the circuit to closed state (e.g., for testing or manual recovery). */
-  reset() {
-    this._transitionTo(State.CLOSED);
-    this.failureCount = 0;
-    this.halfOpenAttempts = 0;
-  }
-
-  /** @private */
-  _onSuccess() {
-    if (this.state === State.HALF_OPEN) {
-      this._transitionTo(State.CLOSED);
-    }
-    this.failureCount = 0;
-    this.halfOpenAttempts = 0;
-  }
-
-  /** @private */
-  _onFailure() {
-    this.failureCount++;
-    this.lastFailureTime = Date.now();
-
-    if (this.state === State.HALF_OPEN) {
-      this._transitionTo(State.OPEN);
-      return;
-    }
-
-    if (this.failureCount >= this.failureThreshold) {
-      this._transitionTo(State.OPEN);
     }
   }
 

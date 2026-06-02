@@ -226,6 +226,10 @@ export function useAudioPlayback(
   const pluginPoolRef = useRef<Map<string, PitchTempoPlugin>>(new Map());
   const pluginAvailableRef = useRef<boolean | null>(null);
 
+  // Generation counter to guard against concurrent async rebuild calls.
+  // Incremented before each rebuild; stale calls bail out when generation no longer matches.
+  const rebuildGenerationRef = useRef(0);
+
   // --- Stop / cleanup helpers ---
 
   const stopPreview = useCallback(() => {
@@ -323,6 +327,7 @@ export function useAudioPlayback(
 
   const rebuildMixAtPct = useCallback(
     async (pct: number, stemStates: Record<string, StemEditorState>) => {
+      const gen = ++rebuildGenerationRef.current;
       const splitResultStems = lastSplitResultStemsRef.current;
       if (splitResultStems.length === 0) return;
 
@@ -373,6 +378,10 @@ export function useAudioPlayback(
         handleStopMix();
         return;
       }
+
+      // If a newer rebuild raced ahead and already committed, bail out to avoid
+      // overwriting its sources and leaking the previous generation's graph.
+      if (gen !== rebuildGenerationRef.current) return;
 
       mixStemRuntimesRef.current = runtimes;
       setIsPlayingMix(true);
@@ -534,6 +543,7 @@ export function useAudioPlayback(
   // --- Preview seek ---
   const seekToPreview = useCallback(
     async (pct: number) => {
+      const gen = ++rebuildGenerationRef.current;
       const stemId = playingStem;
       if (!stemId) return;
 
@@ -576,17 +586,25 @@ export function useAudioPlayback(
         return;
       }
 
+      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
+      const { source, fadeNode } = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input, plugin, wallDuration, wallElapsed);
+      dsp.output.connect(ensureMasterBus(context));
+
+      const runtime: MixStemRuntime = { stemId, dsp, source, plugin, fadeNode };
+
+      // If a newer seek raced ahead, bail out to avoid stale preview wiring.
+      if (gen !== rebuildGenerationRef.current) {
+        stopMixStemRuntime(runtime);
+        return;
+      }
+
+      // Commit refs after generation guard so stale calls never overwrite shared state.
       previewDurationRef.current = wallRemaining;
       emitPlayheadPosition(pct);
       playheadPositionRef.current = pct;
       previewStemStateRef.current = st;
       previewBufferRef.current = buffer;
 
-      const dsp = createStemDspChain(context, st.mixer, Math.pow(10, st.mixer.gain / 20));
-      const { source, fadeNode } = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input, plugin, wallDuration, wallElapsed);
-      dsp.output.connect(ensureMasterBus(context));
-
-      const runtime: MixStemRuntime = { stemId, dsp, source, plugin, fadeNode };
       source.onended = () => {
         dsp.disconnect();
         if (loopEnabledRef.current && isPlayingPreviewRef.current) {
@@ -721,6 +739,7 @@ export function useAudioPlayback(
       >,
       stemStates?: Record<string, StemEditorState>,
     ) => {
+      const gen = ++rebuildGenerationRef.current;
       if (loadingPreviewStemId === stemId) return;
 
       if (playingStem === stemId) {
@@ -752,10 +771,6 @@ export function useAudioPlayback(
           stemStates?.[stemId] ??
           lastStemStatesRef.current[stemId] ??
           defaultStemState();
-        previewStemStateRef.current = st;
-        previewBufferRef.current = buffer;
-        prevPreviewStructSigRef.current = stemPreviewStructuralSignature(st);
-        prevPreviewTrimSigRef.current = `${st.trim.start}:${st.trim.end}`;
 
         const plugin = await getOrCreatePlugin(context, stemId, pluginPoolRef.current, pluginAvailableRef);
         const usePlugin = plugin !== null && stemNeedsPlugin(st);
@@ -781,9 +796,6 @@ export function useAudioPlayback(
         const { source, fadeNode } = buildStemSource(context, buffer, st, startOffset, trimEnd, dsp.input, plugin, wallDuration, wallElapsed);
 
         dsp.output.connect(ensureMasterBus(context));
-        emitPlayheadPosition(startPct);
-        previewDurationRef.current = wallRemaining;
-        playStartTimeRef.current = context.currentTime - wallElapsed;
 
         const runtime: MixStemRuntime = { stemId, dsp, source, plugin, fadeNode };
         source.onended = () => {
@@ -804,6 +816,22 @@ export function useAudioPlayback(
             }
           }
         };
+        // If a newer preview raced ahead and committed, bail out to avoid
+        // overwriting its runtime and leaking the previous generation's graph.
+        if (gen !== rebuildGenerationRef.current) {
+          stopMixStemRuntime(runtime);
+          return;
+        }
+
+        // Commit refs after generation guard so stale calls never overwrite shared state.
+        previewStemStateRef.current = st;
+        previewBufferRef.current = buffer;
+        prevPreviewStructSigRef.current = stemPreviewStructuralSignature(st);
+        prevPreviewTrimSigRef.current = `${st.trim.start}:${st.trim.end}`;
+        emitPlayheadPosition(startPct);
+        previewDurationRef.current = wallRemaining;
+        playStartTimeRef.current = context.currentTime - wallElapsed;
+
         currentPreviewRuntimeRef.current = runtime;
         isPlayingPreviewRef.current = true;
 

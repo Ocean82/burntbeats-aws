@@ -50,17 +50,17 @@ describe("App flow", () => {
     );
   }
 
-  it("renders and shows stem splitter UI", () => {
+  it("renders and shows stem splitter UI", async () => {
     renderApp();
     expect(
-      screen.getByRole("button", { name: /upload audio file/i }),
+      await screen.findByRole("button", { name: /upload audio file/i }, { timeout: 5000 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^split$/i })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^split$/i }, { timeout: 5000 })).toBeInTheDocument();
   });
 
-  it("shows workflow stepper labels", () => {
+  it("shows workflow stepper labels", async () => {
     renderApp();
-    const stepper = screen.getByRole("list", { name: /workflow steps/i });
+    const stepper = await screen.findByRole("list", { name: /workflow steps/i });
     expect(within(stepper).getByText("Upload")).toBeInTheDocument();
     expect(within(stepper).getByText("Split")).toBeInTheDocument();
     expect(within(stepper).getByText("Mix")).toBeInTheDocument();

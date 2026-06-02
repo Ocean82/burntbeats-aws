@@ -17,6 +17,18 @@ const importOnboardingTour = () => import("./components/OnboardingTour");
 const OnboardingTour = lazy(() =>
   importOnboardingTour().then((m) => ({ default: m.OnboardingTour })),
 );
+
+import { useViewPreloading } from "./views/lazy-view-registry";
+import { PageSkeleton } from "./views/PageSkeleton";
+
+const LazyPricingPage = lazy(() => import("./components/PricingPage").then(m => ({ default: m.PricingPage })));
+const LazyMyStemsPage = lazy(() => import("./components/MyStemsPage").then(m => ({ default: m.MyStemsPage })));
+const LazySpeechCleanPage = lazy(() => import("./pages/SpeechCleanPage").then(m => ({ default: m.SpeechCleanPage })));
+const LazyMidiConvertPage = lazy(() => import("./pages/MidiConvertPage").then(m => ({ default: m.MidiConvertPage })));
+const LazyLibraryPage = lazy(() => import("./pages/LibraryPage").then(m => ({ default: m.LibraryPage })));
+const LazyTunerPage = lazy(() => import("./pages/TunerPage").then(m => ({ default: m.TunerPage })));
+const LazyEditorMainView = lazy(() => import("./app/editor-main-view.component").then(m => ({ default: m.EditorMainView })));
+
 import { useAppSubscription } from "./hooks/useAppSubscription";
 import { useWaveformCompute } from "./hooks/useWaveformCompute";
 import { useExport } from "./hooks/useExport";
@@ -41,8 +53,6 @@ import {
   useUiLatencyMonitor,
   startUiLatencyMark,
 } from "./hooks/useUiLatencyMonitor";
-import { PricingPage } from "./components/PricingPage";
-import { MyStemsPage } from "./components/MyStemsPage";
 import { UpsellModal } from "./components/UpsellModal";
 import { FeedbackChip } from "./components/FeedbackChip";
 import { useAudioFileDuration } from "./hooks/useAudioFileDuration";
@@ -53,12 +63,7 @@ import { DevLatencyPanel } from "./app/dev-latency-panel.component";
 import { LazyModalLayer } from "./app/lazy-modal-layer.component";
 import { AppBackgroundOrbs } from "./app/app-background-orbs.component";
 import { EditorFloatingOverlays } from "./app/editor-floating-overlays.component";
-import { EditorMainView } from "./app/editor-main-view.component";
 import { SessionSidebar } from "./app/session-sidebar.component";
-import { SpeechCleanPage } from "./pages/SpeechCleanPage";
-import { MidiConvertPage } from "./pages/MidiConvertPage";
-import { LibraryPage } from "./pages/LibraryPage";
-import { TunerPage } from "./pages/TunerPage";
 import { useHeaderVisibility } from "./hooks/useHeaderVisibility";
 
 import { useAudio } from "./contexts/AudioContext";
@@ -377,6 +382,7 @@ export function App() {
 
   const { activeView, setActiveView } = useEditorViewRouting();
 
+  useViewPreloading(activeView);
   // ── Upsell modal state ────────────────────────────────────────────────────
   const { upsellOpen, setUpsellOpen, upsellTrigger } = useUpsellTriggers({
     isSplitting,
@@ -609,9 +615,10 @@ export function App() {
           aria-label="Main content"
           className="outline-none focus-visible:ring-2 focus-visible:ring-primary-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] rounded-[2rem]"
         >
+          <Suspense fallback={<PageSkeleton view={activeView} />}>
           {activeView === "pricing" ? (
             <motion.section {...viewSwitchMotion(reduceMotion)}>
-              <PricingPage
+              <LazyPricingPage
                 subscription={subscription}
                 onClose={() => setActiveView("editor")}
                 initialTab={pricingInitialTab}
@@ -622,7 +629,7 @@ export function App() {
               />
             </motion.section>
           ) : activeView === "my-stems" ? (
-            <MyStemsPage
+            <LazyMyStemsPage
               onClose={() => setActiveView("editor")}
               onOpenInMixer={(job) => void loadHistoryJob(job)}
               onOpenInMidi={(job) => void loadHistoryJobToMidi(job)}
@@ -630,7 +637,7 @@ export function App() {
               loadingMidiJobId={loadingMidiJobId}
             />
           ) : activeView === "speech" ? (
-            <SpeechCleanPage
+            <LazySpeechCleanPage
               reduceMotion={reduceMotion}
               subscription={subscription}
               usageBalance={usageBalance}
@@ -639,7 +646,7 @@ export function App() {
               onViewPlans={() => setActiveView("pricing")}
             />
           ) : activeView === "midi" ? (
-            <MidiConvertPage
+            <LazyMidiConvertPage
               reduceMotion={reduceMotion}
               subscription={subscription}
               usageBalance={usageBalance}
@@ -648,14 +655,14 @@ export function App() {
               onViewPlans={() => setActiveView("pricing")}
             />
           ) : activeView === "library" ? (
-            <LibraryPage
+            <LazyLibraryPage
               reduceMotion={reduceMotion}
               subscription={subscription}
               checkoutNotice={checkoutNotice}
               onViewPlans={() => setActiveView("pricing")}
             />
           ) : activeView === "tuner" ? (
-            <TunerPage
+            <LazyTunerPage
               reduceMotion={reduceMotion}
               subscription={subscription}
               checkoutNotice={checkoutNotice}
@@ -663,7 +670,7 @@ export function App() {
               onGoToEditor={() => setActiveView("editor")}
             />
           ) : (
-            <EditorMainView
+            <LazyEditorMainView
               reduceMotion={reduceMotion}
               chrome={{
                 guidanceTarget,
@@ -771,6 +778,7 @@ export function App() {
               }}
             />
           )}
+          </Suspense>
         </main>
       </div>
 

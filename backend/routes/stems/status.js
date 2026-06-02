@@ -11,6 +11,7 @@ import {
   authMiddleware,
   jobTokenMiddleware,
 } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 import { updateJobStatus, insertStems } from "../../db-jobs.js";
@@ -24,7 +25,7 @@ export const statusRouter = Router();
 statusRouter.get(
   "/:job_id",
   authMiddleware,
-  jobTokenMiddleware,
+  requireJobOwnership,
   async (req, res) => {
     const { job_id } = req.params;
     if (!job_id || !UUID_REGEX.test(job_id)) {
@@ -113,8 +114,8 @@ statusRouter.get(
 statusRouter.get(
   "/:job_id/stream",
   authMiddleware,
-  jobTokenMiddleware,
-  (req, res) => {
+  requireJobOwnership,
+  async (req, res) => {
     const { job_id } = req.params;
     if (!job_id || !UUID_REGEX.test(job_id)) {
       return res.status(400).json({ error: "Invalid job_id" });
@@ -125,11 +126,16 @@ statusRouter.get(
       return res.status(404).json({ error: "Job not found" });
     }
 
+    const redis = await getRedis();
+    const redisKey = `job:status:${job_id}`;
+
     // SSE headers
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no"); // disable nginx proxy buffering
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
     res.flushHeaders();
 
     const baseUrl = getBaseUrl(req);
@@ -144,7 +150,6 @@ statusRouter.get(
       try {
         data = JSON.parse(readFileSync(progressPath, "utf-8"));
       } catch {
-        // File may be mid-write; skip this tick
         return false;
       }
       if (data.stems && Array.isArray(data.stems)) {
@@ -155,40 +160,58 @@ statusRouter.get(
         }));
       }
 
-      // Sync to Redis so polling endpoints are fast
       if (redis) {
         const terminal = ["completed", "failed", "cancelled"].includes(data.status);
-        const ttl = terminal ? 3600 : 5; 
+        const ttl = terminal ? 3600 : 5;
         redis.set(redisKey, JSON.stringify(data), { EX: ttl }).catch(() => {});
       }
 
-      try {
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
-      } catch {
-        // Client disconnected mid-write; interval will be cleared below
-        return true;
+      if (!res.writableEnded) {
+        try {
+          res.write(`data: ${JSON.stringify(data)}\n\n`);
+        } catch {
+          return true;
+        }
       }
+
       const terminal = ["completed", "failed", "cancelled"];
       if (terminal.includes(data.status)) {
-// ...
-    // Send an initial event immediately so the client sees the current state
-    const done = await sendProgress();
-    if (done) {
-      res.end();
+        updateJobStatus(job_id, data.status, {
+          errorMessage: data.error || undefined,
+          modelName: data.model || undefined,
+        }).catch(() => {});
+        return true;
+      }
+      return false;
+    }
+
+    try {
+      const done = await sendProgress();
+      if (done) {
+        res.end();
+        return;
+      }
+    } catch (err) {
+      console.error(`[sse] initial progress failed for ${job_id}:`, err);
+      if (!res.writableEnded) res.end();
       return;
     }
 
     const SSE_POLL_INTERVAL_MS = 500;
     const intervalId = setInterval(async () => {
-      const finished = await sendProgress();
-      if (finished) {
+      try {
+        const finished = await sendProgress();
+        if (finished) {
+          clearInterval(intervalId);
+          res.end();
+        }
+      } catch (err) {
+        console.error(`[sse] interval error for ${job_id}:`, err);
         clearInterval(intervalId);
-        res.end();
+        if (!res.writableEnded) res.end();
       }
     }, SSE_POLL_INTERVAL_MS);
 
-
-    // Clean up when the client disconnects
     req.on("close", () => {
       clearInterval(intervalId);
     });
