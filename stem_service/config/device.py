@@ -194,3 +194,9 @@ DEMUCS_RPC_HEARTBEAT_TIMEOUT_SEC = int(
 DEMUCS_POLICY_QUALITY_ONLY = _bool_from_env("DEMUCS_POLICY_QUALITY_ONLY", False)
 DEMUCS_RPC_MAX_CONCURRENCY = max(1, int(os.environ.get("DEMUCS_RPC_MAX_CONCURRENCY", "1")))
 DEMUCS_RPC_DISABLE_RSS_MB = int(os.environ.get("DEMUCS_RPC_DISABLE_RSS_MB", "0"))
+
+# SLO guardrails for canary / RPC rollout (evaluated from recent job metrics JSONL).
+DEMUCS_SLO_MIN_SAMPLES = max(1, int(os.environ.get("DEMUCS_SLO_MIN_SAMPLES", "20")))
+DEMUCS_SLO_MAX_TIMEOUT_RATE = float(os.environ.get("DEMUCS_SLO_MAX_TIMEOUT_RATE", "0.05"))
+DEMUCS_SLO_MAX_ERROR_RATE = float(os.environ.get("DEMUCS_SLO_MAX_ERROR_RATE", "0.10"))
+DEMUCS_SLO_AUTO_ROLLBACK = _bool_from_env("DEMUCS_SLO_AUTO_ROLLBACK", True)

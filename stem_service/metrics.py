@@ -50,6 +50,31 @@ active_jobs = Gauge(
     registry=REGISTRY,
 )
 
+demucs_timeout_rate = Gauge(
+    "stem_demucs_timeout_rate",
+    "Recent Demucs job timeout rate from metrics JSONL window",
+    registry=REGISTRY,
+)
+
+demucs_error_rate = Gauge(
+    "stem_demucs_error_rate",
+    "Recent Demucs job error rate from metrics JSONL window",
+    registry=REGISTRY,
+)
+
+demucs_slo_healthy = Gauge(
+    "stem_demucs_slo_healthy",
+    "1 when Demucs execution SLOs are healthy, else 0",
+    registry=REGISTRY,
+)
+
+demucs_route_total = Gauge(
+    "stem_demucs_route_jobs",
+    "Recent Demucs execution route counts from metrics JSONL window",
+    labelnames=["route"],
+    registry=REGISTRY,
+)
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -89,6 +114,21 @@ def track_active_job():
         yield
     finally:
         active_jobs.dec()
+
+
+def sync_demucs_execution_metrics(
+    summary: dict[str, object],
+    slo: dict[str, object],
+) -> None:
+    """Publish Demucs rollout observability gauges for Prometheus scraping."""
+    demucs_timeout_rate.set(float(summary.get("timeout_rate", 0.0)))
+    demucs_error_rate.set(float(summary.get("error_rate", 0.0)))
+    demucs_slo_healthy.set(1.0 if slo.get("healthy") else 0.0)
+
+    routes = summary.get("routes", {})
+    if isinstance(routes, dict):
+        for route_name, count in routes.items():
+            demucs_route_total.labels(route=str(route_name)).set(float(count))
 
 
 def get_metrics_text() -> bytes:

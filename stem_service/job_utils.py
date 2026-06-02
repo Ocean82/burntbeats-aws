@@ -19,6 +19,10 @@ from stem_service.config import (
     MIN_SAMPLE_RATE,
     MAX_SAMPLE_RATE,
     MAX_FILE_SIZE_MB,
+    DEMUCS_SLO_MIN_SAMPLES,
+    DEMUCS_SLO_MAX_TIMEOUT_RATE,
+    DEMUCS_SLO_MAX_ERROR_RATE,
+    DEMUCS_SLO_AUTO_ROLLBACK,
 )
 from stem_service.s3_upload import upload_job_stems_to_s3
 
@@ -276,6 +280,69 @@ def summarize_demucs_metrics(max_rows: int = 500) -> dict[str, Any]:
         "timeout_rate": round((timed_out / total), 4) if total else 0.0,
         "error_rate": round((failed / total), 4) if total else 0.0,
         "routes": routes,
+    }
+
+
+def evaluate_demucs_slo(metrics: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Evaluate rollout SLOs from recent metrics; recommend rollback when breached."""
+    summary = metrics if metrics is not None else summarize_demucs_metrics()
+    count = int(summary.get("count", 0))
+    timeout_rate = float(summary.get("timeout_rate", 0.0))
+    error_rate = float(summary.get("error_rate", 0.0))
+    routes = summary.get("routes", {})
+
+    if count < DEMUCS_SLO_MIN_SAMPLES:
+        return {
+            "status": "insufficient_data",
+            "healthy": True,
+            "disable_rpc_canary": False,
+            "breaches": [],
+            "thresholds": {
+                "min_samples": DEMUCS_SLO_MIN_SAMPLES,
+                "max_timeout_rate": DEMUCS_SLO_MAX_TIMEOUT_RATE,
+                "max_error_rate": DEMUCS_SLO_MAX_ERROR_RATE,
+            },
+            "sample_count": count,
+            "timeout_rate": timeout_rate,
+            "error_rate": error_rate,
+            "routes": routes,
+            "recommended_actions": [],
+        }
+
+    breaches: list[str] = []
+    if timeout_rate > DEMUCS_SLO_MAX_TIMEOUT_RATE:
+        breaches.append("timeout_rate")
+    if error_rate > DEMUCS_SLO_MAX_ERROR_RATE:
+        breaches.append("error_rate")
+
+    healthy = not breaches
+    recommended_actions: list[str] = []
+    disable_rpc_canary = False
+    if breaches:
+        recommended_actions.append(
+            "Set DEMUCS_EXECUTION_MODE=legacy or reduce DEMUCS_RPC_CANARY_PERCENT"
+        )
+        if DEMUCS_SLO_AUTO_ROLLBACK:
+            disable_rpc_canary = True
+            recommended_actions.append(
+                "SLO auto-rollback active: routing new jobs away from RPC canary"
+            )
+
+    return {
+        "status": "ok" if healthy else "breach",
+        "healthy": healthy,
+        "disable_rpc_canary": disable_rpc_canary,
+        "breaches": breaches,
+        "thresholds": {
+            "min_samples": DEMUCS_SLO_MIN_SAMPLES,
+            "max_timeout_rate": DEMUCS_SLO_MAX_TIMEOUT_RATE,
+            "max_error_rate": DEMUCS_SLO_MAX_ERROR_RATE,
+        },
+        "sample_count": count,
+        "timeout_rate": timeout_rate,
+        "error_rate": error_rate,
+        "routes": routes,
+        "recommended_actions": recommended_actions,
     }
 
 

@@ -94,6 +94,10 @@ from stem_service.config.device import (  # noqa: F401
     DEMUCS_POLICY_QUALITY_ONLY,
     DEMUCS_RPC_MAX_CONCURRENCY,
     DEMUCS_RPC_DISABLE_RSS_MB,
+    DEMUCS_SLO_MIN_SAMPLES,
+    DEMUCS_SLO_MAX_TIMEOUT_RATE,
+    DEMUCS_SLO_MAX_ERROR_RATE,
+    DEMUCS_SLO_AUTO_ROLLBACK,
 )
 
 from stem_service.config.demucs_bags import (  # noqa: F401

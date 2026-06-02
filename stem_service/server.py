@@ -61,6 +61,7 @@ from stem_service.job_utils import (
     safe_job_path,
     schedule_s3_upload,
     summarize_demucs_metrics,
+    evaluate_demucs_slo,
     validate_audio_file,
     write_progress,
 )
@@ -678,8 +679,11 @@ async def health() -> dict:
     mode_health = _supported_mode_health_snapshot()
     from stem_service.routing.model_bag import intent_routing_health
 
+    demucs_metrics = summarize_demucs_metrics()
+    demucs_slo = evaluate_demucs_slo(demucs_metrics)
+    service_ok = mode_health["all_ready"] and demucs_slo.get("healthy", True)
     payload: dict[str, object] = {
-        "status": "ok" if mode_health["all_ready"] else "degraded",
+        "status": "ok" if service_ok else "degraded",
         "runtime": get_stem_runtime_versions(),
         "four_stem_backend": FOUR_STEM_BACKEND,
         "supported_modes": mode_health["supported_modes"],
@@ -689,7 +693,8 @@ async def health() -> dict:
         },
         "demucs_execution": {
             "mode": DEMUCS_EXECUTION_MODE,
-            "metrics": summarize_demucs_metrics(),
+            "metrics": demucs_metrics,
+            "slo": demucs_slo,
         },
     }
     if os.environ.get("NODE_ENV", "development").lower() != "production":
@@ -702,9 +707,16 @@ async def metrics():
     """Prometheus-compatible metrics endpoint."""
     from starlette.responses import Response as StarletteResponse
 
-    from stem_service.metrics import get_metrics_text, set_queue_depth
+    from stem_service.metrics import (
+        get_metrics_text,
+        set_queue_depth,
+        sync_demucs_execution_metrics,
+    )
 
     set_queue_depth(len(get_queued_splits()))
+    demucs_metrics = summarize_demucs_metrics()
+    demucs_slo = evaluate_demucs_slo(demucs_metrics)
+    sync_demucs_execution_metrics(demucs_metrics, demucs_slo)
     return StarletteResponse(
         content=get_metrics_text(),
         media_type="text/plain; version=0.0.4; charset=utf-8",
