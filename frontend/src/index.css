@@ -401,6 +401,36 @@
     white-space: normal;
   }
 
+  /* Shared long-copy behavior: readable wrapping without mid-word breaks */
+  .text-readable {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-inline-size: 68ch;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
+    text-wrap: pretty;
+  }
+
+  /* Wrapping-only variant: safe for spans/inline-flex containers */
+  .text-wrap-readable {
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: none;
+    text-wrap: pretty;
+  }
+
+  .text-wrap-readable-tight {
+    max-inline-size: 56ch;
+  }
+
+  .text-readable-tight {
+    max-inline-size: 56ch;
+  }
+
   .copy-block-sm {
     display: block;
     width: 100%;

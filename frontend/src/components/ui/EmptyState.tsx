@@ -15,7 +15,7 @@ export function EmptyState({ icon, title, description, action, className }: Empt
     <div className={cn("ui-empty-state", className)}>
       {icon ? <div className="text-muted-foreground opacity-80">{icon}</div> : null}
       <p className="text-sm font-medium text-foreground">{title}</p>
-      {description ? <p className="max-w-sm text-xs text-muted-foreground">{description}</p> : null}
+      {description ? <p className="text-readable max-w-sm text-xs text-muted-foreground">{description}</p> : null}
       {action}
     </div>
   );

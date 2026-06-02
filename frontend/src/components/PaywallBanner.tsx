@@ -46,7 +46,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
   if (variant === "teaser") {
     return (
       <div className="flex flex-col items-center gap-sm py-xs sm:flex-row sm:justify-between">
-        <p className="text-sm text-secondary-foreground">
+        <p className="text-readable text-sm text-secondary-foreground">
           <span className="font-semibold text-secondary-foreground">Subscribe to unlock full features.</span>{" "}
           Plans start at $5/mo.
         </p>
@@ -98,7 +98,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
     <div className="flex flex-col gap-lg">
       <div className="flex flex-col gap-2xs text-center">
         <p className="text-sm font-semibold text-secondary-foreground">Choose a plan to get started</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-readable text-sm text-muted-foreground">
           Continue to secure Stripe checkout or start with one-time credits.
         </p>
       </div>
@@ -173,7 +173,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
                   </span>
                 )}
               </span>
-              <span className="break-words text-sm text-muted-foreground">{plan.details.slice(0, 3).join(" · ")}</span>
+              <span className="text-readable text-sm text-muted-foreground">{plan.details.slice(0, 3).join(" · ")}</span>
             </div>
             <div className="flex items-center gap-xs shrink-0 pl-md">
               <span className="text-sm font-semibold text-primary-300">{plan.priceLabel}</span>
@@ -183,7 +183,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
         ))}
       </div>
 
-      <p className="text-center text-xs text-muted-foreground">
+      <p className="text-readable text-center text-xs text-muted-foreground">
         Not ready for a full plan? Start with Top-Up now and upgrade later.
       </p>
     </div>

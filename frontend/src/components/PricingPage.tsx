@@ -117,7 +117,7 @@ export function PricingPage({
             Pricing &amp; plans
           </li>
         </ol>
-        <p className="text-[11px] leading-snug text-muted-foreground sm:max-w-sm sm:text-right">
+        <p className="text-readable text-[11px] leading-snug text-muted-foreground sm:max-w-sm sm:text-right">
           Same as <span className="text-muted-foreground">Back to editor</span> in the
           header — no need for the browser Back button.
         </p>
@@ -128,10 +128,10 @@ export function PricingPage({
         <div className="flex flex-col gap-lg lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-sm">
             <p className="eyebrow text-primary-200/90">Pricing & plans</p>
-            <h1 className="break-words text-2xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
+            <h1 className="text-wrap-readable text-2xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
               Pick your plan and start splitting in minutes.
             </h1>
-            <p className="break-words text-base leading-7 text-secondary-foreground">
+            <p className="text-readable text-base leading-7 text-secondary-foreground">
               Go monthly for consistent tokens, or start with a{" "}
               <span className="font-semibold text-primary-200">Top-Up Pack</span>{" "}
               to try Burnt Beats with no subscription.
@@ -199,7 +199,7 @@ export function PricingPage({
           <p className="eyebrow mb-1 text-xs text-primary-200/90">
             Plans & Packs
           </p>
-          <p className="mb-md text-sm text-secondary-foreground">
+          <p className="text-readable mb-md text-sm text-secondary-foreground">
             Compare every feature and limit across our plans below.
           </p>
           <div className="mx-auto flex justify-center">
@@ -224,7 +224,7 @@ export function PricingPage({
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             What happens if I run out of tokens?
           </p>
-          <p className="text-pretty">
+          <p className="text-readable">
             You can either top up with a one-time credit pack or upgrade to a
             higher plan. We&apos;ll never auto-charge you for overages.
           </p>
@@ -233,7 +233,7 @@ export function PricingPage({
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             Can I switch plans later?
           </p>
-          <p className="text-pretty">
+          <p className="text-readable">
             Yes. Upgrade or downgrade at any time — changes take effect on your
             next billing cycle and you keep access to any remaining tokens.
           </p>
@@ -242,7 +242,7 @@ export function PricingPage({
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             Is there a long-term contract?
           </p>
-          <p className="text-pretty">
+          <p className="text-readable">
             No contracts. All plans are month-to-month, and you can cancel
             whenever you like from your billing portal.
           </p>
@@ -251,7 +251,7 @@ export function PricingPage({
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.12em] text-secondary-foreground sm:tracking-[0.16em]">
             Do you offer refunds?
           </p>
-          <p className="text-pretty">
+          <p className="text-readable">
             If anything goes wrong with billing, reach out and we&apos;ll make
             it right. If you&apos;re unsure, start small with a Top-Up Pack
             first.

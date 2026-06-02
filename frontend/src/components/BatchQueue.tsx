@@ -119,7 +119,7 @@ export function BatchQueue({
                         {formatFileSize(item.fileSize)}
                         {item.status === "processing" && ` • ${item.progress}%`}
                         {item.error && (
-                          <span className="break-words text-destructive-400"> • {item.error}</span>
+                          <span className="text-readable text-destructive-400"> • {item.error}</span>
                         )}
                       </p>
                     </div>

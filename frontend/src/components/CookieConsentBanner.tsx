@@ -40,7 +40,7 @@ export function CookieConsentBanner() {
           <div className="flex-1">
             <p
               id="cookie-consent-description"
-              className="text-sm leading-relaxed text-secondary-foreground"
+              className="text-readable text-sm leading-relaxed text-secondary-foreground"
             >
               We use cookies to analyze site usage and improve your experience.
               Essential cookies for authentication are always active.{" "}

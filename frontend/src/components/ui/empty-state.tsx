@@ -52,7 +52,7 @@ export function EmptyState({
       <div className="copy-block mx-auto flex w-full max-w-md flex-col gap-xs">
         <h3 className="text-base font-semibold text-foreground">{title}</h3>
         {description && (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-readable text-sm text-muted-foreground">{description}</p>
         )}
       </div>
 

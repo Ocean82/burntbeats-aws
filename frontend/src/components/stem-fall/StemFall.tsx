@@ -160,7 +160,7 @@ export default function WaitingGame() {
     <div className="flex flex-col items-center gap-sm select-none py-xs" style={{ fontFamily: "'Press Start 2P', 'Courier New', monospace" }}>
 
       {/* Idle message */}
-      <div className="h-4 text-center text-helper text-muted-foreground text-pretty px-xs">
+      <div className="text-readable h-4 text-center text-helper text-muted-foreground px-xs">
         {idleMsg}
       </div>
 

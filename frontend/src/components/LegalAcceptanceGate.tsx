@@ -93,7 +93,7 @@ function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
       <div className="relative mx-auto flex w-full max-w-xl flex-col gap-lg px-md py-10 sm:px-lg sm:py-14">
         <div className="rounded-3xl border border-border bg-muted p-lg shadow-elevation-xl backdrop-blur sm:p-lg">
           <h1 className="text-2xl font-semibold leading-tight sm:text-4xl">Before you continue</h1>
-          <p className="mt-xs break-words text-sm leading-6 text-secondary-foreground">
+          <p className="text-readable mt-xs text-sm leading-6 text-secondary-foreground">
             Please review and accept the{" "}
             <a className="text-primary-300 hover:text-primary-200 underline underline-offset-4" href="/terms-of-service" target="_blank" rel="noreferrer">
               Terms of Service
@@ -113,7 +113,7 @@ function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
               onChange={(e) => setChecked(e.target.checked)}
               disabled={submitting}
             />
-            <span className="break-words text-sm text-secondary-foreground">
+            <span className="text-readable text-sm text-secondary-foreground">
               I agree to the Terms of Service and Privacy Policy.
             </span>
           </label>

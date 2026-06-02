@@ -33,7 +33,7 @@ function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCard
       <div className="flex items-start justify-between gap-md">
         <div className="min-w-0 flex-1">
           <p className="text-xl font-semibold text-foreground">{plan.name}</p>
-          <p className="mt-xs text-sm text-secondary-foreground">{plan.description}</p>
+          <p className="text-readable mt-xs text-sm text-secondary-foreground">{plan.description}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-xs">
           {isCurrentPlan ? (
@@ -74,7 +74,7 @@ function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCard
         {plan.details.map((detail) => (
           <li key={detail} className="flex gap-sm">
             <span className="mt-1 inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full bg-primary-400/80" />
-            <span>{detail}</span>
+            <span className="text-readable">{detail}</span>
           </li>
         ))}
       </ul>
@@ -132,7 +132,7 @@ export function PricingTablePreview({
         <p className="font-medium text-foreground">
           Secure checkout powered by Stripe.
         </p>
-        <p className="mt-xs">
+        <p className="text-readable mt-xs">
           All plan prices are secured and managed through Stripe. Create an
           account or sign in to select a plan and complete your purchase.
         </p>

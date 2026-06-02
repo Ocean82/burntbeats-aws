@@ -50,8 +50,8 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                     <Keyboard className="h-5 w-5 text-primary-400" />
                   </div>
                   <div className="min-w-0">
-                    <h2 id="help-modal-title" className="break-words text-lg font-semibold text-foreground">Keyboard Shortcuts</h2>
-                    <p className="break-words text-xs text-muted-foreground">Faster editing from the keyboard</p>
+                    <h2 id="help-modal-title" className="text-readable text-lg font-semibold text-foreground">Keyboard Shortcuts</h2>
+                    <p className="text-readable text-xs text-muted-foreground">Faster editing from the keyboard</p>
                   </div>
                 </div>
                 <button
@@ -70,8 +70,8 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                     key={shortcut.action}
                     className="flex items-start justify-between gap-sm rounded-xl bg-muted/[0.03] px-md py-sm transition hover:bg-muted/[0.06]"
                   >
-                    <span className="min-w-0 break-words text-sm text-secondary-foreground">{shortcut.description}</span>
-                    <kbd className="max-w-[45%] shrink-0 break-all rounded-lg border border-border bg-muted px-sm py-1 font-mono text-xs text-primary-200">
+                    <span className="text-readable min-w-0 text-sm text-secondary-foreground">{shortcut.description}</span>
+                    <kbd className="max-w-[45%] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap rounded-lg border border-border bg-muted px-sm py-1 font-mono text-xs text-primary-200">
                       {shortcut.label}
                     </kbd>
                   </div>
@@ -96,7 +96,7 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
 
               {/* Footer */}
               <div className="mt-md text-center">
-                <p className="break-words text-xs text-muted-foreground">
+                <p className="text-readable text-xs text-muted-foreground">
                   Press <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">?</kbd> anytime to show this help
                 </p>
               </div>

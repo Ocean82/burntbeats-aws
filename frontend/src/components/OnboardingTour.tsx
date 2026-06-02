@@ -222,12 +222,12 @@ export function OnboardingTour({
                     <h2 id="onboarding-title" className="mb-sm text-2xl font-bold text-foreground">{step.title}</h2>
 
                     {/* Description */}
-                    <p className="mb-md text-sm leading-relaxed text-secondary-foreground">{step.description}</p>
+                    <p className="text-readable text-readable-tight mb-md text-sm leading-relaxed text-secondary-foreground">{step.description}</p>
 
                     {/* Tip */}
-                    <div className="mx-auto inline-flex items-center gap-xs rounded-full bg-primary-500/10 px-md py-xs text-xs text-primary-200">
+                    <div className="mx-auto inline-flex max-w-full items-center gap-xs rounded-full bg-primary-500/10 px-md py-xs text-xs text-primary-200">
                       <Sparkles className="h-3 w-3" />
-                      {step.tip}
+                      <span className="text-readable text-readable-tight text-center">{step.tip}</span>
                     </div>
                   </motion.div>
                 </AnimatePresence>

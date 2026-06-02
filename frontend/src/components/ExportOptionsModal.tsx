@@ -191,11 +191,11 @@ export function ExportOptionsModal({
                   <div className="min-w-0">
                     <h2
                       id="export-options-title"
-                      className="break-words text-lg font-semibold text-foreground"
+                      className="text-readable text-lg font-semibold text-foreground"
                     >
                       Export Options
                     </h2>
-                    <p className="break-words text-xs text-muted-foreground">
+                    <p className="text-readable text-xs text-muted-foreground">
                       Configure your export settings
                     </p>
                   </div>
@@ -277,10 +277,10 @@ export function ExportOptionsModal({
                         <div className="flex items-center gap-sm">
                           <Icon className="h-4 w-4" />
                           <div className="min-w-0 text-left">
-                            <span className="block break-words font-medium">
+                            <span className="text-readable block font-medium">
                               {target.label}
                             </span>
-                            <span className="block break-words text-helper text-muted-foreground">
+                            <span className="text-readable block text-helper text-muted-foreground">
                               {target.description}
                             </span>
                           </div>
@@ -360,10 +360,10 @@ export function ExportOptionsModal({
               {/* Normalize Toggle */}
               <div className="mb-lg flex items-center justify-between gap-sm rounded-xl border border-border bg-muted px-md py-sm">
                 <div className="min-w-0">
-                  <span className="block break-words text-sm font-medium text-foreground">
+                  <span className="text-readable block text-sm font-medium text-foreground">
                     Normalize Audio
                   </span>
-                  <span className="block break-words text-xs text-muted-foreground">
+                  <span className="text-readable block text-xs text-muted-foreground">
                     Boost quiet mixes to a consistent loudness
                   </span>
                 </div>

@@ -324,7 +324,7 @@ export function MyStemsPage({
             <Music className="h-8 w-8 text-primary-400" />
           </div>
           <h2 className="mt-md text-lg font-semibold text-foreground">No stems yet</h2>
-          <p className="mt-xs text-pretty text-sm text-muted-foreground">
+          <p className="text-readable text-readable-tight mt-xs text-sm text-muted-foreground">
             Split your first track! Your separated stems will appear here for easy re-download.
           </p>
           <button

@@ -184,8 +184,8 @@ export function MixerPresetsModal({
                     <Sliders className="h-5 w-5 text-primary-400" />
                   </div>
                   <div className="min-w-0">
-                    <h2 id="mixer-presets-title" className="break-words text-lg font-semibold text-foreground">Mixer Presets</h2>
-                    <p className="break-words text-xs text-muted-foreground">Save and load your mix settings</p>
+                    <h2 id="mixer-presets-title" className="text-readable text-lg font-semibold text-foreground">Mixer Presets</h2>
+                    <p className="text-readable text-xs text-muted-foreground">Save and load your mix settings</p>
                   </div>
                 </div>
                 <button
@@ -249,7 +249,7 @@ export function MixerPresetsModal({
                   >
                     <div className="min-w-0">
                       <span className="block truncate text-sm font-medium text-foreground">{preset.name}</span>
-                      <span className="block break-words text-xs text-muted-foreground">
+                      <span className="text-readable block text-xs text-muted-foreground">
                         {preset.id.startsWith("custom-") ? "Custom" : "Default"} preset
                       </span>
                     </div>

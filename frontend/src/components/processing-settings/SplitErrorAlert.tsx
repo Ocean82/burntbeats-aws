@@ -24,7 +24,7 @@ export function SplitErrorAlert({
         <div className="flex items-start justify-between gap-sm">
           <div>
             <p className="text-sm font-medium text-destructive-200">Couldn&apos;t split this track</p>
-            <p className="mt-0.5 break-words text-xs text-destructive-300/90">
+            <p className="text-readable mt-0.5 text-xs text-destructive-300/90">
               {splitError}
             </p>
           </div>

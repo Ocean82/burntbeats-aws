@@ -111,7 +111,7 @@ function renderMarkdown(md: string): string {
     }
 
     // Paragraph
-    out.push(`<p class="text-secondary-foreground leading-7">${inlineFormat(line)}</p>`);
+    out.push(`<p class="text-readable text-secondary-foreground leading-7">${inlineFormat(line)}</p>`);
   }
 
   closeList();

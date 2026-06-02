@@ -9,7 +9,7 @@ interface BillingRulesProps {
 export function BillingRules({ className = "" }: BillingRulesProps) {
   return (
     <div
-      className={`rounded-xl border border-border bg-muted px-sm py-xs text-sm text-secondary-foreground ${className}`.trim()}
+      className={`text-readable rounded-xl border border-border bg-muted px-sm py-xs text-sm text-secondary-foreground ${className}`.trim()}
     >
       <span className="font-semibold text-primary-200">
         1 token = 1 minute.
