@@ -44,7 +44,7 @@ import { useToast } from "../store/toastStore";
 // Types
 // ---------------------------------------------------------------------------
 
-interface MyStemsPageProps {
+export interface MyStemsPageProps {
   onClose: () => void;
   onOpenInMixer?: (job: import("../api/stemHistory").StemHistoryJob) => void;
   onOpenInMidi?: (job: import("../api/stemHistory").StemHistoryJob) => void;

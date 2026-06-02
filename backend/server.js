@@ -37,6 +37,31 @@ import { masterRouter } from "./routes/master/index.js";
 import { previewRouter } from "./routes/preview/index.js";
 import { catalogRouter } from "./routes/catalog/index.js";
 
+/**
+ * @param {unknown} value
+ * @returns {string}
+ */
+function safeErrorMessage(value) {
+  if (value instanceof Error) return value.message;
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object" && "message" in value)
+    return String(value.message);
+  return "Unknown error";
+}
+
+/**
+ * @param {string} context
+ * @param {unknown} error
+ * @param {Record<string, unknown>} [meta]
+ */
+function logError(context, error, meta = {}) {
+  const payload = { message: safeErrorMessage(error), ...meta };
+  if (process.env.NODE_ENV !== "production" && error instanceof Error) {
+    payload.stack = error.stack;
+  }
+  console.error(context, payload);
+}
+
 // ── Startup env validation ──────────────────────────────────────────────────
 const REQUIRED_ENV_WARNINGS = [];
 if (!process.env.STRIPE_SECRET_KEY)
@@ -165,7 +190,12 @@ app.use(sentryErrorHandler());
 // Must be 4-param to be recognised by Express as an error handler.
 // Catches any error passed via next(err) or thrown synchronously in a route.
 app.use((err, req, res, _next) => {
-  console.error("[unhandled error]", err?.message || err);
+  logError("[unhandled error]", err, {
+    method: req.method,
+    path: req.path,
+    correlationId: /** @type {any} */ (req).correlationId || "-",
+    status: err?.status || 500,
+  });
   if (res.headersSent) return;
   res.status(err?.status || 500).json({ error: "Internal server error" });
 });
@@ -207,7 +237,7 @@ async function main() {
       console.log("Job token authentication: ENABLED");
   });
   server.on("error", (err) => {
-    console.error("Server error:", err);
+    logError("[server error]", err);
     process.exit(1);
   });
 }
@@ -217,7 +247,7 @@ async function gracefulShutdown(signal) {
   try {
     await closePool();
   } catch (e) {
-    console.error("[shutdown] db pool close error:", e);
+    logError("[shutdown] db pool close error", e);
   }
   if (server) {
     server.close(() => {
@@ -239,17 +269,17 @@ if (shouldAutoStartServer) {
 
   // Catch unhandled promise rejections (e.g. Redis reconnect, background timers).
   process.on("unhandledRejection", (reason) => {
-    console.error("[unhandledRejection]", reason);
+    logError("[unhandledRejection]", reason);
   });
 
   // Catch synchronous exceptions that escape all handlers.
   process.on("uncaughtException", (err) => {
-    console.error("[uncaughtException]", err);
+    logError("[uncaughtException]", err);
     process.exit(1);
   });
 
   main().catch((e) => {
-    console.error(e);
+    logError("[startup] main failed", e);
     process.exit(1);
   });
 }

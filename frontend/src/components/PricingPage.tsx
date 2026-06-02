@@ -14,7 +14,7 @@ interface UsageContext {
   splitsThisSession?: number;
 }
 
-interface PricingPageProps {
+export interface PricingPageProps {
   subscription: UseSubscriptionResult;
   onClose: () => void;
   usageContext?: UsageContext;

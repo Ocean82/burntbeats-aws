@@ -4,8 +4,7 @@
  * GET /cleanup — 405 (cleanup is destructive, POST only).
  */
 import { Router } from "express";
-import { existsSync, readdirSync, rmSync, statSync } from "fs";
-import { unlink as unlinkPromise } from "fs/promises";
+import { readdir, rm, stat, unlink as unlinkPromise } from "fs/promises";
 import path from "path";
 
 import { authMiddleware } from "../../middleware/auth.js";
@@ -14,6 +13,27 @@ import { UUID_REGEX } from "../../helpers/validation.js";
 import { STEM_OUTPUT_DIR, STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS, UPLOAD_TMP_DIR } from "./shared.js";
 
 export const cleanupRouter = Router();
+const CLEANUP_CONCURRENCY = 8;
+
+/**
+ * @template T
+ * @param {T[]} values
+ * @param {number} concurrency
+ * @param {(value: T) => Promise<void>} worker
+ */
+async function forEachWithConcurrency(values, concurrency, worker) {
+  if (values.length === 0) return;
+  const maxConcurrency = Math.max(1, Math.min(concurrency, values.length));
+  let cursor = 0;
+  async function run() {
+    while (cursor < values.length) {
+      const current = values[cursor];
+      cursor += 1;
+      await worker(current);
+    }
+  }
+  await Promise.all(Array.from({ length: maxConcurrency }, () => run()));
+}
 
 /**
  * Shared cleanup implementation for destructive cleanup endpoints.
@@ -34,44 +54,67 @@ async function runStemsCleanup(req, res) {
   const cutoff = Date.now() - maxAgeHours * 60 * 60 * 1000;
   let deleted = 0;
   try {
-    const entries = readdirSync(STEM_OUTPUT_DIR, { withFileTypes: true });
-    for (const ent of entries) {
-      if (!ent.isDirectory()) continue;
-      if (!UUID_REGEX.test(ent.name)) continue;
-      const dirPath = path.join(STEM_OUTPUT_DIR, ent.name);
-      const stat = statSync(dirPath);
-      if (stat.mtime.getTime() < cutoff) {
-        rmSync(dirPath, { recursive: true });
-        deleted++;
-      }
-    }
+    const entries = await readdir(STEM_OUTPUT_DIR, { withFileTypes: true });
+    const candidateDirs = entries.filter(
+      (ent) => ent.isDirectory() && UUID_REGEX.test(ent.name),
+    );
+    await forEachWithConcurrency(
+      candidateDirs,
+      CLEANUP_CONCURRENCY,
+      async (ent) => {
+        const dirPath = path.join(STEM_OUTPUT_DIR, ent.name);
+        const stats = await stat(dirPath);
+        if (stats.mtime.getTime() >= cutoff) return;
+        await rm(dirPath, { recursive: true, force: true });
+        deleted += 1;
+      },
+    );
 
-    if (existsSync(UPLOAD_TMP_DIR)) {
-      const uploadEntries = readdirSync(UPLOAD_TMP_DIR, {
+    try {
+      const uploadEntries = await readdir(UPLOAD_TMP_DIR, {
         withFileTypes: true,
       });
-      for (const ent of uploadEntries) {
-        if (!ent.isFile() || !ent.name.startsWith("upload-")) continue;
-        const filePath = path.join(UPLOAD_TMP_DIR, ent.name);
-        const stat = statSync(filePath);
-        if (stat.mtime.getTime() < cutoff) {
-          try {
-            await unlinkPromise(filePath);
-            deleted++;
-          } catch (err) {
-            console.error(
-              "[cleanup] Failed to delete orphaned temp file:",
-              err.message,
-            );
-          }
-        }
+      const uploadCandidates = uploadEntries.filter(
+        (ent) => ent.isFile() && ent.name.startsWith("upload-"),
+      );
+      await forEachWithConcurrency(
+        uploadCandidates,
+        CLEANUP_CONCURRENCY,
+        async (ent) => {
+          const filePath = path.join(UPLOAD_TMP_DIR, ent.name);
+          const stats = await stat(filePath);
+          if (stats.mtime.getTime() >= cutoff) return;
+          await unlinkPromise(filePath);
+          deleted += 1;
+        },
+      );
+    } catch (uploadErr) {
+      if (
+        !(
+          uploadErr &&
+          typeof uploadErr === "object" &&
+          "code" in uploadErr &&
+          uploadErr.code === "ENOENT"
+        )
+      ) {
+        const message =
+          uploadErr &&
+          typeof uploadErr === "object" &&
+          "message" in uploadErr
+            ? String(uploadErr.message)
+            : "Unknown upload cleanup error";
+        console.error("[cleanup] upload temp cleanup failed", { message });
       }
     }
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "ENOENT") {
       return res.json({ deleted: 0, message: "Output dir does not exist" });
     }
-    console.error("[cleanup]", e);
+    const message =
+      e && typeof e === "object" && "message" in e
+        ? String(e.message)
+        : "Unknown cleanup error";
+    console.error("[cleanup] failed", { message });
     return res.status(500).json({ error: "Cleanup failed" });
   }
   return res.json({ deleted, maxAgeHours });

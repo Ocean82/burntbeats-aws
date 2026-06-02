@@ -8,15 +8,15 @@ import {
   useState,
   type SetStateAction,
 } from "react";
-import { Grid, LayoutList, Play, Repeat, Square, ZoomIn, ZoomOut } from "lucide-react";
 
 import type { StemDefinition, TrimState } from "../types";
 import type { BeatGridMetadata } from "../api";
 import { cn } from "../utils/cn";
 import { useTimelineViewport } from "../hooks/useTimelineViewport";
 import { usePinchZoom } from "../hooks/usePinchZoom";
+import { useMultiStemEditorUiState } from "../hooks/editor/useMultiStemEditorUiState";
+import { useTimelineMetrics } from "../hooks/editor/useTimelineMetrics";
 import { defaultStemState, type StemEditorState } from "../stem-editor-state";
-import { computeBeatGridPcts, shouldRenderBeatGrid } from "../utils/beatGrid";
 import { TimelineRuler } from "./multi-stem-editor/timeline-ruler.component";
 import { WaveformTimeline } from "./multi-stem-editor/waveform-timeline.component";
 import { StemTabs } from "./multi-stem-editor/stem-tabs.component";
@@ -24,16 +24,18 @@ import { StemControls } from "./multi-stem-editor/stem-controls.component";
 import { MixerConsole } from "./multi-stem-editor/mixer-console.component";
 import { MixerStrips } from "./multi-stem-editor/mixer-strips.component";
 import {
-  TimelineScrollControl,
   scrollPctToCenterPlayhead,
 } from "./multi-stem-editor/TimelineScrollControl";
+import { EditorTransportBar } from "./multi-stem-editor/editor-transport-bar.component";
 import {
   installTimelinePerformanceDebugHooks,
   isTimelinePerformanceEnabled,
   recordTimelinePerformanceSample,
 } from "../utils/timelinePerformance";
 import type { SeekPhase } from "../types/playbackSeek";
-import { StemProcessingPanel, StemProcessingToolbar } from "./multi-stem-editor/stem-processing-panel.component";
+import { StemProcessingPanel } from "./multi-stem-editor/stem-processing-panel.component";
+
+const MIXER_STRIPS_KEY = "bb-prefer-mixer-strips";
 
 export interface MultiStemEditorProps {
   stems: StemDefinition[];
@@ -71,12 +73,6 @@ export interface MultiStemEditorProps {
   onResetSingleStem?: (stemId: string) => void;
 }
 
-const MIXER_STRIPS_KEY = "bb-prefer-mixer-strips";
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
@@ -107,19 +103,20 @@ export function MultiStemEditor({
   onLoopToggle,
   onResetSingleStem,
 }: MultiStemEditorProps) {
-  const [activePanel, setActivePanel] = useState<
-    "pitch" | "eq" | "amplitude" | "time" | "fx" | null
-  >(null);
-  const [mixerConsoleOpen, setMixerConsoleOpen] = useState(false);
-  const [showBeatGrid, setShowBeatGrid] = useState(false);
-  const [userStripsPref, setUserStripsPref] = useState<boolean | null>(() => {
-    if (typeof window === "undefined") return null;
-    const stored = localStorage.getItem(MIXER_STRIPS_KEY);
-    if (stored === null) return null;
-    return stored === "1";
+  const {
+    activePanel,
+    setActivePanel,
+    mixerConsoleOpen,
+    setMixerConsoleOpen,
+    showBeatGrid,
+    setShowBeatGrid,
+    userStripsPref,
+    showMixerStrips,
+    toggleMixerStrips,
+  } = useMultiStemEditorUiState({
+    stemCount: stems.length,
+    playbackReady,
   });
-  const showMixerStrips =
-    userStripsPref ?? (stems.length > 0 && playbackReady);
   const [internalActiveStemId, setInternalActiveStemId] = useState<string | null>(
     stems[0]?.id ?? null,
   );
@@ -178,9 +175,8 @@ export function MultiStemEditor({
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset panel when playback stops
     if (!playbackReady) setActivePanel(null);
-  }, [playbackReady]);
+  }, [playbackReady, setActivePanel]);
 
   // Keep active stem valid when stems change
   useEffect(() => {
@@ -207,38 +203,17 @@ export function MultiStemEditor({
     : defaultStemState();
   const activeDuration = activeStem ? (durations[activeStem.id] ?? 0) : 0;
 
-  const maxDuration = useMemo(
-    () => Math.max(...stems.map((s) => durations[s.id] ?? 0), 0),
-    [stems, durations],
-  );
-
-  const ticks = useMemo(() => {
-    const count = 8;
-    return Array.from({ length: count + 1 }, (_, i) => {
-      const pct = i / count;
-      const visStart = scrollPct / 100;
-      const visEnd = Math.min(1, visStart + 1 / zoom);
-      const timePct = visStart + pct * (visEnd - visStart);
-      return { pct: pct * 100, time: timePct * maxDuration };
-    });
-  }, [scrollPct, zoom, maxDuration]);
-
-  const beatGridPcts = useMemo(() => {
-    if (!showBeatGrid || !shouldRenderBeatGrid(beatGrid)) return [];
-    return computeBeatGridPcts({
-      beatGrid: beatGrid as BeatGridMetadata,
-      maxDuration,
-      scrollPct,
-      zoom,
-    });
-  }, [showBeatGrid, beatGrid, maxDuration, scrollPct, zoom]);
-
-  const playheadVisiblePct =
-    clamp(
-      (playheadPct / 100 - visibleStartGlobal) / visibleRangeGlobal,
-      0,
-      1,
-    ) * 100;
+  const { ticks, beatGridPcts, playheadVisiblePct } = useTimelineMetrics({
+    stems,
+    durations,
+    scrollPct,
+    zoom,
+    showBeatGrid,
+    beatGrid,
+    playheadPct,
+    visibleStart: visibleStartGlobal,
+    visibleRange: visibleRangeGlobal,
+  });
 
   const isAnalyserOutputActive =
     isPlaying || playingStemId !== null;
@@ -271,12 +246,6 @@ export function MultiStemEditor({
     localStorage.setItem(MIXER_STRIPS_KEY, "1");
   }, [userStripsPref, stems.length, playbackReady]);
 
-  const toggleMixerStrips = useCallback(() => {
-    const next = !showMixerStrips;
-    localStorage.setItem(MIXER_STRIPS_KEY, next ? "1" : "0");
-    setUserStripsPref(next);
-  }, [showMixerStrips]);
-
   const centerPlayhead = useCallback(() => {
     setScrollPct(scrollPctToCenterPlayhead(playheadPct, zoom, maxScrollPct));
   }, [playheadPct, zoom, maxScrollPct, setScrollPct]);
@@ -285,145 +254,30 @@ export function MultiStemEditor({
 
   return (
     <div className="flex flex-col gap-md rounded-2xl border border-border bg-muted p-md">
-      <div className="flex items-center gap-xs flex-wrap">
-        <button
-          type="button"
-          onClick={onPlayPause}
-          disabled={!playbackReady}
-          aria-label={isPlaying ? "Stop mix" : "Play mix"}
-          className={cn(
-            "flex items-center gap-xs rounded-xl border px-md py-xs text-sm font-medium transition",
-            isPlaying
-              ? "border-primary-400/50 bg-primary-500/20 text-primary-100"
-              : "border-border bg-muted text-secondary-foreground hover:bg-muted",
-            !playbackReady && "opacity-40",
-          )}
-        >
-          {isPlaying ? <Square /> : <Play />}
-          {isPlaying ? "Stop" : "Play mix"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onLoopToggle?.(!loopEnabled)}
-          disabled={!playbackReady}
-          aria-label={loopEnabled ? "Disable loop playback" : "Enable loop playback"}
-          aria-pressed={loopEnabled}
-          className={cn(
-            "flex items-center gap-xs rounded-xl border px-sm py-xs text-sm font-medium transition",
-            loopEnabled
-              ? "border-primary-400/50 bg-primary-500/20 text-primary-100"
-              : "border-border bg-muted text-muted-foreground hover:text-foreground hover:bg-muted",
-            !playbackReady && "opacity-40",
-          )}
-        >
-          <Repeat className="h-4 w-4" />
-          Loop
-        </button>
-
-        <div className="flex items-center gap-2xs rounded-xl border border-border bg-muted">
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.max(1, z / 1.5))}
-            disabled={zoom <= 1}
-            aria-label="Zoom out"
-            className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
-          >
-            <ZoomOut className="h-4 w-4" />
-          </button>
-          <span className="px-1 text-xs text-muted-foreground">{Math.round(zoom * 100)}%</span>
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.min(8, z * 1.5))}
-            disabled={zoom >= 8}
-            aria-label="Zoom in"
-            className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 transition"
-          >
-            <ZoomIn className="h-4 w-4" />
-          </button>
-        </div>
-
-        {shouldRenderBeatGrid(beatGrid) && (
-          <>
-            <button
-              type="button"
-              onClick={() => setShowBeatGrid((v) => !v)}
-              aria-label="Toggle beat grid"
-              className={cn(
-                "flex items-center gap-xs rounded-xl border px-sm py-1.5 text-xs transition",
-                showBeatGrid
-                  ? "border-primary-400/40 bg-primary-500/15 text-primary-100"
-                  : "border-border bg-muted text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Grid className="h-3.5 w-3.5" />
-              Beat Grid
-            </button>
-            <span
-              className="rounded-lg border border-border bg-muted px-xs py-1 font-mono text-meta tabular-nums text-muted-foreground"
-              title={
-                beatGrid && beatGrid.confidence < 0.7
-                  ? `BPM confidence ${Math.round(beatGrid.confidence * 100)}%`
-                  : undefined
-              }
-            >
-              ♩ {Math.round(beatGrid!.bpm)} BPM
-              {beatGrid && beatGrid.confidence < 0.7 && (
-                <span className="ml-1 text-muted-foreground">~</span>
-              )}
-            </span>
-          </>
-        )}
-
-        <button
-          type="button"
-          onClick={toggleMixerStrips}
-          aria-label="Toggle mixer strips view"
-          className={cn(
-            "flex items-center gap-xs rounded-xl border px-sm py-1.5 text-xs transition",
-            showMixerStrips
-              ? "border-primary-400/40 bg-primary-500/15 text-primary-100"
-              : "border-border bg-muted text-muted-foreground hover:text-foreground",
-            playbackReady && !showMixerStrips && "animate-pulse",
-          )}
-        >
-          <LayoutList className="h-3.5 w-3.5" />
-          Mixer
-        </button>
-
-        {zoom > 1 && (
-          <TimelineScrollControl
-            scrollPct={scrollPct}
-            maxScrollPct={maxScrollPct}
-            zoom={zoom}
-            playheadPct={playheadPct}
-            onScrollChange={setScrollPct}
-            onCenterPlayhead={centerPlayhead}
-          />
-        )}
-
-        <StemProcessingToolbar
-          activePanel={activePanel}
-          playbackReady={playbackReady}
-          onPanelChange={(id) => setActivePanel(id)}
-        />
-
-        {!import.meta.env.PROD && (
-          <button
-            type="button"
-            onClick={() => setMixerConsoleOpen((open) => !open)}
-            aria-controls="mixer-console-panel"
-            className={cn(
-              "ml-auto flex items-center gap-xs rounded-xl border px-sm py-1.5 text-xs transition",
-              mixerConsoleOpen
-                ? "border-primary-400/40 bg-primary-500/15 text-primary-100"
-                : "border-border bg-muted text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {mixerConsoleOpen ? "Hide Console" : "Show Console"}
-          </button>
-        )}
-      </div>
+      <EditorTransportBar
+        isPlaying={isPlaying}
+        playbackReady={playbackReady}
+        loopEnabled={loopEnabled}
+        onLoopToggle={onLoopToggle}
+        zoom={zoom}
+        onZoomIn={() => setZoom((z) => Math.min(8, z * 1.5))}
+        onZoomOut={() => setZoom((z) => Math.max(1, z / 1.5))}
+        showBeatGrid={showBeatGrid}
+        onToggleBeatGrid={() => setShowBeatGrid((v) => !v)}
+        beatGrid={beatGrid}
+        showMixerStrips={showMixerStrips}
+        onToggleMixerStrips={toggleMixerStrips}
+        maxScrollPct={maxScrollPct}
+        scrollPct={scrollPct}
+        playheadPct={playheadPct}
+        onScrollChange={setScrollPct}
+        onCenterPlayhead={centerPlayhead}
+        activePanel={activePanel}
+        onPanelChange={setActivePanel}
+        mixerConsoleOpen={mixerConsoleOpen}
+        onToggleMixerConsole={() => setMixerConsoleOpen((open) => !open)}
+        onPlayPause={onPlayPause}
+      />
 
       <TimelineRuler ticks={ticks} formatTime={formatTime} />
 
