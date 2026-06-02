@@ -106,6 +106,12 @@ def shutdown_upload_executor_for_tests(wait: bool = True) -> None:
         _upload_executor = None
 
 
+def reset_s3_client_for_tests() -> None:
+    """Clear cached boto3 client between tests."""
+    global _s3_client
+    _s3_client = None
+
+
 def upload_job_stems_to_s3(job_id: str, stems_dir: Path) -> dict[str, Any] | None:
     """
     Upload all *.wav under stems_dir to S3. Returns metadata for progress.json, or None if skipped/failed.

@@ -16,6 +16,9 @@ def _reset_env(monkeypatch):
     monkeypatch.delenv("S3_BUCKET", raising=False)
     monkeypatch.delenv("S3_PREFIX", raising=False)
     monkeypatch.delenv("S3_DELETE_LOCAL_AFTER_UPLOAD", raising=False)
+    s3_upload.reset_s3_client_for_tests()
+    yield
+    s3_upload.reset_s3_client_for_tests()
 
 
 def test_upload_skipped_when_disabled(tmp_path: Path) -> None:
@@ -46,7 +49,7 @@ def test_upload_happy_path(monkeypatch, tmp_path: Path) -> None:
 
     mock_client = MagicMock()
     with patch.object(s3_upload, "BOTO3_AVAILABLE", True), patch.object(
-        s3_upload, "_client", return_value=mock_client
+        s3_upload, "get_s3_client", return_value=mock_client
     ):
         meta = s3_upload.upload_job_stems_to_s3("00000000-0000-0000-0000-000000000001", stems_dir)
 
@@ -78,7 +81,7 @@ def test_upload_partial_failure_still_returns_keys(monkeypatch, tmp_path: Path) 
     mock_client.upload_file.side_effect = upload_side_effect
 
     with patch.object(s3_upload, "BOTO3_AVAILABLE", True), patch.object(
-        s3_upload, "_client", return_value=mock_client
+        s3_upload, "get_s3_client", return_value=mock_client
     ):
         meta = s3_upload.upload_job_stems_to_s3("job-partial", stems_dir)
 
