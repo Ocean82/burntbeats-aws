@@ -43,6 +43,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { isLocalDevFullApp } from "./config";
 
 import { useAppStore } from "./store/appStore";
+import { useShallow } from "zustand/react/shallow";
 import { useToast } from "./store/toastStore";
 import { useEventBus, useAppEvent } from "./store/eventBus";
 import { useGuidanceSystem } from "./hooks/useGuidanceSystem";
@@ -134,7 +135,6 @@ export function App() {
   const { checkoutNotice } = useCheckoutNotice();
 
   // ── Upload / split state ──────────────────────────────────────────────────
-  const uploadState = useAppStore();
   const {
     splitIntent,
     quality,
@@ -157,7 +157,31 @@ export function App() {
     masterLimiterEnabled: persistedMasterLimiterEnabled,
     setUploadState,
     setSplitError,
-  } = uploadState;
+  } = useAppStore(
+    useShallow((s) => ({
+      splitIntent: s.splitIntent,
+      quality: s.quality,
+      uploadName: s.uploadName,
+      uploadedFile: s.uploadedFile,
+      splitResultStems: s.splitResultStems,
+      splitJobId: s.splitJobId,
+      loadedStems: s.loadedStems,
+      splitError: s.splitError,
+      isSample: s.isSample,
+      isDragging: s.isDragging,
+      isSplitting: s.isSplitting,
+      isExpanding: s.isExpanding,
+      splitProgress: s.splitProgress,
+      uploadProgress: s.uploadProgress,
+      isUploading: s.isUploading,
+      queuePosition: s.queuePosition,
+      splitElapsedSeconds: s.splitElapsedSeconds,
+      splitStageLabel: s.splitStageLabel,
+      masterLimiterEnabled: s.masterLimiterEnabled,
+      setUploadState: s.setUploadState,
+      setSplitError: s.setSplitError,
+    })),
+  );
 
   const uploadDurationSec = useAudioFileDuration(uploadedFile);
   const estimatedSplitTokens = useMemo(

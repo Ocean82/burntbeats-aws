@@ -24,7 +24,9 @@ interface WorkflowContextValue {
 const WorkflowContext = createContext<WorkflowContextValue | null>(null);
 
 export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { splitResultStems, loadedStems, setSplitError } = useAppStore();
+  const splitResultStems = useAppStore((s) => s.splitResultStems);
+  const loadedStems = useAppStore((s) => s.loadedStems);
+  const setSplitError = useAppStore((s) => s.setSplitError);
   
   const {
     state: stemStates,

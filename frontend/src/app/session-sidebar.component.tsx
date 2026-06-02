@@ -12,7 +12,7 @@ export function SessionSidebar({
   onViewPlans,
 }: SessionSidebarProps) {
   const { isSidebarOpen, setSidebarOpen } = useUiStore();
-  const { splitResultStems } = useAppStore();
+  const splitResultStems = useAppStore((s) => s.splitResultStems);
   const showPromo = splitResultStems.length === 0 && !hasCompletedFirstExport;
 
   if (!isSidebarOpen) {

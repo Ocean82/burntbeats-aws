@@ -43,6 +43,12 @@ export const MixerConsole = memo(function MixerConsole({
     };
   }, [stems, stemStates, playheadPct, isPlaying, playingStemId, activeStemId]);
 
+  // JSON.stringify is expensive at 60fps — cache until snapshot reference changes
+  const snapshotJson = useMemo(
+    () => JSON.stringify(snapshot, null, 2),
+    [snapshot],
+  );
+
   return (
     <section
       aria-label="Mixer debug console"
@@ -52,7 +58,7 @@ export const MixerConsole = memo(function MixerConsole({
         Mixer console
       </p>
       <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-meta leading-snug text-secondary-foreground">
-        {JSON.stringify(snapshot, null, 2)}
+        {snapshotJson}
       </pre>
     </section>
   );

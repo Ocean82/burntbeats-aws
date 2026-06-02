@@ -73,7 +73,7 @@ export function MixerWorkspace({
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const beatGrid = useAppStore((s) => s.beatGrid);
   const setPersistedMasterLimiterEnabled = useAppStore((s) => s.setMasterLimiterEnabled);
-  const { undoToast } = useUiStore();
+  const undoToast = useUiStore((s) => s.undoToast);
   const { mixStems, visibleStems } = useResolvedStems();
   const { getMasterRecordingStream } = useAudioContext();
   const {

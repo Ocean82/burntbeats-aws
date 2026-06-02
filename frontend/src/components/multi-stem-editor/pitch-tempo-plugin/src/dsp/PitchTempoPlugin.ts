@@ -284,11 +284,16 @@ export class StemPluginManager {
     this.mode = mode;
   }
 
-  async createPlugin(stemId: string): Promise<PitchTempoPlugin> {
-    const plugin = new PitchTempoPlugin({ audioContext: this.ctx });
-    await plugin.ready();
-    this.plugins.set(stemId, plugin);
-    return plugin;
+  async createPlugin(stemId: string): Promise<PitchTempoPlugin | null> {
+    try {
+      const plugin = new PitchTempoPlugin({ audioContext: this.ctx });
+      await plugin.ready();
+      this.plugins.set(stemId, plugin);
+      return plugin;
+    } catch (err) {
+      console.warn(`[StemPluginManager] Failed to create plugin for ${stemId}:`, err);
+      return null;
+    }
   }
 
   getPlugin(stemId: string): PitchTempoPlugin | undefined {

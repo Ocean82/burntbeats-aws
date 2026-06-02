@@ -4,7 +4,8 @@ import { getStemDefinition, getLoadedStemDefinition, stemDefinitions } from "../
 import { useAppStore } from "../../store/appStore";
 
 export function useResolvedStems() {
-  const { splitResultStems, loadedStems } = useAppStore();
+  const splitResultStems = useAppStore((s) => s.splitResultStems);
+  const loadedStems = useAppStore((s) => s.loadedStems);
 
   const visibleStems = useMemo(() => {
     const fromSplit = splitResultStems.map((s) => ({
