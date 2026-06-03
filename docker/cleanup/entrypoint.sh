@@ -8,6 +8,7 @@ BACKEND_URL="${BACKEND_URL:-http://backend:3001}"
 API_KEY="${API_KEY:-}"
 STEM_MAX_AGE_HOURS="${STEM_MAX_AGE_HOURS:-48}"
 MIDI_MAX_AGE_HOURS="${MIDI_MAX_AGE_HOURS:-24}"
+SPEECH_MAX_AGE_HOURS="${SPEECH_MAX_AGE_HOURS:-48}"
 CLEANUP_INTERVAL_HOURS="${CLEANUP_INTERVAL_HOURS:-6}"
 INTERVAL_SECONDS=$((CLEANUP_INTERVAL_HOURS * 3600))
 
@@ -54,12 +55,22 @@ run_cleanup() {
   local midi_body=$(echo "$midi_result" | sed '$d')
   log "MIDI cleanup: HTTP ${midi_status} — ${midi_body}"
 
+  # Speech cleanup
+  local speech_result
+  speech_result=$(curl -sS -w "\n%{http_code}" \
+    -X POST \
+    -H "x-api-key: ${API_KEY}" \
+    "${BACKEND_URL}/api/speech/cleanup?maxAgeHours=${SPEECH_MAX_AGE_HOURS}" 2>&1) || true
+  local speech_status=$(echo "$speech_result" | tail -1)
+  local speech_body=$(echo "$speech_result" | sed '$d')
+  log "Speech cleanup: HTTP ${speech_status} — ${speech_body}"
+
   log "Cleanup cycle complete. Next run in ${CLEANUP_INTERVAL_HOURS}h."
 }
 
 # Main loop
 wait_for_backend
-log "Cleanup sidecar started (interval=${CLEANUP_INTERVAL_HOURS}h, stem_max_age=${STEM_MAX_AGE_HOURS}h, midi_max_age=${MIDI_MAX_AGE_HOURS}h)"
+log "Cleanup sidecar started (interval=${CLEANUP_INTERVAL_HOURS}h, stem_max_age=${STEM_MAX_AGE_HOURS}h, midi_max_age=${MIDI_MAX_AGE_HOURS}h, speech_max_age=${SPEECH_MAX_AGE_HOURS}h)"
 
 while true; do
   run_cleanup

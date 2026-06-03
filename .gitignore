@@ -67,7 +67,7 @@ dist/
 .impeccable/
 .worktrees/
 .idea/
-.vscode/
+TEMPcode/
 .vs/
 *.swp
 .DS_Store
@@ -113,7 +113,12 @@ backend/.env
 backend/.env.*
 docs/deploy-reports/**
 docs/deploy-reports/*
-docs/
+docs/**
+!docs/TEMP-INVENTORY.md
+!docs/music-app-ux-cherry-pick.md
+!docs/DEPENDABOT-MIDI-ONNX.md
+!docs/superpowers/
+!docs/superpowers/**
 .cursor/
 .cursorignore/
 .kiro/

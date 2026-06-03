@@ -8,7 +8,20 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-_model_path = None
+_model_path: Path | None = None
+
+
+def _resolve_onnx_model_path() -> Path:
+    """Use bundled ICASSP 2022 ONNX weights (no TensorFlow runtime)."""
+    from basic_pitch import FilenameSuffix, build_icassp_2022_model_path
+
+    model_path = build_icassp_2022_model_path(FilenameSuffix.onnx)
+    if not model_path.is_file():
+        raise FileNotFoundError(
+            f"Basic Pitch ONNX model not found at {model_path}. "
+            "Ensure basic-pitch is installed and onnxruntime is available.",
+        )
+    return model_path
 
 
 def preload_model() -> None:
@@ -18,11 +31,10 @@ def preload_model() -> None:
     import tempfile
 
     import soundfile as sf
-    from basic_pitch import ICASSP_2022_MODEL_PATH
     from basic_pitch.inference import predict
 
-    _model_path = ICASSP_2022_MODEL_PATH
-    logger.info("Basic Pitch model path loaded: %s", _model_path)
+    _model_path = _resolve_onnx_model_path()
+    logger.info("Basic Pitch ONNX model path loaded: %s", _model_path)
 
     silence = np.zeros(22050, dtype=np.float32)
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -38,12 +50,10 @@ def preload_model() -> None:
     Path(warmup_path).unlink(missing_ok=True)
 
 
-def get_model_path():
-    """Return the cached model path, loading it if necessary."""
+def get_model_path() -> Path:
+    """Return the cached ONNX model path, loading it if necessary."""
     global _model_path
     if _model_path is None:
-        from basic_pitch import ICASSP_2022_MODEL_PATH
-
-        _model_path = ICASSP_2022_MODEL_PATH
-        logger.info("Basic Pitch model loaded (lazy): %s", _model_path)
+        _model_path = _resolve_onnx_model_path()
+        logger.info("Basic Pitch ONNX model loaded (lazy): %s", _model_path)
     return _model_path
