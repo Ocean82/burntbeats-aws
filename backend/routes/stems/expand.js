@@ -4,7 +4,6 @@
  */
 import { Router } from "express";
 import FormData from "form-data";
-import path from "path";
 
 import {
   authMiddleware,
@@ -16,7 +15,6 @@ import { UUID_REGEX } from "../../helpers/validation.js";
 
 import {
   computeExpandCost,
-  findJobInputPath,
   getAudioDurationSeconds,
   isUsageTokensEnabled,
   reserveUsageTokens,
@@ -24,8 +22,8 @@ import {
 import { insertJob } from "../../db-jobs.js";
 
 import {
-  STEM_OUTPUT_DIR,
   DEV_BYPASS_UPLOAD_AUTH,
+  findStemJobInputPath,
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
@@ -72,7 +70,7 @@ expandRouter.post(
     let usageReserved = false;
     if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH) {
       try {
-        const inputPath = findJobInputPath(path.join(STEM_OUTPUT_DIR, jobId));
+        const inputPath = findStemJobInputPath(jobId);
         if (!inputPath) {
           return res
             .status(400)

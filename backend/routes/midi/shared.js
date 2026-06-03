@@ -7,6 +7,7 @@ import path from "path";
 import { access, mkdir, readFile, realpath, rm, stat, writeFile } from "fs/promises";
 import { fileURLToPath } from "url";
 
+import { resolvePathWithinBase, resolveUuidJobDir } from "../../helpers/safePath.js";
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
   isUsageTokensEnabled,
@@ -75,9 +76,7 @@ export function isValidMidiJobId(jobId) {
  */
 export function resolveMidiJobPath(jobId, filename) {
   if (!isValidMidiJobId(jobId)) return null;
-  const resolved = path.resolve(MIDI_OUTPUT_DIR, jobId, filename);
-  if (!resolved.startsWith(path.resolve(MIDI_OUTPUT_DIR))) return null;
-  return resolved;
+  return resolvePathWithinBase(MIDI_OUTPUT_DIR, jobId, filename);
 }
 
 /**
@@ -226,9 +225,14 @@ export async function getMidiSharedStorageHealth(backendStorage, midiServiceHeal
     typeof serviceStorage?.sentinel_filename === "string"
       ? serviceStorage.sentinel_filename
       : MIDI_STORAGE_SENTINEL_FILENAME;
+  const sentinelPath = resolvePathWithinBase(
+    MIDI_OUTPUT_DIR,
+    sentinelFilename,
+  );
   const sentinelVisible =
     backendStorage.ok &&
-    (await pathExists(path.join(MIDI_OUTPUT_DIR, sentinelFilename)));
+    sentinelPath !== null &&
+    (await pathExists(sentinelPath));
 
   const aligned = Boolean(
     backendStorage.ok && serviceStorage?.ok === true && sentinelVisible,

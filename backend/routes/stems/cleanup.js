@@ -5,12 +5,16 @@
  */
 import { Router } from "express";
 import { readdir, rm, stat, unlink as unlinkPromise } from "fs/promises";
-import path from "path";
 
 import { authMiddleware } from "../../middleware/auth.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 
-import { STEM_OUTPUT_DIR, STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS, UPLOAD_TMP_DIR } from "./shared.js";
+import { resolvePathWithinBase } from "../../helpers/safePath.js";
+import {
+  STEM_OUTPUT_DIR,
+  STEM_CLEANUP_DEFAULT_MAX_AGE_HOURS,
+  UPLOAD_TMP_DIR,
+} from "./shared.js";
 
 export const cleanupRouter = Router();
 const CLEANUP_CONCURRENCY = 8;
@@ -62,7 +66,8 @@ async function runStemsCleanup(req, res) {
       candidateDirs,
       CLEANUP_CONCURRENCY,
       async (ent) => {
-        const dirPath = path.join(STEM_OUTPUT_DIR, ent.name);
+        const dirPath = resolvePathWithinBase(STEM_OUTPUT_DIR, ent.name);
+        if (!dirPath) return;
         const stats = await stat(dirPath);
         if (stats.mtime.getTime() >= cutoff) return;
         await rm(dirPath, { recursive: true, force: true });
@@ -81,7 +86,8 @@ async function runStemsCleanup(req, res) {
         uploadCandidates,
         CLEANUP_CONCURRENCY,
         async (ent) => {
-          const filePath = path.join(UPLOAD_TMP_DIR, ent.name);
+          const filePath = resolvePathWithinBase(UPLOAD_TMP_DIR, ent.name);
+          if (!filePath) return;
           const stats = await stat(filePath);
           if (stats.mtime.getTime() >= cutoff) return;
           await unlinkPromise(filePath);

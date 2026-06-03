@@ -31,6 +31,8 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { resolvePathWithinBase } from "../helpers/safePath.js";
+
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -247,9 +249,15 @@ async function cleanupOldBackups(history) {
   }
 }
 
+const BACKUP_FILENAME_REGEX = /^burntbeats-\d{4}-\d{2}-\d{2}-\d{6}\.sql(\.gz)?$/;
+
 async function removeBackupFile(backup) {
   try {
-    const filePath = path.join(CONFIG.backupPath, backup.filename);
+    const filename =
+      typeof backup.filename === "string" ? backup.filename : "";
+    if (!BACKUP_FILENAME_REGEX.test(filename)) return;
+    const filePath = resolvePathWithinBase(CONFIG.backupPath, filename);
+    if (!filePath) return;
     await fs.unlink(filePath);
   } catch { /* file may already be gone */ }
 

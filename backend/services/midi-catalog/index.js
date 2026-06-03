@@ -6,6 +6,8 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { resolvePathWithinBase } from "../../helpers/safePath.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CATALOG_INDEX_PATH = path.join(__dirname, "..", "..", "data", "midi-catalog", "index.json");
 const CATALOG_FILES_DIR = path.join(__dirname, "..", "..", "data", "midi-catalog", "files");
@@ -125,8 +127,11 @@ export async function getCatalogEntryById(id) {
 /**
  * @param {string} id
  */
+const CATALOG_ID_REGEX = /^[a-zA-Z0-9_-]+$/;
+
 export function resolveCatalogFilePath(id) {
-  return path.join(CATALOG_FILES_DIR, `${id}.mid`);
+  if (typeof id !== "string" || !CATALOG_ID_REGEX.test(id)) return null;
+  return resolvePathWithinBase(CATALOG_FILES_DIR, `${id}.mid`);
 }
 
 export { CATALOG_FILES_DIR, CATALOG_INDEX_PATH };

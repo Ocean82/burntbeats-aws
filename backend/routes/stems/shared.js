@@ -6,6 +6,9 @@ import os from "os";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { resolvePathWithinBase, resolveUuidJobDir } from "../../helpers/safePath.js";
+import { UUID_REGEX } from "../../helpers/validation.js";
+import { findJobInputPath } from "../../usage/audioFile.js";
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
   isUsageTokensEnabled,
@@ -40,6 +43,34 @@ export const SPLIT_ACCEPT_TIMEOUT_MS =
 
 /** Temp dir for streaming uploads (one file per request; cleaned after proxy). */
 export const UPLOAD_TMP_DIR = path.join(os.tmpdir(), "burntbeats-upload");
+
+/**
+ * Resolve a path under STEM_OUTPUT_DIR with path-traversal protection.
+ * @param {string} jobId
+ * @param {...string} segments
+ * @returns {string | null}
+ */
+export function resolveStemJobPath(jobId, ...segments) {
+  if (!resolveUuidJobDir(STEM_OUTPUT_DIR, jobId)) return null;
+  return resolvePathWithinBase(STEM_OUTPUT_DIR, jobId, ...segments);
+}
+
+/**
+ * @param {string} jobId
+ * @returns {string | null}
+ */
+export function resolveStemJobDir(jobId) {
+  return resolveUuidJobDir(STEM_OUTPUT_DIR, jobId);
+}
+
+/**
+ * @param {string} jobId
+ * @returns {string | null}
+ */
+export function findStemJobInputPath(jobId) {
+  if (!jobId || !UUID_REGEX.test(jobId)) return null;
+  return findJobInputPath(STEM_OUTPUT_DIR, jobId);
+}
 
 /**
  * Extract an HTTP status code from an error object (usage token errors, etc.).

@@ -1,14 +1,13 @@
 // @ts-check
 import { Router } from "express";
 import { existsSync, readFileSync } from "fs";
-import path from "path";
 
 import { authMiddleware } from "../../middleware/auth.js";
 import { requireJobOwnership } from "../../middleware/ownership.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 
-import { SPEECH_OUTPUT_DIR } from "./shared.js";
+import { resolveSpeechJobPath } from "./shared.js";
 
 export const speechStatusRouter = Router();
 
@@ -21,8 +20,8 @@ speechStatusRouter.get(
     if (!job_id || !UUID_REGEX.test(job_id)) {
       return res.status(400).json({ error: "Invalid job_id" });
     }
-    const progressPath = path.join(SPEECH_OUTPUT_DIR, job_id, "progress.json");
-    if (!existsSync(progressPath)) {
+    const progressPath = resolveSpeechJobPath(job_id, "progress.json");
+    if (!progressPath || !existsSync(progressPath)) {
       return res.status(404).json({ error: "Job not found" });
     }
     let data;

@@ -45,6 +45,9 @@ catalogRouter.get("/midi/:id/file", authMiddleware, async (req, res) => {
     }
 
     const filePath = resolveCatalogFilePath(id);
+    if (!filePath) {
+      return res.status(400).json({ error: "Invalid catalog id" });
+    }
     try {
       await access(filePath);
     } catch {

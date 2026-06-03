@@ -20,6 +20,7 @@ import {
 import { proxyFormRequest } from "../../middleware/proxy.js";
 import { upload, MAX_UPLOAD_MB } from "../../middleware/upload.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
+import { resolvePathWithinBase } from "../../helpers/safePath.js";
 
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
@@ -34,6 +35,7 @@ import { insertJob, updateJobStatus } from "../../db-jobs.js";
 
 import {
   SPLIT_ACCEPT_TIMEOUT_MS,
+  STEM_OUTPUT_DIR,
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
@@ -86,7 +88,17 @@ splitRouter.post(
       const bucket = process.env.S3_UPLOAD_BUCKET;
       if (!bucket) return res.status(501).json({ error: "S3 processing not configured" });
       
-      const tmpPath = path.join(path.dirname(STEM_OUTPUT_DIR), "burntbeats-upload", `s3-${randomUUID()}-${path.basename(s3Key)}`);
+      const uploadDir = path.resolve(
+        path.dirname(STEM_OUTPUT_DIR),
+        "burntbeats-upload",
+      );
+      const safeBasename =
+        path.basename(String(s3Key)).replace(/[^a-zA-Z0-9._-]/g, "_") || "audio";
+      const tmpName = `s3-${randomUUID()}-${safeBasename}`;
+      const tmpPath = resolvePathWithinBase(uploadDir, tmpName);
+      if (!tmpPath) {
+        return res.status(400).json({ error: "Invalid S3 key" });
+      }
       try {
         const s3 = new S3Client({ region: process.env.S3_REGION || "us-east-1" });
         const obj = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: s3Key }));

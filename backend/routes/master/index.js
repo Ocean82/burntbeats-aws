@@ -41,14 +41,12 @@ function resolveMasterInputPath(inputPath, jobId, source) {
   }
 
   if (jobId && UUID_REGEX.test(jobId)) {
-    const stemDir = path.join(STEM_OUTPUT_DIR, jobId);
-    const stemInput = findJobInputPath(stemDir);
+    const stemInput = findJobInputPath(STEM_OUTPUT_DIR, jobId);
     if (stemInput && (source === "stem" || source === "auto" || !source)) {
       return stemInput;
     }
 
-    const midiDir = path.join(MIDI_OUTPUT_DIR, jobId);
-    const midiInput = findJobInputPath(midiDir);
+    const midiInput = findJobInputPath(MIDI_OUTPUT_DIR, jobId);
     if (midiInput) return midiInput;
   }
 

@@ -15,19 +15,23 @@ import { randomUUID } from "crypto";
 import { authMiddleware } from "../../middleware/auth.js";
 import { serverExportRateLimitMiddleware } from "../../middleware/rateLimiter.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
+import { resolvePathWithinBase } from "../../helpers/safePath.js";
 import { acquireExportSlot, getActiveExportCount } from "../../lib/exportSemaphore.js";
 
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
   computeServerExportCost,
-  findJobInputPath,
   getAudioDurationSeconds,
   isUsageTokensEnabled,
   reserveUsageTokens,
   refundUsageTokens,
 } from "../../usageTokens.js";
 
-import { STEM_OUTPUT_DIR, usageErrorResponse } from "./shared.js";
+import {
+  STEM_OUTPUT_DIR,
+  findStemJobInputPath,
+  usageErrorResponse,
+} from "./shared.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -118,7 +122,7 @@ serverExportRouter.post(
     if (isUsageTokensEnabled()) {
       try {
         usageUserId = await verifyClerkBearer(req);
-        const inputPath = findJobInputPath(path.join(STEM_OUTPUT_DIR, jobId));
+        const inputPath = findStemJobInputPath(jobId);
         if (!inputPath) {
           return res.status(400).json({
             error:
@@ -144,7 +148,10 @@ serverExportRouter.post(
     await mkdir(exportTmpDir, { recursive: true });
 
     const exportId = randomUUID();
-    const exportOutPath = path.join(exportTmpDir, `${exportId}.wav`);
+    const exportOutPath = resolvePathWithinBase(exportTmpDir, `${exportId}.wav`);
+    if (!exportOutPath) {
+      return res.status(500).json({ error: "Could not prepare export path" });
+    }
     const pyScriptPath = path.join(
       __dirname,
       "..",

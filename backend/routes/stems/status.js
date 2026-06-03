@@ -5,7 +5,6 @@
  */
 import { Router } from "express";
 import { existsSync, readFileSync } from "fs";
-import path from "path";
 
 import {
   authMiddleware,
@@ -17,7 +16,7 @@ import { getBaseUrl } from "../../helpers/baseUrl.js";
 import { updateJobStatus, insertStems } from "../../db-jobs.js";
 import { getRedis } from "../../stripeRedis.js";
 
-import { STEM_OUTPUT_DIR } from "./shared.js";
+import { resolveStemJobPath } from "./shared.js";
 
 export const statusRouter = Router();
 
@@ -46,8 +45,8 @@ statusRouter.get(
     }
 
     // 2. Fallback to disk
-    const progressPath = path.join(STEM_OUTPUT_DIR, job_id, "progress.json");
-    if (!existsSync(progressPath)) {
+    const progressPath = resolveStemJobPath(job_id, "progress.json");
+    if (!progressPath || !existsSync(progressPath)) {
       return res.status(404).json({ error: "Job not found" });
     }
     let data;
@@ -121,8 +120,8 @@ statusRouter.get(
       return res.status(400).json({ error: "Invalid job_id" });
     }
 
-    const progressPath = path.join(STEM_OUTPUT_DIR, job_id, "progress.json");
-    if (!existsSync(progressPath)) {
+    const progressPath = resolveStemJobPath(job_id, "progress.json");
+    if (!progressPath || !existsSync(progressPath)) {
       return res.status(404).json({ error: "Job not found" });
     }
 

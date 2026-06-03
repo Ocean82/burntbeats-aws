@@ -23,7 +23,7 @@ import { UUID_REGEX, validateStemFileParams } from "../../helpers/validation.js"
 
 import { presignStemGetUrl } from "../../s3Presign.js";
 
-import { STEM_OUTPUT_DIR } from "./shared.js";
+import { resolveStemJobPath } from "./shared.js";
 
 export const fileServeRouter = Router();
 
@@ -40,8 +40,8 @@ fileServeRouter.get(
       return res.status(400).json({ error: "Invalid job_id or stem id" });
     }
     const stemBase = stemId.replace(/\.wav$/i, "");
-    const progressPath = path.join(STEM_OUTPUT_DIR, job_id, "progress.json");
-    if (existsSync(progressPath)) {
+    const progressPath = resolveStemJobPath(job_id, "progress.json");
+    if (progressPath && existsSync(progressPath)) {
       try {
         const progress = JSON.parse(readFileSync(progressPath, "utf-8"));
         const s3 = progress.s3;
@@ -90,13 +90,8 @@ fileServeRouter.get(
         );
       }
     }
-    const filePath = path.join(
-      STEM_OUTPUT_DIR,
-      job_id,
-      "stems",
-      validated.stemId,
-    );
-    if (!existsSync(filePath)) {
+    const filePath = resolveStemJobPath(job_id, "stems", validated.stemId);
+    if (!filePath || !existsSync(filePath)) {
       return res.status(404).json({ error: "Stem file not found" });
     }
     res.setHeader("Content-Type", "audio/wav");

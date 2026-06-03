@@ -5,10 +5,10 @@
  */
 import { Router } from "express";
 import { readdir, rm, stat } from "fs/promises";
-import path from "path";
 
 import { authMiddleware } from "../../middleware/auth.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
+import { resolvePathWithinBase } from "../../helpers/safePath.js";
 
 import {
   MIDI_OUTPUT_DIR,
@@ -63,7 +63,8 @@ async function runMidiCleanup(req, res) {
       candidateDirs,
       CLEANUP_CONCURRENCY,
       async (ent) => {
-        const dirPath = path.join(MIDI_OUTPUT_DIR, ent.name);
+        const dirPath = resolvePathWithinBase(MIDI_OUTPUT_DIR, ent.name);
+        if (!dirPath) return;
         const stats = await stat(dirPath);
         if (stats.mtime.getTime() >= cutoff) return;
         await rm(dirPath, { recursive: true, force: true });

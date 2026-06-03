@@ -13,6 +13,7 @@ import { randomUUID } from "crypto";
 import { authMiddleware } from "../../middleware/auth.js";
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
+import { resolvePathWithinBase } from "../../helpers/safePath.js";
 import { resolveEntitlementStateForUser } from "../../billing/entitlements.js";
 import { findJobInputPath } from "../../usage/audioFile.js";
 import { runFfmpeg } from "../../lib/ffmpeg.js";
@@ -21,8 +22,17 @@ import { MIDI_OUTPUT_DIR } from "../midi/shared.js";
 
 export const previewRouter = Router();
 
-const PREVIEW_DIR = path.join(os.tmpdir(), "burntbeats-previews");
+const PREVIEW_DIR = path.resolve(os.tmpdir(), "burntbeats-previews");
 const DEFAULT_PREVIEW_SECONDS = 30;
+const PREVIEW_ID_REGEX = /^[0-9a-f-]{36}_\d+_[wc]$/i;
+
+/**
+ * @param {string} previewId
+ * @returns {boolean}
+ */
+function isValidPreviewId(previewId) {
+  return PREVIEW_ID_REGEX.test(previewId);
+}
 
 /**
  * @param {string} jobId
@@ -30,9 +40,9 @@ const DEFAULT_PREVIEW_SECONDS = 30;
  */
 function resolvePreviewInputPath(jobId) {
   if (!jobId || !UUID_REGEX.test(jobId)) return null;
-  const stemInput = findJobInputPath(path.join(STEM_OUTPUT_DIR, jobId));
+  const stemInput = findJobInputPath(STEM_OUTPUT_DIR, jobId);
   if (stemInput) return stemInput;
-  return findJobInputPath(path.join(MIDI_OUTPUT_DIR, jobId));
+  return findJobInputPath(MIDI_OUTPUT_DIR, jobId);
 }
 
 /**
@@ -131,8 +141,17 @@ previewRouter.post("/generate", authMiddleware, async (req, res) => {
   // ── Caching Logic ──────────────────────────────────────────────────────────
   // Check if a preview for this job/duration/watermark already exists.
   const previewId = `${jobId}_${durationSec}_${watermarked ? "w" : "c"}`;
-  const outputPath = path.join(PREVIEW_DIR, `audio_${previewId}.mp3`);
-  const metaPath = path.join(PREVIEW_DIR, `meta_${previewId}.json`);
+  const outputPath = resolvePathWithinBase(
+    PREVIEW_DIR,
+    `audio_${previewId}.mp3`,
+  );
+  const metaPath = resolvePathWithinBase(
+    PREVIEW_DIR,
+    `meta_${previewId}.json`,
+  );
+  if (!outputPath || !metaPath) {
+    return res.status(400).json({ error: "Invalid preview parameters" });
+  }
 
   try {
     if (existsSync(metaPath) && existsSync(outputPath)) {
@@ -185,11 +204,14 @@ previewRouter.post("/generate", authMiddleware, async (req, res) => {
 
 previewRouter.get("/:preview_id/download", authMiddleware, async (req, res) => {
   const previewId = req.params.preview_id;
-  if (!previewId) {
+  if (!previewId || !isValidPreviewId(previewId)) {
     return res.status(400).json({ error: "Invalid preview_id" });
   }
 
-  const metaPath = path.join(PREVIEW_DIR, `meta_${previewId}.json`);
+  const metaPath = resolvePathWithinBase(PREVIEW_DIR, `meta_${previewId}.json`);
+  if (!metaPath) {
+    return res.status(400).json({ error: "Invalid preview_id" });
+  }
   try {
     await access(metaPath);
   } catch {
@@ -197,8 +219,14 @@ previewRouter.get("/:preview_id/download", authMiddleware, async (req, res) => {
   }
 
   const meta = JSON.parse(await readFile(metaPath, "utf-8"));
-  const filePath = path.join(PREVIEW_DIR, meta.file);
-  if (!existsSync(filePath)) {
+  const expectedFile = `audio_${previewId}.mp3`;
+  const metaFile =
+    typeof meta.file === "string" ? path.basename(meta.file) : "";
+  if (metaFile !== expectedFile) {
+    return res.status(404).json({ error: "Preview file missing" });
+  }
+  const filePath = resolvePathWithinBase(PREVIEW_DIR, metaFile);
+  if (!filePath || !existsSync(filePath)) {
     return res.status(404).json({ error: "Preview file missing" });
   }
 

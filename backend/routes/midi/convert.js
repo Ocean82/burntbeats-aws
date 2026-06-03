@@ -35,7 +35,8 @@ import {
   withMidiServiceAuthHeader,
   handleMidiProxyError,
 } from "./shared.js";
-import { STEM_OUTPUT_DIR } from "../stems/shared.js";
+import { resolveStemJobPath } from "../stems/shared.js";
+import { isPathInsideBase, isSafePathSegment } from "../../helpers/safePath.js";
 
 export const midiConvertRouter = Router();
 
@@ -56,25 +57,23 @@ const MIDI_ALLOWED_UPLOAD_FORMATS_LABEL = "MP3, WAV, FLAC, OGG, M4A, WebM";
  * @returns {string | null} Absolute path to the WAV file, or null if not found.
  */
 function resolveStemPath(stemJobId, stemName) {
-  // Validate inputs to prevent injection
-  if (!/^[0-9a-f-]{36}$/i.test(stemJobId)) return null;
   if (typeof stemName !== "string") return null;
   const trimmedStemName = stemName.trim();
-  if (!trimmedStemName) return null;
-  if (trimmedStemName.includes("/") || trimmedStemName.includes("\\") || trimmedStemName.includes("\0")) {
-    return null;
-  }
+  if (!trimmedStemName || !isSafePathSegment(trimmedStemName)) return null;
 
   try {
-    const stemsDir = path.resolve(STEM_OUTPUT_DIR, stemJobId, "stems");
-    if (!stemsDir.startsWith(path.resolve(STEM_OUTPUT_DIR))) return null;
+    const stemsDir = resolveStemJobPath(stemJobId, "stems");
+    if (!stemsDir) return null;
 
     const entries = readdirSync(stemsDir, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isFile()) continue;
+      if (!isSafePathSegment(entry.name)) continue;
       if (path.extname(entry.name).toLowerCase() !== ".wav") continue;
       if (path.basename(entry.name, ".wav") !== trimmedStemName) continue;
-      return path.resolve(stemsDir, entry.name);
+      const filePath = path.join(stemsDir, entry.name);
+      if (!isPathInsideBase(stemsDir, filePath)) continue;
+      return filePath;
     }
     return null;
   } catch {
