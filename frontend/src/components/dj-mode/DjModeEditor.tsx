@@ -37,6 +37,7 @@ import { DjTransportBar } from "./DjTransportBar";
 import { DjToolbarSettings } from "./DjToolbarSettings";
 import { SpectrumAnalyzer } from "../SpectrumAnalyzer";
 import { MixerGenreQuickApply } from "../MixerGenreQuickApply";
+import { VocalCleanupQuickApply } from "../VocalCleanupQuickApply";
 import type { MixerPreset } from "../MixerPresetsModal";
 import {
   recordTimelinePerformanceSample,
@@ -397,7 +398,10 @@ export function DjModeEditor({
             </button>
           </div>
           {onLoadGenrePreset && (
-            <MixerGenreQuickApply onApply={onLoadGenrePreset} />
+            <>
+              <VocalCleanupQuickApply onApply={onLoadGenrePreset} />
+              <MixerGenreQuickApply onApply={onLoadGenrePreset} />
+            </>
           )}
           {getMasterAnalyserFrequencyData && (
             <div className="hidden min-w-[140px] flex-1 sm:block lg:max-w-xs">

@@ -40,6 +40,7 @@ import { stopMixStemRuntime } from "./runtime-cleanup";
 import { getStemAnalyserFromRuntimes } from "./analyser-bridge";
 import { createPreviewRuntime } from "./preview-runtime";
 import { createMixRuntime } from "./mix-runtime";
+import { resolvePlaybackBpm } from "../../utils/tempoSync";
 
 export type { SeekPhase };
 
@@ -104,6 +105,8 @@ export interface UseAudioPlaybackOptions {
   onError?: (message: string) => void;
   /** Current stem states; when provided, live mixer node params update while the mix plays. */
   stemStates?: Record<string, StemEditorState>;
+  /** Detected project BPM (beat grid) for tempo-synced delay on stem FX. */
+  playbackBpm?: number | null;
 }
 
 const TRIM_HOT_SWAP_DEBOUNCE_MS = 80;
@@ -111,7 +114,11 @@ const TRIM_HOT_SWAP_DEBOUNCE_MS = 80;
 export function useAudioPlayback(
   options: UseAudioPlaybackOptions = {},
 ): UseAudioPlaybackReturn {
-  const { onError, stemStates: stemStatesProp } = options;
+  const { onError, stemStates: stemStatesProp, playbackBpm } = options;
+  const playbackBpmRef = useRef(resolvePlaybackBpm(playbackBpm ?? undefined));
+  useEffect(() => {
+    playbackBpmRef.current = resolvePlaybackBpm(playbackBpm ?? undefined);
+  }, [playbackBpm]);
 
   // --- Sub-hooks ---
   const {
@@ -324,6 +331,7 @@ export function useAudioPlayback(
           elapsedWall,
           stemWallDuration,
           ensureMasterBus,
+          bpm: playbackBpmRef.current,
         });
         if (!runtime) continue;
         attachMixSourceEnded(runtime.source, runtime.dsp, () => {
@@ -553,6 +561,7 @@ export function useAudioPlayback(
         wallDuration,
         wallElapsed,
         ensureMasterBus,
+        bpm: playbackBpmRef.current,
       });
       if (!runtime) {
         emitPlayheadPosition(pct);
@@ -769,6 +778,7 @@ export function useAudioPlayback(
           wallDuration,
           wallElapsed,
           ensureMasterBus,
+          bpm: playbackBpmRef.current,
         });
         if (!runtime) {
           emitPlayheadPosition(startPct);

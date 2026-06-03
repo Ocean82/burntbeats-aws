@@ -4,6 +4,7 @@ import { X, Save, Trash2, Check, Sliders } from "lucide-react";
 import { defaultMixer, type MixerState, type TrimState } from "../types";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { useProductMotion } from "../motion/useProductMotion";
+import { VOCAL_CLEANUP_PRESET } from "../data/vocalCleanupPreset";
 
 export interface MixerPreset {
   id: string;
@@ -38,6 +39,7 @@ const presetMixer = (gain: number, pan: number, width: number): MixerState => ({
 });
 
 const DEFAULT_PRESETS: MixerPreset[] = [
+  VOCAL_CLEANUP_PRESET,
   {
     id: "vocals-forward",
     name: "Vocals Forward",

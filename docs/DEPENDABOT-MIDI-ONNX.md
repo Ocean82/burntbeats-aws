@@ -11,7 +11,7 @@ Root cause was `basic-pitch==0.4.0` pulling **TensorFlow 2.15 → Keras 2.15** o
 3. `midi_service/services/model_runtime.py` forces `FilenameSuffix.onnx` for ICASSP 2022 weights.
 4. `midi_service/Dockerfile` uninstalls any stray TF wheels after `uv sync`.
 
-After merge, re-scan default branch. Expect alerts **#51–#56 closed** when lockfile no longer contains vulnerable Keras/TF paths.
+After merge to `main` (PR #26, 2026-06-03): alerts **#51, #52, #53, #54, #56** (Keras) are **fixed**. Alert **#55** (protobuf) may remain open via `onnxruntime` transitive dependency — do not fix by reintroducing TensorFlow.
 
 ## Residual notes
 

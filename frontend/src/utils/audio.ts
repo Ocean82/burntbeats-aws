@@ -351,10 +351,19 @@ export function createStemPreviewBuffer(context: AudioContext, stemId: StemId): 
 }
 
 import type { MixerState } from "../types";
+import {
+  noteDurationSeconds,
+  resolvePlaybackBpm,
+  type TempoNoteDivision,
+} from "./tempoSync";
 
 export interface CreateStemDspChainOptions {
   /** When false, skips AnalyserNode (e.g. offline export). Default true. */
   metering?: boolean;
+  /** Project BPM (e.g. beat grid); tempo-synced delay uses this when set. */
+  bpm?: number;
+  /** Delay note division when delay wet is active. Default eighth note. */
+  delayDivision?: TempoNoteDivision;
 }
 
 export interface StemDspChain {
@@ -484,8 +493,13 @@ export function createStemDspChain(
   let delayFeedback: GainNode | null = null;
   let delayWetGain: GainNode | null = null;
   if (delayActive) {
-    delayNode = ctx.createDelay(1.0);
-    delayNode.delayTime.value = 0.375; // 8th note at ~80bpm
+    const delaySec = noteDurationSeconds(
+      resolvePlaybackBpm(options.bpm),
+      options.delayDivision ?? "8n",
+    );
+    const maxDelay = Math.max(1, delaySec * 2);
+    delayNode = ctx.createDelay(maxDelay);
+    delayNode.delayTime.value = Math.min(delaySec, maxDelay - 0.01);
     delayFeedback = ctx.createGain();
     delayFeedback.gain.value = 0.35;
     delayWetGain = ctx.createGain();
