@@ -21,6 +21,7 @@ JobKind = Literal[
     "demucs_4_fallback",
     "mdx_stem",
     "parallel_mdx",
+    "mdx_4stem",
 ]
 
 
@@ -51,7 +52,7 @@ def route_intent(intent: SplitIntent) -> SplitPlan:
         if intent.mode == "2":
             plan.jobs.append(ModelJob(kind="hybrid_2", targets=output))
         else:
-            plan.jobs.append(ModelJob(kind="hybrid_4", targets=output))
+            plan.jobs.append(ModelJob(kind="mdx_4stem", targets=output))
         return plan
 
     if intent.task == "remove":

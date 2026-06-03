@@ -23,6 +23,7 @@ def _call_progress(
         progress_callback(pct)
 
 from stem_service.hybrid import run_hybrid_2stem, run_hybrid_4stem
+from stem_service.routing.pipelines.mdx_4stem import run_mdx_4stem
 from stem_service.routing.pipelines.parallel_mdx import run_parallel_mdx_targets
 from stem_service.routing.pipelines.single_stem import run_mdx_target_stem
 from stem_service.routing.pipelines.vocals_only import run_vocals_only
@@ -147,6 +148,15 @@ def execute_plan(
                         wanted.add("other")
                 stems = _filter_stems(stems, tuple(wanted))
                 stems = _rename_guitar_from_other(stems, plan.intent.targets)
+        elif job.kind == "mdx_4stem":
+            stems, models = run_mdx_4stem(
+                input_path,
+                output_dir,
+                prefer_speed=prefer_speed,
+                model_tier=model_tier,
+                progress_callback=sub_progress,
+                job_logger=job_logger,
+            )
         elif job.kind == "mdx_stem":
             target = job.targets[0]
             stems, models = run_mdx_target_stem(

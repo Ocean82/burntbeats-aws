@@ -37,7 +37,7 @@ _SINGLE_STEM_MDX: dict[str, dict[str, str]] = {
 
 _VOCAL_TIER_ONNX: dict[str, str] = {
     "fast": "UVR_MDXNET_3_9662.onnx",
-    "high": "Kim_Vocal_2.onnx",
+    "high": "UVR_MDXNET_KARA.onnx",
 }
 
 

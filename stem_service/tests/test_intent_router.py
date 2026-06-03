@@ -24,7 +24,7 @@ def test_route_full_separation_4() -> None:
     plan = route_intent(intent)
     assert plan.output_stems == ("vocals", "drums", "bass", "other")
     assert len(plan.jobs) == 1
-    assert plan.jobs[0].kind == "hybrid_4"
+    assert plan.jobs[0].kind == "mdx_4stem"
 
 
 def test_route_extract_vocals_only() -> None:

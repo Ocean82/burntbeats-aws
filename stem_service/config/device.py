@@ -110,7 +110,7 @@ DEMUCS_TIMEOUT_STARTUP_GRACE_SEC = int(
 )
 
 # Maximum number of pending jobs in the separation queue.
-MAX_QUEUE_DEPTH = int(os.environ.get("MAX_QUEUE_DEPTH", "20"))
+MAX_QUEUE_DEPTH = int(os.environ.get("MAX_QUEUE_DEPTH", "5"))
 
 # Demucs bootstrap module
 _USE_DEMUCS_BOOTSTRAP_RAW = os.environ.get("USE_DEMUCS_BOOTSTRAP", "1").strip().lower()

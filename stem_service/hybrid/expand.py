@@ -1,7 +1,5 @@
 """
-Expand workflow: 2-stem → 4-stem using a deterministic stage-2 Demucs pass.
-
-Also contains _stage1_only and _stage2_only helpers used by the CLI.
+Expand workflow: 2-stem → 4-stem using MDX ONNX on the instrumental (no Demucs).
 """
 
 from __future__ import annotations
@@ -11,8 +9,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
-from stem_service.demucs_process import DemucsHealthMarker
-from stem_service.split import run_demucs
+from stem_service.routing.pipelines.mdx_accompaniment import run_mdx_drums_bass_other
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
 logger = logging.getLogger(__name__)
@@ -33,50 +30,39 @@ def _stage2_only(
     instrumental_path: Path,
     output_dir: Path,
     prefer_speed: bool = False,
+    model_tier: str = "quality",
     cancel_check: Callable[[], bool] | None = None,
-    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    health_callback: Callable[[object], None] | None = None,
     job_id: str | None = None,
 ) -> list[tuple[str, Path]]:
-    """Stage 2 only: Demucs 4-stem on instrumental. Returns drums, bass, other (no vocals)."""
+    """Stage 2 only: MDX drums/bass/other on instrumental. Returns drums, bass, other."""
+    _ = (cancel_check, health_callback, job_id)
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem_files = run_demucs(
+    tier = "fast" if prefer_speed else model_tier
+    stem_list, _models = run_mdx_drums_bass_other(
         instrumental_path,
-        output_dir / "stage2",
-        stems=4,
+        output_dir,
         prefer_speed=prefer_speed,
-        cancel_check=cancel_check,
-        health_callback=health_callback,
-        job_id=job_id,
+        model_tier=tier,
     )
-    flat_dir = output_dir / "stems"
-    flat_dir.mkdir(parents=True, exist_ok=True)
-    result: list[tuple[str, Path]] = []
-    for stem_id, src in stem_files:
-        if stem_id == "vocals":
-            continue
-        dest = flat_dir / f"{stem_id}.wav"
-        shutil.copy2(src, dest)
-        result.append((stem_id, dest))
-    return result
+    return stem_list
 
 
 def run_expand_to_4stem(
     source_stems_dir: Path,
     target_output_dir: Path,
     prefer_speed: bool = False,
+    model_tier: str = "quality",
     progress_callback: Callable[[int], None] | None = None,
     job_logger: "logging.Logger | None" = None,
     cancel_check: Callable[[], bool] | None = None,
-    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
+    health_callback: Callable[[object], None] | None = None,
     job_id: str | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     Expand a 2-stem job (vocals + instrumental) to 4 stems.
-    Copies vocals from source; runs one deterministic Demucs stage on instrumental
-    for drums, bass, and other.
-    source_stems_dir: path to job's stems/ (must contain vocals.wav and instrumental.wav).
-    Returns (stem_list, models_used) with stem_list order: vocals, drums, bass, other.
+    Copies vocals from source; runs MDX ONNX on instrumental for drums, bass, other.
     """
     target_output_dir = target_output_dir.resolve()
     flat_dir = target_output_dir / "stems"
@@ -96,29 +82,29 @@ def run_expand_to_4stem(
 
     if progress_callback:
         progress_callback(15)
-    stage2_flat = target_output_dir / "stage2"
-    stage2_flat.mkdir(parents=True, exist_ok=True)
-    stem_list: list[tuple[str, Path]] = [("vocals", dest_vocals)]
-    models_used: list[str] = []
-
     _log = job_logger or logger
     _log.info(
-        "expand: using deterministic Demucs stage2 on instrumental (prefer_speed=%s)",
+        "expand: MDX ONNX stage2 on instrumental (prefer_speed=%s, model_tier=%s)",
         prefer_speed,
+        model_tier,
     )
-    stem_files_rest = _stage2_only(
+    tier = "fast" if prefer_speed else model_tier
+    stem_files_rest, models_used = run_mdx_drums_bass_other(
         instrumental_src,
         target_output_dir,
         prefer_speed=prefer_speed,
-        cancel_check=cancel_check,
-        health_callback=health_callback,
-        job_id=job_id,
+        model_tier=tier,
+        progress_callback=progress_callback,
+        job_logger=job_logger,
     )
-    if progress_callback:
-        progress_callback(96)
+    stem_list: list[tuple[str, Path]] = [("vocals", dest_vocals)]
     for stem_id, dest in stem_files_rest:
-        stem_list.append((stem_id, dest))
-    models_used = ["htdemucs_stage2"]
+        flat_dest = flat_dir / f"{stem_id}.wav"
+        if dest.resolve() != flat_dest.resolve():
+            shutil.copy2(dest, flat_dest)
+            stem_list.append((stem_id, flat_dest))
+        else:
+            stem_list.append((stem_id, dest))
 
     if progress_callback:
         progress_callback(100)

@@ -56,6 +56,9 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     "UVR_MDXNET_2_9682.onnx": (4096, 1024, 2048, 256, 1.035),
     "UVR_MDXNET_3_9662.onnx": (4096, 1024, 2048, 256, 1.035),
     "UVR_MDXNET_KARA.onnx": (4096, 1024, 2048, 256, 1.035),
+    "UVR-MDX-NET-Drum.onnx": (5120, 1024, 2560, 256, 1.035),
+    "UVR-MDX-NET-Bass.onnx": (5120, 1024, 2560, 256, 1.035),
+    "UVR-MDX-NET-Guitar.onnx": (5120, 1024, 2560, 256, 1.035),
 }
 
 # ---------------------------------------------------------------------------
@@ -80,12 +83,8 @@ INST_MODEL_PATHS: list[Path] = [
 _VOCAL_TIER_NAMES: dict[str, list[str]] = {
     "fast": [
         "UVR_MDXNET_3_9662.onnx",
-        "UVR_MDXNET_KARA.onnx",
     ],
     "quality": [
-        "Kim_Vocal_2.onnx",
-        "Kim_Vocal_1.onnx",
-        "UVR_MDXNET_3_9662.onnx",
         "UVR_MDXNET_KARA.onnx",
     ],
 }

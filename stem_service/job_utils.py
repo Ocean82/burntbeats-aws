@@ -177,6 +177,7 @@ def build_progress_payload(
     }
     if queue_position is not None:
         payload["queue_position"] = queue_position
+        payload["jobs_ahead"] = max(0, queue_position - 1)
     if elapsed_seconds is not None:
         payload["elapsed_seconds"] = elapsed_seconds
     if intent is not None:

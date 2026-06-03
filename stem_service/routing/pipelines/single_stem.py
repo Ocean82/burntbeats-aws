@@ -40,7 +40,7 @@ def run_mdx_target_stem(
     model_path = _model_path_for_target(target, tier)
     if model_path is None:
         raise RuntimeError(f"No specialized MDX model available for target: {target}")
-    overlap = 0.5 if prefer_speed else 0.75
+    overlap = 0.5
     result = _run_mdx_onnx(
         input_path,
         out_path,

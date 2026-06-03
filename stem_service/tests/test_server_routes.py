@@ -37,20 +37,36 @@ def test_health_production_omits_repo_root(monkeypatch) -> None:
             },
             "2_stem_quality": {
                 "ready": True,
-                "required_models": ["Kim_Vocal_2.onnx"],
-                "resolved_models": ["Kim_Vocal_2.ort"],
+                "required_models": ["UVR_MDXNET_KARA.onnx"],
+                "resolved_models": ["UVR_MDXNET_KARA.ort"],
                 "missing_models": [],
             },
             "4_stem_speed": {
                 "ready": True,
-                "required_models": ["UVR_MDXNET_3_9662.onnx", "speed_4stem_rank28/cfa93e08-61801ae1.th"],
-                "resolved_models": ["UVR_MDXNET_3_9662.ort", "cfa93e08-61801ae1.th"],
+                "required_models": [
+                    "UVR_MDXNET_3_9662.onnx",
+                    "UVR-MDX-NET-Drum.onnx",
+                    "UVR-MDX-NET-Bass.onnx",
+                ],
+                "resolved_models": [
+                    "UVR_MDXNET_3_9662.ort",
+                    "UVR-MDX-NET-Drum.ort",
+                    "UVR-MDX-NET-Bass.ort",
+                ],
                 "missing_models": [],
             },
             "4_stem_quality": {
                 "ready": True,
-                "required_models": ["Kim_Vocal_2.onnx", "quality_4stem_rank1/04573f0d-f3cf25b2__29d4388e.th"],
-                "resolved_models": ["Kim_Vocal_2.ort", "04573f0d-f3cf25b2.th"],
+                "required_models": [
+                    "UVR_MDXNET_KARA.onnx",
+                    "UVR-MDX-NET-Drum.onnx",
+                    "UVR-MDX-NET-Bass.onnx",
+                ],
+                "resolved_models": [
+                    "UVR_MDXNET_KARA.ort",
+                    "UVR-MDX-NET-Drum.ort",
+                    "UVR-MDX-NET-Bass.ort",
+                ],
                 "missing_models": [],
             },
         },

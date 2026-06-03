@@ -445,6 +445,7 @@ def run_expand_sync(
             source_stems_dir,
             out_dir,
             prefer_speed=prefer_speed,
+            model_tier="fast" if prefer_speed else quality_mode,
             progress_callback=on_progress,
             job_logger=job_log,
             cancel_check=lambda: is_job_cancelled(expand_job_id),

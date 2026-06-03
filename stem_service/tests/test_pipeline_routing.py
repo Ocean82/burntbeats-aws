@@ -112,7 +112,7 @@ def test_extract_vocals_stage1_quality_requires_primary_model_without_rank_fallb
     input_path = tmp_path / "input.wav"
     input_path.write_bytes(b"stub")
     output_dir = tmp_path / "out"
-    fallback_model = tmp_path / "Kim_Vocal_1.onnx"
+    fallback_model = tmp_path / "UVR_MDXNET_KARA.onnx"
     fallback_model.write_bytes(b"stub")
 
     resolved_names: list[str] = []
@@ -120,7 +120,7 @@ def test_extract_vocals_stage1_quality_requires_primary_model_without_rank_fallb
 
     def fake_resolve_single(logical_name: str):
         resolved_names.append(logical_name)
-        if logical_name == "Kim_Vocal_2.onnx":
+        if logical_name == "UVR_MDXNET_KARA.onnx":
             return None
         return fallback_model
 
@@ -132,7 +132,7 @@ def test_extract_vocals_stage1_quality_requires_primary_model_without_rank_fallb
     monkeypatch.setattr(vocal_stage1, "run_vocal_onnx", fake_run_vocal_onnx)
     monkeypatch.setattr(vocal_stage1, "resolve_declared_vocal_onnx_path", lambda *_args, **_kwargs: None)
 
-    with pytest.raises(RuntimeError, match="Kim_Vocal_2.onnx"):
+    with pytest.raises(RuntimeError, match="UVR_MDXNET_KARA.onnx"):
         vocal_stage1.extract_vocals_stage1(
             input_path,
             output_dir,
@@ -140,7 +140,7 @@ def test_extract_vocals_stage1_quality_requires_primary_model_without_rank_fallb
             model_tier="quality",
         )
 
-    assert resolved_names == ["Kim_Vocal_2.onnx"]
+    assert resolved_names == ["UVR_MDXNET_KARA.onnx"]
     assert vocal_calls == []
 
 
@@ -160,7 +160,7 @@ def test_run_demucs_4stem_raises_original_checkpoint_failure_without_htdemucs_fa
 
     monkeypatch.setattr(
         split_mod,
-        "demucs_quality_4stem_configs",
+        "demucs_speed_4stem_configs",
         lambda: [("04573f0d", repo, 7, "04573f0d", checkpoint)],
     )
     monkeypatch.setattr(
@@ -201,15 +201,15 @@ def test_run_expand_to_4stem_uses_deterministic_stage2_only(
 
     called: list[str] = []
 
-    def fake_stage2_only(*_args, **_kwargs):
+    def fake_mdx_stage2(*_args, **_kwargs):
         called.append("stage2")
         return [
             ("drums", drums_path),
             ("bass", bass_path),
             ("other", other_path),
-        ]
+        ], ["UVR-MDX-NET-Drum.onnx", "UVR-MDX-NET-Bass.onnx", "residual_other"]
 
-    monkeypatch.setattr(expand_mod, "_stage2_only", fake_stage2_only)
+    monkeypatch.setattr(expand_mod, "run_mdx_drums_bass_other", fake_mdx_stage2)
 
     stem_list, models_used = expand_mod.run_expand_to_4stem(
         source_stems_dir=source_stems_dir,
@@ -224,4 +224,8 @@ def test_run_expand_to_4stem_uses_deterministic_stage2_only(
         "bass",
         "other",
     ]
-    assert models_used == ["htdemucs_stage2"]
+    assert models_used == [
+        "UVR-MDX-NET-Drum.onnx",
+        "UVR-MDX-NET-Bass.onnx",
+        "residual_other",
+    ]

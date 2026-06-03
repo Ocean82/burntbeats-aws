@@ -131,12 +131,8 @@ def run_demucs_legacy(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if stems == 4:
-        cfgs = (
-            demucs_speed_4stem_configs()
-            if prefer_speed
-            else demucs_quality_4stem_configs()
-        )
-        lane = "speed" if prefer_speed else "quality"
+        cfgs = demucs_speed_4stem_configs()
+        lane = "speed"
         if not cfgs:
             raise FileNotFoundError(
                 f"Demucs 4-stem {lane} checkpoint not found in configured models directory."

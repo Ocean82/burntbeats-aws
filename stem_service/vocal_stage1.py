@@ -3,7 +3,7 @@ Stage 1: deterministic vocal extraction for the canonical 2-stem/4-stem hybrid p
 
 Each runtime tier resolves to one required primary ONNX vocal model:
   - fast: UVR_MDXNET_3_9662
-  - quality: Kim_Vocal_2
+  - quality: UVR_MDXNET_KARA
 
 No runtime waterfalls, audio-separator detours, or Demucs rescue paths remain here.
 If the required primary model is missing or fails, Stage 1 raises an explicit error.
@@ -33,7 +33,7 @@ def _vocal_rank_candidates_for_tier(model_tier: str) -> list[str]:
     """Return the single required primary vocal model name for a tier."""
     if model_tier == "fast":
         return ["UVR_MDXNET_3_9662.onnx"]
-    return ["Kim_Vocal_2.onnx"]
+    return ["UVR_MDXNET_KARA.onnx"]
 
 
 class InstrumentalSource(Enum):
@@ -157,8 +157,8 @@ def extract_vocals_stage1(
     """
     Extract vocals and optionally instrumental.
 
-    prefer_speed=True  → 50% overlap (faster, slightly more boundary artifacts)
-    prefer_speed=False → 75% overlap (slower, smoother — recommended for quality)
+    prefer_speed=True  → 50% overlap (faster)
+    prefer_speed=False → 50% overlap (quality tier uses a better model, not more overlap)
 
     progress_callback: optional callable(pct) forwarded to the ONNX chunk loop.
     progress_range: (start, end) maps ONNX chunk progress into a parent job sub-range.
@@ -166,11 +166,11 @@ def extract_vocals_stage1(
     Returns (vocals_path, instrumental_path_or_None, models_used, instrumental_source).
     When ``instrumental_source`` is ``PHASE_INVERSION_PENDING``, ``instrumental_path`` is None and
     hybrid must run ``phase_inversion``. Otherwise ``instrumental_path`` is a final stem file.
-    models_used: list of model names for metrics (e.g. ["Kim_Vocal_2.onnx", "UVR-MDX-NET-Inst_HQ_5.onnx"]).
+    models_used: list of model names for metrics (e.g. ["UVR_MDXNET_KARA.onnx", "phase_inversion"]).
     """
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    onnx_overlap = 0.5 if prefer_speed else 0.75
+    onnx_overlap = 0.5
     allow_inst_onnx = _should_run_inst_onnx_pass(prefer_speed, model_tier)
     log = job_logger or logger
 

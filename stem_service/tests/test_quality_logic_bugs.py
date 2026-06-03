@@ -21,13 +21,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 
-def test_bug1_quality_mode_uses_075_overlap():
+def test_quality_mode_uses_fast_overlap_for_cpu_tiers():
     """
-    Bug 1: When model_tier='quality' and prefer_speed=False, onnx_overlap
-    should be 0.75 for smoother chunk boundaries.
-
-    EXPECTED: This test FAILS on unfixed code (overlap is 0.5 due to override).
-    After fix: This test PASSES.
+    Quality tier uses 0.5 ONNX overlap (same as speed). Tier difference is the
+    vocal model (KARA vs 9662), not extra chunk overlap.
     """
     captured_overlap = {}
 
@@ -35,10 +32,8 @@ def test_bug1_quality_mode_uses_075_overlap():
         input_path, output_path, overlap=0.75, **kwargs
     ):
         captured_overlap["value"] = overlap
-        # Return a fake path to simulate success
         return output_path
 
-    # Reload the module to ensure clean state in CI where test ordering matters
     import stem_service.vocal_stage1 as vs1_mod
     importlib.reload(vs1_mod)
 
@@ -47,10 +42,9 @@ def test_bug1_quality_mode_uses_075_overlap():
         fake_input.touch()
         fake_output = Path(tmpdir) / "output"
 
-        fake_model = Path(tmpdir) / "Kim_Vocal_2.onnx"
+        fake_model = Path(tmpdir) / "UVR_MDXNET_KARA.onnx"
         fake_model.touch()
 
-        # Mock all dependencies so extract_vocals_stage1 can run without real models
         with patch.object(vs1_mod, "run_vocal_onnx", side_effect=mock_run_vocal_onnx), \
              patch.object(vs1_mod, "resolve_single_vocal_onnx", return_value=fake_model), \
              patch.object(vs1_mod, "vocal_onnx_allowed_for_service", return_value=True), \
@@ -64,13 +58,10 @@ def test_bug1_quality_mode_uses_075_overlap():
                     model_tier="quality",
                 )
             except Exception:
-                pass  # We only care about the overlap value captured
+                pass
 
     assert "value" in captured_overlap, "run_vocal_onnx was never called"
-    assert captured_overlap["value"] == 0.75, (
-        f"Bug 1 confirmed: quality mode overlap is {captured_overlap['value']} "
-        f"but should be 0.75"
-    )
+    assert captured_overlap["value"] == 0.5
 
 
 def test_bug2_use_demucs_shifts_0_defaults_to_false_when_unset():

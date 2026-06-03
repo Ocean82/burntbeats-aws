@@ -144,3 +144,66 @@ def create_perfect_instrumental(
     except Exception as e:
         raise RuntimeError(f"Failed to write instrumental WAV to {output_path}: {e}") from e
     return output_path
+
+
+def create_residual_stem(
+    original_path: Path,
+    subtract_paths: list[Path],
+    output_path: Path,
+) -> Path:
+    """
+    Residual stem = original mix minus one or more aligned stem WAVs.
+    Used for *other* when MDX drums/bass (and optionally vocals) are extracted separately.
+    """
+    original_path = Path(original_path)
+    output_path = Path(output_path)
+
+    if not original_path.is_file():
+        raise FileNotFoundError(f"Original audio not found: {original_path}")
+
+    try:
+        residual, sr = _load_audio_tensor(original_path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load original for residual stem: {e}") from e
+
+    if residual.shape[1] == 0:
+        raise ValueError(f"Original audio has no samples: {original_path}")
+
+    for sub_path in subtract_paths:
+        sub_path = Path(sub_path)
+        if not sub_path.is_file():
+            raise FileNotFoundError(f"Subtract stem not found: {sub_path}")
+        try:
+            sub, sr_sub = _load_audio_tensor(sub_path)
+        except Exception as e:
+            raise RuntimeError(f"Failed to load subtract stem {sub_path}: {e}") from e
+
+        if sr_sub != sr:
+            sub = torchaudio.functional.resample(sub, sr_sub, sr)
+
+        sub_channels = sub.shape[0]
+        res_channels = residual.shape[0]
+        if sub_channels == 1 and res_channels == 2:
+            sub = sub.expand(2, -1)
+        elif sub_channels == 2 and res_channels == 1:
+            residual = residual.expand(2, -1)
+            res_channels = 2
+        elif sub_channels != res_channels:
+            sub = sub[:res_channels].expand(res_channels, -1)
+
+        res_len = residual.shape[1]
+        if sub.shape[1] < res_len:
+            sub = torch.nn.functional.pad(
+                sub, (0, res_len - sub.shape[1]), mode="constant", value=0.0
+            )
+        else:
+            sub = sub[..., :res_len]
+        residual = residual[..., :res_len] - sub
+
+    residual = _soft_limit(residual)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _write_wav(output_path, residual.T, int(sr))
+    except Exception as e:
+        raise RuntimeError(f"Failed to write residual stem to {output_path}: {e}") from e
+    return output_path

@@ -82,17 +82,16 @@ _schedule_s3_upload = schedule_s3_upload
 
 def _supported_mode_health_snapshot() -> dict[str, object]:
     """Return readiness for the four supported deterministic CPU modes."""
-    from stem_service.config import (
-        demucs_quality_4stem_configs,
-        demucs_speed_4stem_configs,
-    )
+    from stem_service.routing.model_bag import resolve_single_stem_model
 
     fast_vocal = resolve_single_vocal_onnx("UVR_MDXNET_3_9662.onnx")
-    quality_vocal = resolve_single_vocal_onnx("Kim_Vocal_2.onnx")
-    speed_4stem_cfgs = demucs_speed_4stem_configs()
-    quality_4stem_cfgs = demucs_quality_4stem_configs()
-    speed_4stem_ckpt = speed_4stem_cfgs[0][4] if speed_4stem_cfgs else None
-    quality_4stem_ckpt = quality_4stem_cfgs[0][4] if quality_4stem_cfgs else None
+    quality_vocal = resolve_single_vocal_onnx("UVR_MDXNET_KARA.onnx")
+    drum_model = resolve_single_stem_model("drums", "quality")
+    bass_model = resolve_single_stem_model("bass", "quality")
+
+    mdx_4_ready = all(
+        m is not None for m in (quality_vocal, drum_model, bass_model)
+    )
 
     modes = {
         "2_stem_speed": {
@@ -103,21 +102,23 @@ def _supported_mode_health_snapshot() -> dict[str, object]:
         },
         "2_stem_quality": {
             "ready": quality_vocal is not None,
-            "required_models": ["Kim_Vocal_2.onnx"],
+            "required_models": ["UVR_MDXNET_KARA.onnx"],
             "resolved_models": [quality_vocal.name] if quality_vocal is not None else [],
-            "missing_models": [] if quality_vocal is not None else ["Kim_Vocal_2.onnx"],
+            "missing_models": [] if quality_vocal is not None else ["UVR_MDXNET_KARA.onnx"],
         },
         "4_stem_speed": {
-            "ready": fast_vocal is not None and speed_4stem_ckpt is not None,
+            "ready": fast_vocal is not None and drum_model is not None and bass_model is not None,
             "required_models": [
                 "UVR_MDXNET_3_9662.onnx",
-                "speed_4stem_rank28/cfa93e08-61801ae1.th",
+                "UVR-MDX-NET-Drum.onnx",
+                "UVR-MDX-NET-Bass.onnx",
             ],
             "resolved_models": [
                 model_name
                 for model_name in (
                     fast_vocal.name if fast_vocal is not None else None,
-                    str(speed_4stem_ckpt.name) if speed_4stem_ckpt is not None else None,
+                    drum_model.name if drum_model is not None else None,
+                    bass_model.name if bass_model is not None else None,
                 )
                 if model_name is not None
             ],
@@ -125,33 +126,34 @@ def _supported_mode_health_snapshot() -> dict[str, object]:
                 model_name
                 for model_name, available in (
                     ("UVR_MDXNET_3_9662.onnx", fast_vocal is not None),
-                    ("speed_4stem_rank28/cfa93e08-61801ae1.th", speed_4stem_ckpt is not None),
+                    ("UVR-MDX-NET-Drum.onnx", drum_model is not None),
+                    ("UVR-MDX-NET-Bass.onnx", bass_model is not None),
                 )
                 if not available
             ],
         },
         "4_stem_quality": {
-            "ready": quality_vocal is not None and quality_4stem_ckpt is not None,
+            "ready": mdx_4_ready,
             "required_models": [
-                "Kim_Vocal_2.onnx",
-                "quality_4stem_rank1/04573f0d-f3cf25b2__29d4388e.th",
+                "UVR_MDXNET_KARA.onnx",
+                "UVR-MDX-NET-Drum.onnx",
+                "UVR-MDX-NET-Bass.onnx",
             ],
             "resolved_models": [
                 model_name
                 for model_name in (
                     quality_vocal.name if quality_vocal is not None else None,
-                    str(quality_4stem_ckpt.name) if quality_4stem_ckpt is not None else None,
+                    drum_model.name if drum_model is not None else None,
+                    bass_model.name if bass_model is not None else None,
                 )
                 if model_name is not None
             ],
             "missing_models": [
                 model_name
                 for model_name, available in (
-                    ("Kim_Vocal_2.onnx", quality_vocal is not None),
-                    (
-                        "quality_4stem_rank1/04573f0d-f3cf25b2__29d4388e.th",
-                        quality_4stem_ckpt is not None,
-                    ),
+                    ("UVR_MDXNET_KARA.onnx", quality_vocal is not None),
+                    ("UVR-MDX-NET-Drum.onnx", drum_model is not None),
+                    ("UVR-MDX-NET-Bass.onnx", bass_model is not None),
                 )
                 if not available
             ],
