@@ -113,6 +113,7 @@ jobs:
       - name: Stem service unit tests
         env:
           STEM_ALLOW_MISSING_HTDEMUCS: "1"
+          STEM_SERVICE_API_TOKEN: stem-ci-test-token-32chars
         run: uv run pytest stem_service/tests -q
 
   midi-python:
