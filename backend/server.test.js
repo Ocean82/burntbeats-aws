@@ -10,6 +10,7 @@ import supertest from "supertest";
 process.env.DATABASE_URL = "";
 
 process.env.NODE_ENV = "test";
+process.env.RATE_LIMIT_MAX_REQUESTS = "10000";
 process.env.API_KEY = "test-key";
 process.env.JOB_TOKEN_SECRET = ""; // disable job token auth for these basic tests
 process.env.STEM_SERVICE_API_TOKEN = "stem-service-test-token";
