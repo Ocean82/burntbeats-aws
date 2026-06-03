@@ -22,6 +22,12 @@ export const SPEECH_MAX_UPLOAD_BYTES =
 
 export const UPLOAD_TMP_DIR = path.join(os.tmpdir(), "burntbeats-speech-upload");
 
+/** Default TTL for speech job dirs (POST /api/speech/cleanup). */
+export const SPEECH_CLEANUP_DEFAULT_MAX_AGE_HOURS = (() => {
+  const raw = Number(process.env.SPEECH_CLEANUP_DEFAULT_MAX_AGE_HOURS);
+  return Number.isFinite(raw) && raw >= 0 ? raw : 48;
+})();
+
 /**
  * @param {string} jobId
  * @param {...string} segments

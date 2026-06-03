@@ -8,6 +8,16 @@ dependencies = []
 [tool.uv.workspace]
 members = ["stem_service", "midi_service", "speech_service"]
 
+# basic-pitch declares TensorFlow on non-Darwin; burntbeats-midi uses ONNX only (see midi_service/services/model_runtime.py).
+[tool.uv]
+override-dependencies = [
+  "tensorflow==2.15.0; python_version < '0'",
+  "tensorflow-macos==2.15.0; python_version < '0'",
+  "tensorflow-estimator==2.15.0; python_version < '0'",
+  "tensorflow-io-gcs-filesystem==0.37.1; python_version < '0'",
+  "keras==2.15.0; python_version < '0'",
+]
+
 [dependency-groups]
 dev = [
     "ruff>=0.9.0",

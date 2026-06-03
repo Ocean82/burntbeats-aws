@@ -190,6 +190,20 @@ test("GET /api/midi/cleanup is rejected; POST remains the supported method", asy
   assert.equal(typeof postRes.body.deleted, "number");
 });
 
+test("GET /api/speech/cleanup is rejected; POST remains the supported method", async () => {
+  const getRes = await request
+    .get("/api/speech/cleanup")
+    .set("x-api-key", process.env.API_KEY)
+    .expect(405);
+  assert.equal(typeof getRes.body.error, "string");
+
+  const postRes = await request
+    .post("/api/speech/cleanup")
+    .set("x-api-key", process.env.API_KEY)
+    .expect(200);
+  assert.equal(typeof postRes.body.deleted, "number");
+});
+
 test("GET /api/billing/balance route exists (compat alias)", async () => {
   // Route should exist and require auth, not return 404.
   await request.get("/api/billing/balance").expect(401);

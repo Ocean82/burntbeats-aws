@@ -16,7 +16,8 @@ COPY midi_service/pyproject.toml ./midi_service/pyproject.toml
 COPY speech_service/pyproject.toml ./speech_service/pyproject.toml
 
 RUN pip install --no-cache-dir uv \
-    && UV_SYSTEM_PYTHON=1 uv sync --frozen --package burntbeats-midi --no-install-project
+    && UV_SYSTEM_PYTHON=1 uv sync --frozen --package burntbeats-midi --no-install-project \
+    && pip uninstall -y tensorflow tensorflow-macos tensorflow-estimator tensorflow-io-gcs-filesystem keras 2>/dev/null || true
 
 COPY midi_service/ ./midi_service/
 

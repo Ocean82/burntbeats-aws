@@ -46,6 +46,7 @@ export function shouldSkipGlobalRateLimit(req) {
     return true;
   if (req.method === "GET" && req.path === "/api/stems/cleanup") return true;
   if (req.method === "GET" && req.path === "/api/midi/cleanup") return true;
+  if (req.method === "GET" && req.path === "/api/speech/cleanup") return true;
   return false;
 }
 

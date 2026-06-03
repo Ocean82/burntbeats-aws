@@ -46,6 +46,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     depends_on:
+      stem_service:
+        condition: service_healthy
       speech_service:
         condition: service_healthy
       midi_service:
@@ -246,6 +248,7 @@ services:
       API_KEY: ${API_KEY:-}
       STEM_MAX_AGE_HOURS: ${STEM_CLEANUP_MAX_AGE_HOURS:-48}
       MIDI_MAX_AGE_HOURS: ${MIDI_CLEANUP_MAX_AGE_HOURS:-24}
+      SPEECH_MAX_AGE_HOURS: ${SPEECH_CLEANUP_MAX_AGE_HOURS:-48}
       CLEANUP_INTERVAL_HOURS: ${CLEANUP_INTERVAL_HOURS:-6}
     restart: unless-stopped
     deploy:

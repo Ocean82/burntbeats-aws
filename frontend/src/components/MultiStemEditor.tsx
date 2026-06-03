@@ -1,5 +1,8 @@
 /**
  * MultiStemEditor — unified waveform editor showing all stems in one timeline.
+ *
+ * Deprecated for product UI: DjModeEditor is the shipped surface (see LayoutModeContext).
+ * Kept for beat-grid logic reuse, quality baseline, and optional future classic layout.
  */
 import {
   useCallback,
