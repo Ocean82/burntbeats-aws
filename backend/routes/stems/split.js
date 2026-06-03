@@ -35,7 +35,7 @@ import { insertJob, updateJobStatus } from "../../db-jobs.js";
 
 import {
   SPLIT_ACCEPT_TIMEOUT_MS,
-  STEM_OUTPUT_DIR,
+  UPLOAD_TMP_DIR,
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
@@ -88,10 +88,7 @@ splitRouter.post(
       const bucket = process.env.S3_UPLOAD_BUCKET;
       if (!bucket) return res.status(501).json({ error: "S3 processing not configured" });
       
-      const uploadDir = path.resolve(
-        path.dirname(STEM_OUTPUT_DIR),
-        "burntbeats-upload",
-      );
+      const uploadDir = UPLOAD_TMP_DIR;
       const safeBasename =
         path.basename(String(s3Key)).replace(/[^a-zA-Z0-9._-]/g, "_") || "audio";
       const tmpName = `s3-${randomUUID()}-${safeBasename}`;

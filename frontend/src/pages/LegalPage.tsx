@@ -132,13 +132,30 @@ function renderMarkdown(md: string): string {
   return out.join("\n");
 }
 
+/** Strip event handlers and javascript: hrefs only inside HTML tag openers (not text nodes). */
+function sanitizeHtmlTagOpeners(html: string): string {
+  return html.replace(
+    /<([a-z][a-z0-9]*)\b([^>]*?)(\/?)>/gi,
+    (_match, tag: string, attrs: string, selfClose: string) => {
+      const withoutEvents = attrs.replace(
+        /\s(on[a-z][a-z0-9]*)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>/]+)/gi,
+        "",
+      );
+      const withoutJsHref = withoutEvents.replace(
+        /\shref\s*=\s*(["']?)\s*javascript:[^"'>\s]*/gi,
+        " href=$1#",
+      );
+      return `<${tag}${withoutJsHref}${selfClose}>`;
+    },
+  );
+}
+
 /** Defense-in-depth: strip active content if markdown ever contains raw HTML. */
 function sanitizeLegalHtml(html: string): string {
-  return html
+  const withoutEmbeds = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
-    .replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/href\s*=\s*(["']?)\s*javascript:[^"'>\s]*/gi, 'href=$1#');
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
+  return sanitizeHtmlTagOpeners(withoutEmbeds);
 }
 
 export function LegalPage({ doc }: { doc: LegalDoc }) {

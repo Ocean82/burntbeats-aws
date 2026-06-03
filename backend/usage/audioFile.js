@@ -5,10 +5,9 @@
  * Reads audio duration from file metadata and finds job input files.
  */
 import { readdirSync } from "fs";
-import path from "path";
 import { parseFile } from "music-metadata";
 
-import { isPathInsideBase, resolveUuidJobDir } from "../helpers/safePath.js";
+import { resolvePathWithinBase, resolveUuidJobDir } from "../helpers/safePath.js";
 
 /**
  * @param {string} filePath
@@ -35,9 +34,7 @@ export function findJobInputPath(baseDir, jobId) {
     const names = readdirSync(jobDir);
     const input = names.find((n) => n.startsWith("input."));
     if (!input) return null;
-    const filePath = path.join(jobDir, input);
-    if (!isPathInsideBase(jobDir, filePath)) return null;
-    return filePath;
+    return resolvePathWithinBase(jobDir, input);
   } catch {
     return null;
   }

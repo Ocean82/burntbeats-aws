@@ -188,7 +188,20 @@ export async function probeMidiStorage(options = {}) {
       };
     }
 
-    const probePath = path.join(outputDir, `.backend-midi-probe-${process.pid}.tmp`);
+    const probePath = resolvePathWithinBase(
+      outputDir,
+      `.backend-midi-probe-${process.pid}.tmp`,
+    );
+    if (!probePath) {
+      return {
+        ok: false,
+        output_dir: outputDir,
+        resolved_output_dir: resolved,
+        can_read: canRead,
+        can_write: canWrite,
+        error: "Invalid probe path",
+      };
+    }
     await writeFile(probePath, "ok", "utf-8");
     await rm(probePath, { force: true });
 

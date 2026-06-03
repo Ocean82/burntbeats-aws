@@ -52,3 +52,20 @@ export function resolveUuidJobDir(baseDir, jobId) {
   if (!jobId || !UUID_REGEX.test(jobId)) return null;
   return resolvePathWithinBase(baseDir, jobId);
 }
+
+/**
+ * Resolve a filesystem path only when it stays under one of the allowed base dirs.
+ * Use for optional client-supplied paths (e.g. mastering input_path).
+ * @param {string} candidatePath
+ * @param {readonly string[]} allowedBases
+ * @returns {string | null}
+ */
+export function resolvePathUnderAllowedBases(candidatePath, allowedBases) {
+  if (typeof candidatePath !== "string" || !candidatePath.trim()) return null;
+  if (candidatePath.includes("\0")) return null;
+  const resolved = path.resolve(candidatePath);
+  for (const baseDir of allowedBases) {
+    if (isPathInsideBase(baseDir, resolved)) return resolved;
+  }
+  return null;
+}

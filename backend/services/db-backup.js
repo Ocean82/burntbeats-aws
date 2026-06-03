@@ -281,7 +281,15 @@ async function restoreFromBackup(backupId) {
   if (!backup) throw new Error(`Backup not found: ${backupId}`);
   if (backup.status !== "completed") throw new Error(`Cannot restore incomplete backup: ${backupId}`);
 
-  let filePath = path.join(CONFIG.backupPath, backup.filename);
+  const filename =
+    typeof backup.filename === "string" ? backup.filename : "";
+  if (!BACKUP_FILENAME_REGEX.test(filename)) {
+    throw new Error(`Invalid backup filename: ${backup.id}`);
+  }
+  const filePath = resolvePathWithinBase(CONFIG.backupPath, filename);
+  if (!filePath) {
+    throw new Error(`Invalid backup path: ${backup.id}`);
+  }
 
   // If local file doesn't exist, try downloading from S3
   try {

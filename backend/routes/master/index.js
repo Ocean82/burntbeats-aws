@@ -11,6 +11,10 @@ import { randomUUID } from "crypto";
 
 import { authMiddleware } from "../../middleware/auth.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
+import {
+  resolvePathUnderAllowedBases,
+  resolvePathWithinBase,
+} from "../../helpers/safePath.js";
 import { findJobInputPath } from "../../usage/audioFile.js";
 import { runFfmpeg } from "../../lib/ffmpeg.js";
 import {
@@ -29,6 +33,10 @@ const MIXER_GENRE_PRESETS_PATH = fileURLToPath(
   new URL("../../data/mixer-genre-presets.json", import.meta.url),
 );
 
+const MASTER_TMP_DIR = path.resolve(os.tmpdir(), "burntbeats-master");
+
+const MASTER_INPUT_BASES = [STEM_OUTPUT_DIR, MIDI_OUTPUT_DIR];
+
 /**
  * @param {string | undefined} inputPath
  * @param {string} jobId
@@ -36,8 +44,9 @@ const MIXER_GENRE_PRESETS_PATH = fileURLToPath(
  * @returns {string | null}
  */
 function resolveMasterInputPath(inputPath, jobId, source) {
-  if (inputPath && typeof inputPath === "string" && existsSync(inputPath)) {
-    return inputPath;
+  if (inputPath && typeof inputPath === "string") {
+    const trusted = resolvePathUnderAllowedBases(inputPath, MASTER_INPUT_BASES);
+    if (trusted && existsSync(trusted)) return trusted;
   }
 
   if (jobId && UUID_REGEX.test(jobId)) {
@@ -116,10 +125,12 @@ masterRouter.post("/render", authMiddleware, async (req, res) => {
     });
   }
 
-  const tmpDir = path.join(os.tmpdir(), "burntbeats-master");
-  await mkdir(tmpDir, { recursive: true });
+  await mkdir(MASTER_TMP_DIR, { recursive: true });
   const renderId = randomUUID();
-  const outputPath = path.join(tmpDir, `${renderId}.wav`);
+  const outputPath = resolvePathWithinBase(MASTER_TMP_DIR, `${renderId}.wav`);
+  if (!outputPath) {
+    return res.status(500).json({ error: "Could not prepare output path" });
+  }
 
   try {
     const args = buildMasteringFfmpegArgs(inputPath, outputPath, preset);

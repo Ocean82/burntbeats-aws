@@ -36,7 +36,7 @@ import {
   handleMidiProxyError,
 } from "./shared.js";
 import { resolveStemJobPath } from "../stems/shared.js";
-import { isPathInsideBase, isSafePathSegment } from "../../helpers/safePath.js";
+import { isSafePathSegment, resolvePathWithinBase } from "../../helpers/safePath.js";
 
 export const midiConvertRouter = Router();
 
@@ -71,8 +71,8 @@ function resolveStemPath(stemJobId, stemName) {
       if (!isSafePathSegment(entry.name)) continue;
       if (path.extname(entry.name).toLowerCase() !== ".wav") continue;
       if (path.basename(entry.name, ".wav") !== trimmedStemName) continue;
-      const filePath = path.join(stemsDir, entry.name);
-      if (!isPathInsideBase(stemsDir, filePath)) continue;
+      const filePath = resolvePathWithinBase(stemsDir, entry.name);
+      if (!filePath) continue;
       return filePath;
     }
     return null;
