@@ -14,6 +14,7 @@ TMP_OUTPUT_DIR = Path(tempfile.mkdtemp(prefix="burntbeats-stem-output-"))
 # Set env vars before importing the FastAPI app so module-level constants pick them up.
 os.environ["STEM_OUTPUT_DIR"] = str(TMP_OUTPUT_DIR)
 os.environ["NODE_ENV"] = "production"
+os.environ["STEM_SERVICE_API_TOKEN"] = "stem-ci-test-token-32chars"
 os.environ["FRONTEND_ORIGINS"] = "http://localhost:5173,http://localhost"
 os.environ["STEM_ALLOW_MISSING_HTDEMUCS"] = "1"
 
