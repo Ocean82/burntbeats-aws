@@ -22,6 +22,7 @@ export function createPreviewRuntime({
   wallDuration,
   wallElapsed,
   ensureMasterBus,
+  bpm,
 }: {
   context: AudioContext
   stemId: string
@@ -32,6 +33,7 @@ export function createPreviewRuntime({
   wallDuration: number
   wallElapsed: number
   ensureMasterBus: (ctx: AudioContext) => GainNode
+  bpm?: number
 }): PreviewRuntime | null {
   const { trimEnd, startOffset } = trimStartOffsetAtElapsedWall(
     buffer,
@@ -45,6 +47,7 @@ export function createPreviewRuntime({
     context,
     stemState.mixer,
     Math.pow(10, stemState.mixer.gain / 20),
+    { bpm },
   )
   const { source, fadeNode } = buildStemSource(
     context,
