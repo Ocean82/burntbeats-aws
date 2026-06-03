@@ -10,7 +10,7 @@ sys.path.insert(0, str(REPO_ROOT))
 TMP_OUTPUT_DIR = Path(tempfile.mkdtemp(prefix="burntbeats-stem-runtime-"))
 os.environ["STEM_OUTPUT_DIR"] = str(TMP_OUTPUT_DIR)
 os.environ["NODE_ENV"] = "production"
-os.environ["STEM_SERVICE_API_TOKEN"] = "stem-ci-test-token-32chars"
+os.environ["INTERNAL_SERVICE_AUTH_REQUIRED"] = "0"
 
 from stem_service import server  # noqa: E402
 from stem_service import job_worker  # noqa: E402
