@@ -65,6 +65,7 @@ services:
       SPEECH_OUTPUT_DIR: /app/tmp/speech
       SPEECH_MAX_UPLOAD_MB: ${SPEECH_MAX_UPLOAD_MB:-100}
       MIDI_OUTPUT_DIR: /app/tmp/midi
+      STEM_SERVICE_API_TOKEN: ${STEM_SERVICE_API_TOKEN:-}
       SPEECH_SERVICE_API_TOKEN: ${SPEECH_SERVICE_API_TOKEN:-}
       MIDI_SERVICE_API_TOKEN: ${MIDI_SERVICE_API_TOKEN:-}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
@@ -138,6 +139,7 @@ services:
       # (built via scripts/export_server_models.py from canonical `models/`). Default `models` is OK for dev.
       STEM_MODELS_DIR: ${STEM_MODELS_DIR:-models}
       STEM_OUTPUT_DIR: /repo/tmp/stems
+      STEM_SERVICE_API_TOKEN: ${STEM_SERVICE_API_TOKEN:-}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
       # One CPU budget surface for queue workers + per-job threads.
       STEM_CPU_WORKERS: ${STEM_CPU_WORKERS:-1}
@@ -187,6 +189,7 @@ services:
       SPEECH_DEVICE: ${SPEECH_DEVICE:-cpu}
       SPEECH_MAX_UPLOAD_MB: ${SPEECH_MAX_UPLOAD_MB:-100}
       SPEECH_SERVICE_API_TOKEN: ${SPEECH_SERVICE_API_TOKEN:-}
+      INTERNAL_SERVICE_AUTH_REQUIRED: "1"
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
     volumes:
       - ./tmp/speech:/repo/tmp/speech
@@ -213,6 +216,7 @@ services:
     environment:
       MIDI_OUTPUT_DIR: /repo/tmp/midi
       MIDI_SERVICE_API_TOKEN: ${MIDI_SERVICE_API_TOKEN:-}
+      INTERNAL_SERVICE_AUTH_REQUIRED: "1"
       MIDI_MAX_QUEUE_DEPTH: ${MIDI_MAX_QUEUE_DEPTH:-8}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
     volumes:

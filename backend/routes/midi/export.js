@@ -5,7 +5,8 @@
 import { Router } from "express";
 import http from "http";
 
-import { authMiddleware, jobTokenMiddleware, issueJobToken } from "../../middleware/auth.js";
+import { authMiddleware, issueJobToken } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 import {
   MIDI_SERVICE_URL,
@@ -66,22 +67,24 @@ midiExportRouter.post("/", authMiddleware, async (req, res) => {
     }
 
     const exportId = result.data.export_id;
-    const exportToken = issueJobToken(exportId);
     const baseUrl = getBaseUrl(req);
-    return res.status(202).json({
+    const response = {
       export_id: exportId,
       status: result.data?.status || "queued",
-      export_token: exportToken,
       status_url: `${baseUrl}/api/midi/export/status/${exportId}`,
       archive_url: `${baseUrl}/api/midi/export/file/${exportId}/stems.zip`,
-    });
+    };
+    if (process.env.JOB_TOKEN_SECRET) {
+      response.export_token = issueJobToken(exportId);
+    }
+    return res.status(202).json(response);
   } catch (e) {
     const message = e?.message === "TimeoutError" ? "MIDI service did not respond in time" : "MIDI service unavailable";
     return res.status(502).json({ error: message });
   }
 });
 
-midiExportRouter.get("/status/:job_id", authMiddleware, jobTokenMiddleware, async (req, res) => {
+midiExportRouter.get("/status/:job_id", authMiddleware, requireJobOwnership, async (req, res) => {
   const exportId = req.params.job_id;
   if (!isValidId(exportId)) {
     return res.status(400).json({ error: "Invalid export_id" });
@@ -124,7 +127,7 @@ midiExportRouter.get("/status/:job_id", authMiddleware, jobTokenMiddleware, asyn
   }
 });
 
-midiExportRouter.get("/file/:job_id/:filename", authMiddleware, jobTokenMiddleware, async (req, res) => {
+midiExportRouter.get("/file/:job_id/:filename", authMiddleware, requireJobOwnership, async (req, res) => {
   const exportId = req.params.job_id;
   const { filename } = req.params;
   if (!isValidId(exportId)) {

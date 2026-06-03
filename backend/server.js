@@ -36,6 +36,7 @@ import { historyRouter } from "./routes/history.js";
 import { masterRouter } from "./routes/master/index.js";
 import { previewRouter } from "./routes/preview/index.js";
 import { catalogRouter } from "./routes/catalog/index.js";
+import { getMissingInternalServiceTokens } from "./lib/internalAuth.js";
 
 /**
  * @param {unknown} value
@@ -83,6 +84,9 @@ if (
   REQUIRED_ENV_WARNINGS.push(
     "USAGE_TOKENS_ENABLED=1 (metered paywall enforcement)",
   );
+}
+for (const tokenIssue of getMissingInternalServiceTokens()) {
+  REQUIRED_ENV_WARNINGS.push(tokenIssue);
 }
 if (REQUIRED_ENV_WARNINGS.length > 0 && process.env.NODE_ENV !== "test") {
   if (process.env.NODE_ENV === "production") {

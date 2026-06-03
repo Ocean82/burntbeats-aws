@@ -53,6 +53,13 @@ app.locals.verifyClerkBearer = async (req) => {
   throw Object.assign(new Error("Missing auth token"), { status: 401 });
 };
 
+/** @type {Record<string, string>} */
+const dbJobOwners = {
+  [OWNER_JOB_ID]: "user-owner",
+  [OTHER_JOB_ID]: "user-other",
+};
+app.locals.getJobOwner = async (jobId) => dbJobOwners[jobId] ?? null;
+
 const request = supertest(app);
 
 test("GET /api/midi/file allows completed-job download for owner without job token", async () => {

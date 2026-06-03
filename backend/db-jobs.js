@@ -37,7 +37,7 @@ export async function ensureUser(clerkUserId, meta = {}) {
  *   jobId: string,
  *   clerkUserId: string | null,
  *   stems: number,
- *   quality: string | null,
+ *   quality: string | null,  // stem_quality enum for stem jobs; null for speech/midi
  *   isSample: boolean,
  *   originalFilename: string | null,
  *   durationSeconds: number | null,

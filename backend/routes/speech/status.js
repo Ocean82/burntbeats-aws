@@ -3,7 +3,8 @@ import { Router } from "express";
 import { existsSync, readFileSync } from "fs";
 import path from "path";
 
-import { authMiddleware, jobTokenMiddleware } from "../../middleware/auth.js";
+import { authMiddleware } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 
@@ -14,7 +15,7 @@ export const speechStatusRouter = Router();
 speechStatusRouter.get(
   "/:job_id",
   authMiddleware,
-  jobTokenMiddleware,
+  requireJobOwnership,
   (req, res) => {
     const { job_id } = req.params;
     if (!job_id || !UUID_REGEX.test(job_id)) {

@@ -112,7 +112,7 @@ fileServeRouter.get(
 );
 
 // ── DELETE /:job_id ──────────────────────────────────────────────────────────
-fileServeRouter.delete("/:job_id", authMiddleware, async (req, res) => {
+fileServeRouter.delete("/:job_id", authMiddleware, requireJobOwnership, async (req, res) => {
   const { job_id } = req.params;
   if (!job_id || !UUID_REGEX.test(job_id)) {
     return res.status(400).json({ error: "Invalid job_id" });

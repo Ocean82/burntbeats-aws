@@ -231,7 +231,13 @@ UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
 
+from stem_service.internal_auth import (
+    require_configured_api_token,
+    validate_service_token_at_startup,
+)
+
 STEM_SERVICE_API_TOKEN = os.environ.get("STEM_SERVICE_API_TOKEN", "")
+validate_service_token_at_startup("STEM_SERVICE_API_TOKEN", STEM_SERVICE_API_TOKEN)
 
 FRONTEND_ORIGINS = os.environ.get(
     "FRONTEND_ORIGINS", "http://localhost:5173,http://localhost:3000"
@@ -242,11 +248,10 @@ FRONTEND_ORIGINS = os.environ.get(
 
 def _require_stem_service_api_token(request: Request) -> None:
     """Protect stem_service routes when it is reachable outside the trusted network."""
-    if not STEM_SERVICE_API_TOKEN:
-        return
-    provided = request.headers.get("X-Stem-Service-Token")
-    if not provided or provided != STEM_SERVICE_API_TOKEN:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    require_configured_api_token(
+        STEM_SERVICE_API_TOKEN,
+        request.headers.get("X-Stem-Service-Token"),
+    )
 
 
 def _safe_job_path(job_id: str, *parts: str) -> Path:

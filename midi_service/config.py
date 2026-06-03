@@ -13,6 +13,10 @@ MIDI_OUTPUT_DIR = Path(
 
 MIDI_SERVICE_API_TOKEN: str = os.environ.get("MIDI_SERVICE_API_TOKEN", "")
 
+from midi_service.internal_auth import validate_service_token_at_startup
+
+validate_service_token_at_startup("MIDI_SERVICE_API_TOKEN", MIDI_SERVICE_API_TOKEN)
+
 SUPPORTED_AUDIO_FORMATS = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".webm"}
 MAX_FILE_SIZE_MB = int(os.environ.get("MIDI_MAX_UPLOAD_MB", "100"))
 MAX_QUEUE_DEPTH = int(os.environ.get("MIDI_MAX_QUEUE_DEPTH", "8"))

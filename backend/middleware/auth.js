@@ -65,7 +65,12 @@ export function verifyJobToken(token, secret) {
  */
 export function validateJobTokenForRequest(req, jobId) {
   const secret = process.env.JOB_TOKEN_SECRET || "";
-  if (!secret) return { ok: true };
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      return { ok: false, status: 503, error: "Job token authentication is not configured." };
+    }
+    return { ok: true };
+  }
   if (!jobId) {
     return { ok: false, status: 400, error: "Missing job_id." };
   }

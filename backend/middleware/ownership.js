@@ -63,7 +63,11 @@ export async function requireJobOwnership(req, res, next) {
     return res.status(400).json({ error: "Missing job_id." });
   }
 
-  const owner = await getJobOwner(jobId);
+  const testGetJobOwner = req.app?.locals?.getJobOwner;
+  const owner =
+    typeof testGetJobOwner === "function"
+      ? await testGetJobOwner(jobId)
+      : await getJobOwner(jobId);
 
   // No DB owner → fall back to job token
   if (!owner) {

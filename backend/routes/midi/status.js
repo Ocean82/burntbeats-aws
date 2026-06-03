@@ -5,7 +5,8 @@
 import { Router } from "express";
 import http from "http";
 
-import { authMiddleware, jobTokenMiddleware } from "../../middleware/auth.js";
+import { authMiddleware } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import {
   MIDI_SERVICE_URL,
   withMidiServiceAuthHeader,
@@ -13,7 +14,7 @@ import {
 
 export const midiStatusRouter = Router();
 
-midiStatusRouter.get("/:job_id", authMiddleware, jobTokenMiddleware, async (req, res) => {
+midiStatusRouter.get("/:job_id", authMiddleware, requireJobOwnership, async (req, res) => {
   const { job_id: jobId } = req.params;
 
   if (!jobId || !/^[0-9a-f-]{36}$/i.test(jobId)) {

@@ -10,6 +10,8 @@ import {
   requireUsageAuthPreUpload,
   issueJobToken,
 } from "../../middleware/auth.js";
+import { getPool } from "../../db.js";
+import { insertJob } from "../../db-jobs.js";
 import { proxySpeechFormRequest } from "../../middleware/proxy.js";
 import { upload, MAX_UPLOAD_MB } from "../../middleware/upload.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
@@ -114,15 +116,53 @@ enhanceRouter.post(
         return res.status(502).json({ error: "Speech service did not accept the job" });
       }
 
-      const jobToken = issueJobToken(data.job_id);
+      const jobId = data.job_id;
+      const mustPersistOwner = Boolean(usageUserId && getPool());
+      try {
+        await insertJob({
+          jobId,
+          clerkUserId: usageUserId,
+          stems: 0,
+          quality: null,
+          isSample: false,
+          originalFilename: req.file.originalname || null,
+          durationSeconds: null,
+          tokenCost: usageCost,
+          splitIntent: null,
+        });
+      } catch (dbErr) {
+        console.error(
+          mustPersistOwner
+            ? "[speech/enhance] critical: failed to persist job to DB:"
+            : "[speech/enhance] failed to persist job to DB:",
+          dbErr instanceof Error ? dbErr.message : dbErr,
+        );
+        if (mustPersistOwner) {
+          if (usageReserved && usageUserId && usageCost > 0) {
+            try {
+              const { refundUsageTokens } = await import("../../usageTokens.js");
+              await refundUsageTokens(usageUserId, usageCost);
+            } catch {
+              /* ignore refund errors */
+            }
+          }
+          return res.status(502).json({
+            error: "Could not record your job. Please try again.",
+          });
+        }
+      }
+
       const baseUrl = getBaseUrl(req);
-      return res.status(202).json({
-        job_id: data.job_id,
+      const response = {
+        job_id: jobId,
         status: data.status || "queued",
-        job_token: jobToken,
-        output_url: `${baseUrl}/api/speech/file/${data.job_id}/enhanced.wav`,
-        status_url: `${baseUrl}/api/speech/status/${data.job_id}`,
-      });
+        output_url: `${baseUrl}/api/speech/file/${jobId}/enhanced.wav`,
+        status_url: `${baseUrl}/api/speech/status/${jobId}`,
+      };
+      if (process.env.JOB_TOKEN_SECRET) {
+        response.job_token = issueJobToken(jobId);
+      }
+      return res.status(202).json(response);
     } catch (e) {
       if (usageReserved && usageUserId && usageCost > 0) {
         try {

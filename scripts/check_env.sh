@@ -107,14 +107,24 @@ if [[ -n "$root_job_token" ]]; then
     fail "JOB_TOKEN_SECRET format is invalid in .env/backend.env"
   fi
 else
-  warn "JOB_TOKEN_SECRET missing from root/backend env — historical job-token protections may be disabled"
+  fail "JOB_TOKEN_SECRET missing from root/backend env — required for production job file auth"
 fi
 
-if [[ -n "${RENV[MIDI_SERVICE_API_TOKEN]:-}" ]]; then
-  pass "MIDI_SERVICE_API_TOKEN is set in root .env"
-else
-  warn "MIDI_SERVICE_API_TOKEN not set in root .env — backend↔midi_service calls are unsecured"
-fi
+check_root_service_token() {
+  local key="$1"
+  local val="${RENV[$key]:-${BENV[$key]:-}}"
+  if [[ -z "$val" ]]; then
+    fail "$key missing from root/backend .env — required for internal service auth in production"
+  elif ! echo "$val" | grep -qE '^[A-Za-z0-9+/=_-]{16,}$'; then
+    fail "$key must be at least 16 characters"
+  else
+    pass "$key is set in root/backend env"
+  fi
+}
+
+check_root_service_token "STEM_SERVICE_API_TOKEN"
+check_root_service_token "SPEECH_SERVICE_API_TOKEN"
+check_root_service_token "MIDI_SERVICE_API_TOKEN"
 
 if [[ -n "${RENV[MIDI_ACCEPT_TIMEOUT_MS]:-}" ]]; then
   if echo "${RENV[MIDI_ACCEPT_TIMEOUT_MS]}" | grep -qE '^[0-9]+$'; then

@@ -47,18 +47,23 @@ UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
 
+from speech_service.internal_auth import (
+    require_configured_api_token,
+    validate_service_token_at_startup,
+)
+
 SPEECH_SERVICE_API_TOKEN = os.environ.get("SPEECH_SERVICE_API_TOKEN", "")
+validate_service_token_at_startup("SPEECH_SERVICE_API_TOKEN", SPEECH_SERVICE_API_TOKEN)
 FRONTEND_ORIGINS = os.environ.get(
     "FRONTEND_ORIGINS", "http://localhost:5173,http://localhost:3000"
 ).split(",")
 
 
 def _require_api_token(request: Request) -> None:
-    if not SPEECH_SERVICE_API_TOKEN:
-        return
-    provided = request.headers.get("X-Speech-Service-Token")
-    if not provided or provided != SPEECH_SERVICE_API_TOKEN:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    require_configured_api_token(
+        SPEECH_SERVICE_API_TOKEN,
+        request.headers.get("X-Speech-Service-Token"),
+    )
 
 
 @asynccontextmanager

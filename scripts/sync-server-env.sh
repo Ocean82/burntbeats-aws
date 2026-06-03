@@ -24,6 +24,10 @@ append_if_missing backend/.env.example MIDI_SERVICE_URL \
   "MIDI_SERVICE_URL=http://127.0.0.1:5002"
 append_if_missing backend/.env.example MIDI_OUTPUT_DIR \
   "# MIDI_OUTPUT_DIR=/path/to/burntbeats-aws/tmp/midi"
+append_if_missing backend/.env.example STEM_SERVICE_API_TOKEN \
+  "# STEM_SERVICE_API_TOKEN="
+append_if_missing backend/.env.example SPEECH_SERVICE_API_TOKEN \
+  "# SPEECH_SERVICE_API_TOKEN="
 append_if_missing backend/.env.example MIDI_SERVICE_API_TOKEN \
   "# MIDI_SERVICE_API_TOKEN="
 append_if_missing backend/.env.example MIDI_TOKEN_COST \
@@ -45,6 +49,8 @@ fi
 
 append_if_missing backend/.env SPEECH_SERVICE_URL "SPEECH_SERVICE_URL=http://127.0.0.1:5001"
 append_if_missing backend/.env MIDI_SERVICE_URL "MIDI_SERVICE_URL=http://127.0.0.1:5002"
+append_if_missing backend/.env STEM_SERVICE_API_TOKEN "# STEM_SERVICE_API_TOKEN="
+append_if_missing backend/.env SPEECH_SERVICE_API_TOKEN "# SPEECH_SERVICE_API_TOKEN="
 append_if_missing backend/.env MIDI_SERVICE_API_TOKEN "# MIDI_SERVICE_API_TOKEN="
 append_if_missing backend/.env MIDI_OUTPUT_DIR "# MIDI_OUTPUT_DIR=/home/ubuntu/burntbeats-aws/tmp/midi"
 append_if_missing backend/.env MIDI_TOKEN_COST "# MIDI_TOKEN_COST=0.5"
@@ -62,6 +68,7 @@ append_if_missing frontend/.env VITE_SENTRY_RELEASE "# VITE_SENTRY_RELEASE="
 append_if_missing frontend/.env VITE_STRIPE_PACKAGE_PRICING_TABLE_ID "# VITE_STRIPE_PACKAGE_PRICING_TABLE_ID="
 append_if_missing frontend/.env VITE_SPEECH_MAX_UPLOAD_BYTES "# VITE_SPEECH_MAX_UPLOAD_BYTES=104857600"
 
+append_if_missing .env STEM_SERVICE_API_TOKEN "# STEM_SERVICE_API_TOKEN="
 append_if_missing .env MIDI_SERVICE_API_TOKEN "# MIDI_SERVICE_API_TOKEN="
 append_if_missing .env MIDI_MAX_QUEUE_DEPTH "MIDI_MAX_QUEUE_DEPTH=8"
 append_if_missing .env SPEECH_SERVICE_API_TOKEN "# SPEECH_SERVICE_API_TOKEN="

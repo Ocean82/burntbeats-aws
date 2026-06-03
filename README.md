@@ -164,9 +164,10 @@ Primary file for Compose: **root `.env`** (see each service’s `.env.example` w
 | Auth | `CLERK_SECRET_KEY`, Clerk webhook signing secret |
 | Billing | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_*` |
 | Metering | **`USAGE_TOKENS_ENABLED`** |
-| Job hardening | **`JOB_TOKEN_SECRET`** (per-job `x-job-token`), optional **`API_KEY`** |
-| Speech service | **`SPEECH_SERVICE_API_TOKEN`** (service-to-service auth), `SPEECH_MAX_UPLOAD_MB` |
-| MIDI service | **`MIDI_SERVICE_API_TOKEN`** (service-to-service auth), `MIDI_MAX_QUEUE_DEPTH`, `MIDI_TOKEN_COST` |
+| Job hardening | **`JOB_TOKEN_SECRET`** (required in production; per-job `x-job-token`), optional **`API_KEY`** |
+| Internal services | **`STEM_SERVICE_API_TOKEN`**, **`SPEECH_SERVICE_API_TOKEN`**, **`MIDI_SERVICE_API_TOKEN`** (min 16 chars; required in production via `NODE_ENV` or **`INTERNAL_SERVICE_AUTH_REQUIRED=1`**) |
+| Speech service | `SPEECH_MAX_UPLOAD_MB` |
+| MIDI service | `MIDI_MAX_QUEUE_DEPTH`, `MIDI_TOKEN_COST` |
 | Optional **server master export** | **`SERVER_EXPORT_ENABLED=1`** (backend) · **`VITE_SERVER_EXPORT_ENABLED=1`** (frontend build) — **`docs/ARCHITECTURE-FLOW.md`**. Default Compose **does not** enable this. Ops: **`SERVER_EXPORT_MAX_CONCURRENT`**, **`SERVER_EXPORT_TIMEOUT_MS`**, **`SERVER_EXPORT_RATE_LIMIT_*`**. |
 | Redis (optional) | **`REDIS_URL`** — distributed rate limits (global, stem-file, server-export), status cache, Stripe webhook idempotency. In-memory fallback with **`RATE_LIMIT_MAX_ENTRIES`** when unset. |
 | S3 | `S3_ENABLED`, bucket/region/keys, `S3_DELETE_LOCAL_AFTER_UPLOAD`; stem_service **`STEM_S3_UPLOAD_MAX_WORKERS`** / **`STEM_S3_UPLOAD_TIMEOUT_SEC`**; bucket CORS if browsers fetch presigned URLs |
@@ -174,7 +175,10 @@ Primary file for Compose: **root `.env`** (see each service’s `.env.example` w
 **Important behaviors**
 
 - Split/expand require Clerk when **`USAGE_TOKENS_ENABLED=1`** (see `backend/server.js` startup checks in production).
-- **`JOB_TOKEN_SECRET`** binds status/file reads to signed tokens when set.
+- Production backend **exits on startup** if **`JOB_TOKEN_SECRET`** or any internal service API token is missing/too short.
+- **`JOB_TOKEN_SECRET`** binds status/file reads to signed HMAC tokens; stem/speech/MIDI routes enforce DB ownership via Clerk when a `jobs` row exists (job token fallback for legacy jobs).
+- Python workers on `:5000`–`:5002` require matching `X-*-Service-Token` headers in production; Compose sets **`INTERNAL_SERVICE_AUTH_REQUIRED=1`** on speech and MIDI services (stem uses `SENTRY_ENVIRONMENT=production`).
+- Ports `:5000`–`:5002` are bound to `127.0.0.1` on the host for defense in depth.
 - **`API_KEY`**, if set, gates administrative routes / gateway auth per server config.
 
 ---

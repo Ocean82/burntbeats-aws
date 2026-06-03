@@ -5,7 +5,8 @@
 import { Router } from "express";
 import http from "http";
 
-import { authMiddleware, jobTokenMiddleware } from "../../middleware/auth.js";
+import { authMiddleware } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import {
   MIDI_SERVICE_URL,
   isValidMidiJobId,
@@ -58,7 +59,7 @@ function proxyMidiServiceDelete(jobId, headers) {
 midiJobsRouter.delete(
   "/:job_id",
   authMiddleware,
-  jobTokenMiddleware,
+  requireJobOwnership,
   async (req, res) => {
     const { job_id: jobId } = req.params;
 

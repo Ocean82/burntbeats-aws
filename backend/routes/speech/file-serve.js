@@ -3,7 +3,8 @@ import { Router } from "express";
 import { createReadStream, existsSync } from "fs";
 import path from "path";
 
-import { authMiddleware, jobTokenMiddleware } from "../../middleware/auth.js";
+import { authMiddleware } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 
 import { SPEECH_OUTPUT_DIR } from "./shared.js";
@@ -13,7 +14,7 @@ export const speechFileRouter = Router();
 speechFileRouter.get(
   "/:job_id/:filename",
   authMiddleware,
-  jobTokenMiddleware,
+  requireJobOwnership,
   (req, res) => {
     const { job_id, filename } = req.params;
     if (!job_id || !UUID_REGEX.test(job_id)) {
