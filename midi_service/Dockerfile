@@ -23,5 +23,12 @@ COPY midi_service/ ./midi_service/
 
 ENV MIDI_OUTPUT_DIR=/repo/tmp/midi
 
+RUN groupadd --system --gid 10001 appuser \
+    && useradd --system --uid 10001 --gid appuser --home /repo --shell /usr/sbin/nologin appuser \
+    && mkdir -p /repo/tmp/midi \
+    && chown -R appuser:appuser /repo
+
+USER appuser
+
 EXPOSE 5002
 CMD ["uvicorn", "midi_service.server:app", "--host", "0.0.0.0", "--port", "5002"]

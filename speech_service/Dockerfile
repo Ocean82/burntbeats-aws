@@ -27,5 +27,12 @@ ENV PYTHONPATH=/repo/Speech
 ENV SPEECH_MODELS_DIR=/repo/speech_models
 ENV SPEECH_OUTPUT_DIR=/repo/tmp/speech
 
+RUN groupadd --system --gid 10001 appuser \
+    && useradd --system --uid 10001 --gid appuser --home /repo --shell /usr/sbin/nologin appuser \
+    && mkdir -p /repo/tmp/speech /repo/speech_models \
+    && chown -R appuser:appuser /repo
+
+USER appuser
+
 EXPOSE 5001
 CMD ["python", "-m", "uvicorn", "speech_service.server:app", "--host", "0.0.0.0", "--port", "5001"]

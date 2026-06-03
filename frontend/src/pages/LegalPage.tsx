@@ -23,14 +23,27 @@ function renderMarkdown(md: string): string {
   const escHtml = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+  const escAttr = (s: string) =>
+    escHtml(s).replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+
+  const safeHref = (raw: string) => {
+    const href = raw.trim();
+    if (!/^(https?:\/\/|mailto:|\/|#)/i.test(href)) return "#";
+    return escAttr(href);
+  };
+
   const inlineFormat = (s: string) =>
     escHtml(s)
       // bold
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       // inline code
       .replace(/`(.+?)`/g, "<code>$1</code>")
-      // links
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary-300 underline underline-offset-2 hover:text-primary-200">$1</a>');
+      // links (href scheme-restricted + attribute-escaped)
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        (_match, label: string, href: string) =>
+          `<a href="${safeHref(href)}" target="_blank" rel="noopener noreferrer" class="text-primary-300 underline underline-offset-2 hover:text-primary-200">${label}</a>`,
+      );
 
   const closeList = () => {
     if (inList) { out.push("</ul>"); inList = false; }
@@ -119,6 +132,15 @@ function renderMarkdown(md: string): string {
   return out.join("\n");
 }
 
+/** Defense-in-depth: strip active content if markdown ever contains raw HTML. */
+function sanitizeLegalHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/href\s*=\s*(["']?)\s*javascript:[^"'>\s]*/gi, 'href=$1#');
+}
+
 export function LegalPage({ doc }: { doc: LegalDoc }) {
   const { title, markdown } = getDoc(doc);
   const otherDoc = doc === "privacy-policy" ? "terms-of-service" : "privacy-policy";
@@ -165,7 +187,7 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           <p className="mb-lg text-sm text-muted-foreground">Burnt Beats</p>
           <div
             className="prose-legal"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(markdown) }}
+            dangerouslySetInnerHTML={{ __html: sanitizeLegalHtml(renderMarkdown(markdown)) }}
           />
         </article>
 

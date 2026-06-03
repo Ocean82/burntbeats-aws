@@ -16,7 +16,35 @@ import { getBaseUrl } from "../../helpers/baseUrl.js";
 import { updateJobStatus, insertStems } from "../../db-jobs.js";
 import { getRedis } from "../../stripeRedis.js";
 
+import { writeSseJson } from "../../helpers/sse.js";
+import { publicErrorMessage } from "../../clientSafeError.js";
+
 import { resolveStemJobPath } from "./shared.js";
+
+/**
+ * Client-safe progress payload: JSON only (no HTML). Strips internal paths and
+ * sanitizes error text that may originate from upstream workers.
+ * @param {Record<string, unknown>} data
+ * @param {string} job_id
+ * @param {string} baseUrl
+ */
+function prepareJobProgressResponse(data, job_id, baseUrl) {
+  const out = { ...data };
+  if (typeof out.error === "string") {
+    out.error = publicErrorMessage(
+      out.error,
+      "Job failed. Please try again.",
+      `[stems status ${job_id}]`,
+    );
+  }
+  if (out.stems && Array.isArray(out.stems)) {
+    out.stems = out.stems.map((s) => ({
+      id: s.id,
+      url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav`,
+    }));
+  }
+  return out;
+}
 
 export const statusRouter = Router();
 
@@ -56,21 +84,14 @@ statusRouter.get(
       return res.status(404).json({ error: "Job not found" });
     }
     const baseUrl = getBaseUrl(req);
-    // Stem file URLs intentionally omit job_token: clients must use x-job-token (or Authorization) on fetch.
-    if (data.stems && Array.isArray(data.stems)) {
-      data.stems = data.stems.map((s) => ({
-        id: s.id,
-        url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav`,
-        path: s.path,
-      }));
-    }
+    const clientData = prepareJobProgressResponse(data, job_id, baseUrl);
 
     // 3. Populate Redis cache
     if (redis) {
       try {
         const terminal = ["completed", "failed", "cancelled"].includes(data.status);
         const ttl = terminal ? 3600 : 2; // 1 hour for terminal, 2s for active
-        await redis.set(redisKey, JSON.stringify(data), { EX: ttl });
+        await redis.set(redisKey, JSON.stringify(clientData), { EX: ttl });
       } catch { /* ignore cache write error */ }
     }
 
@@ -95,7 +116,7 @@ statusRouter.get(
     } else if (data.status === "processing") {
       updateJobStatus(job_id, "processing").catch(() => {});
     }
-    res.json(data);
+    res.json(clientData);
   },
 );
 
@@ -151,23 +172,17 @@ statusRouter.get(
       } catch {
         return false;
       }
-      if (data.stems && Array.isArray(data.stems)) {
-        data.stems = data.stems.map((s) => ({
-          id: s.id,
-          url: `${baseUrl}/api/stems/file/${job_id}/${s.id}.wav`,
-          path: s.path,
-        }));
-      }
+      const clientData = prepareJobProgressResponse(data, job_id, baseUrl);
 
       if (redis) {
         const terminal = ["completed", "failed", "cancelled"].includes(data.status);
         const ttl = terminal ? 3600 : 5;
-        redis.set(redisKey, JSON.stringify(data), { EX: ttl }).catch(() => {});
+        redis.set(redisKey, JSON.stringify(clientData), { EX: ttl }).catch(() => {});
       }
 
       if (!res.writableEnded) {
         try {
-          res.write(`data: ${JSON.stringify(data)}\n\n`);
+          writeSseJson(res, clientData);
         } catch {
           return true;
         }

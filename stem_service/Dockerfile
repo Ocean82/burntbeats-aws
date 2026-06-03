@@ -22,5 +22,12 @@ RUN pip install --no-cache-dir uv \
 
 COPY stem_service/ ./stem_service/
 
+RUN groupadd --system --gid 10001 appuser \
+    && useradd --system --uid 10001 --gid appuser --home /repo --shell /usr/sbin/nologin appuser \
+    && mkdir -p /repo/tmp/stems \
+    && chown -R appuser:appuser /repo
+
+USER appuser
+
 EXPOSE 5000
 CMD ["python", "-m", "uvicorn", "stem_service.server:app", "--host", "0.0.0.0", "--port", "5000"]
