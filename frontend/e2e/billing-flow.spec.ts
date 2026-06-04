@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openPricingPage, skipOnboarding } from "./fixtures/helpers";
+import { gotoEditor, openPricingPage, skipOnboarding } from "./fixtures/helpers";
 
 /**
  * Billing/checkout flow integration tests.
@@ -13,8 +13,7 @@ test.describe("Billing & pricing flow", () => {
   });
 
   test("navigates to pricing page via settings menu", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("processing-settings-panel")).toBeVisible();
+    await gotoEditor(page);
 
     await openPricingPage(page);
 
@@ -24,7 +23,7 @@ test.describe("Billing & pricing flow", () => {
   });
 
   test("pricing page shows plan cards and tab toggle", async ({ page }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await openPricingPage(page);
 
     await expect(page.getByTestId("pricing-tab-toggle")).toBeVisible();
@@ -37,7 +36,7 @@ test.describe("Billing & pricing flow", () => {
   test("tab toggle switches between subscriptions and credit packs", async ({
     page,
   }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await openPricingPage(page);
 
     await expect(page.getByTestId("pricing-plan-basic")).toBeVisible();
@@ -47,7 +46,7 @@ test.describe("Billing & pricing flow", () => {
   });
 
   test("checkout CTA button is clickable and shows loading state", async ({ page }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await openPricingPage(page);
 
     const checkoutButton = page.getByTestId("pricing-cta-basic");
@@ -60,7 +59,7 @@ test.describe("Billing & pricing flow", () => {
   test("back to editor navigation works from pricing page", async ({
     page,
   }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await openPricingPage(page);
 
     await page.getByTestId("pricing-back-to-editor").click();
@@ -70,7 +69,7 @@ test.describe("Billing & pricing flow", () => {
   });
 
   test("FAQ section is visible on pricing page", async ({ page }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await openPricingPage(page);
 
     await expect(

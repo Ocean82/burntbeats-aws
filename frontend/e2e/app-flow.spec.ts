@@ -1,21 +1,19 @@
 import { test, expect } from "@playwright/test";
+import { gotoEditor, skipOnboarding } from "./fixtures/helpers";
 import { minimalWavFile } from "./fixtures/minimal-wav";
 
 test.describe.configure({ mode: "serial" });
 
 test.describe("Burnt Beats app (local full app mode)", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("burnt-beats-onboarding-complete", "true");
-    });
+    await skipOnboarding(page);
   });
 
   test("processing settings visible; split CTA appears after upload and is enabled", async ({
     page,
   }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     const panel = page.getByTestId("processing-settings-panel");
-    await expect(panel).toBeVisible();
     await expect(panel.getByTestId("split-upload-dropzone")).toBeVisible();
     // Progressive disclosure: no primary split row until a file is selected (see ProcessingSettingsPanel).
     await expect(panel.locator("button.fire-button")).toHaveCount(0);
@@ -46,13 +44,12 @@ test.describe("Burnt Beats app (local full app mode)", () => {
   });
 
   test("file input for upload exists", async ({ page }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await expect(page.getByLabel("Choose audio file")).toBeAttached();
   });
 
   test("skip link moves focus to main content", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("processing-settings-panel")).toBeVisible({ timeout: 20_000 });
+    await gotoEditor(page);
 
     const skip = page.getByRole("link", { name: "Skip to main content" });
     const main = page.locator("#main-content");

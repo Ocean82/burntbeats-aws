@@ -32,7 +32,6 @@ import { useWaveformCompute } from "./hooks/useWaveformCompute";
 import { useBatchQueue } from "./hooks/useBatchQueue";
 import { useMixerWorkspace } from "./hooks/useMixerWorkspace";
 import { useStemSplitting } from "./hooks/useStemSplitting";
-import { useStemLoading } from "./hooks/useStemLoading";
 import { useStemStateMaps } from "./hooks/useStemStateMaps";
 import type { MixerPreset } from "./components/MixerPresetsModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -99,14 +98,22 @@ export function App() {
 
   // ── Contexts ──
   const audio = useAudio();
-  const { 
-    stemStates, 
-    setStemStates, 
-    undoStemStates, 
-    redoStemStates, 
-    canUndo, 
-    canRedo, 
-    resetStemStates 
+  const {
+    stemBuffers,
+    setStemBuffers,
+    isLoadingStems,
+    clearStemLoadingState,
+    loadingError,
+    retryLoadStems,
+  } = audio;
+  const {
+    stemStates,
+    setStemStates,
+    undoStemStates,
+    redoStemStates,
+    canUndo,
+    canRedo,
+    resetStemStates,
   } = useWorkflow();
   const {
     activeModals,
@@ -237,21 +244,6 @@ export function App() {
     ],
     [splitResultStems, loadedStems],
   );
-
-  // ── Stem loading (fetch WAVs → AudioBuffers) ──────────────────────────────
-  const {
-    stemBuffers,
-    setStemBuffers,
-    isLoadingStems,
-    clearStemLoadingState,
-    loadingError,
-    retryLoadStems,
-  } = useStemLoading({
-    allStemEntries: stemEntries,
-    audioContextRef: audio.audioContextRef,
-    setStemStates,
-    setSplitError,
-  });
 
   // ── Mixer workspace ───────────────────────────────────────────────────────
   const {

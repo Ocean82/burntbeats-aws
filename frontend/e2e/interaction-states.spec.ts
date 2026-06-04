@@ -1,18 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { gotoEditor, skipOnboarding } from "./fixtures/helpers";
 import { minimalWavFile } from "./fixtures/minimal-wav";
 
 test.describe("Interaction states", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("burnt-beats-onboarding-complete", "true");
-      localStorage.setItem("burntbeats_cookie_consent", "declined");
-    });
+    await skipOnboarding(page);
   });
 
   test("split CTA shows keyboard focus ring after upload", async ({ page }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     const panel = page.getByTestId("processing-settings-panel");
-    await expect(panel).toBeVisible();
 
     await page.getByLabel("Choose audio file").setInputFiles(minimalWavFile("focus-test.wav"));
 

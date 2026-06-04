@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
-import { minimalWavBuffer, skipOnboarding } from "./fixtures/helpers";
+import { gotoEditor, minimalWavBuffer, skipOnboarding } from "./fixtures/helpers";
 
 /**
  * Stem split flow integration tests.
@@ -136,9 +136,8 @@ test.describe("Stem split flow", () => {
   });
 
   test("upload enables the split button with token cost", async ({ page }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     const panel = page.getByTestId("processing-settings-panel");
-    await expect(panel).toBeVisible();
 
     // No split button before upload
     await expect(panel.locator("button.fire-button")).toHaveCount(0);

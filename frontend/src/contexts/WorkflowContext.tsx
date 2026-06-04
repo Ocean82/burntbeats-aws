@@ -1,98 +1,59 @@
 import React, { createContext, useContext, useMemo } from "react";
-import { useHistory } from "../hooks/useHistory";
 import type { StemEditorState } from "../stem-editor-state";
-import { useAppStore } from "../store/appStore";
-import { useStemLoading } from "../hooks/useStemLoading";
+import { useWorkflowStore } from "../store/workflowStore";
 
 interface WorkflowContextValue {
   stemStates: Record<string, StemEditorState>;
-  setStemStates: (newState: Record<string, StemEditorState> | ((prev: Record<string, StemEditorState>) => Record<string, StemEditorState>)) => void;
+  setStemStates: (
+    newState:
+      | Record<string, StemEditorState>
+      | ((
+          prev: Record<string, StemEditorState>,
+        ) => Record<string, StemEditorState>),
+  ) => void;
   undoStemStates: () => void;
   redoStemStates: () => void;
   canUndo: boolean;
   canRedo: boolean;
   resetStemStates: (initialState: Record<string, StemEditorState>) => void;
-  
-  // Stem loading state
-  stemBuffers: Record<string, AudioBuffer>;
-  isLoadingStems: boolean;
-  loadingError: string | null;
-  retryLoadStems: () => void;
-  clearStemLoadingState: () => void;
 }
 
 const WorkflowContext = createContext<WorkflowContextValue | null>(null);
 
-export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const splitResultStems = useAppStore((s) => s.splitResultStems);
-  const loadedStems = useAppStore((s) => s.loadedStems);
-  const setSplitError = useAppStore((s) => s.setSplitError);
-  
-  const {
-    state: stemStates,
-    set: setStemStates,
-    undo: undoStemStates,
-    redo: redoStemStates,
-    canUndo,
-    canRedo,
-    reset: resetStemStates,
-  } = useHistory<Record<string, StemEditorState>>({});
+export const WorkflowProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const stemStates = useWorkflowStore((s) => s.stemStates);
+  const setStemStates = useWorkflowStore((s) => s.setStemStates);
+  const undoStemStates = useWorkflowStore((s) => s.undo);
+  const redoStemStates = useWorkflowStore((s) => s.redo);
+  const canUndo = useWorkflowStore((s) => s.canUndo);
+  const canRedo = useWorkflowStore((s) => s.canRedo);
+  const resetStemStates = useWorkflowStore((s) => s.reset);
 
-  // Temporary ref for audioContext until we can properly inject it
-  // Actually, useAudio() might cause circular dependency if we're not careful.
-  // Let's use a local ref for decoding if needed, or pass it in.
-  const audioContextRef = React.useRef<AudioContext | null>(null);
-
-  const allStemEntries = useMemo(() => [
-    ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-    ...loadedStems.map((s) => ({ id: s.id, url: s.url, file: s.file })),
-  ], [splitResultStems, loadedStems]);
-
-  const {
-    stemBuffers,
-    isLoadingStems,
-    loadingError,
-    retryLoadStems,
-    clearStemLoadingState,
-  } = useStemLoading({
-    allStemEntries,
-    audioContextRef,
-    setStemStates,
-    setSplitError,
-  });
-
-  const value = useMemo(() => ({
-    stemStates,
-    setStemStates,
-    undoStemStates,
-    redoStemStates,
-    canUndo,
-    canRedo,
-    resetStemStates,
-    stemBuffers,
-    isLoadingStems,
-    loadingError,
-    retryLoadStems,
-    clearStemLoadingState,
-  }), [
-    stemStates, 
-    setStemStates, 
-    undoStemStates, 
-    redoStemStates, 
-    canUndo, 
-    canRedo, 
-    resetStemStates,
-    stemBuffers,
-    isLoadingStems,
-    loadingError,
-    retryLoadStems,
-    clearStemLoadingState,
-  ]);
+  const value = useMemo(
+    () => ({
+      stemStates,
+      setStemStates,
+      undoStemStates,
+      redoStemStates,
+      canUndo,
+      canRedo,
+      resetStemStates,
+    }),
+    [
+      stemStates,
+      setStemStates,
+      undoStemStates,
+      redoStemStates,
+      canUndo,
+      canRedo,
+      resetStemStates,
+    ],
+  );
 
   return (
-    <WorkflowContext.Provider value={value}>
-      {children}
-    </WorkflowContext.Provider>
+    <WorkflowContext.Provider value={value}>{children}</WorkflowContext.Provider>
   );
 };
 

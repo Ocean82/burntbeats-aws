@@ -18,6 +18,19 @@ export interface StemEntry {
   file?: File;
 }
 
+export interface UseStemLoadingReturn {
+  stemBuffers: Record<string, AudioBuffer>;
+  setStemBuffers: React.Dispatch<
+    React.SetStateAction<Record<string, AudioBuffer>>
+  >;
+  loadedTracks: Record<string, boolean>;
+  isLoadingStems: boolean;
+  clearStemLoadingState: () => void;
+  loadingError: string | null;
+  loadingErrorsById: Record<string, string>;
+  retryLoadStems: () => void;
+}
+
 interface UseStemLoadingArgs {
   allStemEntries: StemEntry[];
   audioContextRef: React.MutableRefObject<AudioContext | null>;
@@ -34,7 +47,7 @@ export function useStemLoading({
   audioContextRef,
   setStemStates,
   setSplitError,
-}: UseStemLoadingArgs) {
+}: UseStemLoadingArgs): UseStemLoadingReturn {
   const [stemBuffers, setStemBuffers] = useState<Record<string, AudioBuffer>>({});
   const stemBuffersRef = useRef<Record<string, AudioBuffer>>({});
   useEffect(() => {
@@ -71,7 +84,14 @@ export function useStemLoading({
       setIsLoadingStems(false);
       return;
     }
-    if (!audioContextRef.current) audioContextRef.current = new Ctor();
+    if (!audioContextRef.current) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[useStemLoading] audioContextRef was null; creating decode context (playback should share this ref)",
+        );
+      }
+      audioContextRef.current = new Ctor();
+    }
     const ctx = audioContextRef.current;
 
     const existing = stemBuffersRef.current;

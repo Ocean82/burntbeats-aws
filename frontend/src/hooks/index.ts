@@ -4,7 +4,6 @@ export type { SeekPhase } from "../types/playbackSeek";
 export { useWaveformCompute } from "./useWaveformCompute";
 export { useExport } from "./useExport";
 export { useBatchQueue } from "./useBatchQueue";
-export { useHistory } from "./useHistory";
 export { useTimelineViewport, toAbsolutePercent, toVisiblePercent } from "./useTimelineViewport";
 export { useStemSplitting } from "./useStemSplitting";
 export { useStemLoading } from "./useStemLoading";

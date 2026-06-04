@@ -69,7 +69,8 @@ export function MixerWorkspace({
   onLoadGenrePreset,
 }: MixerWorkspaceProps) {
   const audio = useAudio();
-  const { stemStates, stemBuffers } = useWorkflow();
+  const { stemStates } = useWorkflow();
+  const { stemBuffers } = audio;
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const beatGrid = useAppStore((s) => s.beatGrid);
   const setPersistedMasterLimiterEnabled = useAppStore((s) => s.setMasterLimiterEnabled);

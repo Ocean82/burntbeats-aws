@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { expect } from "@playwright/test";
 
 /**
  * Tiny valid WAV (PCM mono, 8kHz, 16-bit) — enough for File + duration hooks.
@@ -29,11 +30,30 @@ export function minimalWavBuffer(): Buffer {
   return buf;
 }
 
-/** Suppress onboarding tour so it doesn't interfere with tests. */
+/** Default wait for lazy-loaded editor shell (Vite cold start under parallel workers). */
+export const E2E_APP_READY_MS = 20_000;
+
+/** Suppress onboarding tour and cookie banner so they don't block the editor. */
 export function skipOnboarding(page: import("@playwright/test").Page) {
   return page.addInitScript(() => {
     localStorage.setItem("burnt-beats-onboarding-complete", "true");
     localStorage.setItem("burntbeats_cookie_consent", "declined");
+  });
+}
+
+/** Open the stem editor and wait until the processing panel is interactive. */
+export async function gotoEditor(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await expect(page.getByTestId("processing-settings-panel")).toBeVisible({
+    timeout: E2E_APP_READY_MS,
+  });
+}
+
+/** Open the library view and wait for the catalog shell. */
+export async function gotoLibrary(page: import("@playwright/test").Page) {
+  await page.goto("/library");
+  await expect(page.getByTestId("library-page")).toBeVisible({
+    timeout: E2E_APP_READY_MS,
   });
 }
 

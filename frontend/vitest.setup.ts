@@ -46,25 +46,118 @@ vi.mock("tone", () => {
 // Minimal mocks for Web Audio / browser APIs used by App
 if (typeof window !== "undefined") {
   const noop = () => {};
-  const mockContext = {
-    createBuffer: () => ({}),
-    createBufferSource: () => ({
-      connect: noop,
-      start: noop,
-      stop: noop,
-      buffer: null,
-    }),
-    createGain: () => ({ gain: { value: 1 }, connect: noop }),
-    createStereoPanner: () => ({ pan: { value: 0 }, connect: noop }),
-    destination: {},
-    sampleRate: 44100,
-    decodeAudioData: () => Promise.resolve(null),
-    close: () => Promise.resolve(),
-    state: "closed",
-  };
-  window.AudioContext = (window as unknown as { AudioContext: typeof AudioContext }).AudioContext ?? (() => mockContext);
-  (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext = window.AudioContext;
-  window.OfflineAudioContext = window.OfflineAudioContext ?? (() => mockContext);
+
+  class MockAudioContext {
+    sampleRate: number;
+    destination = { connect: noop };
+    state: AudioContextState = "running";
+
+    constructor(...args: unknown[]) {
+      const rate = args.length >= 3 ? args[2] : 44100;
+      this.sampleRate = typeof rate === "number" ? rate : 44100;
+    }
+
+    createBuffer(numberOfChannels: number, length: number, sampleRate: number) {
+      const channel = new Float32Array(length);
+      return {
+        length,
+        duration: length / sampleRate,
+        numberOfChannels,
+        sampleRate,
+        getChannelData: () => channel,
+        copyFromChannel: noop,
+        copyToChannel: noop,
+      } as AudioBuffer;
+    }
+
+    createBufferSource() {
+      return {
+        connect: noop,
+        disconnect: noop,
+        start: noop,
+        stop: noop,
+        buffer: null as AudioBuffer | null,
+        playbackRate: { value: 1 },
+      };
+    }
+
+    createGain() {
+      return {
+        gain: { value: 1, setValueAtTime: noop },
+        connect: noop,
+        disconnect: noop,
+        channelCount: 2,
+        channelCountMode: "max",
+      };
+    }
+
+    createStereoPanner() {
+      return { pan: { value: 0 }, connect: noop, disconnect: noop };
+    }
+
+    createDynamicsCompressor() {
+      return { connect: noop, disconnect: noop };
+    }
+
+    createBiquadFilter() {
+      return {
+        type: "lowshelf",
+        frequency: { value: 200 },
+        gain: { value: 0 },
+        Q: { value: 1 },
+        connect: noop,
+        disconnect: noop,
+      };
+    }
+
+    createDelay() {
+      return {
+        delayTime: { value: 0 },
+        connect: noop,
+        disconnect: noop,
+      };
+    }
+
+    createConvolver() {
+      return { buffer: null, connect: noop, disconnect: noop };
+    }
+
+    createChannelSplitter() {
+      return { connect: noop, disconnect: noop };
+    }
+
+    createChannelMerger() {
+      return { connect: noop, disconnect: noop };
+    }
+
+    createWaveShaper() {
+      return {
+        curve: new Float32Array(2),
+        oversample: "none",
+        connect: noop,
+        disconnect: noop,
+      };
+    }
+
+    decodeAudioData() {
+      return Promise.resolve(this.createBuffer(2, 128, this.sampleRate));
+    }
+
+    async startRendering() {
+      return this.createBuffer(2, 128, this.sampleRate);
+    }
+
+    close() {
+      return Promise.resolve();
+    }
+  }
+
+  const MockCtor = MockAudioContext as unknown as typeof AudioContext;
+  window.AudioContext = window.AudioContext ?? MockCtor;
+  (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext =
+    window.AudioContext;
+  window.OfflineAudioContext =
+    window.OfflineAudioContext ?? (MockAudioContext as unknown as typeof OfflineAudioContext);
   if (typeof HTMLMediaElement !== "undefined") {
     HTMLMediaElement.prototype.play = () => Promise.resolve();
     HTMLMediaElement.prototype.pause = noop;

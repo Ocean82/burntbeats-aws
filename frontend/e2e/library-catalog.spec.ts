@@ -1,11 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { gotoLibrary, skipOnboarding } from "./fixtures/helpers";
 
 test.describe("Library catalog", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("burnt-beats-onboarding-complete", "true");
-      localStorage.setItem("burntbeats_cookie_consent", "declined");
-    });
+    await skipOnboarding(page);
 
     await page.route("**/api/catalog/midi**", async (route) => {
       await route.fulfill({
@@ -44,15 +42,14 @@ test.describe("Library catalog", () => {
   });
 
   test("library page loads catalog and shows browse results", async ({ page }) => {
-    await page.goto("/library");
-    await expect(page.getByTestId("library-page")).toBeVisible();
+    await gotoLibrary(page);
     await expect(page.getByText("Warm Embers Progression")).toBeVisible({
       timeout: 10_000,
     });
   });
 
   test("library catalog filter bar is accessible", async ({ page }) => {
-    await page.goto("/library");
+    await gotoLibrary(page);
     await expect(page.getByRole("searchbox", { name: /search catalog/i })).toBeVisible();
   });
 });

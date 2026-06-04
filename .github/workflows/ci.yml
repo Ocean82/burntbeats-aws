@@ -40,7 +40,7 @@ jobs:
         run: npm run test:run -- src/hooks/useMidiConvert.test.ts src/hooks/useMidiHistory.test.ts src/components/MyStemsPage.test.tsx
       - name: Install Playwright Chromium
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: npm run test:e2e:install-browsers:ci
       - name: Playwright smoke (app + legal pages)
         working-directory: frontend
         run: npm run test:e2e

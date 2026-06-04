@@ -11,6 +11,15 @@ const resolved: UserConfig =
 export default mergeConfig(
   resolved,
   defineConfig({
+    plugins: [
+      {
+        name: "vitest-css-stub",
+        enforce: "pre",
+        load(id) {
+          if (id.endsWith(".css")) return "";
+        },
+      },
+    ],
     test: {
       environment: "jsdom",
       setupFiles: ["./vitest.setup.ts"],
