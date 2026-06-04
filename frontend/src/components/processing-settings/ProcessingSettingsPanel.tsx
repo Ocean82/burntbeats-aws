@@ -173,7 +173,7 @@ export function ProcessingSettingsPanel({
                   <button
                     type="button"
                     onClick={() => setShowNewSplitConfirm(true)}
-                    className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-destructive-400/30 bg-destructive-500/10 px-sm py-xs text-xs font-medium text-destructive-200/90 transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-destructive-400/50 hover:bg-destructive-500/20 hover:text-destructive-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+                    className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-destructive-400/30 bg-destructive-500/10 px-sm py-xs text-xs font-medium text-destructive-200/90 transition-[color,background-color,border-color,transform] duration-(--motion-fast) hover:border-destructive-400/50 hover:bg-destructive-500/20 hover:text-destructive-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                     aria-label="Start a new split"
                     title="Clear current split and load a new track"
                   >
@@ -184,7 +184,7 @@ export function ProcessingSettingsPanel({
                 <button
                   type="button"
                   onClick={() => setUserExpanded(true)}
-                  className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-border bg-muted px-sm py-xs text-xs font-medium text-muted-foreground transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] hover:border-border hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+                  className="tap-feedback flex min-h-[44px] shrink-0 items-center gap-xs rounded-lg border border-border bg-muted px-sm py-xs text-xs font-medium text-muted-foreground transition-[color,background-color,border-color,transform] duration-(--motion-fast) hover:border-border hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
                   aria-label="Edit source settings"
                 >
                   <Settings2 className="h-3 w-3" />
@@ -214,7 +214,7 @@ export function ProcessingSettingsPanel({
             <button
               type="button"
               onClick={onContinueCheckout}
-              className="ghost-button tap-feedback min-h-[44px] rounded-lg border border-primary-300/30 px-sm py-xs text-xs font-semibold text-primary-100 transition-[color,transform] duration-[var(--motion-fast)] hover:border-primary-200/50 hover:text-primary-50 focus-visible:outline-none"
+              className="ghost-button tap-feedback min-h-[44px] rounded-lg border border-primary-300/30 px-sm py-xs text-xs font-semibold text-primary-100 transition-[color,transform] duration-(--motion-fast) hover:border-primary-200/50 hover:text-primary-50 focus-visible:outline-none"
             >
               Continue to secure checkout
             </button>

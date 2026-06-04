@@ -110,7 +110,7 @@ export function MixerWorkspace({
                 {Array.from({ length: 4 }).map((_, idx) => (
                   <div
                     key={idx}
-                    className="space-y-xs rounded-xl border border-border bg-muted/[0.03] p-sm"
+                    className="space-y-xs rounded-xl border border-border bg-muted/3 p-sm"
                   >
                     <Skeleton className="h-3 w-24 bg-muted" />
                     <Skeleton className="h-24 w-full bg-muted" />

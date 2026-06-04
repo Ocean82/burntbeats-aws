@@ -159,7 +159,7 @@ export function StemProcessingPanel({
         <button
           type="button"
           onClick={onClose}
-          className="tap-target-expand rounded-md text-muted-foreground transition-[color,transform] duration-[var(--motion-fast)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
+          className="tap-target-expand rounded-md text-muted-foreground transition-[color,transform] duration-(--motion-fast) hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
           aria-label="Close panel"
         >
           <X className="h-4 w-4" />
@@ -170,7 +170,7 @@ export function StemProcessingPanel({
         <button
           type="button"
           onClick={() => setChannelsSummaryOpen((o) => !o)}
-          className="tap-feedback flex min-h-[44px] w-full items-center justify-between px-md py-xs text-meta font-semibold uppercase tracking-wider text-muted-foreground transition-[color,background-color] duration-[var(--motion-fast)] hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="tap-feedback flex min-h-[44px] w-full items-center justify-between px-md py-xs text-meta font-semibold uppercase tracking-wider text-muted-foreground transition-[color,background-color] duration-(--motion-fast) hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-expanded={channelsSummaryOpen}
         >
           All channels
@@ -186,7 +186,7 @@ export function StemProcessingPanel({
                     type="button"
                     onClick={() => onActiveStemChange(s.id)}
                     className={cn(
-                      "tap-feedback flex min-h-[44px] w-full gap-xs rounded-lg px-xs py-xs text-left text-helper transition-[background-color,transform] duration-[var(--motion-fast)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]",
+                      "tap-feedback flex min-h-[44px] w-full gap-xs rounded-lg px-xs py-xs text-left text-helper transition-[background-color,transform] duration-(--motion-fast) hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]",
                       s.id === activeStemId && "bg-primary-500/10",
                     )}
                   >

@@ -101,11 +101,12 @@ export function OnboardingTour({
     }
   };
 
-  const step = TOUR_STEPS[currentStep] as (typeof TOUR_STEPS)[number] & { target?: string };
-  const Icon = step.icon;
+  const step = TOUR_STEPS[currentStep] as (typeof TOUR_STEPS)[number] & {
+    target?: string;
+  };
+  const { icon: Icon, target } = step;
 
   useLayoutEffect(() => {
-    const target = (step as { target?: string }).target;
     if (!isVisible || !target) {
       const id = requestAnimationFrame(() => setSpotlightRect(null));
       return () => cancelAnimationFrame(id);
@@ -124,7 +125,7 @@ export function OnboardingTour({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [isVisible, currentStep, step]);
+  }, [isVisible, currentStep, target]);
 
   const anchoredStyle: React.CSSProperties | undefined = spotlightRect
     ? {
@@ -181,7 +182,7 @@ export function OnboardingTour({
               {/* Progress bar */}
               <div className="absolute left-0 right-0 top-0 h-1 bg-muted">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-primary-500 to-primary-400"
+                  className="h-full bg-linear-to-r from-primary-500 to-primary-400"
                   initial={{ width: 0 }}
                   animate={{ width: `${((currentStep + 1) / TOUR_STEPS.length) * 100}%` }}
                   transition={motionCfg.transition("normal")}
@@ -214,7 +215,7 @@ export function OnboardingTour({
                     className="text-center"
                   >
                     {/* Icon */}
-                    <div className="mx-auto mb-lg flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500/20 to-primary-400/10 shadow-elevation-md">
+                    <div className="mx-auto mb-lg flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br from-primary-500/20 to-primary-400/10 shadow-elevation-md">
                       <Icon className="h-10 w-10 text-primary-400" strokeWidth={1.5} />
                     </div>
 
