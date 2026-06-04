@@ -7,6 +7,14 @@ import { DEFAULT_SPLIT_INTENT } from "../utils/splitIntent";
 
 const VALID_QUALITIES: readonly SplitQuality[] = ["speed", "quality"] as const;
 
+/** Coerce persisted/legacy quality strings to canonical SplitQuality. */
+function normalizeStoredQuality(raw: unknown): SplitQuality {
+  const q = typeof raw === "string" ? raw : "";
+  if (q === "balanced" || q === "ultra") return "quality";
+  if (VALID_QUALITIES.includes(q as SplitQuality)) return q as SplitQuality;
+  return "quality";
+}
+
 function clampPercent(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, value));
@@ -23,13 +31,8 @@ function sanitizePartialState(update: Partial<AppState>): Partial<AppState> {
   if (typeof update.pipelineIndex === "number") {
     sanitized.pipelineIndex = Math.max(0, Math.round(update.pipelineIndex));
   }
-  if (typeof update.quality === "string") {
-    const q = update.quality;
-    if (q === "balanced" || q === "ultra") {
-      sanitized.quality = "quality";
-    } else if (!VALID_QUALITIES.includes(q as SplitQuality)) {
-      sanitized.quality = "quality";
-    }
+  if (update.quality !== undefined) {
+    sanitized.quality = normalizeStoredQuality(update.quality);
   }
   return sanitized;
 }
