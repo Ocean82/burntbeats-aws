@@ -253,7 +253,7 @@ export function useEditorSession(): EditorSession {
   const showExportModal = !!activeModals.export;
   const showPresetsModal = !!activeModals.presets;
   const showGame = !!activeModals.game;
-  const toggleGame = () => closeModal("game");
+  const toggleGame = useCallback(() => closeModal("game"), [closeModal]);
 
   const { headerVisible } = useHeaderVisibility();
   const { checkoutNotice } = useCheckoutNotice();
@@ -655,8 +655,6 @@ export function useEditorSession(): EditorSession {
       triggerSplit,
       toggleGame,
       addToBatchQueue,
-      uploadedFile,
-      handleClearUpload,
       triggerExpand,
       mixerSectionRef,
       resetTrackAdjustments,
@@ -668,6 +666,7 @@ export function useEditorSession(): EditorSession {
       handlePreviewStemFromMixer,
       isSample,
       openModal,
+      setActiveView,
       isComparingExport,
       onCompareExport,
       exportCompareSummary,

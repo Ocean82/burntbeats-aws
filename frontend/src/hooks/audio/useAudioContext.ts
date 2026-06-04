@@ -57,7 +57,21 @@ export function useAudioContext(
   const [masterLimiterEnabled, setMasterLimiterEnabledState] = useState(false);
 
   const internalAudioContextRef = useRef<AudioContext | null>(null);
-  const audioContextRef = options.audioContextRef ?? internalAudioContextRef;
+  /** Provider ref object (stable); mutations go through assignContextInstance, not options alias. */
+  const sharedAudioRef = useRef(options.audioContextRef);
+
+  const getContextInstance = (): AudioContext | null => {
+    const external = sharedAudioRef.current;
+    if (external) return external.current;
+    return internalAudioContextRef.current;
+  };
+
+  const assignContextInstance = (ctx: AudioContext | null) => {
+    const external = sharedAudioRef.current;
+    if (external) external.current = ctx;
+    else internalAudioContextRef.current = ctx;
+  };
+
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
   const masterLimiterRef = useRef<DynamicsCompressorNode | null>(null);
@@ -67,7 +81,7 @@ export function useAudioContext(
   const masterLimiterEnabledRef = useRef(false);
   const masterStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
-    const reconnectMasterBus = useCallback((ctx: AudioContext) => {
+  const reconnectMasterBus = useCallback((ctx: AudioContext) => {
     const g = masterGainRef.current;
     const an = masterAnalyserRef.current;
     const limiter = masterLimiterRef.current;
@@ -196,13 +210,16 @@ export function useAudioContext(
     }
   }, []);
 
-  const setMasterLimiterEnabled = useCallback((enabled: boolean) => {
-    const next = Boolean(enabled);
-    masterLimiterEnabledRef.current = next;
-    setMasterLimiterEnabledState(next);
-    const ctx = audioContextRef.current;
-    if (ctx) reconnectMasterBus(ctx);
-  }, [reconnectMasterBus]);
+  const setMasterLimiterEnabled = useCallback(
+    (enabled: boolean) => {
+      const next = Boolean(enabled);
+      masterLimiterEnabledRef.current = next;
+      setMasterLimiterEnabledState(next);
+      const ctx = getContextInstance();
+      if (ctx) reconnectMasterBus(ctx);
+    },
+    [reconnectMasterBus],
+  );
 
   const getOrCreateContext = useCallback(async (): Promise<AudioContext | null> => {
     const AudioContextCtor =
@@ -210,7 +227,7 @@ export function useAudioContext(
       (window as typeof window & { webkitAudioContext?: typeof AudioContext })
         .webkitAudioContext;
     if (!AudioContextCtor) return null;
-    const existing = audioContextRef.current;
+    const existing = getContextInstance();
     if (!existing || existing.state === "closed") {
       masterGainRef.current = null;
       masterAnalyserRef.current = null;
@@ -219,9 +236,10 @@ export function useAudioContext(
       masterAnalyserLeftRef.current = null;
       masterAnalyserRightRef.current = null;
       masterStreamDestRef.current = null;
-      audioContextRef.current = new AudioContextCtor();
+      assignContextInstance(new AudioContextCtor());
     }
-    const ctx = audioContextRef.current!;
+    const ctx = getContextInstance();
+    if (!ctx) return null;
     ensureMasterBus(ctx);
     if (ctx.state === "suspended") {
       await ctx.resume();
@@ -235,14 +253,14 @@ export function useAudioContext(
   }, [ensureMasterBus]);
 
   const destroyContext = useCallback(() => {
-    const ctx = audioContextRef.current;
+    const ctx = getContextInstance();
     if (!ctx) return;
     try {
       ctx.close();
     } catch {
       /* ignore close errors during unmount */
     }
-    audioContextRef.current = null;
+    assignContextInstance(null);
     masterGainRef.current = null;
     masterAnalyserRef.current = null;
     masterLimiterRef.current = null;
@@ -266,6 +284,9 @@ export function useAudioContext(
   const getMasterRecordingStream = useCallback((): MediaStream | null => {
     return masterStreamDestRef.current?.stream ?? null;
   }, []);
+
+  const audioContextRef =
+    options.audioContextRef ?? internalAudioContextRef;
 
   return {
     audioContextRef,
