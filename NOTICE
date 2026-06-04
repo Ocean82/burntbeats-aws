@@ -1,0 +1,305 @@
+Burnt Beats
+Copyright 2024-2026 Sammy Jernigan (Burnt Beats)
+
+This product is licensed under the Apache License, Version 2.0.
+See the LICENSE file in the repository root.
+
+================================================================================
+Third-Party Software Notices
+================================================================================
+
+This file provides attribution for material components included in or used by
+Burnt Beats. Full license texts are available from each project unless noted
+below. Transitive dependencies are not listed exhaustively; see package lock
+files and Python metadata for complete dependency graphs.
+
+--------------------------------------------------------------------------------
+1. Python inference services (stem_service, midi_service, speech_service)
+--------------------------------------------------------------------------------
+
+PyTorch and torchaudio
+  Copyright (c) PyTorch Contributors
+  License: BSD 3-Clause ("BSD-3-Clause")
+  https://github.com/pytorch/pytorch
+
+Demucs (stem separation)
+  Copyright (c) Meta Platforms, Inc. and affiliates
+  License: MIT
+  https://github.com/facebookresearch/demucs
+
+ONNX Runtime
+  Copyright (c) Microsoft Corporation
+  License: MIT
+  https://github.com/microsoft/onnxruntime
+
+NumPy
+  Copyright (c) NumPy Developers
+  License: BSD 3-Clause
+  https://numpy.org
+
+SciPy
+  Copyright (c) SciPy Developers
+  License: BSD 3-Clause
+  https://scipy.org
+
+FastAPI
+  Copyright (c) Sebastián Ramírez
+  License: MIT
+  https://github.com/tiangolo/fastapi
+
+Uvicorn
+  Copyright (c) Tom Christie
+  License: BSD 3-Clause
+  https://github.com/encode/uvicorn
+
+soundfile (libsndfile bindings)
+  Copyright (c) Bastian Bechtold
+  License: BSD 3-Clause
+  https://github.com/bastibe/python-soundfile
+
+python-multipart
+  Copyright (c) Marcello Romani et al.
+  License: Apache License 2.0
+  https://github.com/Kludex/python-multipart
+
+diffq (quantized model support for Demucs/UVR checkpoints)
+  Copyright (c) diffq contributors
+  License: MIT
+  https://github.com/faroit/diffq
+
+boto3 / botocore (optional S3 stem delivery)
+  Copyright (c) Amazon Web Services
+  License: Apache License 2.0
+  https://github.com/boto/boto3
+
+Sentry SDK (Python)
+  Copyright (c) Functional Software, Inc.
+  License: MIT
+  https://github.com/getsentry/sentry-python
+
+prometheus-client
+  Copyright (c) The Prometheus Authors
+  License: Apache License 2.0
+  https://github.com/prometheus/client_python
+
+imageio-ffmpeg (optional bundled ffmpeg for matrix clip extraction)
+  Copyright (c) imageio contributors
+  License: BSD 2-Clause (wrapper); bundles ffmpeg binaries under LGPL/GPL
+  https://github.com/imageio/imageio-ffmpeg
+  https://ffmpeg.org/legal.html
+
+Spotify Basic Pitch (midi_service; ONNX inference path)
+  Copyright (c) Spotify AB
+  License: MIT
+  https://github.com/spotify/basic-pitch
+
+librosa (midi_service)
+  Copyright (c) librosa development team
+  License: ISC
+  https://github.com/librosa/librosa
+
+mido
+  Copyright (c) Joris van den Heuvel
+  License: MIT
+  https://github.com/mido/mido
+
+pretty_midi
+  Copyright (c) Colin Raffel
+  License: MIT
+  https://github.com/craffel/pretty-midi
+
+einops (speech_service)
+  Copyright (c) Arseniy Kuznetsov
+  License: MIT
+  https://github.com/arogozhnikov/einops
+
+safetensors (speech_service)
+  Copyright (c) Hugging Face
+  License: Apache License 2.0
+  https://github.com/huggingface/safetensors
+
+Vocos (speech_service; git dependency, Matcha branch)
+  Copyright (c) Language Technologies Lab, Barcelona Supercomputing Center
+  License: MIT
+  https://github.com/langtech-bsc/vocos
+
+--------------------------------------------------------------------------------
+2. Vendored speech enhancement (Speech/)
+--------------------------------------------------------------------------------
+
+LavaSR source and weights integration
+  Model and reference implementation by Yatharth S
+  Hugging Face: https://huggingface.co/YatharthS/LavaSR
+  Vendored tree: Speech/ (see Speech/LICENSE for Apache License 2.0 text)
+  speech_service invokes this code path at runtime.
+
+--------------------------------------------------------------------------------
+3. Node.js backend API (backend/)
+--------------------------------------------------------------------------------
+
+Express
+  Copyright (c) OpenJS Foundation
+  License: MIT
+  https://expressjs.com
+
+Stripe Node SDK
+  Copyright (c) Stripe, Inc.
+  License: MIT
+  https://github.com/stripe/stripe-node
+
+AWS SDK for JavaScript v3 (@aws-sdk/client-s3 and related)
+  Copyright (c) Amazon Web Services
+  License: Apache License 2.0
+  https://github.com/aws/aws-sdk-js-v3
+
+Clerk Express SDK (@clerk/express)
+  Copyright (c) Clerk, Inc.
+  License: MIT
+  https://clerk.com
+
+Svix (Clerk webhook verification)
+  Copyright (c) Svix Inc.
+  License: MIT
+  https://github.com/svix/svix-webhooks
+
+PostgreSQL client (pg)
+  Copyright (c) Brian Carlson and contributors
+  License: MIT
+  https://github.com/brianc/node-postgres
+
+Redis client (node-redis)
+  Copyright (c) Node Redis contributors
+  License: MIT
+  https://github.com/redis/node-redis
+
+music-metadata
+  Copyright (c) Alexei Ledenev et al.
+  License: MIT
+  https://github.com/Borewit/music-metadata
+
+Sentry SDK (Node)
+  Copyright (c) Functional Software, Inc.
+  License: MIT
+  https://github.com/getsentry/sentry-javascript
+
+Helmet, cors, multer, nodemailer, form-data, prom-client
+  See backend/package.json and npm registry metadata for respective licenses
+  (predominantly MIT or Apache License 2.0).
+
+--------------------------------------------------------------------------------
+4. Browser frontend (frontend/)
+--------------------------------------------------------------------------------
+
+React and react-dom
+  Copyright (c) Meta Platforms, Inc. and affiliates
+  License: MIT
+  https://github.com/facebook/react
+
+Vite
+  Copyright (c) Evan You and Vite contributors
+  License: MIT
+  https://github.com/vitejs/vite
+
+Tailwind CSS
+  Copyright (c) Tailwind Labs, Inc.
+  License: MIT
+  https://github.com/tailwindlabs/tailwindcss
+
+Tone.js (Web Audio scheduling and synthesis)
+  Copyright (c) Yotam Mann
+  License: MIT
+  https://github.com/Tonejs/Tone.js
+
+lamejs (in-browser MP3 encoding for export)
+  Copyright (c) lamejs contributors
+  License: GNU Lesser General Public License v3.0 (LGPL-3.0)
+  https://github.com/zhuker/lamejs
+  This library is used client-side when users export MP3. Corresponding source
+  is available from the project URL above.
+
+JSZip (stem/archive download packaging)
+  Copyright (c) Stuart Knightley
+  License: MIT OR GPL-3.0-or-later (user's choice per upstream)
+  https://github.com/Stuk/jszip
+
+Framer Motion
+  Copyright (c) Framer B.V.
+  License: MIT
+  https://github.com/motiondivision/motion
+
+wouter
+  Copyright (c) molefrog
+  License: MIT
+  https://github.com/molefrog/wouter
+
+Zustand
+  Copyright (c) Paul Henschel
+  License: MIT
+  https://github.com/pmndrs/zustand
+
+Clerk React SDK (@clerk/react)
+  Copyright (c) Clerk, Inc.
+  License: MIT
+  https://clerk.com
+
+Stripe.js (@stripe/stripe-js)
+  Copyright (c) Stripe, Inc.
+  License: MIT
+  https://stripe.com
+
+Sentry SDK (React)
+  Copyright (c) Functional Software, Inc.
+  License: MIT
+  https://github.com/getsentry/sentry-javascript
+
+midi-writer-js, lucide-react, clsx, tailwind-merge
+  See frontend/package.json and npm registry metadata (MIT or ISC).
+
+pitch-tempo-plugin (file: dependency under frontend/src/components/...)
+  Burnt Beats–maintained component; built with the same stack as the frontend.
+
+--------------------------------------------------------------------------------
+5. Pre-trained model weights (runtime; not shipped in this git repository)
+--------------------------------------------------------------------------------
+
+Burnt Beats loads third-party checkpoints from models/ or server_models/ on
+each deployment host. These artifacts are separate from the Apache-licensed
+application source in this repository.
+
+HTDemucs weights (htdemucs.pth)
+  Copyright (c) Meta Platforms, Inc. and affiliates (Demucs project)
+  Used under the Demucs/MIT ecosystem; see Demucs repository for terms.
+
+Ultimate Vocal Remover (UVR) MDX / MDX-Net ONNX and related checkpoints
+  (e.g. UVR-MDX-NET-*, Kim_Vocal_2, UVR_MDXNET_*, BS-RoFormer .ckpt files)
+  Created and distributed by the UVR community and individual model authors
+  (including names credited in filenames, e.g. FoxJoy). Burnt Beats does not
+  claim ownership of these weights. Operators must comply with each model's
+  upstream license and usage terms. Inventory: docs/MODELS-INVENTORY.md
+
+Silero VAD (silero_vad.jit / silero_vad.onnx when present)
+  Copyright (c) Silero Team
+  License: MIT (model card / repository terms apply)
+  https://github.com/snakers4/silero-vad
+
+LavaSR model weights (speech_models/ at runtime)
+  Copyright (c) Yatharth S
+  Obtain from Hugging Face model card terms:
+  https://huggingface.co/YatharthS/LavaSR
+
+Basic Pitch model weights (bundled inside the basic-pitch Python package)
+  Copyright (c) Spotify AB
+  See basic-pitch repository license (MIT).
+
+--------------------------------------------------------------------------------
+6. Optional / satellite packages
+--------------------------------------------------------------------------------
+
+burnt-beats-pricing-structure/, gamer_tag/, and archive/ trees may declare
+additional dependencies in their own package.json or README files. Treat those
+directories as separate surfaces unless explicitly merged into the main
+Compose deployment.
+
+================================================================================
+End of Third-Party Software Notices
+================================================================================

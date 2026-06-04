@@ -1,5 +1,9 @@
 # Burnt Beats
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+Licensed under [Apache License 2.0](LICENSE). Third-party attributions: [NOTICE](NOTICE).
+
 Personal / operator reference: **stem separation + in-browser mixer + export**, shipped as a SPA on **React (Vite)** with a **Node (Express)** API, **Python FastAPI** inference service, optional **S3** stem delivery, **Clerk** auth, and **Stripe** subscriptions / usage tokens.
 
 End users of the public site do not read this repo; this file is for **direction and deploy consistency** (especially **EC2 + Docker Compose** builds).

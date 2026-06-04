@@ -2,6 +2,7 @@
   "name": "burntbeats-backend",
   "version": "1.0.0",
   "description": "API proxy for stem-splitting service: uploads, job status, stem file serving, cleanup.",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "engines": {
