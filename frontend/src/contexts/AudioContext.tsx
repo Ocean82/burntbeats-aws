@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useMemo } from "react";
 import { useAudioPlayback } from "../hooks/useAudioPlayback";
 import type { UseAudioPlaybackReturn } from "../hooks/useAudioPlayback";
-import { useStemLoading } from "../hooks/useStemLoading";
 import type { UseStemLoadingReturn } from "../hooks/useStemLoading";
+import { useStemMedia } from "./StemMediaContext";
 import { useWorkflow } from "./WorkflowContext";
 import { useAppStore } from "../store/appStore";
 
@@ -22,34 +22,14 @@ const AudioContext = createContext<AudioContextValue | null>(null);
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { stemStates, setStemStates } = useWorkflow();
-  const splitResultStems = useAppStore((s) => s.splitResultStems);
-  const loadedStems = useAppStore((s) => s.loadedStems);
-  const setSplitError = useAppStore((s) => s.setSplitError);
+  const { stemStates } = useWorkflow();
   const beatGrid = useAppStore((s) => s.beatGrid);
+  const stemMedia = useStemMedia();
 
   const audio = useAudioPlayback({
     stemStates,
     playbackBpm: beatGrid?.bpm ?? null,
-  });
-
-  const allStemEntries = useMemo(
-    () => [
-      ...splitResultStems.map((s) => ({ id: s.id, url: s.url })),
-      ...loadedStems.map((s) => ({
-        id: s.id,
-        url: s.url,
-        file: s.file,
-      })),
-    ],
-    [splitResultStems, loadedStems],
-  );
-
-  const stemMedia = useStemLoading({
-    allStemEntries,
-    audioContextRef: audio.audioContextRef,
-    setStemStates,
-    setSplitError,
+    audioContextRef: stemMedia.audioContextRef,
   });
 
   const value = useMemo<AudioContextValue>(

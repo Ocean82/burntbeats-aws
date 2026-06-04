@@ -3,7 +3,7 @@ import path from "node:path"
 
 const TARGETS = [
   "src/App.tsx",
-  "src/components/MultiStemEditor.tsx",
+  "src/hooks/app/useEditorSession.ts",
   "src/hooks/audio/useAudioPlayback.ts",
   "../backend/routes/stems/cleanup.js",
   "../backend/routes/midi/cleanup.js",

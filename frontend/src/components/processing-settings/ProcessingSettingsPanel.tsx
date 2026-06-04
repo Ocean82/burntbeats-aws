@@ -5,6 +5,7 @@ import { Music2, Settings2, RotateCcw } from "lucide-react";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
 import type { ProcessingSettingsPanelProps } from "./types";
+import { useProcessingSettingsData } from "./useProcessingSettingsData";
 import { UploadDropZone } from "./UploadDropZone";
 import { LoadStemsZone } from "./LoadStemsZone";
 import { QualitySelector } from "./QualitySelector";
@@ -33,52 +34,54 @@ import { SegmentedControl } from "../ui/SegmentedControl";
 export function ProcessingSettingsPanel({
   sourceMode,
   onSourceModeChange,
-  uploadName,
-  uploadedFile,
   inputRef,
   onBrowseUpload,
   onClearUpload,
   onDropUpload,
   onUploadFileInput,
-  isDragging,
-  onSetIsDragging,
-  loadedStemCount,
   loadStemsInputRef,
   onLoadStems,
-  loadedStems,
   onRemoveLoadedStem,
-  quality,
-  onQualityChange,
-  stemQualityOptions = "full",
-  canSplitFourStems = true,
   onSplit,
-  isSplitting,
-  splitProgress = 0,
-  uploadProgress = 0,
-  isUploading = false,
-  queuePosition = null,
-  splitElapsedSeconds = null,
-  splitStageLabel = null,
-  uploadDurationSec = null,
-  splitResultStemsLength,
-  splitError,
-  onDismissError,
-  canUseBatchQueue = true,
-  onAddToQueue,
-  onUpgradeToPremium,
-  subscriptionInactive = false,
-  onContinueCheckout,
-  usageBalance = null,
-  usageLoading = false,
-  estimatedSplitTokens = null,
-  isCollapsed = false,
   onNewSplit,
+  onAddToQueue,
   onOpenWaitingGame,
-  canExpandToFourStems = false,
-  isExpanding = false,
   onExpandToFourStems,
-  splitJobId = null,
 }: ProcessingSettingsPanelProps) {
+  const {
+    uploadName,
+    uploadedFile,
+    loadedStems,
+    loadedStemCount,
+    quality,
+    isDragging,
+    onSetIsDragging,
+    onQualityChange,
+    stemQualityOptions,
+    canSplitFourStems,
+    isSplitting,
+    splitProgress,
+    uploadProgress,
+    isUploading,
+    queuePosition,
+    splitElapsedSeconds,
+    splitStageLabel,
+    uploadDurationSec,
+    splitResultStemsLength,
+    splitError,
+    onDismissError,
+    canUseBatchQueue,
+    onUpgradeToPremium,
+    subscriptionInactive,
+    onContinueCheckout,
+    usageBalance,
+    usageLoading,
+    estimatedSplitTokens,
+    isCollapsed,
+    canExpandToFourStems,
+    isExpanding,
+    splitJobId,
+  } = useProcessingSettingsData();
   const reduceMotion = useReducedMotion() ?? false;
   const collapse = collapseMotion(reduceMotion);
   const [splitIntent, setSplitIntent] = useState<SplitIntent>(DEFAULT_SPLIT_INTENT);
@@ -316,7 +319,7 @@ export function ProcessingSettingsPanel({
                   uploadDurationSec={uploadDurationSec}
                   splitResultStemsLength={splitResultStemsLength}
                   canUseBatchQueue={canUseBatchQueue}
-                  onAddToQueue={onAddToQueue}
+                  onAddToQueue={onAddToQueue ?? (() => {})}
                   onOpenWaitingGame={onOpenWaitingGame}
                   hideSampleToggle={false}
                 />

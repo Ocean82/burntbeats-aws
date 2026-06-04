@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { ErrorBoundary } from "../components/ErrorBoundary";
-import { LayoutModeProvider } from "../contexts/LayoutModeContext";
 import { ToastProvider } from "../components/ToastProvider";
 import { OfflineBanner } from "../components/OfflineBanner";
 
@@ -16,11 +15,9 @@ export interface AppShellProps {
 export function AppShell({ children }: AppShellProps): ReactNode {
   return (
     <ErrorBoundary>
-      <LayoutModeProvider>
-        <OfflineBanner />
-        {children}
-        <ToastProvider />
-      </LayoutModeProvider>
+      <OfflineBanner />
+      {children}
+      <ToastProvider />
     </ErrorBoundary>
   );
 }

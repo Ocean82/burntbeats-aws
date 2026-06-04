@@ -40,6 +40,7 @@ type ExpectedReturnKeys =
   | "getMasterAnalyserTimeDomainDataRight"
   | "getMasterAnalyserFrequencyData"
   | "getStemAnalyserTimeDomainData"
+  | "getMasterRecordingStream"
   | "masterVolume"
   | "setMasterVolume"
   | "masterLimiterEnabled"
@@ -77,6 +78,7 @@ describe("useAudioPlayback contract", () => {
       "getMasterAnalyserTimeDomainDataRight",
       "getMasterAnalyserFrequencyData",
       "getStemAnalyserTimeDomainData",
+      "getMasterRecordingStream",
       "masterVolume",
       "setMasterVolume",
       "masterLimiterEnabled",
@@ -86,7 +88,7 @@ describe("useAudioPlayback contract", () => {
     ];
 
     // Verify count matches (catches accidental additions)
-    expect(expectedKeys.length).toBe(24);
+    expect(expectedKeys.length).toBe(25);
   });
 
   it("UseAudioPlaybackOptions accepts onError and stemStates", () => {

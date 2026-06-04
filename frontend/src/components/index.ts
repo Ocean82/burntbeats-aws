@@ -1,4 +1,3 @@
-export { MultiStemEditor, type MultiStemEditorProps } from "./MultiStemEditor";
 export { defaultStemState, getStemEffectiveRate, type StemEditorState } from "../stem-editor-state";
 export { HelpModal } from "./HelpModal";
 export { ExportOptionsModal, type ExportOptions, type ExportFormat, type ExportTarget } from "./ExportOptionsModal";

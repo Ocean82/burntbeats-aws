@@ -32,6 +32,11 @@ const LegalAcceptanceGate = lazy(() =>
     default: m.LegalAcceptanceGate,
   })),
 );
+const StemMediaProvider = lazy(() =>
+  import("./contexts/StemMediaContext").then((m) => ({
+    default: m.StemMediaProvider,
+  })),
+);
 const AudioProvider = lazy(() =>
   import("./contexts/AudioContext").then((m) => ({ default: m.AudioProvider })),
 );
@@ -74,11 +79,13 @@ function SignedInAppTree() {
     <Suspense fallback={<RouteLoadingShell />}>
       <LegalAcceptanceGate>
         <WorkflowProvider>
-          <AudioProvider>
-            <AppShell>
-              <App />
-            </AppShell>
-          </AudioProvider>
+          <StemMediaProvider>
+            <AudioProvider>
+              <AppShell>
+                <App />
+              </AppShell>
+            </AudioProvider>
+          </StemMediaProvider>
         </WorkflowProvider>
       </LegalAcceptanceGate>
     </Suspense>

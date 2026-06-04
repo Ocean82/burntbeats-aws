@@ -88,6 +88,8 @@ export interface UseAudioPlaybackReturn {
   getMasterAnalyserFrequencyData: () => Uint8Array | null;
   /** Per-stem time-domain bytes for channel / lane metering. */
   getStemAnalyserTimeDomainData: (stemId: string) => Uint8Array | null;
+  /** Master bus MediaStream for in-app recording. */
+  getMasterRecordingStream: () => MediaStream | null;
   /** Master output gain, 0–1.5 (default 1.0 = 0 dB). */
   masterVolume: number;
   /** Set master output gain and update the live gain node immediately. */
@@ -107,6 +109,8 @@ export interface UseAudioPlaybackOptions {
   stemStates?: Record<string, StemEditorState>;
   /** Detected project BPM (beat grid) for tempo-synced delay on stem FX. */
   playbackBpm?: number | null;
+  /** Shared AudioContext ref (from StemMediaProvider). */
+  audioContextRef?: React.MutableRefObject<AudioContext | null>;
 }
 
 const TRIM_HOT_SWAP_DEBOUNCE_MS = 80;
@@ -114,7 +118,12 @@ const TRIM_HOT_SWAP_DEBOUNCE_MS = 80;
 export function useAudioPlayback(
   options: UseAudioPlaybackOptions = {},
 ): UseAudioPlaybackReturn {
-  const { onError, stemStates: stemStatesProp, playbackBpm } = options;
+  const {
+    onError,
+    stemStates: stemStatesProp,
+    playbackBpm,
+    audioContextRef: sharedAudioContextRef,
+  } = options;
   const playbackBpmRef = useRef(resolvePlaybackBpm(playbackBpm ?? undefined));
   useEffect(() => {
     playbackBpmRef.current = resolvePlaybackBpm(playbackBpm ?? undefined);
@@ -133,8 +142,13 @@ export function useAudioPlayback(
     setMasterVolume,
     masterLimiterEnabled,
     setMasterLimiterEnabled,
+    getMasterRecordingStream,
     destroyContext,
-  } = useAudioContext();
+  } = useAudioContext(
+    sharedAudioContextRef
+      ? { audioContextRef: sharedAudioContextRef }
+      : {},
+  );
 
   const {
     playheadPositionRef,
@@ -896,6 +910,7 @@ export function useAudioPlayback(
     getMasterAnalyserTimeDomainDataRight,
     getMasterAnalyserFrequencyData,
     getStemAnalyserTimeDomainData,
+    getMasterRecordingStream,
     masterVolume,
     setMasterVolume,
     masterLimiterEnabled,

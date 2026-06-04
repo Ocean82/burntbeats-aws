@@ -45,11 +45,19 @@ export interface UseAudioContextReturn {
   destroyContext: () => void;
 }
 
-export function useAudioContext(): UseAudioContextReturn {
+export interface UseAudioContextOptions {
+  /** Shared decode/playback context (owned by StemMediaProvider). */
+  audioContextRef?: React.MutableRefObject<AudioContext | null>;
+}
+
+export function useAudioContext(
+  options: UseAudioContextOptions = {},
+): UseAudioContextReturn {
   const [masterVolume, setMasterVolumeState] = useState(1.0);
   const [masterLimiterEnabled, setMasterLimiterEnabledState] = useState(false);
 
-  const audioContextRef = useRef<AudioContext | null>(null);
+  const internalAudioContextRef = useRef<AudioContext | null>(null);
+  const audioContextRef = options.audioContextRef ?? internalAudioContextRef;
   const masterGainRef = useRef<GainNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
   const masterLimiterRef = useRef<DynamicsCompressorNode | null>(null);

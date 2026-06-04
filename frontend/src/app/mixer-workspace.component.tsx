@@ -1,9 +1,7 @@
 import { Suspense, lazy, type RefObject } from "react";
 import { cn } from "../utils/cn";
 import { Skeleton } from "../components/ui/skeleton";
-import type { UseSubscriptionResult } from "../hooks/useSubscription";
 import { useAudio } from "../contexts/AudioContext";
-import { useAudioContext } from "../hooks/audio";
 import { useWorkflow } from "../contexts/WorkflowContext";
 import { useAppStore } from "../store/appStore";
 import { useUiStore } from "../store/uiStore";
@@ -19,15 +17,9 @@ interface MixerWorkspaceProps {
   onPointerDownMixer: React.PointerEventHandler<HTMLDivElement>;
   guidanceTarget: string | null;
   guidanceRingClass: string;
-  subscription: Pick<UseSubscriptionResult, "status" | "plan">;
-  setActiveView: (view: "editor" | "pricing") => void;
-  hasCompletedFirstExport: boolean;
 
   onResetLevels: () => void;
   onResetSingleStem?: (stemId: string) => void;
-  isLoadingStems: boolean;
-  loadingError: string | null;
-  onRetryLoadStems?: () => void;
   stemWaveforms: Record<string, number[]>;
   activeStemId: string | undefined;
   onActiveStemChange: (stemId: string) => void;
@@ -53,9 +45,6 @@ export function MixerWorkspace({
   guidanceRingClass,
   onResetLevels,
   onResetSingleStem,
-  isLoadingStems,
-  loadingError,
-  onRetryLoadStems,
   stemWaveforms,
   activeStemId,
   onActiveStemChange,
@@ -69,14 +58,19 @@ export function MixerWorkspace({
   onLoadGenrePreset,
 }: MixerWorkspaceProps) {
   const audio = useAudio();
+  const {
+    stemBuffers,
+    isLoadingStems,
+    loadingError,
+    retryLoadStems,
+  } = audio;
   const { stemStates } = useWorkflow();
-  const { stemBuffers } = audio;
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const beatGrid = useAppStore((s) => s.beatGrid);
   const setPersistedMasterLimiterEnabled = useAppStore((s) => s.setMasterLimiterEnabled);
   const undoToast = useUiStore((s) => s.undoToast);
   const { mixStems, visibleStems } = useResolvedStems();
-  const { getMasterRecordingStream } = useAudioContext();
+  const { getMasterRecordingStream } = audio;
   const {
     isRecording,
     duration: recordingDuration,
@@ -152,7 +146,7 @@ export function MixerWorkspace({
             subscribePlayheadPosition={audio.subscribePlayheadPosition}
             isLoadingStems={isLoadingStems}
             loadingError={loadingError}
-            onRetryLoadStems={onRetryLoadStems}
+            onRetryLoadStems={retryLoadStems}
             activeStemId={activeStemId ?? ""}
             onActiveStemChange={onActiveStemChange}
             onStemStateChange={onStemStateChange}

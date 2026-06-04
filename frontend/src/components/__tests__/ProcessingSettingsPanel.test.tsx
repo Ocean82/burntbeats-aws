@@ -1,8 +1,31 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { createRef } from "react";
-import type { SplitQuality } from "../../api";
 import { ProcessingSettingsPanel } from "../ProcessingSettingsPanel";
+import { useAppStore } from "../../store/appStore";
+
+vi.mock("../../hooks/useAppSubscription", () => ({
+  useAppSubscription: () => ({
+    subscription: {
+      status: "active",
+      plan: "basic",
+      billingError: null,
+      startCheckout: vi.fn(),
+      capabilities: {
+        canSplitFourStems: true,
+        canUsePremiumStemQualities: true,
+        canExpandToFourStems: false,
+        canUseBatchQueue: false,
+      },
+    },
+    usageBalance: null,
+    usageLoading: false,
+    stemQualityOptions: "full" as const,
+    canSplitFourStems: true,
+    canExpandToFourStems: false,
+    canUseBatchQueue: false,
+  }),
+}));
 
 function renderSplitPanel() {
   const uploadInputRef = createRef<HTMLInputElement>();
@@ -11,34 +34,34 @@ function renderSplitPanel() {
   const props = {
     sourceMode: "split" as const,
     onSourceModeChange: vi.fn(),
-    uploadName: "track.wav",
-    uploadedFile: new File([], "track.wav", { type: "audio/wav" }),
     inputRef: uploadInputRef,
     onBrowseUpload: vi.fn(),
     onClearUpload: vi.fn(),
     onDropUpload: vi.fn(),
     onUploadFileInput: vi.fn(),
-    isDragging: false,
-    onSetIsDragging: vi.fn(),
-    loadedStemCount: 0,
     loadStemsInputRef: loadInputRef,
     onLoadStems: vi.fn(),
-    loadedStems: [],
     onRemoveLoadedStem: vi.fn(),
-    quality: "speed" as SplitQuality,
-    onQualityChange: vi.fn(),
     onSplit: vi.fn(),
-    isSplitting: false,
-    splitResultStemsLength: 0,
-    splitError: null,
-    onDismissError: vi.fn(),
-    onAddToQueue: vi.fn(),
   };
 
   return render(<ProcessingSettingsPanel {...props} />);
 }
 
 describe("ProcessingSettingsPanel layout", () => {
+  beforeEach(() => {
+    useAppStore.setState({
+      uploadName: "track.wav",
+      uploadedFile: new File([], "track.wav", { type: "audio/wav" }),
+      quality: "speed",
+      isDragging: false,
+      isSplitting: false,
+      splitResultStems: [],
+      splitError: null,
+      loadedStems: [],
+    });
+  });
+
   it("keeps upload and quality controls in separate responsive groups", () => {
     const { container } = renderSplitPanel();
 

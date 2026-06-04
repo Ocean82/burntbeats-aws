@@ -47,23 +47,11 @@ async function main() {
   const frontendDir = path.join(repoRoot, "frontend")
   runCommand("npm", ["run", "lint"], { cwd: frontendDir, env, label: "frontend lint" })
   runCommand("npx", ["tsc", "--noEmit"], { cwd: frontendDir, env, label: "frontend typecheck" })
-  runCommand("npm", ["run", "test:run", "--", "src/utils/tokenCost.test.ts", "src/hooks/useExport.test.ts"], {
+  runCommand("npm", ["run", "test:run"], {
     cwd: frontendDir,
     env,
-    label: "frontend critical unit tests",
+    label: "frontend unit tests",
   })
-  runCommand(
-    "npm",
-    [
-      "run",
-      "test:run",
-      "--",
-      "src/hooks/useMidiConvert.test.ts",
-      "src/hooks/useMidiHistory.test.ts",
-      "src/components/MyStemsPage.test.tsx",
-    ],
-    { cwd: frontendDir, env, label: "frontend MIDI hardening tests" },
-  )
   runCommand("npm", ["run", "build"], { cwd: frontendDir, env, label: "frontend build" })
 
   // Run the same backend test subset CI uses.

@@ -1,6 +1,6 @@
 /**
  * Static stem definitions: colors, labels, placeholder waveforms.
- * Shared across App, MultiStemEditor, and any future stem-related components.
+ * Shared across the DJ editor, mixer, and stem-related components.
  */
 import type { StemDefinition } from "../types";
 

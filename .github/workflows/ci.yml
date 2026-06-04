@@ -32,12 +32,9 @@ jobs:
       - name: Frontend build
         working-directory: frontend
         run: npm run build
-      - name: Frontend critical unit tests
+      - name: Frontend unit tests
         working-directory: frontend
-        run: npm run test:run -- src/utils/tokenCost.test.ts src/hooks/useExport.test.ts
-      - name: Frontend MIDI hardening tests
-        working-directory: frontend
-        run: npm run test:run -- src/hooks/useMidiConvert.test.ts src/hooks/useMidiHistory.test.ts src/components/MyStemsPage.test.tsx
+        run: npm run test:run
       - name: Install Playwright Chromium
         working-directory: frontend
         run: npm run test:e2e:install-browsers:ci

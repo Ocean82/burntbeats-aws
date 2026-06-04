@@ -1,6 +1,6 @@
 /**
  * StemProcessingPanel — shared pitch/EQ/amplitude/time/FX controls for the active stem.
- * Used by MultiStemEditor and DjModeEditor waveform workspaces.
+ * Used by DjModeEditor waveform workspaces.
  */
 import { useCallback, useState } from "react";
 import { motion } from "framer-motion";

@@ -3,7 +3,14 @@ import { render, screen, within } from "@testing-library/react";
 import { AppShell } from "./app/app-shell.component";
 import { App } from "./App";
 import { AudioProvider } from "./contexts/AudioContext";
+import { StemMediaProvider } from "./contexts/StemMediaContext";
 import { WorkflowProvider } from "./contexts/WorkflowContext";
+
+vi.mock("./views/lazy-view-registry", () => ({
+  useViewPreloading: () => {},
+  preloadView: vi.fn(),
+  getViewsToPreload: () => [],
+}));
 
 // Mock Clerk so App can render without ClerkProvider in tests
 vi.mock("@clerk/react", () => ({
@@ -41,11 +48,13 @@ describe("App flow", () => {
   function renderApp() {
     return render(
       <WorkflowProvider>
-        <AudioProvider>
-          <AppShell>
-            <App />
-          </AppShell>
-        </AudioProvider>
+        <StemMediaProvider>
+          <AudioProvider>
+            <AppShell>
+              <App />
+            </AppShell>
+          </AudioProvider>
+        </StemMediaProvider>
       </WorkflowProvider>,
     );
   }

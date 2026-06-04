@@ -42,6 +42,7 @@ export function EditorMainView({
     subscription,
     checkoutNotice,
     mixStemsLength,
+    isSplitting,
   },
   processingProps,
   mixerProps,
@@ -54,7 +55,7 @@ export function EditorMainView({
       onPointerDown={handleGuidancePanelInteract}
       className={cn(
         guidanceTarget === "source" && guidanceRingClass,
-        processingProps.isSplitting && "splitting-scan-glow",
+        isSplitting && "splitting-scan-glow",
       )}
     >
       <PanelHeader
