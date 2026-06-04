@@ -23,11 +23,13 @@ function sanitizePartialState(update: Partial<AppState>): Partial<AppState> {
   if (typeof update.pipelineIndex === "number") {
     sanitized.pipelineIndex = Math.max(0, Math.round(update.pipelineIndex));
   }
-  if (
-    typeof update.quality === "string" &&
-    !VALID_QUALITIES.includes(update.quality as SplitQuality)
-  ) {
-    sanitized.quality = "quality";
+  if (typeof update.quality === "string") {
+    const q = update.quality;
+    if (q === "balanced" || q === "ultra") {
+      sanitized.quality = "quality";
+    } else if (!VALID_QUALITIES.includes(q as SplitQuality)) {
+      sanitized.quality = "quality";
+    }
   }
   return sanitized;
 }

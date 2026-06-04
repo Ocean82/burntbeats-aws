@@ -12,6 +12,7 @@ import {
 } from "../../middleware/auth.js";
 import { proxyFormRequest } from "../../middleware/proxy.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
+import { normalizeStemQuality } from "../../helpers/stemQuality.js";
 
 import {
   computeExpandCost,
@@ -43,16 +44,12 @@ expandRouter.post(
           "Invalid or missing job_id. Provide the 2-stem job id in the JSON body.",
       });
     }
-    /** @type {string | undefined} */
     const rawQuality = req.body && req.body.quality;
-    // Validate quality before proxying
-    const VALID_QUALITY = new Set(["speed", "quality"]);
-    if (rawQuality && !VALID_QUALITY.has(rawQuality)) {
-      return res.status(400).json({
-        error: "quality must be 'speed' or 'quality'",
-      });
+    const qualityResult = normalizeStemQuality(rawQuality);
+    if (!qualityResult.ok) {
+      return res.status(400).json({ error: qualityResult.error });
     }
-    const quality = rawQuality;
+    const quality = qualityResult.quality;
 
     /** @type {string | null} */
     let entitlementUserId = null;

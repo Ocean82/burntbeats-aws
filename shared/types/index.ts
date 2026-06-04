@@ -18,6 +18,11 @@ export type JobStatus =
   | "failed"
   | "cancelled";
 
+/**
+ * Canonical client/API quality tier (2-tier product model).
+ * The server also accepts legacy aliases `balanced` and `ultra` and normalizes them to `quality`.
+ * Clients should only send `speed` or `quality`.
+ */
 export type SplitQuality = "speed" | "quality";
 
 export type SplitTask = "extract" | "remove" | "full_separation";

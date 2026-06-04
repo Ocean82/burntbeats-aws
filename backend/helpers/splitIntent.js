@@ -2,6 +2,7 @@
 /**
  * Intent-driven stem split request parsing (mirrors stem_service.routing.schema).
  */
+import { normalizeStemQuality } from "./stemQuality.js";
 
 /** @typedef {'extract' | 'remove' | 'full_separation'} SplitTask */
 /** @typedef {'fast' | 'high' | 'speed' | 'quality'} SplitQualityInput */
@@ -85,9 +86,25 @@ export function parseSplitRequestBody(body) {
   }
 
   const stems = (body?.stems && String(body.stems)) || "4";
-  const quality =
+  const rawQuality =
     body?.quality != null ? String(body.quality) : undefined;
-  return { intent: null, stems, quality, intentJson: null, error: null };
+  const qualityResult = normalizeStemQuality(rawQuality);
+  if (!qualityResult.ok) {
+    return {
+      intent: null,
+      stems: "2",
+      quality: undefined,
+      intentJson: null,
+      error: qualityResult.error,
+    };
+  }
+  return {
+    intent: null,
+    stems,
+    quality: qualityResult.quality,
+    intentJson: null,
+    error: null,
+  };
 }
 
 /**
@@ -124,6 +141,7 @@ function validateIntentObject(raw) {
   }
 
   let quality = String(data.quality || "high").toLowerCase();
+  if (quality === "balanced" || quality === "ultra") quality = "high";
   if (quality === "speed") quality = "fast";
   if (quality === "quality") quality = "high";
   if (quality !== "fast" && quality !== "high") {

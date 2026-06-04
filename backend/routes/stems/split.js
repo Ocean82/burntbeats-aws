@@ -40,10 +40,17 @@ import {
   handleProxyError,
 } from "./shared.js";
 import { parseSplitRequestBody } from "../../helpers/splitIntent.js";
+import { normalizeStemQuality } from "../../helpers/stemQuality.js";
 import {
   isPremiumSplitRequest,
   requireSplitEntitlements,
 } from "./entitlements.js";
+
+const TEST_BYPASS_PREMIUM_ENTITLEMENTS =
+  process.env.NODE_ENV === "test" &&
+  ["1", "true", "yes"].includes(
+    (process.env.TEST_BYPASS_PREMIUM_ENTITLEMENTS || "").toLowerCase(),
+  );
 
 export const splitRouter = Router();
 
@@ -137,23 +144,25 @@ splitRouter.post(
       await unlinkPromise(filePath).catch(() => {});
       return res.status(400).json({ error: parsed.error });
     }
-    const { intent, stems, quality, intentJson } = parsed;
+    const { intent, stems, quality: rawQuality, intentJson } = parsed;
     if (!intent) {
       if (stems !== "2" && stems !== "4") {
         await unlinkPromise(filePath).catch(() => {});
         return res.status(400).json({ error: "stems must be '2' or '4'" });
       }
-      const VALID_QUALITY = new Set(["speed", "quality"]);
-      if (quality && !VALID_QUALITY.has(quality)) {
-        await unlinkPromise(filePath).catch(() => {});
-        return res.status(400).json({
-          error: "quality must be 'speed' or 'quality'",
-        });
-      }
     }
+    const qualityResult = normalizeStemQuality(rawQuality);
+    if (!qualityResult.ok) {
+      await unlinkPromise(filePath).catch(() => {});
+      return res.status(400).json({ error: qualityResult.error });
+    }
+    const quality = qualityResult.quality;
     /** @type {string | null} */
     let entitlementUserId = null;
-    if (isPremiumSplitRequest(stems, quality, intent)) {
+    if (
+      !TEST_BYPASS_PREMIUM_ENTITLEMENTS &&
+      isPremiumSplitRequest(stems, quality, intent)
+    ) {
       const entitlementCheck = await requireSplitEntitlements(req, {
         stems,
         quality,

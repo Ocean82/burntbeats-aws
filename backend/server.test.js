@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import http from "http";
 
 import supertest from "supertest";
+import { STEM_QUALITY_ERROR } from "./helpers/stemQuality.js";
 
 // HTTP tests use a mock stem service; do not write to a real Postgres from backend/.env.
 // Use empty string (not delete) so later test helpers do not reload DATABASE_URL from .env.
@@ -15,14 +16,31 @@ process.env.API_KEY = "test-key";
 process.env.JOB_TOKEN_SECRET = ""; // disable job token auth for these basic tests
 process.env.STEM_SERVICE_API_TOKEN = "stem-service-test-token";
 process.env.DEV_BYPASS_UPLOAD_AUTH = "1";
+process.env.TEST_BYPASS_PREMIUM_ENTITLEMENTS = "1";
 
 /** @type {string | undefined} */
 let lastStemServiceTokenHeader;
+/** @type {string | undefined} */
+let lastSplitFormQuality;
+
+/**
+ * @param {Buffer} bodyBuffer
+ * @returns {string | undefined}
+ */
+function parseMultipartQuality(bodyBuffer) {
+  const body = bodyBuffer.toString("latin1");
+  const match = body.match(/name="quality"\r\n\r\n([^\r\n]*)/);
+  return match ? match[1] : undefined;
+}
+
 const mockStemService = http.createServer((req, res) => {
   if (req.url === "/split" && req.method === "POST") {
     lastStemServiceTokenHeader = req.headers["x-stem-service-token"];
-    req.on("data", () => {});
+    /** @type {Buffer[]} */
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => {
+      lastSplitFormQuality = parseMultipartQuality(Buffer.concat(chunks));
       res.statusCode = 202;
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ job_id: randomUUID(), status: "accepted" }));
@@ -114,17 +132,46 @@ test("POST /api/stems/split forwards X-Stem-Service-Token to stem service", asyn
   assert.equal(lastStemServiceTokenHeader, process.env.STEM_SERVICE_API_TOKEN);
 });
 
-test("POST /api/stems/split rejects removed quality modes", async () => {
+test("POST /api/stems/split maps balanced to quality on upstream form", async () => {
   lastStemServiceTokenHeader = undefined;
+  lastSplitFormQuality = undefined;
   const res = await request
     .post("/api/stems/split")
     .set("x-api-key", process.env.API_KEY)
     .field("stems", "2")
     .field("quality", "balanced")
     .attach("file", minimalWavBuffer(), "sample.wav")
+    .expect(202);
+
+  assert.equal(typeof res.body.job_id, "string");
+  assert.equal(lastSplitFormQuality, "quality");
+});
+
+test("POST /api/stems/split maps ultra to quality on upstream form", async () => {
+  lastStemServiceTokenHeader = undefined;
+  lastSplitFormQuality = undefined;
+  await request
+    .post("/api/stems/split")
+    .set("x-api-key", process.env.API_KEY)
+    .field("stems", "2")
+    .field("quality", "ultra")
+    .attach("file", minimalWavBuffer(), "sample.wav")
+    .expect(202);
+
+  assert.equal(lastSplitFormQuality, "quality");
+});
+
+test("POST /api/stems/split rejects unknown quality modes", async () => {
+  lastStemServiceTokenHeader = undefined;
+  const res = await request
+    .post("/api/stems/split")
+    .set("x-api-key", process.env.API_KEY)
+    .field("stems", "2")
+    .field("quality", "bogus")
+    .attach("file", minimalWavBuffer(), "sample.wav")
     .expect(400);
 
-  assert.equal(res.body.error, "quality must be 'speed' or 'quality'");
+  assert.equal(res.body.error, STEM_QUALITY_ERROR);
   assert.equal(lastStemServiceTokenHeader, undefined);
 });
 
@@ -140,15 +187,15 @@ test("POST /api/stems/expand requires account auth before premium expand", async
   assert.equal(lastStemServiceTokenHeader, undefined);
 });
 
-test("POST /api/stems/expand rejects removed quality modes", async () => {
+test("POST /api/stems/expand rejects unknown quality modes", async () => {
   lastStemServiceTokenHeader = undefined;
   const res = await request
     .post("/api/stems/expand")
     .set("x-api-key", process.env.API_KEY)
-    .send({ job_id: randomUUID(), quality: "ultra" })
+    .send({ job_id: randomUUID(), quality: "bogus" })
     .expect(400);
 
-  assert.equal(res.body.error, "quality must be 'speed' or 'quality'");
+  assert.equal(res.body.error, STEM_QUALITY_ERROR);
   assert.equal(lastStemServiceTokenHeader, undefined);
 });
 

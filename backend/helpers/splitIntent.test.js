@@ -47,3 +47,22 @@ test("legacyStemsFromIntent full separation", () => {
     "4",
   );
 });
+
+test("parseSplitRequestBody normalizes balanced legacy quality", () => {
+  const parsed = parseSplitRequestBody({ stems: "2", quality: "balanced" });
+  assert.equal(parsed.error, null);
+  assert.equal(parsed.quality, "quality");
+});
+
+test("parseSplitRequestBody maps balanced in intent JSON to high", () => {
+  const parsed = parseSplitRequestBody({
+    intent: JSON.stringify({
+      task: "extract",
+      targets: ["vocals"],
+      quality: "balanced",
+    }),
+  });
+  assert.equal(parsed.error, null);
+  assert.equal(parsed.intent?.quality, "high");
+  assert.equal(parsed.quality, "quality");
+});
