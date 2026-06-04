@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { minimalWavBuffer, skipOnboarding } from "./fixtures/helpers";
+import { gotoEditor, minimalWavBuffer, skipOnboarding } from "./fixtures/helpers";
 import { mockSplitSuccess } from "./helpers/mock-split-success";
 
 test.describe("Ship polish layout", () => {
@@ -10,7 +10,7 @@ test.describe("Ship polish layout", () => {
   test("mobile stacks stem processing panel above timeline", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await mockSplitSuccess(page);
-    await page.goto("/");
+    await gotoEditor(page);
 
     await page.getByLabel("Choose audio file").setInputFiles({
       name: "layout-test.wav",
@@ -46,7 +46,7 @@ test.describe("Ship polish layout", () => {
 
   test("MIDI convert page is usable at mobile width", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/");
+    await gotoEditor(page);
     await page
       .getByLabel("Workspace tabs")
       .getByRole("button", { name: /MIDI/i })

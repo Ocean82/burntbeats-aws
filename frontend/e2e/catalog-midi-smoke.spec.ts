@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gotoLibrary, skipOnboarding } from "./fixtures/helpers";
 
 /**
  * Smoke: catalog browse → open MIDI tool (edit path entry point).
@@ -6,10 +7,7 @@ import { test, expect } from "@playwright/test";
  */
 test.describe("Catalog to MIDI workflow smoke", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("burnt-beats-onboarding-complete", "true");
-      localStorage.setItem("burntbeats_cookie_consent", "declined");
-    });
+    await skipOnboarding(page);
 
     await page.route("**/api/catalog/midi**", async (route) => {
       await route.fulfill({
@@ -48,7 +46,7 @@ test.describe("Catalog to MIDI workflow smoke", () => {
   });
 
   test("browse library then navigate to MIDI convert", async ({ page }) => {
-    await page.goto("/library");
+    await gotoLibrary(page);
     await expect(page.getByText("Smoke Test Progression")).toBeVisible({
       timeout: 10_000,
     });

@@ -178,7 +178,7 @@ test.describe("Stem split flow", () => {
       });
     });
 
-    await page.goto("/");
+    await gotoEditor(page);
 
     // Upload file
     await page.getByLabel("Choose audio file").setInputFiles({
@@ -220,7 +220,7 @@ test.describe("Stem split flow", () => {
       },
     );
 
-    await page.goto("/");
+    await gotoEditor(page);
 
     await page.getByLabel("Choose audio file").setInputFiles({
       name: "test-song.wav",
@@ -240,7 +240,7 @@ test.describe("Stem split flow", () => {
 
   test("stems appear in mixer after successful split", async ({ page }) => {
     await mockSplitSuccess(page);
-    await page.goto("/");
+    await gotoEditor(page);
 
     // Upload and split
     await page.getByLabel("Choose audio file").setInputFiles({
@@ -262,7 +262,7 @@ test.describe("Stem split flow", () => {
 
   test("error state shown on split failure", async ({ page }) => {
     await mockSplitFailure(page);
-    await page.goto("/");
+    await gotoEditor(page);
 
     // Upload and split
     await page.getByLabel("Choose audio file").setInputFiles({

@@ -24,7 +24,7 @@ test.describe("Burnt Beats app (local full app mode)", () => {
   });
 
   test("mixer prompts before stems exist", async ({ page }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await expect(
       page.getByRole("region", { name: /timeline waiting for stems/i }),
     ).toBeVisible();
@@ -34,7 +34,7 @@ test.describe("Burnt Beats app (local full app mode)", () => {
   test("load mode shows stem dropzone without requiring upload", async ({
     page,
   }) => {
-    await page.goto("/");
+    await gotoEditor(page);
     await page.getByTestId("source-mode-load").click();
     await expect(page.getByTestId("load-upload-dropzone")).toBeVisible();
     await expect(

@@ -1,19 +1,17 @@
 import { test, expect } from "@playwright/test";
+import { gotoEditor, skipOnboarding } from "./fixtures/helpers";
 import { minimalWavFile } from "./fixtures/minimal-wav";
 import { mockSplitSuccess } from "./helpers/mock-split-success";
 
 test.describe("Export options modal", () => {
   test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("burnt-beats-onboarding-complete", "true");
-      localStorage.setItem("burntbeats_cookie_consent", "declined");
-    });
+    await skipOnboarding(page);
   });
 
   test("opens from mixer after loading stems; format targets expose pressed state", async ({
     page,
   }) => {
-    await page.goto("/");
+    await gotoEditor(page);
 
     await page.getByTestId("source-mode-load").click();
     await expect(page.getByTestId("load-upload-dropzone")).toBeVisible();
@@ -70,7 +68,7 @@ test.describe("Export options modal", () => {
 
     await mockSplitSuccess(page);
 
-    await page.goto("/");
+    await gotoEditor(page);
     await page.getByLabel("Choose audio file").setInputFiles(minimalWavFile("e2e-split.wav"));
     await page
       .getByTestId("processing-settings-panel")
