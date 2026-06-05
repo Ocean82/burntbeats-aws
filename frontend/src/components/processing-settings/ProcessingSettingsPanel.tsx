@@ -64,6 +64,7 @@ export function ProcessingSettingsPanel({
     uploadProgress,
     isUploading,
     queuePosition,
+    jobsAhead,
     splitElapsedSeconds,
     splitStageLabel,
     uploadDurationSec,
@@ -314,6 +315,7 @@ export function ProcessingSettingsPanel({
                   uploadProgress={uploadProgress}
                   isUploading={isUploading}
                   queuePosition={queuePosition}
+                  jobsAhead={jobsAhead}
                   splitElapsedSeconds={splitElapsedSeconds}
                   splitStageLabel={splitStageLabel}
                   uploadDurationSec={uploadDurationSec}

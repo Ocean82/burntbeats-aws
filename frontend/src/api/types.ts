@@ -33,6 +33,8 @@ export interface StemJobStatus {
   artifact_delivery?: "local_ready" | "uploaded" | "upload_failed";
   /** Queue position when status is "queued" (1 = next to run). */
   queue_position?: number;
+  /** Jobs ahead of this one in the queue (0 when position is 1). */
+  jobs_ahead?: number;
   /** Elapsed processing seconds (emitted during running state). */
   elapsed_seconds?: number;
 }

@@ -5,7 +5,7 @@ These tests encode the EXPECTED (correct) behavior. They are designed to FAIL
 on unfixed code, proving the bugs exist. After the fix, they should PASS.
 
 Bug 1: quality mode overlap override forces 0.5 instead of 0.75
-Bug 2: USE_DEMUCS_SHIFTS_0 defaults to True when env var is unset
+Bug 2 (resolved): quality Demucs fallback must use shifts=0 on CPU
 """
 
 from __future__ import annotations
@@ -64,25 +64,9 @@ def test_quality_mode_uses_fast_overlap_for_cpu_tiers():
     assert captured_overlap["value"] == 0.5
 
 
-def test_bug2_use_demucs_shifts_0_defaults_to_false_when_unset():
-    """
-    Bug 2: When USE_DEMUCS_SHIFTS_0 is not set in the environment,
-    it should default to False (allowing quality mode to use shifts=3).
-
-    EXPECTED: This test FAILS on unfixed code (defaults to True).
-    After fix: This test PASSES.
-    """
-    # Remove the env var if it exists, then reimport the config module
-    env_copy = os.environ.copy()
-    env_copy.pop("USE_DEMUCS_SHIFTS_0", None)
-
-    with patch.dict(os.environ, env_copy, clear=True):
-        # Force reimport of the config module to pick up the patched env
-        import stem_service.config.device as device_mod
-        importlib.reload(device_mod)
-        result = device_mod.USE_DEMUCS_SHIFTS_0
-
-    assert result is False, (
-        f"Bug 2 confirmed: USE_DEMUCS_SHIFTS_0 is {result} when env var is unset, "
-        f"but should be False"
-    )
+def test_quality_demucs_shifts_zero_on_cpu():
+    """Quality tier Demucs fallback uses shifts=0; tier difference is ONNX model choice."""
+    import stem_service.config.device as device_mod
+    importlib.reload(device_mod)
+    assert device_mod.DEMUCS_SHIFTS_QUALITY == 0
+    assert device_mod.DEMUCS_SHIFTS_SPEED == 0

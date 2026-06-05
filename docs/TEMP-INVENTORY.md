@@ -23,7 +23,7 @@ Assessment source: TEMP and Stack Assessment plan (2026-06-03). TEMP lives at `d
 - TEMP `services/` scrap
 - TEMP `audio-shift` vendor demos
 - music-app generative AI (AudioCraft, RVC, spectral, beats v8)
-- `stem_api` Rust experiment
+- `archive/stem_api` Rust experiment (moved from root `stem_api/`)
 
 ## TEMP top-level map
 

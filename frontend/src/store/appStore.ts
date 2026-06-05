@@ -59,6 +59,8 @@ export interface AppState {
   beatGrid: BeatGridMetadata | null;
   /** Queue position when job is waiting (1 = next to run, null = not queued). */
   queuePosition: number | null;
+  /** Jobs ahead in queue when status is queued (derived from backend jobs_ahead). */
+  jobsAhead: number | null;
   /** Elapsed processing seconds from job status (running state). */
   splitElapsedSeconds: number | null;
   /** Backend-reported stage label for the current split job. */
@@ -90,6 +92,7 @@ export const useAppStore = create<AppState>((set) => ({
   pipelineIndex: 0,
   beatGrid: null,
   queuePosition: null,
+  jobsAhead: null,
   splitElapsedSeconds: null,
   splitStageLabel: null,
   masterLimiterEnabled: false,

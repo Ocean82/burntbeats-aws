@@ -1,5 +1,7 @@
 # Burnt Beats — pricing structure site
 
+**Experimental satellite** — not part of main `docker-compose.yml` or GitHub Actions CI.
+
 Standalone **Vite + React** app meant for **pricing transparency**:
 
 - Separate from the authenticated stem editor landing page  

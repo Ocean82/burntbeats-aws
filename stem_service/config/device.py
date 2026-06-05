@@ -87,7 +87,8 @@ MAX_FILE_SIZE_MB = 500
 # Demucs Settings
 # =======================
 DEMUCS_SHIFTS_SPEED = 0
-DEMUCS_SHIFTS_QUALITY = 3
+# CPU production: quality tier uses better ONNX upstream (KARA), not Demucs shifts.
+DEMUCS_SHIFTS_QUALITY = 0
 DEMUCS_OVERLAP = 0.25
 # htdemucs max segment is 7.8 s; keep <= 7 to stay under the limit.
 DEMUCS_SEGMENT_SEC = 7

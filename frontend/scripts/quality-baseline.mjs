@@ -1,6 +1,12 @@
 import { readFile, stat } from "node:fs/promises"
 import path from "node:path"
 
+/** Line-count ceilings enforced when QUALITY_BASELINE_ENFORCE=1 (CI). */
+const ENFORCED_LIMITS = {
+  "src/App.tsx": 20,
+  "src/hooks/app/useEditorSession.ts": 850,
+}
+
 const TARGETS = [
   "src/App.tsx",
   "src/hooks/app/useEditorSession.ts",
@@ -16,7 +22,10 @@ async function getLineCount(filePath) {
 }
 
 async function main() {
+  const enforce = process.env.QUALITY_BASELINE_ENFORCE === "1"
   const rows = []
+  const violations = []
+
   for (const relativePath of TARGETS) {
     const absolutePath = path.resolve(process.cwd(), relativePath)
     const fileStats = await stat(absolutePath)
@@ -26,11 +35,24 @@ async function main() {
       lines: lineCount,
       bytes: fileStats.size,
     })
+
+    const limit = ENFORCED_LIMITS[relativePath]
+    if (enforce && limit != null && lineCount > limit) {
+      violations.push(`${relativePath}: ${lineCount} lines exceeds limit ${limit}`)
+    }
   }
 
   console.log("[quality-baseline] Target file metrics")
   for (const row of rows) {
     console.log(`${row.file} | ${row.lines} lines | ${row.bytes} bytes`)
+  }
+
+  if (violations.length > 0) {
+    console.error("[quality-baseline] Line-count limits exceeded:")
+    for (const message of violations) {
+      console.error(`  - ${message}`)
+    }
+    process.exit(1)
   }
 }
 

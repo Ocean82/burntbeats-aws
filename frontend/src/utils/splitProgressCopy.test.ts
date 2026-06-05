@@ -15,16 +15,31 @@ describe("getSplitProgressMessage", () => {
     expect(msg.secondary).toBe("42%");
   });
 
-  it("returns queue position without guessed ETA", () => {
+  it("returns jobs ahead when queued", () => {
     const msg = getSplitProgressMessage({
       isUploading: false,
       uploadProgress: 0,
       queuePosition: 3,
+      jobsAhead: 2,
       splitProgress: 0,
       elapsedSeconds: null,
       uploadDurationSec: 300,
     });
-    expect(msg.primary).toContain("Queue position 3");
+    expect(msg.primary).toBe("2 jobs ahead — waiting to start…");
+    expect(msg.secondary).toBe("Queue position 3");
+  });
+
+  it("returns next in queue when position is 1", () => {
+    const msg = getSplitProgressMessage({
+      isUploading: false,
+      uploadProgress: 0,
+      queuePosition: 1,
+      jobsAhead: 0,
+      splitProgress: 0,
+      elapsedSeconds: null,
+      uploadDurationSec: null,
+    });
+    expect(msg.primary).toBe("Next in queue — waiting to start…");
     expect(msg.secondary).toBeUndefined();
   });
 

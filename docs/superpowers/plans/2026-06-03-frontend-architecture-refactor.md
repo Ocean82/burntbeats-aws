@@ -1,6 +1,10 @@
 # Frontend Architecture Refactor Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**Status:** Core complete on `main` (2026-06-04). Phases 0–3 and 5 done; Phase 2.2 orchestration trim and Phase 4 feature folders deferred (optional).
+
+> **For agentic workers:** Historical task list below. Prefer code over unchecked boxes — see **Implementation status** before re-implementing Phase 1.
+
+> **For agentic workers (original):** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Reduce `App.tsx` orchestration weight, eliminate duplicate stem-loading/audio state, retire dead editor paths, and establish a single data-flow contract for the DJ editor workstation.
 
@@ -10,16 +14,35 @@
 
 ---
 
+## Implementation status (2026-06-04)
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 0.2 Vitest CSS | Done | `frontend/vitest.config.ts` CSS stub + `vitest.setup.ts` |
+| 0.3 Duplicate guard | Done | `StemMediaProvider.stem-load.test.tsx` |
+| 1 Stem media layer | Done | `StemMediaContext`, `workflowStore` in `WorkflowContext`, `Root.tsx` tree |
+| 2.1 `useEditorSession` | Done | `App.tsx` ~9 lines |
+| 2.2 Prop drilling | Partial | `editor-main-view` chrome/processing/mixer split; `useProcessingSettingsData` in panel |
+| 3 Dead editor | Done | `MultiStemEditor` / `LayoutModeContext` removed |
+| 4 Feature folders | Deferred | YAGNI |
+| 5 CI full vitest | Done | `.github/workflows/ci.yml` |
+
+## Resolved problems (were true at plan authoring)
+
+| Issue | Resolution |
+|-------|------------|
+| Double stem decode | Single `useStemLoading` in `StemMediaProvider` |
+| Split buffer sources | Buffers via `useStemMedia` → `AudioProvider` → `useAudio()` |
+| Duplicate history | `workflowStore` only |
+| Dead editor surface | Files removed |
+| God orchestrator | Logic in `useEditorSession`; `App.tsx` thin |
+| Test harness gap | Vitest CSS stub |
+
 ## Current problems (verified in code)
 
 | Issue | Evidence | Risk |
 |-------|----------|------|
-| **Double stem decode** | `WorkflowProvider` and `App.tsx` both call `useStemLoading` with separate `audioContextRef` instances (`WorkflowContext.tsx:44`, `App.tsx:249`) | 2× network + decode, memory, race on loading flags |
-| **Split buffer sources** | `MixerWorkspace` plays from `useWorkflow().stemBuffers`; `App` waveforms/export use local `stemBuffers` | Subtle bugs if refs diverge |
-| **Duplicate history implementations** | `WorkflowContext` uses `useHistory`; `workflowStore.ts` exists with tests but is unused | Confusion on where undo lives |
-| **Dead editor surface** | `MultiStemEditor` not mounted; `LayoutModeContext.setMode` always forces `"dj"` | Maintenance tax |
-| **God orchestrator** | `App.tsx` ~675 lines wires 15+ hooks and builds huge `editorMainViewProps` | Hard to test and change |
-| **Test harness gap** | `App.test.tsx` fails on `midi-tokens.css` import | Full `vitest run` not green |
+| **Large session hook** | `useEditorSession.ts` still orchestrates many coordinators | Maintainability — optional `useEditorActions` split |
 
 ## Target architecture
 
@@ -478,12 +501,12 @@ git commit -m "ci(frontend): run full vitest suite"
 
 ## Verification checklist (end of refactor)
 
-- [ ] Only one `AudioContext` created per session (DevTools → check context count during split load).
-- [ ] Network tab: one WAV fetch per stem URL per job load.
-- [ ] `App.tsx` &lt; 200 lines.
-- [ ] `npm run test:run`, `npm run typecheck`, `npm run build`, `npm run test:e2e` pass.
-- [ ] No imports of `MultiStemEditor` / `LayoutModeContext` in `src/`.
-- [ ] `workflowStore` is sole undo implementation.
+- [x] Only one `AudioContext` created per session (DevTools → check context count during split load).
+- [x] Network tab: one WAV fetch per stem URL per job load (via `StemMediaProvider`).
+- [x] `App.tsx` &lt; 200 lines.
+- [ ] `npm run test:run`, `npm run typecheck`, `npm run build`, `npm run test:e2e` pass (re-verify on each change).
+- [x] No imports of `MultiStemEditor` / `LayoutModeContext` in `src/`.
+- [x] `workflowStore` is sole undo implementation.
 
 ---
 

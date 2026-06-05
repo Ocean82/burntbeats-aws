@@ -18,6 +18,7 @@ export interface SplitActionsProps {
   uploadProgress: number;
   isUploading: boolean;
   queuePosition: number | null;
+  jobsAhead?: number | null;
   splitElapsedSeconds?: number | null;
   splitStageLabel?: string | null;
   uploadDurationSec?: number | null;
@@ -40,6 +41,7 @@ export function SplitActions({
   uploadProgress,
   isUploading,
   queuePosition,
+  jobsAhead = null,
   splitElapsedSeconds = null,
   splitStageLabel = null,
   uploadDurationSec = null,
@@ -59,6 +61,7 @@ export function SplitActions({
         isUploading,
         uploadProgress,
         queuePosition,
+        jobsAhead,
         splitProgress,
         elapsedSeconds: splitElapsedSeconds,
         uploadDurationSec,
@@ -70,6 +73,7 @@ export function SplitActions({
       isUploading,
       uploadProgress,
       queuePosition,
+      jobsAhead,
       splitProgress,
       splitElapsedSeconds,
       uploadDurationSec,
@@ -82,7 +86,12 @@ export function SplitActions({
   const progressAnnouncement = useMemo(() => {
     if (!isSplitting) return null;
     if (isUploading) return `Uploading file: ${Math.round(uploadProgress)}% complete`;
-    if (queuePosition != null) return `Queued at position ${queuePosition}`;
+    if (queuePosition != null) {
+      const ahead = jobsAhead ?? Math.max(0, queuePosition - 1);
+      if (ahead === 0) return "Next in queue";
+      if (ahead === 1) return "1 job ahead";
+      return `${ahead} jobs ahead`;
+    }
     if (splitStageLabel) return splitStageLabel;
     if (splitProgress >= 100) return "Split complete!";
     if (splitProgress >= 75) return "Splitting audio: 75% complete";
@@ -94,6 +103,7 @@ export function SplitActions({
     isUploading,
     uploadProgress,
     queuePosition,
+    jobsAhead,
     splitProgress,
     splitStageLabel,
   ]);

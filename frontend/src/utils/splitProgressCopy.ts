@@ -4,6 +4,7 @@ export interface SplitProgressCopyInput {
   isUploading: boolean;
   uploadProgress: number;
   queuePosition: number | null;
+  jobsAhead?: number | null;
   splitProgress: number;
   elapsedSeconds: number | null;
   uploadDurationSec: number | null;
@@ -76,8 +77,19 @@ export function getSplitProgressMessage(
   }
 
   if (input.queuePosition != null) {
+    const ahead = input.jobsAhead ?? Math.max(0, input.queuePosition - 1);
+    const aheadLabel =
+      ahead === 0
+        ? "Next in queue — waiting to start…"
+        : ahead === 1
+          ? "1 job ahead — waiting to start…"
+          : `${ahead} jobs ahead — waiting to start…`;
     return {
-      primary: `Queue position ${input.queuePosition} — waiting to start…`,
+      primary: aheadLabel,
+      secondary:
+        input.queuePosition > 1
+          ? `Queue position ${input.queuePosition}`
+          : undefined,
     };
   }
 

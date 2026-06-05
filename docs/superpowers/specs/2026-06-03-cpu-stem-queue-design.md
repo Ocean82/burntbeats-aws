@@ -1,8 +1,10 @@
 # CPU Stem Queue & Model Speed Design
 
 **Date:** 2026-06-03  
-**Status:** Approved (user review)  
+**Status:** Implemented on `main` (2026-06-04) — phases 1–5 code complete; t3.large re-benchmark pending on host  
 **Environment:** t3.large (2 vCPU / 8 GiB), ~1–2 splits/day, queue depth 4–5 is success
+
+**Implementation notes (2026-06-04):** Quality vocal → KARA; `mdx_4stem` default for 4-stem; `MAX_QUEUE_DEPTH=5`; `jobs_ahead` in API + frontend progress copy; `DEMUCS_SHIFTS_QUALITY=0`; QualitySelector copy aligned. Historical benchmark in `reports/cpu_pipeline_baseline/summary.md` marked pre-KARA.
 
 ## Problem
 

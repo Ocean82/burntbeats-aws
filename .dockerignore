@@ -6,6 +6,8 @@
 # Dependencies / Environments
 .venv
 venv
+**/.venv
+**/venv
 node_modules
 frontend/node_modules
 backend/node_modules
@@ -53,6 +55,10 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Archived experiments and CI config — not used by stem/speech/midi images
+archive/
+.github/
 
 # Root context is used for stem_service image only.
 # Exclude unrelated app/source areas to reduce context size and leakage risk.

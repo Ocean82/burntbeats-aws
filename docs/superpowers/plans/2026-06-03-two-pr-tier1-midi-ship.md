@@ -1,6 +1,10 @@
 # Two-PR Tier 1 MIDI/Ops Ship — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+**Status:** Completed — merged to `main` via PR #26 (2026-06-03). Do not re-run PR branching; code and docs live on default branch. See [docs/DEPENDABOT-MIDI-ONNX.md](../../DEPENDABOT-MIDI-ONNX.md) and [docs/TEMP-INVENTORY.md](../../TEMP-INVENTORY.md).
+
+> **For agentic workers:** Historical playbook only. All steps below were executed; checkboxes left for audit trail.
+
+> **For agentic workers (original):** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Land Tier 1 TEMP assessment work and ONNX-only MIDI on `main` in PR1, then frontend/audio in PR2, without mixing unrelated files.
 

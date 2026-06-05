@@ -193,6 +193,12 @@ export function useStemSplitting({
           isUploading: false,
           splitProgress: s.progress,
           queuePosition: s.status === "queued" ? (s.queue_position ?? null) : null,
+          jobsAhead:
+            s.status === "queued"
+              ? (s.jobs_ahead ?? (s.queue_position != null && s.queue_position > 1
+                  ? s.queue_position - 1
+                  : 0))
+              : null,
           splitElapsedSeconds:
             s.status === "running" && s.elapsed_seconds != null
               ? s.elapsed_seconds
@@ -227,6 +233,7 @@ export function useStemSplitting({
         pipelineIndex: 3,
         beatGrid: res.beat_grid ?? null,
         queuePosition: null,
+        jobsAhead: null,
         splitElapsedSeconds: null,
         splitStageLabel: null,
       }));
@@ -247,6 +254,7 @@ export function useStemSplitting({
         splitProgress: 0,
         pipelineIndex: 0,
         queuePosition: null,
+        jobsAhead: null,
         splitElapsedSeconds: null,
         splitStageLabel: null,
       }));

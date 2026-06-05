@@ -35,6 +35,14 @@ jobs:
       - name: Frontend unit tests
         working-directory: frontend
         run: npm run test:run
+      - name: Frontend test assertion check
+        working-directory: frontend
+        run: npm run test:assertions
+      - name: Frontend orchestration size gates
+        working-directory: frontend
+        env:
+          QUALITY_BASELINE_ENFORCE: "1"
+        run: npm run quality:baseline
       - name: Install Playwright Chromium
         working-directory: frontend
         run: npm run test:e2e:install-browsers:ci
@@ -73,16 +81,14 @@ jobs:
           trap "kill $pid >/dev/null 2>&1 || true" EXIT
           sleep 2
           curl -fsS http://localhost:3001/api/health | cat
-      - name: Backend MIDI hardening tests
+      - name: Backend unit tests
         working-directory: backend
-        run: |
-          node --test \
-            server.test.js \
-            tests/auth-gates.test.mjs \
-            tests/midi-auth.test.mjs \
-            tests/midi-storage-health.test.mjs \
-            tests/midi-convert-validation.test.mjs \
-            tests/midi-status-auth.test.mjs
+        env:
+          NODE_ENV: test
+          INTERNAL_SERVICE_AUTH_REQUIRED: "0"
+          DEV_BYPASS_UPLOAD_AUTH: "1"
+          RATE_LIMIT_MAX_REQUESTS: "200"
+        run: npm test
 
   python:
     runs-on: ubuntu-latest
@@ -128,12 +134,34 @@ jobs:
       - name: MIDI service unit tests
         run: uv run pytest midi_service/tests -q -m "not integration"
 
+  speech-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - name: Install speech_service test dependencies
+        run: uv sync --frozen --all-packages --group dev
+      - name: Speech service unit tests
+        env:
+          INTERNAL_SERVICE_AUTH_REQUIRED: "0"
+          NODE_ENV: test
+        run: uv run pytest speech_service/tests -q
+
   stem-docker:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - name: Build stem_service image
         run: docker build -f stem_service/Dockerfile .
+
+  speech-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build speech_service image
+        run: docker build -f speech_service/Dockerfile .
 
   backend-docker-deps:
     runs-on: ubuntu-latest

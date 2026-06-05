@@ -1,5 +1,7 @@
 # Gamer Tag — waiting-room mini game
 
+**Experimental satellite** — not part of main `docker-compose.yml` or GitHub Actions CI.
+
 Separate **Vite + React** package: a **falling-block** arcade game (**Tetris-like** aesthetics). **Legal:** do **not** market as Tetris®, “Tetra”, or other registered marks—invent distinct branding before any public campaigns.
 
 ## Intent

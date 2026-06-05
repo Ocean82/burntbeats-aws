@@ -22,12 +22,12 @@ End users of the public site do not read this repo; this file is for **direction
 | **`docker-compose.yml`** | Local / EC2: `frontend` (nginx → host **5173**), **`backend`**, **`stem_service`**, **`speech_service`**, **`midi_service`**, shared **`tmp/stems`**, **`tmp/speech`**, **`tmp/midi`**, plus bind mounts **`./models`** → `/repo/models`, **`./server_models`** → `/repo/server_models`, and **`./speech_models`** → `/repo/speech_models`. |
 | **`models/` vs `server_models/`** | **Weights are not baked into Docker images** (see `.dockerignore` — both dirs omitted from context). Inference reads whichever subtree **`STEM_MODELS_DIR`** names; see § **Models layout** below + `docs/MODELS-INVENTORY.md`. |
 
-**Not in the Compose path:** **`stem_api/`** (Rust) — **archived experiment**; **`stem_api/README.md`** · **`docs/archive/IMPLEMENTATION-HYBRID.md`**.  
+**Not in the Compose path:** **`archive/stem_api/`** (Rust) — **archived experiment**; see **`archive/stem_api/README.md`** · **`docs/archive/IMPLEMENTATION-HYBRID.md`**. Not built in CI.
 
-**Satellite Vite apps** (not bundled in main Compose):
+**Satellite Vite apps** (experimental — not in main CI or Compose; solo-maintainer scope only):
 
-- **`burnt-beats-pricing-structure/`** — standalone pricing/transparency (subscriptions, pay‑as‑you‑go, packs) for users who bounce before signup; see its **`README.md`**.
-- **`gamer_tag/`** — casual **block-dropping** mini-game (Tetris‑like; rename before broader marketing); see **`README.md`**.
+- **`burnt-beats-pricing-structure/`** — standalone pricing/transparency (subscriptions, pay‑as‑you‑go, packs) for users who bounce before signup; see its **`README.md`** and **`docs/DEPLOY-MARKETING-SITE.md`**.
+- **`gamer_tag/`** — casual **block-dropping** mini-game (Tetris‑like; rename before broader marketing); see **`README.md`**. Optional waiting-room embed — not production-critical.
 
 ---
 
@@ -195,16 +195,20 @@ Typical loop (Ubuntu + Docker):
 git pull --ff-only origin main
 # After backend schema changes (new columns, tables):
 cd backend && npm run db:migrate && cd ..
-docker compose build --no-cache backend frontend stem_service speech_service midi_service
+# Rebuild only what changed (faster). Use --no-cache when deps/Dockerfiles change.
+docker compose build backend frontend stem_service speech_service midi_service
 docker compose up -d
 docker compose ps
 ```
 
 Details:
 
+- **`docs/DEPLOY.md`** — cached vs `--no-cache` builds, Redis for multi-instance
 - **`docs/DEPLOY-DOCKER-EC2.md`**
 - **`docs/DEPLOY-SERVER-BUNDLE.md`**
 - **`docs/DEPLOY-MARKETING-SITE.md`** (separate pricing site package)
+
+**Multi-instance production:** set **`REDIS_URL`** so rate limits and Stripe webhook deduplication stay consistent across backend replicas (see **`docs/DEPLOY.md`**).
 
 Pre-flight: **`docs/PRODUCTION-READINESS-CHECKLIST.md`** · **`docs/SANITY-CHECKS.md`**.
 
