@@ -24,7 +24,7 @@ export function MidiAutomationLane({
   lane,
   param,
   pixelsPerSecond,
-  totalDuration,
+  totalDuration: _totalDuration,
   timelineWidth,
   onAddPoint,
   onUpdatePoint,

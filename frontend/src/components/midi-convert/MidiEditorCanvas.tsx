@@ -387,6 +387,7 @@ export function MidiEditorCanvas({
       screenToTime,
       bpm,
       snapGrid,
+      onSplitNote,
     ],
   );
 

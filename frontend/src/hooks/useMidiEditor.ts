@@ -485,6 +485,11 @@ export function useMidiEditor(
     });
   }, [modifyActiveTrack, pushHistory]);
 
+  const gridSizeSeconds = useMemo(
+    () => getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature),
+    [state.bpm, state.snapGrid, state.timeSignature],
+  );
+
   const pasteClipboard = useCallback(
     (pasteTime?: number) => {
       modifyActiveTrack((track) => {
@@ -783,11 +788,6 @@ export function useMidiEditor(
   const selectedNotes = useMemo(
     () => activeTrack.notes.filter((n) => activeTrack.selectedIds.has(n.id)),
     [activeTrack.notes, activeTrack.selectedIds],
-  );
-
-  const gridSizeSeconds = useMemo(
-    () => getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature),
-    [state.bpm, state.snapGrid, state.timeSignature],
   );
 
   const canUndo = historyIndex > 0;

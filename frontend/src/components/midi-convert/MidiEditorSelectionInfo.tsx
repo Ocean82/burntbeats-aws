@@ -36,6 +36,9 @@ export function MidiEditorSelectionInfo({
       onDelete={onDelete}
       onTranspose={onTranspose}
       onSetVelocity={onSetVelocity}
+      onHumanize={onHumanize}
+      onRandomize={onRandomize}
+      onJoin={onJoin}
     />
   );
 }
