@@ -4,7 +4,9 @@ import { useMidiEditor } from "../../hooks/useMidiEditor";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
-import { exportNotesToMidi, downloadMidiBlob } from "../../utils/midiExport";
+import { exportTracksToMidi, downloadMidiBlob } from "../../utils/midiExport";
+import { useWebMidiInput } from "../../hooks/useWebMidiInput";
+import { snapToGrid } from "../../utils/midiEditorSnap";
 import { MidiEditorToolbar } from "./MidiEditorToolbar";
 import { MidiEditorCanvas } from "./MidiEditorCanvas";
 import { MidiEditorSelectionInfo } from "./MidiEditorSelectionInfo";
@@ -14,9 +16,12 @@ import { MarkerStrip, createMarker, type SectionMarker } from "./MarkerStrip";
 import { MidiSmartPanel } from "./MidiSmartPanel";
 import { MidiVelocityLane } from "./MidiVelocityLane";
 import { MidiCcLane } from "./MidiCcLane";
+import { MidiAutomationLane } from "./MidiAutomationLane";
 import { MidiTrackList } from "./MidiTrackList";
-import { clampEditorZoom, BASE_PIXELS_PER_SECOND } from "./pianoRollTheme";
+import { clampEditorZoom } from "./pianoRollTheme";
+import { useMidiTimelineLayout, useTimelineViewportWidth } from "./useMidiTimelineLayout";
 import type { LoopRegion } from "./editorTypes";
+import { AUTOMATION_PARAMS } from "./editorTypes";
 
 interface MidiNoteEditorProps {
   initialNotes: MidiNoteEvent[];
@@ -36,41 +41,125 @@ export function MidiNoteEditor({
   const editor = useMidiEditor(initialNotes, bpm);
   const playback = useMidiPlayback();
   const containerRef = useRef<HTMLDivElement>(null);
+  const laneScrollRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const viewportWidth = useTimelineViewportWidth(containerRef);
+  const timeline = useMidiTimelineLayout(editor.notes, zoomLevel, viewportWidth);
   const [markers, setMarkers] = useState<SectionMarker[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const { minStart, duration } = useMemo(() => {
-    if (!editor.notes.length) {
-      return { minStart: 0, duration: 4 };
-    }
-    const starts = editor.notes.map((n) => n.start);
-    const ends = editor.notes.map((n) => n.start + n.duration);
-    const min = Math.min(...starts);
-    const max = Math.max(...ends);
-    return { minStart: min, duration: Math.max(max - min, 0.25) };
-  }, [editor.notes]);
-
-  const pixelsPerSecond = BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
+  const { minStart, duration } = useMemo(
+    () => ({ minStart: timeline.minStart, duration: timeline.duration }),
+    [timeline.minStart, timeline.duration],
+  );
 
   const playheadTime = useMemo(() => {
-    if (!playback.isPlaying && !playback.isPaused) return null;
+    if (playback.currentTime <= 0 && !playback.isPlaying && !playback.isPaused) {
+      return null;
+    }
     return minStart + playback.currentTime;
   }, [minStart, playback.isPlaying, playback.isPaused, playback.currentTime]);
 
+  const playbackTracks = useMemo(
+    () =>
+      editor.tracks.map((t) => ({
+        id: t.id,
+        notes: t.notes,
+        muted: t.muted,
+        soloed: t.soloed,
+        instrument: t.instrument,
+      })),
+    [editor.tracks],
+  );
+
   const handlePlay = useCallback(() => {
     const loop = editor.loopRegion.enabled ? editor.loopRegion : undefined;
-    playback.play(editor.notes, { bpm: editor.bpm, loopRegion: loop });
-  }, [playback, editor.notes, editor.bpm, editor.loopRegion]);
+    playback.play(playbackTracks, { bpm: editor.bpm, loopRegion: loop });
+  }, [playback, playbackTracks, editor.bpm, editor.loopRegion]);
+
+  interface ActiveRecordedNote {
+    noteId: string;
+    start: number;
+    pitch: number;
+  }
+
+  const activeNotesRef = useRef<Map<number, ActiveRecordedNote>>(new Map());
+  const editorRef = useRef(editor);
+  const playbackRef = useRef(playback);
+  const minStartRef = useRef(minStart);
+  const midiArmedRef = useRef(false);
+
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+
+  useEffect(() => {
+    playbackRef.current = playback;
+  }, [playback]);
+
+  useEffect(() => {
+    minStartRef.current = minStart;
+  }, [minStart]);
+
+  const recordAbsoluteTime = useCallback(
+    () => playbackRef.current.currentTime + minStartRef.current,
+    [],
+  );
+
+  const finalizeRecordedPitch = useCallback(
+    (pitch: number, endAbsolute?: number) => {
+      const active = activeNotesRef.current.get(pitch);
+      if (!active) return;
+      const end = endAbsolute ?? recordAbsoluteTime();
+      editorRef.current.finishRecordedNote(active.noteId, end);
+      activeNotesRef.current.delete(pitch);
+    },
+    [recordAbsoluteTime],
+  );
+
+  const finalizeAllRecorded = useCallback(() => {
+    const end = recordAbsoluteTime();
+    for (const pitch of [...activeNotesRef.current.keys()]) {
+      finalizeRecordedPitch(pitch, end);
+    }
+  }, [finalizeRecordedPitch, recordAbsoluteTime]);
+
+  const webMidi = useWebMidiInput({
+    onNoteOn: (pitch, velocity) => {
+      if (!midiArmedRef.current) return;
+      if (!playbackRef.current.isPlaying) return;
+
+      finalizeRecordedPitch(pitch);
+
+      const start = snapToGrid(
+        recordAbsoluteTime(),
+        editorRef.current.bpm,
+        editorRef.current.snapGrid,
+        editorRef.current.timeSignature,
+      );
+      const noteId = editorRef.current.beginRecordedNote(pitch, start, velocity);
+      activeNotesRef.current.set(pitch, { noteId, start, pitch });
+    },
+    onNoteOff: (pitch) => {
+      if (!midiArmedRef.current) return;
+      finalizeRecordedPitch(pitch);
+    },
+  });
+
+  useEffect(() => {
+    midiArmedRef.current = webMidi.isEnabled;
+  }, [webMidi.isEnabled]);
 
   const handleStop = useCallback(() => {
+    finalizeAllRecorded();
     playback.stop();
-  }, [playback]);
+  }, [playback, finalizeAllRecorded]);
 
   const handlePause = useCallback(() => {
+    finalizeAllRecorded();
     playback.pause();
-  }, [playback]);
+  }, [playback, finalizeAllRecorded]);
 
   const handleSeek = useCallback(
     (time: number) => {
@@ -98,16 +187,16 @@ export function MidiNoteEditor({
   );
 
   const handleExport = useCallback(() => {
-    const blob = exportNotesToMidi(editor.notes, editor.bpm, "Edited");
+    const blob = exportTracksToMidi(editor.tracks, editor.bpm);
     downloadMidiBlob(blob, "edited.mid");
-  }, [editor.notes, editor.bpm]);
+  }, [editor.tracks, editor.bpm]);
 
   const handleSaveToJob = useCallback(async () => {
     if (!jobId) return;
     setIsSaving(true);
     setSaveError(null);
     try {
-      const blob = exportNotesToMidi(editor.notes, editor.bpm, "Edited");
+      const blob = exportTracksToMidi(editor.tracks, editor.bpm);
       const headers = await authHeaders();
       const putHeaders: Record<string, string> = {
         ...headers,
@@ -128,7 +217,7 @@ export function MidiNoteEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [jobId, jobToken, editor.notes, editor.bpm]);
+  }, [jobId, jobToken, editor.tracks, editor.bpm]);
 
   const handleReset = useCallback(() => {
     playback.stop();
@@ -170,14 +259,23 @@ export function MidiNoteEditor({
 
   const handleSetNoteVelocity = useCallback(
     (noteId: string, velocity: number) => {
-      editor.setTrackNotes(editor.activeTrackId, [
-        ...editor.activeTrack.notes.map((n) =>
-          n.id === noteId ? { ...n, velocity } : n,
-        ),
-      ]);
+      editor.setNoteVelocity(noteId, velocity);
     },
     [editor],
   );
+
+  const handleTimelineScroll = useCallback((scrollLeft: number) => {
+    if (laneScrollRef.current && laneScrollRef.current.scrollLeft !== scrollLeft) {
+      laneScrollRef.current.scrollLeft = scrollLeft;
+    }
+  }, []);
+
+  const handleLaneScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const left = e.currentTarget.scrollLeft;
+    if (timeline.scrollRef.current && timeline.scrollRef.current.scrollLeft !== left) {
+      timeline.scrollRef.current.scrollLeft = left;
+    }
+  }, [timeline.scrollRef]);
 
   const handleAddCcPoint = useCallback(
     (time: number, value: number) => {
@@ -207,6 +305,14 @@ export function MidiNoteEditor({
 
   const showVelocityLane = editor.activeLane === "velocity";
   const showCcLane = editor.activeLane === "cc" && activeCcLane;
+  const automationMeta = AUTOMATION_PARAMS.find(
+    (p) => p.param === editor.activeAutomationParam,
+  );
+  const automationCcLane = useMemo(() => {
+    if (!automationMeta) return undefined;
+    return editor.getTrackCcLane(automationMeta.ccNumber);
+  }, [editor, automationMeta]);
+  const showAutomationLane = editor.activeLane === "automation" && automationCcLane;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -264,12 +370,16 @@ export function MidiNoteEditor({
         editor.setTool("draw");
       } else if (e.key === "3") {
         editor.setTool("erase");
+      } else if (e.key === "s" && !isCtrl) {
+        editor.setTool("split");
       } else if (e.key === "4" && !isCtrl) {
         editor.setActiveLane("notes");
       } else if (e.key === "5" && !isCtrl) {
         editor.setActiveLane("velocity");
       } else if (e.key === "6" && !isCtrl) {
         editor.setActiveLane("cc");
+      } else if (e.key === "7" && !isCtrl) {
+        editor.setActiveLane("automation");
       } else if (isCtrl && e.key === "c") {
         e.preventDefault();
         editor.copySelected();
@@ -302,9 +412,13 @@ export function MidiNoteEditor({
         <kbd className="rounded bg-muted px-1">3</kbd> Tools
       </span>
       <span>
+        <kbd className="rounded bg-muted px-1">S</kbd> Split
+      </span>
+      <span>
         <kbd className="rounded bg-muted px-1">4</kbd>
         <kbd className="rounded bg-muted px-1">5</kbd>
-        <kbd className="rounded bg-muted px-1">6</kbd> Notes / Vel / CC
+        <kbd className="rounded bg-muted px-1">6</kbd>
+        <kbd className="rounded bg-muted px-1">7</kbd> Lanes
       </span>
       <span>
         <kbd className="rounded bg-muted px-1">Del</kbd> Delete
@@ -381,6 +495,13 @@ export function MidiNoteEditor({
             onQuantizeSelection={editor.quantizeSelected}
             onDuplicateSelection={editor.duplicateSelected}
             onActiveLaneChange={editor.setActiveLane}
+            activeCcNumber={editor.activeCcNumber}
+            activeAutomationParam={editor.activeAutomationParam}
+            onActiveCcNumberChange={editor.setActiveCcNumber}
+            onActiveAutomationParamChange={editor.setActiveAutomationParam}
+            midiRecordEnabled={webMidi.isEnabled}
+            midiRecordSupported={webMidi.isSupported}
+            onToggleMidiRecord={() => webMidi.setEnabled(!webMidi.isEnabled)}
             onSaveToJob={() => void handleSaveToJob()}
           />
         }
@@ -400,6 +521,7 @@ export function MidiNoteEditor({
               const track = editor.tracks.find((t) => t.id === trackId);
               if (track) editor.setTrackSolo(trackId, !track.soloed);
             }}
+            onSetInstrument={editor.setTrackInstrument}
           />
         }
         pianoRoll={
@@ -407,7 +529,7 @@ export function MidiNoteEditor({
             <MarkerStrip
               markers={markers}
               duration={duration}
-              pixelsPerSecond={pixelsPerSecond}
+              pixelsPerSecond={timeline.pixelsPerSecond}
               onAdd={handleAddMarker}
               onRemove={handleRemoveMarker}
             />
@@ -417,11 +539,14 @@ export function MidiNoteEditor({
               tool={editor.tool}
               snapGrid={editor.snapGrid}
               bpm={editor.bpm}
+              timeSignature={editor.timeSignature}
               gridSizeSeconds={editor.gridSizeSeconds}
               drawVelocity={editor.drawVelocity}
               playheadTime={playheadTime}
               zoomLevel={zoomLevel}
               onZoomLevelChange={handleZoomLevelChange}
+              timelineScrollRef={timeline.scrollRef}
+              onTimelineScroll={handleTimelineScroll}
               onSelectNote={editor.selectNote}
               onSelectNotes={editor.selectNotes}
               onDeselectAll={editor.deselectAll}
@@ -434,27 +559,59 @@ export function MidiNoteEditor({
               onSeek={handleSeek}
               onLoopChange={handleLoopChange}
             />
-            {showVelocityLane && (
-              <MidiVelocityLane
-                notes={editor.notes}
-                selectedIds={editor.selectedIds}
-                pixelsPerSecond={pixelsPerSecond}
-                totalDuration={duration}
-                timelineWidth={800}
-                onSetNoteVelocity={handleSetNoteVelocity}
-                onSetSelectedVelocity={editor.setSelectedVelocity}
-              />
-            )}
-            {showCcLane && activeCcLane && (
-              <MidiCcLane
-                lane={activeCcLane}
-                pixelsPerSecond={pixelsPerSecond}
-                totalDuration={duration}
-                timelineWidth={800}
-                onAddPoint={handleAddCcPoint}
-                onUpdatePoint={handleUpdateCcPoint}
-                onRemovePoint={handleRemoveCcPoint}
-              />
+            {(showVelocityLane || showCcLane || showAutomationLane) && (
+              <div className="flex">
+                <div className="shrink-0" style={{ width: timeline.leftMargin }} />
+                <div
+                  ref={laneScrollRef}
+                  className="min-w-0 flex-1 overflow-x-auto"
+                  onScroll={handleLaneScroll}
+                >
+                  {showVelocityLane && (
+                    <MidiVelocityLane
+                      notes={editor.notes}
+                      selectedIds={editor.selectedIds}
+                      pixelsPerSecond={timeline.pixelsPerSecond}
+                      totalDuration={timeline.totalDuration}
+                      timelineWidth={timeline.timelineWidth}
+                      onSetNoteVelocity={handleSetNoteVelocity}
+                      onSetSelectedVelocity={editor.setSelectedVelocity}
+                      onBeginEditGesture={editor.beginEditGesture}
+                    />
+                  )}
+                  {showCcLane && activeCcLane && (
+                    <MidiCcLane
+                      lane={activeCcLane}
+                      pixelsPerSecond={timeline.pixelsPerSecond}
+                      totalDuration={timeline.totalDuration}
+                      timelineWidth={timeline.timelineWidth}
+                      onAddPoint={handleAddCcPoint}
+                      onUpdatePoint={handleUpdateCcPoint}
+                      onRemovePoint={handleRemoveCcPoint}
+                      onBeginEditGesture={editor.beginEditGesture}
+                    />
+                  )}
+                  {showAutomationLane && automationCcLane && automationMeta && (
+                    <MidiAutomationLane
+                      lane={automationCcLane}
+                      param={editor.activeAutomationParam}
+                      pixelsPerSecond={timeline.pixelsPerSecond}
+                      totalDuration={timeline.totalDuration}
+                      timelineWidth={timeline.timelineWidth}
+                      onAddPoint={(time, value) =>
+                        editor.addCcPoint(automationMeta.ccNumber, time, value)
+                      }
+                      onUpdatePoint={(index, time, value) =>
+                        editor.updateCcPoint(automationMeta.ccNumber, index, time, value)
+                      }
+                      onRemovePoint={(index) =>
+                        editor.removeCcPoint(automationMeta.ccNumber, index)
+                      }
+                      onBeginEditGesture={editor.beginEditGesture}
+                    />
+                  )}
+                </div>
+              </div>
             )}
           </div>
         }

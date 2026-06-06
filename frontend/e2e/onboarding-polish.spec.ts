@@ -9,6 +9,8 @@ test.describe("Onboarding polish (design tokens)", () => {
 
   test("onboarding dialog uses semantic tokens and modal z-index", async ({ page }) => {
     await page.goto("/");
+    await page.getByTestId("settings-menu-trigger").click();
+    await page.getByRole("button", { name: /restart guided tour/i }).click();
     const dialog = page.getByRole("dialog", { name: /welcome to burnt beats/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 

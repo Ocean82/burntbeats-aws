@@ -1,11 +1,15 @@
 import { useCallback, type PointerEvent as ReactPointerEvent } from "react";
 import { PIANO_ROLL, clampEditorZoom } from "./pianoRollTheme";
-import type { LoopRegion } from "./editorTypes";
+import type { LoopRegion, TimeSignature } from "./editorTypes";
+import { DEFAULT_TIME_SIG } from "./editorTypes";
+import { secondsPerBar } from "../../utils/midiEditorSnap";
 
 interface MidiTimelineRulerProps {
   totalDuration: number;
   pixelsPerSecond: number;
   timelineWidth: number;
+  bpm?: number;
+  timeSignature?: TimeSignature;
   loopRegion: LoopRegion;
   onSeek: (time: number) => void;
   onLoopChange: (region: LoopRegion) => void;
@@ -29,6 +33,8 @@ export function MidiTimelineRuler({
   totalDuration,
   pixelsPerSecond,
   timelineWidth,
+  bpm = 120,
+  timeSignature = DEFAULT_TIME_SIG,
   loopRegion,
   onSeek,
   onLoopChange,
@@ -47,8 +53,8 @@ export function MidiTimelineRuler({
 
   const barLines: { x: number }[] = [];
   const beatLines: { x: number }[] = [];
-  const barSec = (60 / 120) * 4;
-  const gridStep = barSec / 4;
+  const barSec = secondsPerBar(bpm, timeSignature);
+  const gridStep = barSec / timeSignature.beatsPerBar;
 
   for (let t = 0; t <= maxTime + gridStep * 0.01; t += gridStep) {
     const isBar = Math.abs(t % barSec) < gridStep * 0.25 || t === 0;

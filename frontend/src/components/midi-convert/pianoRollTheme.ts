@@ -4,9 +4,7 @@ export function isBlackKeyPitch(pitch: number): boolean {
   return BLACK_KEY_SEMITONES.has(((pitch % 12) + 12) % 12);
 }
 
-export function secondsPerBar(bpm: number): number {
-  return (60 / bpm) * 4;
-}
+export { secondsPerBar } from "../../utils/midiEditorSnap";
 
 export const EDITOR_ZOOM_MIN = 0.5;
 export const EDITOR_ZOOM_MAX = 2;
@@ -88,7 +86,7 @@ export const EDITOR_TOOLS: Record<string, { label: string; shortcut: string; hin
   select: { label: "Select", shortcut: "1", hint: "Move and resize notes" },
   draw: { label: "Draw", shortcut: "2", hint: "Click to add notes" },
   erase: { label: "Erase", shortcut: "3", hint: "Click notes to delete" },
-  split: { label: "Split", shortcut: "4", hint: "Click a note to split it" },
+  split: { label: "Split", shortcut: "S", hint: "Click a note to split it" },
 } as const;
 
 export const VELOCITY_LANE_HEIGHT = 48;

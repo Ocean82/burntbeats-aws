@@ -2,16 +2,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Tone from "tone";
 import type { MidiNoteEvent } from "./useMidiConvert";
 import type { LoopRegion } from "../components/midi-convert/editorTypes";
+import type { TrackInstrument } from "../components/midi-convert/editorTypes";
+import { useMidiInstruments } from "./useMidiInstruments";
+
+export interface MidiPlaybackTrack {
+  id?: string;
+  notes: MidiNoteEvent[];
+  muted?: boolean;
+  soloed?: boolean;
+  instrument?: TrackInstrument;
+}
+
+export interface MidiPlaybackOptions {
+  bpm?: number;
+  loopRegion?: LoopRegion;
+}
 
 export interface UseMidiPlaybackReturn {
   isPlaying: boolean;
   isPaused: boolean;
+  /** Clip-relative seconds (0 = first note). */
   currentTime: number;
   metronomeEnabled: boolean;
-  play: (notes: MidiNoteEvent[], options?: { bpm?: number; loopRegion?: LoopRegion }) => void;
+  play: (
+    tracksOrNotes: MidiPlaybackTrack[] | MidiNoteEvent[],
+    options?: MidiPlaybackOptions,
+  ) => void;
   pause: () => void;
   stop: () => void;
-  seek: (time: number) => void;
+  /** Seek to absolute timeline seconds (adds clip offset internally). */
+  seek: (absoluteTime: number) => void;
   toggleMetronome: () => void;
   setMetronomeEnabled: (enabled: boolean) => void;
   isSupported: boolean;
@@ -22,7 +42,40 @@ const checkAudioSupport = (): boolean => {
   return !!(window.AudioContext || (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext);
 };
 
+function normalizeTracks(input: MidiPlaybackTrack[] | MidiNoteEvent[]): MidiPlaybackTrack[] {
+  if (input.length === 0) return [];
+  const first = input[0];
+  if ("notes" in first && Array.isArray((first as MidiPlaybackTrack).notes)) {
+    return input as MidiPlaybackTrack[];
+  }
+  return [{ notes: input as MidiNoteEvent[] }];
+}
+
+function flattenAudibleNotes(tracks: MidiPlaybackTrack[]): MidiNoteEvent[] {
+  const hasSolo = tracks.some((t) => t.soloed);
+  const audible: MidiNoteEvent[] = [];
+  for (const track of tracks) {
+    if (hasSolo && !track.soloed) continue;
+    if (!hasSolo && track.muted) continue;
+    audible.push(...track.notes);
+  }
+  return audible;
+}
+
+function clipBounds(notes: MidiNoteEvent[]): { clipOffset: number; duration: number } {
+  if (!notes.length) return { clipOffset: 0, duration: 0 };
+  const clipOffset = Math.min(...notes.map((n) => n.start));
+  const maxEnd = Math.max(...notes.map((n) => n.start + n.duration));
+  return { clipOffset, duration: Math.max(maxEnd - clipOffset, 0.01) };
+}
+
+function noteInLoop(note: MidiNoteEvent, loop: LoopRegion | undefined): boolean {
+  if (!loop?.enabled || loop.end <= loop.start) return true;
+  return note.start >= loop.start && note.start < loop.end;
+}
+
 export function useMidiPlayback(): UseMidiPlaybackReturn {
+  const { getSynth, releaseAll, disposeAll } = useMidiInstruments();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -35,14 +88,17 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
   const clickSynthRef = useRef<any>(null);
   const rafRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const playbackStartRelativeRef = useRef<number>(0);
   const durationRef = useRef<number>(0);
+  const clipOffsetRef = useRef<number>(0);
   const scheduledEventsRef = useRef<number[]>([]);
   const metronomeEnabledRef = useRef(false);
   const pausedPositionRef = useRef<number>(0);
   const loopRegionRef = useRef<LoopRegion | undefined>(undefined);
   const isPausedRef = useRef(false);
-  const notesRef = useRef<MidiNoteEvent[]>([]);
+  const tracksRef = useRef<MidiPlaybackTrack[]>([]);
   const bpmRef = useRef(120);
+  const isPlayingRef = useRef(false);
 
   useEffect(() => {
     metronomeEnabledRef.current = metronomeEnabled;
@@ -63,29 +119,16 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     scheduledEventsRef.current = [];
   }, []);
 
-  const scheduleNotes = useCallback(
-    (notes: MidiNoteEvent[], _bpm: number, offset: number, loopEnd: number) => {
-      const transport = Tone.getTransport();
-      const eventIds: number[] = [];
-      for (const note of notes) {
-        const noteTime = note.start - offset;
-        if (noteTime < 0) continue;
-        if (loopEnd > 0 && noteTime > loopEnd) continue;
-        const freq = Tone.Frequency(note.pitch, "midi").toFrequency();
-        const dur = Math.max(note.duration, 0.01);
-        const vel = Math.max(0.1, Math.min(1, note.velocity));
-        const eventId = transport.schedule((time: number) => {
-          synthRef.current?.triggerAttackRelease(freq, dur, time, vel);
-        }, noteTime);
-        eventIds.push(eventId);
-      }
-      return eventIds;
-    },
-    [],
-  );
+  const ensureDefaultSynth = useCallback(async () => {
+    await Tone.start();
+    if (!synthRef.current) {
+      synthRef.current = await getSynth("default", "piano");
+    }
+    return synthRef.current;
+  }, [getSynth]);
 
   const scheduleMetronome = useCallback(
-    (bpm: number, totalDuration: number, offset: number, loopEnd: number) => {
+    (bpm: number, relativeStart: number, playDuration: number) => {
       if (!metronomeEnabledRef.current) return;
       if (!clickSynthRef.current) {
         clickSynthRef.current = new Tone.MembraneSynth({
@@ -96,11 +139,14 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
         clickSynthRef.current.volume.value = -18;
       }
       const beatSec = 60 / bpm;
-      const beats = Math.ceil(totalDuration / beatSec) + 1;
       const transport = Tone.getTransport();
-      for (let i = 0; i <= beats; i++) {
-        const t = i * beatSec + offset;
-        if (t > loopEnd + 0.01 || t > totalDuration + offset + 0.01) break;
+      const clipOffset = clipOffsetRef.current;
+      const startBeat = Math.floor((relativeStart + clipOffset) / beatSec);
+      const endBeat = Math.ceil((relativeStart + playDuration + clipOffset) / beatSec) + 1;
+      for (let i = startBeat; i <= endBeat; i++) {
+        const absTime = i * beatSec;
+        const relTime = absTime - clipOffset - relativeStart;
+        if (relTime < 0) continue;
         const accent = i % 4 === 0;
         const eventId = transport.schedule((time: number) => {
           clickSynthRef.current?.triggerAttackRelease(
@@ -109,243 +155,237 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
             time,
             accent ? 0.8 : 0.5,
           );
-        }, t);
+        }, relTime);
         scheduledEventsRef.current.push(eventId);
       }
     },
     [],
   );
 
-  const updatePlayhead = useCallback((totalDuration: number, offset: number) => {
-    const update = () => {
-      if (isPausedRef.current) return;
-      const elapsed = Tone.now() - startTimeRef.current;
-      const pos = offset + elapsed;
+  const scheduleNotesFrom = useCallback(
+    async (relativeStart: number, onEnd: () => void) => {
+      const transport = Tone.getTransport();
+      const tracks = tracksRef.current;
       const loop = loopRegionRef.current;
-      if (loop?.enabled && loop.end > loop.start && pos >= loop.end) {
-        pausedPositionRef.current = loop.start;
-        startTimeRef.current = Tone.now();
-        rafRef.current = requestAnimationFrame(update);
-        setCurrentTime(loop.start);
-        return;
-      }
-      if (pos >= totalDuration + offset) {
-        setCurrentTime(totalDuration + offset);
-        setIsPlaying(false);
-        setIsPaused(false);
-        return;
-      }
-      setCurrentTime(pos);
-      rafRef.current = requestAnimationFrame(update);
-    };
-    rafRef.current = requestAnimationFrame(update);
-  }, []);
+      const clipOffset = clipOffsetRef.current;
+      const duration = durationRef.current;
+      const loopEnabled = loop?.enabled && loop.end > loop.start;
+      const loopStartRel = loopEnabled ? loop.start - clipOffset : 0;
+      const loopEndRel = loopEnabled ? loop.end - clipOffset : duration;
+      const playEnd = loopEnabled ? loopEndRel : duration;
 
-  const stop = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    clearScheduled();
-    Tone.getTransport().stop();
-    Tone.getTransport().position = 0;
-    if (synthRef.current) {
-      synthRef.current.releaseAll();
-    }
-    setIsPlaying(false);
-    setIsPaused(false);
-    setCurrentTime(0);
-    isPausedRef.current = false;
-    pausedPositionRef.current = 0;
-  }, [clearScheduled]);
+      const hasSolo = tracks.some((t) => t.soloed);
+      const eventIds: number[] = [];
 
-  const pause = useCallback(() => {
-    if (!isPlaying || isPaused) return;
-    clearScheduled();
-    Tone.getTransport().stop();
-    if (synthRef.current) {
-      synthRef.current.releaseAll();
-    }
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    pausedPositionRef.current = currentTime;
-    isPausedRef.current = true;
-    setIsPaused(true);
-  }, [isPlaying, isPaused, clearScheduled, currentTime]);
-
-  const seek = useCallback(
-    (time: number) => {
-      if (!isPlaying && !isPaused) {
-        setCurrentTime(time);
-        pausedPositionRef.current = time;
-        return;
-      }
-      clearScheduled();
-      Tone.getTransport().stop();
-      if (synthRef.current) {
-        synthRef.current.releaseAll();
-      }
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      const offset = Math.max(0, time);
-      const notes = notesRef.current;
-      const bpm = bpmRef.current;
-      const minStart = notes.length > 0 ? Math.min(...notes.map((n) => n.start)) : 0;
-      const maxEnd = notes.length > 0 ? Math.max(...notes.map((n) => n.start + n.duration)) : 0;
-      const totalDuration = maxEnd - minStart;
-      const loop = loopRegionRef.current;
-
-      const startPlayback = async () => {
-        await Tone.start();
-        if (!synthRef.current) return;
-        const transport = Tone.getTransport();
-        transport.bpm.value = bpm;
-        startTimeRef.current = Tone.now();
-        transport.start();
-
-        const eventIds = scheduleNotes(notes, bpm, minStart, loop?.enabled ? (loop.end - minStart) : totalDuration);
-        scheduledEventsRef.current = eventIds;
-        scheduleMetronome(bpm, totalDuration, minStart, totalDuration);
-
-        if (loop?.enabled && loop.end > 0) {
-          const scheduleLoop = () => {
-            if (!isPausedRef.current) {
-              const newIds = scheduleNotes(notes, bpm, minStart, loop.end - minStart);
-              scheduledEventsRef.current.push(...newIds);
-            }
-          };
-          const loopEndEventId = transport.schedule(() => {
-            scheduleLoop();
-            transport.start();
-          }, loop.end - minStart + 0.05);
-          scheduledEventsRef.current.push(loopEndEventId);
-        }
-
-        setCurrentTime(offset);
-        updatePlayhead(totalDuration, minStart);
-      };
-
-      void startPlayback();
-    },
-    [clearScheduled, scheduleNotes, scheduleMetronome, updatePlayhead, isPlaying, isPaused],
-  );
-
-  const play = useCallback(
-    (notes: MidiNoteEvent[], options?: { bpm?: number; loopRegion?: LoopRegion }) => {
-      if (!isSupported || !notes.length) return;
-      stop();
-
-      notesRef.current = notes;
-      bpmRef.current = options?.bpm ?? 120;
-      loopRegionRef.current = options?.loopRegion;
-
-      const startPlayback = async () => {
-        await Tone.start();
-
-        if (!synthRef.current) {
-          synthRef.current = new Tone.PolySynth(Tone.Synth, {
-            oscillator: { type: "triangle" },
-            envelope: {
-              attack: 0.02,
-              decay: 0.1,
-              sustain: 0.3,
-              release: 0.4,
-            },
-          }).toDestination();
-          synthRef.current.volume.value = -6;
-        }
-
-        const synth = synthRef.current;
-        const transport = Tone.getTransport();
-        const bpm = options?.bpm ?? 120;
-        transport.bpm.value = bpm;
-
-        const minStart = Math.min(...notes.map((n) => n.start));
-        const maxEnd = Math.max(...notes.map((n) => n.start + n.duration));
-        const totalDuration = maxEnd - minStart;
-        durationRef.current = totalDuration;
-
-        const loop = options?.loopRegion;
-
-        const eventIds: number[] = [];
-        for (const note of notes) {
-          const noteTime = note.start - minStart;
-          if (loop?.enabled && loop.end > 0 && note.start >= loop.end) continue;
+      for (const track of tracks) {
+        if (hasSolo && !track.soloed) continue;
+        if (!hasSolo && track.muted) continue;
+        const instrument = track.instrument ?? "piano";
+        const trackKey = track.id ?? `track-${instrument}`;
+        const synth = await getSynth(trackKey, instrument);
+        for (const note of track.notes) {
+          if (!noteInLoop(note, loop)) continue;
+          const relStart = note.start - clipOffset;
+          const scheduleAt = relStart - relativeStart;
+          if (scheduleAt < -0.001) continue;
           const freq = Tone.Frequency(note.pitch, "midi").toFrequency();
           const dur = Math.max(note.duration, 0.01);
           const vel = Math.max(0.1, Math.min(1, note.velocity));
           const eventId = transport.schedule((time: number) => {
             synth.triggerAttackRelease(freq, dur, time, vel);
-          }, noteTime);
+          }, scheduleAt);
           eventIds.push(eventId);
         }
-        scheduledEventsRef.current = eventIds;
+      }
+      scheduledEventsRef.current.push(...eventIds);
 
-        scheduleMetronome(bpm, totalDuration, 0, totalDuration);
+      scheduleMetronome(bpmRef.current, relativeStart, playEnd - relativeStart);
 
-        if (loop?.enabled && loop.start >= 0 && loop.end > loop.start) {
-          const loopEndEventId = transport.schedule(() => {
-            transport.stop();
-            transport.position = loop.start - minStart;
-            const newIds: number[] = [];
-            for (const note of notes) {
-              const noteTime = note.start - minStart;
-              if (note.start < loop.start || note.start >= loop.end) continue;
-              const freq = Tone.Frequency(note.pitch, "midi").toFrequency();
-              const dur = Math.max(note.duration, 0.01);
-              const vel = Math.max(0.1, Math.min(1, note.velocity));
-              const id = transport.schedule((time: number) => {
-                synth.triggerAttackRelease(freq, dur, time, vel);
-              }, noteTime);
-              newIds.push(id);
-            }
-            scheduledEventsRef.current.push(...newIds);
-            transport.start();
-          }, loop.end - minStart);
-          scheduledEventsRef.current.push(loopEndEventId);
-        } else {
-          const endEventId = transport.schedule(() => {
-            stop();
-          }, totalDuration + 0.1);
-          scheduledEventsRef.current.push(endEventId);
-        }
-
-        transport.start();
-        startTimeRef.current = Tone.now();
-        isPausedRef.current = false;
-        setIsPaused(false);
-        setIsPlaying(true);
-
-        updatePlayhead(totalDuration, minStart);
-      };
-
-      void startPlayback();
+      if (loopEnabled) {
+        const loopEventId = transport.schedule(() => {
+          if (!isPlayingRef.current || isPausedRef.current) return;
+          clearScheduled();
+          releaseAll();
+          playbackStartRelativeRef.current = loopStartRel;
+          startTimeRef.current = Tone.now();
+          setCurrentTime(loopStartRel);
+          void scheduleNotesFrom(loopStartRel, onEnd);
+        }, playEnd - relativeStart + 0.001);
+        scheduledEventsRef.current.push(loopEventId);
+      } else {
+        const endEventId = transport.schedule(() => {
+          onEnd();
+        }, playEnd - relativeStart + 0.05);
+        scheduledEventsRef.current.push(endEventId);
+      }
     },
-    [isSupported, stop, scheduleMetronome, updatePlayhead],
+    [clearScheduled, scheduleMetronome, getSynth, releaseAll],
+  );
+
+  const stopRaf = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  const updatePlayhead = useCallback(() => {
+    const tick = () => {
+      if (isPausedRef.current || !isPlayingRef.current) return;
+      const elapsed = Tone.now() - startTimeRef.current;
+      let relPos = playbackStartRelativeRef.current + elapsed;
+      const loop = loopRegionRef.current;
+      const clipOffset = clipOffsetRef.current;
+
+      if (loop?.enabled && loop.end > loop.start) {
+        const loopStartRel = loop.start - clipOffset;
+        const loopEndRel = loop.end - clipOffset;
+        if (relPos >= loopEndRel) {
+          relPos = loopStartRel;
+        }
+      } else if (relPos >= durationRef.current) {
+        setCurrentTime(durationRef.current);
+        return;
+      }
+
+      setCurrentTime(Math.max(0, relPos));
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    stopRaf();
+    rafRef.current = requestAnimationFrame(tick);
+  }, [stopRaf]);
+
+  const stop = useCallback(() => {
+    stopRaf();
+    clearScheduled();
+    Tone.getTransport().stop();
+    Tone.getTransport().position = 0;
+    releaseAll();
+    isPlayingRef.current = false;
+    setIsPlaying(false);
+    setIsPaused(false);
+    setCurrentTime(0);
+    isPausedRef.current = false;
+    pausedPositionRef.current = 0;
+    playbackStartRelativeRef.current = 0;
+  }, [clearScheduled, stopRaf, releaseAll]);
+
+  const pause = useCallback(() => {
+    if (!isPlayingRef.current || isPausedRef.current) return;
+    clearScheduled();
+    Tone.getTransport().stop();
+    releaseAll();
+    stopRaf();
+    const elapsed = Tone.now() - startTimeRef.current;
+    const relPos = playbackStartRelativeRef.current + elapsed;
+    pausedPositionRef.current = relPos;
+    setCurrentTime(relPos);
+    isPausedRef.current = true;
+    isPlayingRef.current = false;
+    setIsPaused(true);
+    setIsPlaying(false);
+  }, [clearScheduled, stopRaf, releaseAll]);
+
+  const startPlaybackAt = useCallback(
+    async (relativeStart: number) => {
+      const notes = flattenAudibleNotes(tracksRef.current);
+      if (!notes.length) return;
+
+      const { clipOffset, duration } = clipBounds(notes);
+      clipOffsetRef.current = clipOffset;
+      durationRef.current = duration;
+      playbackStartRelativeRef.current = relativeStart;
+
+      await ensureDefaultSynth();
+      clearScheduled();
+      Tone.getTransport().stop();
+      Tone.getTransport().position = 0;
+      releaseAll();
+
+      const transport = Tone.getTransport();
+      transport.bpm.value = bpmRef.current;
+
+      await scheduleNotesFrom(relativeStart, () => {
+        stop();
+      });
+
+      transport.start();
+      startTimeRef.current = Tone.now();
+      isPausedRef.current = false;
+      isPlayingRef.current = true;
+      setIsPaused(false);
+      setIsPlaying(true);
+      setCurrentTime(relativeStart);
+      updatePlayhead();
+    },
+    [clearScheduled, ensureDefaultSynth, scheduleNotesFrom, stop, updatePlayhead, releaseAll],
+  );
+
+  const seek = useCallback(
+    (absoluteTime: number) => {
+      const notes = flattenAudibleNotes(tracksRef.current);
+      const { clipOffset, duration } = clipBounds(notes);
+      clipOffsetRef.current = clipOffset;
+      durationRef.current = duration;
+
+      const relative = Math.max(0, Math.min(absoluteTime - clipOffset, duration));
+      pausedPositionRef.current = relative;
+      setCurrentTime(relative);
+
+      if (isPlayingRef.current || isPausedRef.current) {
+        void startPlaybackAt(relative);
+      }
+    },
+    [startPlaybackAt],
+  );
+
+  const play = useCallback(
+    (tracksOrNotes: MidiPlaybackTrack[] | MidiNoteEvent[], options?: MidiPlaybackOptions) => {
+      if (!isSupported) return;
+
+      const tracks = normalizeTracks(tracksOrNotes);
+      const notes = flattenAudibleNotes(tracks);
+      if (!notes.length) return;
+
+      const wasPaused = isPausedRef.current;
+      const resumePos = wasPaused ? pausedPositionRef.current : 0;
+
+      if (!wasPaused) {
+        stopRaf();
+        clearScheduled();
+        Tone.getTransport().stop();
+        releaseAll();
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        setIsPaused(false);
+        playbackStartRelativeRef.current = 0;
+        pausedPositionRef.current = 0;
+      }
+
+      tracksRef.current = tracks;
+      bpmRef.current = options?.bpm ?? 120;
+      loopRegionRef.current = options?.loopRegion;
+
+      const startPos = wasPaused ? resumePos : currentTime > 0 && !isPlayingRef.current ? currentTime : 0;
+      void startPlaybackAt(startPos);
+    },
+    [isSupported, stopRaf, clearScheduled, startPlaybackAt, currentTime, releaseAll],
   );
 
   useEffect(() => {
     return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-      }
+      stopRaf();
       clearScheduled();
       Tone.getTransport().stop();
       Tone.getTransport().position = 0;
-      if (synthRef.current) {
-        synthRef.current.dispose();
-        synthRef.current = null;
-      }
+      disposeAll();
+      synthRef.current = null;
       if (clickSynthRef.current) {
         clickSynthRef.current.dispose();
         clickSynthRef.current = null;
       }
     };
-  }, [clearScheduled]);
+  }, [clearScheduled, stopRaf, disposeAll]);
 
   return {
     isPlaying,

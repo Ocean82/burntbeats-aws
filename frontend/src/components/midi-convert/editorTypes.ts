@@ -53,6 +53,15 @@ export interface EditableNote {
   velocity: number;
 }
 
+export type TrackInstrument = "piano" | "synth" | "bass" | "strings";
+
+export const TRACK_INSTRUMENTS: { value: TrackInstrument; label: string }[] = [
+  { value: "piano", label: "Piano" },
+  { value: "synth", label: "Synth" },
+  { value: "bass", label: "Bass" },
+  { value: "strings", label: "Strings" },
+];
+
 export interface EditorTrack {
   id: string;
   name: string;
@@ -61,6 +70,7 @@ export interface EditorTrack {
   color: string;
   muted: boolean;
   soloed: boolean;
+  instrument: TrackInstrument;
   ccLanes: CcLane[];
 }
 

@@ -168,7 +168,7 @@ services:
       - ./models:/repo/models
       - ./server_models:/repo/server_models
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 20s
       timeout: 10s
       retries: 3
@@ -198,7 +198,7 @@ services:
       - ./tmp/speech:/repo/tmp/speech
       - ./speech_models:/repo/speech_models
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
       interval: 20s
       timeout: 10s
       retries: 3
@@ -225,7 +225,7 @@ services:
     volumes:
       - ./tmp/midi:/repo/tmp/midi
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
       interval: 20s
       timeout: 10s
       retries: 3

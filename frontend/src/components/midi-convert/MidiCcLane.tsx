@@ -10,6 +10,7 @@ interface MidiCcLaneProps {
   onAddPoint: (time: number, value: number) => void;
   onUpdatePoint: (index: number, time: number, value: number) => void;
   onRemovePoint: (index: number) => void;
+  onBeginEditGesture?: () => void;
 }
 
 type DragAction =
@@ -25,6 +26,7 @@ export function MidiCcLane({
   onAddPoint,
   onUpdatePoint,
   onRemovePoint,
+  onBeginEditGesture,
 }: MidiCcLaneProps) {
   const [dragState, setDragState] = useState<DragAction>({ type: "idle" });
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -122,14 +124,17 @@ export function MidiCcLane({
       const pointIndex = getPointAt(x, y);
       if (pointIndex !== null) {
         if (e.shiftKey) {
+          onBeginEditGesture?.();
           onRemovePoint(pointIndex);
           return;
         }
+        onBeginEditGesture?.();
         setDragState({ type: "drag-point", index: pointIndex });
         svg.setPointerCapture(e.pointerId);
       } else {
         const time = screenToTime(x);
         const value = screenToValue(y);
+        onBeginEditGesture?.();
         onAddPoint(time, value);
         const newIdx = lane.events.length;
         setDragState({ type: "drag-point", index: newIdx });

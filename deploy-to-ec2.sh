@@ -66,7 +66,8 @@ pm2 delete burntbeats 2>/dev/null || true
 # Build and start with Docker Compose
 cd $REMOTE_DIR
 echo "Building and starting containers..."
-sudo docker compose up -d --build
+sudo docker compose build --no-cache frontend
+sudo docker compose up -d
 
 echo ""
 echo "📊 Container status:"

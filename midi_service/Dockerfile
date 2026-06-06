@@ -31,4 +31,4 @@ RUN groupadd --system --gid 10001 appuser \
 USER appuser
 
 EXPOSE 5002
-CMD ["uvicorn", "midi_service.server:app", "--host", "0.0.0.0", "--port", "5002"]
+CMD [".venv/bin/uvicorn", "midi_service.server:app", "--host", "0.0.0.0", "--port", "5002"]

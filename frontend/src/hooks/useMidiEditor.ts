@@ -54,6 +54,7 @@ function createInitialTrack(
     color: color ?? TRACK_COLORS[index % TRACK_COLORS.length],
     muted: false,
     soloed: false,
+    instrument: "piano",
     ccLanes: BUILTIN_CC_LANES.map((l) => ({
       ...l,
       events: [],
@@ -123,6 +124,11 @@ export interface UseMidiEditorReturn {
   setTrackMute: (trackId: string, muted: boolean) => void;
   setTrackSolo: (trackId: string, soloed: boolean) => void;
   setTrackColor: (trackId: string, color: string) => void;
+  setTrackInstrument: (trackId: string, instrument: EditorTrack["instrument"]) => void;
+  setNoteVelocity: (noteId: string, velocity: number) => void;
+  beginRecordedNote: (pitch: number, start: number, velocity: number) => string;
+  finishRecordedNote: (noteId: string, endAbsolute: number) => void;
+  beginEditGesture: () => void;
   addCcPoint: (ccNumber: number, time: number, value: number) => void;
   removeCcPoint: (ccNumber: number, pointIndex: number) => void;
   updateCcPoint: (ccNumber: number, pointIndex: number, time: number, value: number) => void;
@@ -162,10 +168,17 @@ export function useMidiEditor(
   const [historyIndex, setHistoryIndex] = useState(0);
   const [historyLength, setHistoryLength] = useState(1);
 
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const historyIndexRef = useRef(historyIndex);
+  historyIndexRef.current = historyIndex;
+
   const pushHistory = useCallback(() => {
-    const newHistory = historyRef.current.slice(0, historyIndex + 1);
+    const s = stateRef.current;
+    const idx = historyIndexRef.current;
+    const newHistory = historyRef.current.slice(0, idx + 1);
     newHistory.push({
-      tracks: state.tracks.map((t) => ({
+      tracks: s.tracks.map((t) => ({
         ...t,
         notes: t.notes.map((n) => ({ ...n })),
         selectedIds: new Set(t.selectedIds),
@@ -174,13 +187,15 @@ export function useMidiEditor(
           events: l.events.map((e) => ({ ...e })),
         })),
       })),
-      activeTrackId: state.activeTrackId,
+      activeTrackId: s.activeTrackId,
     });
     if (newHistory.length > MAX_HISTORY) newHistory.shift();
     historyRef.current = newHistory;
-    setHistoryIndex(newHistory.length - 1);
+    const newIdx = newHistory.length - 1;
+    historyIndexRef.current = newIdx;
+    setHistoryIndex(newIdx);
     setHistoryLength(newHistory.length);
-  }, [state.tracks, state.activeTrackId, historyIndex]);
+  }, []);
 
   const updateTrack = useCallback(
     (trackId: string, updater: (track: EditorTrack) => EditorTrack) => {
@@ -492,15 +507,18 @@ export function useMidiEditor(
 
   const pasteClipboard = useCallback(
     (pasteTime?: number) => {
+      if (state.clipboard.length === 0) return;
+      pushHistory();
       modifyActiveTrack((track) => {
-        if (state.clipboard.length === 0) return track;
-        pushHistory();
-        const minStart = Math.min(...state.clipboard.map((n) => n.start));
-        const offset = pasteTime != null ? pasteTime - minStart : minStart + gridSizeSeconds;
+        const clipMin = Math.min(...state.clipboard.map((n) => n.start));
+        const trackMaxEnd = track.notes.length
+          ? Math.max(...track.notes.map((n) => n.start + n.duration))
+          : 0;
+        const targetStart = pasteTime ?? trackMaxEnd + gridSizeSeconds;
         const newNotes = state.clipboard.map((n) => ({
           ...n,
           id: generateNoteId(),
-          start: Math.max(0, n.start + offset),
+          start: Math.max(0, targetStart + (n.start - clipMin)),
         }));
         const newIds = new Set(newNotes.map((n) => n.id));
         return {
@@ -555,6 +573,11 @@ export function useMidiEditor(
       const minPitch = Math.min(...selected.map((n) => n.pitch));
       const maxPitch = Math.max(...selected.map((n) => n.pitch));
       if (minPitch !== maxPitch) return track;
+      for (let i = 1; i < selected.length; i++) {
+        const prev = selected[i - 1];
+        const curr = selected[i];
+        if (Math.abs(curr.start - (prev.start + prev.duration)) > 0.01) return track;
+      }
       const minStart = selected[0].start;
       const maxEnd = Math.max(...selected.map((n) => n.start + n.duration));
       const mergedNote: EditableNote = {
@@ -717,6 +740,84 @@ export function useMidiEditor(
     updateTrack(trackId, (t) => ({ ...t, color }));
   }, [updateTrack]);
 
+  const setTrackInstrument = useCallback(
+    (trackId: string, instrument: EditorTrack["instrument"]) => {
+      updateTrack(trackId, (t) => ({ ...t, instrument }));
+    },
+    [updateTrack],
+  );
+
+  const beginEditGesture = useCallback(() => {
+    pushHistory();
+  }, [pushHistory]);
+
+  const beginRecordedNote = useCallback(
+    (pitch: number, start: number, velocity: number): string => {
+      pushHistory();
+      const noteId = generateNoteId();
+      const minDur =
+        getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature) || 0.01;
+      modifyActiveTrack((track) => {
+        const snappedStart = snapToGrid(start, state.bpm, state.snapGrid, state.timeSignature);
+        const newNote: EditableNote = {
+          id: noteId,
+          pitch: Math.max(0, Math.min(127, pitch)),
+          start: Math.max(0, snappedStart),
+          duration: minDur,
+          velocity: Math.max(1, Math.min(127, velocity)),
+        };
+        return {
+          ...track,
+          notes: [...track.notes, newNote],
+          selectedIds: new Set([noteId]),
+        };
+      });
+      return noteId;
+    },
+    [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature],
+  );
+
+  const finishRecordedNote = useCallback(
+    (noteId: string, endAbsolute: number) => {
+      modifyActiveTrack((track) => {
+        const note = track.notes.find((n) => n.id === noteId);
+        if (!note) return track;
+        const gridMin = getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature) || 0.01;
+        const snappedEnd = Math.max(
+          note.start + gridMin,
+          snapToGrid(endAbsolute, state.bpm, state.snapGrid, state.timeSignature),
+        );
+        const duration = snapDuration(
+          snappedEnd - note.start,
+          state.bpm,
+          state.snapGrid,
+          state.timeSignature,
+        );
+        return {
+          ...track,
+          notes: track.notes.map((n) =>
+            n.id === noteId ? { ...n, duration: Math.max(gridMin, duration) } : n,
+          ),
+        };
+      });
+    },
+    [modifyActiveTrack, state.bpm, state.snapGrid, state.timeSignature],
+  );
+
+  const setNoteVelocity = useCallback(
+    (noteId: string, velocity: number) => {
+      modifyActiveTrack((track) => ({
+        ...track,
+        notes: track.notes.map((n) =>
+          n.id === noteId
+            ? { ...n, velocity: Math.max(1, Math.min(127, velocity)) }
+            : n,
+        ),
+      }));
+    },
+    [modifyActiveTrack],
+  );
+
   const getTrackCcLane = useCallback(
     (ccNumber: number): CcLane | undefined => {
       return activeTrack.ccLanes.find((l) => l.ccNumber === ccNumber);
@@ -854,6 +955,11 @@ export function useMidiEditor(
     setTrackMute,
     setTrackSolo,
     setTrackColor,
+    setTrackInstrument,
+    setNoteVelocity,
+    beginRecordedNote,
+    finishRecordedNote,
+    beginEditGesture,
     addCcPoint,
     removeCcPoint,
     updateCcPoint,

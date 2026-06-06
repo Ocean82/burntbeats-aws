@@ -12,6 +12,7 @@ interface MidiAutomationLaneProps {
   onAddPoint: (time: number, value: number) => void;
   onUpdatePoint: (index: number, time: number, value: number) => void;
   onRemovePoint: (index: number) => void;
+  onBeginEditGesture?: () => void;
 }
 
 interface PointRect {
@@ -29,6 +30,7 @@ export function MidiAutomationLane({
   onAddPoint,
   onUpdatePoint,
   onRemovePoint,
+  onBeginEditGesture,
 }: MidiAutomationLaneProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -103,12 +105,14 @@ export function MidiAutomationLane({
           onRemovePoint(hitPoint.index);
           return;
         }
+        onBeginEditGesture?.();
         setDragIndex(hitPoint.index);
         svg.setPointerCapture(e.pointerId);
         return;
       }
 
       if (x >= 0 && y >= 0) {
+        onBeginEditGesture?.();
         const time = xToTime(x);
         const value = Math.round(127 * (1 - y / CC_LANE_HEIGHT));
         onAddPoint(time, Math.max(0, Math.min(127, value)));

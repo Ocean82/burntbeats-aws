@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pencil, VolumeX, Volume2, Headphones, X } from "lucide-react";
-import type { EditorTrack } from "./editorTypes";
+import type { EditorTrack, TrackInstrument } from "./editorTypes";
+import { TRACK_INSTRUMENTS } from "./editorTypes";
 
 interface MidiTrackStripProps {
   track: EditorTrack;
@@ -10,6 +11,7 @@ interface MidiTrackStripProps {
   onToggleMute: () => void;
   onToggleSolo: () => void;
   onRemove: () => void;
+  onSetInstrument: (instrument: TrackInstrument) => void;
 }
 
 export function MidiTrackStrip({
@@ -20,6 +22,7 @@ export function MidiTrackStrip({
   onToggleMute,
   onToggleSolo,
   onRemove,
+  onSetInstrument,
 }: MidiTrackStripProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(track.name);
@@ -149,6 +152,22 @@ export function MidiTrackStrip({
             <X className="h-2.5 w-2.5" />
           </button>
         </div>
+        <select
+          value={track.instrument}
+          onChange={(e) => {
+            e.stopPropagation();
+            onSetInstrument(e.target.value as TrackInstrument);
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="midi-track-strip__instrument-select"
+          aria-label={`Instrument for ${track.name}`}
+        >
+          {TRACK_INSTRUMENTS.map((inst) => (
+            <option key={inst.value} value={inst.value}>
+              {inst.label}
+            </option>
+          ))}
+        </select>
         <div className="midi-track-strip__stats">
           <span className="text-[8px] opacity-50">
             {track.notes.length} notes

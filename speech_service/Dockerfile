@@ -35,4 +35,4 @@ RUN groupadd --system --gid 10001 appuser \
 USER appuser
 
 EXPOSE 5001
-CMD ["python", "-m", "uvicorn", "speech_service.server:app", "--host", "0.0.0.0", "--port", "5001"]
+CMD [".venv/bin/python", "-m", "uvicorn", "speech_service.server:app", "--host", "0.0.0.0", "--port", "5001"]

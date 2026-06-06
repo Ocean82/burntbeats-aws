@@ -10,6 +10,7 @@ interface MidiVelocityLaneProps {
   timelineWidth: number;
   onSetNoteVelocity: (noteId: string, velocity: number) => void;
   onSetSelectedVelocity: (velocity: number) => void;
+  onBeginEditGesture?: () => void;
 }
 
 interface DragVelocityState {
@@ -26,6 +27,7 @@ export function MidiVelocityLane({
   timelineWidth,
   onSetNoteVelocity,
   onSetSelectedVelocity,
+  onBeginEditGesture,
 }: MidiVelocityLaneProps) {
   const [dragState, setDragState] = useState<DragVelocityState | null>(null);
   const [hoveredNoteId, setHoveredNoteId] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export function MidiVelocityLane({
         });
 
       if (noteAtX) {
+        onBeginEditGesture?.();
         setDragState({
           noteId: noteAtX.id,
           startY: y,

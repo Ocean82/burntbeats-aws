@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getGridSizeSeconds, snapDeltaTime, snapDuration, snapToGrid } from "./midiEditorSnap";
+import {
+  getGridSizeSeconds,
+  secondsPerBar,
+  snapDeltaTime,
+  snapDuration,
+  snapToGrid,
+} from "./midiEditorSnap";
 
 describe("midiEditorSnap", () => {
   const bpm = 120;
@@ -24,5 +30,10 @@ describe("midiEditorSnap", () => {
   it("snaps delta time for group moves", () => {
     expect(snapDeltaTime(0.13, bpm, "1/16")).toBeCloseTo(0.125);
     expect(snapDeltaTime(0.01, bpm, "1/16")).toBeCloseTo(0);
+  });
+
+  it("computes 6/8 bar duration at 120 BPM", () => {
+    const barSec = secondsPerBar(120, { beatsPerBar: 6, beatUnit: 8 });
+    expect(barSec).toBeCloseTo(3, 2);
   });
 });

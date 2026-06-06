@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import type { EditorTrack } from "./editorTypes";
+import type { EditorTrack, TrackInstrument } from "./editorTypes";
 import { MidiTrackStrip } from "./MidiTrackStrip";
 import { PIANO_ROLL } from "./pianoRollTheme";
 
@@ -12,6 +12,7 @@ interface MidiTrackListProps {
   onRenameTrack: (trackId: string, name: string) => void;
   onToggleMute: (trackId: string) => void;
   onToggleSolo: (trackId: string) => void;
+  onSetInstrument: (trackId: string, instrument: TrackInstrument) => void;
 }
 
 export function MidiTrackList({
@@ -23,6 +24,7 @@ export function MidiTrackList({
   onRenameTrack,
   onToggleMute,
   onToggleSolo,
+  onSetInstrument,
 }: MidiTrackListProps) {
   return (
     <div
@@ -53,6 +55,7 @@ export function MidiTrackList({
             onToggleMute={() => onToggleMute(track.id)}
             onToggleSolo={() => onToggleSolo(track.id)}
             onRemove={() => onRemoveTrack(track.id)}
+            onSetInstrument={(instrument) => onSetInstrument(track.id, instrument)}
           />
         ))}
       </div>

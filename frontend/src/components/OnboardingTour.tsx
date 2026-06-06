@@ -159,16 +159,21 @@ export function OnboardingTour({
 
           <div
             className={cn(
-              "z-modal",
-              spotlightRect ? "fixed inset-0 pointer-events-none" : "fixed inset-0 flex items-center justify-center p-md",
+              "z-modal w-full",
+              spotlightRect
+                ? "fixed inset-0 pointer-events-none"
+                : "fixed inset-0 flex w-full items-center justify-center p-md",
             )}
           >
             <motion.div
               ref={modalRef}
               style={anchoredStyle}
               className={cn(
-                "relative overflow-y-auto rounded-3xl border border-border bg-popover/95 shadow-elevation-xl backdrop-blur-xl pointer-events-auto",
-                spotlightRect ? "max-h-[min(70vh,400px)]" : "w-full max-w-md max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]",
+                "relative box-border w-full max-w-md shrink-0 overflow-y-auto rounded-3xl border border-border bg-popover/95 shadow-elevation-xl backdrop-blur-xl pointer-events-auto",
+                "min-w-[min(100%,20rem)]",
+                spotlightRect
+                  ? "max-h-[min(70vh,400px)]"
+                  : "max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)]",
               )}
               role="dialog"
               aria-modal="true"
@@ -208,7 +213,7 @@ export function OnboardingTour({
                         : { opacity: 0, transition: motionCfg.transition("exit") }
                     }
                     transition={motionCfg.transition("fast")}
-                    className="text-center"
+                    className="w-full min-w-0 text-center"
                   >
                     {/* Icon */}
                     <div className="mx-auto mb-lg flex h-20 w-20 items-center justify-center rounded-2xl bg-linear-to-br from-primary-500/20 to-primary-400/10 shadow-elevation-md">
@@ -219,7 +224,7 @@ export function OnboardingTour({
                     <h2 id="onboarding-title" className="mb-sm text-2xl font-bold text-foreground">{step.title}</h2>
 
                     {/* Description */}
-                    <p className="text-readable text-readable-tight mb-md text-sm leading-relaxed text-secondary-foreground">{step.description}</p>
+                    <p className="copy-block text-readable text-readable-tight mb-md text-sm leading-relaxed text-secondary-foreground">{step.description}</p>
 
                     {/* Tip */}
                     <div className="mx-auto inline-flex max-w-full items-center gap-xs rounded-full bg-primary-500/10 px-md py-xs text-xs text-primary-200">

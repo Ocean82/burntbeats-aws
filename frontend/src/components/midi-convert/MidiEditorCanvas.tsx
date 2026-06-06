@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { EditableNote, EditorTool, SnapGrid, LoopRegion } from "./editorTypes";
+import type { EditableNote, EditorTool, SnapGrid, LoopRegion, TimeSignature } from "./editorTypes";
+import { DEFAULT_TIME_SIG } from "./editorTypes";
 import { midiToNoteName } from "../../utils/musicTheory";
 import { snapDuration, snapDeltaTime, snapToGrid, secondsPerBar } from "../../utils/midiEditorSnap";
 import { cn } from "../../utils/cn";
@@ -12,6 +13,7 @@ import {
 import { useEditorCanvasZoomGestures } from "./useEditorCanvasZoomGestures";
 import { MidiTimelineRuler } from "./MidiTimelineRuler";
 import { MidiLoopRegionOverlay } from "./MidiLoopRegion";
+import { CANVAS_NOTE_THRESHOLD, MidiNoteCanvasLayer } from "./MidiNoteCanvasLayer";
 
 const LEFT_MARGIN = 48;
 const RULER_HEIGHT = 24;
@@ -28,6 +30,7 @@ interface MidiEditorCanvasProps {
   tool: EditorTool;
   snapGrid: SnapGrid;
   bpm: number;
+  timeSignature?: TimeSignature;
   gridSizeSeconds: number;
   drawVelocity: number;
   onSelectNote: (noteId: string, additive: boolean) => void;
@@ -44,6 +47,8 @@ interface MidiEditorCanvasProps {
   loopRegion?: LoopRegion;
   onSeek?: (time: number) => void;
   onLoopChange?: (region: LoopRegion) => void;
+  timelineScrollRef?: React.RefObject<HTMLDivElement | null>;
+  onTimelineScroll?: (scrollLeft: number) => void;
 }
 
 interface NoteRect {
@@ -88,6 +93,7 @@ export function MidiEditorCanvas({
   tool,
   snapGrid,
   bpm,
+  timeSignature = DEFAULT_TIME_SIG,
   gridSizeSeconds: _gridSizeSeconds,
   drawVelocity: _drawVelocity,
   onSelectNote,
@@ -104,11 +110,14 @@ export function MidiEditorCanvas({
   loopRegion,
   onSeek,
   onLoopChange,
+  timelineScrollRef,
+  onTimelineScroll,
 }: MidiEditorCanvasProps) {
   const pixelsPerSecond =
     BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
   const containerRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = timelineScrollRef ?? internalScrollRef;
   useEditorCanvasZoomGestures(scrollRef, zoomLevel, onZoomLevelChange);
   const [viewportWidth, setViewportWidth] = useState(600);
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -199,7 +208,7 @@ export function MidiEditorCanvas({
   );
 
   const gridLines = useMemo(() => {
-    const barSec = secondsPerBar(bpm);
+    const barSec = secondsPerBar(bpm, timeSignature);
     const lines: { x: number; isBar: boolean }[] = [];
     const step = _gridSizeSeconds > 0 ? _gridSizeSeconds : barSec;
     for (let t = 0; t <= totalDuration + step * 0.01; t += step) {
@@ -227,7 +236,7 @@ export function MidiEditorCanvas({
     (state: Extract<DragState, { type: "move" }>) => {
       const dx = state.currentX - state.startX;
       const dy = state.currentY - state.startY;
-      const deltaTime = snapDeltaTime(dx / pixelsPerSecond, bpm, snapGrid);
+      const deltaTime = snapDeltaTime(dx / pixelsPerSecond, bpm, snapGrid, timeSignature);
       const deltaPitch = -Math.round(dy / rowHeight);
       return { deltaTime, deltaPitch, dx, dy };
     },
@@ -265,7 +274,7 @@ export function MidiEditorCanvas({
         0.01,
         dragState.originalDuration + dx / pixelsPerSecond,
       );
-      const duration = snapDuration(rawDuration, bpm, snapGrid);
+      const duration = snapDuration(rawDuration, bpm, snapGrid, timeSignature);
       const note = notes.find((n) => n.id === dragState.noteId);
       if (!note) return [];
       return [
@@ -315,7 +324,7 @@ export function MidiEditorCanvas({
         const hit = hitTestNote(x, y);
         if (!hit) {
           const pitch = screenToPitch(y);
-          const time = snapToGrid(screenToTime(x), bpm, snapGrid);
+          const time = snapToGrid(screenToTime(x), bpm, snapGrid, timeSignature);
           onAddNote(pitch, time);
         }
         return;
@@ -420,7 +429,7 @@ export function MidiEditorCanvas({
             0.01,
             dragState.originalDuration + dx / pixelsPerSecond,
           );
-          const newDuration = snapDuration(rawDuration, bpm, snapGrid);
+          const newDuration = snapDuration(rawDuration, bpm, snapGrid, timeSignature);
           onResizeNote(dragState.noteId, newDuration);
         }
       } else if (dragState.type === "lasso") {
@@ -453,6 +462,18 @@ export function MidiEditorCanvas({
       pixelsPerSecond,
     ],
   );
+
+  const useCanvasNotes = notes.length >= CANVAS_NOTE_THRESHOLD;
+
+  const lassoRect = useMemo(() => {
+    if (dragState?.type !== "lasso") return null;
+    return {
+      x: Math.min(dragState.startX, dragState.currentX),
+      y: Math.min(dragState.startY, dragState.currentY),
+      w: Math.abs(dragState.currentX - dragState.startX),
+      h: Math.abs(dragState.currentY - dragState.startY),
+    };
+  }, [dragState]);
 
   const cursorClass =
     tool === "draw" || tool === "erase" ? "cursor-crosshair" : "cursor-default";
@@ -515,6 +536,8 @@ export function MidiEditorCanvas({
         totalDuration={totalDuration}
         pixelsPerSecond={pixelsPerSecond}
         timelineWidth={timelineWidth}
+        bpm={bpm}
+        timeSignature={timeSignature}
         loopRegion={loopRegion ?? { enabled: false, start: 0, end: 4 }}
         onSeek={(time) => onSeek?.(time)}
         onLoopChange={(region) => onLoopChange?.(region)}
@@ -569,6 +592,7 @@ export function MidiEditorCanvas({
             "min-w-0 flex-1",
             isScrollable && "overflow-x-auto overflow-y-hidden",
           )}
+          onScroll={(e) => onTimelineScroll?.(e.currentTarget.scrollLeft)}
           title={
             isScrollable
               ? "Scroll horizontally · pinch or Ctrl+wheel to zoom"
@@ -578,10 +602,24 @@ export function MidiEditorCanvas({
           }
           style={{ touchAction: onZoomLevelChange ? "pan-x" : undefined }}
         >
+          <div className="relative" style={{ width: timelineWidth, height }}>
+          {useCanvasNotes && (
+            <MidiNoteCanvasLayer
+              noteRects={noteRects.filter((r) => !draggingNoteIds.has(r.note.id))}
+              selectedIds={selectedIds}
+              width={timelineWidth}
+              height={height}
+              contentTop={CONTENT_TOP}
+              contentHeight={height - CONTENT_TOP - BOTTOM_MARGIN}
+              playheadX={playheadX}
+              lassoRect={lassoRect}
+              previewRects={dragPreviewRects}
+            />
+          )}
           <svg
             width={timelineWidth}
             height={height}
-            className={cn("block select-none", cursorClass)}
+            className={cn("block select-none", cursorClass, useCanvasNotes && "relative")}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -647,22 +685,24 @@ export function MidiEditorCanvas({
               />
             )}
 
-            {noteRects.map((r) => {
-              const isSelected = selectedIds.has(r.note.id);
-              const isGhost = draggingNoteIds.has(r.note.id);
-              return renderNoteRect(r, { isSelected, isGhost });
-            })}
+            {!useCanvasNotes &&
+              noteRects.map((r) => {
+                const isSelected = selectedIds.has(r.note.id);
+                const isGhost = draggingNoteIds.has(r.note.id);
+                return renderNoteRect(r, { isSelected, isGhost });
+              })}
 
-            {dragPreviewRects.map((r) =>
-              renderNoteRect(r, { isSelected: true, isPreview: true }),
-            )}
+            {!useCanvasNotes &&
+              dragPreviewRects.map((r) =>
+                renderNoteRect(r, { isSelected: true, isPreview: true }),
+              )}
 
-            {dragState?.type === "lasso" && (
+            {!useCanvasNotes && dragState?.type === "lasso" && lassoRect && (
               <rect
-                x={Math.min(dragState.startX, dragState.currentX)}
-                y={Math.min(dragState.startY, dragState.currentY)}
-                width={Math.abs(dragState.currentX - dragState.startX)}
-                height={Math.abs(dragState.currentY - dragState.startY)}
+                x={lassoRect.x}
+                y={lassoRect.y}
+                width={lassoRect.w}
+                height={lassoRect.h}
                 fill={PIANO_ROLL.lassoFill}
                 stroke={PIANO_ROLL.lassoStroke}
                 strokeWidth={1}
@@ -671,7 +711,7 @@ export function MidiEditorCanvas({
               />
             )}
 
-            {playheadX != null && (
+            {!useCanvasNotes && playheadX != null && (
               <line
                 x1={playheadX}
                 x2={playheadX}
@@ -684,6 +724,7 @@ export function MidiEditorCanvas({
               />
             )}
           </svg>
+          </div>
         </div>
       </div>
 

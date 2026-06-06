@@ -3,6 +3,7 @@ import {
   Download,
   Eraser,
   Magnet,
+  Mic,
   MoreHorizontal,
   MousePointer2,
   Pencil,
@@ -15,7 +16,14 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
-import type { EditorTool, SnapGrid, TimeSignature, ActiveLane } from "./editorTypes";
+import type {
+  EditorTool,
+  SnapGrid,
+  TimeSignature,
+  ActiveLane,
+  AutomationParam,
+} from "./editorTypes";
+import { AUTOMATION_PARAMS, BUILTIN_CC_LANES } from "./editorTypes";
 import { EDITOR_TOOLS } from "./pianoRollTheme";
 
 import { MidiPhysicalButton } from "./controls/MidiPhysicalButton";
@@ -34,8 +42,12 @@ interface MidiEditorToolbarProps {
   zoomLevel: number;
   metronomeEnabled: boolean;
   activeLane: ActiveLane;
+  activeCcNumber: number;
+  activeAutomationParam: AutomationParam;
   canSaveToJob: boolean;
   isSaving?: boolean;
+  midiRecordSupported?: boolean;
+  midiRecordEnabled?: boolean;
   onToolChange: (tool: EditorTool) => void;
   onSnapGridChange: (grid: SnapGrid) => void;
   onBpmChange: (bpm: number) => void;
@@ -51,6 +63,9 @@ interface MidiEditorToolbarProps {
   onQuantizeSelection: () => void;
   onDuplicateSelection: () => void;
   onActiveLaneChange: (lane: ActiveLane) => void;
+  onActiveCcNumberChange: (cc: number) => void;
+  onActiveAutomationParamChange: (param: AutomationParam) => void;
+  onToggleMidiRecord?: () => void;
   onSaveToJob?: () => void;
 }
 
@@ -96,8 +111,12 @@ function SecondaryToolbarControls({
   zoomLevel,
   metronomeEnabled,
   activeLane,
+  activeCcNumber,
+  activeAutomationParam,
   canSaveToJob,
   isSaving = false,
+  midiRecordSupported = false,
+  midiRecordEnabled = false,
   onSnapGridChange,
   onBpmChange,
   onTimeSignatureChange,
@@ -109,6 +128,9 @@ function SecondaryToolbarControls({
   onQuantizeSelection,
   onDuplicateSelection,
   onActiveLaneChange,
+  onActiveCcNumberChange,
+  onActiveAutomationParamChange,
+  onToggleMidiRecord,
   onSaveToJob,
   layout = "row",
 }: SecondaryToolbarProps & { layout?: "row" | "stack" }) {
@@ -258,6 +280,49 @@ function SecondaryToolbarControls({
           </button>
         ))}
       </div>
+
+      {activeLane === "cc" && (
+        <select
+          value={activeCcNumber}
+          onChange={(e) => onActiveCcNumberChange(Number(e.target.value))}
+          className="midi-select"
+          aria-label="MIDI CC number"
+        >
+          {BUILTIN_CC_LANES.map((lane) => (
+            <option key={lane.ccNumber} value={lane.ccNumber}>
+              CC{lane.ccNumber} {lane.name}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {activeLane === "automation" && (
+        <select
+          value={activeAutomationParam}
+          onChange={(e) => onActiveAutomationParamChange(e.target.value as AutomationParam)}
+          className="midi-select"
+          aria-label="Automation parameter"
+        >
+          {AUTOMATION_PARAMS.map((p) => (
+            <option key={p.param} value={p.param}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {midiRecordSupported && onToggleMidiRecord && (
+        <MidiPhysicalButton
+          variant="icon"
+          pressed={midiRecordEnabled}
+          onClick={onToggleMidiRecord}
+          title="Arm MIDI input recording"
+          aria-label="Toggle MIDI record"
+          aria-pressed={midiRecordEnabled}
+        >
+          <Mic className="h-3.5 w-3.5" />
+        </MidiPhysicalButton>
+      )}
 
       {isModified && (
         <MidiPhysicalButton

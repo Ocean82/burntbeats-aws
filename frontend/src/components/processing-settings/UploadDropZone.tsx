@@ -46,6 +46,7 @@ export function UploadDropZone({
     return (
       <div
         data-testid="split-upload-dropzone"
+        data-tour="upload-dropzone"
         onDragOver={(e) => { e.preventDefault(); onSetIsDragging(true); }}
         onDragLeave={() => onSetIsDragging(false)}
         onDrop={(e) => {

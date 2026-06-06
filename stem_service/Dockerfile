@@ -30,4 +30,4 @@ RUN groupadd --system --gid 10001 appuser \
 USER appuser
 
 EXPOSE 5000
-CMD ["python", "-m", "uvicorn", "stem_service.server:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD [".venv/bin/python", "-m", "uvicorn", "stem_service.server:app", "--host", "0.0.0.0", "--port", "5000"]

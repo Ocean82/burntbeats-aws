@@ -80,18 +80,13 @@ export const QUICK_INTENTS: {
     label: "Extract bass",
     intent: { task: "extract", targets: ["bass"] },
   },
-  {
-    id: "extract_guitar",
-    label: "Extract guitar",
-    intent: { task: "extract", targets: ["guitar"] },
-  },
 ];
 
+/** Targets shown in advanced picker — omit guitar until UVR-MDX-NET-Guitar.onnx is deployed. */
 export const ADVANCED_TARGETS: SplitTarget[] = [
   "vocals",
   "drums",
   "bass",
-  "guitar",
   "other",
   "instrumental",
 ];
