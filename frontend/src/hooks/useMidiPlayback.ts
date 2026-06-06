@@ -162,6 +162,10 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     [],
   );
 
+  const scheduleNotesFromRef = useRef<
+    (relativeStart: number, onEnd: () => void) => Promise<void>
+  >(async () => {});
+
   const scheduleNotesFrom = useCallback(
     async (relativeStart: number, onEnd: () => void) => {
       const transport = Tone.getTransport();
@@ -209,7 +213,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
           playbackStartRelativeRef.current = loopStartRel;
           startTimeRef.current = Tone.now();
           setCurrentTime(loopStartRel);
-          void scheduleNotesFrom(loopStartRel, onEnd);
+          void scheduleNotesFromRef.current(loopStartRel, onEnd);
         }, playEnd - relativeStart + 0.001);
         scheduledEventsRef.current.push(loopEventId);
       } else {
@@ -221,6 +225,10 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     },
     [clearScheduled, scheduleMetronome, getSynth, releaseAll],
   );
+
+  useEffect(() => {
+    scheduleNotesFromRef.current = scheduleNotesFrom;
+  }, [scheduleNotesFrom]);
 
   const stopRaf = useCallback(() => {
     if (rafRef.current !== null) {

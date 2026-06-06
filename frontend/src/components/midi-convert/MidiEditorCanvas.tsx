@@ -216,7 +216,7 @@ export function MidiEditorCanvas({
       lines.push({ x: timeToScreen(t), isBar });
     }
     return lines;
-  }, [_gridSizeSeconds, totalDuration, timeToScreen, bpm]);
+  }, [_gridSizeSeconds, totalDuration, timeToScreen, bpm, timeSignature]);
 
   const hitTestNote = useCallback(
     (x: number, y: number): { noteRect: NoteRect; isResizeHandle: boolean } | null => {
@@ -240,7 +240,7 @@ export function MidiEditorCanvas({
       const deltaPitch = -Math.round(dy / rowHeight);
       return { deltaTime, deltaPitch, dx, dy };
     },
-    [bpm, snapGrid, rowHeight, pixelsPerSecond],
+    [bpm, snapGrid, rowHeight, pixelsPerSecond, timeSignature],
   );
 
   const dragPreviewRects = useMemo((): NoteRect[] => {
@@ -289,7 +289,7 @@ export function MidiEditorCanvas({
     }
 
     return [];
-  }, [dragState, getMoveDelta, notes, timeToScreen, pitchToScreen, noteHeight, bpm, snapGrid, pixelsPerSecond]);
+  }, [dragState, getMoveDelta, notes, timeToScreen, pitchToScreen, noteHeight, bpm, snapGrid, pixelsPerSecond, timeSignature]);
 
   const draggingNoteIds = useMemo(() => {
     if (!dragState) return new Set<string>();
@@ -396,6 +396,7 @@ export function MidiEditorCanvas({
       screenToTime,
       bpm,
       snapGrid,
+      timeSignature,
       onSplitNote,
     ],
   );
@@ -459,6 +460,7 @@ export function MidiEditorCanvas({
       onSelectNotes,
       bpm,
       snapGrid,
+      timeSignature,
       pixelsPerSecond,
     ],
   );

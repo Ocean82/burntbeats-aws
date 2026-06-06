@@ -42,17 +42,20 @@ export function MidiNoteEditor({
   const playback = useMidiPlayback();
   const containerRef = useRef<HTMLDivElement>(null);
   const laneScrollRef = useRef<HTMLDivElement>(null);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const viewportWidth = useTimelineViewportWidth(containerRef);
-  const timeline = useMidiTimelineLayout(editor.notes, zoomLevel, viewportWidth);
+  const {
+    minStart,
+    duration,
+    totalDuration,
+    pixelsPerSecond,
+    timelineWidth,
+    leftMargin,
+  } = useMidiTimelineLayout(editor.notes, zoomLevel, viewportWidth);
   const [markers, setMarkers] = useState<SectionMarker[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  const { minStart, duration } = useMemo(
-    () => ({ minStart: timeline.minStart, duration: timeline.duration }),
-    [timeline.minStart, timeline.duration],
-  );
 
   const playheadTime = useMemo(() => {
     if (playback.currentTime <= 0 && !playback.isPlaying && !playback.isPaused) {
@@ -272,10 +275,11 @@ export function MidiNoteEditor({
 
   const handleLaneScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const left = e.currentTarget.scrollLeft;
-    if (timeline.scrollRef.current && timeline.scrollRef.current.scrollLeft !== left) {
-      timeline.scrollRef.current.scrollLeft = left;
+    const el = timelineScrollRef.current;
+    if (el && el.scrollLeft !== left) {
+      el.scrollLeft = left;
     }
-  }, [timeline.scrollRef]);
+  }, [timelineScrollRef]);
 
   const handleAddCcPoint = useCallback(
     (time: number, value: number) => {
@@ -529,7 +533,7 @@ export function MidiNoteEditor({
             <MarkerStrip
               markers={markers}
               duration={duration}
-              pixelsPerSecond={timeline.pixelsPerSecond}
+              pixelsPerSecond={pixelsPerSecond}
               onAdd={handleAddMarker}
               onRemove={handleRemoveMarker}
             />
@@ -545,7 +549,7 @@ export function MidiNoteEditor({
               playheadTime={playheadTime}
               zoomLevel={zoomLevel}
               onZoomLevelChange={handleZoomLevelChange}
-              timelineScrollRef={timeline.scrollRef}
+              timelineScrollRef={timelineScrollRef}
               onTimelineScroll={handleTimelineScroll}
               onSelectNote={editor.selectNote}
               onSelectNotes={editor.selectNotes}
@@ -561,7 +565,7 @@ export function MidiNoteEditor({
             />
             {(showVelocityLane || showCcLane || showAutomationLane) && (
               <div className="flex">
-                <div className="shrink-0" style={{ width: timeline.leftMargin }} />
+                <div className="shrink-0" style={{ width: leftMargin }} />
                 <div
                   ref={laneScrollRef}
                   className="min-w-0 flex-1 overflow-x-auto"
@@ -571,9 +575,9 @@ export function MidiNoteEditor({
                     <MidiVelocityLane
                       notes={editor.notes}
                       selectedIds={editor.selectedIds}
-                      pixelsPerSecond={timeline.pixelsPerSecond}
-                      totalDuration={timeline.totalDuration}
-                      timelineWidth={timeline.timelineWidth}
+                      pixelsPerSecond={pixelsPerSecond}
+                      totalDuration={totalDuration}
+                      timelineWidth={timelineWidth}
                       onSetNoteVelocity={handleSetNoteVelocity}
                       onSetSelectedVelocity={editor.setSelectedVelocity}
                       onBeginEditGesture={editor.beginEditGesture}
@@ -582,9 +586,9 @@ export function MidiNoteEditor({
                   {showCcLane && activeCcLane && (
                     <MidiCcLane
                       lane={activeCcLane}
-                      pixelsPerSecond={timeline.pixelsPerSecond}
-                      totalDuration={timeline.totalDuration}
-                      timelineWidth={timeline.timelineWidth}
+                      pixelsPerSecond={pixelsPerSecond}
+                      totalDuration={totalDuration}
+                      timelineWidth={timelineWidth}
                       onAddPoint={handleAddCcPoint}
                       onUpdatePoint={handleUpdateCcPoint}
                       onRemovePoint={handleRemoveCcPoint}
@@ -595,9 +599,9 @@ export function MidiNoteEditor({
                     <MidiAutomationLane
                       lane={automationCcLane}
                       param={editor.activeAutomationParam}
-                      pixelsPerSecond={timeline.pixelsPerSecond}
-                      totalDuration={timeline.totalDuration}
-                      timelineWidth={timeline.timelineWidth}
+                      pixelsPerSecond={pixelsPerSecond}
+                      totalDuration={totalDuration}
+                      timelineWidth={timelineWidth}
                       onAddPoint={(time, value) =>
                         editor.addCcPoint(automationMeta.ccNumber, time, value)
                       }

@@ -141,7 +141,7 @@ export function MidiCcLane({
         svg.setPointerCapture(e.pointerId);
       }
     },
-    [getPointAt, screenToTime, screenToValue, onAddPoint, onRemovePoint, lane.events.length],
+    [getPointAt, screenToTime, screenToValue, onAddPoint, onRemovePoint, onBeginEditGesture, lane.events.length],
   );
 
   const handlePointerMove = useCallback(

@@ -118,7 +118,7 @@ export function MidiAutomationLane({
         onAddPoint(time, Math.max(0, Math.min(127, value)));
       }
     },
-    [pointRects, onAddPoint, onRemovePoint, xToTime],
+    [pointRects, onAddPoint, onRemovePoint, onBeginEditGesture, xToTime],
   );
 
   const handlePointerMove = useCallback(

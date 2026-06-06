@@ -28,7 +28,10 @@ export function useWebMidiInput(options: UseWebMidiInputOptions = {}): UseWebMid
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const accessRef = useRef<MIDIAccess | null>(null);
   const handlersRef = useRef(options);
-  handlersRef.current = options;
+
+  useEffect(() => {
+    handlersRef.current = options;
+  }, [options]);
 
   const attachInput = useCallback((input: MIDIInput) => {
     input.onmidimessage = (event: MIDIMessageEvent) => {

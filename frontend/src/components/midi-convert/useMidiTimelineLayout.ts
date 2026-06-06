@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EditableNote } from "./editorTypes";
 import { clampEditorZoom, BASE_PIXELS_PER_SECOND } from "./pianoRollTheme";
 
@@ -11,7 +11,6 @@ export interface MidiTimelineLayout {
   pixelsPerSecond: number;
   timelineWidth: number;
   leftMargin: number;
-  scrollRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function useMidiTimelineLayout(
@@ -19,8 +18,6 @@ export function useMidiTimelineLayout(
   zoomLevel: number,
   viewportWidth: number,
 ): MidiTimelineLayout {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   const { minStart, duration, totalDuration } = useMemo(() => {
     if (!notes.length) {
       return { minStart: 0, duration: 4, totalDuration: 4 };
@@ -50,7 +47,6 @@ export function useMidiTimelineLayout(
     pixelsPerSecond,
     timelineWidth,
     leftMargin: LEFT_MARGIN,
-    scrollRef,
   };
 }
 

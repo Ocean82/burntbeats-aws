@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getGridSizeSeconds,
   snapDeltaTime,
@@ -169,9 +169,12 @@ export function useMidiEditor(
   const [historyLength, setHistoryLength] = useState(1);
 
   const stateRef = useRef(state);
-  stateRef.current = state;
   const historyIndexRef = useRef(historyIndex);
-  historyIndexRef.current = historyIndex;
+
+  useEffect(() => {
+    stateRef.current = state;
+    historyIndexRef.current = historyIndex;
+  }, [state, historyIndex]);
 
   const pushHistory = useCallback(() => {
     const s = stateRef.current;
