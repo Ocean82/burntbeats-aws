@@ -814,9 +814,9 @@
     display: grid;
     grid-template-areas:
       "transport transport transport"
-      "tracklist editor inspector"
+      "body      body      inspector"
       "shortcuts shortcuts shortcuts";
-    grid-template-columns: 160px minmax(0, 1fr) 280px;
+    grid-template-columns: minmax(0, 1fr) 280px;
     grid-template-rows: auto minmax(280px, 1fr) auto;
   }
 
@@ -824,20 +824,23 @@
     grid-area: transport;
   }
 
-  .midi-editor-shell--wide > .midi-editor-body {
-    display: contents;
+  .midi-editor-shell--wide .midi-editor-body {
+    grid-area: body;
+    display: flex;
+    flex-direction: row;
+    min-height: 0;
   }
 
   .midi-editor-shell--wide .midi-editor-track-list {
-    grid-area: tracklist;
+    width: 160px;
+    flex-shrink: 0;
     border-right: 1px solid var(--midi-border);
-    min-height: 0;
     overflow-y: auto;
   }
 
-  .midi-editor-shell--wide > .midi-editor-panel,
   .midi-editor-shell--wide .midi-editor-panel {
-    grid-area: editor;
+    flex: 1;
+    min-width: 0;
     min-height: 0;
   }
 

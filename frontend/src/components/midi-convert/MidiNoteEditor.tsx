@@ -55,7 +55,7 @@ export function MidiNoteEditor({
   const pixelsPerSecond = BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
 
   const playheadTime = useMemo(() => {
-    if (!playback.isPlaying && !playback.isPaused && playback.currentTime === 0) return null;
+    if (!playback.isPlaying && !playback.isPaused) return null;
     return minStart + playback.currentTime;
   }, [minStart, playback.isPlaying, playback.isPaused, playback.currentTime]);
 
