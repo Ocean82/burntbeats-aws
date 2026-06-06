@@ -33,8 +33,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-os.environ.setdefault("USE_VAD_PRETRIM", "0")
-
 
 def _clear_session_caches() -> None:
     import stem_service.mdx_onnx as m

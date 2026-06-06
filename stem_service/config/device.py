@@ -51,16 +51,6 @@ else:
         os.environ.get("STEM_BACKEND", ""),
     )
 
-# Pre-trim input to vocal span with Silero VAD (Stage 0).
-# DISABLED: Silero VAD is speech-tuned and clips music vocals. Default is "false".
-# The pipeline ignores this setting (hybrid/utils._effective_input_path is a pass-through),
-# but we keep the config for potential future use with a music-aware VAD model.
-USE_VAD_PRETRIM = os.environ.get("USE_VAD_PRETRIM", "false").strip().lower() in (
-    "1",
-    "true",
-    "yes",
-)
-
 # Target sample rate for stem output.
 TARGET_SAMPLE_RATE = 44100
 
@@ -155,13 +145,6 @@ def get_onnx_providers() -> list[str]:
     return [p for p in order if p in available] or (
         list(available) if available else ["CPUExecutionProvider"]
     )
-
-
-# =======================
-# VAD Settings (DISABLED — kept for potential future music-aware VAD)
-# =======================
-VAD_PAD_SEC = 0.3
-VAD_MAX_GAP_TO_MERGE_SEC = 0.3
 
 
 def _bool_from_env(name: str, default: bool) -> bool:

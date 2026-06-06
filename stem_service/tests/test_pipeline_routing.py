@@ -209,6 +209,7 @@ def test_run_expand_to_4stem_uses_deterministic_stage2_only(
             ("other", other_path),
         ], ["UVR-MDX-NET-Drum.onnx", "UVR-MDX-NET-Bass.onnx", "residual_other"]
 
+    monkeypatch.setattr(expand_mod, "_expand_mdx_stage2_ready", lambda *_a, **_k: True)
     monkeypatch.setattr(expand_mod, "run_mdx_drums_bass_other", fake_mdx_stage2)
 
     stem_list, models_used = expand_mod.run_expand_to_4stem(
@@ -229,3 +230,47 @@ def test_run_expand_to_4stem_uses_deterministic_stage2_only(
         "UVR-MDX-NET-Bass.onnx",
         "residual_other",
     ]
+
+
+def test_run_expand_to_4stem_demucs_fallback_when_mdx_unavailable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import stem_service.hybrid.expand as expand_mod
+
+    source_stems_dir = tmp_path / "source" / "stems"
+    source_stems_dir.mkdir(parents=True, exist_ok=True)
+    (source_stems_dir / "vocals.wav").write_bytes(b"v")
+    (source_stems_dir / "instrumental.wav").write_bytes(b"i")
+
+    output_dir = tmp_path / "expand"
+    drums_path = output_dir / "stems" / "drums.wav"
+    bass_path = output_dir / "stems" / "bass.wav"
+    other_path = output_dir / "stems" / "other.wav"
+    for path in (drums_path, bass_path, other_path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"x")
+
+    def fake_demucs_stage2(*_args, **_kwargs):
+        return [
+            ("drums", drums_path),
+            ("bass", bass_path),
+            ("other", other_path),
+        ], ["htdemucs", "routing_fallback:expand_demucs_stage2"]
+
+    monkeypatch.setattr(expand_mod, "_expand_mdx_stage2_ready", lambda *_a, **_k: False)
+    monkeypatch.setattr(expand_mod, "_run_demucs_expand_stage2", fake_demucs_stage2)
+
+    stem_list, models_used = expand_mod.run_expand_to_4stem(
+        source_stems_dir=source_stems_dir,
+        target_output_dir=output_dir,
+        prefer_speed=False,
+    )
+
+    assert [stem_id for stem_id, _path in stem_list] == [
+        "vocals",
+        "drums",
+        "bass",
+        "other",
+    ]
+    assert "htdemucs" in models_used
+    assert "routing_fallback:expand_demucs_stage2" in models_used

@@ -10,7 +10,6 @@ except ImportError:
     sys.exit(1)
 
 models = [
-    "models/silero_vad.onnx",
     "models/scnet.onnx/scnet.onnx",
     "models/mdxnet_models/Kim_Vocal_2.onnx",
     "models/mdxnet_models/UVR-MDX-NET-Inst_HQ_4.onnx",

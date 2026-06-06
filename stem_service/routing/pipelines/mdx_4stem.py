@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable
 
 from stem_service.phase_inversion import create_residual_stem
+from stem_service.routing.model_bag import select_4stem_bag
 from stem_service.routing.pipelines.single_stem import run_mdx_target_stem
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,14 @@ def run_mdx_4stem(
     work_dir = output_dir / "mdx_4stem"
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    targets = ("vocals", "drums", "bass")
+    tier = "fast" if prefer_speed or model_tier == "fast" else "quality"
+    stem_bag = select_4stem_bag(tier)
+    use_dedicated_other = stem_bag == "kuielab_b"
+    targets: tuple[str, ...] = (
+        ("vocals", "drums", "bass", "other")
+        if use_dedicated_other
+        else ("vocals", "drums", "bass")
+    )
     stem_results: dict[str, Path] = {}
     models_used: list[str] = []
     max_workers = min(len(targets), _max_parallel())
@@ -55,6 +63,7 @@ def run_mdx_4stem(
             prefer_speed=prefer_speed,
             model_tier=model_tier,
             job_logger=job_logger,
+            stem_bag=stem_bag,
         )
         stem_id, path = stems[0]
         return stem_id, path, models
@@ -73,13 +82,16 @@ def run_mdx_4stem(
                 pct = 5 + int(80 * completed / len(targets))
                 progress_callback(pct)
 
-    other_path = flat_dir / "other.wav"
-    create_residual_stem(
-        input_path,
-        [stem_results["vocals"], stem_results["drums"], stem_results["bass"]],
-        other_path,
-    )
-    models_used.append("residual_other")
+    if use_dedicated_other:
+        other_path = stem_results["other"]
+    else:
+        other_path = flat_dir / "other.wav"
+        create_residual_stem(
+            input_path,
+            [stem_results["vocals"], stem_results["drums"], stem_results["bass"]],
+            other_path,
+        )
+        models_used.append("residual_other")
 
     if progress_callback:
         progress_callback(100)

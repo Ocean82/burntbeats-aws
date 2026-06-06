@@ -80,7 +80,7 @@ describe("getSplitProgressMessage", () => {
       uploadDurationSec: null,
       splitIntent: { task: "extract", targets: ["vocals"], quality: "fast" },
     });
-    expect(msg.primary).toBe("Extracting vocals…");
+    expect(msg.primary).toBe("Creating acapella…");
   });
 
   it("prefers backend-reported stage labels when available", () => {

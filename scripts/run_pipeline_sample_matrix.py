@@ -35,8 +35,6 @@ from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-os.environ.setdefault("USE_VAD_PRETRIM", "0")
-
 
 def _utc_iso(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"

@@ -64,8 +64,6 @@ HTDEMUCS_PTH = resolve_models_root_file("htdemucs.pth")
 HTDEMUCS_TH = resolve_models_root_file("htdemucs.th")
 MDX_NET_MODELS_DIR = MODELS_DIR / "MDX_Net_Models"
 MDXNET_MODELS_DIR = MODELS_DIR / "mdxnet_models"
-SILERO_VAD_ONNX = resolve_models_root_file("silero_vad.onnx")
-
 # SCNet: ONNX under models/scnet-models/, models/scnet_models/, or models_by_type/onnx/; optional PyTorch.
 SCNET_MODELS_DIR = MODELS_DIR / "scnet_models"
 SCNET_MODELS_ALT_DIR = MODELS_DIR / "scnet-models"

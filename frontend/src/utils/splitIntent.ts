@@ -23,15 +23,26 @@ export function withIntentQuality(
   return { ...intent, quality: qualityToIntent(quality) };
 }
 
+export const SPLIT_VOCAL_LABELS = {
+  acapella: "Acapella",
+  karaoke: "Karaoke",
+} as const;
+
+export const SPLIT_VOCAL_HINTS = {
+  acapella: "Lead vocals only — acapella-style",
+  karaoke: "Instrumental + backing vocals — karaoke-style",
+} as const;
+
 export function intentLabel(intent: SplitIntent): string {
   if (intent.task === "full_separation") {
     return intent.mode === "4" ? "Full separation (4 stems)" : "Full separation (2 stems)";
   }
   if (intent.task === "remove" && intent.targets?.includes("vocals")) {
-    return "Remove vocals (karaoke)";
+    return SPLIT_VOCAL_LABELS.karaoke;
   }
   if (intent.task === "extract" && intent.targets?.length === 1) {
     const t = intent.targets[0];
+    if (t === "vocals") return SPLIT_VOCAL_LABELS.acapella;
     return `Extract ${t}`;
   }
   if (intent.task === "extract" && intent.targets?.length) {
@@ -40,15 +51,23 @@ export function intentLabel(intent: SplitIntent): string {
   return "Split";
 }
 
-export const QUICK_INTENTS: { id: string; label: string; intent: SplitIntent }[] = [
+export const QUICK_INTENTS: {
+  id: string;
+  label: string;
+  /** Plain-language hover hint for unfamiliar terminology */
+  hint?: string;
+  intent: SplitIntent;
+}[] = [
   {
     id: "extract_vocals",
-    label: "Extract vocals",
+    label: SPLIT_VOCAL_LABELS.acapella,
+    hint: SPLIT_VOCAL_HINTS.acapella,
     intent: { task: "extract", targets: ["vocals"] },
   },
   {
     id: "remove_vocals",
-    label: "Remove vocals (karaoke)",
+    label: SPLIT_VOCAL_LABELS.karaoke,
+    hint: SPLIT_VOCAL_HINTS.karaoke,
     intent: { task: "remove", targets: ["vocals"] },
   },
   {

@@ -16,10 +16,7 @@ from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
-from stem_service.hybrid.utils import (
-    _effective_input_path,
-    _materialize_stage1_instrumental,
-)
+from stem_service.hybrid.utils import _materialize_stage1_instrumental
 
 logger = logging.getLogger(__name__)
 
@@ -76,15 +73,13 @@ def run_hybrid_4stem(
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    effective_input = _effective_input_path(input_path, output_dir)
-
     stage1_out = output_dir / "stage1"
     stage1_end = 80 if prefer_speed else 88
     instrumental_end = 86 if prefer_speed else 92
     if progress_callback:
         progress_callback(5)
     vocals_path, stage1_instrumental, stage1_models, inst_src = extract_vocals_stage1(
-        effective_input,
+        input_path,
         stage1_out,
         prefer_speed=prefer_speed,
         model_tier=model_tier,
@@ -99,7 +94,7 @@ def run_hybrid_4stem(
 
     instrumental_path = output_dir / "instrumental.wav"
     _materialize_stage1_instrumental(
-        effective_input,
+        input_path,
         vocals_path,
         stage1_instrumental,
         inst_src,

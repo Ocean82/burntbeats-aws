@@ -100,9 +100,9 @@ def test_bug4_onnx_output_preserves_original_sample_rate():
 
         mock_session.run = mock_run
 
-        # Mock _get_config to return valid MDX params
-        # n_fft=6144, hop=1024, dim_f=2048, dim_t=256, compensate=1.0
-        mock_config = (6144, 1024, 2048, 256, 1.0)
+        # Mock _get_config to return valid Kim-class MDX params
+        # n_fft=6144, hop=1024, dim_f=3072, dim_t=256, compensate=1.0
+        mock_config = (6144, 1024, 3072, 256, 1.0)
 
         with patch("stem_service.mdx.inference._onnx_session", return_value=mock_session), \
              patch("stem_service.mdx.inference._get_config", return_value=mock_config):

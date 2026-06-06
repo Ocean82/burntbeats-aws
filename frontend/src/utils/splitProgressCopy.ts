@@ -1,4 +1,5 @@
 import type { SplitIntent } from "@shared/types";
+import { SPLIT_VOCAL_LABELS } from "./splitIntent";
 
 export interface SplitProgressCopyInput {
   isUploading: boolean;
@@ -35,9 +36,12 @@ export function intentRunningProgressLabel(
   if (intent.task === "remove") {
     return progress < 88
       ? "Separating vocals…"
-      : "Building instrumental (karaoke)…";
+      : `Building ${SPLIT_VOCAL_LABELS.karaoke.toLowerCase()} track…`;
   }
   if (intent.task === "extract" && intent.targets?.length) {
+    if (intent.targets.length === 1 && intent.targets[0] === "vocals") {
+      return `Creating ${SPLIT_VOCAL_LABELS.acapella.toLowerCase()}…`;
+    }
     return `Extracting ${formatTargets(intent.targets)}…`;
   }
   if (intent.task === "full_separation") {

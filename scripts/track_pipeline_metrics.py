@@ -11,9 +11,7 @@ Usage (repo root, venv active):
   python scripts/track_pipeline_metrics.py --append-jsonl job_metrics.jsonl
 
 Environment (optional, same as stem service):
-  USE_SCNET, USE_VAD_PRETRIM, STEM_BACKEND, ONNXRUNTIME_NUM_THREADS, etc.
-
-This script sets USE_VAD_PRETRIM=0 for repeatable timings unless already set.
+  USE_SCNET, STEM_BACKEND, ONNXRUNTIME_NUM_THREADS, etc.
 
 Default input when no positional argument is given (first match wins):
   1. Environment variable BENCHMARK_SONG (absolute path to WAV)
@@ -36,11 +34,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
-
-# Deterministic benchmark: full clip processed (override with USE_VAD_PRETRIM=1 if you want).
-if "USE_VAD_PRETRIM" not in os.environ:
-    os.environ["USE_VAD_PRETRIM"] = "0"
-
 
 def resolve_benchmark_input_path() -> Path | None:
     """Optional default WAV: BENCHMARK_SONG env, then repo benchmark_song.local.txt."""
@@ -136,7 +129,9 @@ def run_matrix(
     quick: bool,
     skip_4stem: bool,
 ) -> list[dict]:
-    from stem_service.hybrid import run_4stem_single_pass_or_hybrid, run_hybrid_2stem
+    from stem_service.hybrid import run_hybrid_2stem
+    from stem_service.routing import execute_plan, route_intent
+    from stem_service.routing.schema import SplitIntent
 
     duration_s = _audio_duration(clip_path)
     runs: list[tuple[str, int, bool]] = []
@@ -169,14 +164,22 @@ def run_matrix(
                     clip_path,
                     out_dir,
                     prefer_speed=prefer_speed,
+                    model_tier="fast" if prefer_speed else "quality",
                     progress_callback=None,
                     job_logger=None,
                 )
             else:
-                _stems, models_used = run_4stem_single_pass_or_hybrid(
+                quality = "fast" if prefer_speed else "high"
+                intent = SplitIntent(
+                    task="full_separation",
+                    mode="4",
+                    quality=quality,
+                )
+                plan = route_intent(intent)
+                _stems, models_used = execute_plan(
+                    plan,
                     clip_path,
                     out_dir,
-                    prefer_speed=prefer_speed,
                     progress_callback=None,
                     job_logger=None,
                 )

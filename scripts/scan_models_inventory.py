@@ -123,16 +123,16 @@ def classify_model(path: Path) -> dict[str, Any]:
         if df_i == 3072 and dt_i in (256, 512):
             row["classification"] = "mdx_dim3072"
             row["pipeline_note"] = (
-                "MDX Kim/Vocal/Reverb class — runnable if `mdx_onnx._MDX_CONFIGS` has this filename"
+                "MDX Kim/Vocal/Reverb class — runnable if `mdx.model_registry._MDX_CONFIGS` has this filename"
             )
         elif df_i == 2048 and dt_i in (256, 512):
             row["classification"] = "mdx_dim2048"
             row["pipeline_note"] = (
-                "MDX UVR-style (4096 FFT bins) — runnable if `_MDX_CONFIGS` has this filename"
+                "MDX UVR-style (4096 FFT bins) — runnable if `mdx.model_registry._MDX_CONFIGS` has this filename"
             )
         elif df_i == 2560 and dt_i == 256:
             row["classification"] = "mdx_dim2560"
-            row["pipeline_note"] = "MDX Inst_HQ class — runnable if `_MDX_CONFIGS` has this filename"
+            row["pipeline_note"] = "MDX Inst_HQ class — runnable if `mdx.model_registry._MDX_CONFIGS` has this filename"
         else:
             row["classification"] = "mdx_like_unlisted"
             row["pipeline_note"] = f"MDX-like 4ch; dim_f={df} dim_t={dt} — needs config or manual check"
@@ -229,7 +229,7 @@ def main() -> int:
             f"| {'OK' if r.get('load_ok') else 'FAIL'} | {r.get('classification')} | "
             f"{'Y' if r.get('ort_present') else 'N'} | {r.get('size_mb')} | `{sh}` | `{r.get('path')}` |"
         )
-    lines.extend(["", "## Notes", "", "- **demucs_embedded_segment** — legacy ONNX export shape note (production 4-stem uses PyTorch Demucs).", "- **demucs_waveform_other_seg** (e.g. 441000) — not used by current pipeline.", "- **mdx_*** rows need a matching entry in `stem_service/mdx_onnx.py` `_MDX_CONFIGS` to run.", "- Re-run after adding ONNX files: `python scripts/scan_models_inventory.py`", ""])
+    lines.extend(["", "## Notes", "", "- **demucs_embedded_segment** — legacy ONNX export shape note (production 4-stem uses PyTorch Demucs).", "- **demucs_waveform_other_seg** (e.g. 441000) — not used by current pipeline.", "- **mdx_*** rows need a matching entry in `stem_service/mdx/model_registry.py` `_MDX_CONFIGS` to run.", "- Re-run after adding ONNX files: `python scripts/scan_models_inventory.py`", ""])
     md_path.write_text("\n".join(lines), encoding="utf-8")
 
     print(tmp_csv)

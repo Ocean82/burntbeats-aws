@@ -31,9 +31,6 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
-os.environ.setdefault("USE_VAD_PRETRIM", "0")
-
-
 def _load_bonv():
     p = REPO_ROOT / "scripts" / "benchmark_onnx_vs_ort.py"
     spec = importlib.util.spec_from_file_location("benchmark_onnx_vs_ort", p)

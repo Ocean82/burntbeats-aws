@@ -4,7 +4,6 @@ Shared utilities for the hybrid pipeline.
 Contains helpers used by multiple pipeline strategies:
 - _materialize_stage1_instrumental: copy or phase-invert based on InstrumentalSource
 - collapse_4stem_to_2stem: sum non-vocal stems into instrumental
-- _effective_input_path: pass-through (VAD removed — unsuitable for music)
 """
 
 from __future__ import annotations
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def _materialize_stage1_instrumental(
-    effective_input: Path,
+    mix_path: Path,
     vocals_path: Path,
     stage1_instrumental: Path | None,
     inst_src: InstrumentalSource,
@@ -38,7 +37,7 @@ def _materialize_stage1_instrumental(
             raise ValueError(
                 "Stage 1 invariant: PHASE_INVERSION_PENDING but instrumental path is set"
             )
-        create_perfect_instrumental(effective_input, vocals_path, dest_instrumental)
+        create_perfect_instrumental(mix_path, vocals_path, dest_instrumental)
         return
     if stage1_instrumental is None:
         raise ValueError(
@@ -96,17 +95,3 @@ def collapse_4stem_to_2stem(
     sf.write(str(instrumental_path), instrumental_audio, sample_rate)
 
     return [("vocals", vocals_path), ("instrumental", instrumental_path)]
-
-
-def _effective_input_path(
-    input_path: Path,
-    output_dir: Path,
-    use_vad_trim: bool | None = None,
-) -> Path:
-    """Return input_path unchanged. VAD pre-trim is disabled (Silero VAD is speech-tuned,
-    not suitable for music vocals — causes clipping of sung passages).
-
-    This function is kept as a pass-through for API compatibility with callers that
-    still pass use_vad_trim. The parameter is ignored.
-    """
-    return input_path

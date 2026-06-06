@@ -1,10 +1,10 @@
 # CPU Stem Queue & Model Speed Design
 
 **Date:** 2026-06-03  
-**Status:** Implemented on `main` (2026-06-04) — phases 1–5 code complete; t3.large re-benchmark pending on host  
+**Status:** Implemented on `main` (2026-06-06) — phases 0–5 complete; post-KARA benchmark in `reports/cpu_pipeline_baseline/summary.md`; router/expand Demucs fallback shipped  
 **Environment:** t3.large (2 vCPU / 8 GiB), ~1–2 splits/day, queue depth 4–5 is success
 
-**Implementation notes (2026-06-04):** Quality vocal → KARA; `mdx_4stem` default for 4-stem; `MAX_QUEUE_DEPTH=5`; `jobs_ahead` in API + frontend progress copy; `DEMUCS_SHIFTS_QUALITY=0`; QualitySelector copy aligned. Historical benchmark in `reports/cpu_pipeline_baseline/summary.md` marked pre-KARA.
+**Implementation notes (2026-06-06):** Quality vocal → KARA; `mdx_4stem` when `select_4stem_bag` ready else `hybrid_4` fallback; expand MDX/Demucs fallback; `MAX_QUEUE_DEPTH=5`; `jobs_ahead` in API + frontend; `DEMUCS_SHIFTS_QUALITY=0`; post-KARA benchmark (30s clip, t3.large thread profile) meets SLA — see `reports/cpu_pipeline_baseline/summary.md`. UVR Drum/Bass ONNX optional (not on disk); `kuielab_b` bag deployed in `server_models/`.
 
 ## Problem
 

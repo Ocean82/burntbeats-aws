@@ -16,10 +16,7 @@ from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
-from stem_service.hybrid.utils import (
-    _effective_input_path,
-    _materialize_stage1_instrumental,
-)
+from stem_service.hybrid.utils import _materialize_stage1_instrumental
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +36,7 @@ def run_hybrid_2stem(
     """
     2-stem separation: vocals + instrumental via Stage 1 ONNX + phase inversion (or inst ONNX pass).
 
-    Speed: 50% ONNX overlap. Quality: 75% overlap. VAD pre-trim is disabled (full file).
+    Stage 1 ONNX overlap is 50% for all tiers; quality tier uses a better vocal model (see vocal_stage1).
 
     Progress: 5–90% Stage 1 ONNX; 90–95% instrumental; 95–100% copy to stems/.
     """
@@ -50,15 +47,13 @@ def run_hybrid_2stem(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
-    effective_input = _effective_input_path(input_path, output_dir)
-
     if progress_callback:
         progress_callback(5)
 
     # Stage 1: single primary ONNX per tier (see vocal_stage1.extract_vocals_stage1)
     stage1_out = output_dir / "stage1"
     vocals_path, stage1_instrumental, stage1_models, inst_src = extract_vocals_stage1(
-        effective_input,
+        input_path,
         stage1_out,
         prefer_speed=prefer_speed,
         model_tier=model_tier,
@@ -74,7 +69,7 @@ def run_hybrid_2stem(
 
     instrumental_path = output_dir / "instrumental.wav"
     _materialize_stage1_instrumental(
-        effective_input,
+        input_path,
         vocals_path,
         stage1_instrumental,
         inst_src,
@@ -112,14 +107,13 @@ def run_demucs_only_2stem(
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
     _log = job_logger or logger
-    effective_input = _effective_input_path(input_path, output_dir)
     stage_out = output_dir / "stage1_demucs"
     _log.info(
         "2-stem demucs_only: PyTorch htdemucs --two-stems=vocals (prefer_speed=%s)",
         prefer_speed,
     )
     stem_files = run_demucs(
-        effective_input,
+        input_path,
         stage_out,
         stems=2,
         prefer_speed=prefer_speed,

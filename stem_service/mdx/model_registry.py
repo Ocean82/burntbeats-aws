@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 from stem_service.config import (
@@ -33,17 +34,23 @@ logger = logging.getLogger(__name__)
 #
 # dim_f = freq bins fed to model (first dim_f bins of STFT output)
 # n_fft must satisfy: n_fft//2 + 1 >= dim_f
+#   UVR/Kim (standard): n_fft = dim_f * 2
 #   Kim_Vocal_2 / Voc_FT:  dim_f=3072 → n_fft=6144 (6144//2+1=3073 ≥ 3072 ✓)
 #   Inst_HQ_4 / Inst_HQ_5: dim_f=2560 → n_fft=5120 (5120//2+1=2561 ≥ 2560 ✓)
 #
-# compensate: post-iSTFT amplitude correction factor (from UVR model_data.json)
+# Kuielab B (truncated-bin family): dim_f=2048 for all stems but n_fft is per-source
+# from KUIELab Leaderboard_A training configs — NOT dim_f * 2. compensate=1.0 (no UVR gain).
+# kuielab_b_drums uses dim_t=128 (~130k-sample chunks), not Leaderboard_A yaml dim_t=256.
+#
+# compensate: post-iSTFT amplitude correction factor (UVR model_data.json; 1.0 for kuielab)
 _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     #                                    n_fft   hop   dim_f  dim_t  compensate
     "Kim_Vocal_1.onnx": (6144, 1024, 3072, 256, 1.035),
     "Kim_Vocal_2.onnx": (6144, 1024, 3072, 256, 1.035),
+    "Kim_Inst.onnx": (6144, 1024, 3072, 256, 1.035),
     "UVR-MDX-NET-Voc_FT.onnx": (6144, 1024, 3072, 256, 1.035),
     "UVR-MDX-NET-Inst_HQ_4.onnx": (5120, 1024, 2560, 256, 1.035),
-    "UVR-MDX-NET-Inst_HQ_5.onnx": (5120, 1024, 2560, 256, 1.035),
+    "UVR-MDX-NET-Inst_HQ_5.onnx": (5120, 1024, 2560, 256, 1.02),
     # MDX23C 2-stem (MDX23C vocal/instrumental ONNX)
     "mdx23c_vocal.onnx": (6144, 1024, 3072, 256, 1.035),
     "mdx23c_instrumental.onnx": (6144, 1024, 3072, 256, 1.035),
@@ -56,10 +63,31 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     "UVR_MDXNET_2_9682.onnx": (4096, 1024, 2048, 256, 1.035),
     "UVR_MDXNET_3_9662.onnx": (4096, 1024, 2048, 256, 1.035),
     "UVR_MDXNET_KARA.onnx": (4096, 1024, 2048, 256, 1.035),
+    "UVR_MDXNET_KARA_2.onnx": (4096, 1024, 2048, 256, 1.035),
+    # Kuielab B — per-stem n_fft from kuielab/mdx-net Leaderboard_A ConvTDFNet configs
+    "kuielab_b_vocals.onnx": (6144, 1024, 2048, 256, 1.0),
+    "kuielab_b_drums.onnx": (4096, 1024, 2048, 128, 1.0),
+    "kuielab_b_bass.onnx": (16384, 1024, 2048, 256, 1.0),
+    "kuielab_b_other.onnx": (8192, 1024, 2048, 256, 1.0),
     "UVR-MDX-NET-Drum.onnx": (5120, 1024, 2560, 256, 1.035),
     "UVR-MDX-NET-Bass.onnx": (5120, 1024, 2560, 256, 1.035),
     "UVR-MDX-NET-Guitar.onnx": (5120, 1024, 2560, 256, 1.035),
 }
+
+# Logical ONNX names using per-source n_fft (truncated to dim_f bins), not n_fft=dim_f*2.
+KUIELAB_B_LOGICAL_ONNX: frozenset[str] = frozenset(
+    {
+        "kuielab_b_vocals.onnx",
+        "kuielab_b_drums.onnx",
+        "kuielab_b_bass.onnx",
+        "kuielab_b_other.onnx",
+    }
+)
+
+
+def is_kuielab_b_logical_onnx(logical_onnx_name: str) -> bool:
+    return logical_onnx_name in KUIELAB_B_LOGICAL_ONNX
+
 
 # ---------------------------------------------------------------------------
 # Model path lists — first existing file wins (score-9 fast vocals only)
@@ -188,6 +216,41 @@ def _prefer_quantized(path: Path) -> Path:
     return quant if quant.exists() else path
 
 
+def _pick_mdx_runtime_path(
+    declared: Path,
+    *,
+    allow: Callable[[Path], bool] | None = None,
+) -> Path | None:
+    """Resolve a logical ``*.onnx`` path to a runnable ``.onnx`` or ``.ort`` on disk.
+
+    Handles ORT-only deploy trees (``models_by_type/ort/*.ort`` with no sibling ``.onnx``).
+    """
+    def _ok(path: Path) -> bool:
+        if not path.is_file():
+            return False
+        return True if allow is None else allow(path)
+
+    if declared.is_file():
+        pq = _prefer_quantized(declared)
+        resolved = resolve_mdx_model_path(pq)
+        chosen = resolved if resolved is not None else pq
+        if _ok(chosen):
+            return chosen
+
+    if declared.suffix.lower() == ".onnx":
+        resolved = resolve_mdx_model_path(declared)
+        if resolved is not None and _ok(resolved):
+            return resolved
+
+    for ort in (
+        declared.with_suffix(".ort"),
+        MODELS_BY_TYPE_DIR / "ort" / f"{declared.stem}.ort",
+    ):
+        if _ok(ort):
+            return ort
+    return None
+
+
 def _candidate_paths_by_names(names: list[str]) -> list[Path]:
     out: list[Path] = []
     for nm in names:
@@ -210,68 +273,44 @@ def _normalize_tier(tier: str | None) -> str:
 def get_available_vocal_onnx(tier: str | None = None) -> Path | None:
     """Return first existing vocal ONNX path (tiered order, then fallback list)."""
     t = _normalize_tier(tier)
+
+    def _allow(path: Path) -> bool:
+        return vocal_onnx_allowed_for_service(path) and mdx_model_configured(path)
+
     for path in _candidate_paths_by_names(_VOCAL_TIER_NAMES[t]) + VOCAL_MODEL_PATHS:
-        if path.exists():
-            pq = _prefer_quantized(path)
-            resolved = resolve_mdx_model_path(pq)
-            chosen = resolved if resolved is not None else pq
-            if vocal_onnx_allowed_for_service(chosen):
-                return chosen
-            continue
-        ort = path.with_suffix(".ort")
-        if ort.is_file() and vocal_onnx_allowed_for_service(ort):
-            return ort
+        chosen = _pick_mdx_runtime_path(path, allow=_allow)
+        if chosen is not None:
+            return chosen
     return None
 
 
 def resolve_single_vocal_onnx(logical_onnx_name: str) -> Path | None:
     """First on-disk path for one logical vocal ONNX name (tier search dirs)."""
+
+    def _allow(path: Path) -> bool:
+        return vocal_onnx_allowed_for_service(path) and mdx_model_configured(path)
+
     for path in _candidate_paths_by_names([logical_onnx_name]):
-        if path.exists():
-            pq = _prefer_quantized(path)
-            resolved = resolve_mdx_model_path(pq)
-            chosen = resolved if resolved is not None else pq
-            if vocal_onnx_allowed_for_service(chosen) and mdx_model_configured(chosen):
-                return chosen
-            continue
-        ort = path.with_suffix(".ort")
-        if (
-            ort.is_file()
-            and vocal_onnx_allowed_for_service(ort)
-            and mdx_model_configured(ort)
-        ):
-            return ort
+        chosen = _pick_mdx_runtime_path(path, allow=_allow)
+        if chosen is not None:
+            return chosen
     return None
 
 
 def resolve_declared_vocal_onnx_path(model_path: Path) -> Path | None:
     """Resolve a user/benchmark override path (.onnx / .ort / .quant.onnx sibling)."""
-    p = model_path
-    if not p.exists():
-        ort = p.with_suffix(".ort")
-        if ort.is_file():
-            p = ort
-        else:
-            return None
-    pq = _prefer_quantized(p) if p.suffix.lower() == ".onnx" else p
-    resolved = resolve_mdx_model_path(pq)
-    chosen = resolved if resolved is not None else pq
-    if not chosen.is_file():
-        return None
-    if not vocal_onnx_allowed_for_service(chosen) or not mdx_model_configured(chosen):
-        return None
-    return chosen
+
+    def _allow(path: Path) -> bool:
+        return vocal_onnx_allowed_for_service(path) and mdx_model_configured(path)
+
+    return _pick_mdx_runtime_path(model_path, allow=_allow)
 
 
 def get_available_inst_onnx(tier: str | None = None) -> Path | None:
     """Return first existing instrumental ONNX path (tiered order, then fallback list)."""
     t = _normalize_tier(tier)
     for path in _candidate_paths_by_names(_INST_TIER_NAMES[t]) + INST_MODEL_PATHS:
-        if path.exists():
-            pq = _prefer_quantized(path)
-            resolved = resolve_mdx_model_path(pq)
-            return resolved if resolved is not None else pq
-        ort = path.with_suffix(".ort")
-        if ort.is_file():
-            return ort
+        chosen = _pick_mdx_runtime_path(path, allow=mdx_model_configured)
+        if chosen is not None:
+            return chosen
     return None

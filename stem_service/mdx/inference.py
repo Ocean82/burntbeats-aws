@@ -45,6 +45,7 @@ def _run_mdx_onnx(
     instrumental_output_path: Path | None = None,
     progress_callback: "Callable[[int], None] | None" = None,
     progress_range: "tuple[int, int] | None" = None,
+    compensate_override: float | None = None,
 ) -> Path | None:
     """
     Core MDX-Net ONNX inference following the UVR5 / audio-separator reference exactly.
@@ -74,6 +75,8 @@ def _run_mdx_onnx(
         return None
 
     n_fft, hop, dim_f, dim_t, compensate = cfg
+    if compensate_override is not None:
+        compensate = compensate_override
 
     session = _onnx_session(model_path)
     if session is None:
@@ -347,6 +350,7 @@ def run_inst_onnx(
     model_path_override: Path | None = None,
     progress_callback: "Callable[[int], None] | None" = None,
     progress_range: "tuple[int, int] | None" = None,
+    compensate_override: float | None = None,
 ) -> Path | None:
     """
     Extract instrumental using the best available instrumental ONNX model.
@@ -369,4 +373,5 @@ def run_inst_onnx(
         job_logger=job_logger,
         progress_callback=progress_callback,
         progress_range=progress_range,
+        compensate_override=compensate_override,
     )

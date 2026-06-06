@@ -77,15 +77,7 @@ else
   echo "WARNING: Missing $SOURCE/all-uvr-models/mdxnet_models-onnx"
 fi
 
-# 4. Silero VAD (ONNX; for USE_VAD_PRETRIM pre-trim)
-if [ -f "$SOURCE/silero_vad.onnx" ]; then
-  cp -f "$SOURCE/silero_vad.onnx" "$MODELS_DIR/silero_vad.onnx"
-  echo "OK models/silero_vad.onnx"
-elif [ -f "$SOURCE/silero_vad.jit" ]; then
-  echo "WARNING: Only silero_vad.jit found; pipeline now uses silero_vad.onnx — convert or copy the ONNX file"
-fi
-
-# 5. Root-level MDX ONNX + ORT (optional; app also checks mdxnet_models/ and MDX_Net_Models/).
+# 4. Root-level MDX ONNX + ORT (optional; app also checks mdxnet_models/ and MDX_Net_Models/).
 #    Runtime prefers .ort when both exist — see stem_service.mdx_onnx resolve_mdx_model_path().
 #    Logical names / tiers: docs/MODEL-SELECTION-AUTHORITY.md, docs/benchmarks/ranked_practical_time_score.csv
 #    (Whole-tree copies in §2–§3 already include any .ort files inside those dirs.)

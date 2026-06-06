@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-from stem_service.routing.model_bag import specialized_available
+from stem_service.routing.model_bag import select_4stem_bag, specialized_available
 from stem_service.routing.schema import SplitIntent
 from stem_service.routing.targets import (
     DEMUCS_4_STEMS,
@@ -51,8 +51,12 @@ def route_intent(intent: SplitIntent) -> SplitPlan:
     if intent.task == "full_separation":
         if intent.mode == "2":
             plan.jobs.append(ModelJob(kind="hybrid_2", targets=output))
-        else:
+        elif select_4stem_bag(tier):
             plan.jobs.append(ModelJob(kind="mdx_4stem", targets=output))
+            plan.routing_notes.append("mdx_4stem_onnx")
+        else:
+            plan.jobs.append(ModelJob(kind="hybrid_4", targets=output))
+            plan.routing_notes.append("routing_fallback:hybrid_4_demucs")
         return plan
 
     if intent.task == "remove":

@@ -41,8 +41,6 @@ from datetime import datetime
 from pathlib import Path
 
 # Disable VAD pre-trim so the full clip is always separated (consistent benchmark).
-os.environ["USE_VAD_PRETRIM"] = "0"
-
 # Repo root and stem_service on path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:

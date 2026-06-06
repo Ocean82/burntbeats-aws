@@ -19,12 +19,32 @@ def test_intent_from_legacy_2_stem() -> None:
     assert intent.quality == "fast"
 
 
-def test_route_full_separation_4() -> None:
+def test_route_full_separation_4_uses_mdx_when_bag_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stem_service.routing.router as router_mod
+
+    monkeypatch.setattr(router_mod, "select_4stem_bag", lambda _tier: "uvr")
     intent = SplitIntent(task="full_separation", mode="4", quality="high")
     plan = route_intent(intent)
     assert plan.output_stems == ("vocals", "drums", "bass", "other")
     assert len(plan.jobs) == 1
     assert plan.jobs[0].kind == "mdx_4stem"
+    assert "mdx_4stem_onnx" in plan.routing_notes
+    assert not plan.uses_hybrid_4stem()
+
+
+def test_route_full_separation_4_falls_back_to_hybrid_without_bag(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import stem_service.routing.router as router_mod
+
+    monkeypatch.setattr(router_mod, "select_4stem_bag", lambda _tier: None)
+    intent = SplitIntent(task="full_separation", mode="4", quality="high")
+    plan = route_intent(intent)
+    assert plan.jobs[0].kind == "hybrid_4"
+    assert plan.uses_hybrid_4stem()
+    assert "routing_fallback:hybrid_4_demucs" in plan.routing_notes
 
 
 def test_route_extract_vocals_only() -> None:

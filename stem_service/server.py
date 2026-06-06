@@ -82,15 +82,31 @@ _schedule_s3_upload = schedule_s3_upload
 
 def _supported_mode_health_snapshot() -> dict[str, object]:
     """Return readiness for the four supported deterministic CPU modes."""
-    from stem_service.routing.model_bag import resolve_single_stem_model
+    from stem_service.routing.model_bag import (
+        _KUIELAB_B_BAG,
+        resolve_stem_model,
+        select_4stem_bag,
+    )
 
     fast_vocal = resolve_single_vocal_onnx("UVR_MDXNET_3_9662.onnx")
     quality_vocal = resolve_single_vocal_onnx("UVR_MDXNET_KARA.onnx")
-    drum_model = resolve_single_stem_model("drums", "quality")
-    bass_model = resolve_single_stem_model("bass", "quality")
+    bag_quality = select_4stem_bag("high")
+    bag_speed = select_4stem_bag("fast")
+    drum_model = resolve_stem_model("drums", "quality")
+    bass_model = resolve_stem_model("bass", "quality")
+    other_model = (
+        resolve_stem_model("other", "quality") if bag_quality == "kuielab_b" else None
+    )
 
-    mdx_4_ready = all(
-        m is not None for m in (quality_vocal, drum_model, bass_model)
+    mdx_4_ready = (
+        bag_quality == "kuielab_b"
+        and all(m is not None for m in (drum_model, bass_model, other_model))
+        and resolve_stem_model("vocals", "quality") is not None
+    ) or (
+        bag_quality == "uvr"
+        and quality_vocal is not None
+        and drum_model is not None
+        and bass_model is not None
     )
 
     modes = {
@@ -107,58 +123,104 @@ def _supported_mode_health_snapshot() -> dict[str, object]:
             "missing_models": [] if quality_vocal is not None else ["UVR_MDXNET_KARA.onnx"],
         },
         "4_stem_speed": {
-            "ready": fast_vocal is not None and drum_model is not None and bass_model is not None,
-            "required_models": [
-                "UVR_MDXNET_3_9662.onnx",
-                "UVR-MDX-NET-Drum.onnx",
-                "UVR-MDX-NET-Bass.onnx",
-            ],
+            "ready": (
+                bag_speed == "kuielab_b"
+                and all(
+                    resolve_stem_model(t, "fast") is not None
+                    for t in ("vocals", "drums", "bass", "other")
+                )
+            )
+            or (
+                bag_speed == "uvr"
+                and fast_vocal is not None
+                and resolve_stem_model("drums", "fast") is not None
+                and resolve_stem_model("bass", "fast") is not None
+            ),
+            "four_stem_bag": bag_speed,
+            "required_models": (
+                list(_KUIELAB_B_BAG.values())
+                if bag_speed == "kuielab_b"
+                else [
+                    "UVR_MDXNET_3_9662.onnx",
+                    "UVR-MDX-NET-Drum.onnx",
+                    "UVR-MDX-NET-Bass.onnx",
+                ]
+            ),
             "resolved_models": [
-                model_name
-                for model_name in (
-                    fast_vocal.name if fast_vocal is not None else None,
-                    drum_model.name if drum_model is not None else None,
-                    bass_model.name if bass_model is not None else None,
+                m.name
+                for m in (
+                    resolve_stem_model("vocals", "fast"),
+                    resolve_stem_model("drums", "fast"),
+                    resolve_stem_model("bass", "fast"),
+                    resolve_stem_model("other", "fast")
+                    if bag_speed == "kuielab_b"
+                    else None,
                 )
-                if model_name is not None
+                if m is not None
             ],
-            "missing_models": [
-                model_name
-                for model_name, available in (
-                    ("UVR_MDXNET_3_9662.onnx", fast_vocal is not None),
-                    ("UVR-MDX-NET-Drum.onnx", drum_model is not None),
-                    ("UVR-MDX-NET-Bass.onnx", bass_model is not None),
-                )
-                if not available
-            ],
+            "missing_models": [],
         },
         "4_stem_quality": {
             "ready": mdx_4_ready,
-            "required_models": [
-                "UVR_MDXNET_KARA.onnx",
-                "UVR-MDX-NET-Drum.onnx",
-                "UVR-MDX-NET-Bass.onnx",
-            ],
+            "four_stem_bag": bag_quality,
+            "required_models": (
+                list(_KUIELAB_B_BAG.values())
+                if bag_quality == "kuielab_b"
+                else [
+                    "UVR_MDXNET_KARA.onnx",
+                    "UVR-MDX-NET-Drum.onnx",
+                    "UVR-MDX-NET-Bass.onnx",
+                ]
+            ),
             "resolved_models": [
-                model_name
-                for model_name in (
-                    quality_vocal.name if quality_vocal is not None else None,
-                    drum_model.name if drum_model is not None else None,
-                    bass_model.name if bass_model is not None else None,
+                m.name
+                for m in (
+                    resolve_stem_model("vocals", "quality"),
+                    drum_model,
+                    bass_model,
+                    other_model,
                 )
-                if model_name is not None
+                if m is not None
             ],
-            "missing_models": [
-                model_name
-                for model_name, available in (
-                    ("UVR_MDXNET_KARA.onnx", quality_vocal is not None),
-                    ("UVR-MDX-NET-Drum.onnx", drum_model is not None),
-                    ("UVR-MDX-NET-Bass.onnx", bass_model is not None),
-                )
-                if not available
-            ],
+            "missing_models": [],
         },
     }
+    for mode_key, bag, tier in (
+        ("4_stem_speed", bag_speed, "fast"),
+        ("4_stem_quality", bag_quality, "quality"),
+    ):
+        if bag is None:
+            modes[mode_key]["ready"] = False
+            modes[mode_key]["missing_models"] = modes[mode_key]["required_models"]
+            continue
+        if bag == "kuielab_b":
+            missing = [
+                _KUIELAB_B_BAG[t]
+                for t in ("vocals", "drums", "bass", "other")
+                if resolve_stem_model(t, tier) is None
+            ]
+        else:
+            vocal_logical = (
+                "UVR_MDXNET_3_9662.onnx"
+                if tier == "fast"
+                else "UVR_MDXNET_KARA.onnx"
+            )
+            missing = [
+                name
+                for name, ok in (
+                    (vocal_logical, resolve_stem_model("vocals", tier) is not None),
+                    (
+                        "UVR-MDX-NET-Drum.onnx",
+                        resolve_stem_model("drums", tier) is not None,
+                    ),
+                    (
+                        "UVR-MDX-NET-Bass.onnx",
+                        resolve_stem_model("bass", tier) is not None,
+                    ),
+                )
+                if not ok
+            ]
+        modes[mode_key]["missing_models"] = missing
     return {
         "all_ready": all(mode["ready"] for mode in modes.values()),
         "supported_modes": modes,
