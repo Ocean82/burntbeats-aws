@@ -27,6 +27,7 @@
   "dependencies": {
     "@clerk/react": "^6.4.7",
     "@clerk/shared": "^4.8.7",
+    "@radix-ui/react-tooltip": "^1.2.9",
     "@sentry/react": "^10.52.0",
     "@stripe/stripe-js": "^8.11.0",
     "clsx": "2.1.1",
@@ -47,7 +48,6 @@
     "@eslint/js": "^9.39.4",
     "@fast-check/vitest": "^0.4.1",
     "@playwright/test": "1.58.2",
-    "playwright": "1.58.2",
     "@sentry/vite-plugin": "^5.2.1",
     "@tailwindcss/vite": "4.1.17",
     "@testing-library/jest-dom": "^6.6.3",
@@ -62,6 +62,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.6.0",
     "jsdom": "^25.0.1",
+    "playwright": "1.58.2",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.59.3",

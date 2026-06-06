@@ -13,7 +13,7 @@
     "dev": "node --env-file=.env --watch server.js",
     "db:migrate": "node --env-file=.env db-migrate.js",
     "stripe:listen": "node --env-file=.env ../scripts/stripe-local-dev.mjs",
-    "test": "node --env-file=.env --test",
+    "test": "node --test",
     "test:assertions": "node check-test-assertions.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
