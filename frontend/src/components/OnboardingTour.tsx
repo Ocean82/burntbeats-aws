@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight, ChevronLeft, Upload, Sliders, Music2, Download, Sparkles } from "lucide-react";
 import { cn } from "../utils/cn";
@@ -58,13 +58,9 @@ export function OnboardingTour({
   const modalRef = useRef<HTMLDivElement>(null);
   const motionCfg = useProductMotion();
 
-  useEffect(() => {
-    const completed = localStorage.getItem(ONBOARDING_KEY);
-    if (!completed) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time init from localStorage
-      setIsVisible(true);
-    }
-  }, []);
+  // Tour no longer auto-opens on first visit — it's triggered explicitly
+  // via the help menu or the "open-onboarding" event bus signal.
+  // This avoids blocking the app with a barely-visible dark overlay on load.
 
   // Listen for the typed event bus signal to re-open the tour
   useAppEvent("open-onboarding", () => {
