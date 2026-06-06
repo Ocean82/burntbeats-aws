@@ -2,7 +2,7 @@
  * MidiEditorSelectionInfo — inspector strip for selected notes (DAW-style).
  */
 import { useState } from "react";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, Shuffle, Sparkles, Trash2 } from "lucide-react";
 import type { EditableNote } from "../../hooks/useMidiEditor";
 import { midiToNoteName } from "../../utils/musicTheory";
 
@@ -11,6 +11,9 @@ interface MidiEditorSelectionInfoProps {
   onDelete: () => void;
   onTranspose: (semitones: number) => void;
   onSetVelocity: (velocity: number) => void;
+  onHumanize?: () => void;
+  onRandomize?: () => void;
+  onJoin?: () => void;
 }
 
 export function MidiEditorSelectionInfo({
@@ -18,6 +21,9 @@ export function MidiEditorSelectionInfo({
   onDelete,
   onTranspose,
   onSetVelocity,
+  onHumanize,
+  onRandomize,
+  onJoin,
 }: MidiEditorSelectionInfoProps) {
   if (selectedNotes.length === 0) return null;
 
@@ -118,6 +124,48 @@ function MidiEditorSelectionInfoBody({
             : `${avgVelocity}*`}
         </span>
       </div>
+
+      {selectedNotes.length >= 2 && onJoin && (
+        <>
+          <span className="text-muted-foreground">|</span>
+          <button
+            type="button"
+            onClick={onJoin}
+            title="Join selected notes into one (Ctrl+J)"
+            aria-label="Join selected notes"
+            className="flex h-7 items-center gap-1 rounded border border-border bg-muted px-xs text-secondary-foreground transition hover:bg-muted"
+          >
+            <Sparkles className="h-3 w-3" />
+            Join
+          </button>
+        </>
+      )}
+
+      {onHumanize && (
+        <button
+          type="button"
+          onClick={onHumanize}
+          title="Humanize timing & velocity"
+          aria-label="Humanize selected notes"
+          className="flex h-7 items-center gap-1 rounded border border-border bg-muted px-xs text-secondary-foreground transition hover:bg-muted"
+        >
+          <Shuffle className="h-3 w-3" />
+          Humanize
+        </button>
+      )}
+
+      {onRandomize && (
+        <button
+          type="button"
+          onClick={onRandomize}
+          title="Randomize velocity"
+          aria-label="Randomize velocity"
+          className="flex h-7 items-center gap-1 rounded border border-border bg-muted px-xs text-secondary-foreground transition hover:bg-muted"
+        >
+          <Shuffle className="h-3 w-3" />
+          Randomize
+        </button>
+      )}
 
       <div className="flex-1" />
 

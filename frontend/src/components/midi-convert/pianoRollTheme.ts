@@ -65,6 +65,16 @@ export const PIANO_ROLL = {
   ccPointStroke: "rgba(100, 180, 220, 1)",
   ccPointHover: "rgba(150, 210, 240, 1)",
 
+  automationVolumeStroke: "rgba(80, 200, 120, 0.85)",
+  automationVolumeFill: "rgba(80, 200, 120, 0.15)",
+  automationVolumePoint: "rgba(80, 200, 120, 0.95)",
+  automationPanStroke: "rgba(200, 180, 80, 0.85)",
+  automationPanFill: "rgba(200, 180, 80, 0.15)",
+  automationPanPoint: "rgba(200, 180, 80, 0.95)",
+  automationFilterStroke: "rgba(140, 160, 240, 0.85)",
+  automationFilterFill: "rgba(140, 160, 240, 0.15)",
+  automationFilterPoint: "rgba(140, 160, 240, 0.95)",
+
   loopRegionFill: "rgba(240, 130, 50, 0.08)",
   loopRegionBorder: "rgba(240, 130, 50, 0.6)",
   loopRegionHandle: "rgba(240, 130, 50, 0.8)",
@@ -78,6 +88,7 @@ export const EDITOR_TOOLS: Record<string, { label: string; shortcut: string; hin
   select: { label: "Select", shortcut: "1", hint: "Move and resize notes" },
   draw: { label: "Draw", shortcut: "2", hint: "Click to add notes" },
   erase: { label: "Erase", shortcut: "3", hint: "Click notes to delete" },
+  split: { label: "Split", shortcut: "4", hint: "Click a note to split it" },
 } as const;
 
 export const VELOCITY_LANE_HEIGHT = 48;

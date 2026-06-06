@@ -1,4 +1,4 @@
-export type EditorTool = "select" | "draw" | "erase";
+export type EditorTool = "select" | "draw" | "erase" | "split";
 
 export type SnapGrid =
   | "1/4" | "1/8" | "1/16" | "1/32"
@@ -64,7 +64,15 @@ export interface EditorTrack {
   ccLanes: CcLane[];
 }
 
-export type ActiveLane = "notes" | "velocity" | "cc";
+export type ActiveLane = "notes" | "velocity" | "cc" | "automation";
+
+export type AutomationParam = "volume" | "pan" | "filter";
+
+export const AUTOMATION_PARAMS: { param: AutomationParam; ccNumber: number; label: string }[] = [
+  { param: "volume", ccNumber: 7, label: "Volume" },
+  { param: "pan", ccNumber: 10, label: "Pan" },
+  { param: "filter", ccNumber: 74, label: "Filter Cutoff" },
+];
 
 export interface EditorViewState {
   activeLane: ActiveLane;

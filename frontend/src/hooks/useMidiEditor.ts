@@ -16,6 +16,7 @@ import type {
   EditorTrack,
   EditableNote,
   ActiveLane,
+  AutomationParam,
   EditorViewState,
 } from "../components/midi-convert/editorTypes";
 import {
@@ -27,7 +28,7 @@ import {
   generateNoteId,
 } from "../components/midi-convert/editorTypes";
 
-export type { EditorTool, SnapGrid, EditableNote, EditorTrack, CcLane, CcPoint, LoopRegion, TimeSignature, ActiveLane, EditorViewState };
+export type { EditorTool, SnapGrid, EditableNote, EditorTrack, CcLane, CcPoint, LoopRegion, TimeSignature, ActiveLane, EditorViewState, AutomationParam };
 
 const MAX_HISTORY = 50;
 
@@ -75,11 +76,13 @@ export interface UseMidiEditorReturn {
   loopRegion: LoopRegion;
   activeLane: ActiveLane;
   activeCcNumber: number;
+  activeAutomationParam: AutomationParam;
   drawVelocity: number;
   isModified: boolean;
   canUndo: boolean;
   canRedo: boolean;
   gridSizeSeconds: number;
+  clipboard: EditableNote[];
   setTool: (tool: EditorTool) => void;
   setSnapGrid: (grid: SnapGrid) => void;
   setBpm: (bpm: number) => void;
@@ -87,6 +90,7 @@ export interface UseMidiEditorReturn {
   setLoopRegion: (region: LoopRegion) => void;
   setActiveLane: (lane: ActiveLane) => void;
   setActiveCcNumber: (cc: number) => void;
+  setActiveAutomationParam: (param: AutomationParam) => void;
   setDrawVelocity: (vel: number) => void;
   selectNote: (noteId: string, additive: boolean) => void;
   selectNotes: (noteIds: string[], additive: boolean) => void;
@@ -101,6 +105,13 @@ export interface UseMidiEditorReturn {
   transposeSelected: (semitones: number) => void;
   duplicateSelected: () => void;
   quantizeSelected: () => void;
+  splitNoteAt: (noteId: string, time: number) => void;
+  joinSelected: () => void;
+  copySelected: () => void;
+  cutSelected: () => void;
+  pasteClipboard: (pasteTime?: number) => void;
+  humanizeSelected: (timingJitter?: number, velocityJitter?: number) => void;
+  randomizeSelected: (minVelocity?: number, maxVelocity?: number) => void;
   setTrackNotes: (trackId: string, notes: EditableNote[]) => void;
   undo: () => void;
   redo: () => void;
@@ -136,8 +147,10 @@ export function useMidiEditor(
     loopRegion: DEFAULT_LOOP as LoopRegion,
     activeLane: "notes" as ActiveLane,
     activeCcNumber: 1,
+    activeAutomationParam: "volume" as AutomationParam,
     drawVelocity: 80,
     isModified: false,
+    clipboard: [] as EditableNote[],
   });
 
   const historyRef = useRef<HistoryEntry[]>([
@@ -222,6 +235,10 @@ export function useMidiEditor(
 
   const setActiveCcNumber = useCallback((cc: number) => {
     setState((s) => ({ ...s, activeCcNumber: cc }));
+  }, []);
+
+  const setActiveAutomationParam = useCallback((param: AutomationParam) => {
+    setState((s) => ({ ...s, activeAutomationParam: param }));
   }, []);
 
   const setDrawVelocity = useCallback((drawVelocity: number) => {
@@ -441,6 +458,156 @@ export function useMidiEditor(
     });
   }, [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature]);
 
+  const copySelected = useCallback(() => {
+    modifyActiveTrack((track) => {
+      if (track.selectedIds.size === 0) return track;
+      const copied = track.notes
+        .filter((n) => track.selectedIds.has(n.id))
+        .map((n) => ({ ...n, id: generateNoteId() }));
+      setState((s) => ({ ...s, clipboard: copied }));
+      return track;
+    });
+  }, [modifyActiveTrack]);
+
+  const cutSelected = useCallback(() => {
+    modifyActiveTrack((track) => {
+      if (track.selectedIds.size === 0) return track;
+      pushHistory();
+      const copied = track.notes
+        .filter((n) => track.selectedIds.has(n.id))
+        .map((n) => ({ ...n, id: generateNoteId() }));
+      setState((s) => ({ ...s, clipboard: copied }));
+      return {
+        ...track,
+        notes: track.notes.filter((n) => !track.selectedIds.has(n.id)),
+        selectedIds: new Set(),
+      };
+    });
+  }, [modifyActiveTrack, pushHistory]);
+
+  const pasteClipboard = useCallback(
+    (pasteTime?: number) => {
+      modifyActiveTrack((track) => {
+        if (state.clipboard.length === 0) return track;
+        pushHistory();
+        const minStart = Math.min(...state.clipboard.map((n) => n.start));
+        const offset = pasteTime != null ? pasteTime - minStart : minStart + gridSizeSeconds;
+        const newNotes = state.clipboard.map((n) => ({
+          ...n,
+          id: generateNoteId(),
+          start: Math.max(0, n.start + offset),
+        }));
+        const newIds = new Set(newNotes.map((n) => n.id));
+        return {
+          ...track,
+          notes: [...track.notes, ...newNotes],
+          selectedIds: newIds,
+        };
+      });
+    },
+    [modifyActiveTrack, pushHistory, state.clipboard, gridSizeSeconds],
+  );
+
+  const splitNoteAt = useCallback(
+    (noteId: string, time: number) => {
+      modifyActiveTrack((track) => {
+        const note = track.notes.find((n) => n.id === noteId);
+        if (!note) return track;
+        if (time <= note.start || time >= note.start + note.duration) return track;
+        pushHistory();
+        const leftDuration = time - note.start;
+        const rightStart = time;
+        const rightDuration = note.start + note.duration - time;
+        if (leftDuration < 0.01 || rightDuration < 0.01) return track;
+        const leftNote: EditableNote = {
+          ...note,
+          id: generateNoteId(),
+          duration: leftDuration,
+        };
+        const rightNote: EditableNote = {
+          ...note,
+          id: generateNoteId(),
+          start: rightStart,
+          duration: rightDuration,
+        };
+        return {
+          ...track,
+          notes: [...track.notes.filter((n) => n.id !== noteId), leftNote, rightNote],
+          selectedIds: new Set([leftNote.id, rightNote.id]),
+        };
+      });
+    },
+    [modifyActiveTrack, pushHistory],
+  );
+
+  const joinSelected = useCallback(() => {
+    modifyActiveTrack((track) => {
+      if (track.selectedIds.size < 2) return track;
+      pushHistory();
+      const selected = track.notes.filter((n) => track.selectedIds.has(n.id));
+      if (selected.length < 2) return track;
+      selected.sort((a, b) => a.start - b.start);
+      const minPitch = Math.min(...selected.map((n) => n.pitch));
+      const maxPitch = Math.max(...selected.map((n) => n.pitch));
+      if (minPitch !== maxPitch) return track;
+      const minStart = selected[0].start;
+      const maxEnd = Math.max(...selected.map((n) => n.start + n.duration));
+      const mergedNote: EditableNote = {
+        ...selected[0],
+        id: generateNoteId(),
+        start: minStart,
+        duration: maxEnd - minStart,
+      };
+      const excludeIds = new Set(selected.map((n) => n.id));
+      return {
+        ...track,
+        notes: [...track.notes.filter((n) => !excludeIds.has(n.id)), mergedNote],
+        selectedIds: new Set([mergedNote.id]),
+      };
+    });
+  }, [modifyActiveTrack, pushHistory]);
+
+  const humanizeSelected = useCallback(
+    (timingJitter = 0.008, velocityJitter = 10) => {
+      modifyActiveTrack((track) => {
+        if (track.selectedIds.size === 0) return track;
+        pushHistory();
+        return {
+          ...track,
+          notes: track.notes.map((n) => {
+            if (!track.selectedIds.has(n.id)) return n;
+            const timeOffset = (Math.random() - 0.5) * 2 * timingJitter;
+            const velOffset = Math.round((Math.random() - 0.5) * 2 * velocityJitter);
+            return {
+              ...n,
+              start: Math.max(0, n.start + timeOffset),
+              velocity: Math.max(1, Math.min(127, n.velocity + velOffset)),
+            };
+          }),
+        };
+      });
+    },
+    [modifyActiveTrack, pushHistory],
+  );
+
+  const randomizeSelected = useCallback(
+    (minVelocity = 30, maxVelocity = 127) => {
+      modifyActiveTrack((track) => {
+        if (track.selectedIds.size === 0) return track;
+        pushHistory();
+        return {
+          ...track,
+          notes: track.notes.map((n) => {
+            if (!track.selectedIds.has(n.id)) return n;
+            const rVel = minVelocity + Math.round(Math.random() * (maxVelocity - minVelocity));
+            return { ...n, velocity: Math.max(1, Math.min(127, rVel)) };
+          }),
+        };
+      });
+    },
+    [modifyActiveTrack, pushHistory],
+  );
+
   const setTrackNotes = useCallback(
     (trackId: string, notes: EditableNote[]) => {
       updateTrack(trackId, (t) => ({ ...t, notes }));
@@ -640,11 +807,13 @@ export function useMidiEditor(
     loopRegion: state.loopRegion,
     activeLane: state.activeLane,
     activeCcNumber: state.activeCcNumber,
+    activeAutomationParam: state.activeAutomationParam,
     drawVelocity: state.drawVelocity,
     isModified: state.isModified,
     canUndo,
     canRedo,
     gridSizeSeconds,
+    clipboard: state.clipboard,
     setTool,
     setSnapGrid,
     setBpm,
@@ -652,6 +821,7 @@ export function useMidiEditor(
     setLoopRegion,
     setActiveLane,
     setActiveCcNumber,
+    setActiveAutomationParam,
     setDrawVelocity,
     selectNote,
     selectNotes,
@@ -666,6 +836,13 @@ export function useMidiEditor(
     transposeSelected,
     duplicateSelected,
     quantizeSelected,
+    splitNoteAt,
+    joinSelected,
+    copySelected,
+    cutSelected,
+    pasteClipboard,
+    humanizeSelected,
+    randomizeSelected,
     setTrackNotes,
     undo,
     redo,

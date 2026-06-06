@@ -270,6 +270,20 @@ export function MidiNoteEditor({
         editor.setActiveLane("velocity");
       } else if (e.key === "6" && !isCtrl) {
         editor.setActiveLane("cc");
+      } else if (isCtrl && e.key === "c") {
+        e.preventDefault();
+        editor.copySelected();
+      } else if (isCtrl && e.key === "x") {
+        e.preventDefault();
+        editor.cutSelected();
+      } else if (isCtrl && e.key === "v") {
+        e.preventDefault();
+        editor.pasteClipboard();
+      } else if (isCtrl && e.key === "j") {
+        e.preventDefault();
+        if (editor.selectedNotes.length >= 2) {
+          editor.joinSelected();
+        }
       }
     };
 
@@ -306,6 +320,14 @@ export function MidiNoteEditor({
       </span>
       <span>
         <kbd className="rounded bg-muted px-1">Ctrl+Z</kbd> Undo
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Ctrl+C</kbd>
+        <kbd className="rounded bg-muted px-1">Ctrl+V</kbd>
+        <kbd className="rounded bg-muted px-1">Ctrl+X</kbd> Copy / Paste / Cut
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Ctrl+J</kbd> Join
       </span>
     </>
   );
@@ -407,6 +429,7 @@ export function MidiNoteEditor({
               onAddNote={editor.addNote}
               onMoveNotes={editor.moveNotes}
               onResizeNote={editor.resizeNote}
+              onSplitNote={editor.splitNoteAt}
               loopRegion={editor.loopRegion}
               onSeek={handleSeek}
               onLoopChange={handleLoopChange}
@@ -442,6 +465,9 @@ export function MidiNoteEditor({
               onDelete={editor.deleteSelected}
               onTranspose={editor.transposeSelected}
               onSetVelocity={editor.setSelectedVelocity}
+              onHumanize={() => editor.humanizeSelected()}
+              onRandomize={() => editor.randomizeSelected()}
+              onJoin={() => editor.joinSelected()}
             />
             <MidiSmartPanel onInsertChord={handleInsertChord} />
           </div>

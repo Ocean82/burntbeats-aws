@@ -37,6 +37,7 @@ interface MidiEditorCanvasProps {
   onAddNote: (pitch: number, start: number) => void;
   onMoveNotes: (noteIds: string[], deltaPitch: number, deltaTime: number) => void;
   onResizeNote: (noteId: string, newDuration: number) => void;
+  onSplitNote?: (noteId: string, time: number) => void;
   playheadTime?: number | null;
   zoomLevel?: number;
   onZoomLevelChange?: (level: number) => void;
@@ -96,6 +97,7 @@ export function MidiEditorCanvas({
   onAddNote,
   onMoveNotes,
   onResizeNote,
+  onSplitNote,
   playheadTime = null,
   zoomLevel = 1,
   onZoomLevelChange,
@@ -297,6 +299,15 @@ export function MidiEditorCanvas({
       if (tool === "erase") {
         const hit = hitTestNote(x, y);
         if (hit) onDeleteNote(hit.noteRect.note.id);
+        return;
+      }
+
+      if (tool === "split") {
+        const hit = hitTestNote(x, y);
+        if (hit) {
+          const time = screenToTime(x);
+          onSplitNote?.(hit.noteRect.note.id, time);
+        }
         return;
       }
 

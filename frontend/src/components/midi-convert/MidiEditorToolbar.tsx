@@ -9,6 +9,7 @@ import {
   Redo2,
   RotateCcw,
   Save,
+  Scissors,
   Undo2,
   ZoomIn,
   ZoomOut,
@@ -57,6 +58,7 @@ const TOOLS: { id: EditorTool; icon: typeof MousePointer2 }[] = [
   { id: "select", icon: MousePointer2 },
   { id: "draw", icon: Pencil },
   { id: "erase", icon: Eraser },
+  { id: "split", icon: Scissors },
 ];
 
 const GRIDS: { value: SnapGrid; label: string }[] = [
@@ -76,6 +78,7 @@ const LANES: { value: ActiveLane; label: string }[] = [
   { value: "notes", label: "Notes" },
   { value: "velocity", label: "Vel" },
   { value: "cc", label: "CC" },
+  { value: "automation", label: "Auto" },
 ];
 
 type SecondaryToolbarProps = Omit<
