@@ -48,6 +48,9 @@ function MidiEditorSelectionInfoBody({
   onDelete,
   onTranspose,
   onSetVelocity,
+  onHumanize,
+  onRandomize,
+  onJoin,
 }: MidiEditorSelectionInfoProps) {
   const pitches = selectedNotes.map((n) => n.pitch);
   const minPitch = Math.min(...pitches);
