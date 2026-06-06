@@ -1,6 +1,3 @@
-/**
- * MidiNoteEditor — DAW-familiar MIDI clip editor (transport + piano roll + inspector).
- */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
 import { useMidiEditor } from "../../hooks/useMidiEditor";
@@ -15,7 +12,11 @@ import { MidiEditorShell } from "./MidiEditorShell";
 import { MidiTransportBar } from "./MidiTransportBar";
 import { MarkerStrip, createMarker, type SectionMarker } from "./MarkerStrip";
 import { MidiSmartPanel } from "./MidiSmartPanel";
-import { clampEditorZoom } from "./pianoRollTheme";
+import { MidiVelocityLane } from "./MidiVelocityLane";
+import { MidiCcLane } from "./MidiCcLane";
+import { MidiTrackList } from "./MidiTrackList";
+import { clampEditorZoom, BASE_PIXELS_PER_SECOND } from "./pianoRollTheme";
+import type { LoopRegion } from "./editorTypes";
 
 interface MidiNoteEditorProps {
   initialNotes: MidiNoteEvent[];
@@ -24,8 +25,6 @@ interface MidiNoteEditorProps {
   jobToken?: string | null;
   className?: string;
 }
-
-const BASE_PPS = 80;
 
 export function MidiNoteEditor({
   initialNotes,
@@ -53,20 +52,50 @@ export function MidiNoteEditor({
     return { minStart: min, duration: Math.max(max - min, 0.25) };
   }, [editor.notes]);
 
-  const pixelsPerSecond = BASE_PPS * clampEditorZoom(zoomLevel);
+  const pixelsPerSecond = BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
 
   const playheadTime = useMemo(() => {
-    if (!playback.isPlaying && playback.currentTime === 0) return null;
+    if (!playback.isPlaying && !playback.isPaused && playback.currentTime === 0) return null;
     return minStart + playback.currentTime;
-  }, [minStart, playback.isPlaying, playback.currentTime]);
+  }, [minStart, playback.isPlaying, playback.isPaused, playback.currentTime]);
 
   const handlePlay = useCallback(() => {
-    playback.play(editor.notes, { bpm: editor.bpm });
-  }, [playback, editor.notes, editor.bpm]);
+    const loop = editor.loopRegion.enabled ? editor.loopRegion : undefined;
+    playback.play(editor.notes, { bpm: editor.bpm, loopRegion: loop });
+  }, [playback, editor.notes, editor.bpm, editor.loopRegion]);
 
   const handleStop = useCallback(() => {
     playback.stop();
   }, [playback]);
+
+  const handlePause = useCallback(() => {
+    playback.pause();
+  }, [playback]);
+
+  const handleSeek = useCallback(
+    (time: number) => {
+      if (playback.isPlaying || playback.isPaused) {
+        playback.seek(time);
+      } else {
+        playback.seek(time);
+      }
+    },
+    [playback],
+  );
+
+  const handleToggleLoop = useCallback(() => {
+    editor.setLoopRegion({
+      ...editor.loopRegion,
+      enabled: !editor.loopRegion.enabled,
+    });
+  }, [editor]);
+
+  const handleLoopChange = useCallback(
+    (region: LoopRegion) => {
+      editor.setLoopRegion(region);
+    },
+    [editor],
+  );
 
   const handleExport = useCallback(() => {
     const blob = exportNotesToMidi(editor.notes, editor.bpm, "Edited");
@@ -139,6 +168,46 @@ export function MidiNoteEditor({
     [editor],
   );
 
+  const handleSetNoteVelocity = useCallback(
+    (noteId: string, velocity: number) => {
+      editor.setTrackNotes(editor.activeTrackId, [
+        ...editor.activeTrack.notes.map((n) =>
+          n.id === noteId ? { ...n, velocity } : n,
+        ),
+      ]);
+    },
+    [editor],
+  );
+
+  const handleAddCcPoint = useCallback(
+    (time: number, value: number) => {
+      editor.addCcPoint(editor.activeCcNumber, time, value);
+    },
+    [editor],
+  );
+
+  const handleUpdateCcPoint = useCallback(
+    (index: number, time: number, value: number) => {
+      editor.updateCcPoint(editor.activeCcNumber, index, time, value);
+    },
+    [editor],
+  );
+
+  const handleRemoveCcPoint = useCallback(
+    (index: number) => {
+      editor.removeCcPoint(editor.activeCcNumber, index);
+    },
+    [editor],
+  );
+
+  const activeCcLane = useMemo(
+    () => editor.getTrackCcLane(editor.activeCcNumber),
+    [editor],
+  );
+
+  const showVelocityLane = editor.activeLane === "velocity";
+  const showCcLane = editor.activeLane === "cc" && activeCcLane;
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -155,8 +224,10 @@ export function MidiNoteEditor({
 
       if (e.code === "Space") {
         e.preventDefault();
-        if (playback.isPlaying) {
-          handleStop();
+        if (playback.isPaused) {
+          handlePlay();
+        } else if (playback.isPlaying) {
+          handlePause();
         } else {
           handlePlay();
         }
@@ -193,22 +264,33 @@ export function MidiNoteEditor({
         editor.setTool("draw");
       } else if (e.key === "3") {
         editor.setTool("erase");
+      } else if (e.key === "4" && !isCtrl) {
+        editor.setActiveLane("notes");
+      } else if (e.key === "5" && !isCtrl) {
+        editor.setActiveLane("velocity");
+      } else if (e.key === "6" && !isCtrl) {
+        editor.setActiveLane("cc");
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editor, playback.isPlaying, handlePlay, handleStop]);
+  }, [editor, playback.isPlaying, playback.isPaused, handlePlay, handlePause]);
 
   const shortcuts = (
     <>
       <span>
-        <kbd className="rounded bg-muted px-1">Space</kbd> Play / Stop
+        <kbd className="rounded bg-muted px-1">Space</kbd> Play / Pause / Stop
       </span>
       <span>
         <kbd className="rounded bg-muted px-1">1</kbd>
         <kbd className="rounded bg-muted px-1">2</kbd>
         <kbd className="rounded bg-muted px-1">3</kbd> Tools
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">4</kbd>
+        <kbd className="rounded bg-muted px-1">5</kbd>
+        <kbd className="rounded bg-muted px-1">6</kbd> Notes / Vel / CC
       </span>
       <span>
         <kbd className="rounded bg-muted px-1">Del</kbd> Delete
@@ -229,17 +311,21 @@ export function MidiNoteEditor({
   );
 
   return (
-    <div ref={containerRef} className={className} tabIndex={-1}>
+    <div ref={containerRef} className={`midi-editor-root ${className}`} tabIndex={-1}>
       <MidiEditorShell
         transport={
           <MidiTransportBar
             isPlaying={playback.isPlaying}
+            isPaused={playback.isPaused}
             currentTime={playback.currentTime}
             duration={duration}
             bpm={editor.bpm}
+            loopEnabled={editor.loopRegion.enabled}
             isSupported={playback.isSupported}
             onPlay={handlePlay}
+            onPause={handlePause}
             onStop={handleStop}
+            onToggleLoop={handleToggleLoop}
           />
         }
         toolbar={
@@ -247,6 +333,7 @@ export function MidiNoteEditor({
             tool={editor.tool}
             snapGrid={editor.snapGrid}
             bpm={editor.bpm}
+            timeSignature={editor.timeSignature}
             drawVelocity={editor.drawVelocity}
             canUndo={editor.canUndo}
             canRedo={editor.canRedo}
@@ -254,11 +341,13 @@ export function MidiNoteEditor({
             hasSelection={editor.selectedIds.size > 0}
             zoomLevel={zoomLevel}
             metronomeEnabled={playback.metronomeEnabled}
+            activeLane={editor.activeLane}
             canSaveToJob={!!jobId}
             isSaving={isSaving}
             onToolChange={editor.setTool}
             onSnapGridChange={editor.setSnapGrid}
             onBpmChange={editor.setBpm}
+            onTimeSignatureChange={editor.setTimeSignature}
             onDrawVelocityChange={editor.setDrawVelocity}
             onUndo={editor.undo}
             onRedo={editor.redo}
@@ -269,7 +358,26 @@ export function MidiNoteEditor({
             onToggleMetronome={playback.toggleMetronome}
             onQuantizeSelection={editor.quantizeSelected}
             onDuplicateSelection={editor.duplicateSelected}
+            onActiveLaneChange={editor.setActiveLane}
             onSaveToJob={() => void handleSaveToJob()}
+          />
+        }
+        trackList={
+          <MidiTrackList
+            tracks={editor.tracks}
+            activeTrackId={editor.activeTrackId}
+            onSetActiveTrack={editor.setActiveTrack}
+            onAddTrack={editor.addEmptyTrack}
+            onRemoveTrack={editor.removeTrack}
+            onRenameTrack={editor.setTrackName}
+            onToggleMute={(trackId) => {
+              const track = editor.tracks.find((t) => t.id === trackId);
+              if (track) editor.setTrackMute(trackId, !track.muted);
+            }}
+            onToggleSolo={(trackId) => {
+              const track = editor.tracks.find((t) => t.id === trackId);
+              if (track) editor.setTrackSolo(trackId, !track.soloed);
+            }}
           />
         }
         pianoRoll={
@@ -299,7 +407,32 @@ export function MidiNoteEditor({
               onAddNote={editor.addNote}
               onMoveNotes={editor.moveNotes}
               onResizeNote={editor.resizeNote}
+              loopRegion={editor.loopRegion}
+              onSeek={handleSeek}
+              onLoopChange={handleLoopChange}
             />
+            {showVelocityLane && (
+              <MidiVelocityLane
+                notes={editor.notes}
+                selectedIds={editor.selectedIds}
+                pixelsPerSecond={pixelsPerSecond}
+                totalDuration={duration}
+                timelineWidth={800}
+                onSetNoteVelocity={handleSetNoteVelocity}
+                onSetSelectedVelocity={editor.setSelectedVelocity}
+              />
+            )}
+            {showCcLane && activeCcLane && (
+              <MidiCcLane
+                lane={activeCcLane}
+                pixelsPerSecond={pixelsPerSecond}
+                totalDuration={duration}
+                timelineWidth={800}
+                onAddPoint={handleAddCcPoint}
+                onUpdatePoint={handleUpdateCcPoint}
+                onRemovePoint={handleRemoveCcPoint}
+              />
+            )}
           </div>
         }
         inspector={

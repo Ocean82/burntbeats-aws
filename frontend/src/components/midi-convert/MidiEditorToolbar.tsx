@@ -1,7 +1,3 @@
-/**
- * MIDI editor tool row — tools, snap, undo, draw velocity, export.
- * Primary controls stay visible; secondary controls collapse into a menu below md.
- */
 import {
   Copy,
   Download,
@@ -18,8 +14,9 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
-import type { EditorTool, SnapGrid } from "../../hooks/useMidiEditor";
+import type { EditorTool, SnapGrid, TimeSignature, ActiveLane } from "./editorTypes";
 import { EDITOR_TOOLS } from "./pianoRollTheme";
+
 import { MidiPhysicalButton } from "./controls/MidiPhysicalButton";
 import { MidiPhysicalFader } from "./controls/MidiPhysicalFader";
 
@@ -27,6 +24,7 @@ interface MidiEditorToolbarProps {
   tool: EditorTool;
   snapGrid: SnapGrid;
   bpm: number;
+  timeSignature: TimeSignature;
   drawVelocity: number;
   canUndo: boolean;
   canRedo: boolean;
@@ -34,11 +32,13 @@ interface MidiEditorToolbarProps {
   hasSelection: boolean;
   zoomLevel: number;
   metronomeEnabled: boolean;
+  activeLane: ActiveLane;
   canSaveToJob: boolean;
   isSaving?: boolean;
   onToolChange: (tool: EditorTool) => void;
   onSnapGridChange: (grid: SnapGrid) => void;
   onBpmChange: (bpm: number) => void;
+  onTimeSignatureChange: (ts: TimeSignature) => void;
   onDrawVelocityChange: (vel: number) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -49,6 +49,7 @@ interface MidiEditorToolbarProps {
   onToggleMetronome: () => void;
   onQuantizeSelection: () => void;
   onDuplicateSelection: () => void;
+  onActiveLaneChange: (lane: ActiveLane) => void;
   onSaveToJob?: () => void;
 }
 
@@ -63,7 +64,18 @@ const GRIDS: { value: SnapGrid; label: string }[] = [
   { value: "1/8", label: "1/8" },
   { value: "1/16", label: "1/16" },
   { value: "1/32", label: "1/32" },
+  { value: "1/6", label: "1/6" },
+  { value: "1/12", label: "1/12" },
+  { value: "1T", label: "Triplet" },
+  { value: "dotted", label: "Dotted" },
+  { value: "shuffle", label: "Shuffle" },
   { value: "free", label: "Off" },
+];
+
+const LANES: { value: ActiveLane; label: string }[] = [
+  { value: "notes", label: "Notes" },
+  { value: "velocity", label: "Vel" },
+  { value: "cc", label: "CC" },
 ];
 
 type SecondaryToolbarProps = Omit<
@@ -74,15 +86,18 @@ type SecondaryToolbarProps = Omit<
 function SecondaryToolbarControls({
   snapGrid,
   bpm,
+  timeSignature,
   drawVelocity,
   isModified,
   hasSelection,
   zoomLevel,
   metronomeEnabled,
+  activeLane,
   canSaveToJob,
   isSaving = false,
   onSnapGridChange,
   onBpmChange,
+  onTimeSignatureChange,
   onDrawVelocityChange,
   onReset,
   onZoomIn,
@@ -90,6 +105,7 @@ function SecondaryToolbarControls({
   onToggleMetronome,
   onQuantizeSelection,
   onDuplicateSelection,
+  onActiveLaneChange,
   onSaveToJob,
   layout = "row",
 }: SecondaryToolbarProps & { layout?: "row" | "stack" }) {
@@ -143,6 +159,30 @@ function SecondaryToolbarControls({
         />
       </div>
 
+      <div className={cn("flex items-center gap-xs", stack && "w-full justify-between")}>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
+          Time
+        </span>
+        <select
+          value={`${timeSignature.beatsPerBar}/${timeSignature.beatUnit}`}
+          onChange={(e) => {
+            const [num, den] = e.target.value.split("/").map(Number);
+            if (num && den) onTimeSignatureChange({ beatsPerBar: num, beatUnit: den });
+          }}
+          className="midi-select"
+          aria-label="Time signature"
+        >
+          <option value="2/4">2/4</option>
+          <option value="3/4">3/4</option>
+          <option value="4/4">4/4</option>
+          <option value="5/4">5/4</option>
+          <option value="6/8">6/8</option>
+          <option value="7/8">7/8</option>
+          <option value="9/8">9/8</option>
+          <option value="12/8">12/8</option>
+        </select>
+      </div>
+
       <MidiPhysicalFader
         label="Draw"
         min={1}
@@ -194,6 +234,27 @@ function SecondaryToolbarControls({
       >
         <Copy className="h-3.5 w-3.5" />
       </MidiPhysicalButton>
+
+      {/* Lane toggle */}
+      <div className="ml-xs inline-flex items-center gap-0.5 rounded-md border border-border p-0.5">
+        {LANES.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onActiveLaneChange(value)}
+            className={cn(
+              "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider transition-colors",
+              activeLane === value
+                ? "bg-accent-midi/20 text-accent-midi-200"
+                : "text-muted-foreground hover:text-secondary-foreground",
+            )}
+            aria-pressed={activeLane === value}
+            aria-label={`Show ${label} lane`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {isModified && (
         <MidiPhysicalButton

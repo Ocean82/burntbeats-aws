@@ -1,7 +1,4 @@
-/**
- * MIDI editor transport — play/stop, time display (familiar DAW top row).
- */
-import { Play, Square } from "lucide-react";
+import { Play, Square, Pause, Repeat } from "lucide-react";
 import { MidiPhysicalButton } from "./controls/MidiPhysicalButton";
 
 function formatTransportTime(seconds: number): string {
@@ -17,34 +14,50 @@ function formatTransportTime(seconds: number): string {
 
 export interface MidiTransportBarProps {
   isPlaying: boolean;
+  isPaused: boolean;
   currentTime: number;
   duration: number;
   bpm: number;
+  loopEnabled: boolean;
   isSupported: boolean;
   onPlay: () => void;
+  onPause: () => void;
   onStop: () => void;
+  onToggleLoop: () => void;
 }
 
 export function MidiTransportBar({
   isPlaying,
+  isPaused,
   currentTime,
   duration,
   bpm,
+  loopEnabled,
   isSupported,
   onPlay,
+  onPause,
   onStop,
+  onToggleLoop,
 }: MidiTransportBarProps) {
   return (
     <div className="midi-transport-bar" role="group" aria-label="Transport">
       <MidiPhysicalButton
         variant="play"
-        onClick={onPlay}
-        disabled={!isSupported || isPlaying}
-        title="Play (Space)"
-        aria-label="Play"
+        onClick={isPaused ? onPlay : (isPlaying ? onPause : onPlay)}
+        disabled={!isSupported}
+        title={isPaused ? "Resume (Space)" : isPlaying ? "Pause" : "Play (Space)"}
+        aria-label={isPaused ? "Resume" : isPlaying ? "Pause" : "Play"}
       >
-        <Play className="h-4 w-4 fill-current" aria-hidden />
-        <span className="hidden sm:inline">Play</span>
+        {isPaused ? (
+          <Play className="h-4 w-4 fill-current" aria-hidden />
+        ) : isPlaying ? (
+          <Pause className="h-4 w-4 fill-current" aria-hidden />
+        ) : (
+          <Play className="h-4 w-4 fill-current" aria-hidden />
+        )}
+        <span className="hidden sm:inline">
+          {isPaused ? "Resume" : isPlaying ? "Pause" : "Play"}
+        </span>
       </MidiPhysicalButton>
 
       <MidiPhysicalButton
@@ -66,6 +79,18 @@ export function MidiTransportBar({
         <span className="opacity-45"> / </span>
         {formatTransportTime(duration)}
       </span>
+
+      <MidiPhysicalButton
+        variant="icon"
+        pressed={loopEnabled}
+        onClick={onToggleLoop}
+        disabled={!isSupported}
+        title={loopEnabled ? "Disable loop" : "Enable loop region"}
+        aria-label={loopEnabled ? "Disable loop" : "Enable loop"}
+        aria-pressed={loopEnabled}
+      >
+        <Repeat className="h-3.5 w-3.5" aria-hidden />
+      </MidiPhysicalButton>
 
       <span
         className="midi-transport-bpm rounded px-xs py-1 font-mono text-xs tabular-nums text-muted-foreground max-sm:min-w-10 max-sm:text-center"

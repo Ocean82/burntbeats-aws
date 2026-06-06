@@ -1,16 +1,9 @@
-/**
- * Shared piano roll visuals — warm studio aesthetic.
- * Dark grid with ember-tinted rows, warm gold notes, bright amber selection.
- * Designed to feel like hardware gear, not a generic DAW clone.
- */
-
 const BLACK_KEY_SEMITONES = new Set([1, 3, 6, 8, 10]);
 
 export function isBlackKeyPitch(pitch: number): boolean {
   return BLACK_KEY_SEMITONES.has(((pitch % 12) + 12) % 12);
 }
 
-/** Seconds per bar (4/4). */
 export function secondsPerBar(bpm: number): number {
   return (60 / bpm) * 4;
 }
@@ -18,7 +11,6 @@ export function secondsPerBar(bpm: number): number {
 export const EDITOR_ZOOM_MIN = 0.5;
 export const EDITOR_ZOOM_MAX = 2;
 
-/** Clamp editor timeline zoom (toolbar buttons and pinch). */
 export function clampEditorZoom(level: number): number {
   return Math.max(
     EDITOR_ZOOM_MIN,
@@ -31,7 +23,6 @@ export const PIANO_ROLL = {
   ruler: "#22211e",
   whiteKeyRow: "#2e2d28",
   blackKeyRow: "#22211e",
-  /** Mini keyboard in the left gutter */
   gutterWhiteKey: "#d4d0c8",
   gutterBlackKey: "#3f3d36",
   gutterBlackKeyWidthRatio: 0.62,
@@ -42,7 +33,6 @@ export const PIANO_ROLL = {
   rulerText: "rgba(255,245,220,0.5)",
   labelOnWhite: "rgba(30,25,15,0.6)",
   labelOnBlack: "rgba(255,245,220,0.45)",
-  /** Warm gold notes — feels like brass/analog hardware */
   noteFill(velocity: number): string {
     const t = 0.5 + (velocity / 127) * 0.4;
     return `rgba(205, 165, 60, ${t})`;
@@ -58,10 +48,41 @@ export const PIANO_ROLL = {
   lassoFill: "rgba(205, 165, 60, 0.12)",
   lassoStroke: "rgba(205, 165, 60, 0.65)",
   playhead: "rgba(240, 130, 50, 0.95)",
+
+  velocityLaneSurface: "#1e1d1a",
+  velocityBarFill(velocity: number): string {
+    const t = 0.25 + (velocity / 127) * 0.5;
+    return `rgba(205, 165, 60, ${t})`;
+  },
+  velocityBarSelectedFill: "rgba(245, 180, 60, 0.7)",
+  velocityBarStroke: "rgba(160, 120, 30, 0.4)",
+  velocityBarHover: "rgba(205, 165, 60, 0.5)",
+
+  ccLaneSurface: "#1a1c1e",
+  ccCurveStroke: "rgba(100, 180, 220, 0.8)",
+  ccCurveFill: "rgba(100, 180, 220, 0.12)",
+  ccPointFill: "rgba(100, 180, 220, 0.9)",
+  ccPointStroke: "rgba(100, 180, 220, 1)",
+  ccPointHover: "rgba(150, 210, 240, 1)",
+
+  loopRegionFill: "rgba(240, 130, 50, 0.08)",
+  loopRegionBorder: "rgba(240, 130, 50, 0.6)",
+  loopRegionHandle: "rgba(240, 130, 50, 0.8)",
+
+  trackStripBg: "#201e1a",
+  trackStripBorder: "rgba(255,245,220,0.1)",
+  trackActiveBg: "#2a2823",
 } as const;
 
-export const EDITOR_TOOLS = {
+export const EDITOR_TOOLS: Record<string, { label: string; shortcut: string; hint: string }> = {
   select: { label: "Select", shortcut: "1", hint: "Move and resize notes" },
   draw: { label: "Draw", shortcut: "2", hint: "Click to add notes" },
   erase: { label: "Erase", shortcut: "3", hint: "Click notes to delete" },
 } as const;
+
+export const VELOCITY_LANE_HEIGHT = 48;
+export const CC_LANE_HEIGHT = 48;
+export const LANE_LABEL_WIDTH = 48;
+
+/** Default pixels-per-second at zoom level 1 (used in MidiEditorCanvas and MidiNoteEditor). */
+export const BASE_PIXELS_PER_SECOND = 80;

@@ -1,27 +1,24 @@
-/**
- * MidiEditorCanvas — interactive SVG piano roll with click/drag editing.
- * Scrollable timeline (fixed px/sec) with live snap preview while dragging.
- */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { EditableNote, EditorTool, SnapGrid } from "../../hooks/useMidiEditor";
+import type { EditableNote, EditorTool, SnapGrid, LoopRegion } from "./editorTypes";
 import { midiToNoteName } from "../../utils/musicTheory";
-import { snapDuration, snapDeltaTime, snapToGrid } from "../../utils/midiEditorSnap";
+import { snapDuration, snapDeltaTime, snapToGrid, secondsPerBar } from "../../utils/midiEditorSnap";
 import { cn } from "../../utils/cn";
 import {
   clampEditorZoom,
   isBlackKeyPitch,
   PIANO_ROLL,
-  secondsPerBar,
+  BASE_PIXELS_PER_SECOND,
 } from "./pianoRollTheme";
 import { useEditorCanvasZoomGestures } from "./useEditorCanvasZoomGestures";
+import { MidiTimelineRuler } from "./MidiTimelineRuler";
+import { MidiLoopRegionOverlay } from "./MidiLoopRegion";
 
 const LEFT_MARGIN = 48;
-const RULER_HEIGHT = 22;
+const RULER_HEIGHT = 24;
 const CONTENT_TOP = RULER_HEIGHT + 2;
 const BOTTOM_MARGIN = 24;
 const MIN_HEIGHT = 300;
 const MAX_HEIGHT = 500;
-const BASE_PIXELS_PER_SECOND = 80;
 const NOTE_BORDER_RADIUS = 2;
 const RESIZE_HANDLE_WIDTH = 6;
 
@@ -40,12 +37,12 @@ interface MidiEditorCanvasProps {
   onAddNote: (pitch: number, start: number) => void;
   onMoveNotes: (noteIds: string[], deltaPitch: number, deltaTime: number) => void;
   onResizeNote: (noteId: string, newDuration: number) => void;
-  /** Absolute timeline seconds for playhead (null = hidden). */
   playheadTime?: number | null;
-  /** Timeline zoom multiplier (0.5–2). */
   zoomLevel?: number;
-  /** Pinch or ctrl+wheel on the timeline scroller. */
   onZoomLevelChange?: (level: number) => void;
+  loopRegion?: LoopRegion;
+  onSeek?: (time: number) => void;
+  onLoopChange?: (region: LoopRegion) => void;
 }
 
 interface NoteRect {
@@ -84,19 +81,13 @@ type DragState =
       currentY: number;
     };
 
-function formatTimeLabel(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return mins > 0 ? `${mins}:${secs.toString().padStart(2, "0")}` : `${secs}s`;
-}
-
 export function MidiEditorCanvas({
   notes,
   selectedIds,
   tool,
   snapGrid,
   bpm,
-  gridSizeSeconds,
+  gridSizeSeconds: _gridSizeSeconds,
   drawVelocity: _drawVelocity,
   onSelectNote,
   onSelectNotes,
@@ -108,6 +99,9 @@ export function MidiEditorCanvas({
   playheadTime = null,
   zoomLevel = 1,
   onZoomLevelChange,
+  loopRegion,
+  onSeek,
+  onLoopChange,
 }: MidiEditorCanvasProps) {
   const pixelsPerSecond =
     BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
@@ -205,24 +199,13 @@ export function MidiEditorCanvas({
   const gridLines = useMemo(() => {
     const barSec = secondsPerBar(bpm);
     const lines: { x: number; isBar: boolean }[] = [];
-    const step = gridSizeSeconds > 0 ? gridSizeSeconds : barSec;
+    const step = _gridSizeSeconds > 0 ? _gridSizeSeconds : barSec;
     for (let t = 0; t <= totalDuration + step * 0.01; t += step) {
       const isBar = Math.abs(t % barSec) < step * 0.25 || t === 0;
       lines.push({ x: timeToScreen(t), isBar });
     }
     return lines;
-  }, [gridSizeSeconds, totalDuration, timeToScreen, bpm]);
-
-  const timeLabels = useMemo(() => {
-    const visibleSeconds = timelineWidth / pixelsPerSecond;
-    const step =
-      visibleSeconds > 120 ? 30 : visibleSeconds > 60 ? 15 : visibleSeconds > 20 ? 5 : visibleSeconds > 8 ? 2 : 1;
-    const labels: { x: number; label: string }[] = [];
-    for (let t = 0; t <= totalDuration; t += step) {
-      labels.push({ x: timeToScreen(t), label: formatTimeLabel(t) });
-    }
-    return labels;
-  }, [timelineWidth, totalDuration, timeToScreen, pixelsPerSecond]);
+  }, [_gridSizeSeconds, totalDuration, timeToScreen, bpm]);
 
   const hitTestNote = useCallback(
     (x: number, y: number): { noteRect: NoteRect; isResizeHandle: boolean } | null => {
@@ -398,14 +381,13 @@ export function MidiEditorCanvas({
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<SVGSVGElement>) => {
-      if (!dragState) return;
       const svg = e.currentTarget;
       const rect = svg.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       setDragState((s) => (s ? { ...s, currentX: x, currentY: y } : null));
     },
-    [dragState],
+    [],
   );
 
   const handlePointerUp = useCallback(
@@ -468,7 +450,6 @@ export function MidiEditorCanvas({
     opts: { isSelected: boolean; isPreview?: boolean; isGhost?: boolean },
   ) => {
     const { isSelected, isPreview = false, isGhost = false } = opts;
-    const vel = r.note.velocity;
 
     let fill: string;
     let stroke: string;
@@ -476,10 +457,10 @@ export function MidiEditorCanvas({
       fill = PIANO_ROLL.notePreviewFill;
       stroke = PIANO_ROLL.notePreviewStroke;
     } else if (isSelected) {
-      fill = PIANO_ROLL.noteSelectedFill(vel);
+      fill = PIANO_ROLL.noteSelectedFill(r.note.velocity);
       stroke = PIANO_ROLL.noteSelectedStroke;
     } else {
-      fill = PIANO_ROLL.noteFill(vel);
+      fill = PIANO_ROLL.noteFill(r.note.velocity);
       stroke = PIANO_ROLL.noteStroke;
     }
 
@@ -517,6 +498,17 @@ export function MidiEditorCanvas({
       className="w-full overflow-hidden rounded-lg border border-border"
       style={{ backgroundColor: PIANO_ROLL.surface }}
     >
+      {/* Timeline ruler with seek and loop */}
+      <MidiTimelineRuler
+        totalDuration={totalDuration}
+        pixelsPerSecond={pixelsPerSecond}
+        timelineWidth={timelineWidth}
+        loopRegion={loopRegion ?? { enabled: false, start: 0, end: 4 }}
+        onSeek={(time) => onSeek?.(time)}
+        onLoopChange={(region) => onLoopChange?.(region)}
+        onZoomLevelChange={onZoomLevelChange}
+      />
+
       <div className="flex">
         {/* Piano keyboard gutter (fixed) */}
         <svg
@@ -584,22 +576,6 @@ export function MidiEditorCanvas({
             role="application"
             aria-label={`MIDI note editor with ${notes.length} notes${isScrollable ? ", scroll horizontally for full timeline" : ""}`}
           >
-            {/* Time ruler (top — standard DAW placement) */}
-            <rect x={0} y={0} width={timelineWidth} height={RULER_HEIGHT} fill={PIANO_ROLL.ruler} />
-            {timeLabels.map((tl, i) => (
-              <text
-                key={`tl-${i}`}
-                x={tl.x}
-                y={15}
-                fontSize={9}
-                fill={PIANO_ROLL.rulerText}
-                textAnchor="middle"
-                fontFamily="monospace"
-              >
-                {tl.label}
-              </text>
-            ))}
-
             {/* Row stripes (black / white keys) */}
             {pitchRows.map((row) => (
               <rect
@@ -646,6 +622,17 @@ export function MidiEditorCanvas({
                   strokeWidth={0.5}
                 />
               ),
+            )}
+
+            {/* Loop region overlay */}
+            {loopRegion && (
+              <MidiLoopRegionOverlay
+                loopRegion={loopRegion}
+                pixelsPerSecond={pixelsPerSecond}
+                contentTop={CONTENT_TOP}
+                contentHeight={height - CONTENT_TOP - BOTTOM_MARGIN}
+                timelineWidth={timelineWidth}
+              />
             )}
 
             {noteRects.map((r) => {
