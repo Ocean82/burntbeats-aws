@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { MixerState, StemDefinition, TrimState } from "../../types";
 import type { StemEditorState } from "../../stem-editor-state";
 import { cn } from "../../utils/cn";
@@ -13,6 +13,14 @@ const NO_SEEK_SELECTOR =
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.max(minimum, Math.min(maximum, value));
+}
+
+function formatTimecode(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const ms = Math.floor((seconds % 1) * 100);
+  return `${mins}:${secs.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
 }
 
 function downsample(data: number[], budget: number): number[] {
@@ -96,6 +104,10 @@ export function WaveformLane({
   const visibleStartRef = useRef(0);
   const visibleRangeRef = useRef(1);
   const activePointerIdRef = useRef<number | null>(null);
+  // Which trim handle is actively being dragged (drives the live timecode bubble + expanded grip).
+  const [activeHandle, setActiveHandle] = useState<"start" | "end" | null>(null);
+  // Which trim handle is hovered (drives the hover-expand affordance on pointer devices).
+  const [hoveredHandle, setHoveredHandle] = useState<"start" | "end" | null>(null);
 
   // eslint-disable-next-line react-hooks/refs -- sync ref with latest prop for stable callbacks
   trimRef.current = trim;
@@ -150,7 +162,9 @@ export function WaveformLane({
     activePointerIdRef.current = event.pointerId;
     laneRef.current?.setPointerCapture?.(event.pointerId);
 
-    if (mode === "seek") {
+    if (mode === "start" || mode === "end") {
+      setActiveHandle(mode);
+    } else if (mode === "seek") {
       didDragRef.current = true;
       const rect = laneRef.current?.getBoundingClientRect();
       if (rect && rect.width > 0) {
@@ -195,6 +209,7 @@ export function WaveformLane({
       activePointerIdRef.current = null;
       const mode = draggingRef.current;
       draggingRef.current = null;
+      setActiveHandle(null);
       if (mode === "seek") {
         onSeekRef.current(lastSeekPctRef.current, { phase: "end" });
       }
@@ -238,20 +253,22 @@ export function WaveformLane({
   useEffect(() => {
     const canvas = waveformCanvasRef.current;
     if (!canvas) return;
-    const alpha = isMuted ? 0.3 : isActive ? 0.9 : 0.5;
+    const alpha = isMuted ? 0.3 : isActive ? 0.92 : 0.5;
     // Static waveform layer only; avoid repainting per animation frame.
     drawWaveformBars({
       canvas,
       values: slice,
       color: stem.glow,
-      minimumBarHeightPx: 8,
+      minimumBarHeightPx: 6,
       alphaEven: alpha,
-      alphaOdd: alpha,
-      gapPx: 1,
-      heightScale: 0.9,
-      playedFraction: -1,
+      alphaOdd: isMuted ? 0.3 : isActive ? 0.62 : 0.34,
+      gapPx: 1.5,
+      heightScale: 0.94,
+      centerGapPx: 2,
+      // Brighten the region to the left of the playhead so position is scannable at a glance.
+      playedFraction: playheadFraction != null ? clamp(playheadFraction, 0, 1) : -1,
     });
-  }, [slice, isMuted, isActive, stem.glow]);
+  }, [slice, isMuted, isActive, stem.glow, playheadFraction]);
 
   useEffect(() => {
     const canvas = overlayCanvasRef.current;
@@ -417,8 +434,9 @@ export function WaveformLane({
         className={cn(
           "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           audioReady ? "cursor-crosshair" : "cursor-default",
-          isActive ? "border-border" : "border-border",
+          isActive && "waveform-lane-surface--active",
         )}
+        data-active={isActive ? "true" : "false"}
         onPointerDown={onPointerDown}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -440,7 +458,10 @@ export function WaveformLane({
       >
       <canvas
         ref={waveformCanvasRef}
-        className="absolute inset-0 h-full w-full px-0.5"
+        className={cn(
+          "absolute inset-0 h-full w-full px-0.5 transition-opacity duration-[var(--motion-fast)]",
+          isLoading && "opacity-50",
+        )}
         aria-hidden="true"
       />
       <canvas
@@ -449,14 +470,48 @@ export function WaveformLane({
         aria-hidden="true"
       />
 
-      {/* Loading shimmer overlay */}
+      {/* Active-stem accent rail down the left edge of the lane */}
+      {isActive && (
+        <span className="waveform-lane-active-rail pointer-events-none absolute inset-y-0 left-0 z-10" aria-hidden />
+      )}
+
+      {/* Loading skeleton: let the shaped fake waveform show through behind a shimmer sweep */}
       {isLoading && (
-        <div className="pointer-events-none absolute inset-0 animate-pulse rounded-lg bg-muted" />
+        <div className="waveform-lane-skeleton pointer-events-none absolute inset-0 rounded-lg" aria-hidden>
+          <div className="waveform-lane-skeleton-sweep absolute inset-0" />
+        </div>
       )}
 
       <div className="waveform-lane-trim-window pointer-events-none absolute inset-y-0" />
-      <div className="waveform-lane-handle-start absolute inset-y-0" />
-      <div className="waveform-lane-handle-end absolute inset-y-0" />
+      <div
+        className="waveform-lane-handle waveform-lane-handle-start absolute inset-y-0"
+        data-state={activeHandle === "start" ? "active" : hoveredHandle === "start" ? "hover" : "idle"}
+        onPointerEnter={() => audioReady && setHoveredHandle("start")}
+        onPointerLeave={() => setHoveredHandle((h) => (h === "start" ? null : h))}
+      >
+        <span className="waveform-lane-handle-grip" aria-hidden />
+      </div>
+      <div
+        className="waveform-lane-handle waveform-lane-handle-end absolute inset-y-0"
+        data-state={activeHandle === "end" ? "active" : hoveredHandle === "end" ? "hover" : "idle"}
+        onPointerEnter={() => audioReady && setHoveredHandle("end")}
+        onPointerLeave={() => setHoveredHandle((h) => (h === "end" ? null : h))}
+      >
+        <span className="waveform-lane-handle-grip" aria-hidden />
+      </div>
+
+      {/* Live timecode bubble shown while a trim handle is being dragged */}
+      {activeHandle && duration > 0 && (
+        <div
+          className="waveform-lane-trim-tooltip pointer-events-none absolute z-20 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-0.5 font-mono text-meta font-semibold tabular-nums"
+          style={{
+            left: `${clamp(activeHandle === "start" ? trimStartVisible : trimEndVisible, 4, 96)}%`,
+          }}
+          aria-hidden
+        >
+          {formatTimecode(duration * ((activeHandle === "start" ? trim.start : trim.end) / 100))}
+        </div>
+      )}
 
       {/* Fade-in gradient overlay */}
       {fadeIn > 0 && duration > 0 && (() => {
