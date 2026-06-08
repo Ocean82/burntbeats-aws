@@ -18,7 +18,10 @@ const STEM_ROWS = [
 
 export function LandingProductShowcase() {
   return (
-    <div className="glass-panel mirror-sheen relative mx-auto w-full max-w-4xl overflow-hidden rounded-4xl p-xs text-left sm:p-sm lg:p-md">
+    <section
+      aria-label="Product workspace preview"
+      className="glass-panel mirror-sheen relative mx-auto w-full max-w-4xl overflow-hidden rounded-4xl p-xs text-left sm:p-sm lg:p-md"
+    >
       <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-b from-white/10 via-white/0 to-transparent" />
 
       <div className="relative rounded-[1.4rem] border border-border/80 bg-background/40 p-sm shadow-elevation-lg sm:p-md">
@@ -217,6 +220,6 @@ export function LandingProductShowcase() {
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

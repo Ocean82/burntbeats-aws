@@ -20,7 +20,7 @@
       "purpose": "any"
     },
     {
-      "src": "/logo-emblem.png",
+      "src": "/logo-emblem-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

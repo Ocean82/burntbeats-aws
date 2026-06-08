@@ -33,9 +33,23 @@
     <!-- Fonts (preconnect + non-blocking load) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" />
+    </noscript>
   </head>
   <body>
+    <noscript>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#050302;color:#f5f0eb;font-family:Manrope,system-ui,sans-serif;padding:2rem;text-align:center;">
+        <h1 style="font-size:1.5rem;margin-bottom:1rem;">Burnt Beats requires JavaScript</h1>
+        <p style="max-width:36ch;line-height:1.6;opacity:0.8;">Enable JavaScript in your browser to use the stem splitter and mixing workstation.</p>
+      </div>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

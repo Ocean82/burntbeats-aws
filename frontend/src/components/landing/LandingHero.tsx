@@ -89,7 +89,6 @@ export function LandingHero() {
       <motion.div
         variants={heroItem}
         className="mt-md w-full"
-        aria-hidden="true"
       >
         <LandingProductShowcase />
       </motion.div>

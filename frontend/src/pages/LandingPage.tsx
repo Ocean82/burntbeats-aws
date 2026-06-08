@@ -39,6 +39,13 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-(--bg) text-foreground">
+      <a
+        href="#landing-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-lg focus:left-lg focus:z-tooltip focus:rounded-full focus:border focus:border-primary-400/30 focus:bg-primary-500/20 focus:px-md focus:py-xs focus:text-sm focus:font-medium focus:text-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:ring-offset-2 focus:ring-offset-background"
+      >
+        Skip to main content
+      </a>
+
       <LandingBackground />
 
       <div className="relative mx-auto max-w-5xl px-md sm:px-lg lg:px-xl">
@@ -76,7 +83,7 @@ export function LandingPage() {
           </nav>
         </header>
 
-        <main>
+        <main id="landing-main">
           <LandingHero />
           <LandingDifferentiatorsSection />
           <LandingPricingSection
