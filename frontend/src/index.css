@@ -841,6 +841,8 @@
     opacity: 0.9;
     border-radius: 4px 0 0 4px;
     pointer-events: none;
+    transition: width var(--motion-fast, 140ms) ease, left var(--motion-fast, 140ms) ease,
+      box-shadow var(--motion-fast, 140ms) ease, opacity var(--motion-fast, 140ms) ease;
   }
 
   .waveform-lane-handle-end {
@@ -860,6 +862,63 @@
     opacity: 0.9;
     border-radius: 0 4px 4px 0;
     pointer-events: none;
+    transition: width var(--motion-fast, 140ms) ease, right var(--motion-fast, 140ms) ease,
+      box-shadow var(--motion-fast, 140ms) ease, opacity var(--motion-fast, 140ms) ease;
+  }
+
+  /* Hover/active affordances for trim handles: widen the bar and add a glow. */
+  .waveform-lane-handle[data-state='hover']::after,
+  .waveform-lane-handle[data-state='active']::after {
+    width: 9px;
+    opacity: 1;
+    box-shadow: 0 0 10px var(--stem-color-soft, rgba(255, 255, 255, 0.45));
+  }
+  .waveform-lane-handle-start[data-state='hover']::after,
+  .waveform-lane-handle-start[data-state='active']::after {
+    left: 3px;
+  }
+  .waveform-lane-handle-end[data-state='hover']::after,
+  .waveform-lane-handle-end[data-state='active']::after {
+    right: 3px;
+  }
+
+  /* Vertical grip dots, centered on the handle bar; revealed on hover/active. */
+  .waveform-lane-handle-grip {
+    position: absolute;
+    top: 50%;
+    width: 2px;
+    height: 18px;
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background-image: radial-gradient(
+      circle,
+      rgba(0, 0, 0, 0.55) 0 1px,
+      transparent 1.5px
+    );
+    background-size: 2px 5px;
+    background-repeat: repeat-y;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-fast, 140ms) ease;
+  }
+  .waveform-lane-handle-start .waveform-lane-handle-grip {
+    left: 7px;
+  }
+  .waveform-lane-handle-end .waveform-lane-handle-grip {
+    right: 7px;
+  }
+  .waveform-lane-handle[data-state='hover'] .waveform-lane-handle-grip,
+  .waveform-lane-handle[data-state='active'] .waveform-lane-handle-grip {
+    opacity: 0.9;
+  }
+
+  /* Live timecode bubble shown while dragging a trim handle. */
+  .waveform-lane-trim-tooltip {
+    top: -6px;
+    color: #fff;
+    background: color-mix(in srgb, var(--stem-color) 32%, rgba(10, 10, 12, 0.92));
+    border: 1px solid color-mix(in srgb, var(--stem-color) 55%, transparent);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px var(--stem-color-soft, transparent);
   }
 
   .waveform-lane-label {
@@ -1455,7 +1514,7 @@
     }
   }
 
-  /* ── Burning surface ────────────────────────────────────────────────────────
+  /* ── Burning surface ────────────────────────────────────────────────���───────
      Charred/smoldering texture with glowing cracks. Apply to fire-side panels
      for an industrial forge feel.                                              */
   .burning-surface {
