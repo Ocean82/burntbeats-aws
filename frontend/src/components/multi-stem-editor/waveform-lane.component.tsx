@@ -434,8 +434,9 @@ export function WaveformLane({
         className={cn(
           "waveform-lane-surface relative w-full select-none overflow-hidden rounded-lg border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           audioReady ? "cursor-crosshair" : "cursor-default",
-          isActive ? "border-border" : "border-border",
+          isActive && "waveform-lane-surface--active",
         )}
+        data-active={isActive ? "true" : "false"}
         onPointerDown={onPointerDown}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -457,7 +458,10 @@ export function WaveformLane({
       >
       <canvas
         ref={waveformCanvasRef}
-        className="absolute inset-0 h-full w-full px-0.5"
+        className={cn(
+          "absolute inset-0 h-full w-full px-0.5 transition-opacity duration-[var(--motion-fast)]",
+          isLoading && "opacity-50",
+        )}
         aria-hidden="true"
       />
       <canvas
@@ -466,9 +470,16 @@ export function WaveformLane({
         aria-hidden="true"
       />
 
-      {/* Loading shimmer overlay */}
+      {/* Active-stem accent rail down the left edge of the lane */}
+      {isActive && (
+        <span className="waveform-lane-active-rail pointer-events-none absolute inset-y-0 left-0 z-10" aria-hidden />
+      )}
+
+      {/* Loading skeleton: let the shaped fake waveform show through behind a shimmer sweep */}
       {isLoading && (
-        <div className="pointer-events-none absolute inset-0 animate-pulse rounded-lg bg-muted" />
+        <div className="waveform-lane-skeleton pointer-events-none absolute inset-0 rounded-lg" aria-hidden>
+          <div className="waveform-lane-skeleton-sweep absolute inset-0" />
+        </div>
       )}
 
       <div className="waveform-lane-trim-window pointer-events-none absolute inset-y-0" />

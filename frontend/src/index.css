@@ -814,6 +814,52 @@
   .waveform-lane-surface {
     height: 72px;
     background: color-mix(in srgb, var(--stem-color) 3.1%, transparent);
+    border-color: var(--border);
+  }
+
+  /* Active stem: tinted surface, accent border + outer glow */
+  .waveform-lane-surface--active {
+    background: color-mix(in srgb, var(--stem-color) 8%, transparent);
+    border-color: color-mix(in srgb, var(--stem-color) 70%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--stem-color) 45%, transparent),
+      0 0 18px color-mix(in srgb, var(--stem-color) 28%, transparent);
+  }
+
+  /* Accent rail down the left edge of the active lane */
+  .waveform-lane-active-rail {
+    width: 3px;
+    border-radius: 8px 0 0 8px;
+    background: var(--stem-color);
+    box-shadow: 0 0 10px var(--stem-color-soft, var(--stem-color));
+  }
+
+  /* Loading skeleton: shimmer sweep over the dimmed shaped waveform */
+  .waveform-lane-skeleton {
+    background: color-mix(in srgb, var(--stem-color) 5%, transparent);
+    overflow: hidden;
+  }
+  .waveform-lane-skeleton-sweep {
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in srgb, var(--stem-color) 22%, transparent) 50%,
+      transparent 80%
+    );
+    transform: translateX(-100%);
+    animation: waveform-skeleton-sweep 1.4s ease-in-out infinite;
+  }
+  @keyframes waveform-skeleton-sweep {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .waveform-lane-skeleton-sweep {
+      animation: none;
+      transform: none;
+      opacity: 0.5;
+    }
   }
 
   .waveform-lane-trim-window {
