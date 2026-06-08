@@ -50,12 +50,15 @@ export function MidiConvertProgress({
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef<number>(0);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const prevProgressRef = useRef(progress);
 
-  // Track elapsed time
+  const isActive = isConverting || isUploading;
+
+  // Track elapsed time — only use interval callback for setState
   useEffect(() => {
-    if (!isConverting && !isUploading) {
-      setElapsed(0);
+    if (!isActive) {
       startTimeRef.current = 0;
+      // Reset elapsed on next render via the early return below
       return;
     }
     if (startTimeRef.current === 0) {
@@ -65,14 +68,17 @@ export function MidiConvertProgress({
       setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
     }, 1000);
     return () => clearInterval(interval);
-  }, [isConverting, isUploading]);
+  }, [isActive]);
 
-  // Reset cancel confirmation when progress changes
-  useEffect(() => {
-    setConfirmCancel(false);
-  }, [progress]);
+  // Reset confirm cancel when progress changes (derived, not effect)
+  if (prevProgressRef.current !== progress) {
+    prevProgressRef.current = progress;
+    if (confirmCancel) {
+      setConfirmCancel(false);
+    }
+  }
 
-  if (!isConverting && !isUploading) return null;
+  if (!isActive) return null;
 
   const barPercent = isUploading ? uploadProgress : progress;
   const activePhase = getActivePhase(barPercent, isUploading);
@@ -93,19 +99,19 @@ export function MidiConvertProgress({
       <div className="flex items-center gap-xs flex-wrap">
         {PHASES.map((phase) => {
           const isDone = barPercent >= phase.end;
-          const isActive = phase.id === activePhase.id;
+          const isPhaseActive = phase.id === activePhase.id;
           return (
             <span
               key={phase.id}
               className={cn(
                 "inline-flex items-center gap-1 rounded-md px-xs py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
                 isDone && "text-success bg-success-muted/30",
-                isActive && !isDone && "text-accent-midi-200 bg-accent-midi-950/40",
-                !isDone && !isActive && "text-muted-foreground/50",
+                isPhaseActive && !isDone && "text-accent-midi-200 bg-accent-midi-950/40",
+                !isDone && !isPhaseActive && "text-muted-foreground/50",
               )}
             >
               {isDone && <Check className="h-2.5 w-2.5" aria-hidden />}
-              {isActive && !isDone && (
+              {isPhaseActive && !isDone && (
                 <Loader2 className="h-2.5 w-2.5 animate-spin" aria-hidden />
               )}
               {phase.label}

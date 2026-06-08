@@ -59,14 +59,6 @@ export function MidiKnobControl({
   const normalize = (v: number) => (v - min) / (max - min);
   const angle = MIN_ANGLE + normalize(value) * (MAX_ANGLE - MIN_ANGLE);
 
-  const clamp = (v: number) => Math.max(min, Math.min(max, v));
-  const snap = (v: number) => {
-    const snapped = Math.round(v / step) * step;
-    // Fix floating point
-    const decimals = step < 1 ? String(step).split(".")[1]?.length ?? 2 : 0;
-    return parseFloat(snapped.toFixed(decimals));
-  };
-
   const displayValue = formatValue
     ? formatValue(value)
     : `${value.toFixed(step < 0.1 ? 2 : step < 1 ? 1 : 0)}`;
@@ -93,9 +85,12 @@ export function MidiKnobControl({
       if (!dragging.current) return;
       const dy = startYRef.current - e.clientY;
       const range = max - min;
-      // Sensitivity: 200px drag = full range
       const delta = (dy / 200) * range;
-      onChange(clamp(snap(startValRef.current + delta)));
+      const raw = startValRef.current + delta;
+      const clamped = Math.max(min, Math.min(max, raw));
+      const decimals = step < 1 ? (String(step).split(".")[1]?.length ?? 2) : 0;
+      const snapped = parseFloat((Math.round(clamped / step) * step).toFixed(decimals));
+      onChange(snapped);
     };
     const onUp = () => {
       dragging.current = false;
@@ -106,7 +101,6 @@ export function MidiKnobControl({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [min, max, step, onChange]);
 
   // ── Scroll interaction ──
@@ -116,7 +110,10 @@ export function MidiKnobControl({
       e.preventDefault();
       const dir = e.deltaY < 0 ? 1 : -1;
       const multiplier = e.shiftKey ? 10 : 1;
-      onChange(clamp(snap(value + dir * step * multiplier)));
+      const raw = value + dir * step * multiplier;
+      const clamped = Math.max(min, Math.min(max, raw));
+      const decimals = step < 1 ? (String(step).split(".")[1]?.length ?? 2) : 0;
+      onChange(parseFloat((Math.round(clamped / step) * step).toFixed(decimals)));
     },
     [disabled, value, min, max, step, onChange],
   );
@@ -126,12 +123,17 @@ export function MidiKnobControl({
     (e: React.KeyboardEvent) => {
       if (disabled) return;
       const multiplier = e.shiftKey ? 10 : 1;
+      const decimals = step < 1 ? (String(step).split(".")[1]?.length ?? 2) : 0;
+      const clampAndSnap = (v: number) => {
+        const clamped = Math.max(min, Math.min(max, v));
+        return parseFloat((Math.round(clamped / step) * step).toFixed(decimals));
+      };
       if (e.key === "ArrowUp" || e.key === "ArrowRight") {
         e.preventDefault();
-        onChange(clamp(snap(value + step * multiplier)));
+        onChange(clampAndSnap(value + step * multiplier));
       } else if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
         e.preventDefault();
-        onChange(clamp(snap(value - step * multiplier)));
+        onChange(clampAndSnap(value - step * multiplier));
       } else if (e.key === "Home") {
         e.preventDefault();
         onChange(min);

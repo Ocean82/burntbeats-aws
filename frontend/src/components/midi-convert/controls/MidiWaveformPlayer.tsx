@@ -48,18 +48,15 @@ function renderWaveform(
   const step = Math.ceil(data.length / W);
   const mid = H / 2;
 
-  // Background
   ctx.fillStyle = BG_COLOR;
   ctx.fillRect(0, 0, W, H);
 
-  // Progress fill
   if (dur > 0) {
     const progressX = (time / dur) * W;
     ctx.fillStyle = PROGRESS_TINT;
     ctx.fillRect(0, 0, progressX, H);
   }
 
-  // Center line
   ctx.strokeStyle = "rgba(255, 245, 220, 0.06)";
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -67,7 +64,6 @@ function renderWaveform(
   ctx.lineTo(W, mid);
   ctx.stroke();
 
-  // Waveform
   ctx.strokeStyle = WAVEFORM_COLOR;
   ctx.lineWidth = 1.5;
   ctx.shadowColor = WAVEFORM_GLOW;
@@ -91,7 +87,6 @@ function renderWaveform(
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Playhead
   if (dur > 0 && time > 0) {
     const phX = (time / dur) * W;
     ctx.strokeStyle = PLAYHEAD_COLOR;
@@ -106,24 +101,32 @@ function renderWaveform(
   }
 }
 
-export function MidiWaveformPlayer({
+/**
+ * Internal sub-component that mounts only when src is provided.
+ * This avoids all reset-state-on-null issues and keeps effects clean.
+ */
+function MidiWaveformPlayerInner({
   src,
   label,
   className,
-  disabled = false,
-}: MidiWaveformPlayerProps) {
+  disabled,
+}: {
+  src: string;
+  label?: string;
+  className?: string;
+  disabled: boolean;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const rafRef = useRef<number>(0);
   const waveformDataRef = useRef<Float32Array | null>(null);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [error, setError] = useState<string | null>(null);
 
-  /** Draw helper that reads from refs — stable identity, no deps needed. */
   const draw = useCallback((time: number, dur: number) => {
     const canvas = canvasRef.current;
     const data = waveformDataRef.current;
@@ -131,22 +134,13 @@ export function MidiWaveformPlayer({
     renderWaveform(canvas, data, time, dur);
   }, []);
 
-  // Decode audio and extract waveform peaks
+  // Load audio and decode waveform
   useEffect(() => {
-    if (!src) {
-      waveformDataRef.current = null;
-      setDuration(0);
-      setCurrentTime(0);
-      return;
-    }
-
     let cancelled = false;
-    setIsLoading(true);
-    setError(null);
+    const controller = new AbortController();
 
-    const loadAudio = async () => {
+    const load = async () => {
       try {
-        // Create audio element for playback
         const audio = new Audio();
         audio.crossOrigin = "anonymous";
         audio.preload = "metadata";
@@ -157,12 +151,10 @@ export function MidiWaveformPlayer({
           audio.onloadedmetadata = () => resolve();
           audio.onerror = () => reject(new Error("Failed to load audio"));
         });
-
         if (cancelled) return;
         setDuration(audio.duration);
 
-        // Decode for waveform visualization
-        const response = await fetch(src);
+        const response = await fetch(src, { signal: controller.signal });
         if (cancelled) return;
         const arrayBuffer = await response.arrayBuffer();
         if (cancelled) return;
@@ -170,23 +162,24 @@ export function MidiWaveformPlayer({
         const audioCtx = new AudioContext();
         const buffer = await audioCtx.decodeAudioData(arrayBuffer);
         await audioCtx.close();
-
         if (cancelled) return;
+
         waveformDataRef.current = buffer.getChannelData(0);
-        setIsLoading(false);
+        setStatus("ready");
         draw(0, audio.duration);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Load failed");
-          setIsLoading(false);
+          setErrorMsg(e instanceof Error ? e.message : "Load failed");
+          setStatus("error");
         }
       }
     };
 
-    void loadAudio();
+    void load();
 
     return () => {
       cancelled = true;
+      controller.abort();
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = "";
@@ -212,7 +205,7 @@ export function MidiWaveformPlayer({
     return () => cancelAnimationFrame(rafRef.current);
   }, [isPlaying, draw]);
 
-  // Redraw on time change when not playing (seek)
+  // Redraw on seek (when not playing)
   useEffect(() => {
     if (!isPlaying && duration > 0) {
       draw(currentTime, duration);
@@ -223,7 +216,6 @@ export function MidiWaveformPlayer({
   const togglePlayback = useCallback(() => {
     const audio = audioRef.current;
     if (!audio || disabled) return;
-
     if (isPlaying) {
       audio.pause();
       setIsPlaying(false);
@@ -237,7 +229,6 @@ export function MidiWaveformPlayer({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
     const onEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
@@ -253,7 +244,6 @@ export function MidiWaveformPlayer({
       const audio = audioRef.current;
       const canvas = canvasRef.current;
       if (!audio || !canvas || disabled || duration <= 0) return;
-
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const ratio = x / rect.width;
@@ -265,28 +255,24 @@ export function MidiWaveformPlayer({
     [disabled, duration, draw],
   );
 
-  if (!src) return null;
-
   return (
     <div className={cn("midi-waveform-player flex flex-col gap-xs", className)}>
-      {label && (
-        <span className="midi-knob__label px-1">{label}</span>
-      )}
+      {label && <span className="midi-knob__label px-1">{label}</span>}
 
-      {isLoading && (
+      {status === "loading" && (
         <div className="flex items-center justify-center gap-xs h-16 rounded-lg border border-border/50 bg-[var(--midi-surface-inset)]">
           <Loader2 className="h-4 w-4 animate-spin text-accent-midi-300" aria-hidden />
           <span className="text-xs text-muted-foreground">Loading waveform…</span>
         </div>
       )}
 
-      {error && (
+      {status === "error" && (
         <div className="flex items-center justify-center h-16 rounded-lg border border-destructive-500/30 bg-destructive-950/20 text-xs text-destructive-300">
-          {error}
+          {errorMsg ?? "Load failed"}
         </div>
       )}
 
-      {!isLoading && !error && (
+      {status === "ready" && (
         <>
           <canvas
             ref={canvasRef}
@@ -326,5 +312,24 @@ export function MidiWaveformPlayer({
         </>
       )}
     </div>
+  );
+}
+
+export function MidiWaveformPlayer({
+  src,
+  label,
+  className,
+  disabled = false,
+}: MidiWaveformPlayerProps) {
+  // Key on src ensures full remount (clean state) when source changes
+  if (!src) return null;
+  return (
+    <MidiWaveformPlayerInner
+      key={src}
+      src={src}
+      label={label}
+      className={className}
+      disabled={disabled}
+    />
   );
 }
