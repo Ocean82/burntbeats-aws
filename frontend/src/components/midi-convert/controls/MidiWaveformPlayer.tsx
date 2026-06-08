@@ -33,6 +33,79 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
+/** Renders waveform + playhead onto a canvas. Pure function, no hooks. */
+function renderWaveform(
+  canvas: HTMLCanvasElement,
+  data: Float32Array,
+  time: number,
+  dur: number,
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const W = canvas.width;
+  const H = canvas.height;
+  const step = Math.ceil(data.length / W);
+  const mid = H / 2;
+
+  // Background
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0, 0, W, H);
+
+  // Progress fill
+  if (dur > 0) {
+    const progressX = (time / dur) * W;
+    ctx.fillStyle = PROGRESS_TINT;
+    ctx.fillRect(0, 0, progressX, H);
+  }
+
+  // Center line
+  ctx.strokeStyle = "rgba(255, 245, 220, 0.06)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, mid);
+  ctx.lineTo(W, mid);
+  ctx.stroke();
+
+  // Waveform
+  ctx.strokeStyle = WAVEFORM_COLOR;
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = WAVEFORM_GLOW;
+  ctx.shadowBlur = 3;
+  ctx.beginPath();
+
+  for (let x = 0; x < W; x++) {
+    let min = 1;
+    let max = -1;
+    for (let j = 0; j < step; j++) {
+      const sample = data[x * step + j] ?? 0;
+      if (sample < min) min = sample;
+      if (sample > max) max = sample;
+    }
+    const yMin = ((1 + min) / 2) * H;
+    const yMax = ((1 + max) / 2) * H;
+    if (x === 0) ctx.moveTo(x, yMin);
+    ctx.lineTo(x, yMax);
+    ctx.lineTo(x, yMin);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Playhead
+  if (dur > 0 && time > 0) {
+    const phX = (time / dur) * W;
+    ctx.strokeStyle = PLAYHEAD_COLOR;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = PLAYHEAD_GLOW;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(phX, 0);
+    ctx.lineTo(phX, H);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+}
+
 export function MidiWaveformPlayer({
   src,
   label,
@@ -49,6 +122,14 @@ export function MidiWaveformPlayer({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  /** Draw helper that reads from refs — stable identity, no deps needed. */
+  const draw = useCallback((time: number, dur: number) => {
+    const canvas = canvasRef.current;
+    const data = waveformDataRef.current;
+    if (!canvas || !data || !data.length) return;
+    renderWaveform(canvas, data, time, dur);
+  }, []);
 
   // Decode audio and extract waveform peaks
   useEffect(() => {
@@ -93,7 +174,7 @@ export function MidiWaveformPlayer({
         if (cancelled) return;
         waveformDataRef.current = buffer.getChannelData(0);
         setIsLoading(false);
-        drawWaveform(0, audio.duration);
+        draw(0, audio.duration);
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Load failed");
@@ -113,82 +194,7 @@ export function MidiWaveformPlayer({
       }
       cancelAnimationFrame(rafRef.current);
     };
-  }, [src]);
-
-  // Drawing function
-  const drawWaveform = useCallback(
-    (time: number, dur: number) => {
-      const canvas = canvasRef.current;
-      const data = waveformDataRef.current;
-      if (!canvas || !data || !data.length) return;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      const W = canvas.width;
-      const H = canvas.height;
-      const step = Math.ceil(data.length / W);
-      const mid = H / 2;
-
-      // Background
-      ctx.fillStyle = BG_COLOR;
-      ctx.fillRect(0, 0, W, H);
-
-      // Progress fill
-      if (dur > 0) {
-        const progressX = (time / dur) * W;
-        ctx.fillStyle = PROGRESS_TINT;
-        ctx.fillRect(0, 0, progressX, H);
-      }
-
-      // Center line
-      ctx.strokeStyle = "rgba(255, 245, 220, 0.06)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, mid);
-      ctx.lineTo(W, mid);
-      ctx.stroke();
-
-      // Waveform
-      ctx.strokeStyle = WAVEFORM_COLOR;
-      ctx.lineWidth = 1.5;
-      ctx.shadowColor = WAVEFORM_GLOW;
-      ctx.shadowBlur = 3;
-      ctx.beginPath();
-
-      for (let x = 0; x < W; x++) {
-        let min = 1;
-        let max = -1;
-        for (let j = 0; j < step; j++) {
-          const sample = data[x * step + j] ?? 0;
-          if (sample < min) min = sample;
-          if (sample > max) max = sample;
-        }
-        const yMin = ((1 + min) / 2) * H;
-        const yMax = ((1 + max) / 2) * H;
-        if (x === 0) ctx.moveTo(x, yMin);
-        ctx.lineTo(x, yMax);
-        ctx.lineTo(x, yMin);
-      }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-
-      // Playhead
-      if (dur > 0 && time > 0) {
-        const phX = (time / dur) * W;
-        ctx.strokeStyle = PLAYHEAD_COLOR;
-        ctx.lineWidth = 2;
-        ctx.shadowColor = PLAYHEAD_GLOW;
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.moveTo(phX, 0);
-        ctx.lineTo(phX, H);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      }
-    },
-    [],
-  );
+  }, [src, draw]);
 
   // Animation loop during playback
   useEffect(() => {
@@ -198,20 +204,20 @@ export function MidiWaveformPlayer({
       const audio = audioRef.current;
       if (!audio) return;
       setCurrentTime(audio.currentTime);
-      drawWaveform(audio.currentTime, audio.duration);
+      draw(audio.currentTime, audio.duration);
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
 
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isPlaying, drawWaveform]);
+  }, [isPlaying, draw]);
 
   // Redraw on time change when not playing (seek)
   useEffect(() => {
     if (!isPlaying && duration > 0) {
-      drawWaveform(currentTime, duration);
+      draw(currentTime, duration);
     }
-  }, [currentTime, duration, isPlaying, drawWaveform]);
+  }, [currentTime, duration, isPlaying, draw]);
 
   // Play / pause
   const togglePlayback = useCallback(() => {
@@ -235,11 +241,11 @@ export function MidiWaveformPlayer({
     const onEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
-      drawWaveform(0, audio.duration);
+      draw(0, audio.duration);
     };
     audio.addEventListener("ended", onEnded);
     return () => audio.removeEventListener("ended", onEnded);
-  }, [src, drawWaveform]);
+  }, [src, draw]);
 
   // Scrub on canvas click
   const handleCanvasClick = useCallback(
@@ -254,9 +260,9 @@ export function MidiWaveformPlayer({
       const seekTime = ratio * duration;
       audio.currentTime = seekTime;
       setCurrentTime(seekTime);
-      drawWaveform(seekTime, duration);
+      draw(seekTime, duration);
     },
-    [disabled, duration, drawWaveform],
+    [disabled, duration, draw],
   );
 
   if (!src) return null;
