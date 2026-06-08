@@ -1,28 +1,20 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
-import { ShieldCheck, Library, Piano } from "lucide-react";
-import { WorkflowStepper } from "../components/ui";
-import { StemLaneGhostPreview } from "../components/editor/StemLaneGhostPreview";
-import { EDITOR_WORKFLOW_STEPS } from "../hooks/workflow/useEditorWorkflowSteps";
-import type { PlanConfig, PricingTableType } from "../data/plans";
-import { PricingTablePreview } from "../components/PricingTablePreview";
-import { PricingTabToggle } from "../components/PricingTabToggle";
-import { BillingRules } from "../components/BillingRules";
+import type { ReactNode } from "react";
 import { trackEvent } from "../analytics/events";
-import {
-  brandHeroContainer,
-  brandHeroItemVariants,
-  brandScrollSection,
-} from "../motion/brandPresets";
+import type { PlanConfig, PricingTableType } from "../data/plans";
+import { LandingBackground } from "../components/landing/LandingBackground";
+import { LandingDifferentiatorsSection } from "../components/landing/LandingDifferentiatorsSection";
+import { LandingFinalCta } from "../components/landing/LandingFinalCta";
+import { LandingHero } from "../components/landing/LandingHero";
+import { LandingPricingSection } from "../components/landing/LandingPricingSection";
 
 export function LandingPage() {
   const { isSignedIn } = useAuth();
-  const reduceMotion = useReducedMotion() ?? false;
   const [pricingTab, setPricingTab] =
     useState<PricingTableType>("subscriptions");
 
-  const renderPricingCTA = (plan: PlanConfig) => (
+  const renderPricingCTA = (plan: PlanConfig): ReactNode => (
     <SignUpButton mode="modal" fallbackRedirectUrl="/app">
       <button
         type="button"
@@ -45,28 +37,9 @@ export function LandingPage() {
 
   if (isSignedIn) return null;
 
-  const heroItem = brandHeroItemVariants(reduceMotion);
-
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-foreground">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="viewport-thermal-edge viewport-thermal-edge--fire" />
-        <div className="viewport-thermal-edge viewport-thermal-edge--ice" />
-        <div className="fire-orb left-[-10rem] top-[-8rem] h-96 w-96" />
-        <div className="fire-orb left-[-5rem] bottom-[12%] h-[22rem] w-[22rem] opacity-50" />
-        <div className="ice-orb right-[-12rem] top-16 h-[28rem] w-[28rem] opacity-70" />
-        <div className="ice-orb right-[-7rem] bottom-[-12rem] h-[24rem] w-[24rem] opacity-48" />
-        <div
-          className="fire-orb bottom-[-14rem] left-1/3 h-[32rem] w-[32rem] opacity-25"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.32), rgba(120, 60, 200, 0.16) 30%, transparent 65%)",
-          }}
-        />
-        <div className="circuit-mesh" />
-        <div className="circuit-mesh-industrial" />
-        <div className="mesh-overlay" />
-      </div>
+    <div className="min-h-screen bg-(--bg) text-foreground">
+      <LandingBackground />
 
       <div className="relative mx-auto max-w-5xl px-md sm:px-lg lg:px-xl">
         <header>
@@ -104,312 +77,14 @@ export function LandingPage() {
         </header>
 
         <main>
-          {/* Hero — ignition sequence (motion on wrappers only; prose stays block-level) */}
-          <motion.section
-            aria-labelledby="landing-hero-title"
-            className="landing-hero relative gap-xl py-[clamp(3rem,8vw,6rem)] text-center"
-            {...brandHeroContainer(reduceMotion)}
-          >
-            <motion.div variants={heroItem} className="w-full">
-              <p className="mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-xs rounded-full border border-border bg-muted px-md py-xs text-[10px] font-semibold uppercase tracking-[0.2em] text-primary-100/90 sm:text-xs sm:tracking-[0.3em]">
-                Browser workstation for producers and DJs
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)] shadow-[0_0_14px_var(--accent)]" />
-              </p>
-            </motion.div>
-
-            <motion.div variants={heroItem} className="w-full">
-              <img
-                src="/logo-emblem.png"
-                alt=""
-                className="logo-emblem mx-auto h-16 w-16 sm:h-20 sm:w-20"
-                aria-hidden="true"
-              />
-            </motion.div>
-
-            <motion.div variants={heroItem} className="w-full">
-              <h1
-                id="landing-hero-title"
-                className="logo-burnt mx-auto w-full max-w-5xl text-[clamp(3.5rem,10vw,8rem)] font-bold leading-[0.92] tracking-[-0.05em]"
-              >
-                <span className="logo-burnt-fire">Burnt Beats</span>
-              </h1>
-            </motion.div>
-
-            <motion.div variants={heroItem} className="w-full">
-              <p className="landing-prose text-readable text-readable-tight text-center text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground">
-                Burnt Beats is the browser workstation for producers and DJs who
-                need more than isolated files. Split tracks into stems, shape
-                the mix in-browser, reopen past jobs from your library, and move
-                straight into MIDI or export.
-              </p>
-            </motion.div>
-
-            <motion.div
-              variants={heroItem}
-              className="mt-lg flex flex-col items-center gap-md sm:flex-row"
-            >
-              <SignUpButton mode="modal">
-                <button
-                  type="button"
-                  className="fire-button tap-feedback text-[clamp(1.1rem,2.5vw,1.35rem)] px-[clamp(2rem,5vw,3.5rem)] py-[clamp(1rem,2vw,1.4rem)] font-bold"
-                >
-                  Try for Free
-                </button>
-              </SignUpButton>
-              <SignInButton mode="modal">
-                <button
-                  type="button"
-                  className="ghost-button tap-feedback text-sm px-lg py-md"
-                >
-                  Sign In
-                </button>
-              </SignInButton>
-            </motion.div>
-
-            <motion.div
-              variants={heroItem}
-              className="mx-auto mt-lg w-full max-w-lg px-md"
-            >
-              <WorkflowStepper
-                steps={[...EDITOR_WORKFLOW_STEPS]}
-                activeStepId="upload"
-                completedStepIds={[]}
-              />
-            </motion.div>
-
-            <motion.div
-              variants={heroItem}
-              className="mt-md w-full max-w-md"
-              aria-hidden="true"
-            >
-              <StemLaneGhostPreview variant="hero" />
-            </motion.div>
-
-            {/* Proof strip */}
-            <motion.div
-              variants={heroItem}
-              className="mt-lg flex flex-col items-center gap-md sm:flex-row sm:gap-xl"
-            >
-              <div className="flex items-center gap-xs text-sm font-medium text-secondary-foreground">
-                <ShieldCheck
-                  className="h-4 w-4 text-success-500/80"
-                  aria-hidden="true"
-                />
-                No install required
-              </div>
-              <div className="flex items-center gap-xs text-sm font-medium text-secondary-foreground">
-                <Library
-                  className="h-4 w-4 text-primary-500/80"
-                  aria-hidden="true"
-                />
-                Reopen past stem jobs
-              </div>
-              <div className="flex items-center gap-xs text-sm font-medium text-secondary-foreground">
-                <Piano
-                  className="h-4 w-4 text-midi-gold/80"
-                  aria-hidden="true"
-                />
-                Stem-to-MIDI workflow built in
-              </div>
-            </motion.div>
-
-            <motion.div variants={heroItem} className="w-full">
-              <p className="text-center text-xs text-muted-foreground/70">
-                Secure Stripe billing · cancel anytime · one-time packs
-                available
-              </p>
-            </motion.div>
-          </motion.section>
-
-          <motion.section
-            aria-labelledby="landing-differentiators-title"
-            className="w-full"
-            {...brandScrollSection(reduceMotion)}
-          >
-            <div className="grid w-full gap-md py-[clamp(2rem,5vw,4rem)] text-left sm:grid-cols-2 md:gap-lg">
-              <div className="w-full min-w-0 sm:col-span-2">
-                <p className="eyebrow mb-sm">Why Burnt Beats is different</p>
-                <h2
-                  id="landing-differentiators-title"
-                  className="landing-prose-lg text-readable font-display text-[clamp(1.25rem,3vw,1.9rem)] font-bold leading-tight text-secondary-foreground"
-                >
-                  Most stem splitters stop at the download. Burnt Beats keeps
-                  the workflow moving.
-                </h2>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  In-browser mixer and editor
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  After the split, you can level, trim, and shape the result
-                  without immediately bouncing into another tool.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  Reopen past stem jobs
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  Your splits are not disposable downloads. Return to old jobs
-                  from My Stems and keep working from the same library.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  Stem-to-MIDI workflow built in
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  Move from separated audio into MIDI conversion inside the same
-                  product instead of breaking your workflow across multiple
-                  apps.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  Built for producers and DJs
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  Burnt Beats is designed like a lightweight browser
-                  workstation, not a one-click converter. The value is in the
-                  workflow, not just the split.
-                </p>
-              </div>
-            </div>
-          </motion.section>
-
-          <motion.section
-            id="pricing"
-            aria-labelledby="landing-pricing-title"
-            className="w-full py-[clamp(3rem,6vw,5rem)]"
-            {...brandScrollSection(reduceMotion)}
-          >
-            <div className="mb-10 w-full text-center">
-              <p className="eyebrow mb-sm">Pricing</p>
-              <h2
-                id="landing-pricing-title"
-                className="landing-prose text-readable font-display text-center text-[clamp(1.25rem,3vw,1.75rem)] font-bold leading-tight text-secondary-foreground"
-              >
-                Choose a plan or buy a one-time pack
-              </h2>
-              <p className="landing-prose text-readable mt-xs text-center text-sm text-muted-foreground">
-                Monthly plans fit repeat workflow. Packs keep the workstation
-                open for occasional sessions.
-              </p>
-            </div>
-
-            <div className="mb-lg flex justify-center">
-              <PricingTabToggle
-                activeTab={pricingTab}
-                onTabChange={setPricingTab}
-              />
-            </div>
-
-            <div className="glass-panel rounded-2xl border border-border p-md sm:p-lg">
-              <BillingRules className="mb-md" />
-              <PricingTablePreview
-                pricingType={pricingTab}
-                ctaButtonRenderer={renderPricingCTA}
-              />
-            </div>
-
-            <div className="mt-12 grid w-full gap-md text-left sm:grid-cols-2 md:gap-lg">
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  Why producers pay for more than the split
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  Burnt Beats is not just a file drop. You can split a track,
-                  keep working in the browser, shape the mix, and export without
-                  treating the separation step like a dead end.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  What happens after the split?
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  Your work does not vanish into a downloads folder. Reopen past
-                  stem jobs from My Stems, return to earlier projects, and keep
-                  building from the same library.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  Can I turn stems into MIDI?
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  Yes. Burnt Beats includes a stem-to-MIDI workflow so you can
-                  move from separated audio into note data without breaking the
-                  session across multiple tools.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  Will this work on my laptop?
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  Yes. Burnt Beats runs in your browser with CPU-based
-                  processing, so you do not need a GPU, a plugin install, or a
-                  dedicated production machine to use it.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  How do tokens map to songs?
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  1 token = 1 minute of audio. A 3-minute track costs 3 tokens
-                  to run in either 2-stem or 4-stem mode, depending on the split
-                  you choose. Partial minutes round up.
-                </p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg">
-                <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-                  Do I have to subscribe?
-                </h3>
-                <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-                  No. If you only need stems occasionally, buy a one-time Top-Up
-                  pack instead of a monthly plan. Subscribe when Burnt Beats
-                  becomes part of your regular workflow.
-                </p>
-              </div>
-            </div>
-          </motion.section>
-
-          <motion.section
-            aria-labelledby="landing-cta-title"
-            className="w-full"
-            {...brandScrollSection(reduceMotion, 0.08)}
-          >
-            <div className="glass-panel mirror-sheen relative mb-16 w-full overflow-hidden rounded-[2rem] px-md py-[clamp(3rem,6vw,5rem)] text-center sm:px-xl">
-              <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    "radial-gradient(ellipse 80% 60% at 50% 80%, rgba(255, 60, 10, 0.18), transparent 60%)",
-                }}
-              />
-              <h2
-                id="landing-cta-title"
-                className="landing-prose-lg text-readable relative mb-xs text-center font-display text-[clamp(1.5rem,4vw,2.5rem)] font-bold leading-tight text-secondary-foreground"
-              >
-                Ready to build your first stem workflow?
-              </h2>
-              <p className="landing-prose text-readable text-readable-tight relative mb-10 text-center text-base text-secondary-foreground/80">
-                Create an account, split your first track, and keep working
-                inside the same browser session.
-              </p>
-              <SignUpButton mode="modal">
-                <button
-                  type="button"
-                  className="fire-button tap-feedback relative text-[clamp(1rem,2vw,1.2rem)] px-[clamp(2rem,4vw,3rem)] py-[clamp(0.9rem,2vw,1.2rem)] font-bold"
-                >
-                  Create free account
-                </button>
-              </SignUpButton>
-            </div>
-          </motion.section>
+          <LandingHero />
+          <LandingDifferentiatorsSection />
+          <LandingPricingSection
+            pricingTab={pricingTab}
+            onPricingTabChange={setPricingTab}
+            renderPricingCTA={renderPricingCTA}
+          />
+          <LandingFinalCta />
         </main>
 
         <footer className="border-t border-border py-xl text-center text-sm text-muted-foreground">
