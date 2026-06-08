@@ -11,6 +11,10 @@ export interface DrawWaveformBarsParams {
   playedFraction?: number;
   /** Optional live analyser modulation values (0–255 bytes). Blended into bar heights during playback. */
   analyserData?: Uint8Array;
+  /** Draw a faint horizontal zero-amplitude axis line through the center. Defaults to true. */
+  centerLine?: boolean;
+  /** Gap in px between the top and bottom mirrored halves at the center baseline. Defaults to 2. */
+  centerGapPx?: number;
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
@@ -28,6 +32,8 @@ export function drawWaveformBars({
   heightScale = 1,
   playedFraction,
   analyserData,
+  centerLine = true,
+  centerGapPx = 2,
 }: DrawWaveformBarsParams): void {
   const context = canvas.getContext("2d");
   if (!context) return;
@@ -52,6 +58,19 @@ export function drawWaveformBars({
   const barWidth = Math.max(1, (width - gap * (values.length - 1)) / values.length);
   const playedX = playedFraction != null ? playedFraction * width : -1;
 
+  const centerY = height / 2;
+  const centerGap = Math.max(0, centerGapPx) / 2;
+  // Maximum half-height available for each mirrored side (above/below center).
+  const maxHalf = Math.max(1, centerY - centerGap);
+  const radius = Math.min(barWidth / 2, 2);
+
+  // Faint zero-amplitude axis line through the vertical center.
+  if (centerLine) {
+    context.globalAlpha = 0.18;
+    context.fillStyle = color;
+    context.fillRect(0, Math.round(centerY) - 0.5, width, 1);
+  }
+
   for (let index = 0; index < values.length; index++) {
     let value = clamp(values[index], 0, 1);
 
@@ -62,21 +81,27 @@ export function drawWaveformBars({
       value = clamp(value * (0.85 + mod * 0.3), 0, 1);
     }
 
-    const barHeight = Math.max(minimumBarHeightPx, value * height * heightScale);
+    // Half-height for each mirrored side; minimum keeps quiet sections visible.
+    const half = Math.max(minimumBarHeightPx / 2, value * maxHalf * heightScale);
     const x = index * (barWidth + gap);
-    const y = (height - barHeight) / 2;
 
     const isPlayed = playedX >= 0 && x < playedX;
     const baseAlpha = index % 2 === 0 ? alphaEven : alphaOdd;
     context.globalAlpha = isPlayed ? Math.min(1, baseAlpha + 0.25) : baseAlpha;
     context.fillStyle = color;
 
+    // Top half (rounded outer cap) + mirrored bottom half (rounded outer cap).
+    const topY = centerY - centerGap - half;
+    const bottomY = centerY + centerGap;
     if (typeof context.roundRect === "function") {
       context.beginPath();
-      context.roundRect(x, y, barWidth, barHeight, barWidth / 2);
+      context.roundRect(x, topY, barWidth, half, [radius, radius, 0, 0]);
+      context.roundRect(x, bottomY, barWidth, half, [0, 0, radius, radius]);
       context.fill();
     } else {
-      (context as CanvasRenderingContext2D).fillRect(x, y, barWidth, barHeight);
+      const ctx2d = context as CanvasRenderingContext2D;
+      ctx2d.fillRect(x, topY, barWidth, half);
+      ctx2d.fillRect(x, bottomY, barWidth, half);
     }
   }
   context.globalAlpha = 1;
