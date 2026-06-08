@@ -79,6 +79,15 @@ function createInitialTrack(
   };
 }
 
+function normalizeTrackState(track: EditorTrack): EditorTrack {
+  const notes = resolvePitchOverlaps(track.notes);
+  return {
+    ...track,
+    notes,
+    selectedIds: sanitizeSelectedIds(notes, track.selectedIds),
+  };
+}
+
 export interface UseMidiEditorReturn {
   tracks: EditorTrack[];
   activeTrackId: string;
@@ -313,15 +322,6 @@ export function useMidiEditor(
     },
     [],
   );
-
-  const normalizeTrackState = useCallback((track: EditorTrack): EditorTrack => {
-    const notes = resolvePitchOverlaps(track.notes);
-    return {
-      ...track,
-      notes,
-      selectedIds: sanitizeSelectedIds(notes, track.selectedIds),
-    };
-  }, []);
 
   const selectNote = useCallback(
     (noteId: string, additive: boolean) => {

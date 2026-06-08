@@ -23,7 +23,10 @@ interface BackendHealthPayload {
     latencyMs?: number;
     error?: string;
   };
-  services?: Record<string, { reachable?: boolean; status?: string; error?: string }>;
+  services?: Record<
+    string,
+    { reachable?: boolean; status?: string; error?: string }
+  >;
   storage?: {
     midi_backend?: { ok?: boolean; error?: string };
     midi_shared?: { aligned?: boolean; reason?: string | null };
@@ -51,7 +54,9 @@ function StatusBadge({ status }: { status: HealthStatus | boolean }) {
         : "border-destructive-400/35 bg-destructive-500/12 text-destructive-200";
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}
+    >
       {normalized}
     </span>
   );
@@ -96,7 +101,9 @@ export function DevHealthPanel() {
       setError(null);
       setLastUpdatedAt(Date.now());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load health status");
+      setError(
+        err instanceof Error ? err.message : "Failed to load health status",
+      );
     } finally {
       setLoading(false);
     }
@@ -104,16 +111,25 @@ export function DevHealthPanel() {
 
   useEffect(() => {
     if (!enabled) return;
-    void loadHealth();
-    const id = window.setInterval(() => {
+
+    const timeoutId = window.setTimeout(() => {
+      void loadHealth();
+    }, 0);
+    const intervalId = window.setInterval(() => {
       void loadHealth();
     }, POLL_MS);
-    return () => window.clearInterval(id);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.clearInterval(intervalId);
+    };
   }, [enabled, loadHealth]);
 
   const failingServices = useMemo(() => {
     const services = payload?.services ?? {};
-    return Object.entries(services).filter(([, value]) => value.reachable === false);
+    return Object.entries(services).filter(
+      ([, value]) => value.reachable === false,
+    );
   }, [payload]);
 
   if (!enabled) return null;
@@ -123,15 +139,17 @@ export function DevHealthPanel() {
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="fixed right-4 top-4 z-[60] rounded-lg border border-border bg-chrome px-sm py-1.5 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground backdrop-blur-md transition hover:text-foreground"
-        aria-label={visible ? "Hide internal health panel" : "Show internal health panel"}
+        className="fixed right-4 top-4 z-60 rounded-lg border border-border bg-chrome px-sm py-1.5 text-[10px] font-semibold uppercase tracking-wide text-secondary-foreground backdrop-blur-md transition hover:text-foreground"
+        aria-label={
+          visible ? "Hide internal health panel" : "Show internal health panel"
+        }
       >
         {visible ? "Hide health" : "Show health"}
       </button>
       {visible && (
         <section
           aria-label="Internal health panel"
-          className="fixed right-4 top-14 z-50 w-[22rem] rounded-xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-md backdrop-blur-md"
+          className="fixed right-4 top-14 z-50 w-88 rounded-xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-md backdrop-blur-md"
         >
           <div className="mb-sm flex items-center justify-between gap-sm">
             <div>
@@ -151,7 +169,9 @@ export function DevHealthPanel() {
                 aria-label="Refresh internal health panel"
               >
                 <span className="inline-flex items-center gap-1">
-                  <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-3 w-3 ${loading ? "animate-spin" : ""}`}
+                  />
                   Refresh
                 </span>
               </button>
@@ -164,7 +184,9 @@ export function DevHealthPanel() {
                 <AlertCircle className="h-3.5 w-3.5" />
                 Health fetch failed
               </div>
-              <p className="mt-1 text-[10px] text-destructive-200/80">{error}</p>
+              <p className="mt-1 text-[10px] text-destructive-200/80">
+                {error}
+              </p>
             </div>
           ) : loading && !payload ? (
             <div className="flex items-center gap-xs rounded-lg border border-border bg-muted/20 px-sm py-sm text-muted-foreground">
@@ -181,7 +203,9 @@ export function DevHealthPanel() {
                   </div>
                   <div className="flex items-center justify-between gap-xs">
                     <span>Uptime</span>
-                    <span className="font-mono text-foreground">{formatUptime(payload.uptime_seconds)}</span>
+                    <span className="font-mono text-foreground">
+                      {formatUptime(payload.uptime_seconds)}
+                    </span>
                   </div>
                 </div>
                 <div className="rounded-lg border border-border bg-muted/10 px-sm py-sm">
@@ -191,7 +215,9 @@ export function DevHealthPanel() {
                   </div>
                   <div className="flex items-center justify-between gap-xs">
                     <span>Connected</span>
-                    <StatusBadge status={Boolean(payload.database?.connected)} />
+                    <StatusBadge
+                      status={Boolean(payload.database?.connected)}
+                    />
                   </div>
                   <p className="mt-1 text-[10px] text-muted-foreground">
                     {payload.database?.latencyMs != null
@@ -209,11 +235,15 @@ export function DevHealthPanel() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-xs">
                     <span>Shared storage</span>
-                    <StatusBadge status={Boolean(payload.storage?.midi_shared?.aligned)} />
+                    <StatusBadge
+                      status={Boolean(payload.storage?.midi_shared?.aligned)}
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-xs">
                     <span>Catalog</span>
-                    <StatusBadge status={payload.catalogs?.midi?.status ?? "error"} />
+                    <StatusBadge
+                      status={payload.catalogs?.midi?.status ?? "error"}
+                    />
                   </div>
                   <p className="text-[10px] text-muted-foreground">
                     {payload.catalogs?.midi
@@ -233,12 +263,21 @@ export function DevHealthPanel() {
                   <span>Services</span>
                 </div>
                 <div className="space-y-1.5">
-                  {Object.entries(payload.services ?? {}).map(([name, value]) => (
-                    <div key={name} className="flex items-center justify-between gap-xs">
-                      <span className="capitalize">{name}</span>
-                      <StatusBadge status={Boolean(value.reachable && value.status === "ok")} />
-                    </div>
-                  ))}
+                  {Object.entries(payload.services ?? {}).map(
+                    ([name, value]) => (
+                      <div
+                        key={name}
+                        className="flex items-center justify-between gap-xs"
+                      >
+                        <span className="capitalize">{name}</span>
+                        <StatusBadge
+                          status={Boolean(
+                            value.reachable && value.status === "ok",
+                          )}
+                        />
+                      </div>
+                    ),
+                  )}
                 </div>
               </div>
 
@@ -248,12 +287,16 @@ export function DevHealthPanel() {
                     Catalog issues
                   </p>
                   <ul className="space-y-1 text-[10px] text-warning-50/85">
-                    {payload.catalogs?.midi?.issues.slice(0, 3).map((issue, index) => (
-                      <li key={`${issue.id ?? "issue"}-${index}`}>
-                        {(issue.id ?? "catalog") + ": " + (issue.reason ?? "unknown")}
-                        {issue.field ? ` (${issue.field})` : ""}
-                      </li>
-                    ))}
+                    {payload.catalogs?.midi?.issues
+                      .slice(0, 3)
+                      .map((issue, index) => (
+                        <li key={`${issue.id ?? "issue"}-${index}`}>
+                          {(issue.id ?? "catalog") +
+                            ": " +
+                            (issue.reason ?? "unknown")}
+                          {issue.field ? ` (${issue.field})` : ""}
+                        </li>
+                      ))}
                   </ul>
                 </div>
               )}
