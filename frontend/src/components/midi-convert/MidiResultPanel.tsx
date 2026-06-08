@@ -2,7 +2,14 @@
  * MidiResultPanel — shows conversion results: piano roll, stats, download button.
  * Includes View/Edit toggle for the interactive MIDI note editor.
  */
-import { Download, Loader2, RotateCcw, Music, Play, Square } from "lucide-react";
+import {
+  Download,
+  Loader2,
+  RotateCcw,
+  Music,
+  Play,
+  Square,
+} from "lucide-react";
 import { useState } from "react";
 import type { MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
@@ -20,6 +27,8 @@ interface MidiResultPanelProps {
   onApplySuggestedBpm?: (bpm: number) => void;
   jobId?: string | null;
   jobToken?: string | null;
+  initialMode?: "view" | "edit";
+  e2eMode?: boolean;
 }
 
 function formatDuration(seconds: number): string {
@@ -36,9 +45,11 @@ export function MidiResultPanel({
   onApplySuggestedBpm,
   jobId = null,
   jobToken = null,
+  initialMode = "view",
+  e2eMode = false,
 }: MidiResultPanelProps) {
   const { isPlaying, currentTime, play, stop, isSupported } = useMidiPlayback();
-  const [mode, setMode] = useState<"view" | "edit">("view");
+  const [mode, setMode] = useState<"view" | "edit">(initialMode);
 
   const suggestedBpm = result.analysis?.suggested_bpm ?? 120;
 
@@ -46,8 +57,13 @@ export function MidiResultPanel({
     <div className="midi-result-surface" data-testid="midi-result-panel">
       <div className="flex flex-wrap items-center justify-between gap-sm">
         <div className="flex min-w-0 items-center gap-xs">
-          <Music className="h-4 w-4 shrink-0 text-accent-midi-300" aria-hidden />
-          <h3 className="text-sm font-semibold text-secondary-foreground">Conversion complete</h3>
+          <Music
+            className="h-4 w-4 shrink-0 text-accent-midi-300"
+            aria-hidden
+          />
+          <h3 className="text-sm font-semibold text-secondary-foreground">
+            Conversion complete
+          </h3>
         </div>
 
         {result.pianoRollNotes.length > 0 && (
@@ -76,6 +92,7 @@ export function MidiResultPanel({
           bpm={suggestedBpm}
           jobId={jobId}
           jobToken={jobToken}
+          e2eMode={e2eMode}
         />
       )}
 
@@ -90,7 +107,9 @@ export function MidiResultPanel({
       {/* Stats row */}
       <div className="flex flex-wrap gap-md text-xs text-muted-foreground">
         <span>
-          <span className="font-medium text-accent-midi-200">{result.notesDetected}</span>{" "}
+          <span className="font-medium text-accent-midi-200">
+            {result.notesDetected}
+          </span>{" "}
           notes detected
         </span>
         <span>
@@ -100,7 +119,9 @@ export function MidiResultPanel({
           duration
         </span>
         <span>
-          <span className="font-medium text-accent-midi-200">{result.tracks}</span>{" "}
+          <span className="font-medium text-accent-midi-200">
+            {result.tracks}
+          </span>{" "}
           {result.tracks === 1 ? "track" : "tracks"}
         </span>
         <span>
@@ -156,11 +177,7 @@ export function MidiResultPanel({
             Download .mid
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={onNewConversion}
-          className="midi-btn"
-        >
+        <button type="button" onClick={onNewConversion} className="midi-btn">
           <RotateCcw className="h-3.5 w-3.5" aria-hidden />
           New conversion
         </button>

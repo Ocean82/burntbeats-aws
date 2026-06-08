@@ -2,7 +2,7 @@
  * Pinch-to-zoom (touch) and ctrl+wheel zoom on the editor piano-roll scroller.
  */
 import { useEffect, useRef, type RefObject } from "react";
-import { clampEditorZoom } from "./pianoRollTheme";
+import { clampEditorVerticalZoom, clampEditorZoom } from "./pianoRollTheme";
 
 function touchDistance(touches: TouchList): number {
   const dx = touches[0].clientX - touches[1].clientX;
@@ -14,19 +14,33 @@ export function useEditorCanvasZoomGestures(
   scrollRef: RefObject<HTMLDivElement | null>,
   zoomLevel: number,
   onZoomLevelChange: ((level: number) => void) | undefined,
+  verticalZoomLevel?: number,
+  onVerticalZoomLevelChange?: ((level: number) => void) | undefined,
 ) {
   const zoomRef = useRef(zoomLevel);
+  const verticalZoomRef = useRef(verticalZoomLevel ?? 1);
 
   useEffect(() => {
     zoomRef.current = zoomLevel;
+    verticalZoomRef.current = verticalZoomLevel ?? 1;
     const el = scrollRef.current;
     if (!el || !onZoomLevelChange) return;
 
     const onWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      const factor = Math.exp(-e.deltaY * 0.002);
-      onZoomLevelChange(clampEditorZoom(zoomRef.current * factor));
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const factor = Math.exp(-e.deltaY * 0.002);
+        onZoomLevelChange(clampEditorZoom(zoomRef.current * factor));
+        return;
+      }
+
+      if (e.shiftKey && onVerticalZoomLevelChange) {
+        e.preventDefault();
+        const factor = Math.exp(-e.deltaY * 0.002);
+        onVerticalZoomLevelChange(
+          clampEditorVerticalZoom(verticalZoomRef.current * factor),
+        );
+      }
     };
 
     let pinchAnchor: { distance: number; zoom: number } | null = null;
@@ -64,5 +78,11 @@ export function useEditorCanvasZoomGestures(
       el.removeEventListener("touchend", endPinch);
       el.removeEventListener("touchcancel", endPinch);
     };
-  }, [scrollRef, zoomLevel, onZoomLevelChange]);
+  }, [
+    scrollRef,
+    zoomLevel,
+    onZoomLevelChange,
+    verticalZoomLevel,
+    onVerticalZoomLevelChange,
+  ]);
 }

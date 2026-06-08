@@ -12,6 +12,16 @@ export function isLocalDevFullApp(): boolean {
   return v === "1" || v === "true";
 }
 
+export function isInternalHealthPanelEnabled(): boolean {
+  const enabled = ["1", "true", "yes"].includes(
+    String(import.meta.env.VITE_INTERNAL_HEALTH_PANEL_ENABLED ?? "")
+      .trim()
+      .toLowerCase(),
+  );
+  if (import.meta.env.PROD) return enabled;
+  return true;
+}
+
 /** Must stay in sync with backend MAX_UPLOAD_BYTES (default 500MB). Override with VITE_MAX_UPLOAD_BYTES. */
 export const MAX_UPLOAD_BYTES =
   Number(import.meta.env.VITE_MAX_UPLOAD_BYTES) > 0
@@ -20,22 +30,32 @@ export const MAX_UPLOAD_BYTES =
 
 // Centralized API base URL (no trailing slash).
 export const API_BASE =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+  typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
     ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, "")
-    : (typeof window !== "undefined" && window.location.hostname !== "localhost" ? window.location.origin : "http://localhost:3001"));
+    : typeof window !== "undefined" && window.location.hostname !== "localhost"
+      ? window.location.origin
+      : "http://localhost:3001";
 
 /** Optional server-side export feature flag. Disabled by default to avoid 404 noise when backend export is off. */
-export const SERVER_EXPORT_ENABLED =
-  ["1", "true", "yes"].includes(
-    String(import.meta.env.VITE_SERVER_EXPORT_ENABLED ?? "").trim().toLowerCase(),
-  );
+export const SERVER_EXPORT_ENABLED = ["1", "true", "yes"].includes(
+  String(import.meta.env.VITE_SERVER_EXPORT_ENABLED ?? "")
+    .trim()
+    .toLowerCase(),
+);
 
 // Global configuration constants: first step is always 2-stem (vocals + instrumental).
 export const DEFAULT_STEM_COUNT = 2 as const;
 
-export const MASTER_CHAIN = { compression: 2.4, limiter: -0.8, loudness: -9 } as const;
+export const MASTER_CHAIN = {
+  compression: 2.4,
+  limiter: -0.8,
+  loudness: -9,
+} as const;
 
-export const PIPELINE_ANIMATION_DELAYS_MS = { toStep1: 400, toStep2: 1200 } as const;
+export const PIPELINE_ANIMATION_DELAYS_MS = {
+  toStep1: 400,
+  toStep2: 1200,
+} as const;
 
 export const PIPELINE_PROGRESS_THRESHOLDS = { step2: 50, step3: 100 } as const;
 
@@ -61,9 +81,10 @@ export const AUDIO_INPUT_ACCEPT =
 
 /** Check if a filename has a supported audio extension. */
 export function isAllowedAudioFile(filename: string): boolean {
-  const ext = filename.lastIndexOf(".") !== -1
-    ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
-    : "";
+  const ext =
+    filename.lastIndexOf(".") !== -1
+      ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
+      : "";
   return ALLOWED_AUDIO_EXTENSIONS.has(ext);
 }
 
@@ -83,14 +104,16 @@ export const MIDI_ALLOWED_AUDIO_EXTENSIONS = new Set([
   ".webm",
 ]);
 
-export const MIDI_ALLOWED_AUDIO_FORMATS_LABEL = "MP3, WAV, FLAC, OGG, M4A, WebM";
+export const MIDI_ALLOWED_AUDIO_FORMATS_LABEL =
+  "MP3, WAV, FLAC, OGG, M4A, WebM";
 
 export const MIDI_AUDIO_INPUT_ACCEPT =
   ".mp3,.wav,.flac,.ogg,.m4a,.webm,audio/mpeg,audio/mp3,audio/wav,audio/wave,audio/x-wav,audio/flac,audio/x-flac,audio/ogg,audio/mp4,audio/x-m4a,audio/webm,video/webm";
 
 export function isAllowedMidiAudioFile(filename: string): boolean {
-  const ext = filename.lastIndexOf(".") !== -1
-    ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
-    : "";
+  const ext =
+    filename.lastIndexOf(".") !== -1
+      ? filename.slice(filename.lastIndexOf(".")).toLowerCase()
+      : "";
   return MIDI_ALLOWED_AUDIO_EXTENSIONS.has(ext);
 }

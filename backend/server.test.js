@@ -87,6 +87,10 @@ test("GET /api/health returns ok", async () => {
   // status is "ok" when DB is connected, "degraded" when DATABASE_URL is unset (test env)
   assert.ok(["ok", "degraded"].includes(res.body.status));
   assert.ok("database" in res.body);
+  assert.ok("catalogs" in res.body);
+  assert.ok("midi" in res.body.catalogs);
+  assert.equal(typeof res.body.catalogs.midi.total_entries, "number");
+  assert.ok(Array.isArray(res.body.catalogs.midi.issues));
 });
 
 test("GET /api/stems/status invalid job_id returns 400", async () => {
@@ -183,7 +187,10 @@ test("POST /api/stems/expand requires account auth before premium expand", async
     .send({ job_id: randomUUID(), quality: "quality" })
     .expect(401);
 
-  assert.equal(res.body.error, "Unable to verify your account. Please sign in again.");
+  assert.equal(
+    res.body.error,
+    "Unable to verify your account. Please sign in again.",
+  );
   assert.equal(lastStemServiceTokenHeader, undefined);
 });
 
@@ -262,4 +269,3 @@ test.after(async () => {
     mockStemService.close((err) => (err ? reject(err) : resolve()));
   });
 });
-

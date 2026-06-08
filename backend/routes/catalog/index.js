@@ -9,6 +9,7 @@ import { access } from "fs/promises";
 import { authMiddleware } from "../../middleware/auth.js";
 import {
   getCatalogEntryById,
+  inspectCatalogHealth,
   resolveCatalogFilePath,
   searchCatalogEntries,
 } from "../../services/midi-catalog/index.js";
@@ -33,6 +34,18 @@ catalogRouter.get("/midi", authMiddleware, async (req, res) => {
   } catch (e) {
     console.error("[GET /api/catalog/midi]", e);
     return res.status(500).json({ error: "Failed to load MIDI catalog" });
+  }
+});
+
+catalogRouter.get("/midi/health", authMiddleware, async (_req, res) => {
+  try {
+    const health = await inspectCatalogHealth();
+    return res.status(200).json(health);
+  } catch (e) {
+    console.error("[GET /api/catalog/midi/health]", e);
+    return res
+      .status(500)
+      .json({ error: "Failed to inspect MIDI catalog health" });
   }
 });
 

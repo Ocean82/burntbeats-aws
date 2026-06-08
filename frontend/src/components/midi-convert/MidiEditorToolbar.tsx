@@ -40,6 +40,7 @@ interface MidiEditorToolbarProps {
   isModified: boolean;
   hasSelection: boolean;
   zoomLevel: number;
+  verticalZoomLevel: number;
   metronomeEnabled: boolean;
   activeLane: ActiveLane;
   activeCcNumber: number;
@@ -59,6 +60,8 @@ interface MidiEditorToolbarProps {
   onReset: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  onZoomLevelChange: (level: number) => void;
+  onVerticalZoomLevelChange: (level: number) => void;
   onToggleMetronome: () => void;
   onQuantizeSelection: () => void;
   onDuplicateSelection: () => void;
@@ -109,6 +112,7 @@ function SecondaryToolbarControls({
   isModified,
   hasSelection,
   zoomLevel,
+  verticalZoomLevel,
   metronomeEnabled,
   activeLane,
   activeCcNumber,
@@ -124,6 +128,8 @@ function SecondaryToolbarControls({
   onReset,
   onZoomIn,
   onZoomOut,
+  onZoomLevelChange,
+  onVerticalZoomLevelChange,
   onToggleMetronome,
   onQuantizeSelection,
   onDuplicateSelection,
@@ -148,7 +154,9 @@ function SecondaryToolbarControls({
         <Magnet
           className={cn(
             "h-3.5 w-3.5 shrink-0",
-            snapGrid === "free" ? "text-muted-foreground" : "text-success-400/90",
+            snapGrid === "free"
+              ? "text-muted-foreground"
+              : "text-success-400/90",
           )}
           aria-hidden
         />
@@ -166,7 +174,12 @@ function SecondaryToolbarControls({
         </select>
       </div>
 
-      <div className={cn("flex items-center gap-xs", stack && "w-full justify-between")}>
+      <div
+        className={cn(
+          "flex items-center gap-xs",
+          stack && "w-full justify-between",
+        )}
+      >
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
           BPM
         </span>
@@ -184,7 +197,12 @@ function SecondaryToolbarControls({
         />
       </div>
 
-      <div className={cn("flex items-center gap-xs", stack && "w-full justify-between")}>
+      <div
+        className={cn(
+          "flex items-center gap-xs",
+          stack && "w-full justify-between",
+        )}
+      >
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
           Time
         </span>
@@ -192,7 +210,8 @@ function SecondaryToolbarControls({
           value={`${timeSignature.beatsPerBar}/${timeSignature.beatUnit}`}
           onChange={(e) => {
             const [num, den] = e.target.value.split("/").map(Number);
-            if (num && den) onTimeSignatureChange({ beatsPerBar: num, beatUnit: den });
+            if (num && den)
+              onTimeSignatureChange({ beatsPerBar: num, beatUnit: den });
           }}
           className="midi-select"
           aria-label="Time signature"
@@ -217,16 +236,64 @@ function SecondaryToolbarControls({
         ariaLabel="Draw velocity for new notes"
       />
 
-      <div className="inline-flex items-center gap-0.5 rounded-md border border-border p-0.5">
-        <MidiPhysicalButton variant="icon" onClick={onZoomOut} title="Zoom out" aria-label="Zoom out">
-          <ZoomOut className="h-3.5 w-3.5" />
-        </MidiPhysicalButton>
-        <span className="min-w-[2.5rem] text-center text-[10px] tabular-nums text-muted-foreground">
-          {Math.round(zoomLevel * 100)}%
-        </span>
-        <MidiPhysicalButton variant="icon" onClick={onZoomIn} title="Zoom in" aria-label="Zoom in">
-          <ZoomIn className="h-3.5 w-3.5" />
-        </MidiPhysicalButton>
+      <div
+        className={cn("midi-zoom-cluster", stack && "midi-zoom-cluster--stack")}
+      >
+        <div className="inline-flex items-center gap-0.5 rounded-md border border-border p-0.5">
+          <MidiPhysicalButton
+            variant="icon"
+            onClick={onZoomOut}
+            title="Zoom out horizontally"
+            aria-label="Zoom out horizontally"
+          >
+            <ZoomOut className="h-3.5 w-3.5" />
+          </MidiPhysicalButton>
+          <span className="min-w-[2.5rem] text-center text-[10px] tabular-nums text-muted-foreground">
+            {Math.round(zoomLevel * 100)}%
+          </span>
+          <MidiPhysicalButton
+            variant="icon"
+            onClick={onZoomIn}
+            title="Zoom in horizontally"
+            aria-label="Zoom in horizontally"
+          >
+            <ZoomIn className="h-3.5 w-3.5" />
+          </MidiPhysicalButton>
+        </div>
+
+        <label
+          className="midi-zoom-slider"
+          title="Horizontal zoom · Ctrl + mouse wheel"
+        >
+          <span>H</span>
+          <input
+            type="range"
+            min={50}
+            max={300}
+            step={5}
+            value={Math.round(zoomLevel * 100)}
+            onChange={(e) => onZoomLevelChange(Number(e.target.value) / 100)}
+            aria-label="Horizontal zoom"
+          />
+        </label>
+
+        <label
+          className="midi-zoom-slider"
+          title="Vertical zoom · Shift + mouse wheel"
+        >
+          <span>V</span>
+          <input
+            type="range"
+            min={75}
+            max={225}
+            step={5}
+            value={Math.round(verticalZoomLevel * 100)}
+            onChange={(e) =>
+              onVerticalZoomLevelChange(Number(e.target.value) / 100)
+            }
+            aria-label="Vertical zoom"
+          />
+        </label>
       </div>
 
       <MidiPhysicalButton
@@ -299,7 +366,9 @@ function SecondaryToolbarControls({
       {activeLane === "automation" && (
         <select
           value={activeAutomationParam}
-          onChange={(e) => onActiveAutomationParamChange(e.target.value as AutomationParam)}
+          onChange={(e) =>
+            onActiveAutomationParamChange(e.target.value as AutomationParam)
+          }
           className="midi-select"
           aria-label="Automation parameter"
         >
@@ -351,15 +420,8 @@ function SecondaryToolbarControls({
 }
 
 export function MidiEditorToolbar(props: MidiEditorToolbarProps) {
-  const {
-    tool,
-    canUndo,
-    canRedo,
-    onToolChange,
-    onUndo,
-    onRedo,
-    onExport,
-  } = props;
+  const { tool, canUndo, canRedo, onToolChange, onUndo, onRedo, onExport } =
+    props;
 
   return (
     <div className="flex flex-wrap items-center gap-xs">

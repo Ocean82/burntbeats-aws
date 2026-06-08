@@ -1,9 +1,15 @@
 export type EditorTool = "select" | "draw" | "erase" | "split";
 
 export type SnapGrid =
-  | "1/4" | "1/8" | "1/16" | "1/32"
-  | "1/6" | "1/12"
-  | "1T" | "dotted" | "shuffle"
+  | "1/4"
+  | "1/8"
+  | "1/16"
+  | "1/32"
+  | "1/6"
+  | "1/12"
+  | "1T"
+  | "dotted"
+  | "shuffle"
   | "free";
 
 export interface TimeSignature {
@@ -51,6 +57,8 @@ export interface EditableNote {
   start: number;
   duration: number;
   velocity: number;
+  muted?: boolean;
+  channel?: number;
 }
 
 export type TrackInstrument = "piano" | "synth" | "bass" | "strings";
@@ -78,7 +86,11 @@ export type ActiveLane = "notes" | "velocity" | "cc" | "automation";
 
 export type AutomationParam = "volume" | "pan" | "filter";
 
-export const AUTOMATION_PARAMS: { param: AutomationParam; ccNumber: number; label: string }[] = [
+export const AUTOMATION_PARAMS: {
+  param: AutomationParam;
+  ccNumber: number;
+  label: string;
+}[] = [
   { param: "volume", ccNumber: 7, label: "Volume" },
   { param: "pan", ccNumber: 10, label: "Pan" },
   { param: "filter", ccNumber: 74, label: "Filter Cutoff" },

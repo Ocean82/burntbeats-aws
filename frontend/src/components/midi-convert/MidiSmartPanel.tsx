@@ -2,7 +2,7 @@
  * MidiSmartPanel — diatonic chord suggestions with Tone.js preview.
  */
 import { Lock, Unlock } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PolySynth, start, Synth } from "tone";
 import {
   getDiatonicChords,
@@ -15,12 +15,23 @@ import {
 import { cn } from "../../utils/cn";
 import { SectionLabel } from "../ui";
 
-const SCALES: Scale[] = ["major", "minor", "dorian", "mixolydian", "pentatonic"];
+const SCALES: Scale[] = [
+  "major",
+  "minor",
+  "dorian",
+  "mixolydian",
+  "pentatonic",
+];
 
 export interface MidiSmartPanelProps {
   root?: RootNote;
   scale?: Scale;
   onInsertChord?: (notes: number[]) => void;
+  onScaleChange?: (state: {
+    root: RootNote;
+    scale: Scale;
+    locked: boolean;
+  }) => void;
   className?: string;
 }
 
@@ -28,6 +39,7 @@ export function MidiSmartPanel({
   root: initialRoot = "C",
   scale: initialScale = "major",
   onInsertChord,
+  onScaleChange,
   className,
 }: MidiSmartPanelProps) {
   const [root, setRoot] = useState<RootNote>(initialRoot);
@@ -36,6 +48,10 @@ export function MidiSmartPanel({
   const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
 
   const chords = useMemo(() => getDiatonicChords(root, scale), [root, scale]);
+
+  useEffect(() => {
+    onScaleChange?.({ root, scale, locked: scaleLock });
+  }, [root, scale, scaleLock, onScaleChange]);
 
   const previewChord = useCallback(async (midiNotes: number[]) => {
     await start();
@@ -59,21 +75,33 @@ export function MidiSmartPanel({
   );
 
   return (
-    <div className={cn("rounded-lg border border-border bg-muted/40 p-sm", className)}>
+    <div
+      className={cn(
+        "rounded-lg border border-border bg-muted/40 p-sm",
+        className,
+      )}
+    >
       <div className="flex items-center justify-between gap-xs">
-        <SectionLabel>Smart chords</SectionLabel>
+        <div>
+          <SectionLabel>Smart chords</SectionLabel>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            Scale guide syncs with the piano roll
+          </p>
+        </div>
         <button
           type="button"
           onClick={() => setScaleLock((v) => !v)}
           className={cn(
             "inline-flex items-center gap-1 rounded px-xs py-0.5 text-[10px] font-medium",
-            scaleLock
-              ? "text-primary-300"
-              : "text-muted-foreground",
+            scaleLock ? "text-primary-300" : "text-muted-foreground",
           )}
           title={scaleLock ? "Scale locked" : "Scale unlocked"}
         >
-          {scaleLock ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+          {scaleLock ? (
+            <Lock className="h-3 w-3" />
+          ) : (
+            <Unlock className="h-3 w-3" />
+          )}
           {scaleLock ? "Locked" : "Free"}
         </button>
       </div>

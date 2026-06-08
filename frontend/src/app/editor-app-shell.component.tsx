@@ -6,6 +6,7 @@ import { FeedbackChip } from "../components/FeedbackChip";
 import { EditorHeader } from "./editor-header.component";
 import { WaitingGamePanel } from "./waiting-game-panel.component";
 import { DevLatencyPanel } from "./dev-latency-panel.component";
+import { DevHealthPanel } from "./dev-health-panel.component";
 import { LazyModalLayer } from "./lazy-modal-layer.component";
 import { AppBackgroundOrbs } from "./app-background-orbs.component";
 import { EditorFloatingOverlays } from "./editor-floating-overlays.component";
@@ -232,6 +233,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
         latencyStats={latencyStats}
         onResetLatencyStats={resetLatencyStats}
       />
+      <DevHealthPanel />
 
       <EditorFloatingOverlays
         reduceMotion={reduceMotion}

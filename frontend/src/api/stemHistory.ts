@@ -9,6 +9,8 @@ export interface StemFileRecord {
   stem_name: string;
   s3_key: string | null;
   file_size_bytes: number | null;
+  available: boolean;
+  file_url: string;
 }
 
 export interface StemHistoryJob {
@@ -33,9 +35,10 @@ export interface StemHistoryResponse {
 /**
  * Fetch the authenticated user's stem separation history with nested stem metadata.
  */
-export async function fetchStemHistory(
-  opts?: { limit?: number; offset?: number },
-): Promise<StemHistoryResponse> {
+export async function fetchStemHistory(opts?: {
+  limit?: number;
+  offset?: number;
+}): Promise<StemHistoryResponse> {
   const params = new URLSearchParams();
   if (opts?.limit) params.set("limit", String(opts.limit));
   if (opts?.offset) params.set("offset", String(opts.offset));
@@ -48,7 +51,8 @@ export async function fetchStemHistory(
   });
 
   if (!res.ok) {
-    if (res.status === 401) throw new Error("Please sign in to view your stems");
+    if (res.status === 401)
+      throw new Error("Please sign in to view your stems");
     throw new Error(`Failed to load stem history (HTTP ${res.status})`);
   }
 
@@ -56,8 +60,11 @@ export async function fetchStemHistory(
 }
 
 /**
- * Generate a fresh presigned S3 URL for downloading a specific stem.
- * Returns the presigned URL string.
+ * Legacy history download helper.
+ *
+ * The backend may return either a presigned S3 URL or the canonical
+ * authenticated `/api/stems/file/:job/:stem.wav` URL when the stem is served
+ * from local/shared storage.
  */
 export async function fetchStemDownloadUrl(
   jobId: string,

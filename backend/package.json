@@ -12,6 +12,8 @@
     "start": "node --env-file=.env server.js",
     "dev": "node --env-file=.env --watch server.js",
     "db:migrate": "node --env-file=.env db-migrate.js",
+    "catalog:generate": "node scripts/generate-midi-catalog.mjs",
+    "catalog:health": "node scripts/catalog-health.mjs",
     "stripe:listen": "node --env-file=.env ../scripts/stripe-local-dev.mjs",
     "test": "node --test",
     "test:assertions": "node check-test-assertions.mjs",

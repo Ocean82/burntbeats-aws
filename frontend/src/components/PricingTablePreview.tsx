@@ -1,7 +1,11 @@
 import { ArrowRight } from "lucide-react";
 import { type ReactNode } from "react";
 import type { Plan } from "../hooks/useSubscription";
-import { getPlansForType, type PlanConfig, type PricingTableType } from "../data/plans";
+import {
+  getPlansForType,
+  type PlanConfig,
+  type PricingTableType,
+} from "../data/plans";
 import { cn } from "../utils/cn";
 
 // Re-export for consumers that imported from here previously
@@ -14,7 +18,12 @@ interface PlanCardProps {
   isCurrentPlan?: boolean;
 }
 
-function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCardProps) {
+function PlanCard({
+  plan,
+  onSelect,
+  ctaButton,
+  isCurrentPlan = false,
+}: PlanCardProps) {
   const interactive = Boolean(onSelect) && !isCurrentPlan;
   const handleSelect = () => onSelect?.(plan.id);
 
@@ -33,7 +42,9 @@ function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCard
       <div className="flex items-start justify-between gap-md">
         <div className="min-w-0 flex-1">
           <p className="text-xl font-semibold text-foreground">{plan.name}</p>
-          <p className="text-readable mt-xs text-sm text-secondary-foreground">{plan.description}</p>
+          <p className="text-readable mt-xs text-sm text-secondary-foreground">
+            {plan.description}
+          </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-xs">
           {isCurrentPlan ? (
@@ -57,7 +68,10 @@ function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCard
           aria-label={`Choose ${plan.name} for ${plan.priceLabel}`}
         >
           {plan.priceLabel}
-          <ArrowRight className="h-4 w-4 shrink-0 opacity-75 transition group-hover:translate-x-0.5 group-hover:opacity-100" aria-hidden />
+          <ArrowRight
+            className="h-4 w-4 shrink-0 opacity-75 transition group-hover:translate-x-0.5 group-hover:opacity-100"
+            aria-hidden
+          />
         </button>
       ) : (
         <p
@@ -73,15 +87,13 @@ function PlanCard({ plan, onSelect, ctaButton, isCurrentPlan = false }: PlanCard
       <ul className="mt-lg flex-1 space-y-sm text-sm text-secondary-foreground">
         {plan.details.map((detail) => (
           <li key={detail} className="flex gap-sm">
-            <span className="mt-1 inline-flex h-2.5 w-2.5 flex-shrink-0 rounded-full bg-primary-400/80" />
+            <span className="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-primary-400/80" />
             <span className="text-readable">{detail}</span>
           </li>
         ))}
       </ul>
       {ctaButton ? (
-        <div className="mt-lg">
-          {ctaButton}
-        </div>
+        <div className="mt-lg">{ctaButton}</div>
       ) : onSelect ? (
         <button
           type="button"
@@ -112,11 +124,7 @@ export function PricingTablePreview({
 
   return (
     <div className="space-y-lg" data-testid="pricing-table-preview">
-      <div
-        id="pricing-tabpanel-plans"
-        role="tabpanel"
-        className="grid gap-md sm:grid-cols-2 lg:grid-cols-3"
-      >
+      <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan) => (
           <div key={plan.id} className="min-w-0">
             <PlanCard

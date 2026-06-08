@@ -37,14 +37,23 @@ vi.mock("../hooks/useStemHistory", () => ({
     jobs: [
       {
         job_id: "job-1",
+        status: "completed",
+        stems: 1,
         original_filename: "song.wav",
         created_at: "2026-05-25T00:00:00.000Z",
+        completed_at: "2026-05-25T00:00:30.000Z",
+        duration_seconds: 12,
+        token_cost: 1,
+        model_name: "test-model",
         quality: "quality",
         stem_files: [
           {
             stem_name: "vocals",
             file_size_bytes: 1024,
-            s3_key: "stems/job-1/vocals.wav",
+            s3_key: null,
+            available: true,
+            file_url:
+              "https://example.com/api/stems/file/550e8400-e29b-41d4-a716-446655440000/vocals.wav",
           },
         ],
       },
@@ -67,8 +76,8 @@ vi.mock("../hooks/useMidiHistory", () => ({
   }),
 }));
 
-vi.mock("../api/stemHistory", () => ({
-  fetchStemDownloadUrl: vi.fn(),
+vi.mock("../api/stems", () => ({
+  fetchStemWavAsBlob: vi.fn(),
 }));
 
 vi.mock("../api/auth", () => ({

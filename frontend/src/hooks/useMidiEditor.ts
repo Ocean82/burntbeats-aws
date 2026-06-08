@@ -5,6 +5,10 @@ import {
   snapDuration,
   snapToGrid,
 } from "../utils/midiEditorSnap";
+import {
+  resolvePitchOverlaps,
+  sanitizeSelectedIds,
+} from "../utils/midiEditorNotes";
 import type { MidiNoteEvent } from "./useMidiConvert";
 import type {
   EditorTool,
@@ -28,7 +32,19 @@ import {
   generateNoteId,
 } from "../components/midi-convert/editorTypes";
 
-export type { EditorTool, SnapGrid, EditableNote, EditorTrack, CcLane, CcPoint, LoopRegion, TimeSignature, ActiveLane, EditorViewState, AutomationParam };
+export type {
+  EditorTool,
+  SnapGrid,
+  EditableNote,
+  EditorTrack,
+  CcLane,
+  CcPoint,
+  LoopRegion,
+  TimeSignature,
+  ActiveLane,
+  EditorViewState,
+  AutomationParam,
+};
 
 const MAX_HISTORY = 50;
 
@@ -101,11 +117,18 @@ export interface UseMidiEditorReturn {
   deleteNote: (noteId: string) => void;
   addNote: (pitch: number, start: number, duration?: number) => void;
   moveNotes: (noteIds: string[], deltaPitch: number, deltaTime: number) => void;
-  resizeNote: (noteId: string, newDuration: number) => void;
+  resizeNote: (noteId: string, newStart: number, newDuration: number) => void;
   setSelectedVelocity: (velocity: number) => void;
   transposeSelected: (semitones: number) => void;
+  moveSelectedByStep: (deltaPitch: number, deltaTime: number) => void;
   duplicateSelected: () => void;
+  duplicateNotes: (
+    noteIds: string[],
+    deltaPitch: number,
+    deltaTime: number,
+  ) => void;
   quantizeSelected: () => void;
+  quantizeNotes: (noteIds: string[]) => void;
   splitNoteAt: (noteId: string, time: number) => void;
   joinSelected: () => void;
   copySelected: () => void;
@@ -124,14 +147,25 @@ export interface UseMidiEditorReturn {
   setTrackMute: (trackId: string, muted: boolean) => void;
   setTrackSolo: (trackId: string, soloed: boolean) => void;
   setTrackColor: (trackId: string, color: string) => void;
-  setTrackInstrument: (trackId: string, instrument: EditorTrack["instrument"]) => void;
+  setTrackInstrument: (
+    trackId: string,
+    instrument: EditorTrack["instrument"],
+  ) => void;
   setNoteVelocity: (noteId: string, velocity: number) => void;
+  setNoteMuted: (noteId: string, muted: boolean) => void;
+  setNoteChannel: (noteId: string, channel: number) => void;
+  legatoSelected: () => void;
   beginRecordedNote: (pitch: number, start: number, velocity: number) => string;
   finishRecordedNote: (noteId: string, endAbsolute: number) => void;
   beginEditGesture: () => void;
   addCcPoint: (ccNumber: number, time: number, value: number) => void;
   removeCcPoint: (ccNumber: number, pointIndex: number) => void;
-  updateCcPoint: (ccNumber: number, pointIndex: number, time: number, value: number) => void;
+  updateCcPoint: (
+    ccNumber: number,
+    pointIndex: number,
+    time: number,
+    value: number,
+  ) => void;
   setCcLaneVisibility: (ccNumber: number, visible: boolean) => void;
   getTrackCcLane: (ccNumber: number) => CcLane | undefined;
 }
@@ -212,7 +246,8 @@ export function useMidiEditor(
   );
 
   const activeTrack = useMemo(
-    () => state.tracks.find((t) => t.id === state.activeTrackId) ?? state.tracks[0],
+    () =>
+      state.tracks.find((t) => t.id === state.activeTrackId) ?? state.tracks[0],
     [state.tracks, state.activeTrackId],
   );
 
@@ -260,7 +295,10 @@ export function useMidiEditor(
   }, []);
 
   const setDrawVelocity = useCallback((drawVelocity: number) => {
-    setState((s) => ({ ...s, drawVelocity: Math.max(1, Math.min(127, drawVelocity)) }));
+    setState((s) => ({
+      ...s,
+      drawVelocity: Math.max(1, Math.min(127, drawVelocity)),
+    }));
   }, []);
 
   const modifyActiveTrack = useCallback(
@@ -276,27 +314,42 @@ export function useMidiEditor(
     [],
   );
 
-  const selectNote = useCallback((noteId: string, additive: boolean) => {
-    modifyActiveTrack((track) => {
-      const next = new Set(additive ? track.selectedIds : []);
-      if (next.has(noteId) && additive) {
-        next.delete(noteId);
-      } else {
-        next.add(noteId);
-      }
-      return { ...track, selectedIds: next };
-    });
-  }, [modifyActiveTrack]);
+  const normalizeTrackState = useCallback((track: EditorTrack): EditorTrack => {
+    const notes = resolvePitchOverlaps(track.notes);
+    return {
+      ...track,
+      notes,
+      selectedIds: sanitizeSelectedIds(notes, track.selectedIds),
+    };
+  }, []);
 
-  const selectNotes = useCallback((noteIds: string[], additive: boolean) => {
-    modifyActiveTrack((track) => {
-      const next = new Set(additive ? track.selectedIds : noteIds);
-      if (additive) {
-        for (const id of noteIds) next.add(id);
-      }
-      return { ...track, selectedIds: next };
-    });
-  }, [modifyActiveTrack]);
+  const selectNote = useCallback(
+    (noteId: string, additive: boolean) => {
+      modifyActiveTrack((track) => {
+        const next = new Set(additive ? track.selectedIds : []);
+        if (next.has(noteId) && additive) {
+          next.delete(noteId);
+        } else {
+          next.add(noteId);
+        }
+        return { ...track, selectedIds: next };
+      });
+    },
+    [modifyActiveTrack],
+  );
+
+  const selectNotes = useCallback(
+    (noteIds: string[], additive: boolean) => {
+      modifyActiveTrack((track) => {
+        const next = new Set(additive ? track.selectedIds : noteIds);
+        if (additive) {
+          for (const id of noteIds) next.add(id);
+        }
+        return { ...track, selectedIds: next };
+      });
+    },
+    [modifyActiveTrack],
+  );
 
   const selectAll = useCallback(() => {
     modifyActiveTrack((track) => ({
@@ -341,9 +394,19 @@ export function useMidiEditor(
     (pitch: number, start: number, duration?: number) => {
       modifyActiveTrack((track) => {
         pushHistory();
-        const snappedStart = snapToGrid(start, state.bpm, state.snapGrid, state.timeSignature);
+        const snappedStart = snapToGrid(
+          start,
+          state.bpm,
+          state.snapGrid,
+          state.timeSignature,
+        );
         const snappedDuration = duration
-          ? snapDuration(duration, state.bpm, state.snapGrid, state.timeSignature)
+          ? snapDuration(
+              duration,
+              state.bpm,
+              state.snapGrid,
+              state.timeSignature,
+            )
           : snapDuration(0.25, state.bpm, state.snapGrid, state.timeSignature);
         const newNote: EditableNote = {
           id: generateNoteId(),
@@ -352,14 +415,21 @@ export function useMidiEditor(
           duration: snappedDuration,
           velocity: state.drawVelocity,
         };
-        return {
+        return normalizeTrackState({
           ...track,
           notes: [...track.notes, newNote],
           selectedIds: new Set([newNote.id]),
-        };
+        });
       });
     },
-    [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature, state.drawVelocity],
+    [
+      modifyActiveTrack,
+      pushHistory,
+      state.bpm,
+      state.snapGrid,
+      state.timeSignature,
+      state.drawVelocity,
+    ],
   );
 
   const moveNotes = useCallback(
@@ -367,36 +437,68 @@ export function useMidiEditor(
       modifyActiveTrack((track) => {
         pushHistory();
         const idSet = new Set(noteIds);
-        return {
+        return normalizeTrackState({
           ...track,
           notes: track.notes.map((n) => {
             if (!idSet.has(n.id)) return n;
             const newPitch = Math.max(0, Math.min(127, n.pitch + deltaPitch));
-            const snappedDelta = snapDeltaTime(deltaTime, state.bpm, state.snapGrid, state.timeSignature);
+            const snappedDelta = snapDeltaTime(
+              deltaTime,
+              state.bpm,
+              state.snapGrid,
+              state.timeSignature,
+            );
             const newStart = Math.max(0, n.start + snappedDelta);
             return { ...n, pitch: newPitch, start: newStart };
           }),
-        };
+        });
       });
     },
-    [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature],
+    [
+      modifyActiveTrack,
+      pushHistory,
+      state.bpm,
+      state.snapGrid,
+      state.timeSignature,
+    ],
   );
 
   const resizeNote = useCallback(
-    (noteId: string, newDuration: number) => {
+    (noteId: string, newStart: number, newDuration: number) => {
       modifyActiveTrack((track) => {
         pushHistory();
-        return {
+        return normalizeTrackState({
           ...track,
           notes: track.notes.map((n) => {
             if (n.id !== noteId) return n;
-            const snapped = snapDuration(newDuration, state.bpm, state.snapGrid, state.timeSignature);
-            return { ...n, duration: Math.max(0.01, snapped) };
+            const snappedStart = snapToGrid(
+              Math.max(0, newStart),
+              state.bpm,
+              state.snapGrid,
+              state.timeSignature,
+            );
+            const snappedDuration = snapDuration(
+              newDuration,
+              state.bpm,
+              state.snapGrid,
+              state.timeSignature,
+            );
+            return {
+              ...n,
+              start: Math.max(0, snappedStart),
+              duration: Math.max(0.01, snappedDuration),
+            };
           }),
-        };
+        });
       });
     },
-    [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature],
+    [
+      modifyActiveTrack,
+      pushHistory,
+      state.bpm,
+      state.snapGrid,
+      state.timeSignature,
+    ],
   );
 
   const setSelectedVelocity = useCallback(
@@ -421,23 +523,64 @@ export function useMidiEditor(
       modifyActiveTrack((track) => {
         if (track.selectedIds.size === 0) return track;
         pushHistory();
-        return {
+        return normalizeTrackState({
           ...track,
           notes: track.notes.map((n) => {
             if (!track.selectedIds.has(n.id)) return n;
-            return { ...n, pitch: Math.max(0, Math.min(127, n.pitch + semitones)) };
+            return {
+              ...n,
+              pitch: Math.max(0, Math.min(127, n.pitch + semitones)),
+            };
           }),
-        };
+        });
       });
     },
     [modifyActiveTrack, pushHistory],
+  );
+
+  const moveSelectedByStep = useCallback(
+    (deltaPitch: number, deltaTime: number) => {
+      modifyActiveTrack((track) => {
+        if (track.selectedIds.size === 0) return track;
+        pushHistory();
+        return normalizeTrackState({
+          ...track,
+          notes: track.notes.map((n) => {
+            if (!track.selectedIds.has(n.id)) return n;
+            const snappedDelta = snapDeltaTime(
+              deltaTime,
+              state.bpm,
+              state.snapGrid,
+              state.timeSignature,
+            );
+            return {
+              ...n,
+              pitch: Math.max(0, Math.min(127, n.pitch + deltaPitch)),
+              start: Math.max(0, n.start + snappedDelta),
+            };
+          }),
+        });
+      });
+    },
+    [
+      modifyActiveTrack,
+      pushHistory,
+      state.bpm,
+      state.snapGrid,
+      state.timeSignature,
+    ],
   );
 
   const duplicateSelected = useCallback(() => {
     modifyActiveTrack((track) => {
       if (track.selectedIds.size === 0) return track;
       pushHistory();
-      const offset = snapDuration(0.25, state.bpm, state.snapGrid, state.timeSignature);
+      const offset = snapDuration(
+        0.25,
+        state.bpm,
+        state.snapGrid,
+        state.timeSignature,
+      );
       const duplicates: EditableNote[] = [];
       const newIds = new Set<string>();
       for (const n of track.notes) {
@@ -450,31 +593,128 @@ export function useMidiEditor(
         duplicates.push(dup);
         newIds.add(dup.id);
       }
-      return {
+      return normalizeTrackState({
         ...track,
         notes: [...track.notes, ...duplicates],
         selectedIds: newIds,
-      };
+      });
     });
-  }, [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature]);
+  }, [
+    modifyActiveTrack,
+    pushHistory,
+    state.bpm,
+    state.snapGrid,
+    state.timeSignature,
+  ]);
+
+  const duplicateNotes = useCallback(
+    (noteIds: string[], deltaPitch: number, deltaTime: number) => {
+      if (noteIds.length === 0) return;
+      modifyActiveTrack((track) => {
+        const selected = track.notes.filter((n) => noteIds.includes(n.id));
+        if (selected.length === 0) return track;
+        pushHistory();
+        const snappedDelta = snapDeltaTime(
+          deltaTime,
+          state.bpm,
+          state.snapGrid,
+          state.timeSignature,
+        );
+        const duplicates: EditableNote[] = selected.map((n) => ({
+          ...n,
+          id: generateNoteId(),
+          pitch: Math.max(0, Math.min(127, n.pitch + deltaPitch)),
+          start: Math.max(0, n.start + snappedDelta),
+        }));
+        return normalizeTrackState({
+          ...track,
+          notes: [...track.notes, ...duplicates],
+          selectedIds: new Set(duplicates.map((note) => note.id)),
+        });
+      });
+    },
+    [
+      modifyActiveTrack,
+      pushHistory,
+      state.bpm,
+      state.snapGrid,
+      state.timeSignature,
+    ],
+  );
 
   const quantizeSelected = useCallback(() => {
     modifyActiveTrack((track) => {
       if (track.selectedIds.size === 0) return track;
       pushHistory();
-      return {
+      return normalizeTrackState({
         ...track,
         notes: track.notes.map((n) => {
           if (!track.selectedIds.has(n.id)) return n;
           return {
             ...n,
-            start: snapToGrid(n.start, state.bpm, state.snapGrid, state.timeSignature),
-            duration: snapDuration(n.duration, state.bpm, state.snapGrid, state.timeSignature),
+            start: snapToGrid(
+              n.start,
+              state.bpm,
+              state.snapGrid,
+              state.timeSignature,
+            ),
+            duration: snapDuration(
+              n.duration,
+              state.bpm,
+              state.snapGrid,
+              state.timeSignature,
+            ),
           };
         }),
-      };
+      });
     });
-  }, [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature]);
+  }, [
+    modifyActiveTrack,
+    pushHistory,
+    state.bpm,
+    state.snapGrid,
+    state.timeSignature,
+  ]);
+
+  const quantizeNotes = useCallback(
+    (noteIds: string[]) => {
+      if (noteIds.length === 0) return;
+      const idSet = new Set(noteIds);
+      modifyActiveTrack((track) => {
+        const hasMatch = track.notes.some((n) => idSet.has(n.id));
+        if (!hasMatch) return track;
+        pushHistory();
+        return normalizeTrackState({
+          ...track,
+          notes: track.notes.map((n) => {
+            if (!idSet.has(n.id)) return n;
+            return {
+              ...n,
+              start: snapToGrid(
+                n.start,
+                state.bpm,
+                state.snapGrid,
+                state.timeSignature,
+              ),
+              duration: snapDuration(
+                n.duration,
+                state.bpm,
+                state.snapGrid,
+                state.timeSignature,
+              ),
+            };
+          }),
+        });
+      });
+    },
+    [
+      modifyActiveTrack,
+      pushHistory,
+      state.bpm,
+      state.snapGrid,
+      state.timeSignature,
+    ],
+  );
 
   const copySelected = useCallback(() => {
     modifyActiveTrack((track) => {
@@ -524,11 +764,11 @@ export function useMidiEditor(
           start: Math.max(0, targetStart + (n.start - clipMin)),
         }));
         const newIds = new Set(newNotes.map((n) => n.id));
-        return {
+        return normalizeTrackState({
           ...track,
           notes: [...track.notes, ...newNotes],
           selectedIds: newIds,
-        };
+        });
       });
     },
     [modifyActiveTrack, pushHistory, state.clipboard, gridSizeSeconds],
@@ -539,7 +779,8 @@ export function useMidiEditor(
       modifyActiveTrack((track) => {
         const note = track.notes.find((n) => n.id === noteId);
         if (!note) return track;
-        if (time <= note.start || time >= note.start + note.duration) return track;
+        if (time <= note.start || time >= note.start + note.duration)
+          return track;
         pushHistory();
         const leftDuration = time - note.start;
         const rightStart = time;
@@ -558,7 +799,11 @@ export function useMidiEditor(
         };
         return {
           ...track,
-          notes: [...track.notes.filter((n) => n.id !== noteId), leftNote, rightNote],
+          notes: [
+            ...track.notes.filter((n) => n.id !== noteId),
+            leftNote,
+            rightNote,
+          ],
           selectedIds: new Set([leftNote.id, rightNote.id]),
         };
       });
@@ -579,7 +824,8 @@ export function useMidiEditor(
       for (let i = 1; i < selected.length; i++) {
         const prev = selected[i - 1];
         const curr = selected[i];
-        if (Math.abs(curr.start - (prev.start + prev.duration)) > 0.01) return track;
+        if (Math.abs(curr.start - (prev.start + prev.duration)) > 0.01)
+          return track;
       }
       const minStart = selected[0].start;
       const maxEnd = Math.max(...selected.map((n) => n.start + n.duration));
@@ -592,7 +838,10 @@ export function useMidiEditor(
       const excludeIds = new Set(selected.map((n) => n.id));
       return {
         ...track,
-        notes: [...track.notes.filter((n) => !excludeIds.has(n.id)), mergedNote],
+        notes: [
+          ...track.notes.filter((n) => !excludeIds.has(n.id)),
+          mergedNote,
+        ],
         selectedIds: new Set([mergedNote.id]),
       };
     });
@@ -603,19 +852,21 @@ export function useMidiEditor(
       modifyActiveTrack((track) => {
         if (track.selectedIds.size === 0) return track;
         pushHistory();
-        return {
+        return normalizeTrackState({
           ...track,
           notes: track.notes.map((n) => {
             if (!track.selectedIds.has(n.id)) return n;
             const timeOffset = (Math.random() - 0.5) * 2 * timingJitter;
-            const velOffset = Math.round((Math.random() - 0.5) * 2 * velocityJitter);
+            const velOffset = Math.round(
+              (Math.random() - 0.5) * 2 * velocityJitter,
+            );
             return {
               ...n,
               start: Math.max(0, n.start + timeOffset),
               velocity: Math.max(1, Math.min(127, n.velocity + velOffset)),
             };
           }),
-        };
+        });
       });
     },
     [modifyActiveTrack, pushHistory],
@@ -630,7 +881,9 @@ export function useMidiEditor(
           ...track,
           notes: track.notes.map((n) => {
             if (!track.selectedIds.has(n.id)) return n;
-            const rVel = minVelocity + Math.round(Math.random() * (maxVelocity - minVelocity));
+            const rVel =
+              minVelocity +
+              Math.round(Math.random() * (maxVelocity - minVelocity));
             return { ...n, velocity: Math.max(1, Math.min(127, rVel)) };
           }),
         };
@@ -716,9 +969,10 @@ export function useMidiEditor(
     setState((s) => {
       if (s.tracks.length <= 1) return s;
       const tracks = s.tracks.filter((t) => t.id !== trackId);
-      const activeTrackId = s.activeTrackId === trackId
-        ? tracks[0]?.id ?? s.activeTrackId
-        : s.activeTrackId;
+      const activeTrackId =
+        s.activeTrackId === trackId
+          ? (tracks[0]?.id ?? s.activeTrackId)
+          : s.activeTrackId;
       return { ...s, tracks, activeTrackId };
     });
   }, []);
@@ -727,21 +981,33 @@ export function useMidiEditor(
     setState((s) => ({ ...s, activeTrackId: trackId }));
   }, []);
 
-  const setTrackName = useCallback((trackId: string, name: string) => {
-    updateTrack(trackId, (t) => ({ ...t, name }));
-  }, [updateTrack]);
+  const setTrackName = useCallback(
+    (trackId: string, name: string) => {
+      updateTrack(trackId, (t) => ({ ...t, name }));
+    },
+    [updateTrack],
+  );
 
-  const setTrackMute = useCallback((trackId: string, muted: boolean) => {
-    updateTrack(trackId, (t) => ({ ...t, muted }));
-  }, [updateTrack]);
+  const setTrackMute = useCallback(
+    (trackId: string, muted: boolean) => {
+      updateTrack(trackId, (t) => ({ ...t, muted }));
+    },
+    [updateTrack],
+  );
 
-  const setTrackSolo = useCallback((trackId: string, soloed: boolean) => {
-    updateTrack(trackId, (t) => ({ ...t, soloed }));
-  }, [updateTrack]);
+  const setTrackSolo = useCallback(
+    (trackId: string, soloed: boolean) => {
+      updateTrack(trackId, (t) => ({ ...t, soloed }));
+    },
+    [updateTrack],
+  );
 
-  const setTrackColor = useCallback((trackId: string, color: string) => {
-    updateTrack(trackId, (t) => ({ ...t, color }));
-  }, [updateTrack]);
+  const setTrackColor = useCallback(
+    (trackId: string, color: string) => {
+      updateTrack(trackId, (t) => ({ ...t, color }));
+    },
+    [updateTrack],
+  );
 
   const setTrackInstrument = useCallback(
     (trackId: string, instrument: EditorTrack["instrument"]) => {
@@ -759,9 +1025,15 @@ export function useMidiEditor(
       pushHistory();
       const noteId = generateNoteId();
       const minDur =
-        getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature) || 0.01;
+        getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature) ||
+        0.01;
       modifyActiveTrack((track) => {
-        const snappedStart = snapToGrid(start, state.bpm, state.snapGrid, state.timeSignature);
+        const snappedStart = snapToGrid(
+          start,
+          state.bpm,
+          state.snapGrid,
+          state.timeSignature,
+        );
         const newNote: EditableNote = {
           id: noteId,
           pitch: Math.max(0, Math.min(127, pitch)),
@@ -769,15 +1041,21 @@ export function useMidiEditor(
           duration: minDur,
           velocity: Math.max(1, Math.min(127, velocity)),
         };
-        return {
+        return normalizeTrackState({
           ...track,
           notes: [...track.notes, newNote],
           selectedIds: new Set([noteId]),
-        };
+        });
       });
       return noteId;
     },
-    [modifyActiveTrack, pushHistory, state.bpm, state.snapGrid, state.timeSignature],
+    [
+      modifyActiveTrack,
+      pushHistory,
+      state.bpm,
+      state.snapGrid,
+      state.timeSignature,
+    ],
   );
 
   const finishRecordedNote = useCallback(
@@ -785,10 +1063,17 @@ export function useMidiEditor(
       modifyActiveTrack((track) => {
         const note = track.notes.find((n) => n.id === noteId);
         if (!note) return track;
-        const gridMin = getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature) || 0.01;
+        const gridMin =
+          getGridSizeSeconds(state.bpm, state.snapGrid, state.timeSignature) ||
+          0.01;
         const snappedEnd = Math.max(
           note.start + gridMin,
-          snapToGrid(endAbsolute, state.bpm, state.snapGrid, state.timeSignature),
+          snapToGrid(
+            endAbsolute,
+            state.bpm,
+            state.snapGrid,
+            state.timeSignature,
+          ),
         );
         const duration = snapDuration(
           snappedEnd - note.start,
@@ -796,12 +1081,14 @@ export function useMidiEditor(
           state.snapGrid,
           state.timeSignature,
         );
-        return {
+        return normalizeTrackState({
           ...track,
           notes: track.notes.map((n) =>
-            n.id === noteId ? { ...n, duration: Math.max(gridMin, duration) } : n,
+            n.id === noteId
+              ? { ...n, duration: Math.max(gridMin, duration) }
+              : n,
           ),
-        };
+        });
       });
     },
     [modifyActiveTrack, state.bpm, state.snapGrid, state.timeSignature],
@@ -821,6 +1108,67 @@ export function useMidiEditor(
     [modifyActiveTrack],
   );
 
+  const setNoteMuted = useCallback(
+    (noteId: string, muted: boolean) => {
+      modifyActiveTrack((track) => ({
+        ...track,
+        notes: track.notes.map((n) => (n.id === noteId ? { ...n, muted } : n)),
+      }));
+    },
+    [modifyActiveTrack],
+  );
+
+  const setNoteChannel = useCallback(
+    (noteId: string, channel: number) => {
+      modifyActiveTrack((track) => ({
+        ...track,
+        notes: track.notes.map((n) =>
+          n.id === noteId
+            ? { ...n, channel: Math.max(1, Math.min(16, Math.round(channel))) }
+            : n,
+        ),
+      }));
+    },
+    [modifyActiveTrack],
+  );
+
+  const legatoSelected = useCallback(() => {
+    modifyActiveTrack((track) => {
+      if (track.selectedIds.size === 0) return track;
+      const selected = track.notes.filter((n) => track.selectedIds.has(n.id));
+      if (selected.length === 0) return track;
+      pushHistory();
+
+      const nextDurations = new Map<string, number>();
+      const byPitch = new Map<number, EditableNote[]>();
+      for (const note of selected) {
+        const bucket = byPitch.get(note.pitch) ?? [];
+        bucket.push(note);
+        byPitch.set(note.pitch, bucket);
+      }
+
+      for (const group of byPitch.values()) {
+        const sorted = [...group].sort((a, b) => a.start - b.start);
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const current = sorted[i];
+          const next = sorted[i + 1];
+          nextDurations.set(
+            current.id,
+            Math.max(0.01, next.start - current.start),
+          );
+        }
+      }
+
+      return {
+        ...track,
+        notes: track.notes.map((n) => {
+          const duration = nextDurations.get(n.id);
+          return duration == null ? n : { ...n, duration };
+        }),
+      };
+    });
+  }, [modifyActiveTrack, pushHistory]);
+
   const getTrackCcLane = useCallback(
     (ccNumber: number): CcLane | undefined => {
       return activeTrack.ccLanes.find((l) => l.ccNumber === ccNumber);
@@ -833,7 +1181,10 @@ export function useMidiEditor(
       modifyActiveTrack((track) => {
         const lanes = track.ccLanes.map((l) => {
           if (l.ccNumber !== ccNumber) return l;
-          const events = [...l.events, { time, value: Math.max(0, Math.min(127, value)) }];
+          const events = [
+            ...l.events,
+            { time, value: Math.max(0, Math.min(127, value)) },
+          ];
           events.sort((a, b) => a.time - b.time);
           return { ...l, events };
         });
@@ -938,8 +1289,11 @@ export function useMidiEditor(
     resizeNote,
     setSelectedVelocity,
     transposeSelected,
+    moveSelectedByStep,
     duplicateSelected,
+    duplicateNotes,
     quantizeSelected,
+    quantizeNotes,
     splitNoteAt,
     joinSelected,
     copySelected,
@@ -960,6 +1314,9 @@ export function useMidiEditor(
     setTrackColor,
     setTrackInstrument,
     setNoteVelocity,
+    setNoteMuted,
+    setNoteChannel,
+    legatoSelected,
     beginRecordedNote,
     finishRecordedNote,
     beginEditGesture,

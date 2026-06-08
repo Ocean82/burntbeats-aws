@@ -1,15 +1,15 @@
 {
   "version": 1,
-  "generated_at": "2026-05-29T00:00:00.000Z",
+  "generated_at": "2026-06-07T16:38:45.000Z",
   "statistics": {
     "total_entries": 12,
     "by_genre": {
       "rock": 3,
       "pop": 2,
-      "jazz": 2,
-      "classical": 2,
       "electronic": 2,
-      "hiphop": 1
+      "jazz": 2,
+      "hiphop": 1,
+      "classical": 2
     }
   },
   "entries": [
@@ -29,9 +29,13 @@
         "estimatedTempo": 120,
         "length": 16,
         "track_count": 1,
-        "note_count": 32
+        "note_count": 16
       },
-      "tags": ["rock", "progression", "guitar"]
+      "tags": [
+        "rock",
+        "progression",
+        "guitar"
+      ]
     },
     {
       "id": "midi-002",
@@ -47,11 +51,15 @@
       },
       "analysis": {
         "estimatedTempo": 110,
-        "length": 24,
-        "track_count": 2,
-        "note_count": 64
+        "length": 8,
+        "track_count": 1,
+        "note_count": 24
       },
-      "tags": ["blues", "shuffle", "bass"]
+      "tags": [
+        "blues",
+        "shuffle",
+        "bass"
+      ]
     },
     {
       "id": "midi-003",
@@ -67,11 +75,15 @@
       },
       "analysis": {
         "estimatedTempo": 72,
-        "length": 32,
-        "track_count": 2,
-        "note_count": 48
+        "length": 16,
+        "track_count": 1,
+        "note_count": 16
       },
-      "tags": ["ballad", "piano", "strings"]
+      "tags": [
+        "ballad",
+        "piano",
+        "strings"
+      ]
     },
     {
       "id": "midi-004",
@@ -87,11 +99,15 @@
       },
       "analysis": {
         "estimatedTempo": 128,
-        "length": 12,
+        "length": 8,
         "track_count": 1,
-        "note_count": 28
+        "note_count": 16
       },
-      "tags": ["pop", "hook", "vocals"]
+      "tags": [
+        "pop",
+        "hook",
+        "vocals"
+      ]
     },
     {
       "id": "midi-005",
@@ -108,10 +124,14 @@
       "analysis": {
         "estimatedTempo": 118,
         "length": 8,
-        "track_count": 3,
-        "note_count": 96
+        "track_count": 1,
+        "note_count": 24
       },
-      "tags": ["synth", "electronic", "loop"]
+      "tags": [
+        "synth",
+        "electronic",
+        "loop"
+      ]
     },
     {
       "id": "midi-006",
@@ -127,11 +147,15 @@
       },
       "analysis": {
         "estimatedTempo": 128,
-        "length": 48,
-        "track_count": 4,
-        "note_count": 180
+        "length": 32,
+        "track_count": 1,
+        "note_count": 40
       },
-      "tags": ["edm", "build", "drop"]
+      "tags": [
+        "edm",
+        "build",
+        "drop"
+      ]
     },
     {
       "id": "midi-007",
@@ -148,10 +172,14 @@
       "analysis": {
         "estimatedTempo": 100,
         "length": 16,
-        "track_count": 2,
-        "note_count": 56
+        "track_count": 1,
+        "note_count": 16
       },
-      "tags": ["jazz", "251", "piano"]
+      "tags": [
+        "jazz",
+        "251",
+        "piano"
+      ]
     },
     {
       "id": "midi-008",
@@ -167,11 +195,15 @@
       },
       "analysis": {
         "estimatedTempo": 120,
-        "length": 20,
-        "track_count": 3,
-        "note_count": 88
+        "length": 8,
+        "track_count": 1,
+        "note_count": 24
       },
-      "tags": ["bossa", "guitar", "latin"]
+      "tags": [
+        "bossa",
+        "guitar",
+        "latin"
+      ]
     },
     {
       "id": "midi-009",
@@ -188,10 +220,14 @@
       "analysis": {
         "estimatedTempo": 90,
         "length": 8,
-        "track_count": 2,
-        "note_count": 40
+        "track_count": 1,
+        "note_count": 24
       },
-      "tags": ["hiphop", "drums", "808"]
+      "tags": [
+        "hiphop",
+        "drums",
+        "808"
+      ]
     },
     {
       "id": "midi-010",
@@ -207,11 +243,15 @@
       },
       "analysis": {
         "estimatedTempo": 96,
-        "length": 24,
+        "length": 8,
         "track_count": 1,
-        "note_count": 72
+        "note_count": 16
       },
-      "tags": ["classical", "piano", "baroque"]
+      "tags": [
+        "classical",
+        "piano",
+        "baroque"
+      ]
     },
     {
       "id": "midi-011",
@@ -227,11 +267,15 @@
       },
       "analysis": {
         "estimatedTempo": 88,
-        "length": 40,
-        "track_count": 4,
-        "note_count": 210
+        "length": 8,
+        "track_count": 1,
+        "note_count": 16
       },
-      "tags": ["strings", "quartet", "orchestral"]
+      "tags": [
+        "strings",
+        "quartet",
+        "orchestral"
+      ]
     },
     {
       "id": "midi-012",
@@ -247,11 +291,15 @@
       },
       "analysis": {
         "estimatedTempo": 68,
-        "length": 28,
-        "track_count": 2,
-        "note_count": 52
+        "length": 16,
+        "track_count": 1,
+        "note_count": 16
       },
-      "tags": ["pop", "ballad", "piano"]
+      "tags": [
+        "pop",
+        "ballad",
+        "piano"
+      ]
     }
   ]
 }

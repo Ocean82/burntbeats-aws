@@ -1,8 +1,5 @@
 import { useCallback, useState } from "react";
-import {
-  fetchStemDownloadUrl,
-  type StemHistoryJob,
-} from "../api/stemHistory";
+import { type StemHistoryJob } from "../api/stemHistory";
 import type { StemResult } from "../types";
 
 export interface LoadHistoryJobCallbacks {
@@ -19,18 +16,22 @@ export function useLoadHistoryJob(callbacks: LoadHistoryJobCallbacks) {
 
   const loadHistoryJob = useCallback(
     async (job: StemHistoryJob) => {
-      if (job.status !== "completed" || job.stem_files.length === 0) {
+      const availableStemFiles = job.stem_files.filter(
+        (f) =>
+          f.available &&
+          typeof f.file_url === "string" &&
+          f.file_url.length > 0,
+      );
+      if (job.status !== "completed" || availableStemFiles.length === 0) {
         callbacks.onError?.("This job has no stems available to load.");
         return;
       }
       setLoadingJobId(job.job_id);
       try {
-        const stems: StemResult[] = await Promise.all(
-          job.stem_files.map(async (f) => {
-            const url = await fetchStemDownloadUrl(job.job_id, f.stem_name);
-            return { id: f.stem_name, url };
-          }),
-        );
+        const stems: StemResult[] = availableStemFiles.map((f) => ({
+          id: f.stem_name,
+          url: f.file_url,
+        }));
         callbacks.onLoaded({
           stems,
           jobId: job.job_id,

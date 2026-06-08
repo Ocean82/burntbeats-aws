@@ -101,9 +101,11 @@ Health checks:
 
 ```bash
 curl -fsS http://127.0.0.1:5173/api/health
+curl -fsS http://127.0.0.1:5173/api/catalog/midi/health
 curl -fsS http://127.0.0.1:5000/health
 curl -fsS http://127.0.0.1:5001/health
 curl -fsS http://127.0.0.1:5002/health
+npm --prefix backend run catalog:health
 ```
 
 - Frontend (nginx): `127.0.0.1:5173` — same-origin **`/api/*`** is reverse-proxied to the backend container.

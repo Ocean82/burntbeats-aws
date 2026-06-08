@@ -32,9 +32,9 @@ import {
 import JSZip from "jszip";
 import { useStemHistory } from "../hooks/useStemHistory";
 import { useMidiHistory } from "../hooks/useMidiHistory";
-import { fetchStemDownloadUrl } from "../api/stemHistory";
 import { API_BASE } from "../config";
 import { authHeaders } from "../api/auth";
+import { fetchStemWavAsBlob } from "../api/stems";
 import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
 import { MyStemsPageSkeleton } from "./MyStemsPageSkeleton";
 import { SharePreviewButton } from "./SharePreviewButton";
@@ -52,7 +52,12 @@ export interface MyStemsPageProps {
   loadingMidiJobId?: string | null;
 }
 
-type SortOption = "date-desc" | "date-asc" | "name-asc" | "name-desc" | "stems-desc";
+type SortOption =
+  | "date-desc"
+  | "date-asc"
+  | "name-asc"
+  | "name-desc"
+  | "stems-desc";
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "date-desc", label: "Newest first" },
@@ -123,7 +128,9 @@ export function MyStemsPage({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("date-desc");
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState<Record<string, boolean>>({});
+  const [isDownloading, setIsDownloading] = useState<Record<string, boolean>>(
+    {},
+  );
   const [isZipping, setIsZipping] = useState<string | null>(null);
 
   // -------------------------------------------------------------------------
@@ -145,13 +152,21 @@ export function MyStemsPage({
     result = [...result].sort((a, b) => {
       switch (sortBy) {
         case "date-desc":
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          return (
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
         case "date-asc":
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          return (
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
         case "name-asc":
-          return (a.original_filename ?? "").localeCompare(b.original_filename ?? "");
+          return (a.original_filename ?? "").localeCompare(
+            b.original_filename ?? "",
+          );
         case "name-desc":
-          return (b.original_filename ?? "").localeCompare(a.original_filename ?? "");
+          return (b.original_filename ?? "").localeCompare(
+            a.original_filename ?? "",
+          );
         case "stems-desc":
           return b.stem_files.length - a.stem_files.length;
         default:
@@ -167,14 +182,11 @@ export function MyStemsPage({
   // -------------------------------------------------------------------------
 
   const handleDownloadStem = useCallback(
-    async (jobId: string, stemName: string) => {
+    async (jobId: string, stemName: string, fileUrl: string) => {
       const key = `${jobId}:${stemName}`;
       setIsDownloading((prev) => ({ ...prev, [key]: true }));
       try {
-        const url = await fetchStemDownloadUrl(jobId, stemName);
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Download failed");
-        const blob = await response.blob();
+        const blob = await fetchStemWavAsBlob(fileUrl);
         await downloadBlob(blob, `${stemName}.wav`);
       } catch (err) {
         console.error("Stem download failed:", err);
@@ -191,7 +203,12 @@ export function MyStemsPage({
       const job = jobs.find((j) => j.job_id === jobId);
       if (!job) return;
 
-      const availableStems = job.stem_files.filter((s) => s.s3_key !== null);
+      const availableStems = job.stem_files.filter(
+        (s) =>
+          s.available &&
+          typeof s.file_url === "string" &&
+          s.file_url.length > 0,
+      );
       if (availableStems.length === 0) return;
 
       setIsZipping(jobId);
@@ -202,20 +219,14 @@ export function MyStemsPage({
         if (mobile) {
           // Sequential fetching on mobile to reduce memory pressure
           for (const stem of availableStems) {
-            const url = await fetchStemDownloadUrl(jobId, stem.stem_name);
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Failed to fetch ${stem.stem_name}`);
-            const blob = await response.blob();
+            const blob = await fetchStemWavAsBlob(stem.file_url);
             zip.file(`${stem.stem_name}.wav`, blob);
           }
         } else {
           // Parallel fetching on desktop
           const downloads = await Promise.all(
             availableStems.map(async (stem) => {
-              const url = await fetchStemDownloadUrl(jobId, stem.stem_name);
-              const response = await fetch(url);
-              if (!response.ok) throw new Error(`Failed to fetch ${stem.stem_name}`);
-              const blob = await response.blob();
+              const blob = await fetchStemWavAsBlob(stem.file_url);
               return { name: stem.stem_name, blob };
             }),
           );
@@ -259,7 +270,9 @@ export function MyStemsPage({
           throw new Error("MIDI download failed");
         }
         const blob = await response.blob();
-        const filename = stemName ? `${stemName}.mid` : `midi-${midiJobId.slice(0, 8)}.mid`;
+        const filename = stemName
+          ? `${stemName}.mid`
+          : `midi-${midiJobId.slice(0, 8)}.mid`;
         await downloadBlob(blob, filename);
       } catch (err) {
         console.error("MIDI download failed:", err);
@@ -323,9 +336,12 @@ export function MyStemsPage({
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-500/10">
             <Music className="h-8 w-8 text-primary-400" />
           </div>
-          <h2 className="mt-md text-lg font-semibold text-foreground">No stems yet</h2>
+          <h2 className="mt-md text-lg font-semibold text-foreground">
+            No stems yet
+          </h2>
           <p className="text-readable text-readable-tight mt-xs text-sm text-muted-foreground">
-            Split your first track! Your separated stems will appear here for easy re-download.
+            Split your first track! Your separated stems will appear here for
+            easy re-download.
           </p>
           <button
             onClick={onClose}
@@ -358,20 +374,27 @@ export function MyStemsPage({
 
       <main className="flex-1 p-md sm:p-lg">
         {/* Storage Overview */}
-        <section aria-label="Storage overview" className="mb-lg grid grid-cols-3 gap-sm">
+        <section
+          aria-label="Storage overview"
+          className="mb-lg grid grid-cols-3 gap-sm"
+        >
           <div className="rounded-2xl border border-border bg-popover/95 p-sm sm:p-md">
             <div className="flex items-center gap-xs text-muted-foreground">
               <Package className="h-4 w-4" />
               <span className="text-xs">Jobs</span>
             </div>
-            <p className="mt-1 text-lg font-semibold text-foreground">{totalJobs}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {totalJobs}
+            </p>
           </div>
           <div className="rounded-2xl border border-border bg-popover/95 p-sm sm:p-md">
             <div className="flex items-center gap-xs text-muted-foreground">
               <Music className="h-4 w-4" />
               <span className="text-xs">Stems</span>
             </div>
-            <p className="mt-1 text-lg font-semibold text-foreground">{totalStems}</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">
+              {totalStems}
+            </p>
           </div>
           <div className="rounded-2xl border border-border bg-popover/95 p-sm sm:p-md">
             <div className="flex items-center gap-xs text-muted-foreground">
@@ -415,14 +438,21 @@ export function MyStemsPage({
         <section aria-label="Stem separation jobs">
           {filteredAndSortedJobs.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">No jobs match your search.</p>
+              <p className="text-sm text-muted-foreground">
+                No jobs match your search.
+              </p>
             </div>
           ) : (
             <div className="space-y-sm">
               {filteredAndSortedJobs.map((job) => {
                 const isExpanded = expandedJobId === job.job_id;
                 const detailsId = `job-details-${job.job_id}`;
-                const availableStems = job.stem_files.filter((s) => s.s3_key !== null);
+                const availableStems = job.stem_files.filter(
+                  (s) =>
+                    s.available &&
+                    typeof s.file_url === "string" &&
+                    s.file_url.length > 0,
+                );
                 const jobZipping = isZipping === job.job_id;
                 const jobMidiRecords = midiRecords.filter(
                   (r) => r.stem_job_id === job.job_id,
@@ -453,7 +483,8 @@ export function MyStemsPage({
                             {formatRelativeDate(job.created_at)}
                           </span>
                           <span className="rounded-full bg-primary-500/15 px-xs py-0.5 text-xs font-medium text-primary-400">
-                            {job.stem_files.length} stem{job.stem_files.length !== 1 ? "s" : ""}
+                            {job.stem_files.length} stem
+                            {job.stem_files.length !== 1 ? "s" : ""}
                           </span>
                           {job.quality && (
                             <span className="rounded-full bg-muted px-xs py-0.5 text-xs text-muted-foreground">
@@ -477,17 +508,16 @@ export function MyStemsPage({
                     {/* Expanded Details */}
                     <AnimatePresence initial={false}>
                       {isExpanded && (
-                        <motion.div
-                          id={detailsId}
-                          {...collapse}
-                        >
+                        <motion.div id={detailsId} {...collapse}>
                           <div className="border-t border-border px-md pb-md pt-sm sm:px-lg sm:pb-5">
                             {/* Stem Rows */}
                             <ul className="space-y-xs" aria-label="Stem files">
                               {job.stem_files.map((stem) => {
                                 const downloadKey = `${job.job_id}:${stem.stem_name}`;
-                                const downloading = isDownloading[downloadKey] ?? false;
-                                const unavailable = stem.s3_key === null;
+                                const downloading =
+                                  isDownloading[downloadKey] ?? false;
+                                const unavailable =
+                                  !stem.available || !stem.file_url;
 
                                 return (
                                   <li
@@ -511,7 +541,11 @@ export function MyStemsPage({
                                     ) : (
                                       <button
                                         onClick={() =>
-                                          handleDownloadStem(job.job_id, stem.stem_name)
+                                          handleDownloadStem(
+                                            job.job_id,
+                                            stem.stem_name,
+                                            stem.file_url,
+                                          )
                                         }
                                         disabled={downloading}
                                         className="flex h-9 shrink-0 items-center gap-xs rounded-lg bg-primary-500/20 px-sm text-xs font-medium text-primary-400 transition hover:bg-primary-500/30 disabled:opacity-50"
@@ -537,11 +571,16 @@ export function MyStemsPage({
                                   <Music className="h-3.5 w-3.5" />
                                   MIDI Files
                                 </h4>
-                                <ul className="space-y-xs" aria-label="MIDI files">
+                                <ul
+                                  className="space-y-xs"
+                                  aria-label="MIDI files"
+                                >
                                   {jobMidiRecords.map((midi) => {
                                     const midiKey = `midi:${midi.job_id}`;
-                                    const midiDownloading = isDownloading[midiKey] ?? false;
-                                    const midiUnavailable = !midi.file_available;
+                                    const midiDownloading =
+                                      isDownloading[midiKey] ?? false;
+                                    const midiUnavailable =
+                                      !midi.file_available;
                                     return (
                                       <li
                                         key={midi.job_id}
@@ -557,9 +596,14 @@ export function MyStemsPage({
                                         </div>
                                         <button
                                           onClick={() =>
-                                            handleDownloadMidi(midi.job_id, midi.stem_name)
+                                            handleDownloadMidi(
+                                              midi.job_id,
+                                              midi.stem_name,
+                                            )
                                           }
-                                          disabled={midiDownloading || midiUnavailable}
+                                          disabled={
+                                            midiDownloading || midiUnavailable
+                                          }
                                           className="flex h-9 shrink-0 items-center gap-xs rounded-lg bg-accent-midi-500/20 px-sm text-xs font-medium text-accent-midi-400 transition hover:bg-accent-midi-500/30 disabled:opacity-50"
                                           aria-label={`Download MIDI for ${midi.stem_name || "audio"}`}
                                         >

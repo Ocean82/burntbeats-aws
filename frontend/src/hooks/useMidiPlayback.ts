@@ -39,10 +39,15 @@ export interface UseMidiPlaybackReturn {
 
 const checkAudioSupport = (): boolean => {
   if (typeof window === "undefined") return false;
-  return !!(window.AudioContext || (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext);
+  return !!(
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext
+  );
 };
 
-function normalizeTracks(input: MidiPlaybackTrack[] | MidiNoteEvent[]): MidiPlaybackTrack[] {
+function normalizeTracks(
+  input: MidiPlaybackTrack[] | MidiNoteEvent[],
+): MidiPlaybackTrack[] {
   if (input.length === 0) return [];
   const first = input[0];
   if ("notes" in first && Array.isArray((first as MidiPlaybackTrack).notes)) {
@@ -57,19 +62,29 @@ function flattenAudibleNotes(tracks: MidiPlaybackTrack[]): MidiNoteEvent[] {
   for (const track of tracks) {
     if (hasSolo && !track.soloed) continue;
     if (!hasSolo && track.muted) continue;
-    audible.push(...track.notes);
+    audible.push(
+      ...track.notes.filter(
+        (note) => !(note as MidiNoteEvent & { muted?: boolean }).muted,
+      ),
+    );
   }
   return audible;
 }
 
-function clipBounds(notes: MidiNoteEvent[]): { clipOffset: number; duration: number } {
+function clipBounds(notes: MidiNoteEvent[]): {
+  clipOffset: number;
+  duration: number;
+} {
   if (!notes.length) return { clipOffset: 0, duration: 0 };
   const clipOffset = Math.min(...notes.map((n) => n.start));
   const maxEnd = Math.max(...notes.map((n) => n.start + n.duration));
   return { clipOffset, duration: Math.max(maxEnd - clipOffset, 0.01) };
 }
 
-function noteInLoop(note: MidiNoteEvent, loop: LoopRegion | undefined): boolean {
+function noteInLoop(
+  note: MidiNoteEvent,
+  loop: LoopRegion | undefined,
+): boolean {
   if (!loop?.enabled || loop.end <= loop.start) return true;
   return note.start >= loop.start && note.start < loop.end;
 }
@@ -142,7 +157,8 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       const transport = Tone.getTransport();
       const clipOffset = clipOffsetRef.current;
       const startBeat = Math.floor((relativeStart + clipOffset) / beatSec);
-      const endBeat = Math.ceil((relativeStart + playDuration + clipOffset) / beatSec) + 1;
+      const endBeat =
+        Math.ceil((relativeStart + playDuration + clipOffset) / beatSec) + 1;
       for (let i = startBeat; i <= endBeat; i++) {
         const absTime = i * beatSec;
         const relTime = absTime - clipOffset - relativeStart;
@@ -188,6 +204,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
         const trackKey = track.id ?? `track-${instrument}`;
         const synth = await getSynth(trackKey, instrument);
         for (const note of track.notes) {
+          if ((note as MidiNoteEvent & { muted?: boolean }).muted) continue;
           if (!noteInLoop(note, loop)) continue;
           const relStart = note.start - clipOffset;
           const scheduleAt = relStart - relativeStart;
@@ -206,20 +223,26 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       scheduleMetronome(bpmRef.current, relativeStart, playEnd - relativeStart);
 
       if (loopEnabled) {
-        const loopEventId = transport.schedule(() => {
-          if (!isPlayingRef.current || isPausedRef.current) return;
-          clearScheduled();
-          releaseAll();
-          playbackStartRelativeRef.current = loopStartRel;
-          startTimeRef.current = Tone.now();
-          setCurrentTime(loopStartRel);
-          void scheduleNotesFromRef.current(loopStartRel, onEnd);
-        }, playEnd - relativeStart + 0.001);
+        const loopEventId = transport.schedule(
+          () => {
+            if (!isPlayingRef.current || isPausedRef.current) return;
+            clearScheduled();
+            releaseAll();
+            playbackStartRelativeRef.current = loopStartRel;
+            startTimeRef.current = Tone.now();
+            setCurrentTime(loopStartRel);
+            void scheduleNotesFromRef.current(loopStartRel, onEnd);
+          },
+          playEnd - relativeStart + 0.001,
+        );
         scheduledEventsRef.current.push(loopEventId);
       } else {
-        const endEventId = transport.schedule(() => {
-          onEnd();
-        }, playEnd - relativeStart + 0.05);
+        const endEventId = transport.schedule(
+          () => {
+            onEnd();
+          },
+          playEnd - relativeStart + 0.05,
+        );
         scheduledEventsRef.current.push(endEventId);
       }
     },
@@ -326,7 +349,14 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       setCurrentTime(relativeStart);
       updatePlayhead();
     },
-    [clearScheduled, ensureDefaultSynth, scheduleNotesFrom, stop, updatePlayhead, releaseAll],
+    [
+      clearScheduled,
+      ensureDefaultSynth,
+      scheduleNotesFrom,
+      stop,
+      updatePlayhead,
+      releaseAll,
+    ],
   );
 
   const seek = useCallback(
@@ -336,7 +366,10 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       clipOffsetRef.current = clipOffset;
       durationRef.current = duration;
 
-      const relative = Math.max(0, Math.min(absoluteTime - clipOffset, duration));
+      const relative = Math.max(
+        0,
+        Math.min(absoluteTime - clipOffset, duration),
+      );
       pausedPositionRef.current = relative;
       setCurrentTime(relative);
 
@@ -348,7 +381,10 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
   );
 
   const play = useCallback(
-    (tracksOrNotes: MidiPlaybackTrack[] | MidiNoteEvent[], options?: MidiPlaybackOptions) => {
+    (
+      tracksOrNotes: MidiPlaybackTrack[] | MidiNoteEvent[],
+      options?: MidiPlaybackOptions,
+    ) => {
       if (!isSupported) return;
 
       const tracks = normalizeTracks(tracksOrNotes);
@@ -374,10 +410,21 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       bpmRef.current = options?.bpm ?? 120;
       loopRegionRef.current = options?.loopRegion;
 
-      const startPos = wasPaused ? resumePos : currentTime > 0 && !isPlayingRef.current ? currentTime : 0;
+      const startPos = wasPaused
+        ? resumePos
+        : currentTime > 0 && !isPlayingRef.current
+          ? currentTime
+          : 0;
       void startPlaybackAt(startPos);
     },
-    [isSupported, stopRaf, clearScheduled, startPlaybackAt, currentTime, releaseAll],
+    [
+      isSupported,
+      stopRaf,
+      clearScheduled,
+      startPlaybackAt,
+      currentTime,
+      releaseAll,
+    ],
   );
 
   useEffect(() => {

@@ -8,9 +8,34 @@ export type Scale =
   | "phrygian"
   | "lydian"
   | "mixolydian";
-export type RootNote = "C" | "C#" | "D" | "D#" | "E" | "F" | "F#" | "G" | "G#" | "A" | "A#" | "B";
+export type RootNote =
+  | "C"
+  | "C#"
+  | "D"
+  | "D#"
+  | "E"
+  | "F"
+  | "F#"
+  | "G"
+  | "G#"
+  | "A"
+  | "A#"
+  | "B";
 
-export const NOTE_NAMES: RootNote[] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+export const NOTE_NAMES: RootNote[] = [
+  "C",
+  "C#",
+  "D",
+  "D#",
+  "E",
+  "F",
+  "F#",
+  "G",
+  "G#",
+  "A",
+  "A#",
+  "B",
+];
 
 export const SCALE_INTERVALS: Record<Scale, number[]> = {
   major: [0, 2, 4, 5, 7, 9, 11],
@@ -24,7 +49,10 @@ export const SCALE_INTERVALS: Record<Scale, number[]> = {
   mixolydian: [0, 2, 4, 5, 7, 9, 10],
 };
 
-export const CHORD_TYPES: Record<string, { name: string; intervals: number[] }> = {
+export const CHORD_TYPES: Record<
+  string,
+  { name: string; intervals: number[] }
+> = {
   major: { name: "Maj", intervals: [0, 4, 7] },
   minor: { name: "Min", intervals: [0, 3, 7] },
   dom7: { name: "7", intervals: [0, 4, 7, 10] },
@@ -55,7 +83,12 @@ export function noteNameToMidi(name: string, octave: number): number {
   return (octave + 1) * 12 + idx;
 }
 
-export function getScaleNotes(root: RootNote, scale: Scale, octaveStart = 3, octaves = 3): number[] {
+export function getScaleNotes(
+  root: RootNote,
+  scale: Scale,
+  octaveStart = 3,
+  octaves = 3,
+): number[] {
   const rootIdx = NOTE_NAMES.indexOf(root);
   const intervals = SCALE_INTERVALS[scale];
   const notes: number[] = [];
@@ -68,15 +101,35 @@ export function getScaleNotes(root: RootNote, scale: Scale, octaveStart = 3, oct
   return notes;
 }
 
-export function quantizeToScale(midi: number, root: RootNote, scale: Scale): number {
+export function isMidiInScale(
+  midi: number,
+  root: RootNote,
+  scale: Scale,
+): boolean {
+  if (scale === "chromatic") return true;
+  const rootIdx = NOTE_NAMES.indexOf(root);
+  const noteClass = ((midi % 12) + 12) % 12;
+  return SCALE_INTERVALS[scale].some(
+    (interval) => (rootIdx + interval) % 12 === noteClass,
+  );
+}
+
+export function quantizeToScale(
+  midi: number,
+  root: RootNote,
+  scale: Scale,
+): number {
   if (scale === "chromatic") return midi;
   const rootIdx = NOTE_NAMES.indexOf(root);
   const intervals = SCALE_INTERVALS[scale];
-  const noteInOctave = ((midi - rootIdx) % 12 + 12) % 12;
+  const noteInOctave = (((midi - rootIdx) % 12) + 12) % 12;
   let closest = intervals[0];
   let minDist = Math.abs(noteInOctave - intervals[0]);
   for (const interval of intervals) {
-    const dist = Math.min(Math.abs(noteInOctave - interval), 12 - Math.abs(noteInOctave - interval));
+    const dist = Math.min(
+      Math.abs(noteInOctave - interval),
+      12 - Math.abs(noteInOctave - interval),
+    );
     if (dist < minDist) {
       minDist = dist;
       closest = interval;
@@ -86,7 +139,11 @@ export function quantizeToScale(midi: number, root: RootNote, scale: Scale): num
   return midi + diff;
 }
 
-export function getChordNotes(root: RootNote, chordType: string, octave = 4): number[] {
+export function getChordNotes(
+  root: RootNote,
+  chordType: string,
+  octave = 4,
+): number[] {
   const rootIdx = NOTE_NAMES.indexOf(root);
   const chord = CHORD_TYPES[chordType];
   if (!chord) return [];
@@ -95,7 +152,7 @@ export function getChordNotes(root: RootNote, chordType: string, octave = 4): nu
 
 export function getDiatonicChords(
   root: RootNote,
-  scale: Scale
+  scale: Scale,
 ): Array<{ root: string; type: string; name: string; midi: number[] }> {
   const rootIdx = NOTE_NAMES.indexOf(root);
   const intervals = SCALE_INTERVALS[scale];
@@ -103,16 +160,30 @@ export function getDiatonicChords(
   for (let i = 0; i < Math.min(7, intervals.length); i++) {
     const chordRoot = (rootIdx + intervals[i]) % 12;
     const chordRootName = NOTE_NAMES[chordRoot];
-    const third = (intervals[(i + 2) % intervals.length] - intervals[i] + 12) % 12;
+    const third =
+      (intervals[(i + 2) % intervals.length] - intervals[i] + 12) % 12;
     const isMinor = third === 3;
     const type = isMinor ? "minor" : "major";
-    const midi = [chordRoot + 60, chordRoot + 60 + (isMinor ? 3 : 4), chordRoot + 60 + 7];
-    chords.push({ root: chordRootName, type, name: `${chordRootName} ${type === "minor" ? "min" : "maj"}`, midi });
+    const midi = [
+      chordRoot + 60,
+      chordRoot + 60 + (isMinor ? 3 : 4),
+      chordRoot + 60 + 7,
+    ];
+    chords.push({
+      root: chordRootName,
+      type,
+      name: `${chordRootName} ${type === "minor" ? "min" : "maj"}`,
+      midi,
+    });
   }
   return chords;
 }
 
-export function getFreqName(freq: number): { note: string; cents: number; octave: number } {
+export function getFreqName(freq: number): {
+  note: string;
+  cents: number;
+  octave: number;
+} {
   const midi = 12 * Math.log2(freq / 440) + 69;
   const roundedMidi = Math.round(midi);
   const cents = (midi - roundedMidi) * 100;
@@ -122,10 +193,16 @@ export function getFreqName(freq: number): { note: string; cents: number; octave
 }
 
 /** x = complexity (0–1), y = velocity (unused; reserved). Returns 6 rows × `beats` steps. */
-export function generateDrumPattern(x: number, _y: number, beats = 16): boolean[][] {
+export function generateDrumPattern(
+  x: number,
+  _y: number,
+  beats = 16,
+): boolean[][] {
   const complexity = x;
   const rows = 6;
-  const pattern: boolean[][] = Array.from({ length: rows }, () => Array(beats).fill(false));
+  const pattern: boolean[][] = Array.from({ length: rows }, () =>
+    Array(beats).fill(false),
+  );
 
   pattern[0][0] = true;
   pattern[0][8] = true;

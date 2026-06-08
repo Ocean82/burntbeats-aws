@@ -27,12 +27,17 @@ function dataUriToBlob(dataUri: string): Blob {
   return new Blob([ab], { type: mimeString });
 }
 
-function buildTrackFromEditorTrack(track: EditorTrack, bpm: number): InstanceType<typeof MidiWriter.Track> {
+function buildTrackFromEditorTrack(
+  track: EditorTrack,
+  bpm: number,
+): InstanceType<typeof MidiWriter.Track> {
   const writerTrack = new MidiWriter.Track();
   writerTrack.setTempo(bpm);
   writerTrack.addTrackName(track.name);
 
-  const sorted = [...track.notes].sort((a, b) => a.start - b.start);
+  const sorted = [...track.notes]
+    .filter((note) => !note.muted)
+    .sort((a, b) => a.start - b.start);
   for (const note of sorted) {
     const startTick = secondsToTicks(note.start, bpm);
     const durationTicks = Math.max(1, secondsToTicks(note.duration, bpm));
@@ -42,6 +47,7 @@ function buildTrackFromEditorTrack(track: EditorTrack, bpm: number): InstanceTyp
         velocity: Math.max(1, Math.min(127, note.velocity)),
         startTick,
         duration: `T${durationTicks}`,
+        channel: Math.max(1, Math.min(16, note.channel ?? 1)),
       }),
     );
   }
@@ -70,9 +76,11 @@ export function exportTracksToMidi(
   tracks: EditorTrack[],
   bpm: number = 120,
 ): Blob {
-  const nonEmpty = tracks.filter((t) => t.notes.length > 0 || t.ccLanes.some((l) => l.events.length > 0));
-  const writerTracks = (nonEmpty.length ? nonEmpty : tracks.slice(0, 1)).map((t) =>
-    buildTrackFromEditorTrack(t, bpm),
+  const nonEmpty = tracks.filter(
+    (t) => t.notes.length > 0 || t.ccLanes.some((l) => l.events.length > 0),
+  );
+  const writerTracks = (nonEmpty.length ? nonEmpty : tracks.slice(0, 1)).map(
+    (t) => buildTrackFromEditorTrack(t, bpm),
   );
   const writer = new MidiWriter.Writer(writerTracks);
   return dataUriToBlob(writer.dataUri());
@@ -113,7 +121,10 @@ export function exportNotesToMidi(
 /**
  * Trigger a browser download of the MIDI blob.
  */
-export function downloadMidiBlob(blob: Blob, filename: string = "edited.mid"): void {
+export function downloadMidiBlob(
+  blob: Blob,
+  filename: string = "edited.mid",
+): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

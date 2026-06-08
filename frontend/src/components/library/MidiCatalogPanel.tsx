@@ -11,6 +11,7 @@ import type { MidiCatalogEntry } from "../../hooks/useMidiCatalog";
 import { parseMidiBuffer } from "../../utils/parseMidiNotes";
 import { cn } from "../../utils/cn";
 import { EmptyState, FilterBar } from "../ui";
+import { useToast } from "../../store/toastStore";
 
 const EMBER = "text-primary-300";
 const ICE = "text-accent-midi-200";
@@ -26,6 +27,7 @@ const catalogTabClass = (active: boolean) =>
 
 export function MidiCatalogPanel() {
   const catalog = useMidiCatalog();
+  const { toast } = useToast();
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -60,7 +62,11 @@ export function MidiCatalogPanel() {
         if (!res.ok) throw new Error("Preview unavailable");
         const buffer = await res.arrayBuffer();
         const { notes, bpm } = parseMidiBuffer(buffer);
-        if (!notes.length) return;
+        if (!notes.length) {
+          throw new Error(
+            "This catalog file does not contain playable MIDI notes.",
+          );
+        }
 
         if (!synthRef.current) {
           synthRef.current = new PolySynth(Tone.Synth, {
@@ -94,42 +100,52 @@ export function MidiCatalogPanel() {
         scheduledRef.current.push(endId);
         transport.start();
         setPlayingId(entry.id);
-      } catch {
-        /* preview failed silently */
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Preview unavailable";
+        toast(message, { type: "error" });
       } finally {
         setPreviewLoading(null);
       }
     },
-    [playingId, stopPreview],
+    [playingId, stopPreview, toast],
   );
 
-  const downloadEntry = useCallback(async (entry: MidiCatalogEntry) => {
-    if (downloadingId) return;
-    setDownloadingId(entry.id);
-    try {
-      const headers = await authHeaders();
-      const res = await fetch(catalogFileUrl(entry.id), { headers });
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = entry.filename || `${entry.id}.mid`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      /* download failed */
-    } finally {
-      setDownloadingId(null);
-    }
-  }, [downloadingId]);
+  const downloadEntry = useCallback(
+    async (entry: MidiCatalogEntry) => {
+      if (downloadingId) return;
+      setDownloadingId(entry.id);
+      try {
+        const headers = await authHeaders();
+        const res = await fetch(catalogFileUrl(entry.id), { headers });
+        if (!res.ok) throw new Error("Download failed");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = entry.filename || `${entry.id}.mid`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Download failed";
+        toast(message, { type: "error" });
+      } finally {
+        setDownloadingId(null);
+      }
+    },
+    [downloadingId, toast],
+  );
 
   return (
     <div data-testid="midi-catalog-panel">
       <FilterBar>
-        <div className="inline-flex rounded-md border border-border p-0.5" role="tablist">
+        <div
+          className="inline-flex rounded-md border border-border p-0.5"
+          role="tablist"
+        >
           {catalog.filters.tab === "progression" ? (
             <button
               type="button"
@@ -243,7 +259,11 @@ export function MidiCatalogPanel() {
           title="Could not load catalog"
           description={catalog.error}
           action={
-            <button type="button" onClick={catalog.refetch} className="midi-btn text-xs">
+            <button
+              type="button"
+              onClick={catalog.refetch}
+              className="midi-btn text-xs"
+            >
               Retry
             </button>
           }
@@ -262,25 +282,46 @@ export function MidiCatalogPanel() {
               className="flex flex-col gap-xs px-md py-sm sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-foreground">{entry.title}</p>
+                <p className="truncate text-sm font-medium text-foreground">
+                  {entry.title}
+                </p>
                 <div className="mt-1 flex flex-wrap gap-xs text-[10px]">
-                  <span className={cn("rounded-full border border-primary-400/30 px-2 py-0.5", EMBER)}>
+                  <span
+                    className={cn(
+                      "rounded-full border border-primary-400/30 px-2 py-0.5",
+                      EMBER,
+                    )}
+                  >
                     {entry.category.genre}
                   </span>
-                  <span className={cn("rounded-full border border-accent-midi/30 px-2 py-0.5", ICE)}>
+                  <span
+                    className={cn(
+                      "rounded-full border border-accent-midi/30 px-2 py-0.5",
+                      ICE,
+                    )}
+                  >
                     {entry.category.key}
                   </span>
-                  <span className={cn("rounded-full border border-warning-400/30 px-2 py-0.5", GOLD)}>
+                  <span
+                    className={cn(
+                      "rounded-full border border-warning-400/30 px-2 py-0.5",
+                      GOLD,
+                    )}
+                  >
                     {entry.analysis.estimatedTempo} BPM
                   </span>
                   <span className="text-muted-foreground">
-                    {entry.category.complexity} · {entry.category.time_signature}
+                    {entry.category.complexity} ·{" "}
+                    {entry.category.time_signature}
                   </span>
                 </div>
                 {entry.tags.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {entry.tags.map((tag) => (
-                      <span key={tag} className="text-[10px] text-muted-foreground">
+                      <span
+                        key={tag}
+                        className="text-[10px] text-muted-foreground"
+                      >
                         #{tag}
                       </span>
                     ))}
@@ -293,7 +334,9 @@ export function MidiCatalogPanel() {
                   onClick={() => void playEntry(entry)}
                   disabled={previewLoading === entry.id}
                   className="midi-btn text-xs"
-                  aria-label={playingId === entry.id ? "Stop preview" : "Play preview"}
+                  aria-label={
+                    playingId === entry.id ? "Stop preview" : "Play preview"
+                  }
                 >
                   {previewLoading === entry.id ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

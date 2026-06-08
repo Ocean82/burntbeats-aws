@@ -11,6 +11,7 @@ interface MidiTimelineRulerProps {
   bpm?: number;
   timeSignature?: TimeSignature;
   loopRegion: LoopRegion;
+  playheadTime?: number | null;
   onSeek: (time: number) => void;
   onLoopChange: (region: LoopRegion) => void;
   onZoomLevelChange?: (level: number) => void;
@@ -36,16 +37,28 @@ export function MidiTimelineRuler({
   bpm = 120,
   timeSignature = DEFAULT_TIME_SIG,
   loopRegion,
+  playheadTime = null,
   onSeek,
   onLoopChange,
   onZoomLevelChange,
 }: MidiTimelineRulerProps) {
   const maxTime = Math.max(totalDuration, 4);
-  const svgWidth = Math.max(timelineWidth, Math.ceil(maxTime * pixelsPerSecond));
+  const svgWidth = Math.max(
+    timelineWidth,
+    Math.ceil(maxTime * pixelsPerSecond),
+  );
 
   const timeLabels: { x: number; label: string }[] = [];
   const step =
-    maxTime > 120 ? 30 : maxTime > 60 ? 15 : maxTime > 20 ? 5 : maxTime > 8 ? 2 : 1;
+    maxTime > 120
+      ? 30
+      : maxTime > 60
+        ? 15
+        : maxTime > 20
+          ? 5
+          : maxTime > 8
+            ? 2
+            : 1;
 
   for (let t = 0; t <= maxTime; t += step) {
     timeLabels.push({ x: t * pixelsPerSecond, label: formatTimeLabel(t) });
@@ -76,15 +89,21 @@ export function MidiTimelineRuler({
     [pixelsPerSecond, onSeek, maxTime],
   );
 
-  const loopStartX = loopRegion.enabled ? loopRegion.start * pixelsPerSecond : 0;
+  const loopStartX = loopRegion.enabled
+    ? loopRegion.start * pixelsPerSecond
+    : 0;
   const loopEndX = loopRegion.enabled ? loopRegion.end * pixelsPerSecond : 0;
   const loopWidth = loopRegion.enabled ? loopEndX - loopStartX : 0;
+  const playheadX =
+    playheadTime == null
+      ? null
+      : Math.max(0, Math.min(playheadTime * pixelsPerSecond, svgWidth));
 
   const handleLoopHandlePointerDown = useCallback(
     (handle: LoopHandle) => (e: ReactPointerEvent<SVGGElement>) => {
       if (!handle) return;
       e.stopPropagation();
-      const svg = (e.currentTarget.ownerSVGElement as SVGSVGElement | null);
+      const svg = e.currentTarget.ownerSVGElement as SVGSVGElement | null;
       if (!svg) return;
       svg.setPointerCapture(e.pointerId);
 
@@ -185,6 +204,22 @@ export function MidiTimelineRuler({
             {tl.label}
           </text>
         ))}
+        {playheadX != null && (
+          <g pointerEvents="none">
+            <line
+              x1={playheadX}
+              x2={playheadX}
+              y1={0}
+              y2={RULER_HEIGHT}
+              stroke={PIANO_ROLL.playhead}
+              strokeWidth={1.5}
+            />
+            <path
+              d={`M ${playheadX - 6} 1 L ${playheadX + 6} 1 L ${playheadX} 9 Z`}
+              fill={PIANO_ROLL.playhead}
+            />
+          </g>
+        )}
         {loopRegion.enabled && (
           <g pointerEvents="auto">
             <rect
