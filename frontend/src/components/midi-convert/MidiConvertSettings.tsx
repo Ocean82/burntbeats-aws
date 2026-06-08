@@ -5,6 +5,7 @@
 import { useState } from "react";
 import type { MidiConvertSettings as Settings } from "../../hooks/useMidiConvert";
 import { MidiParamSlider } from "./controls/MidiParamSlider";
+import { MidiKnobControl } from "./controls/MidiKnobControl";
 
 const PRESETS: Record<string, { label: string; hint: string; settings: Partial<Settings> }> = {
   vocals: {
@@ -84,17 +85,34 @@ export function MidiConvertSettings({
         {/* Detection section */}
         <div className="midi-rack-panel__section-label">Detection</div>
 
-        <MidiParamSlider
-          label="Confidence Threshold"
-          value={settings.minConfidence}
-          min={0.1}
-          max={0.9}
-          step={0.05}
-          onChange={(v) => handleChange({ minConfidence: v })}
-          disabled={disabled}
-          formatValue={(v) => v.toFixed(2)}
-          hint="Higher = fewer notes but more accurate. Lower = captures more but may include noise."
-        />
+        <div className="flex flex-wrap items-start gap-md px-sm py-xs">
+          <MidiKnobControl
+            label="Confidence"
+            value={settings.minConfidence}
+            min={0.1}
+            max={0.9}
+            step={0.05}
+            defaultValue={0.5}
+            onChange={(v) => handleChange({ minConfidence: v })}
+            disabled={disabled}
+            formatValue={(v) => v.toFixed(2)}
+            size="md"
+            hint="Threshold"
+          />
+          <MidiKnobControl
+            label="Transpose"
+            value={settings.transpose}
+            min={-12}
+            max={12}
+            step={1}
+            defaultValue={0}
+            onChange={(v) => handleChange({ transpose: v })}
+            disabled={disabled}
+            formatValue={(v) => (v === 0 ? "0" : v > 0 ? `+${v}` : `${v}`)}
+            size="md"
+            hint="Semitones"
+          />
+        </div>
 
         <MidiParamSlider
           label="Min Note Length"
@@ -173,18 +191,6 @@ export function MidiConvertSettings({
           hint="Caps sustained false notes. 0 = unlimited."
         />
 
-        <MidiParamSlider
-          label="Transpose"
-          value={settings.transpose}
-          min={-12}
-          max={12}
-          step={1}
-          onChange={(v) => handleChange({ transpose: v })}
-          disabled={disabled}
-          formatValue={(v) => (v === 0 ? "0" : v > 0 ? `+${v}` : `${v}`)}
-          hint="Shift all notes up or down in semitones for key matching."
-        />
-
         {/* Quantize section */}
         <div className="midi-rack-panel__section-label">Quantize</div>
 
@@ -209,56 +215,51 @@ export function MidiConvertSettings({
         {settings.quantize && (
           <div className="ml-lg border-l-2 border-accent-midi/20 pl-sm">
             <div className="flex flex-col gap-xs px-sm py-1">
-              <div className="flex items-center justify-between">
-                <label htmlFor="midi-quantize-grid" className="midi-param-slider__label">
-                  Grid Division
-                </label>
-                <select
-                  id="midi-quantize-grid"
-                  value={settings.quantizeGrid}
-                  onChange={(e) => handleChange({ quantizeGrid: e.target.value })}
-                  disabled={disabled}
-                  className="midi-rack-select"
-                >
-                  <option value="1/4">1/4</option>
-                  <option value="1/8">1/8</option>
-                  <option value="1/16">1/16</option>
-                  <option value="1/32">1/32</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label htmlFor="midi-quantize-bpm" className="midi-param-slider__label">
-                  BPM
-                </label>
-                <input
-                  id="midi-quantize-bpm"
-                  type="number"
+              <div className="flex flex-wrap items-start gap-md">
+                <MidiKnobControl
+                  label="BPM"
+                  value={settings.quantizeBpm}
                   min={40}
                   max={300}
-                  value={settings.quantizeBpm}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value, 10);
-                    if (!isNaN(val)) {
-                      handleChange({ quantizeBpm: Math.max(40, Math.min(300, val)) });
-                    }
-                  }}
+                  step={1}
+                  defaultValue={120}
+                  onChange={(v) => handleChange({ quantizeBpm: v })}
                   disabled={disabled}
-                  className="midi-rack-num"
+                  formatValue={(v) => `${Math.round(v)}`}
+                  size="lg"
                 />
-              </div>
+                <div className="flex flex-col gap-xs flex-1 min-w-[140px]">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="midi-quantize-grid" className="midi-param-slider__label">
+                      Grid Division
+                    </label>
+                    <select
+                      id="midi-quantize-grid"
+                      value={settings.quantizeGrid}
+                      onChange={(e) => handleChange({ quantizeGrid: e.target.value })}
+                      disabled={disabled}
+                      className="midi-rack-select"
+                    >
+                      <option value="1/4">1/4</option>
+                      <option value="1/8">1/8</option>
+                      <option value="1/16">1/16</option>
+                      <option value="1/32">1/32</option>
+                    </select>
+                  </div>
 
-              <MidiParamSlider
-                label="Quantize Strength"
-                value={settings.quantizeStrength}
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={(v) => handleChange({ quantizeStrength: v })}
-                disabled={disabled}
-                formatValue={(v) => `${Math.round(v * 100)}%`}
-                hint="Lower = keeps more original timing. 100% = fully snapped to grid."
-              />
+                  <MidiParamSlider
+                    label="Quantize Strength"
+                    value={settings.quantizeStrength}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    onChange={(v) => handleChange({ quantizeStrength: v })}
+                    disabled={disabled}
+                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                    hint="Lower = keeps more original timing. 100% = fully snapped to grid."
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}

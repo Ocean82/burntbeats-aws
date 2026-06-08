@@ -9,6 +9,7 @@ import { API_BASE } from "../../config";
 import type { MidiSourceMode } from "../../hooks/useMidiConvert";
 import { useAudioFileDuration } from "../../hooks/useAudioFileDuration";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
+import { MidiWaveformPlayer } from "./controls/MidiWaveformPlayer";
 
 interface MidiSourcePreviewProps {
   sourceMode: MidiSourceMode;
@@ -202,15 +203,9 @@ export function MidiSourcePreview({
       )}
 
       {previewUrl && !loading && !loadError && (
-        /* eslint-disable-next-line jsx-a11y/media-has-caption -- instrumental preview */
-        <audio
-          key={previewUrl}
+        <MidiWaveformPlayer
           src={previewUrl}
-          controls
-          preload="metadata"
-          className="w-full max-w-full"
-          aria-label="Preview source audio before MIDI conversion"
-          {...(disabled ? { "aria-disabled": true } : {})}
+          disabled={disabled}
         />
       )}
     </div>

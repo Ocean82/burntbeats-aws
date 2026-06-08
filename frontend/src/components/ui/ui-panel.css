@@ -84,14 +84,29 @@
 .ui-stepper {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  align-items: center;
+  gap: 0;
   margin-bottom: 16px;
 }
 
-.ui-stepper-step {
+.ui-stepper-item {
+  display: flex;
+  align-items: center;
   flex: 1;
-  min-width: 72px;
-  padding: 8px 10px;
+  min-width: 0;
+}
+
+.ui-stepper-item:last-child {
+  flex: 0 1 auto;
+}
+
+.ui-stepper-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 8px 12px;
   text-align: center;
   font-size: 0.6875rem;
   font-weight: 600;
@@ -101,17 +116,45 @@
   border: 1px solid rgba(58, 52, 46, 0.4);
   color: rgba(178, 172, 160);
   background: rgba(10, 9, 8, 0.5);
+  transition:
+    border-color 0.18s cubic-bezier(0.25, 1, 0.5, 1),
+    background 0.18s cubic-bezier(0.25, 1, 0.5, 1),
+    color 0.18s cubic-bezier(0.25, 1, 0.5, 1),
+    box-shadow 0.18s cubic-bezier(0.25, 1, 0.5, 1),
+    transform 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.ui-stepper-step__check {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .ui-stepper-step--active {
   border-color: rgba(205, 165, 60, 0.5);
   color: rgba(245, 220, 170);
   background: rgba(205, 165, 60, 0.12);
+  box-shadow: 0 0 12px rgba(205, 165, 60, 0.15);
+  transform: scale(1.02);
 }
 
 .ui-stepper-step--done {
   border-color: rgba(60, 180, 120, 0.35);
   color: rgba(120, 220, 170);
+}
+
+.ui-stepper-connector {
+  flex: 1;
+  height: 2px;
+  min-width: 12px;
+  margin: 0 4px;
+  border-radius: 1px;
+  background: rgba(58, 52, 46, 0.4);
+  transition: background 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.ui-stepper-connector--done {
+  background: rgba(60, 180, 120, 0.5);
 }
 
 @supports (color: oklch(0% 0 0)) {
@@ -171,10 +214,35 @@
     border-color: oklch(68% 0.14 75 / 50%);
     color: oklch(88% 0.08 75);
     background: oklch(68% 0.14 75 / 12%);
+    box-shadow: 0 0 12px oklch(68% 0.14 75 / 15%);
   }
 
   .ui-stepper-step--done {
     border-color: oklch(62% 0.14 155 / 35%);
     color: oklch(78% 0.12 155);
+  }
+
+  .ui-stepper-connector {
+    background: oklch(28% 0.016 42 / 40%);
+  }
+
+  .ui-stepper-connector--done {
+    background: oklch(62% 0.14 155 / 50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-stepper-step {
+    transition: none;
+    transform: none !important;
+  }
+
+  .ui-stepper-step--active {
+    box-shadow: none;
+    transform: none;
+  }
+
+  .ui-stepper-connector {
+    transition: none;
   }
 }

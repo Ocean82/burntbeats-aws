@@ -11,6 +11,7 @@ import {
   Square,
 } from "lucide-react";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import type { MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
 import { SegmentedControl } from "../ui";
@@ -54,7 +55,13 @@ export function MidiResultPanel({
   const suggestedBpm = result.analysis?.suggested_bpm ?? 120;
 
   return (
-    <div className="midi-result-surface" data-testid="midi-result-panel">
+    <motion.div
+      className="midi-result-surface"
+      data-testid="midi-result-panel"
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div className="flex flex-wrap items-center justify-between gap-sm">
         <div className="flex min-w-0 items-center gap-xs">
           <Music
@@ -105,32 +112,40 @@ export function MidiResultPanel({
       )}
 
       {/* Stats row */}
-      <div className="flex flex-wrap gap-md text-xs text-muted-foreground">
-        <span>
+      <motion.div
+        className="flex flex-wrap gap-md text-xs text-muted-foreground"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } },
+        }}
+      >
+        <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">
             {result.notesDetected}
           </span>{" "}
           notes detected
-        </span>
-        <span>
+        </motion.span>
+        <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">
             {formatDuration(result.durationSeconds)}
           </span>{" "}
           duration
-        </span>
-        <span>
+        </motion.span>
+        <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">
             {result.tracks}
           </span>{" "}
           {result.tracks === 1 ? "track" : "tracks"}
-        </span>
-        <span>
+        </motion.span>
+        <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">
             {result.inferenceTimeSeconds.toFixed(1)}s
           </span>{" "}
           processing time
-        </span>
-      </div>
+        </motion.span>
+      </motion.div>
 
       {/* Action buttons */}
       <div className="flex flex-wrap items-center gap-sm px-sm">
@@ -182,6 +197,6 @@ export function MidiResultPanel({
           New conversion
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 }
