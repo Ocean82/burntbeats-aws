@@ -5,9 +5,13 @@ FROM python:3.11-slim
 WORKDIR /repo
 
 # libsndfile for WAV/FLAC/OGG; ffmpeg for MP3/M4A/WebM (librosa / Basic Pitch)
+# fluidsynth + lame for MIDI-to-audio render pipeline
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsndfile1 \
     ffmpeg \
+    fluidsynth \
+    libfluidsynth3 \
+    lame \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml uv.lock ./
@@ -26,6 +30,7 @@ ENV MIDI_OUTPUT_DIR=/repo/tmp/midi
 RUN groupadd --system --gid 10001 appuser \
     && useradd --system --uid 10001 --gid appuser --home /repo --shell /usr/sbin/nologin appuser \
     && mkdir -p /repo/tmp/midi \
+    && mkdir -p /repo/soundfonts \
     && chown -R appuser:appuser /repo
 
 USER appuser

@@ -222,8 +222,11 @@ services:
       INTERNAL_SERVICE_AUTH_REQUIRED: "1"
       MIDI_MAX_QUEUE_DEPTH: ${MIDI_MAX_QUEUE_DEPTH:-8}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
+      SOUNDFONT_DIR: /repo/soundfonts
+      DEFAULT_SOUNDFONT: ${DEFAULT_SOUNDFONT:-GeneralUser_GS.sf2}
     volumes:
       - ./tmp/midi:/repo/tmp/midi
+      - ./soundfonts:/repo/soundfonts
     healthcheck:
       test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
       interval: 20s

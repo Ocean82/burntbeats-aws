@@ -28,7 +28,7 @@ export function WaitingGamePanel({
         onClick={onToggle}
         aria-label={showGame ? "Close The Waiting Game" : "Open The Waiting Game"}
         className={cn(
-          "fixed bottom-0 right-2 z-50 flex items-center gap-xs rounded-t-xl border border-b-0 px-sm py-xs text-meta font-bold uppercase tracking-wider transition-all duration-300 sm:right-8 sm:px-md sm:py-sm sm:text-xs",
+          "fixed top-auto bottom-0 right-2 z-50 flex items-center gap-xs rounded-t-xl border border-b-0 px-sm py-xs text-meta font-bold uppercase tracking-wider transition-all duration-300 sm:right-8 sm:px-md sm:py-sm sm:text-xs",
           showGame
             ? "border-primary-500/40 bg-primary-500/20 text-primary-200"
             : "border-border bg-chrome text-muted-foreground hover:text-foreground backdrop-blur-md",
@@ -54,7 +54,7 @@ export function WaitingGamePanel({
                 ? { duration: 0 }
                 : { duration: 0.28, ease: [0.25, 1, 0.5, 1] }
             }
-            className="fixed bottom-0 left-0 right-0 z-sticky flex justify-center pb-safe"
+            className="fixed top-auto bottom-0 left-0 right-0 z-sticky flex justify-center pb-[max(var(--space-md),env(safe-area-inset-bottom,0px))]"
           >
             <div className="w-full max-w-2xl rounded-t-[2rem] border border-b-0 border-border bg-chrome backdrop-blur-xl shadow-[0_-20px_60px_rgba(0,0,0,0.7)] px-lg pt-5 pb-md">
               <div className="mb-sm flex items-center justify-between">

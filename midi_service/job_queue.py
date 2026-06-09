@@ -147,6 +147,11 @@ async def _worker_loop(run_fn: Callable[..., None]) -> None:
                     "job_kind": "export",
                     "export_request": item.get("export_request") or {},
                 }
+            elif job_kind == "render":
+                options = {
+                    "job_kind": "render",
+                    "render_request": item.get("render_request") or {},
+                }
             else:
                 options = options_from_job_item(item)
             await loop.run_in_executor(

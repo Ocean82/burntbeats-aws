@@ -10,6 +10,7 @@ import { midiMergeRouter } from "./merge.js";
 import { midiExportRouter } from "./export.js";
 import { midiWaveformRouter, midiSpectrumRouter } from "./waveform.js";
 import { midiJobsRouter } from "./jobs.js";
+import { midiRenderRouter } from "./render.js";
 
 export const midiRouter = Router();
 
@@ -23,3 +24,4 @@ midiRouter.use("/export", midiExportRouter);
 midiRouter.use("/waveform", midiWaveformRouter);
 midiRouter.use("/spectrum", midiSpectrumRouter);
 midiRouter.use("/jobs", midiJobsRouter);
+midiRouter.use("/render", midiRenderRouter);

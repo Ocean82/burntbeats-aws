@@ -31,3 +31,7 @@ FRONTEND_ORIGINS: list[str] = [
     ).split(",")
     if origin.strip()
 ]
+
+# ── MIDI-to-audio render (FluidSynth) ────────────────────────────────────────
+SOUNDFONT_DIR = Path(os.environ.get("SOUNDFONT_DIR", str(REPO_ROOT / "soundfonts")))
+DEFAULT_SOUNDFONT: str = os.environ.get("DEFAULT_SOUNDFONT", "GeneralUser_GS.sf2")

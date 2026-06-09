@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppEvent } from "../store/eventBus";
 import { trackEvent } from "../analytics/events";
+import { useCookieConsent } from "../store/cookieConsent";
 
 type Rating = "great" | "ok" | "confusing" | null;
 
@@ -12,6 +13,9 @@ export function FeedbackChip() {
 
   // Listen for the typed event bus signal instead of raw DOM events
   useAppEvent("open-feedback", () => setOpen(true));
+
+  // Hide the chip while the cookie consent banner is showing to avoid overlap
+  const cookieBannerVisible = useCookieConsent((s) => s.bannerVisible);
 
   // Auto-dismiss the "thank you" confirmation after 4 seconds
   useEffect(() => {
@@ -32,6 +36,9 @@ export function FeedbackChip() {
     setComment("");
     setSubmitted(true);
   };
+
+  // Don't render anything while the cookie banner is visible to avoid overlap
+  if (cookieBannerVisible) return null;
 
   // Show "thank you" confirmation after submission
   if (submitted) {

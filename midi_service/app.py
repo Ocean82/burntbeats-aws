@@ -17,7 +17,12 @@ from midi_service.correlation import (
     CorrelationLoggingMiddleware,
     install_correlation_logging_filter,
 )
-from midi_service.job_queue import enqueue_job, get_queue_depth, start_worker, stop_worker
+from midi_service.job_queue import (
+    enqueue_job,
+    get_queue_depth,
+    start_worker,
+    stop_worker,
+)
 from midi_service.pipeline import preload_model, run_midi_convert_sync
 from midi_service.export.model import parse_export_request
 from midi_service.routes.convert import build_convert_router
@@ -26,7 +31,10 @@ from midi_service.routes.merge import build_merge_router
 from midi_service.routes.waveform import build_waveform_router
 from midi_service.routes.export import build_export_router
 from midi_service.routes.ops import build_ops_router
+from midi_service.routes.rhythm import build_rhythm_router
+from midi_service.routes.render import build_render_router
 from midi_service.services.export import run_export_sync
+from midi_service.services.render import run_render_sync
 from midi_service.services.storage import probe_storage, write_storage_sentinel
 
 logger = logging.getLogger(__name__)
@@ -48,6 +56,10 @@ def _run_job(
             request=export_request,
             output_dir=MIDI_OUTPUT_DIR,
         )
+        return
+    if options.get("job_kind") == "render":
+        render_opts = options.get("render_request") or {}
+        run_render_sync(job_id, input_path, out_dir, render_opts)
         return
     run_midi_convert_sync(job_id, input_path, out_dir, options)
 
@@ -72,6 +84,7 @@ async def lifespan(app: FastAPI):
             "MIDI_DEVICE=%s is ignored; this service runs CPU-only inference",
             MIDI_DEVICE,
         )
+
     def _mark_job_completed() -> None:
         from datetime import datetime, timezone
 
@@ -112,6 +125,13 @@ def create_app() -> FastAPI:
     app.include_router(build_waveform_router())
     app.include_router(
         build_export_router(
+            enqueue_job=enqueue_job,
+            get_queue_depth=get_queue_depth,
+        )
+    )
+    app.include_router(build_rhythm_router())
+    app.include_router(
+        build_render_router(
             enqueue_job=enqueue_job,
             get_queue_depth=get_queue_depth,
         )

@@ -166,6 +166,7 @@ dependencies = [
     { name = "onnxruntime" },
     { name = "pretty-midi" },
     { name = "prometheus-client" },
+    { name = "pyfluidsynth" },
     { name = "python-multipart" },
     { name = "setuptools" },
     { name = "soundfile" },
@@ -182,6 +183,7 @@ requires-dist = [
     { name = "onnxruntime", specifier = ">=1.17.0" },
     { name = "pretty-midi", specifier = ">=0.2.10" },
     { name = "prometheus-client", specifier = ">=0.20.0" },
+    { name = "pyfluidsynth", specifier = ">=1.3.3" },
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "setuptools", specifier = ">=69.0.0,<81.0.0" },
     { name = "soundfile", specifier = ">=0.12.0" },
@@ -1271,6 +1273,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ac/ad/5565071e937d8e752842ac241463944c9eb14c87e2d269f2658a5bd05e98/pydantic_core-2.46.4-pp311-pypy311_pp73-musllinux_1_1_armv7l.whl", hash = "sha256:d396ec2b979760aaf3218e76c24e65bd0aca24983298653b3a9d7a45f9e47b30", size = 2310000, upload-time = "2026-05-06T13:37:56.694Z" },
     { url = "https://files.pythonhosted.org/packages/4f/c3/66883a5cec183e7fba4d024b4cbbe61851a63750ef606b0afecc46d1f2bf/pydantic_core-2.46.4-pp311-pypy311_pp73-musllinux_1_1_x86_64.whl", hash = "sha256:86e1a4418c6cd97d60c95c71164158eaf7324fae7b0923264016baa993eba6fc", size = 2361286, upload-time = "2026-05-06T13:40:05.667Z" },
     { url = "https://files.pythonhosted.org/packages/4b/2d/69abac8f838090bbecd5df894befb2c2619e7996a98ddb949db9f3b93225/pydantic_core-2.46.4-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:d51026d73fcfd93610abc7b27789c26b313920fcfb20e27462d74a7f8b06e983", size = 2193071, upload-time = "2026-05-06T13:38:08.682Z" },
+]
+
+[[package]]
+name = "pyfluidsynth"
+version = "1.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "1.26.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12' or sys_platform != 'darwin'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12' and sys_platform == 'darwin'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/40/00985fe453bf85cfe1d586f236b97f84401e8ac203588e51840955ed835a/pyfluidsynth-1.4.0.tar.gz", hash = "sha256:6a9e1dbaf469fd11f45184f37ec28e198b1d6495ad74f61dc4a57726b2b1ba31", size = 35128, upload-time = "2026-05-30T16:17:51.451Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/b6/7387ecf46c01df39ed36d9700312a11d8455efe04803b8472a333ff9d51b/pyfluidsynth-1.4.0-py3-none-any.whl", hash = "sha256:93f0a0e8d5b34f974010473f9985fc52e1379e8f316892afeb2de1d759439ca3", size = 23933, upload-time = "2026-05-30T16:17:50.528Z" },
 ]
 
 [[package]]

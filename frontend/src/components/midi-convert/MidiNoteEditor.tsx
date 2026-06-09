@@ -19,6 +19,7 @@ import { MidiVelocityLane } from "./MidiVelocityLane";
 import { MidiCcLane } from "./MidiCcLane";
 import { MidiAutomationLane } from "./MidiAutomationLane";
 import { MidiTrackList } from "./MidiTrackList";
+import { BounceToAudioButton } from "./BounceToAudioButton";
 import { clampEditorVerticalZoom, clampEditorZoom } from "./pianoRollTheme";
 import {
   useMidiTimelineLayout,
@@ -780,6 +781,17 @@ export function MidiNoteEditor({
               onHumanize={() => editor.humanizeSelected()}
               onRandomize={() => editor.randomizeSelected()}
               onJoin={() => editor.joinSelected()}
+            />
+            <BounceToAudioButton
+              notes={editor.notes.map((n) => ({
+                pitch: n.pitch,
+                start: n.start,
+                duration: n.duration,
+                velocity: n.velocity,
+              }))}
+              bpm={editor.bpm}
+              instrument={editor.tracks.find((t) => t.id === editor.activeTrackId)?.instrument}
+              sourceJobId={jobId}
             />
             <MidiSmartPanel
               root={scaleGuide.root}
