@@ -24,6 +24,8 @@ import { useBeatMaker } from "../hooks/useBeatMaker";
 
 import { usePatternStorage } from "../hooks/usePatternStorage";
 
+import { useBeatMakerEntitlements } from "../hooks/useBeatMakerEntitlements";
+
 import { cn } from "../utils/cn";
 
 
@@ -63,6 +65,8 @@ export function LibraryPage({
   const beatMaker = useBeatMaker();
 
   const patternStorage = usePatternStorage();
+
+  const entitlements = useBeatMakerEntitlements(subscription);
 
 
 
@@ -180,11 +184,21 @@ export function LibraryPage({
 
             <div className="px-md pt-md">
 
-              <PatternPresetBar beatMaker={beatMaker} storage={patternStorage} />
+              <PatternPresetBar beatMaker={beatMaker} storage={patternStorage} entitlements={entitlements} />
 
             </div>
 
-            <DrumMachinePanel embedded beatMaker={beatMaker} />
+            <DrumMachinePanel
+
+              embedded
+
+              beatMaker={beatMaker}
+
+              canExportFullMidi={entitlements.limits.canExportFullMidi}
+
+              onExportGated={onViewPlans}
+
+            />
 
           </div>
 

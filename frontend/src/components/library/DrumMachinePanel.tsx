@@ -33,11 +33,17 @@ export interface DrumMachinePanelProps {
   embedded?: boolean;
   /** Optionally pass in an external beat maker instance (for shared state). */
   beatMaker?: UseBeatMakerReturn;
+  /** Whether full MIDI export is allowed (false = limited to 16 steps). */
+  canExportFullMidi?: boolean;
+  /** Callback when user hits the export gate. */
+  onExportGated?: () => void;
 }
 
 export function DrumMachinePanel({
   embedded = false,
   beatMaker: externalBeatMaker,
+  canExportFullMidi = true,
+  onExportGated,
 }: DrumMachinePanelProps) {
   // Use external hook instance if provided, otherwise create internal one
   const internalBeatMaker = useBeatMaker();
@@ -67,12 +73,21 @@ export function DrumMachinePanel({
   // ─── MIDI Export ──────────────────────────────────────────────
 
   const exportMidi = useCallback(() => {
+    // Gate: free users can only export 16 steps
+    if (!canExportFullMidi && steps > 16) {
+      onExportGated?.();
+      return;
+    }
+
     const notes: MidiNoteEvent[] = [];
     const audible = getAudibleRows(rowStates);
+    // Free tier: limit export to first 16 steps
+    const exportSteps = canExportFullMidi ? steps : Math.min(steps, 16);
 
     pattern.forEach((row, ri) => {
       if (!audible[ri]) return;
       row.forEach((vel, stepIdx) => {
+        if (stepIdx >= exportSteps) return;
         if (vel === VELOCITY_OFF) return;
         const startTime = applySwingToNoteStart(stepIdx, bpm, swing);
         const stepDur = 60 / bpm / 4;
@@ -87,7 +102,7 @@ export function DrumMachinePanel({
 
     const blob = exportNotesToMidi(notes, bpm, "Drum Pattern");
     downloadMidiBlob(blob, "drum-pattern.mid");
-  }, [pattern, bpm, swing, rowStates, kit]);
+  }, [pattern, bpm, swing, rowStates, kit, steps, canExportFullMidi, onExportGated]);
 
   // ─── Computed ─────────────────────────────────────────────────
 
@@ -176,10 +191,12 @@ export function DrumMachinePanel({
         <button
           type="button"
           onClick={exportMidi}
-          className="midi-btn text-xs ml-auto"
+          className={cn("midi-btn text-xs ml-auto", !canExportFullMidi && steps > 16 && "opacity-60")}
+          title={!canExportFullMidi && steps > 16 ? "Upgrade to export patterns longer than 16 steps" : "Export as MIDI file"}
         >
           <Download className="h-3.5 w-3.5" />
           Export MIDI
+          {!canExportFullMidi && steps > 16 && <span className="ml-0.5 text-[8px]">🔒</span>}
         </button>
       </div>
 
