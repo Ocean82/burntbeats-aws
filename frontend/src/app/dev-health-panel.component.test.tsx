@@ -46,7 +46,7 @@ describe("DevHealthPanel", () => {
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/12\/12 valid files/i)).toBeInTheDocument();
+    expect(await screen.findByText(/12\/12 valid files/i)).toBeInTheDocument();
     expect(screen.getByText(/backend/i)).toBeInTheDocument();
     expect(screen.getByText(/database/i)).toBeInTheDocument();
   });
