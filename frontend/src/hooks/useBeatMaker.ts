@@ -137,15 +137,26 @@ export function useBeatMaker(): UseBeatMakerReturn {
 
   // Keep refs in sync for the scheduler closure
   const patternRef = useRef(pattern);
-  patternRef.current = pattern;
   const rowStatesRef = useRef(rowStates);
-  rowStatesRef.current = rowStates;
   const bpmRef = useRef(bpm);
-  bpmRef.current = bpm;
   const swingRef = useRef(swing);
-  swingRef.current = swing;
   const stepsRef = useRef(steps);
-  stepsRef.current = steps;
+
+  useEffect(() => {
+    patternRef.current = pattern;
+  }, [pattern]);
+  useEffect(() => {
+    rowStatesRef.current = rowStates;
+  }, [rowStates]);
+  useEffect(() => {
+    bpmRef.current = bpm;
+  }, [bpm]);
+  useEffect(() => {
+    swingRef.current = swing;
+  }, [swing]);
+  useEffect(() => {
+    stepsRef.current = steps;
+  }, [steps]);
 
   // ─── Pattern Length Resize ────────────────────────────────────
 

@@ -192,7 +192,6 @@ export function PatternPresetBar({ beatMaker, storage }: PatternPresetBarProps) 
               onChange={(e) => setSaveName(e.target.value)}
               placeholder="Pattern name..."
               className="w-28 rounded border border-border bg-muted px-xs py-0.5 text-xs text-foreground placeholder:text-muted-foreground"
-              autoFocus
               onBlur={() => {
                 if (!saveName.trim()) setShowSaveInput(false);
               }}
