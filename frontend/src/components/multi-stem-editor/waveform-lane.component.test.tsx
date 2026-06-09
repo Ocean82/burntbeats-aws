@@ -43,7 +43,7 @@ describe("WaveformLane rendering strategy", () => {
     );
   });
 
-  it("does not redraw static waveform when only playhead changes", () => {
+  it("redraws static waveform when playhead changes (played-region shading)", () => {
     const baseProps = {
       stem: {
         id: "vocals" as StemId,
@@ -74,6 +74,7 @@ describe("WaveformLane rendering strategy", () => {
     const firstCount = drawWaveformBars.mock.calls.length;
     rerender(<WaveformLane {...baseProps} playheadFraction={0.8} />);
 
-    expect(drawWaveformBars.mock.calls.length).toBe(firstCount);
+    // playheadFraction is used for played-region shading, so a change triggers redraw
+    expect(drawWaveformBars.mock.calls.length).toBe(firstCount + 1);
   });
 });
