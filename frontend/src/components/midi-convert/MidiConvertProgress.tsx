@@ -49,8 +49,10 @@ export function MidiConvertProgress({
 }: MidiConvertProgressProps) {
   const [elapsed, setElapsed] = useState(0);
   const startTimeRef = useRef<number>(0);
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const prevProgressRef = useRef(progress);
+  const [cancelRequestedAtProgress, setCancelRequestedAtProgress] = useState<number | null>(null);
+
+  // confirmCancel is true only if user clicked cancel at the current progress value
+  const confirmCancel = cancelRequestedAtProgress !== null && cancelRequestedAtProgress === progress;
 
   const isActive = isConverting || isUploading;
 
@@ -70,14 +72,6 @@ export function MidiConvertProgress({
     return () => clearInterval(interval);
   }, [isActive]);
 
-  // Reset confirm cancel when progress changes (derived, not effect)
-  if (prevProgressRef.current !== progress) {
-    prevProgressRef.current = progress;
-    if (confirmCancel) {
-      setConfirmCancel(false);
-    }
-  }
-
   if (!isActive) return null;
 
   const barPercent = isUploading ? uploadProgress : progress;
@@ -86,11 +80,11 @@ export function MidiConvertProgress({
 
   const handleCancel = () => {
     if (!confirmCancel) {
-      setConfirmCancel(true);
+      setCancelRequestedAtProgress(progress);
       return;
     }
     onCancel?.();
-    setConfirmCancel(false);
+    setCancelRequestedAtProgress(null);
   };
 
   return (
