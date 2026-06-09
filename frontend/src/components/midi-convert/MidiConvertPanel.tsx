@@ -7,6 +7,7 @@ import { AlertCircle, Check, Download, Layers, Loader2, Music, RefreshCw, X } fr
 import { useCallback, useState } from "react";
 import { useMidiConvert } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
+import { cn } from "../../utils/cn";
 import { WorkflowStepper } from "../ui/WorkflowStepper";
 import { MidiSourceSelector } from "./MidiSourceSelector";
 import { MidiSourcePreview } from "./MidiSourcePreview";
@@ -453,7 +454,13 @@ export function MidiConvertPanel({
             {batchJobs.map((job, idx) => (
               <div
                 key={job.stemName}
-                className="flex flex-col gap-xs rounded-lg border border-border bg-muted px-sm py-sm sm:flex-row sm:items-center sm:justify-between"
+                className={cn(
+                  "midi-batch-card flex flex-col gap-xs rounded-lg border px-sm py-sm sm:flex-row sm:items-center sm:justify-between",
+                  job.status === "pending" && "border-border bg-muted",
+                  job.status === "converting" && "midi-batch-card--converting border-accent-midi/30 bg-accent-midi-950/15",
+                  job.status === "completed" && "midi-batch-card--completed border-success/30 bg-success-muted/10",
+                  job.status === "failed" && "midi-batch-card--failed border-destructive-500/30 bg-destructive-950/15",
+                )}
               >
                 <div className="flex min-w-0 flex-1 items-start gap-xs sm:items-center">
                   {/* Status indicator */}
@@ -510,13 +517,13 @@ export function MidiConvertPanel({
 
           {/* Download All as ZIP button */}
           {batchJobs.some((j) => j.status === "completed") && !isBatchInProgress && (
-            <div className="flex flex-wrap items-center gap-sm">
+            <div className="flex flex-wrap items-center gap-sm pt-xs">
               <button
                 type="button"
                 data-testid="midi-batch-download-zip"
                 onClick={() => void downloadAllAsZip()}
                 disabled={isExportingZip}
-                className="midi-btn text-sm"
+                className="midi-btn midi-btn--play text-sm"
               >
                 {isExportingZip ? (
                   <>

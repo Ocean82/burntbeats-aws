@@ -3,34 +3,41 @@
  * Includes stem-type presets and DAW-style physical parameter sliders.
  */
 import { useState } from "react";
+import { Drum, Guitar, Mic2, Music, Piano } from "lucide-react";
 import type { MidiConvertSettings as Settings } from "../../hooks/useMidiConvert";
+import { cn } from "../../utils/cn";
 import { MidiParamSlider } from "./controls/MidiParamSlider";
 import { MidiKnobControl } from "./controls/MidiKnobControl";
 
-const PRESETS: Record<string, { label: string; hint: string; settings: Partial<Settings> }> = {
+const PRESETS: Record<string, { label: string; hint: string; icon: typeof Music; settings: Partial<Settings> }> = {
   vocals: {
     label: "Vocals",
-    hint: "Monophonic melody — high confidence, longer notes",
+    hint: "Monophonic melody, high confidence",
+    icon: Mic2,
     settings: { minConfidence: 0.6, minNoteLengthMs: 80, includePitchBends: true, maxNoteLengthMs: 0 },
   },
   bass: {
     label: "Bass",
-    hint: "Low register — fewer short notes, no pitch bends",
+    hint: "Low register, fewer short notes",
+    icon: Guitar,
     settings: { minConfidence: 0.55, minNoteLengthMs: 100, includePitchBends: false, maxNoteLengthMs: 2000 },
   },
   drums: {
     label: "Drums",
-    hint: "Percussive hits — low confidence, very short notes",
+    hint: "Percussive hits, very short notes",
+    icon: Drum,
     settings: { minConfidence: 0.35, minNoteLengthMs: 20, includePitchBends: false, maxNoteLengthMs: 500 },
   },
   melody: {
     label: "Melody",
-    hint: "Polyphonic — balanced detection",
+    hint: "Polyphonic, balanced detection",
+    icon: Music,
     settings: { minConfidence: 0.5, minNoteLengthMs: 58, includePitchBends: true, maxNoteLengthMs: 0 },
   },
   piano: {
-    label: "Piano / Keys",
+    label: "Piano",
     hint: "Wide range, sustain-friendly",
+    icon: Piano,
     settings: { minConfidence: 0.45, minNoteLengthMs: 50, includePitchBends: false, maxNoteLengthMs: 4000 },
   },
 };
@@ -64,25 +71,39 @@ export function MidiConvertSettings({
     <div className="midi-inspector" data-testid="midi-convert-settings">
       <p className="midi-inspector__title">Conversion settings</p>
       <div className="flex flex-col gap-xs">
-        <div className="flex flex-wrap gap-xs">
-          {Object.entries(PRESETS).map(([key, { label, hint }]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => applyPreset(key)}
-              disabled={disabled}
-              title={hint}
-              className={`midi-btn midi-btn--tool text-xs ${
-                activePreset === key ? "midi-btn--tool-active" : ""
-              }`}
-              aria-pressed={activePreset === key}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Preset cards */}
+        <div className="midi-preset-grid">
+          {Object.entries(PRESETS).map(([key, { label, hint, icon: Icon }]) => {
+            const isActive = activePreset === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => applyPreset(key)}
+                disabled={disabled}
+                aria-pressed={isActive}
+                className={cn(
+                  "midi-preset-card",
+                  isActive && "midi-preset-card--active",
+                  disabled && "opacity-40 cursor-not-allowed",
+                )}
+              >
+                <Icon
+                  className={cn(
+                    "midi-preset-card__icon",
+                    isActive && "midi-preset-card__icon--active",
+                  )}
+                  aria-hidden
+                />
+                <span className="midi-preset-card__label">{label}</span>
+                <span className="midi-preset-card__hint">{hint}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Detection section */}
+        <div className="midi-section-divider" aria-hidden />
         <div className="midi-rack-panel__section-label">Detection</div>
 
         <div className="flex flex-wrap items-start gap-md px-sm py-xs">
@@ -144,6 +165,7 @@ export function MidiConvertSettings({
         </div>
 
         {/* Post-processing section */}
+        <div className="midi-section-divider" aria-hidden />
         <div className="midi-rack-panel__section-label">Post-processing</div>
 
         {/* Normalize velocity toggle */}
@@ -192,6 +214,7 @@ export function MidiConvertSettings({
         />
 
         {/* Quantize section */}
+        <div className="midi-section-divider" aria-hidden />
         <div className="midi-rack-panel__section-label">Quantize</div>
 
         {/* Quantize toggle */}

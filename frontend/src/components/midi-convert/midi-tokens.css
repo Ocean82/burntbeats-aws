@@ -1397,3 +1397,310 @@
         background: none;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Preset cards (MidiConvertSettings)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+    gap: 6px;
+}
+
+.midi-preset-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 10px 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--midi-border);
+    background: var(--midi-surface-inset);
+    cursor: pointer;
+    transition:
+        border-color var(--midi-motion) var(--ease-out-quart),
+        background var(--midi-motion) var(--ease-out-quart),
+        box-shadow var(--midi-motion) var(--ease-out-quart),
+        transform var(--midi-motion) var(--ease-out-quart);
+    -webkit-user-select: none;
+    user-select: none;
+    text-align: center;
+}
+
+.midi-preset-card:hover:not(:disabled) {
+    border-color: var(--midi-border-accent-subtle);
+    background: var(--midi-surface-raised);
+    transform: translateY(-1px);
+}
+
+.midi-preset-card:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.midi-preset-card--active {
+    border-color: var(--midi-border-accent-strong) !important;
+    background: var(--midi-surface-raised) !important;
+    box-shadow:
+        0 0 12px rgba(205, 165, 60, 0.15),
+        0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.midi-preset-card:focus-visible {
+    outline: 2px solid var(--midi-border-focus);
+    outline-offset: 2px;
+}
+
+.midi-preset-card__icon {
+    width: 18px;
+    height: 18px;
+    color: var(--midi-text-muted);
+    transition: color var(--midi-motion);
+}
+
+.midi-preset-card__icon--active {
+    color: var(--midi-accent);
+}
+
+.midi-preset-card__label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--midi-text);
+    line-height: 1.2;
+}
+
+.midi-preset-card__hint {
+    font-size: 9px;
+    color: var(--midi-text-muted);
+    line-height: 1.3;
+    opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .midi-preset-card {
+        transition: none;
+        transform: none !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Upload dropzone (MidiSourceSelector)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px 16px;
+    border-radius: 10px;
+    border: 2px dashed var(--midi-border-accent-subtle);
+    background: var(--midi-surface-inset);
+    cursor: pointer;
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+    -webkit-user-select: none;
+    user-select: none;
+    text-align: center;
+}
+
+.midi-dropzone:hover:not(.midi-dropzone--disabled) {
+    border-color: var(--midi-border-accent);
+    background: var(--midi-callout-bg);
+}
+
+.midi-dropzone--dragging {
+    border-color: var(--midi-border-accent-strong) !important;
+    border-style: solid !important;
+    background: var(--midi-callout-bg) !important;
+    transform: scale(1.02);
+    box-shadow: 0 0 16px rgba(205, 165, 60, 0.12);
+}
+
+.midi-dropzone--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.midi-dropzone__icon {
+    color: var(--midi-text-muted);
+    opacity: 0.5;
+    animation: midi-dropzone-pulse 3s ease-in-out infinite;
+}
+
+.midi-dropzone__label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--midi-text-muted);
+}
+
+.midi-dropzone__hint {
+    font-size: 10px;
+    color: var(--midi-text-muted);
+    opacity: 0.6;
+}
+
+@keyframes midi-dropzone-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .midi-dropzone {
+        transition: none;
+        transform: none !important;
+    }
+
+    .midi-dropzone__icon {
+        animation: none;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Batch job cards (MidiConvertPanel)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-batch-card {
+    position: relative;
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.midi-batch-card--converting {
+    border-color: rgba(205, 165, 60, 0.3);
+    background: rgba(205, 165, 60, 0.06);
+}
+
+.midi-batch-card--completed {
+    border-color: oklch(62% 0.14 155 / 35%);
+    background: oklch(62% 0.14 155 / 6%);
+}
+
+.midi-batch-card--failed {
+    border-color: oklch(58% 0.2 25 / 35%);
+    background: oklch(58% 0.2 25 / 6%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .midi-batch-card {
+        transition: none;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Analysis panel enhancements (MidiAnalysisPanel)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-analysis-bpm-badge {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--midi-border-accent);
+    background: var(--midi-surface-inset);
+    box-shadow: 0 0 8px rgba(205, 165, 60, 0.1);
+}
+
+.midi-analysis-bpm-badge__value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 20px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--midi-accent);
+    line-height: 1;
+}
+
+.midi-analysis-bpm-badge__unit {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--midi-text-muted);
+}
+
+.midi-analysis-genre-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    border: 1px solid var(--midi-border-accent-subtle);
+    background: var(--midi-callout-bg);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--midi-accent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Section divider (gradient line between settings sections)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-section-divider {
+    height: 1px;
+    margin: 4px 8px 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--midi-border-accent-subtle),
+        transparent
+    );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Polish: contain properties for layout stability (CLS prevention)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-piano-roll {
+    contain: layout style;
+}
+
+.midi-waveform-player canvas {
+    contain: layout style paint;
+}
+
+.midi-preset-grid {
+    contain: layout;
+}
+
+.midi-batch-panel {
+    contain: layout;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Polish: smoother transitions on batch panel and settings sections
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-workspace-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 4px;
+    animation: midi-section-enter 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes midi-section-enter {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .midi-workspace-section {
+        animation: none;
+    }
+}

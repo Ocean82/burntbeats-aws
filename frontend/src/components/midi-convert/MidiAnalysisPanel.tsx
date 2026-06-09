@@ -1,15 +1,59 @@
 /**
  * MidiAnalysisPanel — musical insights from conversion + MIDI file analysis.
+ * Enriched with visual meters, prominent BPM badge, and colored genre hints.
  */
 import type {
   MidiAnalysis,
   MidiFileAnalysisDetail,
 } from "../../hooks/useMidiConvert";
+import { cn } from "../../utils/cn";
 
 interface MidiAnalysisPanelProps {
   analysis: MidiAnalysis;
   fileAnalysis?: MidiFileAnalysisDetail | null;
   onApplySuggestedBpm?: (bpm: number) => void;
+}
+
+/** Segmented complexity meter (5 segments). */
+function ComplexityMeter({ value }: { value: number }) {
+  // Normalize to 0-1 range
+  const normalized = value <= 1 ? value : value <= 10 ? value / 10 : value / 100;
+  const filledSegments = Math.round(normalized * 5);
+  return (
+    <div className="flex items-center gap-0.5" aria-label={`Complexity ${Math.round(normalized * 100)}%`}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <div
+          key={i}
+          className={cn(
+            "h-2.5 w-3 rounded-sm transition-colors",
+            i < filledSegments
+              ? "bg-accent-midi/70"
+              : "bg-[var(--midi-surface-inset)]",
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Note density mini bar. */
+function DensityBar({ density }: { density: number }) {
+  // Cap at 20 notes/sec for visualization
+  const pct = Math.min(100, (density / 20) * 100);
+  return (
+    <div className="flex items-center gap-xs">
+      <span className="font-mono text-sm font-semibold text-accent-midi-200 tabular-nums">
+        {density.toFixed(1)}
+      </span>
+      <div className="flex-1 h-1.5 rounded-full bg-[var(--midi-surface-inset)] max-w-[60px]">
+        <div
+          className="h-1.5 rounded-full bg-accent-midi/60"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="text-[9px] text-muted-foreground">/sec</span>
+    </div>
+  );
 }
 
 export function MidiAnalysisPanel({
@@ -22,17 +66,40 @@ export function MidiAnalysisPanel({
     fileAnalysis?.complexity_score ?? analysis.complexity_score;
   const genreHints = fileAnalysis?.genre_hints ?? [];
   const trackInfo = fileAnalysis?.track_info ?? [];
+  const bpm = fileAnalysis?.tempo_bpm ?? analysis.suggested_bpm;
 
   return (
     <div className="midi-inspector" data-testid="midi-analysis-panel">
       <p className="midi-inspector__title">Musical analysis</p>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
+
+      {/* BPM hero badge */}
+      {bpm != null && (
+        <div className="flex items-center gap-sm">
+          <div className="midi-analysis-bpm-badge">
+            <span className="midi-analysis-bpm-badge__value">{bpm}</span>
+            <span className="midi-analysis-bpm-badge__unit">BPM</span>
+          </div>
+          {onApplySuggestedBpm && analysis.suggested_bpm != null && (
+            <button
+              type="button"
+              onClick={() => onApplySuggestedBpm(bpm)}
+              className="midi-btn text-[10px] px-sm py-0"
+            >
+              Use for quantize
+            </button>
+          )}
+        </div>
+      )}
+
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-3">
         <div>
           <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Estimated key
+            Key
           </dt>
-          <dd className="mt-1 font-mono text-sm font-semibold text-accent-midi-200">
-            {fileAnalysis?.key_signature ?? analysis.estimated_key}
+          <dd className="mt-1 inline-flex items-center gap-1 rounded-md border border-accent-midi/20 bg-accent-midi-950/20 px-xs py-0.5 font-mono text-sm font-semibold text-accent-midi-200">
+            {(fileAnalysis?.key_signature ?? analysis.estimated_key)
+              .replace(/b/g, "♭")
+              .replace(/#/g, "♯")}
           </dd>
         </div>
         <div>
@@ -47,59 +114,28 @@ export function MidiAnalysisPanel({
           <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Note density
           </dt>
-          <dd className="mt-1 font-mono text-sm font-semibold text-accent-midi-200">
-            {analysis.note_density.toFixed(1)} / sec
+          <dd className="mt-1">
+            <DensityBar density={analysis.note_density} />
           </dd>
         </div>
         <div>
           <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Complexity
           </dt>
-          <dd className="mt-1 font-mono text-sm font-semibold text-accent-midi-200">
-            {typeof complexity === "number" && complexity <= 10
-              ? complexity.toFixed(1)
-              : `${Math.round((complexity as number) * 100)}%`}
+          <dd className="mt-1.5">
+            <ComplexityMeter value={complexity as number} />
           </dd>
         </div>
         {fileAnalysis && (
           <div>
             <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Drums detected
+              Drums
             </dt>
             <dd className="mt-1 font-mono text-sm font-semibold text-accent-midi-200">
               {fileAnalysis.has_drums ? "Yes" : "No"}
             </dd>
           </div>
         )}
-        <div className="col-span-2 sm:col-span-1">
-          <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Suggested BPM
-          </dt>
-          <dd className="mt-1 flex flex-wrap items-center gap-xs">
-            {(fileAnalysis?.tempo_bpm ?? analysis.suggested_bpm) != null ? (
-              <>
-                <span className="font-mono text-sm font-semibold text-accent-midi-200">
-                  {fileAnalysis?.tempo_bpm ?? analysis.suggested_bpm}
-                </span>
-                {onApplySuggestedBpm && analysis.suggested_bpm != null && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onApplySuggestedBpm(
-                        fileAnalysis?.tempo_bpm ?? analysis.suggested_bpm!,
-                      )
-                    }
-                    className="midi-btn text-[10px] px-sm py-0"
-                  >
-                    Use for quantize
-                  </button>
-                )}
-              </>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </dd>
-        </div>
       </dl>
 
       {genreHints.length > 0 && (
@@ -109,7 +145,7 @@ export function MidiAnalysisPanel({
             {genreHints.map((hint) => (
               <span
                 key={hint}
-                className="rounded-full border border-accent-midi/30 bg-accent-midi-950/30 px-sm py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent-midi-200"
+                className="midi-analysis-genre-badge"
               >
                 {hint}
               </span>
@@ -125,9 +161,19 @@ export function MidiAnalysisPanel({
             {trackInfo.map((t) => (
               <li
                 key={t.index}
-                className="flex justify-between gap-sm rounded-md border border-border/60 bg-muted/40 px-sm py-1"
+                className="flex items-center justify-between gap-sm rounded-md border border-border/60 bg-muted/40 px-sm py-1"
               >
-                <span className="truncate font-medium">{t.name}</span>
+                <div className="flex items-center gap-xs min-w-0">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{
+                      background: t.is_drum
+                        ? "oklch(72% 0.12 205)"
+                        : "var(--midi-accent)",
+                    }}
+                  />
+                  <span className="truncate font-medium">{t.name}</span>
+                </div>
                 <span className="shrink-0 tabular-nums text-muted-foreground">
                   {t.notes} notes
                   {t.is_drum ? " · drums" : ""}

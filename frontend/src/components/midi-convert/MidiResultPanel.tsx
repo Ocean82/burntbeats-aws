@@ -148,7 +148,7 @@ export function MidiResultPanel({
       </motion.div>
 
       {/* Action buttons */}
-      <div className="flex flex-wrap items-center gap-sm px-sm">
+      <div className="flex flex-wrap items-center gap-sm">
         {isSupported && result.pianoRollNotes.length > 0 && mode === "view" && (
           <button
             type="button"
@@ -173,7 +173,7 @@ export function MidiResultPanel({
           <button
             type="button"
             disabled
-            className="midi-btn"
+            className="midi-btn midi-btn--play"
             aria-busy="true"
             aria-label="Downloading MIDI file"
           >
@@ -185,7 +185,7 @@ export function MidiResultPanel({
           <button
             type="button"
             onClick={onDownload}
-            className="midi-btn"
+            className="midi-btn midi-btn--play"
             aria-label="Download MIDI file"
           >
             <Download className="h-4 w-4" aria-hidden />

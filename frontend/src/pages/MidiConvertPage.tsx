@@ -39,7 +39,7 @@ export function MidiConvertPage({
           title="Audio to MIDI"
           subtitle="Transcribe stems or uploads, refine in the editor, export to your DAW"
         />
-        <div className="midi-workspace px-md pb-md sm:px-lg">
+        <div className="midi-workspace px-md pb-lg pt-sm sm:px-lg">
           {showE2eMidiEditor ? (
             <MidiResultPanel
               result={MIDI_EDITOR_E2E_FIXTURE}

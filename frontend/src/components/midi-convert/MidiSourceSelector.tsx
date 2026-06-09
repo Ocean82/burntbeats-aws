@@ -194,13 +194,10 @@ export function MidiSourceSelector({
             }}
           />
           {uploadedFile ? (
-            <div
-              className="midi-param-slider"
-              {...dragProps}
-            >
-              <div className="flex items-center gap-sm">
-                <Music className="h-4 w-4 text-accent-midi-300" aria-hidden />
-                <span className="midi-param-slider__value flex-1 truncate">{uploadName}</span>
+            <div className="midi-dropzone" style={{ borderStyle: "solid" }}>
+              <div className="flex items-center gap-sm w-full">
+                <Music className="h-4 w-4 text-accent-midi-300 shrink-0" aria-hidden />
+                <span className="flex-1 truncate text-sm font-medium text-[var(--midi-text)]">{uploadName}</span>
                 <button
                   type="button"
                   onClick={() => onDrop(null)}
@@ -219,13 +216,14 @@ export function MidiSourceSelector({
               disabled={disabled}
               {...dragProps}
               className={cn(
-                "w-full midi-param-slider text-center transition cursor-pointer",
-                isDragging && "scale-[1.01] !border-accent-midi/50",
-                disabled && "opacity-40 cursor-not-allowed",
+                "midi-dropzone w-full",
+                isDragging && "midi-dropzone--dragging",
+                disabled && "midi-dropzone--disabled",
               )}
             >
-              <Upload className="mx-auto mb-xs h-6 w-6 text-accent-midi-300/50" aria-hidden />
-              <span className="midi-param-slider__label">Drop audio file here or click to browse</span>
+              <Upload className="midi-dropzone__icon h-7 w-7" aria-hidden />
+              <span className="midi-dropzone__label">Drop audio file here</span>
+              <span className="midi-dropzone__hint">or click to browse</span>
             </button>
           )}
         </div>
