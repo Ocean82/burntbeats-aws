@@ -18,6 +18,12 @@ import { MidiCatalogPanel } from "../components/library/MidiCatalogPanel";
 
 import { DrumMachinePanel } from "../components/library/DrumMachinePanel";
 
+import { PatternPresetBar } from "../components/library/PatternPresetBar";
+
+import { useBeatMaker } from "../hooks/useBeatMaker";
+
+import { usePatternStorage } from "../hooks/usePatternStorage";
+
 import { cn } from "../utils/cn";
 
 
@@ -53,6 +59,10 @@ export function LibraryPage({
 }: LibraryPageProps) {
 
   const [tab, setTab] = useState<LibraryTab>("catalog");
+
+  const beatMaker = useBeatMaker();
+
+  const patternStorage = usePatternStorage();
 
 
 
@@ -164,7 +174,21 @@ export function LibraryPage({
 
         </FilterBar>
 
-        {tab === "catalog" ? <MidiCatalogPanel /> : <DrumMachinePanel embedded />}
+        {tab === "catalog" ? <MidiCatalogPanel /> : (
+
+          <div className="space-y-0">
+
+            <div className="px-md pt-md">
+
+              <PatternPresetBar beatMaker={beatMaker} storage={patternStorage} />
+
+            </div>
+
+            <DrumMachinePanel embedded beatMaker={beatMaker} />
+
+          </div>
+
+        )}
 
       </div>
 

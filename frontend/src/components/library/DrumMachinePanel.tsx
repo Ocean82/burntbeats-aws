@@ -1,244 +1,68 @@
 /**
  * DrumMachinePanel — Production beat maker with 8-row step sequencer,
  * velocity support, swing, mute/solo, variable pattern length, and MIDI export.
+ *
+ * State is owned by the `useBeatMaker` hook, making it possible for external
+ * controllers (preset bar, save/load dialogs) to share the same state.
  */
 import { Download, Play, Square } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
 import { downloadMidiBlob, exportNotesToMidi } from "../../utils/midiExport";
 import { cn } from "../../utils/cn";
 import { PanelHeader, SectionLabel } from "../ui";
-import { playDrumVoice } from "../../audio/drumSynth";
-import { applySwingToNoteStart, getSwungStepTime } from "../../audio/swingQuantize";
-import {
-  DEFAULT_KIT,
-  VELOCITY_ACCENT,
-  VELOCITY_GHOST,
-  VELOCITY_NORMAL,
-  VELOCITY_OFF,
-} from "../../audio/types";
-import type {
-  CellVelocity,
-  DrumVoice,
-  PatternLength,
-  RowState,
-  VelocityPattern,
-} from "../../audio/types";
+import { applySwingToNoteStart } from "../../audio/swingQuantize";
+import { VELOCITY_OFF } from "../../audio/types";
+import type { CellVelocity, PatternLength } from "../../audio/types";
+import { useBeatMaker, getAudibleRows } from "../../hooks/useBeatMaker";
+import type { UseBeatMakerReturn } from "../../hooks/useBeatMaker";
 
 // ─── Helpers ──────────────────────────────────────────────────────
-
-function emptyPattern(rows: number, steps: number): VelocityPattern {
-  return Array.from({ length: rows }, () => Array(steps).fill(VELOCITY_OFF));
-}
-
-function defaultRowStates(count: number): RowState[] {
-  return Array.from({ length: count }, () => ({
-    muted: false,
-    solo: false,
-    volume: 0.8,
-  }));
-}
-
-/** Cycle velocity: off → normal → accent → ghost → off */
-function cycleVelocity(current: CellVelocity): CellVelocity {
-  if (current === VELOCITY_OFF) return VELOCITY_NORMAL;
-  if (current === VELOCITY_NORMAL) return VELOCITY_ACCENT;
-  if (current === VELOCITY_ACCENT) return VELOCITY_GHOST;
-  return VELOCITY_OFF;
-}
 
 /** Map velocity to a visual opacity for the cell. */
 function velocityOpacity(vel: CellVelocity): string {
   if (vel === VELOCITY_OFF) return "";
-  if (vel <= VELOCITY_GHOST) return "opacity-40";
-  if (vel <= VELOCITY_NORMAL) return "opacity-75";
+  if (vel <= 40) return "opacity-40";
+  if (vel <= 100) return "opacity-75";
   return "opacity-100";
-}
-
-/** Determine which rows should be audible given mute/solo state. */
-function getAudibleRows(rowStates: RowState[]): boolean[] {
-  const anySolo = rowStates.some((r) => r.solo);
-  return rowStates.map((r) => {
-    if (anySolo) return r.solo && !r.muted;
-    return !r.muted;
-  });
 }
 
 // ─── Component ────────────────────────────────────────────────────
 
 export interface DrumMachinePanelProps {
   embedded?: boolean;
+  /** Optionally pass in an external beat maker instance (for shared state). */
+  beatMaker?: UseBeatMakerReturn;
 }
 
-export function DrumMachinePanel({ embedded = false }: DrumMachinePanelProps) {
-  const kit: DrumVoice[] = DEFAULT_KIT;
-  const rowCount = kit.length;
+export function DrumMachinePanel({
+  embedded = false,
+  beatMaker: externalBeatMaker,
+}: DrumMachinePanelProps) {
+  // Use external hook instance if provided, otherwise create internal one
+  const internalBeatMaker = useBeatMaker();
+  const bm = externalBeatMaker ?? internalBeatMaker;
 
-  // Pattern state
-  const [steps, setSteps] = useState<PatternLength>(16);
-  const [pattern, setPattern] = useState<VelocityPattern>(() => emptyPattern(rowCount, 16));
-  const [rowStates, setRowStates] = useState<RowState[]>(() => defaultRowStates(rowCount));
-
-  // Transport state
-  const [bpm, setBpm] = useState(120);
-  const [swing, setSwing] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [currentStep, setCurrentStep] = useState(-1);
-
-  // Audio refs
-  const ctxRef = useRef<AudioContext | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const nextStepTimeRef = useRef(0);
-  const stepIndexRef = useRef(0);
-
-  // Keep pattern ref in sync for the scheduler closure
-  const patternRef = useRef(pattern);
-  patternRef.current = pattern;
-  const rowStatesRef = useRef(rowStates);
-  rowStatesRef.current = rowStates;
-  const bpmRef = useRef(bpm);
-  bpmRef.current = bpm;
-  const swingRef = useRef(swing);
-  swingRef.current = swing;
-  const stepsRef = useRef(steps);
-  stepsRef.current = steps;
-
-  // ─── Pattern Length Resize ────────────────────────────────────
-
-  const handleStepsChange = useCallback(
-    (newSteps: PatternLength) => {
-      setPattern((prev) => {
-        return prev.map((row) => {
-          if (newSteps <= row.length) return row.slice(0, newSteps);
-          return [...row, ...Array(newSteps - row.length).fill(VELOCITY_OFF)];
-        });
-      });
-      setSteps(newSteps);
-    },
-    [],
-  );
-
-  // ─── Cell Interaction ─────────────────────────────────────────
-
-  const toggleCell = useCallback((row: number, col: number) => {
-    setPattern((prev) => {
-      const next = prev.map((r) => [...r]);
-      next[row][col] = cycleVelocity(next[row][col]);
-      return next;
-    });
-  }, []);
-
-  const clearCell = useCallback((row: number, col: number) => {
-    setPattern((prev) => {
-      const next = prev.map((r) => [...r]);
-      next[row][col] = VELOCITY_OFF;
-      return next;
-    });
-  }, []);
-
-  // ─── Mute/Solo ────────────────────────────────────────────────
-
-  const toggleMute = useCallback((row: number) => {
-    setRowStates((prev) => {
-      const next = [...prev];
-      next[row] = { ...next[row], muted: !next[row].muted };
-      return next;
-    });
-  }, []);
-
-  const toggleSolo = useCallback((row: number) => {
-    setRowStates((prev) => {
-      const next = [...prev];
-      next[row] = { ...next[row], solo: !next[row].solo };
-      return next;
-    });
-  }, []);
-
-  // ─── Clear Pattern ────────────────────────────────────────────
-
-  const clearPattern = useCallback(() => {
-    setPattern(emptyPattern(rowCount, steps));
-  }, [rowCount, steps]);
-
-  // ─── Playback Engine ──────────────────────────────────────────
-
-  const stop = useCallback(() => {
-    if (timerRef.current != null) {
-      cancelAnimationFrame(timerRef.current);
-      timerRef.current = null;
-    }
-    setPlaying(false);
-    setCurrentStep(-1);
-    stepIndexRef.current = 0;
-  }, []);
-
-  useEffect(() => () => stop(), [stop]);
-
-  const scheduleStep = useCallback((ctx: AudioContext) => {
-    const pat = patternRef.current;
-    const rs = rowStatesRef.current;
-    const currentBpm = bpmRef.current;
-    const currentSwing = swingRef.current;
-    const totalSteps = stepsRef.current;
-    const stepDuration = 60 / currentBpm / 4;
-    const audible = getAudibleRows(rs);
-
-    // Look-ahead scheduling: schedule notes slightly ahead of time
-    const lookAhead = 0.05; // 50ms
-    const scheduleInterval = 25; // check every 25ms
-
-    const scheduler = () => {
-      while (nextStepTimeRef.current < ctx.currentTime + lookAhead) {
-        const stepIdx = stepIndexRef.current % totalSteps;
-        const stepTime = nextStepTimeRef.current;
-
-        // Play audible hits at this step
-        pat.forEach((row, ri) => {
-          if (audible[ri] && row[stepIdx] > VELOCITY_OFF) {
-            const vel = Math.round(row[stepIdx] * rs[ri].volume);
-            playDrumVoice(ctx, kit[ri].id, stepTime, vel, ctx.destination);
-          }
-        });
-
-        // Update UI step (use setTimeout to avoid blocking)
-        const displayStep = stepIdx;
-        setTimeout(() => setCurrentStep(displayStep), 0);
-
-        // Advance to next step with swing
-        const nextIdx = (stepIdx + 1) % totalSteps;
-        const currentStepTime = getSwungStepTime(stepIdx, stepDuration, currentSwing);
-        const nextStepTime = getSwungStepTime(nextIdx, stepDuration, currentSwing);
-
-        // If we wrapped around, add one full pattern duration
-        if (nextIdx === 0) {
-          nextStepTimeRef.current += totalSteps * stepDuration - currentStepTime;
-        } else {
-          nextStepTimeRef.current += nextStepTime - currentStepTime;
-        }
-
-        stepIndexRef.current = nextIdx;
-      }
-
-      timerRef.current = window.setTimeout(scheduler, scheduleInterval) as unknown as number;
-    };
-
-    scheduler();
-  }, [kit]);
-
-  const start = useCallback(() => {
-    stop();
-    const ctx = ctxRef.current ?? new AudioContext();
-    ctxRef.current = ctx;
-
-    if (ctx.state === "suspended") {
-      void ctx.resume();
-    }
-
-    stepIndexRef.current = 0;
-    nextStepTimeRef.current = ctx.currentTime + 0.05;
-    setPlaying(true);
-    scheduleStep(ctx);
-  }, [stop, scheduleStep]);
+  const {
+    kit,
+    pattern,
+    steps,
+    rowStates,
+    bpm,
+    swing,
+    playing,
+    currentStep,
+    toggleCell,
+    clearCell,
+    setSteps,
+    clearPattern,
+    toggleMute,
+    toggleSolo,
+    setBpm,
+    setSwing,
+    start,
+    stop,
+  } = bm;
 
   // ─── MIDI Export ──────────────────────────────────────────────
 
@@ -327,7 +151,9 @@ export function DrumMachinePanel({ embedded = false }: DrumMachinePanelProps) {
           Steps
           <select
             value={steps}
-            onChange={(e) => handleStepsChange(Number(e.target.value) as PatternLength)}
+            onChange={(e) =>
+              setSteps(Number(e.target.value) as PatternLength)
+            }
             className="rounded border border-border bg-muted px-xs py-0.5 text-xs"
           >
             <option value={16}>16</option>
@@ -368,7 +194,9 @@ export function DrumMachinePanel({ embedded = false }: DrumMachinePanelProps) {
                 key={i}
                 className={cn(
                   "text-center text-[9px] tabular-nums select-none",
-                  i % 4 === 0 ? "text-primary-300 font-medium" : "text-muted-foreground",
+                  i % 4 === 0
+                    ? "text-primary-300 font-medium"
+                    : "text-muted-foreground",
                   i % 16 === 0 && i > 0 && "border-l border-border",
                 )}
               >
@@ -419,7 +247,9 @@ export function DrumMachinePanel({ embedded = false }: DrumMachinePanelProps) {
                 <span
                   className={cn(
                     "text-[10px] font-medium truncate min-w-0",
-                    !audibleRows[ri] ? "text-muted-foreground line-through" : "text-accent-midi-200",
+                    !audibleRows[ri]
+                      ? "text-muted-foreground line-through"
+                      : "text-accent-midi-200",
                   )}
                   title={voice.label}
                 >
@@ -490,11 +320,7 @@ export function DrumMachinePanel({ embedded = false }: DrumMachinePanelProps) {
   );
 
   if (embedded) {
-    return (
-      <div data-testid="drum-machine-panel">
-        {body}
-      </div>
-    );
+    return <div data-testid="drum-machine-panel">{body}</div>;
   }
 
   return (
