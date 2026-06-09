@@ -111,7 +111,9 @@ export function BounceToAudioButton({
             controls
             className="h-8 max-w-48"
             data-testid="bounce-audio-preview"
-          />
+          >
+            <track kind="captions" />
+          </audio>
           <button
             type="button"
             onClick={reset}
