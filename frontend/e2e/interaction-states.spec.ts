@@ -9,11 +9,15 @@ test.describe("Interaction states", () => {
 
   test("split CTA shows keyboard focus ring after upload", async ({ page }) => {
     await gotoEditor(page);
-    const panel = page.getByTestId("processing-settings-panel");
 
-    await page.getByLabel("Choose audio file").setInputFiles(minimalWavFile("focus-test.wav"));
+    // Upload a file via the hidden file input
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(minimalWavFile("focus-test.wav"));
 
-    const splitBtn = panel.locator("button.fire-button").first();
+    // Wait for configure phase
+    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+
+    const splitBtn = page.getByRole("button", { name: "Split" });
     await expect(splitBtn).toBeEnabled();
     await splitBtn.focus();
     await expect(splitBtn).toBeFocused();

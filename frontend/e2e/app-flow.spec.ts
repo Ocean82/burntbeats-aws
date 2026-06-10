@@ -9,18 +9,22 @@ test.describe("Burnt Beats app (local full app mode)", () => {
     await skipOnboarding(page);
   });
 
-  test("processing settings visible; split CTA appears after upload and is enabled", async ({
+  test("upload phase visible; split button appears after upload and configure", async ({
     page,
   }) => {
     await gotoEditor(page);
-    const panel = page.getByTestId("processing-settings-panel");
-    await expect(panel.getByTestId("split-upload-dropzone")).toBeVisible();
-    // Progressive disclosure: no primary split row until a file is selected (see ProcessingSettingsPanel).
-    await expect(panel.locator("button.fire-button")).toHaveCount(0);
+    // Upload phase should be visible initially
+    await expect(page.getByTestId("upload-phase")).toBeVisible();
 
-    await page.getByLabel("Choose audio file").setInputFiles(minimalWavFile("e2e-tiny.wav"));
+    // Upload a file via the hidden file input
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(minimalWavFile("e2e-tiny.wav"));
 
-    await expect(panel.locator("button.fire-button").first()).toBeEnabled();
+    // Should transition to configure phase
+    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+
+    // Split button should be visible and enabled
+    await expect(page.getByRole("button", { name: "Split" })).toBeEnabled();
   });
 
   test("mixer prompts before stems exist", async ({ page }) => {
@@ -31,21 +35,10 @@ test.describe("Burnt Beats app (local full app mode)", () => {
     await expect(page.getByText(/Timeline opens after split/i)).toBeVisible();
   });
 
-  test("load mode shows stem dropzone without requiring upload", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await page.getByTestId("source-mode-load").click();
-    await expect(page.getByTestId("load-upload-dropzone")).toBeVisible();
-    await expect(
-      page.getByText(/click to load stems or drag/i),
-    ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Browse" })).toBeVisible();
-  });
-
   test("file input for upload exists", async ({ page }) => {
     await gotoEditor(page);
-    await expect(page.getByLabel("Choose audio file")).toBeAttached();
+    await expect(page.getByTestId("upload-phase")).toBeVisible();
+    await expect(page.locator('input[type="file"]')).toBeAttached();
   });
 
   test("skip link moves focus to main content", async ({ page }) => {

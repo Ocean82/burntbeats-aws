@@ -8,23 +8,22 @@ test.describe("Export options modal", () => {
     await skipOnboarding(page);
   });
 
-  test("opens from mixer after loading stems; format targets expose pressed state", async ({
+  test("opens from mixer after split completes; format targets expose pressed state", async ({
     page,
   }) => {
+    await mockSplitSuccess(page);
     await gotoEditor(page);
 
-    await page.getByTestId("source-mode-load").click();
-    await expect(page.getByTestId("load-upload-dropzone")).toBeVisible();
+    // Upload a file
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(minimalWavFile("vocals.wav"));
 
-    await page.getByLabel("Load stem files", { exact: true }).setInputFiles([
-      minimalWavFile("vocals.wav"),
-      minimalWavFile("drums.wav"),
-    ]);
+    // Wait for configure phase and click Split
+    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "Split" }).click();
 
-    await expect(page.getByTestId("load-upload-dropzone")).toContainText(
-      /2 stems loaded/i,
-      { timeout: 15_000 },
-    );
+    // Wait for workspace with stems loaded
+    await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 45_000 });
 
     const exportBtn = page.getByRole("button", { name: "Export mix" });
     await expect(exportBtn).toBeEnabled({ timeout: 20_000 });
@@ -69,12 +68,14 @@ test.describe("Export options modal", () => {
     await mockSplitSuccess(page);
 
     await gotoEditor(page);
-    await page.getByLabel("Choose audio file").setInputFiles(minimalWavFile("e2e-split.wav"));
-    await page
-      .getByTestId("processing-settings-panel")
-      .locator("button.fire-button")
-      .first()
-      .click();
+
+    // Upload a file
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(minimalWavFile("e2e-split.wav"));
+
+    // Wait for configure phase and click Split
+    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "Split" }).click();
 
     await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole("button", { name: /^Play$/i })).toBeEnabled({

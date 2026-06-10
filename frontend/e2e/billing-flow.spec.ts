@@ -64,7 +64,7 @@ test.describe("Billing & pricing flow", () => {
 
     await page.getByTestId("pricing-back-to-editor").click();
 
-    await expect(page.getByTestId("processing-settings-panel")).toBeVisible();
+    await expect(page.getByTestId("editor-app-shell")).toBeVisible();
     await expect(page.getByTestId("pricing-page")).not.toBeVisible();
   });
 
