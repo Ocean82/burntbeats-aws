@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { Workspace } from "./Workspace";
@@ -31,16 +32,16 @@ vi.mock("@/hooks/useMediaQuery", () => ({
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => <div {...props}>{children}</div>,
   },
   useReducedMotion: () => false,
 }));
 
 // Mock EffectsPanelBottomSheet
 vi.mock("./EffectsPanelBottomSheet", () => ({
-  EffectsPanelBottomSheet: ({ activeTool, onClose }: any) => (
-    <div data-testid="effects-bottom-sheet" data-tool={activeTool}>
-      <button onClick={onClose}>Close</button>
+  EffectsPanelBottomSheet: ({ activeTool, onClose }: Record<string, unknown>) => (
+    <div data-testid="effects-bottom-sheet" data-tool={activeTool as string}>
+      <button onClick={onClose as React.MouseEventHandler}>Close</button>
     </div>
   ),
 }));

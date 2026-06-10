@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EffectsPanelBottomSheet } from "./EffectsPanelBottomSheet";
@@ -5,10 +6,9 @@ import { EffectsPanelBottomSheet } from "./EffectsPanelBottomSheet";
 // Mock framer-motion
 vi.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, ...props }: any) => {
-      const { initial, animate, exit, variants, transition, onTouchStart, onTouchEnd, ...rest } = props;
+    div: ({ children, onTouchStart, onTouchEnd, ...rest }: React.PropsWithChildren<Record<string, unknown>>) => {
       return (
-        <div {...rest} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div {...rest} onTouchStart={onTouchStart as React.TouchEventHandler} onTouchEnd={onTouchEnd as React.TouchEventHandler}>
           {children}
         </div>
       );
@@ -19,8 +19,8 @@ vi.mock("framer-motion", () => ({
 
 // Mock EffectsPanel
 vi.mock("./EffectsPanel", () => ({
-  EffectsPanel: ({ activeTool, isOverlay }: any) => (
-    <div data-testid="effects-panel" data-tool={activeTool} data-overlay={isOverlay}>
+  EffectsPanel: ({ activeTool, isOverlay }: Record<string, unknown>) => (
+    <div data-testid="effects-panel" data-tool={activeTool as string} data-overlay={String(isOverlay)}>
       Effects Panel Content
     </div>
   ),

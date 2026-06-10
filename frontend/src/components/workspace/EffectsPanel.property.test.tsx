@@ -9,6 +9,7 @@
  * **Validates: Requirements 5.5**
  */
 
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import * as fc from "fast-check";
@@ -20,7 +21,7 @@ import { defaultStemState } from "@/stem-editor-state";
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => <div {...props}>{children}</div>,
   },
   useReducedMotion: () => false,
 }));

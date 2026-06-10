@@ -34,14 +34,9 @@ export function EditorAppShell() {
     quality: SplitQuality;
     stemCount: 2 | 4;
   } | null>(null);
-  const [progress, setProgress] = useState(0);
 
-  // Sync progress from app store when splitting
-  useEffect(() => {
-    if (isSplitting) {
-      setProgress(splitProgress);
-    }
-  }, [isSplitting, splitProgress]);
+  // Derive progress directly from store state
+  const progress = isSplitting ? splitProgress : 0;
 
   // When split completes (splitResultStems populated), persist to sessionStorage
   // and transition to workspace phase (Req 1.2, 1.7)
@@ -91,7 +86,6 @@ export function EditorAppShell() {
   const handleConfigure = useCallback(
     (config: { quality: SplitQuality; stemCount: 2 | 4 }) => {
       setSplitConfig(config);
-      setProgress(0);
       transitionTo("splitting");
     },
     [transitionTo],
@@ -99,7 +93,6 @@ export function EditorAppShell() {
 
   const handleRetry = useCallback(() => {
     setError(null);
-    setProgress(0);
     // Re-initiate split with the same configuration
   }, [setError]);
 

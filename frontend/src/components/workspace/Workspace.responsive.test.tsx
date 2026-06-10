@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
@@ -31,13 +32,9 @@ vi.mock("@/contexts/WorkflowContext", () => ({
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
-    div: ({ children, ...props }: any) => {
-      const {
-        initial, animate, exit, variants, transition,
-        onTouchStart, onTouchEnd, ...rest
-      } = props;
+    div: ({ children, onTouchStart, onTouchEnd, ...rest }: React.PropsWithChildren<Record<string, unknown>>) => {
       return (
-        <div {...rest} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <div {...rest} onTouchStart={onTouchStart as React.TouchEventHandler} onTouchEnd={onTouchEnd as React.TouchEventHandler}>
           {children}
         </div>
       );
@@ -48,8 +45,8 @@ vi.mock("framer-motion", () => ({
 
 // Mock EffectsPanel used inside EffectsPanelBottomSheet
 vi.mock("./EffectsPanel", () => ({
-  EffectsPanel: ({ activeTool }: any) => (
-    <div data-testid="effects-panel" data-tool={activeTool}>
+  EffectsPanel: ({ activeTool }: Record<string, unknown>) => (
+    <div data-testid="effects-panel" data-tool={activeTool as string}>
       Effects Panel
     </div>
   ),

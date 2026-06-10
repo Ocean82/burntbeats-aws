@@ -144,19 +144,6 @@ describe("Split Flow Integration — New Split resets to upload", () => {
     // To test reset, we import and use usePhaseController directly through a test harness
     // Since EditorAppShell doesn't expose a direct reset button yet,
     // we'll test this with a wrapper that accesses PhaseContext
-    const { usePhaseContext } = await import("@/contexts/PhaseContext");
-
-    let resetFn: (() => void) | null = null;
-
-    function ResetButton() {
-      const { reset } = usePhaseContext();
-      resetFn = reset;
-      return (
-        <button data-testid="reset-btn" onClick={reset}>
-          Reset
-        </button>
-      );
-    }
 
     // Re-render with a component that has access to the context
     // We need to render inside PhaseProvider which EditorAppShell already provides

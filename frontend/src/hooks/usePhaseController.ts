@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { AppPhase, PhaseController } from "@/types/phases";
 
 /** Key used in sessionStorage to persist split results. */
@@ -26,18 +26,6 @@ export function usePhaseController(): PhaseController {
   });
 
   const [error, setError] = useState<string | null>(null);
-
-  // Re-check sessionStorage on mount (handles SSR hydration edge case)
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(SPLIT_RESULT_KEY);
-      if (stored) {
-        setPhase("workspace");
-      }
-    } catch {
-      // sessionStorage unavailable — stay in current phase
-    }
-  }, []);
 
   const transitionTo = useCallback((next: AppPhase) => {
     setError(null);
