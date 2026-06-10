@@ -24,15 +24,13 @@ test.describe("Burnt Beats app (local full app mode)", () => {
     await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
 
     // Split button should be visible and enabled
-    await expect(page.getByRole("button", { name: "Split" })).toBeEnabled();
+    await expect(page.getByTestId("split-button")).toBeEnabled();
   });
 
-  test("mixer prompts before stems exist", async ({ page }) => {
+  test("upload phase shown before stems exist", async ({ page }) => {
     await page.goto("/");
-    await expect(
-      page.getByRole("region", { name: /timeline waiting for stems/i }),
-    ).toBeVisible();
-    await expect(page.getByText(/Timeline opens after split/i)).toBeVisible();
+    await expect(page.getByTestId("editor-app-shell")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("upload-phase")).toBeVisible();
   });
 
   test("file input for upload exists", async ({ page }) => {

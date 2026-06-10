@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { gotoEditor, skipOnboarding } from "./fixtures/helpers";
+import { gotoEditor, skipOnboarding, uploadAndSplit } from "./fixtures/helpers";
 import { minimalWavFile } from "./fixtures/minimal-wav";
 import { mockSplitSuccess } from "./helpers/mock-split-success";
 
@@ -14,16 +14,12 @@ test.describe("Export options modal", () => {
     await mockSplitSuccess(page);
     await gotoEditor(page);
 
-    // Upload a file
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(minimalWavFile("vocals.wav"));
-
-    // Wait for configure phase and click Split
-    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-    await page.getByRole("button", { name: "Split" }).click();
+    // Upload and split
+    await uploadAndSplit(page, minimalWavFile("vocals.wav"));
 
     // Wait for workspace with stems loaded
-    await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
 
     const exportBtn = page.getByRole("button", { name: "Export mix" });
     await expect(exportBtn).toBeEnabled({ timeout: 20_000 });
@@ -69,15 +65,11 @@ test.describe("Export options modal", () => {
 
     await gotoEditor(page);
 
-    // Upload a file
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(minimalWavFile("e2e-split.wav"));
+    // Upload and split
+    await uploadAndSplit(page, minimalWavFile("e2e-split.wav"));
 
-    // Wait for configure phase and click Split
-    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-    await page.getByRole("button", { name: "Split" }).click();
-
-    await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /^Play$/i })).toBeEnabled({
       timeout: 45_000,
     });
