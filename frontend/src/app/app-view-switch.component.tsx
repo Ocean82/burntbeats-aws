@@ -37,6 +37,8 @@ export interface AppViewSwitchProps {
   libraryPage: LazyExoticComponent<ComponentType<LibraryPageProps>>
   tunerPage: LazyExoticComponent<ComponentType<TunerPageProps>>
   editorMainView: LazyExoticComponent<ComponentType<EditorMainViewProps>>
+  /** Transitional editor shell (spec's phased split flow). */
+  transitionalEditorShell?: LazyExoticComponent<ComponentType<Record<string, never>>>
 }
 
 export function AppViewSwitch({
@@ -63,6 +65,7 @@ export function AppViewSwitch({
   libraryPage: LibraryPage,
   tunerPage: TunerPage,
   editorMainView: EditorMainView,
+  transitionalEditorShell: TransitionalEditorShell,
 }: AppViewSwitchProps) {
   return (
     <Suspense fallback={<PageSkeleton view={activeView} />}>
@@ -119,6 +122,8 @@ export function AppViewSwitch({
           onViewPlans={() => onSetActiveView("pricing")}
           onGoToEditor={() => onSetActiveView("editor")}
         />
+      ) : TransitionalEditorShell ? (
+        <TransitionalEditorShell />
       ) : (
         <EditorMainView {...editorMainViewProps} />
       )}

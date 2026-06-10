@@ -23,3 +23,8 @@ export const LazyEditorMainView = lazy(() =>
     default: m.EditorMainView,
   })),
 );
+export const LazyTransitionalEditorShell = lazy(() =>
+  import("../components/EditorAppShell").then((m) => ({
+    default: m.EditorAppShell,
+  })),
+);

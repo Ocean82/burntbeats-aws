@@ -351,6 +351,30 @@
     will-change: transform, opacity;
   }
 
+  /*
+   * Workspace panel — dark theme styling for all workspace sections.
+   *
+   * Enforces requirements 8.1, 8.2, 8.3, 8.5:
+   *   - Surface lightness < 20% (HSL) → base hsl(220,15%,8-12%)
+   *   - Semi-transparent: 60-85% opacity with backdrop-blur
+   *   - Adjacent section gradient ≤ 5% lightness difference
+   *   - Consistent 16px border-radius (var: LAYOUT.PANEL_BORDER_RADIUS)
+   *   - Text/icons ≥ 4.5:1 contrast (use text-white/70+ or text-neutral-300+)
+   *
+   * Use this class on workspace panels (ToolSidebar, EffectsPanel, MixerConsole,
+   * TransportBar) to ensure dark theme consistency. Override --ws-panel-bg and
+   * --ws-panel-opacity via inline style if a section needs a different shade.
+   */
+  .workspace-panel {
+    --ws-panel-bg: 220 15% 10%;
+    --ws-panel-opacity: 0.75;
+    background: hsl(var(--ws-panel-bg) / var(--ws-panel-opacity));
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+  }
+
   .stem-panel {
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.1);

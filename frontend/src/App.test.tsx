@@ -42,6 +42,19 @@ beforeEach(() => {
     "ResizeObserver",
     vi.fn(() => ({ observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() }))
   );
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }))
+  );
 });
 
 describe("App flow", () => {
@@ -61,17 +74,18 @@ describe("App flow", () => {
 
   it("renders and shows stem splitter UI", async () => {
     renderApp();
+    // The transitional editor shell renders the upload phase by default
     expect(
       await screen.findByRole("button", { name: /upload audio file/i }, { timeout: 5000 }),
     ).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /^split$/i }, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it("shows workflow stepper labels", async () => {
     renderApp();
-    const stepper = await screen.findByRole("list", { name: /workflow steps/i });
+    // The transitional editor shell renders the step progress indicator
+    const stepper = await screen.findByRole("list", { name: /split flow progress/i });
     expect(within(stepper).getByText("Upload")).toBeInTheDocument();
-    expect(within(stepper).getByText("Split")).toBeInTheDocument();
-    expect(within(stepper).getByText("Mix")).toBeInTheDocument();
+    expect(within(stepper).getByText("Configure")).toBeInTheDocument();
+    expect(within(stepper).getByText("Splitting")).toBeInTheDocument();
   });
 });

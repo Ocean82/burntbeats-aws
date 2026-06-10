@@ -19,6 +19,7 @@ import {
   LazyMyStemsPage,
   LazyPricingPage,
   LazySpeechCleanPage,
+  LazyTransitionalEditorShell,
   LazyTunerPage,
 } from "./lazy-app-pages";
 import type { EditorSession } from "../hooks/app/useEditorSession";
@@ -218,6 +219,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
             tunerPage={LazyTunerPage}
             editorMainView={LazyEditorMainView}
             editorMainViewProps={editorMainViewProps}
+            transitionalEditorShell={LazyTransitionalEditorShell}
           />
         </main>
       </div>
