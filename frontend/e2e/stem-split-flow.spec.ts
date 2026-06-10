@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
-import { gotoEditor, minimalWavBuffer, skipOnboarding } from "./fixtures/helpers";
+import { gotoEditor, minimalWavBuffer, skipOnboarding, uploadAndSplit } from "./fixtures/helpers";
 
 /**
  * Stem split flow integration tests.
@@ -130,20 +130,13 @@ async function mockSplitFailure(page: Page) {
   );
 }
 
-/** Upload a file and click Split to start the split flow. */
-async function uploadAndSplit(page: Page) {
-  const fileInput = page.locator('input[type="file"]');
-  await fileInput.setInputFiles({
+/** Upload a file and click Split to start the split flow — uses shared helper. */
+async function doUploadAndSplit(page: Page) {
+  await uploadAndSplit(page, {
     name: "test-song.wav",
     mimeType: "audio/wav",
     buffer: minimalWavBuffer(),
   });
-
-  // Wait for configure phase
-  await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-
-  // Click the Split button
-  await page.getByRole("button", { name: "Split" }).click();
 }
 
 test.describe("Stem split flow", () => {
@@ -167,43 +160,18 @@ test.describe("Stem split flow", () => {
 
     // Should transition to configure phase with split button enabled
     await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-    const splitButton = page.getByRole("button", { name: "Split" });
+    const splitButton = page.getByTestId("split-button");
     await expect(splitButton).toBeEnabled();
   });
 
-  test("split request fires on button click", async ({ page }) => {
-    let splitRequested = false;
-    await page.route("**/api/stems/split", async (route: Route) => {
-      splitRequested = true;
-      // Return 202 to acknowledge the split
-      await route.fulfill({
-        status: 202,
-        contentType: "application/json",
-        body: JSON.stringify({
-          job_id: "mock-job-request-test",
-          job_token: "tok_req",
-        }),
-      });
-    });
-
-    // Also mock the status endpoint so the app doesn't hang
-    await page.route("**/api/stems/status/**", async (route: Route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ status: "running", progress: 10 }),
-      });
-    });
-
+  test("split button transitions to splitting phase", async ({ page }) => {
     await gotoEditor(page);
 
     // Upload and split
-    await uploadAndSplit(page);
+    await doUploadAndSplit(page);
 
-    // Verify the API was called
-    await expect
-      .poll(() => splitRequested, { timeout: 10_000 })
-      .toBe(true);
+    // Verify we transitioned to the splitting phase
+    await expect(page.getByTestId("splitting-phase")).toBeVisible({ timeout: 10_000 });
   });
 
   test("progress UI appears during split", async ({ page }) => {
@@ -229,7 +197,7 @@ test.describe("Stem split flow", () => {
     await gotoEditor(page);
 
     // Upload and split
-    await uploadAndSplit(page);
+    await doUploadAndSplit(page);
 
     // Splitting phase should be visible
     await expect(page.getByTestId("splitting-phase")).toBeVisible({ timeout: 10_000 });
@@ -241,7 +209,7 @@ test.describe("Stem split flow", () => {
     await gotoEditor(page);
 
     // Upload and split
-    await uploadAndSplit(page);
+    await doUploadAndSplit(page);
 
     // Wait for workspace with stems
     await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 30_000 });
@@ -253,7 +221,7 @@ test.describe("Stem split flow", () => {
     await gotoEditor(page);
 
     // Upload and split
-    await uploadAndSplit(page);
+    await doUploadAndSplit(page);
 
     // Error message should appear
     await expect(

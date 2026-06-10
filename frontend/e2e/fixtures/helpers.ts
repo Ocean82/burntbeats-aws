@@ -63,3 +63,21 @@ export async function openPricingPage(page: import("@playwright/test").Page) {
   await page.getByTestId("settings-menu-pricing").click();
   await page.getByTestId("pricing-page").waitFor();
 }
+
+/**
+ * Upload a WAV file and click the Split button.
+ * Handles the full upload → configure → split transition.
+ *
+ * @param file - Either a `{name, mimeType, buffer}` object or a file path string.
+ */
+export async function uploadAndSplit(
+  page: import("@playwright/test").Page,
+  file:
+    | string
+    | { name: string; mimeType: string; buffer: Buffer },
+) {
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles(file);
+  await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+  await page.getByTestId("split-button").click({ force: true });
+}

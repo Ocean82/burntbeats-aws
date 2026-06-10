@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { gotoEditor, minimalWavBuffer, skipOnboarding } from "./fixtures/helpers";
+import { gotoEditor, minimalWavBuffer, skipOnboarding, uploadAndSplit } from "./fixtures/helpers";
 import { mockSplitSuccess } from "./helpers/mock-split-success";
 
 test.describe("Ship polish layout", () => {
@@ -12,19 +12,15 @@ test.describe("Ship polish layout", () => {
     await mockSplitSuccess(page);
     await gotoEditor(page);
 
-    // Upload a file via the hidden file input
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles({
+    // Upload and split
+    await uploadAndSplit(page, {
       name: "layout-test.wav",
       mimeType: "audio/wav",
       buffer: minimalWavBuffer(),
     });
 
-    // Wait for configure phase and click Split
-    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-    await page.getByRole("button", { name: "Split" }).click();
-
-    await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /^Play$/i })).toBeVisible({
       timeout: 15_000,
     });

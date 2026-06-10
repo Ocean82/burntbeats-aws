@@ -17,7 +17,7 @@ test.describe("Interaction states", () => {
     // Wait for configure phase
     await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
 
-    const splitBtn = page.getByRole("button", { name: "Split" });
+    const splitBtn = page.getByTestId("split-button");
     await expect(splitBtn).toBeEnabled();
     await splitBtn.focus();
     await expect(splitBtn).toBeFocused();

@@ -146,6 +146,7 @@ export function ConfigurePhase({
         {/* Split action button */}
         <button
           type="button"
+          data-testid="split-button"
           onClick={handleSplit}
           className="mt-sm min-h-[44px] w-full rounded-xl bg-primary-500 px-lg py-sm text-sm font-semibold text-white transition hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
         >
