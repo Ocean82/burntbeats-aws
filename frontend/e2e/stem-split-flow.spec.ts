@@ -130,27 +130,44 @@ async function mockSplitFailure(page: Page) {
   );
 }
 
+/** Upload a file and click Split to start the split flow. */
+async function uploadAndSplit(page: Page) {
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles({
+    name: "test-song.wav",
+    mimeType: "audio/wav",
+    buffer: minimalWavBuffer(),
+  });
+
+  // Wait for configure phase
+  await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+
+  // Click the Split button
+  await page.getByRole("button", { name: "Split" }).click();
+}
+
 test.describe("Stem split flow", () => {
   test.beforeEach(async ({ page }) => {
     await skipOnboarding(page);
   });
 
-  test("upload enables the split button with token cost", async ({ page }) => {
+  test("upload enables the split button", async ({ page }) => {
     await gotoEditor(page);
-    const panel = page.getByTestId("processing-settings-panel");
 
-    // No split button before upload
-    await expect(panel.locator("button.fire-button")).toHaveCount(0);
+    // Upload phase should be visible initially
+    await expect(page.getByTestId("upload-phase")).toBeVisible();
 
     // Upload a file
-    await page.getByLabel("Choose audio file").setInputFiles({
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
       name: "test-song.wav",
       mimeType: "audio/wav",
       buffer: minimalWavBuffer(),
     });
 
-    // Split button should appear and be enabled
-    const splitButton = panel.locator("button.fire-button").first();
+    // Should transition to configure phase with split button enabled
+    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+    const splitButton = page.getByRole("button", { name: "Split" });
     await expect(splitButton).toBeEnabled();
   });
 
@@ -180,19 +197,8 @@ test.describe("Stem split flow", () => {
 
     await gotoEditor(page);
 
-    // Upload file
-    await page.getByLabel("Choose audio file").setInputFiles({
-      name: "test-song.wav",
-      mimeType: "audio/wav",
-      buffer: minimalWavBuffer(),
-    });
-
-    // Click split
-    const splitButton = page
-      .getByTestId("processing-settings-panel")
-      .locator("button.fire-button")
-      .first();
-    await splitButton.click();
+    // Upload and split
+    await uploadAndSplit(page);
 
     // Verify the API was called
     await expect
@@ -222,19 +228,11 @@ test.describe("Stem split flow", () => {
 
     await gotoEditor(page);
 
-    await page.getByLabel("Choose audio file").setInputFiles({
-      name: "test-song.wav",
-      mimeType: "audio/wav",
-      buffer: minimalWavBuffer(),
-    });
+    // Upload and split
+    await uploadAndSplit(page);
 
-    const splitBtn = page
-      .getByTestId("processing-settings-panel")
-      .locator("button.fire-button")
-      .first();
-
-    await splitBtn.click();
-
+    // Splitting phase should be visible
+    await expect(page.getByTestId("splitting-phase")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(/splitting/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
@@ -243,19 +241,9 @@ test.describe("Stem split flow", () => {
     await gotoEditor(page);
 
     // Upload and split
-    await page.getByLabel("Choose audio file").setInputFiles({
-      name: "test-song.wav",
-      mimeType: "audio/wav",
-      buffer: minimalWavBuffer(),
-    });
+    await uploadAndSplit(page);
 
-    await page
-      .getByTestId("processing-settings-panel")
-      .locator("button.fire-button")
-      .first()
-      .click();
-
-    // Mock SSE can finish before progress copy paints; wait for stems in the mixer.
+    // Wait for workspace with stems
     await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/instrumental/i).first()).toBeVisible({ timeout: 10_000 });
   });
@@ -265,17 +253,7 @@ test.describe("Stem split flow", () => {
     await gotoEditor(page);
 
     // Upload and split
-    await page.getByLabel("Choose audio file").setInputFiles({
-      name: "test-song.wav",
-      mimeType: "audio/wav",
-      buffer: minimalWavBuffer(),
-    });
-
-    await page
-      .getByTestId("processing-settings-panel")
-      .locator("button.fire-button")
-      .first()
-      .click();
+    await uploadAndSplit(page);
 
     // Error message should appear
     await expect(

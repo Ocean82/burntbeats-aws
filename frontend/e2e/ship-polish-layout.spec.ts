@@ -12,17 +12,17 @@ test.describe("Ship polish layout", () => {
     await mockSplitSuccess(page);
     await gotoEditor(page);
 
-    await page.getByLabel("Choose audio file").setInputFiles({
+    // Upload a file via the hidden file input
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles({
       name: "layout-test.wav",
       mimeType: "audio/wav",
       buffer: minimalWavBuffer(),
     });
 
-    await page
-      .getByTestId("processing-settings-panel")
-      .locator("button.fire-button")
-      .first()
-      .click();
+    // Wait for configure phase and click Split
+    await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: "Split" }).click();
 
     await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 45_000 });
     await expect(page.getByRole("button", { name: /^Play$/i })).toBeVisible({
