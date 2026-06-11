@@ -106,7 +106,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
   } = session;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-(--bg) text-foreground">
+    <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-foreground">
       <a
         href="#main-content"
         className="fixed left-4 top-4 z-sticky -translate-y-[130%] rounded-xl border border-primary-400/50 bg-popover/95 px-md py-sm text-sm font-medium text-foreground shadow-elevation-md outline-none transition-transform duration-200 focus-visible:translate-y-0 focus-visible:ring-2 focus-visible:ring-primary-400/50"
@@ -195,7 +195,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
           id="main-content"
           tabIndex={-1}
           aria-label="Main content"
-          className="outline-none focus-visible:ring-2 focus-visible:ring-primary-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-(--bg) rounded-4xl"
+          className="outline-none focus-visible:ring-2 focus-visible:ring-primary-400/35 focus-visible:ring-offset-[var(--bg)] rounded-4xl"
         >
           <AppViewSwitch
             activeView={activeView}
