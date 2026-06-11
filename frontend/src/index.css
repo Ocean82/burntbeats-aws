@@ -51,6 +51,23 @@
   --spacing-3xl: var(--space-3xl);
   --spacing-4xl: var(--space-4xl);
 
+  /*
+   * Max-width scale — restores Tailwind defaults. Custom `--spacing-*` names
+   * (sm, md, lg, …) shadow max-w-* unless explicit `--max-width-*` tokens exist;
+   * without these, max-w-md resolves to --spacing-md (16px) and collapses modals.
+   */
+  --max-width-xs: 20rem;
+  --max-width-sm: 24rem;
+  --max-width-md: 28rem;
+  --max-width-lg: 32rem;
+  --max-width-xl: 36rem;
+  --max-width-2xl: 42rem;
+  --max-width-3xl: 48rem;
+  --max-width-4xl: 56rem;
+  --max-width-5xl: 64rem;
+  --max-width-6xl: 72rem;
+  --max-width-7xl: 80rem;
+
   --z-index-dropdown: var(--z-dropdown);
   --z-index-sticky: var(--z-sticky);
   --z-index-modal-backdrop: var(--z-modal-backdrop);

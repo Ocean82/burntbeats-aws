@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { gotoEditor, minimalWavBuffer, skipOnboarding, uploadAndSplit } from "./fixtures/helpers";
+import {
+  gotoEditor,
+  minimalWavBuffer,
+  skipOnboarding,
+  uploadAndSplit,
+  waitForWorkspace,
+} from "./fixtures/helpers";
 import { mockSplitSuccess } from "./helpers/mock-split-success";
 
 test.describe("Ship polish layout", () => {
@@ -19,7 +25,7 @@ test.describe("Ship polish layout", () => {
       buffer: minimalWavBuffer(),
     });
 
-    await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 45_000 });
+    await waitForWorkspace(page);
     await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /^Play$/i })).toBeVisible({
       timeout: 15_000,

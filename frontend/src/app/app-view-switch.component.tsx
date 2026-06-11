@@ -4,6 +4,7 @@ import { motion, type MotionProps } from "framer-motion"
 import type { AppView } from "../hooks/workflow/useEditorViewRouting"
 import type { UseSubscriptionResult } from "../hooks/useSubscription"
 import type { EditorMainViewProps } from "./editor-main-view.component"
+import type { TransitionalShellProps } from "../components/EditorAppShell"
 import { PageSkeleton } from "../views/PageSkeleton"
 import type { StemHistoryJob } from "../api/stemHistory"
 import type { PricingPageProps } from "../components/PricingPage"
@@ -38,7 +39,9 @@ export interface AppViewSwitchProps {
   tunerPage: LazyExoticComponent<ComponentType<TunerPageProps>>
   editorMainView: LazyExoticComponent<ComponentType<EditorMainViewProps>>
   /** Transitional editor shell (spec's phased split flow). */
-  transitionalEditorShell?: LazyExoticComponent<ComponentType<Record<string, never>>>
+  transitionalEditorShell?: LazyExoticComponent<ComponentType<TransitionalShellProps>>
+  /** Props forwarded to the transitional shell for split engine wiring. */
+  transitionalShellProps?: TransitionalShellProps
 }
 
 export function AppViewSwitch({
@@ -66,6 +69,7 @@ export function AppViewSwitch({
   tunerPage: TunerPage,
   editorMainView: EditorMainView,
   transitionalEditorShell: TransitionalEditorShell,
+  transitionalShellProps,
 }: AppViewSwitchProps) {
   return (
     <Suspense fallback={<PageSkeleton view={activeView} />}>
@@ -123,7 +127,7 @@ export function AppViewSwitch({
           onGoToEditor={() => onSetActiveView("editor")}
         />
       ) : TransitionalEditorShell ? (
-        <TransitionalEditorShell />
+        <TransitionalEditorShell {...(transitionalShellProps ?? {})} />
       ) : (
         <EditorMainView {...editorMainViewProps} />
       )}

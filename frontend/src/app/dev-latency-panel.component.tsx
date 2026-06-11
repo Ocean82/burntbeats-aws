@@ -10,7 +10,7 @@ export function DevLatencyPanel({
   latencyStats,
   onResetLatencyStats,
 }: DevLatencyPanelProps) {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
 
   if (import.meta.env.PROD) return null;
 
@@ -25,7 +25,7 @@ export function DevLatencyPanel({
         {visible ? "Hide latency" : "Show latency"}
       </button>
       {visible && (
-        <div className="fixed bottom-14 left-4 z-50 w-72 rounded-xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground backdrop-blur-md">
+        <div className="fixed bottom-14 left-4 z-50 w-72 rounded-xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground backdrop-blur-md pointer-events-none">
           <div className="mb-xs flex items-center justify-between gap-xs">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-primary-300">
               UI latency (dev)

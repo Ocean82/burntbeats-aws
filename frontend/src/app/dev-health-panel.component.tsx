@@ -83,7 +83,7 @@ function formatUptime(seconds?: number) {
 }
 
 export function DevHealthPanel() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<BackendHealthPayload | null>(null);
@@ -149,7 +149,7 @@ export function DevHealthPanel() {
       {visible && (
         <section
           aria-label="Internal health panel"
-          className="fixed right-4 top-14 z-50 w-88 rounded-xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-md backdrop-blur-md"
+          className="fixed right-4 top-14 z-50 w-88 rounded-xl border border-border bg-chrome p-sm text-[11px] text-secondary-foreground shadow-elevation-md backdrop-blur-md pointer-events-none"
         >
           <div className="mb-sm flex items-center justify-between gap-sm">
             <div>

@@ -40,6 +40,10 @@ describe("DevHealthPanel", () => {
   it("loads and renders backend health data", async () => {
     render(<DevHealthPanel />);
 
+    fireEvent.click(
+      screen.getByRole("button", { name: /show internal health panel/i }),
+    );
+
     await waitFor(() => {
       expect(
         screen.getByRole("region", { name: /internal health panel/i }),
@@ -53,6 +57,10 @@ describe("DevHealthPanel", () => {
 
   it("toggles panel visibility", async () => {
     render(<DevHealthPanel />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /show internal health panel/i }),
+    );
 
     await waitFor(() => {
       expect(

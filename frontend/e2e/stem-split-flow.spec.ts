@@ -1,5 +1,12 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
-import { gotoEditor, minimalWavBuffer, skipOnboarding, uploadAndSplit } from "./fixtures/helpers";
+import {
+  gotoEditor,
+  minimalWavBuffer,
+  skipOnboarding,
+  uploadAndSplit,
+  waitForWorkspace,
+} from "./fixtures/helpers";
+import { mockSplitSuccess as sharedMockSplitSuccess } from "./helpers/mock-split-success";
 
 /**
  * Stem split flow integration tests.
@@ -205,15 +212,17 @@ test.describe("Stem split flow", () => {
   });
 
   test("stems appear in mixer after successful split", async ({ page }) => {
-    await mockSplitSuccess(page);
+    await sharedMockSplitSuccess(page);
     await gotoEditor(page);
 
-    // Upload and split
     await doUploadAndSplit(page);
-
-    // Wait for workspace with stems
-    await expect(page.getByText(/vocals/i).first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/instrumental/i).first()).toBeVisible({ timeout: 10_000 });
+    await waitForWorkspace(page);
+    await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("workspace").getByText(/instrumental/i).first()).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   test("error state shown on split failure", async ({ page }) => {

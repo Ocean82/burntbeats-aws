@@ -22,6 +22,8 @@ Canonical spacing, elevation, and layout rules for the Vite/React app. Tokens li
 
 **Name by relationship, not pixel value:** `--space-sm`, not `--spacing-8`.
 
+**Max-width vs spacing:** Custom `--spacing-sm` / `--spacing-md` / … shadow Tailwind `max-w-*` unless matching `--max-width-*` tokens are set in `@theme` (`index.css`). Use `max-w-md` for modals; do not use spacing-sized arbitrary widths unless you mean padding-scale pixels.
+
 **Prefer `gap` over margins** for sibling spacing (no margin collapse, less cleanup). Utility stacks: `.stack-md`, `.inline-cluster-sm`.
 
 **Avoid:** arbitrary px outside the scale; making all spacing equal (variety drives hierarchy).

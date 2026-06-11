@@ -64,6 +64,15 @@ export async function openPricingPage(page: import("@playwright/test").Page) {
   await page.getByTestId("pricing-page").waitFor();
 }
 
+/** Wait until the transitional shell has entered the mixer workspace phase. */
+export async function waitForWorkspace(
+  page: import("@playwright/test").Page,
+  timeout = 45_000,
+) {
+  await expect(page.getByTestId("splitting-phase")).toBeHidden({ timeout });
+  await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 10_000 });
+}
+
 /**
  * Upload a WAV file and click the Split button.
  * Handles the full upload → configure → split transition.
@@ -79,5 +88,8 @@ export async function uploadAndSplit(
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(file);
   await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-  await page.getByTestId("split-button").click({ force: true });
+  const splitButton = page.getByTestId("split-button");
+  await splitButton.scrollIntoViewIfNeeded();
+  // Use dispatchEvent to bypass any fixed overlay interception on mobile viewports
+  await splitButton.dispatchEvent("click");
 }
