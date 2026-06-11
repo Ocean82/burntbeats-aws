@@ -56,7 +56,6 @@ export function EditorAppShell({
   // Subscribe to split result stems from the existing app store
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const splitProgress = useAppStore((s) => s.splitProgress);
-  const isSplitting = useAppStore((s) => s.isSplitting);
   const splitError = useAppStore((s) => s.splitError);
 
   // Phase-specific local state
