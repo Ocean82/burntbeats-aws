@@ -83,7 +83,7 @@ function formatUptime(seconds?: number) {
 }
 
 export function DevHealthPanel() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<BackendHealthPayload | null>(null);

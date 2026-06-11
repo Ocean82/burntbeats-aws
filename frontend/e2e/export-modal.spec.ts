@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { gotoEditor, skipOnboarding, uploadAndSplit } from "./fixtures/helpers";
+import {
+  gotoEditor,
+  skipOnboarding,
+  uploadAndSplit,
+  waitForWorkspace,
+} from "./fixtures/helpers";
 import { minimalWavFile } from "./fixtures/minimal-wav";
 import { mockSplitSuccess } from "./helpers/mock-split-success";
 
@@ -17,8 +22,7 @@ test.describe("Export options modal", () => {
     // Upload and split
     await uploadAndSplit(page, minimalWavFile("vocals.wav"));
 
-    // Wait for workspace with stems loaded
-    await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 45_000 });
+    await waitForWorkspace(page);
     await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
 
     const exportBtn = page.getByRole("button", { name: "Export mix" });
@@ -68,7 +72,7 @@ test.describe("Export options modal", () => {
     // Upload and split
     await uploadAndSplit(page, minimalWavFile("e2e-split.wav"));
 
-    await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 45_000 });
+    await waitForWorkspace(page);
     await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /^Play$/i })).toBeEnabled({
       timeout: 45_000,

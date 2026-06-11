@@ -11,10 +11,14 @@ describe("DevLatencyPanel", () => {
       />,
     );
 
-    const hideButton = screen.getByRole("button", {
-      name: /hide dev latency panel/i,
+    const showButton = screen.getByRole("button", {
+      name: /show dev latency panel/i,
     });
-    fireEvent.click(hideButton);
+    fireEvent.click(showButton);
+    expect(
+      screen.getByRole("button", { name: /hide dev latency panel/i }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /hide dev latency panel/i }));
     expect(
       screen.getByRole("button", { name: /show dev latency panel/i }),
     ).toBeInTheDocument();

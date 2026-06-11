@@ -64,6 +64,15 @@ export async function openPricingPage(page: import("@playwright/test").Page) {
   await page.getByTestId("pricing-page").waitFor();
 }
 
+/** Wait until the transitional shell has entered the mixer workspace phase. */
+export async function waitForWorkspace(
+  page: import("@playwright/test").Page,
+  timeout = 45_000,
+) {
+  await expect(page.getByTestId("splitting-phase")).toBeHidden({ timeout });
+  await expect(page.getByTestId("workspace")).toBeVisible({ timeout: 10_000 });
+}
+
 /**
  * Upload a WAV file and click the Split button.
  * Handles the full upload → configure → split transition.

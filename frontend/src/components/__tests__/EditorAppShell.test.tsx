@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { EditorAppShell } from "../EditorAppShell";
 
 // Mock framer-motion for PhaseRouter animations
@@ -66,6 +66,38 @@ describe("EditorAppShell", () => {
   it("does not render workspace elements while in upload phase (Req 3.2)", () => {
     render(<EditorAppShell />);
     expect(screen.queryByTestId("workspace-phase")).not.toBeInTheDocument();
+  });
+});
+
+describe("EditorAppShell — split engine wiring", () => {
+  it("calls triggerSplit with the selected intent when session props are provided", () => {
+    const handleFile = vi.fn();
+    const triggerSplit = vi.fn();
+
+    render(
+      <EditorAppShell handleFile={handleFile} triggerSplit={triggerSplit} />,
+    );
+
+    const fileInput = document.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    const validFile = new File(["audio-data"], "wired-track.wav", {
+      type: "audio/wav",
+    });
+
+    fireEvent.change(fileInput, { target: { files: [validFile] } });
+    expect(handleFile).toHaveBeenCalledWith(validFile);
+
+    fireEvent.click(screen.getByRole("button", { name: "Split" }));
+
+    expect(triggerSplit).toHaveBeenCalledWith(
+      {
+        task: "full_separation",
+        mode: "2",
+        quality: "high",
+      },
+      false,
+    );
   });
 });
 

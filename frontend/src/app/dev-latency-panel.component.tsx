@@ -10,7 +10,7 @@ export function DevLatencyPanel({
   latencyStats,
   onResetLatencyStats,
 }: DevLatencyPanelProps) {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
 
   if (import.meta.env.PROD) return null;
 

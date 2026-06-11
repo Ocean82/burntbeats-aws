@@ -83,7 +83,7 @@ export function SplittingPhase({
       data-testid="splitting-phase"
       className="flex h-full w-full items-center justify-center bg-[hsl(220,15%,8%)] p-6"
     >
-      <div className="flex w-full max-w-[28rem] flex-col items-center gap-6 rounded-2xl border border-border/30 bg-muted/30 px-10 py-12 text-center">
+      <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-border/30 bg-muted/30 px-10 py-12 text-center">
         {/* Error state */}
         {error ? (
           <>

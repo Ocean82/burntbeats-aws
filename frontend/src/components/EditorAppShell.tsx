@@ -66,8 +66,10 @@ export function EditorAppShell({
     stemCount: 2 | 4;
   } | null>(null);
 
-  // Derive progress directly from store state
-  const progress = isSplitting ? splitProgress : 0;
+  // Use splitProgress while in splitting phase (do not gate on isSplitting — it
+  // flips false in the same tick as completion, which would zero progress before
+  // transition effects run).
+  const progress = phase === "splitting" ? splitProgress : 0;
 
   // When split completes (splitResultStems populated), persist to sessionStorage
   // and transition to workspace phase (Req 1.2, 1.7)

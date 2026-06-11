@@ -69,12 +69,7 @@ export function ConfigurePhase({
       data-testid="configure-phase"
       className="flex min-h-full flex-1 items-center justify-center p-md"
     >
-      {/*
-        Width uses the arbitrary `max-w-[28rem]` rather than `max-w-md`: in this
-        theme the `--spacing-*` scale shadows the named width keys, so `max-w-md`
-        resolves to `--spacing-md` (16px) and collapses the card to a sliver.
-      */}
-      <div className="flex w-full max-w-[28rem] flex-col gap-lg rounded-2xl border border-border bg-muted/60 p-lg backdrop-blur-sm">
+      <div className="flex w-full max-w-md flex-col gap-lg rounded-2xl border border-border bg-muted/60 p-lg backdrop-blur-sm">
         {/* File context */}
         <div className="text-center">
           <p className="text-sm text-muted-foreground">Ready to split</p>
