@@ -4,6 +4,10 @@
  *
  * State is owned by the `useBeatMaker` hook, making it possible for external
  * controllers (preset bar, save/load dialogs) to share the same state.
+ *
+ * The master bus provides a shared AudioContext with grid and overlay gain nodes
+ * routed through a compressor. The overlay transport synchronizes with the main
+ * beat maker transport for layered playback.
  */
 import { Download, Play, Square } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -16,6 +20,10 @@ import { VELOCITY_OFF } from "../../audio/types";
 import type { CellVelocity, PatternLength } from "../../audio/types";
 import { useBeatMaker, getAudibleRows } from "../../hooks/useBeatMaker";
 import type { UseBeatMakerReturn } from "../../hooks/useBeatMaker";
+import { useMasterBus } from "../../hooks/useMasterBus";
+import { useOverlayTransport } from "../../hooks/useOverlayTransport";
+import { PatternLibraryPanel } from "./PatternLibraryPanel";
+import { MasterBusControls } from "./MasterBusControls";
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -45,8 +53,17 @@ export function DrumMachinePanel({
   canExportFullMidi = true,
   onExportGated,
 }: DrumMachinePanelProps) {
+  // ─── Master Bus ─────────────────────────────────────────────────
+  // Provides shared AudioContext, grid and overlay gain nodes routed
+  // through a compressor to the destination.
+  const masterBus = useMasterBus();
+
   // Use external hook instance if provided, otherwise create internal one
-  const internalBeatMaker = useBeatMaker();
+  // connected to the master bus grid gain node via stable getters.
+  const internalBeatMaker = useBeatMaker({
+    getAudioContext: masterBus.getAudioContext,
+    getOutputNode: masterBus.getGridGainNode,
+  });
   const bm = externalBeatMaker ?? internalBeatMaker;
 
   const {
@@ -69,6 +86,29 @@ export function DrumMachinePanel({
     start,
     stop,
   } = bm;
+
+  // ─── Overlay Transport ──────────────────────────────────────────
+  // Synchronized with the main beat maker transport, routes audio
+  // through the overlay gain node.
+  const overlayTransport = useOverlayTransport(
+    masterBus.audioContext,
+    playing,
+    bpm,
+    swing,
+    masterBus.overlayGainNode,
+  );
+
+  // ─── Transport Start/Stop Override ──────────────────────────────
+  // Ensure master bus AudioContext is initialized on first play.
+  const handlePlayStop = useCallback(() => {
+    if (playing) {
+      stop();
+    } else {
+      // Initialize audio context on first user interaction (browser policy)
+      masterBus.initAudio();
+      start();
+    }
+  }, [playing, stop, start, masterBus]);
 
   // ─── MIDI Export ──────────────────────────────────────────────
 
@@ -120,7 +160,7 @@ export function DrumMachinePanel({
 
         <button
           type="button"
-          onClick={() => (playing ? stop() : start())}
+          onClick={handlePlayStop}
           className="midi-btn text-xs"
           aria-label={playing ? "Stop playback" : "Start playback"}
         >
@@ -199,6 +239,14 @@ export function DrumMachinePanel({
           {!canExportFullMidi && steps > 16 && <span className="ml-0.5 text-[8px]">🔒</span>}
         </button>
       </div>
+
+      {/* Master Bus Controls — near transport */}
+      <MasterBusControls
+        gridVolume={masterBus.gridVolume}
+        overlayVolume={masterBus.overlayVolume}
+        onGridVolumeChange={masterBus.setGridVolume}
+        onOverlayVolumeChange={masterBus.setOverlayVolume}
+      />
 
       {/* Sequencer grid */}
       <div className="overflow-x-auto">
@@ -333,6 +381,14 @@ export function DrumMachinePanel({
           </div>
         </div>
       </div>
+
+      {/* Pattern Library Panel — overlay pattern selection and variation controls */}
+      <PatternLibraryPanel
+        onPatternSelect={overlayTransport.selectPattern}
+        activePatternId={overlayTransport.activePattern?.id ?? null}
+        onVariationApply={overlayTransport.applyVariation}
+        activeVariation={overlayTransport.activeVariation}
+      />
     </div>
   );
 

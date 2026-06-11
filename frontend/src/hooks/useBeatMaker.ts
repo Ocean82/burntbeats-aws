@@ -4,6 +4,19 @@
  * Owns all pattern, transport, and row state. Consumed by the DrumMachinePanel
  * (grid + playback) and by external controllers like preset selectors and
  * save/load dialogs.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * STATE INDEPENDENCE GUARANTEE (Requirements 7.1–7.5)
+ * ═══════════════════════════════════════════════════════════════════════════════
+ *
+ * This hook is a fully independent state machine from `useOverlayTransport`.
+ * It does NOT import, reference, or interact with any overlay state. Grid
+ * operations (toggleCell, clearCell, setSteps, clearPattern, loadPreset) have
+ * ZERO effect on the overlay pattern, variation, or playback position.
+ *
+ * Shared values (playing, bpm, swing) are passed READ-ONLY to the overlay
+ * transport by the parent component — they are never mutated by the overlay.
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { playDrumVoice } from "../audio/drumSynth";
@@ -108,9 +121,21 @@ export interface UseBeatMakerReturn {
   stop: () => void;
 }
 
+// ─── Hook Options ─────────────────────────────────────────────────
+
+export interface UseBeatMakerOptions {
+  /** Getter for external AudioContext to reuse (e.g. from master bus).
+   *  Called at start time so it always gets the current value. */
+  getAudioContext?: () => AudioContext | null;
+  /** Getter for output node for audio routing (e.g. gridGainNode from master bus).
+   *  Called at start time so it always gets the current value.
+   *  Falls back to ctx.destination when not provided or returns null. */
+  getOutputNode?: () => AudioNode | null;
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────
 
-export function useBeatMaker(): UseBeatMakerReturn {
+export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn {
   const kit = DEFAULT_KIT;
   const rowCount = kit.length;
 
@@ -294,7 +319,7 @@ export function useBeatMaker(): UseBeatMakerReturn {
   useEffect(() => () => stop(), [stop]);
 
   const scheduleStep = useCallback(
-    (ctx: AudioContext) => {
+    (ctx: AudioContext, output: AudioNode) => {
       const lookAhead = 0.05; // 50ms
       const scheduleInterval = 25; // check every 25ms
 
@@ -311,11 +336,11 @@ export function useBeatMaker(): UseBeatMakerReturn {
           const stepIdx = stepIndexRef.current % totalSteps;
           const stepTime = nextStepTimeRef.current;
 
-          // Play audible hits at this step
+          // Play audible hits at this step, routing through the provided output node
           pat.forEach((row, ri) => {
             if (audible[ri] && row[stepIdx] > VELOCITY_OFF) {
               const vel = Math.round(row[stepIdx] * rs[ri].volume);
-              playDrumVoice(ctx, kit[ri].id, stepTime, vel, ctx.destination);
+              playDrumVoice(ctx, kit[ri].id, stepTime, vel, output);
             }
           });
 
@@ -360,18 +385,23 @@ export function useBeatMaker(): UseBeatMakerReturn {
 
   const start = useCallback(() => {
     stop();
-    const ctx = ctxRef.current ?? new AudioContext();
+    // Use externally-provided AudioContext (from master bus) or create a local one
+    const externalCtx = options?.getAudioContext?.() ?? null;
+    const ctx = externalCtx ?? ctxRef.current ?? new AudioContext();
     ctxRef.current = ctx;
 
     if (ctx.state === "suspended") {
       void ctx.resume();
     }
 
+    // Route through the provided output node (gridGainNode) or default to destination
+    const output = options?.getOutputNode?.() ?? ctx.destination;
+
     stepIndexRef.current = 0;
     nextStepTimeRef.current = ctx.currentTime + 0.05;
     setPlaying(true);
-    scheduleStep(ctx);
-  }, [stop, scheduleStep]);
+    scheduleStep(ctx, output);
+  }, [stop, scheduleStep, options?.getAudioContext, options?.getOutputNode]);
 
   // ─── Return ───────────────────────────────────────────────────
 
