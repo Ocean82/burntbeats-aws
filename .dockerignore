@@ -9,8 +9,7 @@ venv
 **/.venv
 **/venv
 node_modules
-frontend/node_modules
-backend/node_modules
+**/node_modules
 
 # Heavy Models (Excludes both raw and server_models to keep build context lean)
 models/
@@ -26,10 +25,14 @@ speech_models/
 # Local temp and test outputs
 tmp/
 tmp_*/
+tmp_test*/
 stem_test*/
 benchmark_out*/
 logs/
 *.tgz
+*.zip
+*.wav
+*.mp3
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -46,8 +49,11 @@ htmlcov/
 .DS_Store
 Thumbs.db
 __pycache__/
+**/__pycache__/
 *.pyo
 *.pyc
+*.pyo
+*.cpython-*.pyc
 .pytest_cache
 .ruff_cache
 
@@ -56,12 +62,18 @@ __pycache__/
 .env.*
 !.env.example
 
-# Archived experiments and CI config — not used by stem/speech/midi images
+# Archived experiments, CI config, and dev tooling
 archive/
 .github/
+.agents/
+.kiro/
+.codex/
+.cursor/
+.server-sync/
+.worktrees/
 
-# Root context is used for stem_service image only.
-# Exclude unrelated app/source areas to reduce context size and leakage risk.
+# Root context is used for stem_service, speech_service, and midi_service images.
+# Exclude all unrelated app/source areas to reduce context size and leakage risk.
 frontend/
 backend/
 docs/
@@ -71,3 +83,67 @@ benchmark_song.local.txt
 burnt-beats-pricing-structure/
 agent-transcripts/
 gamer_tag/
+
+# Local research, benchmark results, and session data — not needed in images
+TEMP/
+reports/
+session-artifacts/
+benchmarks/
+research/
+roadmap/
+plans/
+older_bb/
+archive/
+hf_artifacts/
+gpt2/
+demucs_repo/
+demucs.onnx-main/
+scnet-models/
+MDX_Net_Models/
+Demucs_Models/
+UVR_resources-main/
+inst_compensate_ab/
+cpu_pipeline_baseline/
+model_matrix_benchmark*/
+pipeline_matrix_*/
+scnet_*/
+kuielab_*/
+onnx_vs_ort_benchmark/
+good\ vocal*/
+stem_split_test/
+vocal_sample/
+rhythm-generator/
+PHOENIX/
+synthesizer/
+phoenix-synthesizer/
+pitch-tempo-plugin/
+audio-shift/
+shiny-stem-editor-plugin*/
+stem-splitter-mixer*/
+beat_maker_implementation_plan.md
+midi_cherry_pick.md
+midi_implementation_plan.md
+midi_ui_plan.md
+test_import*.py
+test_server.py
+test_model_priority.py
+test_scnet_sample.py
+run_tests.sh
+run_full_tests.sh
+run_api_tests.sh
+test_py.sh
+*.log
+*.csv
+*.png
+*.trace.zip
+METRICS_SUMMARY.json
+E2E_TEST_SUMMARY.md
+FINAL_REPORT.md
+build.log
+test.log
+
+# soundfonts/ is bind-mounted into midi_service at runtime — exclude from image build contexts
+soundfonts/
+
+# shared/ contains dev-only utilities
+shared/
