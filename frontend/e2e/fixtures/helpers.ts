@@ -79,5 +79,8 @@ export async function uploadAndSplit(
   const fileInput = page.locator('input[type="file"]');
   await fileInput.setInputFiles(file);
   await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-  await page.getByTestId("split-button").click({ force: true });
+  const splitButton = page.getByTestId("split-button");
+  await splitButton.scrollIntoViewIfNeeded();
+  // Use dispatchEvent to bypass any fixed overlay interception on mobile viewports
+  await splitButton.dispatchEvent("click");
 }

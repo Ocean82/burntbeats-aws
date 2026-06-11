@@ -101,6 +101,8 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
     toast,
     resetStemMediaState,
     openModal,
+    handleFile,
+    triggerSplit,
   } = session;
 
   return (
@@ -220,6 +222,11 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
             editorMainView={LazyEditorMainView}
             editorMainViewProps={editorMainViewProps}
             transitionalEditorShell={LazyTransitionalEditorShell}
+            transitionalShellProps={{
+              handleFile,
+              triggerSplit,
+              mixerProps: editorMainViewProps.mixerProps,
+            }}
           />
         </main>
       </div>

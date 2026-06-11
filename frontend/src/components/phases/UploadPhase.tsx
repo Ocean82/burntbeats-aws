@@ -106,7 +106,7 @@ export function UploadPhase({
           }
         }}
         className={cn(
-          "flex max-w-lg cursor-pointer flex-col items-center gap-6 rounded-2xl border border-dashed px-12 py-16 text-center transition-all duration-200",
+          "flex max-w-[32rem] cursor-pointer flex-col items-center gap-6 rounded-2xl border border-dashed px-12 py-16 text-center transition-all duration-200",
           isDragging
             ? "border-primary-400 bg-primary-500/10 shadow-[0_0_32px_rgba(255,172,92,0.15)]"
             : "border-muted-foreground/30 bg-muted/30 hover:border-primary-400/50 hover:bg-primary-500/5",
