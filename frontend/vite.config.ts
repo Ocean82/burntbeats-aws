@@ -48,6 +48,7 @@ export default defineViteConfig(({ mode }) => {
       // Enable source maps for production when Sentry plugin is active (maps are deleted after upload).
       // Otherwise, no source maps in production to avoid exposing original source.
       sourcemap: enableSentryPlugin ? "hidden" : !isProduction,
+      chunkSizeWarningLimit: 550,
       rollupOptions: {
         output: {
           manualChunks: (id: string) => {
@@ -55,13 +56,19 @@ export default defineViteConfig(({ mode }) => {
 
             // Animation and icon packs are sizeable and change less often.
             if (id.includes("/framer-motion/")) return "vendor-motion";
-            if (id.includes("/lucide-react/")) return "vendor-icons";
+            if (id.includes("/lucide-react/"))  return "vendor-icons";
 
             // Auth/billing integrations are only needed in specific flows.
             if (id.includes("/@clerk/")) return "vendor-clerk";
             if (id.includes("/@stripe/")) return "vendor-stripe";
 
-            // Everything else from third-party dependencies.
+            // Heavy audio/media libraries — only loaded when features are hit.
+            if (id.includes("/tone/")) return "vendor-tone";
+            if (id.includes("/jszip/")) return "vendor-jszip";
+            if (id.includes("/lamejs/")) return "vendor-lamejs";
+            if (id.includes("/midi-writer-js/")) return "vendor-midi";
+
+            // Everything else (react, sentry, zustand, wouter, clsx, etc.).
             return "vendor";
           },
         },

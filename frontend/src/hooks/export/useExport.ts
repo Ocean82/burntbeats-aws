@@ -4,7 +4,6 @@
  * Master mix stem set matches playback via `filterStemsForAudibleMix`.
  */
 import { useCallback, useRef, useState } from "react";
-import JSZip from "jszip";
 import { fetchStemWavAsBlob, serverExportMasterWav } from "../../api";
 import { renderMasteredWav } from "../../api/master";
 import { SERVER_EXPORT_ENABLED } from "../../config";
@@ -214,6 +213,7 @@ export function useExport(): UseExportReturn {
           return;
         }
 
+        const { default: JSZip } = await import("jszip");
         const zip = new JSZip();
 
         if (masterBlob) {

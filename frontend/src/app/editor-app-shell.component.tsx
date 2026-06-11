@@ -3,6 +3,7 @@ import { viewSwitchMotion } from "../motion/presets";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { UpsellModal } from "../components/UpsellModal";
 import { FeedbackChip } from "../components/FeedbackChip";
+import { getBurntQuip } from "../utils/burntQuips";
 import { EditorHeader } from "./editor-header.component";
 import { WaitingGamePanel } from "./waiting-game-panel.component";
 import { DevLatencyPanel } from "./dev-latency-panel.component";
@@ -35,75 +36,8 @@ export interface EditorAppShellProps {
 }
 
 export function EditorAppShell({ session }: EditorAppShellProps) {
-  const {
-    reduceMotion,
-    emit,
-    canUndo,
-    canRedo,
-    undoStemStates,
-    redoStemStates,
-    showHelpModal,
-    showExportModal,
-    showPresetsModal,
-    showGame,
-    toggleGame,
-    closeModal,
-    headerVisible,
-    activeView,
-    setActiveView,
-    localDevFullApp,
-    subscription,
-    usageBalance,
-    usageLoading,
-    uploadedFile,
-    isSplitting,
-    mixStems,
-    isExporting,
-    isSample,
-    splitResultStems,
-    splitJobId,
-    splitIntent,
-    splitQuality,
-    setUploadState,
-    setSplitError,
-    handleExportFromModal,
-    exportAllowStemBundleTargets,
-    exportTrackDurationSec,
-    handleLoadPreset,
-    mixerState,
-    trimMap,
-    mutedStems,
-    pitchMap,
-    timeStretchMap,
-    fadeMap,
-    batchQueue,
-    batchQueueExpanded,
-    setBatchQueueExpanded,
-    removeFromBatchQueue,
-    clearCompletedFromQueue,
-    canUseBatchQueue,
-    processNextInQueue,
-    hasCompletedFirstExport,
-    checkoutNotice,
-    loadingJobId,
-    loadingMidiJobId,
-    loadHistoryJob,
-    loadHistoryJobToMidi,
-    pricingInitialTab,
-    editorMainViewProps,
-    exportNotice,
-    upsellOpen,
-    setUpsellOpen,
-    upsellTrigger,
-    setPricingInitialTab,
-    latencyStats,
-    resetLatencyStats,
-    toast,
-    resetStemMediaState,
-    openModal,
-    handleFile,
-    triggerSplit,
-  } = session;
+  const { modals, workflow, split, subscription: sub, batch, mixer, ui, dev } = session;
+  const { export: exp, recovery } = session;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[var(--bg)] text-foreground">
@@ -119,73 +53,73 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
         </Suspense>
       </ErrorBoundary>
       <LazyModalLayer
-        showHelpModal={showHelpModal}
-        showExportModal={showExportModal}
-        showPresetsModal={showPresetsModal}
-        closeModal={closeModal}
-        handleExportFromModal={handleExportFromModal}
-        isExporting={isExporting}
-        mixStemsLength={mixStems.length}
-        exportAllowStemBundleTargets={exportAllowStemBundleTargets}
-        isSample={isSample}
-        exportTrackDurationSec={exportTrackDurationSec}
-        splitJobId={splitJobId}
-        handleLoadPreset={handleLoadPreset}
-        mixerState={mixerState}
-        trimMap={trimMap}
-        mutedStems={mutedStems}
-        pitchMap={pitchMap}
-        timeStretchMap={timeStretchMap}
-        fadeMap={fadeMap}
-        batchQueue={batchQueue}
-        batchQueueExpanded={batchQueueExpanded}
-        setBatchQueueExpanded={setBatchQueueExpanded}
-        removeFromBatchQueue={removeFromBatchQueue}
-        clearCompletedFromQueue={clearCompletedFromQueue}
-        canUseBatchQueue={canUseBatchQueue}
-        processNextInQueue={processNextInQueue}
-        splitIntent={splitIntent}
-        splitQuality={splitQuality}
-        setUploadState={setUploadState}
-        setSplitError={setSplitError}
-        onResetStemMediaState={resetStemMediaState}
+        showHelpModal={modals.showHelpModal}
+        showExportModal={modals.showExportModal}
+        showPresetsModal={modals.showPresetsModal}
+        closeModal={modals.closeModal}
+        handleExportFromModal={exp.handleExportFromModal}
+        isExporting={exp.isExporting}
+        mixStemsLength={mixer.mixStems.length}
+        exportAllowStemBundleTargets={exp.exportAllowStemBundleTargets}
+        isSample={split.isSample}
+        exportTrackDurationSec={exp.exportTrackDurationSec}
+        splitJobId={split.splitJobId}
+        handleLoadPreset={mixer.handleLoadPreset}
+        mixerState={mixer.mixerState}
+        trimMap={mixer.trimMap}
+        mutedStems={mixer.mutedStems}
+        pitchMap={mixer.pitchMap}
+        timeStretchMap={mixer.timeStretchMap}
+        fadeMap={mixer.fadeMap}
+        batchQueue={batch.batchQueue}
+        batchQueueExpanded={batch.batchQueueExpanded}
+        setBatchQueueExpanded={batch.setBatchQueueExpanded}
+        removeFromBatchQueue={batch.removeFromBatchQueue}
+        clearCompletedFromQueue={batch.clearCompletedFromQueue}
+        canUseBatchQueue={sub.canUseBatchQueue}
+        processNextInQueue={batch.processNextInQueue}
+        splitIntent={split.splitIntent}
+        splitQuality={sub.splitQuality}
+        setUploadState={split.setUploadState}
+        setSplitError={split.setSplitError}
+        onResetStemMediaState={session.resetStemMediaState}
       />
 
       <AppBackgroundOrbs />
       <SessionSidebar
-        hasCompletedFirstExport={hasCompletedFirstExport}
-        onViewPlans={() => setActiveView("pricing")}
+        hasCompletedFirstExport={exp.hasCompletedFirstExport}
+        onViewPlans={() => ui.setActiveView("pricing")}
       />
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-[1600px] flex-col gap-lg px-md py-md sm:px-lg lg:px-xl">
         <EditorHeader
-          headerVisible={headerVisible}
-          activeView={activeView}
-          setActiveView={setActiveView}
-          canUndo={canUndo}
-          canRedo={canRedo}
+          headerVisible={ui.headerVisible}
+          activeView={ui.activeView}
+          setActiveView={ui.setActiveView}
+          canUndo={workflow.canUndo}
+          canRedo={workflow.canRedo}
           onUndo={() => {
-            undoStemStates();
-            toast("Changes undone", { type: "undo" });
+            workflow.undoStemStates();
+            dev.toast(getBurntQuip("undo"), { type: "undo" });
           }}
           onRedo={() => {
-            redoStemStates();
-            toast("Changes redone", { type: "undo" });
+            workflow.redoStemStates();
+            dev.toast(getBurntQuip("redo"), { type: "undo" });
           }}
-          openModal={openModal}
-          localDevFullApp={localDevFullApp}
-          subscription={subscription}
-          usageBalance={usageBalance}
-          usageLoading={usageLoading}
-          openFeedback={() => emit("open-feedback")}
-          openOnboarding={() => emit("open-onboarding")}
+          openModal={modals.openModal}
+          localDevFullApp={ui.localDevFullApp}
+          subscription={sub.subscription}
+          usageBalance={sub.usageBalance}
+          usageLoading={sub.usageLoading}
+          openFeedback={() => dev.emit("open-feedback")}
+          openOnboarding={() => dev.emit("open-onboarding")}
           editorWorkflow={
-            activeView === "editor"
+            ui.activeView === "editor"
               ? {
-                  uploadedFile,
-                  isSplitting,
-                  mixStemsLength: mixStems.length,
-                  isExporting,
+                  uploadedFile: split.uploadedFile,
+                  isSplitting: split.isSplitting,
+                  mixStemsLength: mixer.mixStems.length,
+                  isExporting: exp.isExporting,
                 }
               : null
           }
@@ -198,21 +132,21 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
           className="outline-none focus-visible:ring-2 focus-visible:ring-primary-400/35 focus-visible:ring-offset-[var(--bg)] rounded-4xl"
         >
           <AppViewSwitch
-            activeView={activeView}
-            reduceMotion={reduceMotion}
+            activeView={ui.activeView}
+            reduceMotion={ui.reduceMotion}
             viewSwitchMotion={viewSwitchMotion}
-            pricingInitialTab={pricingInitialTab}
-            subscription={subscription}
-            usageBalance={usageBalance}
-            usageLoading={usageLoading}
-            checkoutNotice={checkoutNotice}
-            hasCompletedFirstExport={hasCompletedFirstExport}
-            splitResultStemsLength={splitResultStems.length}
-            loadingJobId={loadingJobId}
-            loadingMidiJobId={loadingMidiJobId}
-            onSetActiveView={setActiveView}
-            onLoadHistoryJob={loadHistoryJob}
-            onLoadHistoryJobToMidi={loadHistoryJobToMidi}
+            pricingInitialTab={ui.pricingInitialTab}
+            subscription={sub.subscription}
+            usageBalance={sub.usageBalance}
+            usageLoading={sub.usageLoading}
+            checkoutNotice={ui.checkoutNotice}
+            hasCompletedFirstExport={exp.hasCompletedFirstExport}
+            splitResultStemsLength={split.splitResultStems.length}
+            loadingJobId={recovery.loadingJobId}
+            loadingMidiJobId={recovery.loadingMidiJobId}
+            onSetActiveView={ui.setActiveView}
+            onLoadHistoryJob={recovery.loadHistoryJob}
+            onLoadHistoryJobToMidi={recovery.loadHistoryJobToMidi}
             pricingPage={LazyPricingPage}
             myStemsPage={LazyMyStemsPage}
             speechPage={LazySpeechCleanPage}
@@ -220,50 +154,50 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
             libraryPage={LazyLibraryPage}
             tunerPage={LazyTunerPage}
             editorMainView={LazyEditorMainView}
-            editorMainViewProps={editorMainViewProps}
+            editorMainViewProps={session.editorMainViewProps}
             transitionalEditorShell={LazyTransitionalEditorShell}
             transitionalShellProps={{
-              handleFile,
-              triggerSplit,
-              mixerProps: editorMainViewProps.mixerProps,
+              handleFile: split.handleFile,
+              triggerSplit: split.triggerSplit,
+              mixerProps: session.editorMainViewProps.mixerProps,
             }}
           />
         </main>
       </div>
 
       <WaitingGamePanel
-        showGame={showGame}
-        isSplitting={isSplitting}
-        reduceMotion={reduceMotion}
-        onToggle={toggleGame}
-        onClose={() => closeModal("game")}
+        showGame={modals.showGame}
+        isSplitting={split.isSplitting}
+        reduceMotion={ui.reduceMotion}
+        onToggle={modals.toggleGame}
+        onClose={() => modals.closeModal("game")}
       />
       <DevLatencyPanel
-        latencyStats={latencyStats}
-        onResetLatencyStats={resetLatencyStats}
+        latencyStats={dev.latencyStats}
+        onResetLatencyStats={dev.resetLatencyStats}
       />
       <DevHealthPanel />
 
       <EditorFloatingOverlays
-        reduceMotion={reduceMotion}
-        exportNotice={exportNotice}
+        reduceMotion={ui.reduceMotion}
+        exportNotice={exp.exportNotice}
       />
-      {activeView === "editor" && <FeedbackChip />}
+      {ui.activeView === "editor" && <FeedbackChip />}
 
       <UpsellModal
-        open={upsellOpen}
-        onClose={() => setUpsellOpen(false)}
-        trigger={upsellTrigger}
-        balance={usageBalance}
+        open={ui.upsellOpen}
+        onClose={() => ui.setUpsellOpen(false)}
+        trigger={ui.upsellTrigger}
+        balance={sub.usageBalance}
         onViewSubscriptions={() => {
-          setUpsellOpen(false);
-          setPricingInitialTab("subscriptions");
-          setActiveView("pricing");
+          ui.setUpsellOpen(false);
+          ui.setPricingInitialTab("subscriptions");
+          ui.setActiveView("pricing");
         }}
         onBuyCredits={() => {
-          setUpsellOpen(false);
-          setPricingInitialTab("packs");
-          setActiveView("pricing");
+          ui.setUpsellOpen(false);
+          ui.setPricingInitialTab("packs");
+          ui.setActiveView("pricing");
         }}
       />
     </div>

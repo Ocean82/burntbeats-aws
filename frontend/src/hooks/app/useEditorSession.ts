@@ -16,6 +16,7 @@ import { useStemStateMaps } from "../useStemStateMaps";
 import type { MixerPreset } from "../../components/MixerPresetsModal";
 import { useAppStore } from "../../store/appStore";
 import { useToast } from "../../store/toastStore";
+import { getBurntQuip } from "../../utils/burntQuips";
 import { useEventBus, useAppEvent, type AppEvent } from "../../store/eventBus";
 import { useGuidanceSystem } from "../useGuidanceSystem";
 import { useAppKeyboardShortcuts } from "../useAppKeyboardShortcuts";
@@ -64,29 +65,31 @@ function canPreloadChunks(): boolean {
   );
 }
 
-export interface EditorSession {
-  localDevFullApp: boolean;
-  reduceMotion: boolean;
-  emit: (event: AppEvent) => void;
-  audio: ReturnType<typeof useAudio>;
+// ---------------------------------------------------------------------------
+// Grouped sub-interfaces
+// ---------------------------------------------------------------------------
+
+export interface SessionModals {
+  activeModals: Partial<Record<ModalKey, boolean>>;
+  openModal: (key: ModalKey) => void;
+  closeModal: (key: ModalKey) => void;
+  showHelpModal: boolean;
+  showExportModal: boolean;
+  showPresetsModal: boolean;
+  showGame: boolean;
+  toggleGame: () => void;
+}
+
+export interface SessionWorkflow {
   stemStates: ReturnType<typeof useWorkflow>["stemStates"];
   setStemStates: ReturnType<typeof useWorkflow>["setStemStates"];
   undoStemStates: ReturnType<typeof useWorkflow>["undoStemStates"];
   redoStemStates: ReturnType<typeof useWorkflow>["redoStemStates"];
   canUndo: boolean;
   canRedo: boolean;
-  activeModals: Partial<Record<ModalKey, boolean>>;
-  openModal: (key: ModalKey) => void;
-  closeModal: (key: ModalKey) => void;
-  pricingInitialTab: "subscriptions" | "packs";
-  setPricingInitialTab: (tab: "subscriptions" | "packs") => void;
-  showHelpModal: boolean;
-  showExportModal: boolean;
-  showPresetsModal: boolean;
-  showGame: boolean;
-  toggleGame: () => void;
-  headerVisible: boolean;
-  checkoutNotice: string | null;
+}
+
+export interface SessionSplit {
   splitIntent: ReturnType<typeof useAppStore.getState>["splitIntent"];
   quality: ReturnType<typeof useAppStore.getState>["quality"];
   uploadName: string | null;
@@ -107,12 +110,18 @@ export interface EditorSession {
   splitStageLabel: string | null;
   setUploadState: ReturnType<typeof useAppStore.getState>["setUploadState"];
   setSplitError: ReturnType<typeof useAppStore.getState>["setSplitError"];
+  handleFile: ReturnType<typeof useStemSplitting>["handleFile"];
+  handleLoadStems: ReturnType<typeof useStemSplitting>["handleLoadStems"];
+  removeLoadedStem: ReturnType<typeof useStemSplitting>["removeLoadedStem"];
+  triggerSplit: ReturnType<typeof useStemSplitting>["triggerSplit"];
+  triggerExpand: ReturnType<typeof useStemSplitting>["triggerExpand"];
+}
+
+export interface SessionSubscription {
   subscription: ReturnType<typeof useSubscriptionCoordinator>["subscription"];
   usageBalance: ReturnType<typeof useSubscriptionCoordinator>["usageBalance"];
   usageLoading: boolean;
-  stemQualityOptions: ReturnType<
-    typeof useSubscriptionCoordinator
-  >["stemQualityOptions"];
+  stemQualityOptions: ReturnType<typeof useSubscriptionCoordinator>["stemQualityOptions"];
   canSplitFourStems: boolean;
   canExpandToFourStems: boolean;
   canUsePremiumStemQualities: boolean;
@@ -120,103 +129,122 @@ export interface EditorSession {
   uploadDurationSec: number | null;
   estimatedSplitTokens: number | null;
   splitQuality: ReturnType<typeof useSubscriptionCoordinator>["splitQuality"];
+}
+
+export interface SessionBatch {
   batchQueue: ReturnType<typeof useBatchQueue>["batchQueue"];
   batchQueueExpanded: boolean;
   setBatchQueueExpanded: ReturnType<typeof useBatchQueue>["setBatchQueueExpanded"];
   addToBatchQueue: ReturnType<typeof useBatchQueue>["addToBatchQueue"];
   removeFromBatchQueue: ReturnType<typeof useBatchQueue>["removeFromBatchQueue"];
-  clearCompletedFromQueue: ReturnType<
-    typeof useBatchQueue
-  >["clearCompletedFromQueue"];
+  clearCompletedFromQueue: ReturnType<typeof useBatchQueue>["clearCompletedFromQueue"];
   processNextInQueue: ReturnType<typeof useBatchQueue>["processNextInQueue"];
-  handleFile: ReturnType<typeof useStemSplitting>["handleFile"];
-  handleLoadStems: ReturnType<typeof useStemSplitting>["handleLoadStems"];
-  removeLoadedStem: ReturnType<typeof useStemSplitting>["removeLoadedStem"];
-  triggerSplit: ReturnType<typeof useStemSplitting>["triggerSplit"];
-  triggerExpand: ReturnType<typeof useStemSplitting>["triggerExpand"];
+}
+
+export interface SessionMixer {
   mixStems: ReturnType<typeof useResolvedStems>["mixStems"];
   visibleStems: ReturnType<typeof useResolvedStems>["visibleStems"];
   activeStemId: string | undefined;
   setActiveStemId: ReturnType<typeof useMixerWorkspace>["setActiveStemId"];
-  handleStemStateChange: ReturnType<
-    typeof useMixerWorkspace
-  >["handleStemStateChange"];
-  handlePreviewStemFromMixer: ReturnType<
-    typeof useMixerWorkspace
-  >["handlePreviewStemFromMixer"];
-  resetTrackAdjustments: ReturnType<
-    typeof useMixerWorkspace
-  >["resetTrackAdjustments"];
+  handleStemStateChange: ReturnType<typeof useMixerWorkspace>["handleStemStateChange"];
+  handlePreviewStemFromMixer: ReturnType<typeof useMixerWorkspace>["handlePreviewStemFromMixer"];
+  resetTrackAdjustments: ReturnType<typeof useMixerWorkspace>["resetTrackAdjustments"];
   resetSingleStem: ReturnType<typeof useMixerWorkspace>["resetSingleStem"];
-  latencyStats: ReturnType<typeof useUiLatencyMonitor>["latencyStats"];
-  resetLatencyStats: ReturnType<typeof useUiLatencyMonitor>["resetLatencyStats"];
-  toast: ReturnType<typeof useToast>["toast"];
   trimMap: ReturnType<typeof useStemStateMaps>["trimMap"];
   mixerState: ReturnType<typeof useStemStateMaps>["mixerState"];
   mutedStems: ReturnType<typeof useStemStateMaps>["mutedStems"];
   pitchMap: ReturnType<typeof useStemStateMaps>["pitchMap"];
   timeStretchMap: ReturnType<typeof useStemStateMaps>["timeStretchMap"];
   fadeMap: ReturnType<typeof useStemStateMaps>["fadeMap"];
-  guidanceTarget: ReturnType<typeof useGuidanceSystem>["guidanceTarget"];
-  guidanceRingClass: ReturnType<typeof useGuidanceSystem>["ringClass"];
-  handleGuidancePanelInteract: ReturnType<
-    typeof useGuidanceSystem
-  >["handlePanelInteract"];
   stemWaveforms: Record<string, number[]>;
   mixerSectionRef: React.RefObject<HTMLDivElement | null>;
-  activeView: AppView;
-  setActiveView: (view: AppView) => void;
-  hasCompletedFirstExport: boolean;
-  exportNotice: string | null;
-  loadingJobId: string | null;
-  loadingMidiJobId: string | null;
-  loadHistoryJob: ReturnType<
-    typeof useSessionRecoveryCoordinator
-  >["loadHistoryJob"];
-  loadHistoryJobToMidi: ReturnType<
-    typeof useSessionRecoveryCoordinator
-  >["loadHistoryJobToMidi"];
-  sourceMode: ReturnType<typeof useProcessingWorkflowCoordinator>["sourceMode"];
-  setSourceMode: ReturnType<
-    typeof useProcessingWorkflowCoordinator
-  >["setSourceMode"];
-  inputRef: ReturnType<typeof useProcessingWorkflowCoordinator>["inputRef"];
-  loadStemsInputRef: ReturnType<
-    typeof useProcessingWorkflowCoordinator
-  >["loadStemsInputRef"];
-  handleFileFromInput: ReturnType<
-    typeof useProcessingWorkflowCoordinator
-  >["handleFileFromInput"];
-  handleBrowseUpload: ReturnType<
-    typeof useProcessingWorkflowCoordinator
-  >["handleBrowseUpload"];
-  handleClearUpload: ReturnType<
-    typeof useProcessingWorkflowCoordinator
-  >["handleClearUpload"];
+  handleLoadPreset: (preset: MixerPreset) => void;
+  handleResetSingleStem: (stemId: string) => void;
+}
+
+export interface SessionExport {
   isExporting: boolean;
   isComparingExport: boolean;
   exportCompareSummary: string | null;
   onCompareExport: ReturnType<typeof useExportCoordinator>["onCompareExport"];
-  handleExportFromModal: ReturnType<
-    typeof useExportCoordinator
-  >["handleExportFromModal"];
-  exportTrackDurationSec: ReturnType<
-    typeof useExportCoordinator
-  >["exportTrackDurationSec"];
-  exportAllowStemBundleTargets: ReturnType<
-    typeof useExportCoordinator
-  >["exportAllowStemBundleTargets"];
+  handleExportFromModal: ReturnType<typeof useExportCoordinator>["handleExportFromModal"];
+  exportTrackDurationSec: ReturnType<typeof useExportCoordinator>["exportTrackDurationSec"];
+  exportAllowStemBundleTargets: ReturnType<typeof useExportCoordinator>["exportAllowStemBundleTargets"];
+  hasCompletedFirstExport: boolean;
+  exportNotice: string | null;
+}
+
+export interface SessionUpload {
+  sourceMode: ReturnType<typeof useProcessingWorkflowCoordinator>["sourceMode"];
+  setSourceMode: ReturnType<typeof useProcessingWorkflowCoordinator>["setSourceMode"];
+  inputRef: ReturnType<typeof useProcessingWorkflowCoordinator>["inputRef"];
+  loadStemsInputRef: ReturnType<typeof useProcessingWorkflowCoordinator>["loadStemsInputRef"];
+  handleFileFromInput: ReturnType<typeof useProcessingWorkflowCoordinator>["handleFileFromInput"];
+  handleBrowseUpload: ReturnType<typeof useProcessingWorkflowCoordinator>["handleBrowseUpload"];
+  handleClearUpload: ReturnType<typeof useProcessingWorkflowCoordinator>["handleClearUpload"];
+}
+
+export interface SessionRecovery {
+  loadingJobId: string | null;
+  loadingMidiJobId: string | null;
+  loadHistoryJob: ReturnType<typeof useSessionRecoveryCoordinator>["loadHistoryJob"];
+  loadHistoryJobToMidi: ReturnType<typeof useSessionRecoveryCoordinator>["loadHistoryJobToMidi"];
+}
+
+export interface SessionUi {
+  localDevFullApp: boolean;
+  reduceMotion: boolean;
+  headerVisible: boolean;
+  checkoutNotice: string | null;
+  activeView: AppView;
+  setActiveView: (view: AppView) => void;
+  pricingInitialTab: "subscriptions" | "packs";
+  setPricingInitialTab: (tab: "subscriptions" | "packs") => void;
+  guidanceTarget: ReturnType<typeof useGuidanceSystem>["guidanceTarget"];
+  guidanceRingClass: ReturnType<typeof useGuidanceSystem>["ringClass"];
+  handleGuidancePanelInteract: ReturnType<typeof useGuidanceSystem>["handlePanelInteract"];
   upsellOpen: boolean;
   setUpsellOpen: (open: boolean) => void;
   upsellTrigger: ReturnType<typeof useUpsellTriggers>["upsellTrigger"];
-  handleLoadPreset: (preset: MixerPreset) => void;
-  handleResetSingleStem: (stemId: string) => void;
+}
+
+export interface SessionDev {
+  emit: (event: AppEvent) => void;
+  latencyStats: ReturnType<typeof useUiLatencyMonitor>["latencyStats"];
+  resetLatencyStats: ReturnType<typeof useUiLatencyMonitor>["resetLatencyStats"];
+  toast: ReturnType<typeof useToast>["toast"];
+}
+
+// ---------------------------------------------------------------------------
+// Main grouped interface
+// ---------------------------------------------------------------------------
+
+export interface EditorSession {
+  audio: ReturnType<typeof useAudio>;
+  modals: SessionModals;
+  workflow: SessionWorkflow;
+  split: SessionSplit;
+  subscription: SessionSubscription;
+  batch: SessionBatch;
+  mixer: SessionMixer;
+  export: SessionExport;
+  upload: SessionUpload;
+  recovery: SessionRecovery;
+  ui: SessionUi;
+  dev: SessionDev;
+  /** Pre-composed props for EditorMainView — avoids re-computing in the shell. */
   editorMainViewProps: EditorMainViewProps;
+  /** Audio stem media loading state (from AudioContext). */
   isLoadingStems: boolean;
   loadingError: string | null;
   retryLoadStems: () => void;
   resetStemMediaState: () => void;
 }
+
+
+// ---------------------------------------------------------------------------
+// Hook implementation
+// ---------------------------------------------------------------------------
 
 export function useEditorSession(): EditorSession {
   const localDevFullApp = isLocalDevFullApp();
@@ -535,7 +563,7 @@ export function useEditorSession(): EditorSession {
   const handleResetSingleStem = useCallback(
     (stemId: string) => {
       resetSingleStem(stemId);
-      toast("Channel reset", { type: "undo" });
+      toast(getBurntQuip("reset"), { type: "undo" });
     },
     [resetSingleStem, toast],
   );
@@ -675,120 +703,142 @@ export function useEditorSession(): EditorSession {
   );
 
   return {
-    localDevFullApp,
-    reduceMotion,
-    emit,
     audio,
-    stemStates,
-    setStemStates,
-    undoStemStates,
-    redoStemStates,
-    canUndo,
-    canRedo,
-    activeModals,
-    openModal,
-    closeModal,
-    pricingInitialTab,
-    setPricingInitialTab,
-    showHelpModal,
-    showExportModal,
-    showPresetsModal,
-    showGame,
-    toggleGame,
-    headerVisible,
-    checkoutNotice,
-    splitIntent,
-    quality,
-    uploadName,
-    uploadedFile,
-    splitResultStems,
-    splitJobId,
-    loadedStems,
-    splitError,
-    isSample,
-    isDragging,
-    isSplitting,
-    isExpanding,
-    splitProgress,
-    uploadProgress,
-    isUploading,
-    queuePosition,
-    splitElapsedSeconds,
-    splitStageLabel,
-    setUploadState,
-    setSplitError,
-    subscription,
-    usageBalance,
-    usageLoading,
-    stemQualityOptions,
-    canSplitFourStems,
-    canExpandToFourStems,
-    canUsePremiumStemQualities,
-    canUseBatchQueue,
-    uploadDurationSec,
-    estimatedSplitTokens,
-    splitQuality,
-    batchQueue,
-    batchQueueExpanded,
-    setBatchQueueExpanded,
-    addToBatchQueue,
-    removeFromBatchQueue,
-    clearCompletedFromQueue,
-    processNextInQueue,
-    handleFile,
-    handleLoadStems,
-    removeLoadedStem,
-    triggerSplit,
-    triggerExpand,
-    mixStems,
-    visibleStems,
-    activeStemId,
-    setActiveStemId,
-    handleStemStateChange,
-    handlePreviewStemFromMixer,
-    resetTrackAdjustments,
-    resetSingleStem,
-    latencyStats,
-    resetLatencyStats,
-    toast,
-    trimMap,
-    mixerState,
-    mutedStems,
-    pitchMap,
-    timeStretchMap,
-    fadeMap,
-    guidanceTarget,
-    guidanceRingClass,
-    handleGuidancePanelInteract,
-    stemWaveforms,
-    mixerSectionRef,
-    activeView,
-    setActiveView,
-    hasCompletedFirstExport,
-    exportNotice,
-    loadingJobId,
-    loadingMidiJobId,
-    loadHistoryJob,
-    loadHistoryJobToMidi,
-    sourceMode,
-    setSourceMode,
-    inputRef,
-    loadStemsInputRef,
-    handleFileFromInput,
-    handleBrowseUpload,
-    handleClearUpload,
-    isExporting,
-    isComparingExport,
-    exportCompareSummary,
-    onCompareExport,
-    handleExportFromModal,
-    exportTrackDurationSec,
-    exportAllowStemBundleTargets,
-    upsellOpen,
-    setUpsellOpen,
-    upsellTrigger,
-    handleLoadPreset,
-    handleResetSingleStem,
+    modals: {
+      activeModals,
+      openModal,
+      closeModal,
+      showHelpModal,
+      showExportModal,
+      showPresetsModal,
+      showGame,
+      toggleGame,
+    },
+    workflow: {
+      stemStates,
+      setStemStates,
+      undoStemStates,
+      redoStemStates,
+      canUndo,
+      canRedo,
+    },
+    split: {
+      splitIntent,
+      quality,
+      uploadName,
+      uploadedFile,
+      splitResultStems,
+      splitJobId,
+      loadedStems,
+      splitError,
+      isSample,
+      isDragging,
+      isSplitting,
+      isExpanding,
+      splitProgress,
+      uploadProgress,
+      isUploading,
+      queuePosition,
+      splitElapsedSeconds,
+      splitStageLabel,
+      setUploadState,
+      setSplitError,
+      handleFile,
+      handleLoadStems,
+      removeLoadedStem,
+      triggerSplit,
+      triggerExpand,
+    },
+    subscription: {
+      subscription,
+      usageBalance,
+      usageLoading,
+      stemQualityOptions,
+      canSplitFourStems,
+      canExpandToFourStems,
+      canUsePremiumStemQualities,
+      canUseBatchQueue,
+      uploadDurationSec,
+      estimatedSplitTokens,
+      splitQuality,
+    },
+    batch: {
+      batchQueue,
+      batchQueueExpanded,
+      setBatchQueueExpanded,
+      addToBatchQueue,
+      removeFromBatchQueue,
+      clearCompletedFromQueue,
+      processNextInQueue,
+    },
+    mixer: {
+      mixStems,
+      visibleStems,
+      activeStemId,
+      setActiveStemId,
+      handleStemStateChange,
+      handlePreviewStemFromMixer,
+      resetTrackAdjustments,
+      resetSingleStem,
+      trimMap,
+      mixerState,
+      mutedStems,
+      pitchMap,
+      timeStretchMap,
+      fadeMap,
+      stemWaveforms,
+      mixerSectionRef,
+      handleLoadPreset,
+      handleResetSingleStem,
+    },
+    export: {
+      isExporting,
+      isComparingExport,
+      exportCompareSummary,
+      onCompareExport,
+      handleExportFromModal,
+      exportTrackDurationSec,
+      exportAllowStemBundleTargets,
+      hasCompletedFirstExport,
+      exportNotice,
+    },
+    upload: {
+      sourceMode,
+      setSourceMode,
+      inputRef,
+      loadStemsInputRef,
+      handleFileFromInput,
+      handleBrowseUpload,
+      handleClearUpload,
+    },
+    recovery: {
+      loadingJobId,
+      loadingMidiJobId,
+      loadHistoryJob,
+      loadHistoryJobToMidi,
+    },
+    ui: {
+      localDevFullApp,
+      reduceMotion,
+      headerVisible,
+      checkoutNotice,
+      activeView,
+      setActiveView,
+      pricingInitialTab,
+      setPricingInitialTab,
+      guidanceTarget,
+      guidanceRingClass,
+      handleGuidancePanelInteract,
+      upsellOpen,
+      setUpsellOpen,
+      upsellTrigger,
+    },
+    dev: {
+      emit,
+      latencyStats,
+      resetLatencyStats,
+      toast,
+    },
     editorMainViewProps,
     isLoadingStems,
     loadingError,

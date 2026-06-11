@@ -756,3 +756,20 @@ export function createFadeEnvelopeNode(
 
   return fadeNode;
 }
+
+/**
+ * Reverse an AudioBuffer — produces a new buffer with all channels reversed.
+ * Non-destructive: the original buffer is not modified.
+ */
+export function reverseAudioBuffer(buffer: AudioBuffer): AudioBuffer {
+  const { numberOfChannels, length, sampleRate } = buffer;
+  const reversed = new AudioBuffer({ numberOfChannels, length, sampleRate });
+  for (let ch = 0; ch < numberOfChannels; ch++) {
+    const src = buffer.getChannelData(ch);
+    const dst = reversed.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      dst[i] = src[length - 1 - i];
+    }
+  }
+  return reversed;
+}

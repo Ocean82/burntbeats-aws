@@ -29,7 +29,6 @@ import {
   AlertCircle,
   SlidersHorizontal,
 } from "lucide-react";
-import JSZip from "jszip";
 import { useStemHistory } from "../hooks/useStemHistory";
 import { useMidiHistory } from "../hooks/useMidiHistory";
 import { API_BASE } from "../config";
@@ -213,6 +212,7 @@ export function MyStemsPage({
 
       setIsZipping(jobId);
       try {
+        const { default: JSZip } = await import("jszip");
         const zip = new JSZip();
         const mobile = isTouchDevice();
 

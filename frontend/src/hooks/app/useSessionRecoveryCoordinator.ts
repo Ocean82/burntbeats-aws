@@ -2,6 +2,8 @@ import { useCallback, useRef } from "react"
 
 import { useLoadHistoryJob } from "../useLoadHistoryJob"
 import { useSplitSessionLifecycle } from "../workflow/useSplitSessionLifecycle"
+import { useToastStore } from "../../store/toastStore"
+import { getBurntQuip } from "../../utils/burntQuips"
 import type { AppView } from "../workflow/useEditorViewRouting"
 import type { StemResult } from "../../types"
 import type { AppState } from "../../store/appStore"
@@ -98,6 +100,11 @@ export function useSessionRecoveryCoordinator({
   const markSuccessfulExport = useCallback(() => {
     setExportNotice("Download started — check your browser's downloads folder.")
     setHasCompletedFirstExport(true)
+    useToastStore.getState().addToast({
+      message: getBurntQuip("exportSuccess"),
+      type: "success",
+      duration: 4000,
+    })
   }, [setExportNotice, setHasCompletedFirstExport])
 
   return {

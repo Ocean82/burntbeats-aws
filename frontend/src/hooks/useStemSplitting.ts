@@ -12,6 +12,8 @@ import {
 } from "../utils/splitIntent";
 import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS, isAllowedAudioFile, ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
 import { useAppStore } from "../store/appStore";
+import { useToastStore } from "../store/toastStore";
+import { getBurntQuip } from "../utils/burntQuips";
 import type { UseSubscriptionResult } from "./useSubscription";
 import { trackEvent } from "../analytics/events";
 
@@ -240,6 +242,11 @@ export function useStemSplitting({
       document.title = "✓ Stems Ready — Burnt Beats";
       // Restore original title after a few seconds
       setTimeout(() => { document.title = "Burnt Beats — Stem Splitter"; }, 5000);
+      useToastStore.getState().addToast({
+        message: getBurntQuip("splitSuccess"),
+        type: "success",
+        duration: 4000,
+      });
       trackEvent("split_completed", {
         stems_count: res.stems.length,
         quality: splitQuality,

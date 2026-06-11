@@ -4,6 +4,6 @@ import { useEditorSession } from "./hooks/app/useEditorSession";
 
 export function App() {
   const session = useEditorSession();
-  useViewPreloading(session.activeView);
+  useViewPreloading(session.ui.activeView);
   return <EditorAppShell session={session} />;
 }
