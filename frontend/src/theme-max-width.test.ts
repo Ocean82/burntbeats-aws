@@ -16,10 +16,14 @@ describe("theme max-width tokens", () => {
     const assetsDir = resolve(__dirname, "../dist/assets");
     if (!existsSync(assetsDir)) return;
 
-    const cssFile = readdirSync(assetsDir).find((name) => name.endsWith(".css"));
-    if (!cssFile) return;
+    const cssFiles = readdirSync(assetsDir).filter((name) => name.endsWith(".css"));
+    if (cssFiles.length === 0) return;
 
-    const css = readFileSync(resolve(assetsDir, cssFile), "utf8");
+    // Vite emits multiple CSS chunks; max-w-* lives in the main index bundle, not
+    // route-specific chunks (e.g. MidiConvertPage). Scan all built CSS.
+    const css = cssFiles
+      .map((name) => readFileSync(resolve(assetsDir, name), "utf8"))
+      .join("\n");
     expect(css).toContain(".max-w-md{max-width:var(--max-width-md)}");
     expect(css).not.toContain(".max-w-md{max-width:var(--spacing-md)}");
   });
