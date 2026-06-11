@@ -97,6 +97,10 @@ export interface UseAudioPlaybackReturn {
   /** Master limiter state and setter (true = engaged). */
   masterLimiterEnabled: boolean;
   setMasterLimiterEnabled: (enabled: boolean) => void;
+  /** Apply master EQ params to live audio nodes. */
+  applyMasterEq: (eq: import("../../types/masterBus").MasterEqState) => void;
+  /** Apply master compressor params to live audio nodes. */
+  applyMasterCompressor: (comp: import("../../types/masterBus").MasterCompressorState) => void;
   /** Whether loop playback is enabled. */
   loopEnabled: boolean;
   /** Toggle or set loop playback mode. */
@@ -142,6 +146,8 @@ export function useAudioPlayback(
     setMasterVolume,
     masterLimiterEnabled,
     setMasterLimiterEnabled,
+    applyMasterEq,
+    applyMasterCompressor,
     getMasterRecordingStream,
     destroyContext,
   } = useAudioContext(
@@ -915,6 +921,8 @@ export function useAudioPlayback(
     setMasterVolume,
     masterLimiterEnabled,
     setMasterLimiterEnabled,
+    applyMasterEq,
+    applyMasterCompressor,
     loopEnabled,
     setLoopEnabled: setLoopEnabledWrapped,
   };

@@ -5,6 +5,7 @@ import { LAYOUT } from "@/constants/layout";
 import { useWorkspaceLayout } from "@/hooks/useWorkspaceLayout";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useWorkflow } from "@/contexts/WorkflowContext";
+import { MasterProcessingPanel } from "@/components/master-processing";
 import { mergeMixerState } from "@/types";
 import type { StemEditorState } from "@/stem-editor-state";
 
@@ -333,28 +334,35 @@ export function MixerConsole({ className }: MixerConsoleProps) {
 
       {/* Channel strips area */}
       <div className="flex items-stretch gap-2 px-4 py-3 overflow-x-auto flex-1 min-h-0">
-        {/* Per-stem channel strips */}
-        {stemIds.map((stemId, index) => (
-          <ChannelStrip
-            key={stemId}
-            stemId={stemId}
-            label={getStemLabel(stemId)}
-            stemState={stemStates[stemId]}
-            color={STEM_COLORS[index % STEM_COLORS.length]}
-            onVolumeChange={handleVolumeChange}
-            onPanChange={handlePanChange}
-            onMuteToggle={handleMuteToggle}
-            onSoloToggle={handleSoloToggle}
-          />
-        ))}
-
-        {/* Separator */}
+        {/* Master processing (EQ + Compressor) */}
         {stemIds.length > 0 && (
-          <div className="w-px self-stretch bg-white/10 mx-1" aria-hidden />
+          <MasterProcessingPanel className="mb-2 w-full shrink-0" />
         )}
 
-        {/* Master channel strip */}
-        <MasterStrip stemCount={stemIds.length} />
+        {/* Per-stem channel strips */}
+        <div className="flex items-stretch gap-2 overflow-x-auto flex-1 min-h-0">
+          {stemIds.map((stemId, index) => (
+            <ChannelStrip
+              key={stemId}
+              stemId={stemId}
+              label={getStemLabel(stemId)}
+              stemState={stemStates[stemId]}
+              color={STEM_COLORS[index % STEM_COLORS.length]}
+              onVolumeChange={handleVolumeChange}
+              onPanChange={handlePanChange}
+              onMuteToggle={handleMuteToggle}
+              onSoloToggle={handleSoloToggle}
+            />
+          ))}
+
+          {/* Separator */}
+          {stemIds.length > 0 && (
+            <div className="w-px self-stretch bg-white/10 mx-1" aria-hidden />
+          )}
+
+          {/* Master channel strip */}
+          <MasterStrip stemCount={stemIds.length} />
+        </div>
       </div>
     </div>
   );

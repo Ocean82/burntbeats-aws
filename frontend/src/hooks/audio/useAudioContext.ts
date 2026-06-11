@@ -1,11 +1,20 @@
 /**
- * useAudioContext — AudioContext lifecycle + master bus (gain, analyser, limiter, stereo split).
+ * useAudioContext — AudioContext lifecycle + master bus (gain, EQ, compressor, limiter, analyser).
  *
  * Owns the singleton AudioContext and the master output chain:
- *   masterGain → [limiter?] → analyser → destination
- *                            → splitter → left/right analysers
+ *   masterGain → [EQ: lowShelf → midPeak → highShelf] → [compressor?] → [limiter?] → analyser → destination
+ *                                                                                    → splitter → left/right analysers
  */
 import { useCallback, useRef, useState } from "react";
+import { useMasterProcessingStore } from "./useMasterProcessing";
+import type { MasterEqState, MasterCompressorState } from "../../types/masterBus";
+
+export interface MasterProcessingRefs {
+  masterEqLowRef: React.MutableRefObject<BiquadFilterNode | null>;
+  masterEqMidRef: React.MutableRefObject<BiquadFilterNode | null>;
+  masterEqHighRef: React.MutableRefObject<BiquadFilterNode | null>;
+  masterCompressorRef: React.MutableRefObject<DynamicsCompressorNode | null>;
+}
 
 export interface MasterBusRefs {
   masterGainRef: React.MutableRefObject<GainNode | null>;
@@ -16,6 +25,7 @@ export interface MasterBusRefs {
   masterAnalyserRightRef: React.MutableRefObject<AnalyserNode | null>;
   masterLimiterEnabledRef: React.MutableRefObject<boolean>;
   masterStreamDestRef: React.MutableRefObject<MediaStreamAudioDestinationNode | null>;
+  masterProcessingRefs: MasterProcessingRefs;
 }
 
 export interface UseAudioContextReturn {
@@ -39,6 +49,10 @@ export interface UseAudioContextReturn {
   /** Master limiter state and setter (true = engaged). */
   masterLimiterEnabled: boolean;
   setMasterLimiterEnabled: (enabled: boolean) => void;
+  /** Apply master EQ params to live nodes (call when store changes). */
+  applyMasterEq: (eq: MasterEqState) => void;
+  /** Apply master compressor params to live nodes (call when store changes). */
+  applyMasterCompressor: (comp: MasterCompressorState) => void;
   /** Get the master bus MediaStream for recording (MediaRecorder input). */
   getMasterRecordingStream: () => MediaStream | null;
   /** Tear down context and null all refs (for unmount). */
@@ -81,6 +95,12 @@ export function useAudioContext(
   const masterLimiterEnabledRef = useRef(false);
   const masterStreamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
+  // Master processing chain refs (EQ + compressor)
+  const masterEqLowRef = useRef<BiquadFilterNode | null>(null);
+  const masterEqMidRef = useRef<BiquadFilterNode | null>(null);
+  const masterEqHighRef = useRef<BiquadFilterNode | null>(null);
+  const masterCompressorRef = useRef<DynamicsCompressorNode | null>(null);
+
   const reconnectMasterBus = useCallback((ctx: AudioContext) => {
     const g = masterGainRef.current;
     const an = masterAnalyserRef.current;
@@ -88,6 +108,10 @@ export function useAudioContext(
     const splitter = masterSplitterRef.current;
     const left = masterAnalyserLeftRef.current;
     const right = masterAnalyserRightRef.current;
+    const eqLow = masterEqLowRef.current;
+    const eqMid = masterEqMidRef.current;
+    const eqHigh = masterEqHighRef.current;
+    const comp = masterCompressorRef.current;
     if (!g || !an || !limiter || !splitter || !left || !right) return;
 
     try {
@@ -97,18 +121,38 @@ export function useAudioContext(
       splitter.disconnect();
       left.disconnect();
       right.disconnect();
+      eqLow?.disconnect();
+      eqMid?.disconnect();
+      eqHigh?.disconnect();
+      comp?.disconnect();
     } catch {
       /* graph may already be disconnected */
     }
 
+    // Build chain: masterGain → EQ → Compressor → [limiter?] → analyser → destination
+    // EQ is always in the chain (gains at 0 = transparent), compressor bypasses via ratio=1
+    let lastNode: AudioNode = g;
+
+    if (eqLow && eqMid && eqHigh) {
+      lastNode.connect(eqLow);
+      eqLow.connect(eqMid);
+      eqMid.connect(eqHigh);
+      lastNode = eqHigh;
+    }
+
+    if (comp) {
+      lastNode.connect(comp);
+      lastNode = comp;
+    }
+
     const limiterEnabled = masterLimiterEnabledRef.current;
     if (limiterEnabled) {
-      g.connect(limiter);
+      lastNode.connect(limiter);
       limiter.connect(an);
       limiter.connect(splitter);
     } else {
-      g.connect(an);
-      g.connect(splitter);
+      lastNode.connect(an);
+      lastNode.connect(splitter);
     }
 
     splitter.connect(left, 0);
@@ -118,7 +162,8 @@ export function useAudioContext(
     // Tap master output to MediaStreamDestination for recording
     const dest = masterStreamDestRef.current;
     if (dest) {
-      g.connect(dest);
+      // Tap post-processing for recording (captures EQ/comp/limiter)
+      an.connect(dest);
     }
   }, []);
 
@@ -157,6 +202,45 @@ export function useAudioContext(
       right.smoothingTimeConstant = 0.7;
       const streamDest = ctx.createMediaStreamDestination();
 
+      // Master processing: 3-band EQ + compressor
+      const eqLow = ctx.createBiquadFilter();
+      eqLow.type = "lowshelf";
+      eqLow.frequency.value = 150;
+      eqLow.gain.value = 0;
+
+      const eqMid = ctx.createBiquadFilter();
+      eqMid.type = "peaking";
+      eqMid.frequency.value = 1000;
+      eqMid.Q.value = 1.0;
+      eqMid.gain.value = 0;
+
+      const eqHigh = ctx.createBiquadFilter();
+      eqHigh.type = "highshelf";
+      eqHigh.frequency.value = 4000;
+      eqHigh.gain.value = 0;
+
+      const comp = ctx.createDynamicsCompressor();
+      // Initialize compressor to transparent pass-through (ratio=1 means no compression)
+      comp.threshold.value = 0;
+      comp.ratio.value = 1;
+      comp.knee.value = 6;
+      comp.attack.value = 0.01;
+      comp.release.value = 0.15;
+
+      // Apply any persisted state from the store
+      const storeState = useMasterProcessingStore.getState();
+      if (storeState.eq.enabled) {
+        eqLow.gain.value = storeState.eq.lowGain;
+        eqMid.gain.value = storeState.eq.midGain;
+        eqHigh.gain.value = storeState.eq.highGain;
+      }
+      if (storeState.compressor.enabled) {
+        comp.threshold.value = storeState.compressor.threshold;
+        comp.ratio.value = storeState.compressor.ratio;
+        comp.attack.value = storeState.compressor.attack;
+        comp.release.value = storeState.compressor.release;
+      }
+
       masterGainRef.current = g;
       masterLimiterRef.current = limiter;
       masterAnalyserRef.current = an;
@@ -164,6 +248,11 @@ export function useAudioContext(
       masterAnalyserLeftRef.current = left;
       masterAnalyserRightRef.current = right;
       masterStreamDestRef.current = streamDest;
+      masterEqLowRef.current = eqLow;
+      masterEqMidRef.current = eqMid;
+      masterEqHighRef.current = eqHigh;
+      masterCompressorRef.current = comp;
+
       reconnectMasterBus(ctx);
       return masterGainRef.current;
     },
@@ -221,6 +310,33 @@ export function useAudioContext(
     [reconnectMasterBus],
   );
 
+  const applyMasterEq = useCallback((eq: MasterEqState) => {
+    const low = masterEqLowRef.current;
+    const mid = masterEqMidRef.current;
+    const high = masterEqHighRef.current;
+    if (!low || !mid || !high) return;
+    low.gain.value = eq.enabled ? eq.lowGain : 0;
+    mid.gain.value = eq.enabled ? eq.midGain : 0;
+    high.gain.value = eq.enabled ? eq.highGain : 0;
+  }, []);
+
+  const applyMasterCompressor = useCallback((comp: MasterCompressorState) => {
+    const node = masterCompressorRef.current;
+    if (!node) return;
+    if (comp.enabled) {
+      node.threshold.value = comp.threshold;
+      node.ratio.value = comp.ratio;
+      node.attack.value = comp.attack;
+      node.release.value = comp.release;
+    } else {
+      // Bypass: transparent pass-through
+      node.threshold.value = 0;
+      node.ratio.value = 1;
+      node.attack.value = 0.003;
+      node.release.value = 0.25;
+    }
+  }, []);
+
   const getOrCreateContext = useCallback(async (): Promise<AudioContext | null> => {
     const AudioContextCtor =
       window.AudioContext ||
@@ -236,6 +352,10 @@ export function useAudioContext(
       masterAnalyserLeftRef.current = null;
       masterAnalyserRightRef.current = null;
       masterStreamDestRef.current = null;
+      masterEqLowRef.current = null;
+      masterEqMidRef.current = null;
+      masterEqHighRef.current = null;
+      masterCompressorRef.current = null;
       assignContextInstance(new AudioContextCtor());
     }
     const ctx = getContextInstance();
@@ -268,6 +388,10 @@ export function useAudioContext(
     masterAnalyserLeftRef.current = null;
     masterAnalyserRightRef.current = null;
     masterStreamDestRef.current = null;
+    masterEqLowRef.current = null;
+    masterEqMidRef.current = null;
+    masterEqHighRef.current = null;
+    masterCompressorRef.current = null;
   }, []);
 
   const masterBusRefs: MasterBusRefs = {
@@ -279,6 +403,12 @@ export function useAudioContext(
     masterAnalyserRightRef,
     masterLimiterEnabledRef,
     masterStreamDestRef,
+    masterProcessingRefs: {
+      masterEqLowRef,
+      masterEqMidRef,
+      masterEqHighRef,
+      masterCompressorRef,
+    },
   };
 
   const getMasterRecordingStream = useCallback((): MediaStream | null => {
@@ -302,6 +432,8 @@ export function useAudioContext(
     setMasterVolume,
     masterLimiterEnabled,
     setMasterLimiterEnabled,
+    applyMasterEq,
+    applyMasterCompressor,
     getMasterRecordingStream,
     destroyContext,
   };

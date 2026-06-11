@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo } from "react";
 import { useAudioPlayback } from "../hooks/useAudioPlayback";
 import type { UseAudioPlaybackReturn } from "../hooks/useAudioPlayback";
 import type { UseStemLoadingReturn } from "../hooks/useStemLoading";
+import { useMasterProcessingSync } from "../hooks/audio/useMasterProcessingSync";
 import { useStemMedia } from "./StemMediaContext";
 import { useWorkflow } from "./WorkflowContext";
 import { useAppStore } from "../store/appStore";
@@ -30,6 +31,12 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     stemStates,
     playbackBpm: beatGrid?.bpm ?? null,
     audioContextRef: stemMedia.audioContextRef,
+  });
+
+  // Sync master processing store → live Web Audio nodes
+  useMasterProcessingSync({
+    applyMasterEq: audio.applyMasterEq,
+    applyMasterCompressor: audio.applyMasterCompressor,
   });
 
   const value = useMemo<AudioContextValue>(

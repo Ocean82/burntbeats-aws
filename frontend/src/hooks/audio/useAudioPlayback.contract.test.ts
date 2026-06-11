@@ -45,6 +45,8 @@ type ExpectedReturnKeys =
   | "setMasterVolume"
   | "masterLimiterEnabled"
   | "setMasterLimiterEnabled"
+  | "applyMasterEq"
+  | "applyMasterCompressor"
   | "loopEnabled"
   | "setLoopEnabled";
 
@@ -83,12 +85,14 @@ describe("useAudioPlayback contract", () => {
       "setMasterVolume",
       "masterLimiterEnabled",
       "setMasterLimiterEnabled",
+      "applyMasterEq",
+      "applyMasterCompressor",
       "loopEnabled",
       "setLoopEnabled",
     ];
 
     // Verify count matches (catches accidental additions)
-    expect(expectedKeys.length).toBe(25);
+    expect(expectedKeys.length).toBe(27);
   });
 
   it("UseAudioPlaybackOptions accepts onError and stemStates", () => {
