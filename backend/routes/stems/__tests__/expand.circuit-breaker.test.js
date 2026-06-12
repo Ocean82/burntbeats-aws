@@ -1,133 +1,124 @@
+// @ts-check
 /**
- * Property-Based Tests: CircuitOpenError produces canonical 503 response (expand route)
- *
- * Feature: sre-reliability-wiring
- * Property 1: CircuitOpenError produces canonical 503 response
- *
- * For any CircuitOpenError thrown by stemServiceClient in the expand route handler,
- * the HTTP response SHALL have:
- *   - status === 503
- *   - Retry-After header === String(error.retryAfter)
- *   - JSON body with a non-empty "error" string
+ * Property test: CircuitOpenError → 503 for the stems expand route.
  *
  * **Validates: Requirements 2.2**
+ *
+ * Property 1: For any CircuitOpenError thrown by stemServiceClient.breaker.call,
+ * the route MUST respond with status 503, a Retry-After header equal to
+ * String(error.retryAfter), and a JSON body containing an "error" string.
  */
+import test from "node:test";
+import assert from "node:assert/strict";
+import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import * as fc from "fast-check";
-import express from "express";
 import supertest from "supertest";
+import fc from "fast-check";
 import { randomUUID } from "crypto";
 
-// ── Mocks ──────────────────────────────────────────────────────────────────────
-// vi.mock paths are relative to this test file.
-// expand.js lives one level up; its imports are relative to expand.js.
-// We mock by the path as seen from this test file.
-//
-// IMPORTANT: The same CircuitOpenError class must be used by both the mock
-// module (so expand.js can do `e instanceof CircuitOpenError`) and the test
-// (so we can construct the error to throw). We achieve this by importing the
-// *real* CircuitOpenError from the actual circuitBreaker.js (not the mocked
-// serviceClients.js) and using it in both places.
+process.env.NODE_ENV = "test";
+process.env.BACKEND_SKIP_START = "1";
+process.env.API_KEY = "";
+process.env.JOB_TOKEN_SECRET = "";
+process.env.DATABASE_URL = "";
+process.env.REDIS_URL = "";
+process.env.DEV_BYPASS_UPLOAD_AUTH = "1";
+process.env.STEM_SERVICE_URL = "http://127.0.0.1:59999"; // unreachable — breaker.call is mocked
+process.env.USAGE_TOKENS_ENABLED = "0";
+process.env.RATE_LIMIT_MAX_REQUESTS = "10000";
+process.env.TEST_BYPASS_EXPAND_ENTITLEMENTS = "1";
 
-vi.mock("../../../lib/serviceClients.js", async (importOriginal) => {
-  // Import the real CircuitOpenError so instanceof checks work in expand.js
-  const real = await importOriginal();
-  return {
-    stemServiceClient: {
-      breaker: {
-        call: vi.fn(),
+// Create a temp directory
+const tempRoot = fs.mkdtempSync(
+  path.join(os.tmpdir(), "burntbeats-expand-cb-"),
+);
+const stemOutputDir = path.join(tempRoot, "stems");
+fs.mkdirSync(stemOutputDir, { recursive: true });
+process.env.STEM_OUTPUT_DIR = stemOutputDir;
+
+// Import the app and serviceClients AFTER env vars are set
+// NOTE: stemServiceClient is a module-level singleton. The monkey-patch pattern
+// below is safe because node --test runs each file in its own child process.
+// If test isolation changes, these tests would need per-request injection instead.
+const { app } = await import("../../../server.js");
+const { stemServiceClient, CircuitOpenError } = await import(
+  "../../../lib/serviceClients.js"
+);
+
+// Enable trust proxy so X-Forwarded-For sets req.ip (used by rate limiter)
+app.set("trust proxy", true);
+
+const request = supertest(app);
+
+// ------------------------------------------------------------------
+// Property 1: CircuitOpenError → canonical 503 response
+// ------------------------------------------------------------------
+test("expand.js — Property 1: CircuitOpenError → canonical 503", { timeout: 90_000 }, async () => {
+  let runIndex = 0;
+
+  await fc.assert(
+    fc.asyncProperty(
+      fc.integer({ min: 1, max: 300 }),
+      async (retryAfter) => {
+        runIndex++;
+        const octet3 = Math.floor(runIndex / 255);
+        const octet4 = (runIndex % 254) + 1;
+        const ip = `10.0.${octet3}.${octet4}`;
+
+        // Save and replace breaker.call to throw CircuitOpenError
+        const originalCall = stemServiceClient.breaker.call.bind(
+          stemServiceClient.breaker,
+        );
+        stemServiceClient.breaker.call = async (_fn) => {
+          throw new CircuitOpenError("stem_service", retryAfter * 1000);
+        };
+
+        try {
+          const res = await request
+            .post("/api/stems/expand")
+            .set("X-Forwarded-For", ip)
+            .send({ job_id: randomUUID(), quality: "balanced" });
+
+          // Status must be 503
+          assert.equal(
+            res.status,
+            503,
+            `Expected 503 for retryAfter=${retryAfter}, got ${res.status}`,
+          );
+
+          // Retry-After header must equal String(retryAfter)
+          assert.equal(
+            res.headers["retry-after"],
+            String(retryAfter),
+            `Expected Retry-After: ${retryAfter}, got ${res.headers["retry-after"]}`,
+          );
+
+          // Body must have a non-empty "error" string field
+          assert.ok(
+            res.body &&
+              typeof res.body.error === "string" &&
+              res.body.error.length > 0,
+            `Expected non-empty error string in body, got: ${JSON.stringify(res.body)}`,
+          );
+        } finally {
+          // Always restore the original call
+          stemServiceClient.breaker.call = originalCall;
+        }
       },
-    },
-    CircuitOpenError: real.CircuitOpenError,
-  };
+    ),
+    { numRuns: 100 },
+  );
 });
 
-// Mock entitlements so requireExpandEntitlements always passes through
-vi.mock("../entitlements.js", () => ({
-  requireExpandEntitlements: vi.fn().mockResolvedValue({
-    ok: true,
-    userId: "test-user",
-    entitlements: {
-      plan: "premium",
-      entitlementSource: "subscription",
-      capabilities: {
-        canSplitFourStems: true,
-        canExpandToFourStems: true,
-        canUsePremiumStemQualities: true,
-        canUseBatchQueue: true,
-      },
-    },
-  }),
-}));
-
-// Mock usageTokens so isUsageTokensEnabled returns false (skip usage token checks)
-vi.mock("../../../usageTokens.js", () => ({
-  isUsageTokensEnabled: vi.fn().mockReturnValue(false),
-  computeExpandCost: vi.fn().mockReturnValue(0),
-  getAudioDurationSeconds: vi.fn().mockResolvedValue(0),
-  reserveUsageTokens: vi.fn().mockResolvedValue(undefined),
-  refundUsageTokens: vi.fn().mockResolvedValue(undefined),
-}));
-
-// ── Import route and mocked modules after mocks are registered ────────────────
-
-const { expandRouter } = await import("../expand.js");
-const { stemServiceClient, CircuitOpenError } = await import("../../../lib/serviceClients.js");
-
-// ── Test helpers ───────────────────────────────────────────────────────────────
-
-/**
- * Build a minimal Express app with the expand router mounted.
- * authMiddleware and jobTokenMiddleware pass through when API_KEY and
- * JOB_TOKEN_SECRET env vars are unset (the default in test environments).
- */
-function buildApp() {
-  const app = express();
-  app.use(express.json());
-  app.use("/api/stems/expand", expandRouter);
-  return app;
-}
-
-// ── Property 1: CircuitOpenError → 503 ────────────────────────────────────────
-
-describe(
-  "Feature: sre-reliability-wiring, Property 1: CircuitOpenError produces canonical 503 response (expand route)",
-  () => {
-    const app = buildApp();
-    const agent = supertest(app);
-
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
-    it(
-      "for any retryAfter (1–300), returns 503 + Retry-After header + non-empty error body",
-      async () => {
-        await fc.assert(
-          fc.asyncProperty(
-            fc.integer({ min: 1, max: 300 }),
-            async (retryAfter) => {
-              // CircuitOpenError constructor: (serviceName, resetTimeoutMs)
-              // It sets this.retryAfter = Math.ceil(resetTimeoutMs / 1000)
-              // So passing retryAfter * 1000 ensures error.retryAfter === retryAfter
-              stemServiceClient.breaker.call.mockRejectedValueOnce(
-                new CircuitOpenError("stem_service", retryAfter * 1000),
-              );
-
-              const res = await agent
-                .post("/api/stems/expand")
-                .send({ job_id: randomUUID(), quality: "balanced" });
-
-              expect(res.status).toBe(503);
-              expect(res.headers["retry-after"]).toBe(String(retryAfter));
-              expect(typeof res.body.error).toBe("string");
-              expect(res.body.error.length).toBeGreaterThan(0);
-            },
-          ),
-          { numRuns: 100 },
-        );
-      },
-    );
-  },
-);
+// ------------------------------------------------------------------
+// Cleanup
+// ------------------------------------------------------------------
+test.after(() => {
+  try {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  } catch {
+    // ignore cleanup errors
+  }
+});

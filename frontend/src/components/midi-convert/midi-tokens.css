@@ -1645,6 +1645,25 @@
    Section divider (gradient line between settings sections)
    ═══════════════════════════════════════════════════════════════════ */
 
+/* Nested section — indented conditional sub-controls (quantize, velocity, etc.)
+   Uses background tint instead of side-stripe borders per design system rules. */
+.midi-nested-section {
+    margin-left: 24px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--midi-surface-inset);
+}
+
+@supports (color: color-mix(in oklch, red, transparent)) {
+    .midi-nested-section {
+        background: color-mix(
+            in oklch,
+            var(--midi-surface-inset) 60%,
+            transparent
+        );
+    }
+}
+
 .midi-section-divider {
     height: 1px;
     margin: 4px 8px 0;

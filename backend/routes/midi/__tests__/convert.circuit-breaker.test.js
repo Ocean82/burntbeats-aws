@@ -8,7 +8,7 @@
  * the route MUST respond with status 503, a Retry-After header equal to
  * String(error.retryAfter), and a JSON body containing an "error" string.
  */
-import { describe, it, beforeAll, afterAll } from "vitest";
+import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";
@@ -52,6 +52,9 @@ fs.writeFileSync(
 );
 
 // Import the app and serviceClients AFTER env vars are set
+// NOTE: midiServiceClient is a module-level singleton. The monkey-patch pattern
+// below is safe because node --test runs each file in its own child process.
+// If test isolation changes, these tests would need per-request injection instead.
 const { app } = await import("../../../server.js");
 const { midiServiceClient, CircuitOpenError } = await import(
   "../../../lib/serviceClients.js"
@@ -65,68 +68,70 @@ app.locals.verifyClerkBearer = async () => "user_cb_convert_test";
 // ------------------------------------------------------------------
 // Property 1: CircuitOpenError → canonical 503 response
 // ------------------------------------------------------------------
-describe("convert.js — Property 1: CircuitOpenError → canonical 503", () => {
-  it(
-    "produces status 503, Retry-After header, and error body for any retryAfter value",
-    { timeout: 60_000 },
-    async () => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.integer({ min: 1, max: 300 }),
-          async (retryAfter) => {
-            // Save and replace breaker.call to throw CircuitOpenError
-            const originalCall = midiServiceClient.breaker.call.bind(
-              midiServiceClient.breaker,
-            );
-            midiServiceClient.breaker.call = async (_fn) => {
-              // CircuitOpenError.retryAfter = Math.ceil(resetTimeout / 1000)
-              // so pass resetTimeout = retryAfter * 1000 to get the desired retryAfter value
-              throw new CircuitOpenError("midi_service", retryAfter * 1000);
-            };
+test("convert.js — Property 1: CircuitOpenError → canonical 503", { timeout: 60_000 }, async () => {
+  let runIndex = 0;
 
-            try {
-              const res = await request
-                .post("/api/midi/convert")
-                .field("stem_job_id", STEM_JOB_ID)
-                .field("stem_name", STEM_NAME);
+  await fc.assert(
+    fc.asyncProperty(
+      fc.integer({ min: 1, max: 300 }),
+      async (retryAfter) => {
+        runIndex++;
+        const octet3 = Math.floor(runIndex / 255);
+        const octet4 = (runIndex % 254) + 1;
+        const ip = `10.0.${octet3}.${octet4}`;
 
-              // Status must be 503
-              assert.equal(
-                res.status,
-                503,
-                `Expected 503 for retryAfter=${retryAfter}, got ${res.status}`,
-              );
+        // Save and replace breaker.call to throw CircuitOpenError
+        const originalCall = midiServiceClient.breaker.call.bind(
+          midiServiceClient.breaker,
+        );
+        midiServiceClient.breaker.call = async (_fn) => {
+          // CircuitOpenError.retryAfter = Math.ceil(resetTimeout / 1000)
+          // so pass resetTimeout = retryAfter * 1000 to get the desired retryAfter value
+          throw new CircuitOpenError("midi_service", retryAfter * 1000);
+        };
 
-              // Retry-After header must equal String(retryAfter)
-              assert.equal(
-                res.headers["retry-after"],
-                String(retryAfter),
-                `Expected Retry-After: ${retryAfter}, got ${res.headers["retry-after"]}`,
-              );
+        try {
+          const res = await request
+            .post("/api/midi/convert")
+            .set("X-Forwarded-For", ip)
+            .field("stem_job_id", STEM_JOB_ID)
+            .field("stem_name", STEM_NAME);
 
-              // Body must have a non-empty "error" string field
-              assert.ok(
-                res.body &&
-                  typeof res.body.error === "string" &&
-                  res.body.error.length > 0,
-                `Expected non-empty error string in body, got: ${JSON.stringify(res.body)}`,
-              );
-            } finally {
-              // Always restore the original call
-              midiServiceClient.breaker.call = originalCall;
-            }
-          },
-        ),
-        { numRuns: 100 },
-      );
-    },
+          // Status must be 503
+          assert.equal(
+            res.status,
+            503,
+            `Expected 503 for retryAfter=${retryAfter}, got ${res.status}`,
+          );
+
+          // Retry-After header must equal String(retryAfter)
+          assert.equal(
+            res.headers["retry-after"],
+            String(retryAfter),
+            `Expected Retry-After: ${retryAfter}, got ${res.headers["retry-after"]}`,
+          );
+
+          // Body must have a non-empty "error" string field
+          assert.ok(
+            res.body &&
+              typeof res.body.error === "string" &&
+              res.body.error.length > 0,
+            `Expected non-empty error string in body, got: ${JSON.stringify(res.body)}`,
+          );
+        } finally {
+          // Always restore the original call
+          midiServiceClient.breaker.call = originalCall;
+        }
+      },
+    ),
+    { numRuns: 100 },
   );
 });
 
 // ------------------------------------------------------------------
 // Cleanup
 // ------------------------------------------------------------------
-afterAll(() => {
+test.after(() => {
   try {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   } catch {

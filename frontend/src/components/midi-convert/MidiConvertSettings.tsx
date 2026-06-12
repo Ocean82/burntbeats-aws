@@ -187,7 +187,7 @@ export function MidiConvertSettings({
 
         {/* Conditional: target velocity slider */}
         {settings.normalizeVelocity && (
-          <div className="ml-lg border-l-2 border-accent-midi/20 pl-sm">
+          <div className="midi-nested-section">
             <MidiParamSlider
               label="Target Peak Velocity"
               value={settings.targetVelocity}
@@ -236,7 +236,7 @@ export function MidiConvertSettings({
 
         {/* Conditional: quantize sub-controls */}
         {settings.quantize && (
-          <div className="ml-lg border-l-2 border-accent-midi/20 pl-sm">
+          <div className="midi-nested-section">
             <div className="flex flex-col gap-xs px-sm py-1">
               <div className="flex flex-wrap items-start gap-md">
                 <MidiKnobControl

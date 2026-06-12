@@ -1,137 +1,154 @@
 // @ts-check
 /**
- * Property-Based Test — Property 1: CircuitOpenError produces canonical 503 response
+ * Property test: CircuitOpenError → 503 for the stems split route.
  *
- * Validates: Requirements 1.2
+ * **Validates: Requirements 1.2**
  *
- * For any CircuitOpenError thrown by stemServiceClient.breaker.call in the split route,
- * the HTTP response SHALL have:
- *   - status 503
- *   - Retry-After header equal to String(retryAfter)
- *   - JSON body with a non-empty "error" string
- *
- * Tag: Feature: sre-reliability-wiring, Property 1: CircuitOpenError produces canonical 503 response
+ * Property 1: For any CircuitOpenError thrown by stemServiceClient.breaker.call,
+ * the route MUST respond with status 503, a Retry-After header equal to
+ * String(error.retryAfter), and a JSON body containing an "error" string.
  */
+import test from "node:test";
+import assert from "node:assert/strict";
+import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
 
-import { describe, it, vi, beforeAll } from "vitest";
-import { expect } from "vitest";
-import fc from "fast-check";
 import supertest from "supertest";
-import express from "express";
+import fc from "fast-check";
 
-// ── Environment setup (before any module imports) ─────────────────────────────
 process.env.NODE_ENV = "test";
-process.env.DATABASE_URL = "";
-process.env.API_KEY = "test-key";
+process.env.BACKEND_SKIP_START = "1";
+process.env.API_KEY = "";
 process.env.JOB_TOKEN_SECRET = "";
+process.env.DATABASE_URL = "";
+process.env.REDIS_URL = "";
 process.env.DEV_BYPASS_UPLOAD_AUTH = "1";
-process.env.TEST_BYPASS_PREMIUM_ENTITLEMENTS = "1";
 process.env.STEM_SERVICE_URL = "http://127.0.0.1:59999"; // unreachable — breaker.call is mocked
+process.env.USAGE_TOKENS_ENABLED = "0";
 process.env.RATE_LIMIT_MAX_REQUESTS = "10000";
+process.env.TEST_BYPASS_PREMIUM_ENTITLEMENTS = "1";
 
-// ── Mock dependencies before the route is imported ───────────────────────────
-// Paths are relative to this test file: backend/routes/stems/__tests__/
+// Create a temp upload directory so multer has somewhere to write
+const tempRoot = fs.mkdtempSync(
+  path.join(os.tmpdir(), "burntbeats-split-cb-"),
+);
+const uploadDir = path.join(tempRoot, "uploads");
+fs.mkdirSync(uploadDir, { recursive: true });
+process.env.UPLOAD_TMP_DIR = uploadDir;
 
-// stemServiceClient — the breaker.call mock is the heart of this test
-vi.mock("../../../lib/serviceClients.js", async (importOriginal) => {
-  const original = /** @type {any} */ (await importOriginal());
-  return {
-    ...original,
-    stemServiceClient: {
-      breaker: {
-        call: vi.fn(),
-      },
-    },
-  };
-});
+const stemOutputDir = path.join(tempRoot, "stems");
+fs.mkdirSync(stemOutputDir, { recursive: true });
+process.env.STEM_OUTPUT_DIR = stemOutputDir;
 
-// Skip malware scanning (no ClamAV in test env)
-vi.mock("../../../malwareScan.js", () => ({
-  scanUploadedFile: vi.fn().mockResolvedValue({ ok: true }),
-}));
+// Import the app and serviceClients AFTER env vars are set
+// NOTE: stemServiceClient is a module-level singleton. The monkey-patch pattern
+// below is safe because node --test runs each file in its own child process.
+// If test isolation changes, these tests would need per-request injection instead.
+const { app } = await import("../../../server.js");
+const { stemServiceClient, CircuitOpenError } = await import(
+  "../../../lib/serviceClients.js"
+);
 
-// Skip extension/magic-bytes sniff
-vi.mock("../../../uploadSniff.js", () => ({
-  verifyUploadMatchesExtension: vi.fn().mockReturnValue({ ok: true }),
-}));
+const request = supertest(app);
 
-// Skip DB writes
-vi.mock("../../../db-jobs.js", () => ({
-  insertJob: vi.fn().mockResolvedValue(undefined),
-  updateJobStatus: vi.fn().mockResolvedValue(undefined),
-}));
+// Enable trust proxy so X-Forwarded-For sets req.ip (used by rate limiter)
+app.set("trust proxy", true);
 
-// Skip Redis/Stripe client initialisation
-vi.mock("../../../stripeRedis.js", () => ({
-  getRedis: vi.fn().mockResolvedValue(null),
-}));
+// Bypass Clerk auth — return a stable user ID
+app.locals.verifyClerkBearer = async () => "user_cb_split_test";
 
-// ── Build a minimal Express app from just the split router ────────────────────
-// We do NOT import the full server.js to avoid DB/Redis connection side-effects.
-
-let testApp;
-let breakerCallMock;
-
-beforeAll(async () => {
-  // Import the mocked serviceClients to get a handle on the mock function
-  const { stemServiceClient } = await import("../../../lib/serviceClients.js");
-  breakerCallMock = stemServiceClient.breaker.call;
-
-  // Import the route (mocks are already registered above)
-  const { splitRouter } = await import("../split.js");
-
-  testApp = express();
-  testApp.use(express.json());
-  // Mount under /api/stems/split — same as the real server
-  testApp.use("/api/stems/split", splitRouter);
-});
-
-// ── Helper: minimal valid WAV buffer ──────────────────────────────────────────
+// ── Helper: minimal valid WAV buffer (1KB, structurally complete) ──────────────
 function minimalWavBuffer() {
-  const b = Buffer.alloc(12);
+  const dataSize = 960; // enough PCM silence to be structurally valid
+  const b = Buffer.alloc(44 + dataSize);
+  // RIFF header
   b.write("RIFF", 0);
-  b.writeUInt32LE(100, 4);
+  b.writeUInt32LE(36 + dataSize, 4);
   b.write("WAVE", 8);
+  // fmt sub-chunk
+  b.write("fmt ", 12);
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);         // PCM
+  b.writeUInt16LE(1, 22);         // mono
+  b.writeUInt32LE(44100, 24);     // sample rate
+  b.writeUInt32LE(88200, 28);     // byte rate
+  b.writeUInt16LE(2, 32);         // block align
+  b.writeUInt16LE(16, 34);        // bits per sample
+  // data sub-chunk (zeros = silence)
+  b.write("data", 36);
+  b.writeUInt32LE(dataSize, 40);
   return b;
 }
 
-// ── Property 1: CircuitOpenError → canonical 503 response ────────────────────
-/**
- * **Validates: Requirements 1.2**
- */
-describe("split.js — Property 1: CircuitOpenError produces canonical 503 response", () => {
-  it(
-    "returns 503 with Retry-After and non-empty error body for any retryAfter (1–300s)",
-    async () => {
-      const { CircuitOpenError } = await import("../../../lib/serviceClients.js");
+// ------------------------------------------------------------------
+// Property 1: CircuitOpenError → canonical 503 response
+// ------------------------------------------------------------------
+test("split.js — Property 1: CircuitOpenError → canonical 503", { timeout: 90_000 }, async () => {
+  let runIndex = 0;
 
-      await fc.assert(
-        fc.asyncProperty(
-          fc.integer({ min: 1, max: 300 }),
-          async (retryAfter) => {
-            // CircuitOpenError constructor takes resetTimeout in ms;
-            // .retryAfter = Math.ceil(resetTimeout / 1000) — so pass retryAfter * 1000
-            const err = new CircuitOpenError("stem_service", retryAfter * 1000);
+  await fc.assert(
+    fc.asyncProperty(
+      fc.integer({ min: 1, max: 300 }),
+      async (retryAfter) => {
+        runIndex++;
+        const octet3 = Math.floor(runIndex / 255);
+        const octet4 = (runIndex % 254) + 1;
+        const ip = `10.0.${octet3}.${octet4}`;
 
-            // Make breaker.call throw the circuit-open error this iteration
-            breakerCallMock.mockRejectedValueOnce(err);
+        // Save and replace breaker.call to throw CircuitOpenError
+        const originalCall = stemServiceClient.breaker.call.bind(
+          stemServiceClient.breaker,
+        );
+        stemServiceClient.breaker.call = async (_fn) => {
+          throw new CircuitOpenError("stem_service", retryAfter * 1000);
+        };
 
-            const res = await supertest(testApp)
-              .post("/api/stems/split")
-              .set("x-api-key", "test-key")
-              .field("stems", "2")
-              .attach("file", minimalWavBuffer(), "sample.wav");
+        try {
+          const res = await request
+            .post("/api/stems/split")
+            .set("X-Forwarded-For", ip)
+            .field("stems", "2")
+            .attach("file", minimalWavBuffer(), "sample.wav");
 
-            expect(res.status).toBe(503);
-            expect(res.headers["retry-after"]).toBe(String(retryAfter));
-            expect(typeof res.body.error).toBe("string");
-            expect(res.body.error.length).toBeGreaterThan(0);
-          }
-        ),
-        { numRuns: 100 }
-      );
-    },
-    // Generous timeout for 100 async HTTP iterations
-    90_000
+          // Status must be 503
+          assert.equal(
+            res.status,
+            503,
+            `Expected 503 for retryAfter=${retryAfter}, got ${res.status}`,
+          );
+
+          // Retry-After header must equal String(retryAfter)
+          assert.equal(
+            res.headers["retry-after"],
+            String(retryAfter),
+            `Expected Retry-After: ${retryAfter}, got ${res.headers["retry-after"]}`,
+          );
+
+          // Body must have a non-empty "error" string field
+          assert.ok(
+            res.body &&
+              typeof res.body.error === "string" &&
+              res.body.error.length > 0,
+            `Expected non-empty error string in body, got: ${JSON.stringify(res.body)}`,
+          );
+        } finally {
+          // Always restore the original call
+          stemServiceClient.breaker.call = originalCall;
+        }
+      },
+    ),
+    { numRuns: 100 },
   );
+});
+
+// ------------------------------------------------------------------
+// Cleanup
+// ------------------------------------------------------------------
+test.after(() => {
+  try {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  } catch {
+    // ignore cleanup errors
+  }
 });

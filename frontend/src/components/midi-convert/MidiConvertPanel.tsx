@@ -14,6 +14,7 @@ import { MidiSourcePreview } from "./MidiSourcePreview";
 import { MidiConvertSettings } from "./MidiConvertSettings";
 import { MidiConvertProgress } from "./MidiConvertProgress";
 import { MidiResultPanel } from "./MidiResultPanel";
+import { MidiLaneDrawer } from "./MidiLaneDrawer";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
 import { MidiExportDashboard } from "../library/MidiExportDashboard";
@@ -120,6 +121,10 @@ export function MidiConvertPanel({
 
   // Export ZIP state
   const [isExportingZip, setIsExportingZip] = useState(false);
+
+  // Drawer collapse states
+  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
 
   // Task 17.1: SuccessFlash — fires when result transitions from null to non-null
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
@@ -339,17 +344,13 @@ export function MidiConvertPanel({
       />
 
       {result && !isConverting ? (
-        <details className="group rounded-lg border border-border/50 bg-chrome/20">
-          <summary className="cursor-pointer list-none px-sm py-sm text-sm font-medium text-secondary-foreground [&::-webkit-details-marker]:hidden">
-            <span className="inline-flex items-center gap-xs">
-              Source and conversion settings
-              <span className="text-muted-foreground transition-transform group-open:rotate-90">
-                ›
-              </span>
-            </span>
-          </summary>
-          <div className="border-t border-border/40 px-sm pb-sm pt-sm">{sourceAndSettings}</div>
-        </details>
+        <MidiLaneDrawer
+          title="Source and conversion settings"
+          open={settingsDrawerOpen}
+          onToggle={() => setSettingsDrawerOpen((v) => !v)}
+        >
+          {sourceAndSettings}
+        </MidiLaneDrawer>
       ) : (
         <div className="midi-workspace-section">{sourceAndSettings}</div>
       )}
@@ -626,14 +627,13 @@ export function MidiConvertPanel({
       {/* Success flash — fires when conversion completes */}
       <SuccessFlash show={showSuccessFlash} onComplete={() => setShowSuccessFlash(false)} />
 
-      <details className="rounded-lg border border-border/50 bg-chrome/15">
-        <summary className="cursor-pointer px-sm py-sm text-sm font-medium text-muted-foreground hover:text-secondary-foreground">
-          Export history and batch jobs
-        </summary>
-        <div className="border-t border-border/40 p-sm">
-          <MidiExportDashboard />
-        </div>
-      </details>
+      <MidiLaneDrawer
+        title="Export history and batch jobs"
+        open={historyDrawerOpen}
+        onToggle={() => setHistoryDrawerOpen((v) => !v)}
+      >
+        <MidiExportDashboard />
+      </MidiLaneDrawer>
     </div>
   );
 }

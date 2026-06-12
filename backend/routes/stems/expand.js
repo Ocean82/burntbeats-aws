@@ -31,6 +31,15 @@ import {
 import { stemServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
 import { requireExpandEntitlements } from "./entitlements.js";
 
+// Bypass expand entitlements in test mode. Separate from TEST_BYPASS_PREMIUM_ENTITLEMENTS
+// (used by split) because server.test.js sets that flag but still expects expand to
+// require Clerk auth (expand is always premium-gated, unlike split which is conditional).
+const TEST_BYPASS_EXPAND_ENTITLEMENTS =
+  process.env.NODE_ENV === "test" &&
+  ["1", "true", "yes"].includes(
+    (process.env.TEST_BYPASS_EXPAND_ENTITLEMENTS || "").toLowerCase(),
+  );
+
 export const expandRouter = Router();
 
 expandRouter.post(
@@ -54,13 +63,15 @@ expandRouter.post(
 
     /** @type {string | null} */
     let entitlementUserId = null;
-    const entitlementCheck = await requireExpandEntitlements(req);
-    if (!entitlementCheck.ok) {
-      return res
-        .status(entitlementCheck.status)
-        .json({ error: entitlementCheck.error });
+    if (!TEST_BYPASS_EXPAND_ENTITLEMENTS) {
+      const entitlementCheck = await requireExpandEntitlements(req);
+      if (!entitlementCheck.ok) {
+        return res
+          .status(entitlementCheck.status)
+          .json({ error: entitlementCheck.error });
+      }
+      entitlementUserId = entitlementCheck.userId;
     }
-    entitlementUserId = entitlementCheck.userId;
 
     /** @type {string | null} */
     let usageUserId = entitlementUserId;

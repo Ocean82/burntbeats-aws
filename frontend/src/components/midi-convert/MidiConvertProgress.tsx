@@ -101,7 +101,7 @@ export function MidiConvertProgress({
                 "inline-flex items-center gap-1 rounded-md px-xs py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
                 isDone && "text-success bg-success-muted/30",
                 isPhaseActive && !isDone && "text-accent-midi-200 bg-accent-midi-950/40",
-                !isDone && !isPhaseActive && "text-muted-foreground/50",
+                !isDone && !isPhaseActive && "text-muted-foreground",
               )}
             >
               {isDone && <Check className="h-2.5 w-2.5" aria-hidden />}
