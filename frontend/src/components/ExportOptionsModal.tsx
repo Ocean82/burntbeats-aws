@@ -12,6 +12,8 @@ import { useModalA11y } from "../hooks/useModalA11y";
 import { useProductMotion } from "../motion/useProductMotion";
 import { useIsTouchDevice } from "../hooks/useIsTouchDevice";
 import { useEventBus } from "../store/eventBus";
+import { ErrorState } from "./ui/error-state";
+import { SuccessFlash } from "./ui/success-flash";
 
 /** Master export codecs exposed in-product. FLAC is deliberately omitted here: FLAC encoding is comparatively CPU-heavy for an AWS **CPU-only** stack; WAV (lossless) + MP3 meet current budgets. Keeping `"flac"` in this union preserves future guarded options without implying it ships today (`docs/roadmap/product-backlog.md`). */
 export type ExportFormat = "wav" | "mp3" | "flac";
@@ -20,7 +22,7 @@ export type ExportTarget = "master" | "stems" | "all";
 interface ExportOptionsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExport: (options: ExportOptions) => void;
+  onExport: (options: ExportOptions) => void | Promise<void>;
   isExporting: boolean;
   stemCount: number;
   /** When false, only a rendered master mix can be exported (no server stem file downloads). */
@@ -98,6 +100,8 @@ export function ExportOptionsModal({
     normalize: true,
     masteringPresetId: null,
   });
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [showSuccessFlash, setShowSuccessFlash] = useState(false);
   const [masteringPresets, setMasteringPresets] = useState<
     MasteringPresetSummary[] | null
   >(null);
@@ -137,6 +141,23 @@ export function ExportOptionsModal({
       setOptions((o) => o.format === "wav" ? { ...o, format: "mp3" } : o);
     }
   }, [isOpen, isTouchDevice]);
+
+  // Reset error and success flash state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setExportError(null);
+      setShowSuccessFlash(false);
+    }
+  }, [isOpen]);
+
+  const handleExport = async () => {
+    try {
+      await onExport(options);
+      setShowSuccessFlash(true);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const targetOptions = allowStemBundleTargets
     ? TARGET_OPTIONS_ALL
@@ -413,32 +434,51 @@ export function ExportOptionsModal({
                   </button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isExporting) void onExport(options);
-                  }}
-                  disabled={isExporting}
-                  aria-busy={isExporting}
-                  className="fire-button tap-feedback flex min-h-[44px] w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold focus-visible:outline-none disabled:pointer-events-none"
-                >
-                  {isExporting ? (
-                    <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-white" />
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      Export{" "}
-                      {options.target === "stems"
-                        ? `${stemCount} Stems`
-                        : options.target === "all"
-                          ? "All Files"
-                          : "Master"}
-                    </>
+                <>
+                  {exportError && (
+                    <ErrorState
+                      variant="server"
+                      title="Export failed"
+                      description={exportError}
+                      onRetry={() => {
+                        setExportError(null);
+                        void handleExport();
+                      }}
+                    />
                   )}
-                </button>
+                  <div className="flex items-center gap-sm">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isExporting) void handleExport();
+                      }}
+                      disabled={isExporting}
+                      aria-busy={isExporting}
+                      className="fire-button tap-feedback flex min-h-[44px] w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold focus-visible:outline-none disabled:pointer-events-none"
+                    >
+                      {isExporting ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-white" />
+                          Exporting...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="h-4 w-4" />
+                          Export{" "}
+                          {options.target === "stems"
+                            ? `${stemCount} Stems`
+                            : options.target === "all"
+                              ? "All Files"
+                              : "Master"}
+                        </>
+                      )}
+                    </button>
+                    <SuccessFlash
+                      show={showSuccessFlash}
+                      onComplete={() => setShowSuccessFlash(false)}
+                    />
+                  </div>
+                </>
               )}
             </motion.div>
           </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { collapseMotion } from "../../motion/presets";
 import { Music2, Settings2, RotateCcw } from "lucide-react";
@@ -25,7 +25,8 @@ import {
 } from "../../utils/splitIntent";
 import { SplitActions } from "./SplitActions";
 import { UsageTokenRow } from "./UsageTokenRow";
-import { SplitErrorAlert } from "./SplitErrorAlert";
+import { ErrorState } from "../ui/error-state";
+import { SuccessFlash } from "../ui/success-flash";
 import { NewSplitConfirmDialog } from "./NewSplitConfirmDialog";
 import { ExpandStemsAction } from "./ExpandStemsAction";
 import { SharePreviewButton } from "../SharePreviewButton";
@@ -94,6 +95,8 @@ export function ProcessingSettingsPanel({
   // Local override: user can re-expand the panel after auto-collapse
   const [userExpanded, setUserExpanded] = useState(false);
   const [showNewSplitConfirm, setShowNewSplitConfirm] = useState(false);
+  const [showSuccessFlash, setShowSuccessFlash] = useState(false);
+  const prevStemsLengthRef = useRef(0);
 
   const panelCollapsed = isCollapsed && !userExpanded;
   const collapsedMeta = formatUploadMeta({
@@ -109,6 +112,14 @@ export function ProcessingSettingsPanel({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset derived state on dependency change
     if (isCollapsed) setUserExpanded(false);
   }, [isCollapsed]);
+
+  // Fire SuccessFlash on the 0 → N transition of splitResultStemsLength
+  useEffect(() => {
+    if (splitResultStemsLength > 0 && prevStemsLengthRef.current === 0) {
+      setShowSuccessFlash(true);
+    }
+    prevStemsLengthRef.current = splitResultStemsLength;
+  }, [splitResultStemsLength]);
 
   const canChoosePaidQuality = stemQualityOptions !== "speed_only";
 
@@ -362,15 +373,18 @@ export function ProcessingSettingsPanel({
 
       {/* Error */}
       {splitError && (
-        <SplitErrorAlert
-          splitError={splitError}
-          onDismissError={onDismissError}
+        <ErrorState
+          variant="server"
+          title="Couldn't split this track"
+          description={splitError}
           onRetry={() => {
             onDismissError();
             onSplit(resolvedSplitIntent);
           }}
         />
       )}
+
+      <SuccessFlash show={showSuccessFlash} onComplete={() => setShowSuccessFlash(false)} />
           </motion.div>
         )}
       </AnimatePresence>

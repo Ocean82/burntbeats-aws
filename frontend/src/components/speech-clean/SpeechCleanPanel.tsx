@@ -1,4 +1,4 @@
-import { AlertCircle, Loader2, Mic2 } from "lucide-react";
+import { Loader2, Mic2 } from "lucide-react";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
 import { useEffect, useMemo } from "react";
 import { useSpeechEnhance } from "../../hooks/useSpeechEnhance";
@@ -9,6 +9,8 @@ import { UsageTokenRow } from "../processing-settings/UsageTokenRow";
 import { SpeechUploadZone } from "./SpeechUploadZone";
 import { SpeechEnhanceProgress } from "./SpeechEnhanceProgress";
 import { SpeechResultPlayer } from "./SpeechResultPlayer";
+import { ErrorState } from "../ui/error-state";
+import { EmptyState } from "../ui/empty-state";
 
 export interface SpeechCleanPanelProps {
   usageBalance?: number | null;
@@ -88,6 +90,15 @@ export function SpeechCleanPanel({
           e.target.value = "";
         }}
       />
+
+      {!uploadedFile && !outputUrl && !isEnhancing && (
+        <EmptyState
+          icon={<Mic2 className="h-6 w-6" />}
+          title="No enhancements yet"
+          description="Enhance a vocal or speech recording to get started"
+          action={{ label: "Enhance Audio", onClick: handleBrowse }}
+        />
+      )}
 
       <SpeechUploadZone
         uploadName={uploadName}
@@ -182,20 +193,12 @@ export function SpeechCleanPanel({
       />
 
       {error && (
-        <div
-          role="alert"
-          className="flex items-start gap-xs rounded-xl border border-destructive-500/35 bg-destructive-950/25 px-md py-sm text-sm text-destructive-200"
-        >
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-auto shrink-0 text-xs text-destructive-300/80 underline"
-          >
-            Dismiss
-          </button>
-        </div>
+        <ErrorState
+          variant="server"
+          title="Enhancement failed"
+          description={error}
+          onRetry={() => { setError(null); void triggerEnhance(); }}
+        />
       )}
 
       {outputUrl && !isEnhancing && (

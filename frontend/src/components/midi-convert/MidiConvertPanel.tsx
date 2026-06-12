@@ -3,8 +3,8 @@
  * Pattern matches SpeechCleanPanel: source → settings → action → progress → result.
  * Includes batch conversion support for converting all stems at once.
  */
-import { AlertCircle, Check, Download, Layers, Loader2, Music, RefreshCw, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Check, Download, Layers, Loader2, Music, Piano, RefreshCw, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useMidiConvert } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
 import { cn } from "../../utils/cn";
@@ -17,6 +17,9 @@ import { MidiResultPanel } from "./MidiResultPanel";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
 import { MidiExportDashboard } from "../library/MidiExportDashboard";
+import { ErrorState } from "../ui/error-state";
+import { EmptyState } from "../ui/empty-state";
+import { SuccessFlash } from "../ui/success-flash";
 import "./midi-tokens.css";
 
 export interface MidiConvertPanelProps {
@@ -117,6 +120,16 @@ export function MidiConvertPanel({
 
   // Export ZIP state
   const [isExportingZip, setIsExportingZip] = useState(false);
+
+  // Task 17.1: SuccessFlash — fires when result transitions from null to non-null
+  const [showSuccessFlash, setShowSuccessFlash] = useState(false);
+  const prevResultRef = useRef(result);
+  useEffect(() => {
+    if (result !== null && prevResultRef.current === null) {
+      setShowSuccessFlash(true);
+    }
+    prevResultRef.current = result;
+  }, [result]);
 
   const downloadAllAsZip = useCallback(async () => {
     const completedJobs = batchJobs.filter(
@@ -577,20 +590,22 @@ export function MidiConvertPanel({
 
       {/* Error */}
       {error && (
-        <div
-          role="alert"
-          className="flex items-start gap-xs rounded-xl border border-destructive-500/35 bg-destructive-950/25 px-md py-sm text-sm text-destructive-200"
-        >
-          <AlertCircle className="mt-2xs h-4 w-4 shrink-0" aria-hidden />
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="ml-auto shrink-0 text-xs text-destructive-300/80 underline"
-          >
-            Dismiss
-          </button>
-        </div>
+        <ErrorState
+          variant="server"
+          title="Conversion failed"
+          description={error}
+          onRetry={() => { setError(null); void triggerConvert(splitJobId); }}
+        />
+      )}
+
+      {/* Empty state — no source selected, not converting, no result, not in batch mode */}
+      {!hasSourceSelected && !isConverting && !result && !isBatchMode && (
+        <EmptyState
+          icon={<Piano className="h-6 w-6" />}
+          title="No conversions yet"
+          description="Convert an audio stem to MIDI to start your collection"
+          action={{ label: "Convert a Stem", onClick: handleBrowse }}
+        />
       )}
 
       {/* Result */}
@@ -607,6 +622,9 @@ export function MidiConvertPanel({
           }}
         />
       ) : null}
+
+      {/* Success flash — fires when conversion completes */}
+      <SuccessFlash show={showSuccessFlash} onComplete={() => setShowSuccessFlash(false)} />
 
       <details className="rounded-lg border border-border/50 bg-chrome/15">
         <summary className="cursor-pointer px-sm py-sm text-sm font-medium text-muted-foreground hover:text-secondary-foreground">

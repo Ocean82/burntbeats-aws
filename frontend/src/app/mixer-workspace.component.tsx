@@ -1,6 +1,8 @@
 import { Suspense, lazy, type RefObject } from "react";
+import { Music } from "lucide-react";
 import { cn } from "../utils/cn";
 import { Skeleton } from "../components/ui/skeleton";
+import { EmptyState } from "../components/ui/empty-state";
 import { useAudio } from "../contexts/AudioContext";
 import { useWorkflow } from "../contexts/WorkflowContext";
 import { useAppStore } from "../store/appStore";
@@ -89,6 +91,14 @@ export function MixerWorkspace({
 
   const inner = (
     <>
+      {mixStems.length === 0 && !isLoadingStems && (
+        <EmptyState
+          icon={<Music className="h-6 w-6" />}
+          title="No stems loaded"
+          description="Upload a track to start mixing your project"
+          action={{ label: "Upload Track", onClick: onExport }}
+        />
+      )}
       <ErrorBoundary
         fallback={
           <p className="text-sm text-destructive-300">

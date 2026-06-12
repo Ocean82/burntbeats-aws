@@ -23,12 +23,13 @@ import {
   ChevronUp,
   Clock,
   HardDrive,
-  RefreshCw,
   ArrowLeft,
   Loader2,
-  AlertCircle,
   SlidersHorizontal,
+  Archive,
 } from "lucide-react";
+import { EmptyState } from "./ui/empty-state";
+import { ErrorState } from "./ui/error-state";
 import { useStemHistory } from "../hooks/useStemHistory";
 import { useMidiHistory } from "../hooks/useMidiHistory";
 import { API_BASE } from "../config";
@@ -301,16 +302,12 @@ export function MyStemsPage({
   if (error) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-popover p-md">
-        <AlertCircle className="h-10 w-10 text-destructive-400" />
-        <p className="mt-sm text-sm text-secondary-foreground">{error}</p>
-        <button
-          onClick={refetch}
-          className="mt-md flex items-center gap-xs rounded-xl bg-primary-500/20 px-md py-sm text-sm font-medium text-primary-400 transition hover:bg-primary-500/30"
-          aria-label="Retry loading stems"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Try Again
-        </button>
+        <ErrorState
+          variant="server"
+          title="Couldn't load your stems"
+          description={error}
+          onRetry={refetch}
+        />
       </div>
     );
   }
@@ -332,23 +329,13 @@ export function MyStemsPage({
           </button>
           <h1 className="text-lg font-semibold text-foreground">My Stems</h1>
         </header>
-        <div className="flex flex-1 flex-col items-center justify-center p-md text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-500/10">
-            <Music className="h-8 w-8 text-primary-400" />
-          </div>
-          <h2 className="mt-md text-lg font-semibold text-foreground">
-            No stems yet
-          </h2>
-          <p className="text-readable text-readable-tight mt-xs text-sm text-muted-foreground">
-            Split your first track! Your separated stems will appear here for
-            easy re-download.
-          </p>
-          <button
-            onClick={onClose}
-            className="fire-button mt-lg rounded-xl px-lg py-sm text-sm font-semibold transition"
-          >
-            Go to Editor
-          </button>
+        <div className="flex flex-1 items-center justify-center p-md">
+          <EmptyState
+            icon={<Archive className="h-6 w-6" />}
+            title="No stems yet"
+            description="Split your first track — your separated stems will appear here for easy re-download"
+            action={{ label: "Split Your First Track", onClick: onClose }}
+          />
         </div>
       </div>
     );

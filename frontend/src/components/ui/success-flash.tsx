@@ -4,7 +4,7 @@
  * Use after completed actions (split done, export done, MIDI convert done)
  * to provide satisfying visual feedback that the operation succeeded.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "../../utils/cn";
 
@@ -26,16 +26,19 @@ export function SuccessFlash({
   className,
 }: SuccessFlashProps) {
   const [visible, setVisible] = useState(false);
+  // Stabilize onComplete reference to prevent timer resets on parent re-renders
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (!show) return;
     setVisible(true);
     const timer = setTimeout(() => {
       setVisible(false);
-      onComplete?.();
+      onCompleteRef.current?.();
     }, duration);
     return () => clearTimeout(timer);
-  }, [show, duration, onComplete]);
+  }, [show, duration]);
 
   if (!visible) return null;
 
