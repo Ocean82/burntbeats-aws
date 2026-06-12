@@ -1,10 +1,14 @@
 /**
  * Job status polling and SSE streaming for stem separation jobs.
+ *
+ * Uses fetchWithRetry for transient failure resilience (502/503/504 + network errors).
+ * Polling pauses automatically when the browser goes offline and resumes on reconnection.
  */
 import { API_BASE } from "../config";
 import { authHeaders, jobTokenHeader } from "./auth";
 import { tryParseJson, getApiErrorMessage, isStemJobStatusValue } from "./validation";
 import { userFacingHttpError } from "../userFacingError";
+import { fetchWithRetry } from "./retry";
 import type { StemJobStatus } from "./types";
 
 const STATUS_POLL_INTERVAL_MS = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 1500;
@@ -12,10 +16,27 @@ const STATUS_POLL_INTERVAL_MS = Number(import.meta.env.VITE_STATUS_POLL_INTERVAL
 // so users get eventual completion instead of a false timeout.
 const STATUS_POLL_MAX_MS = Number(import.meta.env.VITE_STATUS_POLL_MAX_MS) || 30 * 60 * 1000;
 
-export async function getStemJobStatus(jobId: string): Promise<StemJobStatus> {
-  const res = await fetch(`${API_BASE}/api/stems/status/${jobId}`, {
-    headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
+/** Wait until the browser reports online status. Resolves immediately if already online. */
+function waitForOnline(): Promise<void> {
+  if (typeof navigator === "undefined" || navigator.onLine) return Promise.resolve();
+  return new Promise((resolve) => {
+    const handler = () => {
+      window.removeEventListener("online", handler);
+      resolve();
+    };
+    window.addEventListener("online", handler);
   });
+}
+
+export async function getStemJobStatus(jobId: string): Promise<StemJobStatus> {
+  // Pause if offline — don't burn through retries while disconnected
+  await waitForOnline();
+
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/stems/status/${jobId}`,
+    { headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) } },
+    { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
+  );
   if (!res.ok) {
     if (res.status === 404) throw new Error("Job not found");
     const t = await res.text();
@@ -45,6 +66,9 @@ export async function pollStemJobUntilDone(
   const maxBackoffMs = 10000;
 
   while (Date.now() - start < STATUS_POLL_MAX_MS) {
+    // Pause polling while offline — don't count offline time toward timeout
+    await waitForOnline();
+
     try {
       const status = await getStemJobStatus(jobId);
       consecutive404 = 0;
@@ -68,12 +92,16 @@ export async function pollStemJobUntilDone(
  * Stream job progress via SSE (fetch + ReadableStream) until completed or failed.
  * Falls back to polling if the stream cannot be established or encounters an error.
  *
- * Uses fetch instead of EventSource so Authorization and x-job-token headers are sent.
+ * Uses fetchWithRetry for the initial connection so Authorization and x-job-token headers are sent.
+ * Waits for online status before attempting the connection.
  */
 export async function streamStemJobUntilDone(
   jobId: string,
   onProgress: (status: StemJobStatus) => void
 ): Promise<StemJobStatus> {
+  // Don't attempt SSE while offline
+  await waitForOnline();
+
   const url = `${API_BASE}/api/stems/status/${jobId}/stream`;
   const headers: Record<string, string> = {
     ...(await authHeaders()),
@@ -83,7 +111,11 @@ export async function streamStemJobUntilDone(
 
   let response: Response;
   try {
-    response = await fetch(url, { headers });
+    response = await fetchWithRetry(
+      url,
+      { headers },
+      { maxAttempts: 2, baseDelay: 500, retryOn: [502, 503, 504] },
+    );
   } catch {
     // Network error — fall back to polling
     return pollStemJobUntilDone(jobId, onProgress);

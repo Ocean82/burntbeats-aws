@@ -4,6 +4,7 @@
  */
 import { API_BASE } from "../config";
 import { authHeaders } from "./auth";
+import { fetchWithRetry } from "./retry";
 
 export interface StemFileRecord {
   stem_name: string;
@@ -46,9 +47,9 @@ export async function fetchStemHistory(opts?: {
   const qs = params.toString();
   const url = `${API_BASE}/api/stems/history${qs ? `?${qs}` : ""}`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     headers: await authHeaders(),
-  });
+  }, { maxAttempts: 2, retryOn: [502, 503, 504] });
 
   if (!res.ok) {
     if (res.status === 401)
@@ -73,9 +74,9 @@ export async function fetchStemDownloadUrl(
   const params = new URLSearchParams({ job_id: jobId, stem_name: stemName });
   const url = `${API_BASE}/api/stems/history/download?${params.toString()}`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     headers: await authHeaders(),
-  });
+  }, { maxAttempts: 2, retryOn: [502, 503, 504] });
 
   if (!res.ok) {
     if (res.status === 404) throw new Error("Stem not available for download");

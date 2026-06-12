@@ -3,6 +3,7 @@
  */
 import { API_BASE } from "../config";
 import { authHeaders } from "./auth";
+import { fetchWithRetry } from "./retry";
 
 export interface RenderNote {
   pitch: number;
@@ -56,14 +57,18 @@ export interface RenderJobAccepted {
 }
 
 export async function submitRenderJob(request: RenderRequest): Promise<RenderJobAccepted> {
-  const res = await fetch(`${API_BASE}/api/midi/render`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/midi/render`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeaders()),
+      },
+      body: JSON.stringify(request),
     },
-    body: JSON.stringify(request),
-  });
+    { maxAttempts: 2, retryOn: [502, 503, 504] },
+  );
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     let detail: string;
@@ -79,9 +84,11 @@ export async function submitRenderJob(request: RenderRequest): Promise<RenderJob
 }
 
 export async function getRenderJobStatus(jobId: string): Promise<RenderJobStatus> {
-  const res = await fetch(`${API_BASE}/api/midi/render/status/${jobId}`, {
-    headers: await authHeaders(),
-  });
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/midi/render/status/${jobId}`,
+    { headers: await authHeaders() },
+    { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
+  );
   if (!res.ok) {
     throw new Error(`Render status failed: HTTP ${res.status}`);
   }

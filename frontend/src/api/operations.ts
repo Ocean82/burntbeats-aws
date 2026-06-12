@@ -7,6 +7,8 @@ import { tryParseJson, getApiErrorMessage, isAcceptedJobIdResponse } from "./val
 import { userFacingApiError, userFacingHttpError } from "../userFacingError";
 import { streamStemJobUntilDone } from "./jobStatus";
 import { uploadWithProgress, type UploadProgressEvent } from "../utils/uploadWithProgress";
+import { apiPost } from "./client";
+import { fetchWithRetry } from "./retry";
 import type { SplitIntent } from "@shared/types";
 import type { SplitResponse, SplitQuality, StemJobStatus, ServerExportMasterRequest } from "./types";
 import { withIntentQuality } from "../utils/splitIntent";
@@ -15,19 +17,15 @@ const SPLIT_ACCEPT_TIMEOUT_MS = Number(import.meta.env.VITE_SPLIT_ACCEPT_TIMEOUT
 
 /** Get presigned S3 upload URL. */
 export async function getUploadUrl(filename: string, contentType: string): Promise<{ upload_url: string; s3_key: string; job_id: string }> {
-  const res = await fetch(`${API_BASE}/api/stems/upload-url`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
-    },
-    body: JSON.stringify({ filename, contentType }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to get upload URL: ${res.status} ${text}`);
+  const result = await apiPost<{ upload_url: string; s3_key: string; job_id: string }>(
+    "/api/stems/upload-url",
+    { filename, contentType },
+    { retry: { maxAttempts: 2, retryOn: [502, 503, 504] } },
+  );
+  if (result.error || !result.data) {
+    throw new Error(result.error || `Failed to get upload URL: ${result.status}`);
   }
-  return res.json();
+  return result.data;
 }
 
 /** Start stem separation; returns job_id. Separation runs in background. */
@@ -185,15 +183,19 @@ export async function startExpand(
   quality?: SplitQuality
 ): Promise<{ job_id: string }> {
   const body = JSON.stringify({ job_id: jobId, quality: quality ?? "quality" });
-  const res = await fetch(`${API_BASE}/api/stems/expand`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
-      ...jobTokenHeader(jobId),
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/stems/expand`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeaders()),
+        ...jobTokenHeader(jobId),
+      },
+      body,
     },
-    body,
-  });
+    { maxAttempts: 2, retryOn: [502, 503, 504] },
+  );
   if (!res.ok) {
     const text = await res.text();
     const ct = res.headers.get("content-type") || "";
@@ -234,14 +236,18 @@ export async function expandStems(
  * When **USAGE_TOKENS_ENABLED**, the backend debits tokens (minute basis — same contract as split/expand). Returns a WAV `Blob`; callers may fall back to client render on 404. See **`docs/BILLING-AND-TOKENS.md`** / **`ARCHITECTURE-FLOW.md`**.
  */
 export async function serverExportMasterWav(request: ServerExportMasterRequest): Promise<Blob> {
-  const res = await fetch(`${API_BASE}/api/stems/server-export`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/stems/server-export`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(await authHeaders()),
+      },
+      body: JSON.stringify(request),
     },
-    body: JSON.stringify(request),
-  });
+    { maxAttempts: 2, retryOn: [502, 503, 504] },
+  );
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");

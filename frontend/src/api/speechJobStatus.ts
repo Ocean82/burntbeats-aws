@@ -3,16 +3,33 @@ import { authHeaders, jobTokenHeader } from "./auth";
 import { tryParseJson, getApiErrorMessage } from "./validation";
 import { isSpeechJobStatusValue } from "./speechValidation";
 import { userFacingHttpError } from "../userFacingError";
+import { fetchWithRetry } from "./retry";
 import type { SpeechJobStatus } from "./speechTypes";
 
 const POLL_INTERVAL_MS =
   Number(import.meta.env.VITE_STATUS_POLL_INTERVAL_MS) || 1500;
 const POLL_MAX_MS = Number(import.meta.env.VITE_STATUS_POLL_MAX_MS) || 10 * 60 * 1000;
 
-export async function getSpeechJobStatus(jobId: string): Promise<SpeechJobStatus> {
-  const res = await fetch(`${API_BASE}/api/speech/status/${jobId}`, {
-    headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
+/** Wait until the browser reports online status. Resolves immediately if already online. */
+function waitForOnline(): Promise<void> {
+  if (typeof navigator === "undefined" || navigator.onLine) return Promise.resolve();
+  return new Promise((resolve) => {
+    const handler = () => {
+      window.removeEventListener("online", handler);
+      resolve();
+    };
+    window.addEventListener("online", handler);
   });
+}
+
+export async function getSpeechJobStatus(jobId: string): Promise<SpeechJobStatus> {
+  await waitForOnline();
+
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/speech/status/${jobId}`,
+    { headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) } },
+    { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
+  );
   if (!res.ok) {
     if (res.status === 404) throw new Error("Job not found");
     const t = await res.text();
@@ -38,6 +55,8 @@ export async function pollSpeechJobUntilDone(
   let backoffMs = POLL_INTERVAL_MS;
 
   while (Date.now() - start < POLL_MAX_MS) {
+    await waitForOnline();
+
     const status = await getSpeechJobStatus(jobId);
     requestAnimationFrame(() => onProgress(status));
     if (status.status === "completed" || status.status === "failed") return status;

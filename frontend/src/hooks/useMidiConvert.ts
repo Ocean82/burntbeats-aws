@@ -5,6 +5,7 @@
  */
 import { useCallback, useMemo, useRef, useState } from "react";
 import { authHeaders, setJobToken as storeJobToken } from "../api/auth";
+import { fetchWithRetry } from "../api/retry";
 import { trackEvent } from "../analytics/events";
 import {
   API_BASE,
@@ -390,11 +391,16 @@ export function useMidiConvert() {
   const pollStatus = useCallback(
     (jobId: string, token: string) => {
       const poll = async () => {
+        // Skip poll tick while offline — the interval keeps running but does nothing
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
         try {
           const headers = await authHeaders();
-          const res = await fetch(`${API_BASE}/api/midi/status/${jobId}`, {
-            headers: { ...headers, "x-job-token": token },
-          });
+          const res = await fetchWithRetry(
+            `${API_BASE}/api/midi/status/${jobId}`,
+            { headers: { ...headers, "x-job-token": token } },
+            { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
+          );
           if (!res.ok) {
             const data = await res.json().catch(() => ({}));
             throw new Error(
@@ -672,10 +678,20 @@ export function useMidiConvert() {
       let polls = 0;
 
       while (polls < MAX_POLLS) {
+        // Pause while offline — don't count toward MAX_POLLS
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          await new Promise<void>((resolve) => {
+            const handler = () => { window.removeEventListener("online", handler); resolve(); };
+            window.addEventListener("online", handler);
+          });
+        }
+
         const headers = await authHeaders();
-        const res = await fetch(`${API_BASE}/api/midi/status/${jobId}`, {
-          headers: { ...headers, "x-job-token": token },
-        });
+        const res = await fetchWithRetry(
+          `${API_BASE}/api/midi/status/${jobId}`,
+          { headers: { ...headers, "x-job-token": token } },
+          { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
+        );
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           throw new Error(data.error || `Status check failed (${res.status})`);
