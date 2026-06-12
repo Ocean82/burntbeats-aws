@@ -401,6 +401,7 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
     nextStepTimeRef.current = ctx.currentTime + 0.05;
     setPlaying(true);
     scheduleStep(ctx, output);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- options is a stable object ref; including it causes infinite re-creation
   }, [stop, scheduleStep, options?.getAudioContext, options?.getOutputNode]);
 
   // ─── Return ───────────────────────────────────────────────────

@@ -94,6 +94,7 @@ export function useOverlayTransport(
 
   useEffect(() => {
     if (!activePattern) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronous derived state from external pattern prop; must stay in sync
       setEffectivePattern(null);
       patternRef.current = null;
       return;
@@ -212,6 +213,7 @@ export function useOverlayTransport(
   useEffect(() => {
     if (playing && ctx && overlayGainNode) {
       // Start overlay scheduler when transport starts
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- scheduler lifecycle must be synchronous with transport state transitions
       stopScheduler();
       startScheduler(ctx, overlayGainNode);
     } else {

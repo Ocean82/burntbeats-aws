@@ -141,6 +141,7 @@ export function useMasterBus(): UseMasterBusReturn {
 
   // ─── Return ───────────────────────────────────────────────────
 
+  /* eslint-disable react-hooks/refs -- Web Audio nodes are stable singleton refs; consumers need synchronous access for AudioContext operations */
   return {
     audioContext: ctxRef.current,
     gridGainNode: gridGainRef.current,
@@ -154,4 +155,5 @@ export function useMasterBus(): UseMasterBusReturn {
     getGridGainNode,
     getOverlayGainNode,
   };
+  /* eslint-enable react-hooks/refs */
 }
