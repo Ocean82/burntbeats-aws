@@ -28,6 +28,7 @@ import {
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
+import { stemServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
 import { requireExpandEntitlements } from "./entitlements.js";
 
 export const expandRouter = Router();
@@ -92,9 +93,11 @@ expandRouter.post(
     form.append("job_id", jobId);
     if (quality) form.append("quality", quality);
     try {
-      const data = await proxyFormRequest("/expand", form, {
-        correlationId: /** @type {any} */ (req).correlationId,
-      });
+      const data = await stemServiceClient.breaker.call(() =>
+        proxyFormRequest("/expand", form, {
+          correlationId: /** @type {any} */ (req).correlationId,
+        })
+      );
       if (data.statusCode === 202) {
         const newJobId = data.data.job_id;
         // Record expand job in database (non-blocking)
@@ -122,6 +125,12 @@ expandRouter.post(
       }
       return res.status(data.statusCode).json(data.data);
     } catch (e) {
+      if (e instanceof CircuitOpenError) {
+        res.set("Retry-After", String(e.retryAfter));
+        return res.status(503).json({
+          error: "Service temporarily unavailable. Try again in 30s.",
+        });
+      }
       await handleProxyError(e, res, "[POST /api/stems/expand]", {
         usageReserved,
         usageUserId,

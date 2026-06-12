@@ -145,6 +145,7 @@ export function ExportOptionsModal({
   // Reset error and success flash state when modal closes
   useEffect(() => {
     if (!isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset of derived UI state when modal unmounts
       setExportError(null);
       setShowSuccessFlash(false);
     }

@@ -39,6 +39,7 @@ import {
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
+import { stemServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
 import { parseSplitRequestBody } from "../../helpers/splitIntent.js";
 import { normalizeStemQuality } from "../../helpers/stemQuality.js";
 import {
@@ -241,10 +242,12 @@ splitRouter.post(
     if (isSample) form.append("sample", "true");
 
     try {
-      const data = await proxyFormRequest("/split", form, {
-        timeoutMs: SPLIT_ACCEPT_TIMEOUT_MS,
-        correlationId: /** @type {any} */ (req).correlationId,
-      });
+      const data = await stemServiceClient.breaker.call(() =>
+        proxyFormRequest("/split", form, {
+          timeoutMs: SPLIT_ACCEPT_TIMEOUT_MS,
+          correlationId: /** @type {any} */ (req).correlationId,
+        })
+      );
 
       if (data.statusCode === 202) {
         const jobId = data.data.job_id;
@@ -286,6 +289,12 @@ splitRouter.post(
       }));
       res.json(d);
     } catch (e) {
+      if (e instanceof CircuitOpenError) {
+        res.set("Retry-After", String(e.retryAfter));
+        return res.status(503).json({
+          error: "Service temporarily unavailable. Try again in 30s.",
+        });
+      }
       await handleProxyError(e, res, "[POST /api/stems/split]", {
         usageReserved,
         usageUserId,

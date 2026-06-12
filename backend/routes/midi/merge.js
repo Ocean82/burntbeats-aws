@@ -7,6 +7,10 @@ import { Router } from "express";
 import http from "http";
 
 import { authMiddleware } from "../../middleware/auth.js";
+import { midiServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
+import { createRedisRateLimiter } from "../../lib/redisRateLimiter.js";
+import { createMemoryRateLimitStore } from "../../lib/memoryRateLimitStore.js";
+import { getRedis } from "../../lib/redisClient.js";
 import {
   MIDI_SERVICE_URL,
   readMidiJobMetadata,
@@ -16,7 +20,51 @@ import {
 
 export const midiMergeRouter = Router();
 
-midiMergeRouter.post("/", authMiddleware, async (req, res) => {
+// ── Rate limiter: isolated to the merge route ────────────────────────────────
+const MIDI_MERGE_WINDOW_MS = 60_000;
+const MIDI_MERGE_MAX_REQUESTS = 5;
+
+const midiMergeMemoryStore = createMemoryRateLimitStore({ name: "midi-merge" });
+const redisMidiMergeLimiter = createRedisRateLimiter({
+  windowMs: MIDI_MERGE_WINDOW_MS,
+  maxRequests: MIDI_MERGE_MAX_REQUESTS,
+  keyPrefix: "rl:midi-merge",
+});
+
+// Prune expired entries every 2 minutes to prevent unbounded memory growth
+// when Redis is unavailable and the in-memory store is actively used.
+const MIDI_MERGE_PRUNE_INTERVAL_MS = 120_000;
+setInterval(() => midiMergeMemoryStore.pruneAll(), MIDI_MERGE_PRUNE_INTERVAL_MS).unref();
+
+/**
+ * @param {import("express").Request} req
+ * @param {import("express").Response} res
+ * @param {import("express").NextFunction} next
+ */
+async function midiMergeRateLimitMiddleware(req, res, next) {
+  try {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const redis = await getRedis();
+    if (redis?.isOpen) {
+      const result = await redisMidiMergeLimiter(ip);
+      if (!result.allowed) {
+        res.set("Retry-After", String(Math.ceil(MIDI_MERGE_WINDOW_MS / 1000)));
+        return res.status(429).json({ error: "Too many requests. Please slow down." });
+      }
+      return next();
+    }
+    const mem = midiMergeMemoryStore.check(ip, MIDI_MERGE_WINDOW_MS, MIDI_MERGE_MAX_REQUESTS);
+    if (!mem.allowed) {
+      res.set("Retry-After", String(mem.retryAfterSec));
+      return res.status(429).json({ error: "Too many requests. Please slow down." });
+    }
+    next();
+  } catch {
+    next(); // fail open on internal error
+  }
+}
+
+midiMergeRouter.post("/", midiMergeRateLimitMiddleware, authMiddleware, async (req, res) => {
   const { jobs, bpm } = req.body || {};
 
   if (!jobs || !Array.isArray(jobs) || jobs.length === 0) {
@@ -80,40 +128,42 @@ midiMergeRouter.post("/", authMiddleware, async (req, res) => {
 
     const payload = JSON.stringify({ jobs, bpm: bpm || 120 });
 
-    const result = await new Promise((resolve, reject) => {
-      const proxyReq = http.request(
-        {
-          hostname: url.hostname,
-          port: url.port,
-          path: url.pathname,
-          method: "POST",
-          headers: {
-            ...headers,
-            "Content-Length": Buffer.byteLength(payload),
+    const result = await midiServiceClient.breaker.call(() =>
+      new Promise((resolve, reject) => {
+        const proxyReq = http.request(
+          {
+            hostname: url.hostname,
+            port: url.port,
+            path: url.pathname,
+            method: "POST",
+            headers: {
+              ...headers,
+              "Content-Length": Buffer.byteLength(payload),
+            },
           },
-        },
-        (proxyRes) => {
-          const chunks = [];
-          proxyRes.on("data", (d) => chunks.push(d));
-          proxyRes.on("end", () => {
-            const body = Buffer.concat(chunks);
-            resolve({
-              statusCode: proxyRes.statusCode || 500,
-              headers: proxyRes.headers,
-              body,
+          (proxyRes) => {
+            const chunks = [];
+            proxyRes.on("data", (d) => chunks.push(d));
+            proxyRes.on("end", () => {
+              const body = Buffer.concat(chunks);
+              resolve({
+                statusCode: proxyRes.statusCode || 500,
+                headers: proxyRes.headers,
+                body,
+              });
             });
-          });
-          proxyRes.on("error", reject);
-        },
-      );
-      proxyReq.on("error", reject);
-      proxyReq.setTimeout(30_000, () => {
-        proxyReq.destroy();
-        reject(new Error("TimeoutError"));
-      });
-      proxyReq.write(payload);
-      proxyReq.end();
-    });
+            proxyRes.on("error", reject);
+          },
+        );
+        proxyReq.on("error", reject);
+        proxyReq.setTimeout(30_000, () => {
+          proxyReq.destroy();
+          reject(new Error("TimeoutError"));
+        });
+        proxyReq.write(payload);
+        proxyReq.end();
+      })
+    );
 
     if (result.statusCode !== 200) {
       // Try to parse error from Python service
@@ -137,6 +187,12 @@ midiMergeRouter.post("/", authMiddleware, async (req, res) => {
     res.setHeader("X-Merge-Tracks", trackCount);
     return res.send(result.body);
   } catch (e) {
+    if (e instanceof CircuitOpenError) {
+      res.set("Retry-After", String(e.retryAfter));
+      return res.status(503).json({
+        error: "Service temporarily unavailable. Try again in 30s.",
+      });
+    }
     const err = e && typeof e === "object" ? e : { message: String(e) };
     console.error("[POST /api/midi/merge] proxy error:", err.message);
 

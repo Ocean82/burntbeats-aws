@@ -63,7 +63,6 @@ vi.mock("../../contexts/WorkflowContext", () => ({
 
 // Control mixStems via this variable
 let mockMixStems: Array<{ id: string; url: string }> = [];
-let mockIsLoadingStems = false;
 
 vi.mock("../../hooks/workflow/useResolvedStems", () => ({
   useResolvedStems: () => ({
@@ -140,14 +139,12 @@ function makeMixerWorkspaceProps(
 
 describe("MixerWorkspace EmptyState wiring", () => {
   beforeEach(() => {
-    // Reset to empty / not-loading defaults before each test
+    // Reset to empty defaults before each test
     mockMixStems = [];
-    mockIsLoadingStems = false;
   });
 
   it("renders EmptyState with 'No stems loaded' when mixStems is empty and not loading", () => {
     mockMixStems = [];
-    mockIsLoadingStems = false;
 
     render(<MixerWorkspace {...makeMixerWorkspaceProps()} />);
 
@@ -156,7 +153,6 @@ describe("MixerWorkspace EmptyState wiring", () => {
 
   it("does NOT render EmptyState when mixStems has entries", () => {
     mockMixStems = [{ id: "vocals", url: "blob:vocals" }];
-    mockIsLoadingStems = false;
 
     render(<MixerWorkspace {...makeMixerWorkspaceProps()} />);
 

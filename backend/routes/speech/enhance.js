@@ -13,6 +13,7 @@ import {
 import { getPool } from "../../db.js";
 import { insertJob } from "../../db-jobs.js";
 import { proxySpeechFormRequest } from "../../middleware/proxy.js";
+import { speechServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
 import { upload, MAX_UPLOAD_MB } from "../../middleware/upload.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 import { scanUploadedFile } from "../../malwareScan.js";
@@ -107,10 +108,12 @@ enhanceRouter.post(
       form.append("denoise", denoise);
       form.append("batch", batch);
 
-      const { statusCode, data } = await proxySpeechFormRequest("/enhance", form, {
-        timeoutMs: SPEECH_ACCEPT_TIMEOUT_MS,
-        correlationId: /** @type {any} */ (req).correlationId,
-      });
+      const { statusCode, data } = await speechServiceClient.breaker.call(() =>
+        proxySpeechFormRequest("/enhance", form, {
+          timeoutMs: SPEECH_ACCEPT_TIMEOUT_MS,
+          correlationId: /** @type {any} */ (req).correlationId,
+        })
+      );
 
       if (statusCode !== 202 || !data?.job_id) {
         return res.status(502).json({ error: "Speech service did not accept the job" });
@@ -171,6 +174,12 @@ enhanceRouter.post(
         } catch {
           /* ignore refund errors */
         }
+      }
+      if (e instanceof CircuitOpenError) {
+        res.set("Retry-After", String(e.retryAfter));
+        return res.status(503).json({
+          error: "Service temporarily unavailable. Try again in 30s.",
+        });
       }
       if (isProxyHttpError(e)) {
         return res

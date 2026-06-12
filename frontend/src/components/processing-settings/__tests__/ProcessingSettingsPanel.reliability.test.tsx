@@ -11,8 +11,8 @@ import type React from "react";
 import { ProcessingSettingsPanel } from "../ProcessingSettingsPanel";
 
 // ── framer-motion: render children inline, skip animation ──────────────────
-vi.mock("framer-motion", () => {
-  const React = require("react");
+vi.mock("framer-motion", async () => {
+  const React = await import("react");
   return {
     motion: {
       div: ({ children, ...rest }: React.ComponentPropsWithoutRef<"div">) =>
@@ -62,7 +62,7 @@ vi.mock("../../SharePreviewButton", () => ({
 }));
 vi.mock("../../ui/SegmentedControl", () => ({
   SegmentedControl: ({
-    value,
+    value: _value,
     onChange,
     options,
   }: {

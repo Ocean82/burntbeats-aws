@@ -28,7 +28,9 @@ export function SuccessFlash({
   const [visible, setVisible] = useState(false);
   // Stabilize onComplete reference to prevent timer resets on parent re-renders
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  });
 
   useEffect(() => {
     if (!show) return;

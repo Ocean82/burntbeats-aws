@@ -35,6 +35,7 @@ import {
   withMidiServiceAuthHeader,
   handleMidiProxyError,
 } from "./shared.js";
+import { midiServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
 import { resolveStemJobPath } from "../stems/shared.js";
 import { isSafePathSegment, resolvePathWithinBase } from "../../helpers/safePath.js";
 
@@ -224,15 +225,17 @@ midiConvertRouter.post(
       }
       if (usageUserId) form.append("user_id", usageUserId);
 
-      const { statusCode, data } = await proxyFormRequestTo(
-        MIDI_SERVICE_URL,
-        "/convert",
-        form,
-        {
-          timeoutMs: MIDI_ACCEPT_TIMEOUT_MS,
-          authHeaderFn: withMidiServiceAuthHeader,
-          correlationId: /** @type {any} */ (req).correlationId,
-        },
+      const { statusCode, data } = await midiServiceClient.breaker.call(() =>
+        proxyFormRequestTo(
+          MIDI_SERVICE_URL,
+          "/convert",
+          form,
+          {
+            timeoutMs: MIDI_ACCEPT_TIMEOUT_MS,
+            authHeaderFn: withMidiServiceAuthHeader,
+            correlationId: /** @type {any} */ (req).correlationId,
+          },
+        )
       );
 
       if (statusCode !== 202 || !data?.job_id) {
@@ -289,6 +292,12 @@ midiConvertRouter.post(
       }
       return res.status(202).json(response);
     } catch (e) {
+      if (e instanceof CircuitOpenError) {
+        res.set("Retry-After", String(e.retryAfter));
+        return res.status(503).json({
+          error: "Service temporarily unavailable. Try again in 30s.",
+        });
+      }
       await handleMidiProxyError(e, res, "[POST /api/midi/convert]", {
         usageReserved,
         usageUserId,

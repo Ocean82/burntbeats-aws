@@ -10,7 +10,7 @@
  *   const result = await breaker.call(() => fetch(url));
  */
 
-import { getRedis } from "../stripeRedis.js";
+import { getRedis } from "./redisClient.js";
 
 /** @enum {string} */
 const State = /** @type {const} */ ({
