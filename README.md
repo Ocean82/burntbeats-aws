@@ -14,7 +14,7 @@ End users of the public site do not read this repo; this file is for **direction
 
 | Layer | Role |
 |-------|------|
-| **`frontend/`** | Upload, plan gating, polling, waveforms, mixer (Web Audio), export (**WAV**, **MP3**, **ZIP** of job stems; optional **server master** when env flags allow). Audio-to-MIDI conversion UI with piano roll, batch conversion, and interactive note editor. Clerk + Stripe.js. |
+| **`frontend/`** | Upload, plan gating, polling, waveforms, mixer (Web Audio), export (**WAV**, **MP3**, **ZIP** of job stems; optional **server master** when env flags allow). Audio-to-MIDI conversion UI with piano roll, batch conversion, and interactive note editor. **Beat maker** with 8-row step sequencer, velocity (ghost/normal/accent), swing, variable pattern length (16/32/64 steps), per-row mute/solo, genre preset Pattern Library with overlay transport, variation generators (fill/breakdown/buildup), and master bus volume controls. Clerk + Stripe.js. |
 | **`backend/`** | Auth/usage, proxy to stem/speech/midi services, **`/api/stems/file`**, presigned S3 redirects, billing webhooks, malware scan hooks, rate limits, optional **`POST /api/stems/server-export`**. |
 | **`stem_service/`** | FastAPI (port 5000): **2-stem** default, **expand to 4**, quality modes, SCNet / hybrid Demucs paths (**see `docs/stem-pipeline.md`** — single source of truth for routing). Optional S3 upload after job. |
 | **`speech_service/`** | FastAPI (port 5001): LavaSR-based speech enhancement/denoising. Single-worker async queue, CPU inference (PyTorch). Requires model weights in **`speech_models/`**. |

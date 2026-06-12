@@ -1,3 +1,5 @@
+> **STATUS: COMPLETE — TEMP folder has been cleaned (June 2026). This document is archived for reference only.**
+
 # TEMP inventory and Tier decisions
 
 Assessment source: TEMP and Stack Assessment plan (2026-06-03). TEMP lives at `d:\burntbeats-aws\TEMP` (gitignored via `temp/`).
