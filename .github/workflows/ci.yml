@@ -19,7 +19,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend deps
         working-directory: frontend
-        run: npm ci
+        run: npm ci --ignore-optional
       - name: Frontend npm audit
         working-directory: frontend
         run: npm audit --audit-level=high
@@ -63,7 +63,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - name: Install backend deps
         working-directory: backend
-        run: npm ci
+        run: npm ci --ignore-optional
       - name: Backend npm audit
         working-directory: backend
         run: npm audit --audit-level=high
