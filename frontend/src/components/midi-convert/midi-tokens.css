@@ -797,6 +797,55 @@
     background: var(--midi-surface);
 }
 
+/* Phase 2.3: One-time gold border glow pulse on conversion complete */
+.midi-result-surface--glow {
+    animation: midi-result-glow 1.5s ease-out forwards;
+}
+
+@keyframes midi-result-glow {
+    0% {
+        box-shadow: 0 0 0 0 rgba(205, 165, 60, 0.4), 0 0 16px rgba(205, 165, 60, 0.2);
+        border-color: rgba(205, 165, 60, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 0 3px rgba(205, 165, 60, 0.15), 0 0 24px rgba(205, 165, 60, 0.12);
+        border-color: rgba(205, 165, 60, 0.5);
+    }
+    100% {
+        box-shadow: none;
+        border-color: var(--midi-border-accent-strong);
+    }
+}
+
+/* Phase 2.3: Piano roll left-to-right reveal on entrance */
+.midi-piano-roll-reveal {
+    animation: midi-piano-roll-reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+}
+
+@keyframes midi-piano-roll-reveal {
+    0% {
+        clip-path: inset(0 100% 0 0);
+        opacity: 0.4;
+    }
+    100% {
+        clip-path: inset(0 0% 0 0);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .midi-result-surface--glow {
+        animation: none;
+        box-shadow: none;
+    }
+
+    .midi-piano-roll-reveal {
+        animation: none;
+        clip-path: none;
+        opacity: 1;
+    }
+}
+
 /* Piano roll preview (MidiPianoRoll) — colors match pianoRollTheme PIANO_ROLL */
 .midi-piano-roll {
     background-color: #1a1917;
@@ -1022,6 +1071,20 @@
 .midi-track-strip__btn--solo {
     color: #60c060;
     background: rgba(96, 192, 96, 0.15);
+}
+
+/* Phase 5.3: Enhanced solo/active visual treatment */
+.midi-track-strip--soloed {
+    box-shadow: 0 0 10px rgba(96, 192, 96, 0.3);
+    border-color: rgba(96, 192, 96, 0.35);
+}
+
+.midi-track-strip--active .midi-track-strip__indicator {
+    box-shadow: 0 0 6px currentColor;
+}
+
+.midi-track-strip--muted {
+    opacity: 0.4;
 }
 
 .midi-track-strip__btn--danger:hover {
@@ -1721,5 +1784,20 @@
 @media (prefers-reduced-motion: reduce) {
     .midi-workspace-section {
         animation: none;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Phase 4.2: Global reduced-motion safety net
+   Catches any animation/transition not explicitly handled above.
+   Uses !important to override inline styles from Framer Motion.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+    .midi-workspace *,
+    .midi-editor-root * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

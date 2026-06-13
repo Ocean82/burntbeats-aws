@@ -3,6 +3,16 @@ import { Pencil, VolumeX, Volume2, Headphones, X } from "lucide-react";
 import type { EditorTrack, TrackInstrument } from "./editorTypes";
 import { TRACK_INSTRUMENTS } from "./editorTypes";
 
+/** Safely apply alpha to a hex color. Falls back to CSS color-mix for non-hex values. */
+function colorWithAlpha(color: string, alphaHex: string): string | undefined {
+  // Only append alpha suffix to valid 6-digit hex colors
+  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+    return `${color}${alphaHex}`;
+  }
+  // For any other format, use color-mix (modern browsers)
+  return `color-mix(in srgb, ${color} 33%, transparent)`;
+}
+
 interface MidiTrackStripProps {
   track: EditorTrack;
   isActive: boolean;
@@ -60,13 +70,14 @@ export function MidiTrackStrip({
 
   return (
     <div
-      className={`midi-track-strip ${isActive ? "midi-track-strip--active" : ""}`}
+      className={`midi-track-strip${isActive ? " midi-track-strip--active" : ""}${track.soloed ? " midi-track-strip--soloed" : ""}${track.muted ? " midi-track-strip--muted" : ""}`}
       onClick={onSelect}
       onKeyDown={handleKeyDown}
       role="tab"
       tabIndex={0}
       aria-selected={isActive}
       aria-label={`Track: ${track.name}`}
+      style={isActive ? { borderColor: colorWithAlpha(track.color, "55") } : undefined}
     >
       <div className="midi-track-strip__indicator" style={{ backgroundColor: track.color }} />
       <div className="midi-track-strip__body">

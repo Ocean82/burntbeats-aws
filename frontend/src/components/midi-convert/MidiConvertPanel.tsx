@@ -5,6 +5,7 @@
  */
 import { Check, Download, Layers, Loader2, Music, Piano, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMidiConvert } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
 import { cn } from "../../utils/cn";
@@ -589,25 +590,45 @@ export function MidiConvertPanel({
         onCancel={cancelConvert}
       />
 
-      {/* Error */}
-      {error && (
-        <ErrorState
-          variant="server"
-          title="Conversion failed"
-          description={error}
-          onRetry={() => { setError(null); void triggerConvert(splitJobId); }}
-        />
-      )}
+      {/* Error — AnimatePresence for smooth dismiss */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            key="midi-error"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <ErrorState
+              variant="server"
+              title="Conversion failed"
+              description={error}
+              onRetry={() => { setError(null); void triggerConvert(splitJobId); }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Empty state — no source selected, not converting, no result, not in batch mode */}
-      {!hasSourceSelected && !isConverting && !result && !isBatchMode && (
-        <EmptyState
-          icon={<Piano className="h-6 w-6" />}
-          title="No conversions yet"
-          description="Convert an audio stem to MIDI to start your collection"
-          action={{ label: "Convert a Stem", onClick: handleBrowse }}
-        />
-      )}
+      <AnimatePresence>
+        {!hasSourceSelected && !isConverting && !result && !isBatchMode && (
+          <motion.div
+            key="midi-empty"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <EmptyState
+              icon={<Piano className="h-6 w-6" />}
+              title="No conversions yet"
+              description="Convert an audio stem to MIDI to start your collection"
+              action={{ label: "Convert a Stem", onClick: handleBrowse }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Result */}
       {result && !isConverting ? (

@@ -1,6 +1,8 @@
 /**
  * MidiResultPanel — shows conversion results: piano roll, stats, download button.
  * Includes View/Edit toggle for the interactive MIDI note editor.
+ *
+ * Phase 2.3: Entrance celebration — border glow pulse, stats stagger, piano roll reveal.
  */
 import {
   Download,
@@ -10,8 +12,8 @@ import {
   Play,
   Square,
 } from "lucide-react";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
 import { SegmentedControl } from "../ui";
@@ -51,16 +53,50 @@ export function MidiResultPanel({
 }: MidiResultPanelProps) {
   const { isPlaying, currentTime, play, stop, isSupported } = useMidiPlayback();
   const [mode, setMode] = useState<"view" | "edit">(initialMode);
+  const prefersReducedMotion = useReducedMotion();
+
+  // One-time border glow — CSS class added on mount, removed after animation completes
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const [showGlow, setShowGlow] = useState(true);
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setShowGlow(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowGlow(false), 1500);
+    return () => clearTimeout(timer);
+  }, [prefersReducedMotion]);
 
   const suggestedBpm = result.analysis?.suggested_bpm ?? 120;
 
+  // Keyboard shortcuts: V for view, E for edit (only when not typing in an input)
+  useEffect(() => {
+    if (!result.pianoRollNotes.length) return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+      if (e.key === "v" || e.key === "V") setMode("view");
+      if (e.key === "e" || e.key === "E") setMode("edit");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [result.pianoRollNotes.length]);
+
+  // Reduced-motion: skip Framer Motion entrance entirely
+  const entranceProps = prefersReducedMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 12, scale: 0.98 } as const,
+        animate: { opacity: 1, y: 0, scale: 1 } as const,
+        transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+      };
+
   return (
     <motion.div
-      className="midi-result-surface"
+      ref={surfaceRef}
+      className={`midi-result-surface${showGlow ? " midi-result-surface--glow" : ""}`}
       data-testid="midi-result-panel"
-      initial={{ opacity: 0, y: 12, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      {...entranceProps}
     >
       <div className="flex flex-wrap items-center justify-between gap-sm">
         <div className="flex min-w-0 items-center gap-xs">
@@ -87,21 +123,41 @@ export function MidiResultPanel({
         )}
       </div>
 
-      {/* Piano roll visualization OR interactive editor */}
-      {mode === "view" ? (
-        <MidiPianoRoll
-          notes={result.pianoRollNotes}
-          currentTime={isPlaying ? currentTime : null}
-        />
-      ) : (
-        <MidiNoteEditor
-          initialNotes={result.pianoRollNotes}
-          bpm={suggestedBpm}
-          jobId={jobId}
-          jobToken={jobToken}
-          e2eMode={e2eMode}
-        />
-      )}
+      {/* Piano roll visualization OR interactive editor — animated mode switch */}
+      <AnimatePresence mode="wait" initial={false}>
+        {mode === "view" ? (
+          <motion.div
+            key="view-mode"
+            initial={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <div className={prefersReducedMotion ? "" : "midi-piano-roll-reveal"}>
+              <MidiPianoRoll
+                notes={result.pianoRollNotes}
+                currentTime={isPlaying ? currentTime : null}
+              />
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="edit-mode"
+            initial={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <MidiNoteEditor
+              initialNotes={result.pianoRollNotes}
+              bpm={suggestedBpm}
+              jobId={jobId}
+              jobToken={jobToken}
+              e2eMode={e2eMode}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {result.analysis && mode === "view" && (
         <MidiAnalysisPanel
@@ -114,12 +170,16 @@ export function MidiResultPanel({
       {/* Stats row */}
       <motion.div
         className="flex flex-wrap gap-md text-xs text-muted-foreground"
-        initial="hidden"
-        animate="visible"
-        variants={{
-          hidden: {},
-          visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } },
-        }}
+        initial={prefersReducedMotion ? undefined : "hidden"}
+        animate={prefersReducedMotion ? undefined : "visible"}
+        variants={
+          prefersReducedMotion
+            ? undefined
+            : {
+                hidden: {},
+                visible: { transition: { staggerChildren: 0.08, delayChildren: 0.2 } },
+              }
+        }
       >
         <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">

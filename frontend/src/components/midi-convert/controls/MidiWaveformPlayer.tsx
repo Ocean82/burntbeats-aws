@@ -4,9 +4,10 @@
  * Adapted from pitch-tempo-plugin WaveformDisplay, themed to midi-gold.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Pause, Play } from "lucide-react";
+import { Loader2, Pause, Play, Activity } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import { MidiPhysicalButton } from "./MidiPhysicalButton";
+import { MidiSpectrumVisualizer } from "./MidiSpectrumVisualizer";
 import "../midi-tokens.css";
 
 export interface MidiWaveformPlayerProps {
@@ -126,6 +127,10 @@ function MidiWaveformPlayerInner({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [showSpectrum, setShowSpectrum] = useState(false);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const sourceConnectedRef = useRef(false);
 
   const draw = useCallback((time: number, dur: number) => {
     const canvas = canvasRef.current;
@@ -185,6 +190,12 @@ function MidiWaveformPlayerInner({
         audioRef.current.src = "";
         audioRef.current = null;
       }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+        analyserRef.current = null;
+        sourceConnectedRef.current = false;
+      }
       cancelAnimationFrame(rafRef.current);
     };
   }, [src, draw]);
@@ -224,6 +235,30 @@ function MidiWaveformPlayerInner({
       setIsPlaying(true);
     }
   }, [isPlaying, disabled]);
+
+  // Lazy spectrum analyser — only creates AudioContext when user toggles spectrum on
+  const toggleSpectrum = useCallback(() => {
+    setShowSpectrum((prev) => {
+      const next = !prev;
+      if (next && !sourceConnectedRef.current && audioRef.current) {
+        try {
+          const ctx = new AudioContext();
+          const source = ctx.createMediaElementSource(audioRef.current);
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          analyser.connect(ctx.destination);
+          analyserRef.current = analyser;
+          audioCtxRef.current = ctx;
+          sourceConnectedRef.current = true;
+        } catch {
+          // createMediaElementSource can fail on CORS or if already connected
+          return false;
+        }
+      }
+      return next;
+    });
+  }, []);
 
   // Handle audio end
   useEffect(() => {
@@ -308,7 +343,31 @@ function MidiWaveformPlayerInner({
               <span className="opacity-45"> / </span>
               {formatTime(duration)}
             </span>
+
+            <button
+              type="button"
+              onClick={toggleSpectrum}
+              className={cn(
+                "ml-auto flex h-7 w-7 items-center justify-center rounded-md border transition-colors",
+                showSpectrum
+                  ? "border-accent-midi/40 bg-accent-midi-950/30 text-accent-midi-300"
+                  : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border",
+              )}
+              aria-label={showSpectrum ? "Hide spectrum" : "Show spectrum"}
+              aria-pressed={showSpectrum}
+            >
+              <Activity className="h-3.5 w-3.5" aria-hidden />
+            </button>
           </div>
+
+          {showSpectrum && (
+            <MidiSpectrumVisualizer
+              analyserNode={analyserRef.current}
+              isActive={isPlaying}
+              height={48}
+              className="rounded-lg border border-[var(--midi-border)]"
+            />
+          )}
         </>
       )}
     </div>

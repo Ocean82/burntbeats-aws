@@ -3,6 +3,7 @@
  * Includes stem-type presets and DAW-style physical parameter sliders.
  */
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Drum, Guitar, Mic2, Music, Piano } from "lucide-react";
 import type { MidiConvertSettings as Settings } from "../../hooks/useMidiConvert";
 import { cn } from "../../utils/cn";
@@ -186,20 +187,31 @@ export function MidiConvertSettings({
         </div>
 
         {/* Conditional: target velocity slider */}
-        {settings.normalizeVelocity && (
-          <div className="midi-nested-section">
-            <MidiParamSlider
-              label="Target Peak Velocity"
-              value={settings.targetVelocity}
-              min={40}
-              max={127}
-              step={1}
-              onChange={(v) => handleChange({ targetVelocity: v })}
-              disabled={disabled}
-              hint="Peak velocity for normalized notes (MIDI 0-127)."
-            />
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {settings.normalizeVelocity && (
+            <motion.div
+              key="normalize-section"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+              style={{ overflow: "hidden" }}
+            >
+              <div className="midi-nested-section">
+                <MidiParamSlider
+                  label="Target Peak Velocity"
+                  value={settings.targetVelocity}
+                  min={40}
+                  max={127}
+                  step={1}
+                  onChange={(v) => handleChange({ targetVelocity: v })}
+                  disabled={disabled}
+                  hint="Peak velocity for normalized notes (MIDI 0-127)."
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <MidiParamSlider
           label="Max Note Length"
@@ -235,57 +247,68 @@ export function MidiConvertSettings({
         </div>
 
         {/* Conditional: quantize sub-controls */}
-        {settings.quantize && (
-          <div className="midi-nested-section">
-            <div className="flex flex-col gap-xs px-sm py-1">
-              <div className="flex flex-wrap items-start gap-md">
-                <MidiKnobControl
-                  label="BPM"
-                  value={settings.quantizeBpm}
-                  min={40}
-                  max={300}
-                  step={1}
-                  defaultValue={120}
-                  onChange={(v) => handleChange({ quantizeBpm: v })}
-                  disabled={disabled}
-                  formatValue={(v) => `${Math.round(v)}`}
-                  size="lg"
-                />
-                <div className="flex flex-col gap-xs flex-1 min-w-[140px]">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="midi-quantize-grid" className="midi-param-slider__label">
-                      Grid Division
-                    </label>
-                    <select
-                      id="midi-quantize-grid"
-                      value={settings.quantizeGrid}
-                      onChange={(e) => handleChange({ quantizeGrid: e.target.value })}
+        <AnimatePresence initial={false}>
+          {settings.quantize && (
+            <motion.div
+              key="quantize-section"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+              style={{ overflow: "hidden" }}
+            >
+              <div className="midi-nested-section">
+                <div className="flex flex-col gap-xs px-sm py-1">
+                  <div className="flex flex-wrap items-start gap-md">
+                    <MidiKnobControl
+                      label="BPM"
+                      value={settings.quantizeBpm}
+                      min={40}
+                      max={300}
+                      step={1}
+                      defaultValue={120}
+                      onChange={(v) => handleChange({ quantizeBpm: v })}
                       disabled={disabled}
-                      className="midi-rack-select"
-                    >
-                      <option value="1/4">1/4</option>
-                      <option value="1/8">1/8</option>
-                      <option value="1/16">1/16</option>
-                      <option value="1/32">1/32</option>
-                    </select>
-                  </div>
+                      formatValue={(v) => `${Math.round(v)}`}
+                      size="lg"
+                    />
+                    <div className="flex flex-col gap-xs flex-1 min-w-[140px]">
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="midi-quantize-grid" className="midi-param-slider__label">
+                          Grid Division
+                        </label>
+                        <select
+                          id="midi-quantize-grid"
+                          value={settings.quantizeGrid}
+                          onChange={(e) => handleChange({ quantizeGrid: e.target.value })}
+                          disabled={disabled}
+                          className="midi-rack-select"
+                        >
+                          <option value="1/4">1/4</option>
+                          <option value="1/8">1/8</option>
+                          <option value="1/16">1/16</option>
+                          <option value="1/32">1/32</option>
+                        </select>
+                      </div>
 
-                  <MidiParamSlider
-                    label="Quantize Strength"
-                    value={settings.quantizeStrength}
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    onChange={(v) => handleChange({ quantizeStrength: v })}
-                    disabled={disabled}
-                    formatValue={(v) => `${Math.round(v * 100)}%`}
-                    hint="Lower = keeps more original timing. 100% = fully snapped to grid."
-                  />
+                      <MidiParamSlider
+                        label="Quantize Strength"
+                        value={settings.quantizeStrength}
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        onChange={(v) => handleChange({ quantizeStrength: v })}
+                        disabled={disabled}
+                        formatValue={(v) => `${Math.round(v * 100)}%`}
+                        hint="Lower = keeps more original timing. 100% = fully snapped to grid."
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
