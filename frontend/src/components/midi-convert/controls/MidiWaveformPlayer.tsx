@@ -128,6 +128,7 @@ function MidiWaveformPlayerInner({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showSpectrum, setShowSpectrum] = useState(false);
+  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceConnectedRef = useRef(false);
@@ -194,6 +195,7 @@ function MidiWaveformPlayerInner({
         audioCtxRef.current.close().catch(() => {});
         audioCtxRef.current = null;
         analyserRef.current = null;
+        setAnalyserNode(null);
         sourceConnectedRef.current = false;
       }
       cancelAnimationFrame(rafRef.current);
@@ -249,6 +251,7 @@ function MidiWaveformPlayerInner({
           source.connect(analyser);
           analyser.connect(ctx.destination);
           analyserRef.current = analyser;
+          setAnalyserNode(analyser);
           audioCtxRef.current = ctx;
           sourceConnectedRef.current = true;
         } catch {
@@ -362,7 +365,7 @@ function MidiWaveformPlayerInner({
 
           {showSpectrum && (
             <MidiSpectrumVisualizer
-              analyserNode={analyserRef.current}
+              analyserNode={analyserNode}
               isActive={isPlaying}
               height={48}
               className="rounded-lg border border-[var(--midi-border)]"

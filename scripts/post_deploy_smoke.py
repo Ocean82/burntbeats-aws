@@ -12,10 +12,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 
 REPORT_DIR = Path("docs/deploy-reports")
+CANONICAL_ORIGIN = "https://www.burntbeats.com"
 
 
 @dataclass
@@ -23,6 +24,33 @@ class CheckResult:
     name: str
     ok: bool
     details: str
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def fetch_no_redirect(url: str, timeout: float = 15.0) -> tuple[int, str, str | None]:
+    req = Request(
+        url=url,
+        method="GET",
+        headers={
+            "User-Agent": "burntbeats-post-deploy-smoke/1.0",
+            "Accept": "*/*",
+        },
+    )
+    opener = build_opener(_NoRedirect())
+    try:
+        with opener.open(req, timeout=timeout) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            return int(resp.status), body, resp.geturl()
+    except HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        location = e.headers.get("Location")
+        return int(e.code), body, location
+    except URLError as e:
+        raise RuntimeError(f"Network error for {url}: {e}") from e
 
 
 def fetch(url: str, method: str = "GET", timeout: float = 15.0) -> tuple[int, str]:
@@ -45,7 +73,21 @@ def fetch(url: str, method: str = "GET", timeout: float = 15.0) -> tuple[int, st
         raise RuntimeError(f"Network error for {url}: {e}") from e
 
 
+def _is_canonical_redirect(location: str | None) -> bool:
+    if not location:
+        return False
+    normalized = location.rstrip("/")
+    return normalized == CANONICAL_ORIGIN or normalized.startswith(f"{CANONICAL_ORIGIN}/")
+
+
 def run_checks() -> Iterable[CheckResult]:
+    apex_status, _, apex_location = fetch_no_redirect("https://burntbeats.com/")
+    yield CheckResult(
+        name="apex redirects to www",
+        ok=apex_status in (301, 302, 307, 308) and _is_canonical_redirect(apex_location),
+        details=f"status={apex_status} location={apex_location or 'none'}",
+    )
+
     status, body = fetch("https://burntbeats.com/sitemap.xml")
     yield CheckResult(
         name="sitemap.xml status",
@@ -53,9 +95,10 @@ def run_checks() -> Iterable[CheckResult]:
         details=f"status={status}",
     )
     required_sitemap_paths = [
-        "https://burntbeats.com/privacy-policy",
-        "https://burntbeats.com/terms-of-service",
+        "https://www.burntbeats.com/",
         "https://www.burntbeats.com/pricing",
+        "https://www.burntbeats.com/privacy-policy",
+        "https://www.burntbeats.com/terms-of-service",
     ]
     missing = [p for p in required_sitemap_paths if p not in body]
     yield CheckResult(
@@ -72,12 +115,22 @@ def run_checks() -> Iterable[CheckResult]:
     )
     yield CheckResult(
         name="robots.txt has sitemap line",
-        ok="Sitemap: https://burntbeats.com/sitemap.xml" in body,
+        ok=(
+            "Sitemap: https://www.burntbeats.com/sitemap.xml" in body
+            or "Sitemap: https://burntbeats.com/sitemap.xml" in body
+        ),
         details="sitemap_line_present="
-        + ("yes" if "Sitemap: https://burntbeats.com/sitemap.xml" in body else "no"),
+        + (
+            "yes"
+            if (
+                "Sitemap: https://www.burntbeats.com/sitemap.xml" in body
+                or "Sitemap: https://burntbeats.com/sitemap.xml" in body
+            )
+            else "no"
+        ),
     )
 
-    status, _ = fetch("https://burntbeats.com/pricing")
+    status, _ = fetch(f"{CANONICAL_ORIGIN}/pricing")
     # urllib follows redirects by default; healthy result can be 200 (after /pricing -> /pricing/).
     yield CheckResult(
         name="/pricing redirect status",
@@ -85,14 +138,14 @@ def run_checks() -> Iterable[CheckResult]:
         details=f"status={status}",
     )
 
-    status, _ = fetch("https://burntbeats.com/privacy-policy")
+    status, _ = fetch(f"{CANONICAL_ORIGIN}/privacy-policy")
     yield CheckResult(
         name="/privacy-policy status",
         ok=status == 200,
         details=f"status={status}",
     )
 
-    status, _ = fetch("https://burntbeats.com/terms-of-service")
+    status, _ = fetch(f"{CANONICAL_ORIGIN}/terms-of-service")
     yield CheckResult(
         name="/terms-of-service status",
         ok=status == 200,

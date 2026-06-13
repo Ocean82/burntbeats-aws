@@ -1,5 +1,5 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { trackEvent } from "../analytics/events";
 import type { PlanConfig, PricingTableType } from "../data/plans";
@@ -9,10 +9,22 @@ import { LandingFinalCta } from "../components/landing/LandingFinalCta";
 import { LandingHero } from "../components/landing/LandingHero";
 import { LandingPricingSection } from "../components/landing/LandingPricingSection";
 
-export function LandingPage() {
+interface LandingPageProps {
+  /** Scroll to a landing section after mount (e.g. `/pricing` deep link). */
+  focusSection?: "pricing";
+}
+
+export function LandingPage({ focusSection }: LandingPageProps = {}) {
   const { isSignedIn } = useAuth();
   const [pricingTab, setPricingTab] =
     useState<PricingTableType>("subscriptions");
+
+  useEffect(() => {
+    if (focusSection !== "pricing") return;
+    const target = document.getElementById("pricing");
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [focusSection]);
 
   const renderPricingCTA = (plan: PlanConfig): ReactNode => (
     <SignUpButton mode="modal" fallbackRedirectUrl="/app">

@@ -1,7 +1,7 @@
 {
   "name": "Burnt Beats",
   "short_name": "BurntBeats",
-  "description": "AI-powered stem separation, mixing, and mastering in your browser.",
+  "description": "Browser workstation for producers and DJs — AI stem separation, in-browser mixing, stem library, and stem-to-MIDI conversion.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050302",

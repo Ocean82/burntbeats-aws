@@ -14,6 +14,7 @@
  * - The banner re-appears if consent has not been given or was withdrawn.
  */
 import { create } from "zustand";
+import { clearGaMeasurementId } from "../analytics/pageViews";
 
 export type ConsentStatus = "undecided" | "accepted" | "declined";
 
@@ -85,12 +86,14 @@ export const useCookieConsent = create<CookieConsentState>((set) => {
     declineAnalytics: () => {
       persistConsent("declined");
       removeAnalyticsCookies();
+      clearGaMeasurementId();
       set({ analytics: "declined", bannerVisible: false });
     },
 
     withdrawConsent: () => {
       persistConsent("declined");
       removeAnalyticsCookies();
+      clearGaMeasurementId();
       // Remove the gtag script to stop further tracking
       const script = document.querySelector("script[data-bb-gtag]");
       if (script) script.remove();

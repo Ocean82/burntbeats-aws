@@ -10,12 +10,14 @@
 import { useAuth } from "@clerk/react";
 import { lazy, Suspense, useEffect } from "react";
 import { Loader2 } from "lucide-react";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { trackEvent } from "./analytics/events";
+import { usePageViews } from "./analytics/usePageViews";
+import { useDocumentMeta } from "./seo/useDocumentMeta";
 
 const LandingPage = lazy(() =>
   import("./pages/LandingPage").then((m) => ({ default: m.LandingPage })),
@@ -105,9 +107,17 @@ function LocalDevRoot() {
   );
 }
 
+function RouteSeoSync() {
+  const [location] = useLocation();
+  useDocumentMeta(location);
+  usePageViews(location);
+  return null;
+}
+
 /** Authenticated root: Clerk sign-in gate + token injection. */
 function AuthenticatedRoot() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
+  const [location] = useLocation();
 
   useEffect(() => {
     if (isLoaded) setTokenProvider(() => getToken());
@@ -139,7 +149,9 @@ function AuthenticatedRoot() {
     return (
       <ErrorBoundary>
         <Suspense fallback={<RouteLoadingShell />}>
-          <LandingPage />
+          <LandingPage
+            focusSection={location === "/pricing" ? "pricing" : undefined}
+          />
         </Suspense>
       </ErrorBoundary>
     );
@@ -154,7 +166,9 @@ function AuthenticatedRoot() {
 
 export function Root() {
   return (
-    <Switch>
+    <>
+      <RouteSeoSync />
+      <Switch>
       <Route path="/privacy-policy">
         <Suspense fallback={<RouteLoadingShell />}>
           <LegalPage doc="privacy-policy" />
@@ -190,5 +204,6 @@ export function Root() {
         <NotFoundPage />
       </Route>
     </Switch>
+    </>
   );
 }

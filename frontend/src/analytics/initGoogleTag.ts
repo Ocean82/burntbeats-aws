@@ -1,3 +1,5 @@
+import { setGaMeasurementId } from "./pageViews";
+
 const SCRIPT_MARKER = "data-bb-gtag";
 
 /**
@@ -8,6 +10,8 @@ export function initGoogleTag(measurementId: string): void {
   const id = measurementId.trim();
   if (!id || typeof window === "undefined") return;
   if (document.querySelector(`script[${SCRIPT_MARKER}]`)) return;
+
+  setGaMeasurementId(id);
 
   window.dataLayer = window.dataLayer ?? [];
   const gtag: Gtag = function gtag(...args: GtagCommand) {
@@ -22,7 +26,11 @@ export function initGoogleTag(measurementId: string): void {
   document.head.appendChild(script);
 
   gtag("js", new Date());
-  gtag("config", id);
+  gtag("config", id, {
+    send_page_view: true,
+    page_path: window.location.pathname,
+    page_title: document.title,
+  });
 }
 
 type GtagCommand = [string, ...unknown[]];

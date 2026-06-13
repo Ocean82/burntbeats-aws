@@ -57,15 +57,12 @@ export function MidiResultPanel({
 
   // One-time border glow — CSS class added on mount, removed after animation completes
   const surfaceRef = useRef<HTMLDivElement>(null);
-  const [showGlow, setShowGlow] = useState(true);
+  const [showGlow, setShowGlow] = useState(() => !prefersReducedMotion);
   useEffect(() => {
-    if (prefersReducedMotion) {
-      setShowGlow(false);
-      return;
-    }
+    if (prefersReducedMotion || !showGlow) return;
     const timer = setTimeout(() => setShowGlow(false), 1500);
     return () => clearTimeout(timer);
-  }, [prefersReducedMotion]);
+  }, [prefersReducedMotion, showGlow]);
 
   const suggestedBpm = result.analysis?.suggested_bpm ?? 120;
 

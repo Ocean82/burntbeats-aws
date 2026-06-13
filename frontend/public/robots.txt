@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://www.burntbeats.com/sitemap.xml
+Sitemap: https://burntbeats.com/sitemap.xml

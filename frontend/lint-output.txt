@@ -1,0 +1,11 @@
+﻿node : The prop value with an expression type of MetaProperty could not be resolved. Please file an 
+issue ( https://github.com/jsx-eslint/jsx-ast-utils/issues/new ) to get this fixed immediately.
+At line:1 char:1
++ node node_modules/eslint/bin/eslint.js src/ 2>&1 | Out-File -FilePath ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (The prop value ...ed immediately.:String) [], RemoteExc 
+   eption
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+The prop value with an expression type of MetaProperty could not be resolved. Please file an issue ( 
+https://github.com/jsx-eslint/jsx-ast-utils/issues/new ) to get this fixed immediately.
