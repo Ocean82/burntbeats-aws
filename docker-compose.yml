@@ -63,6 +63,8 @@ services:
       SPEECH_SERVICE_URL: http://speech_service:5001
       MIDI_SERVICE_URL: http://midi_service:5002
       MIDI_ACCEPT_TIMEOUT_MS: ${MIDI_ACCEPT_TIMEOUT_MS:-60000}
+      MIDI_TOKEN_COST: ${MIDI_TOKEN_COST:-}
+      MIDI_RENDER_TOKEN_COST: ${MIDI_RENDER_TOKEN_COST:-}
       STEM_OUTPUT_DIR: /app/tmp/stems
       SPEECH_OUTPUT_DIR: /app/tmp/speech
       SPEECH_MAX_UPLOAD_MB: ${SPEECH_MAX_UPLOAD_MB:-100}

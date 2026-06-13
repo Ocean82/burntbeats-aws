@@ -173,7 +173,7 @@ Primary file for Compose: **root `.env`** (see each service’s `.env.example` w
 | Job hardening | **`JOB_TOKEN_SECRET`** (required in production; per-job `x-job-token`), optional **`API_KEY`** |
 | Internal services | **`STEM_SERVICE_API_TOKEN`**, **`SPEECH_SERVICE_API_TOKEN`**, **`MIDI_SERVICE_API_TOKEN`** (min 16 chars; required in production via `NODE_ENV` or **`INTERNAL_SERVICE_AUTH_REQUIRED=1`**) |
 | Speech service | `SPEECH_MAX_UPLOAD_MB` |
-| MIDI service | `MIDI_MAX_QUEUE_DEPTH`, `MIDI_TOKEN_COST` |
+| MIDI service | `MIDI_MAX_QUEUE_DEPTH`, `MIDI_TOKEN_COST`, `MIDI_RENDER_TOKEN_COST` |
 | Optional **server master export** | **`SERVER_EXPORT_ENABLED=1`** (backend) · **`VITE_SERVER_EXPORT_ENABLED=1`** (frontend build) — **`docs/ARCHITECTURE-FLOW.md`**. Default Compose **does not** enable this. Ops: **`SERVER_EXPORT_MAX_CONCURRENT`**, **`SERVER_EXPORT_TIMEOUT_MS`**, **`SERVER_EXPORT_RATE_LIMIT_*`**. |
 | Redis (optional) | **`REDIS_URL`** — distributed rate limits (global, stem-file, server-export), status cache, Stripe webhook idempotency. In-memory fallback with **`RATE_LIMIT_MAX_ENTRIES`** when unset. |
 | S3 | `S3_ENABLED`, bucket/region/keys, `S3_DELETE_LOCAL_AFTER_UPLOAD`; stem_service **`STEM_S3_UPLOAD_MAX_WORKERS`** / **`STEM_S3_UPLOAD_TIMEOUT_SEC`**; bucket CORS if browsers fetch presigned URLs |

@@ -111,7 +111,7 @@ const BASE_HOOK_RETURN = {
   uploadProgress: 0,
   progress: 0,
   statusMessage: "",
-  error: null,
+  error: null as string | null,
   setError: vi.fn(),
   result: null as MidiConvertResult | null,
   midiFileUrl: null,

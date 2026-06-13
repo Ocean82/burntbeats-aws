@@ -32,22 +32,14 @@
     "@types/node": "22.19.17",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
-<<<<<<< HEAD
     "@vitejs/plugin-react": "^6.0.2",
-=======
-    "@vitejs/plugin-react": "5.2.0",
->>>>>>> 09ca3a644236a9ce1c0bc49e7c4c08f44c2781fe
     "clsx": "2.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "3.4.0",
     "tailwindcss": "4.3.1",
     "typescript": "5.9.3",
-<<<<<<< HEAD
     "vite": "^8.0.16",
-=======
-    "vite": "8.0.16",
->>>>>>> 09ca3a644236a9ce1c0bc49e7c4c08f44c2781fe
     "vite-plugin-dts": "^4.5.4",
     "vite-plugin-singlefile": "2.3.3"
   }

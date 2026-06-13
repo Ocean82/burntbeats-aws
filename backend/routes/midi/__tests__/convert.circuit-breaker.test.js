@@ -8,7 +8,7 @@
  * the route MUST respond with status 503, a Retry-After header equal to
  * String(error.retryAfter), and a JSON body containing an "error" string.
  */
-import test, { afterEach } from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";

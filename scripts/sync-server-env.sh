@@ -32,6 +32,8 @@ append_if_missing backend/.env.example MIDI_SERVICE_API_TOKEN \
   "# MIDI_SERVICE_API_TOKEN="
 append_if_missing backend/.env.example MIDI_TOKEN_COST \
   "# MIDI_TOKEN_COST=0.5"
+append_if_missing backend/.env.example MIDI_RENDER_TOKEN_COST \
+  "# MIDI_RENDER_TOKEN_COST=2"
 
 mkdir -p midi_service
 if [[ ! -s midi_service/.env.example ]]; then
@@ -54,6 +56,7 @@ append_if_missing backend/.env SPEECH_SERVICE_API_TOKEN "# SPEECH_SERVICE_API_TO
 append_if_missing backend/.env MIDI_SERVICE_API_TOKEN "# MIDI_SERVICE_API_TOKEN="
 append_if_missing backend/.env MIDI_OUTPUT_DIR "# MIDI_OUTPUT_DIR=/home/ubuntu/burntbeats-aws/tmp/midi"
 append_if_missing backend/.env MIDI_TOKEN_COST "# MIDI_TOKEN_COST=0.5"
+append_if_missing backend/.env MIDI_RENDER_TOKEN_COST "# MIDI_RENDER_TOKEN_COST=2"
 append_if_missing backend/.env CLERK_WEBHOOK_SIGNING_SECRET "# CLERK_WEBHOOK_SIGNING_SECRET="
 append_if_missing backend/.env DEV_BYPASS_UPLOAD_AUTH "DEV_BYPASS_UPLOAD_AUTH=0"
 append_if_missing backend/.env PUBLIC_BASE_URL "# PUBLIC_BASE_URL=https://burntbeats.com"
@@ -71,6 +74,7 @@ append_if_missing frontend/.env VITE_SPEECH_MAX_UPLOAD_BYTES "# VITE_SPEECH_MAX_
 append_if_missing .env STEM_SERVICE_API_TOKEN "# STEM_SERVICE_API_TOKEN="
 append_if_missing .env MIDI_SERVICE_API_TOKEN "# MIDI_SERVICE_API_TOKEN="
 append_if_missing .env MIDI_MAX_QUEUE_DEPTH "MIDI_MAX_QUEUE_DEPTH=8"
+append_if_missing .env MIDI_RENDER_TOKEN_COST "# MIDI_RENDER_TOKEN_COST=2"
 append_if_missing .env SPEECH_SERVICE_API_TOKEN "# SPEECH_SERVICE_API_TOKEN="
 append_if_missing .env SPEECH_DEVICE "SPEECH_DEVICE=cpu"
 append_if_missing .env SPEECH_MAX_UPLOAD_MB "SPEECH_MAX_UPLOAD_MB=100"
