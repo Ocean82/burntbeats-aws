@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { API_BASE, isLocalDevFullApp } from "../config";
 import { userFacingHttpError } from "../userFacingError";
 import { trackEvent } from "../analytics/events";
+import type { BillingInterval } from "../analytics/billingEvents";
 
 async function readBillingErrorMessage(
   res: Response,
@@ -151,18 +152,26 @@ type CheckoutSource =
   | "upgrade_prompt"
   | "unknown";
 
+export type BillingStatus =
+  | "none"
+  | "active"
+  | "past_due"
+  | "cancel_pending"
+  | "canceled";
+
 export interface UseSubscriptionResult {
   status: SubscriptionStatus;
   /** Active plan name from the backend — null if inactive. */
   plan: ServerPlan | null;
   entitlementSource: EntitlementSource;
   capabilities: SubscriptionCapabilities;
+  billingStatus: BillingStatus;
   /** Non-null when a checkout or portal action fails — display to the user. */
   billingError: string | null;
   /** Redirect to Stripe Checkout for the given plan. */
   startCheckout: (
     plan: Plan,
-    context?: { source?: CheckoutSource; intent?: string },
+    context?: { source?: CheckoutSource; intent?: string; interval?: BillingInterval },
   ) => Promise<void>;
   /** Redirect to Stripe Customer Portal to manage billing. */
   openPortal: () => Promise<void>;
@@ -185,6 +194,7 @@ export function useSubscription(): UseSubscriptionResult {
     localFullApp ? premiumCapabilities() : NO_SUBSCRIPTION_CAPABILITIES,
   );
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [billingStatus, setBillingStatus] = useState<BillingStatus>("none");
 
   const fetchStatus = useCallback(async () => {
     if (localFullApp) {
@@ -192,6 +202,7 @@ export function useSubscription(): UseSubscriptionResult {
       setPlan("premium");
       setEntitlementSource("subscription");
       setCapabilities(premiumCapabilities());
+      setBillingStatus("active");
       return;
     }
     if (!isSignedIn) {
@@ -199,6 +210,7 @@ export function useSubscription(): UseSubscriptionResult {
       setPlan(null);
       setEntitlementSource("none");
       setCapabilities(NO_SUBSCRIPTION_CAPABILITIES);
+      setBillingStatus("none");
       setBillingError(null);
       return;
     }
@@ -237,10 +249,21 @@ export function useSubscription(): UseSubscriptionResult {
         /** @deprecated Legacy backend field — same as entitlementSource */
         entitlement?: "usage_tokens";
         capabilities?: Partial<SubscriptionCapabilities>;
+        billingStatus?: BillingStatus;
       };
       const activePlan = data.active ? data.plan : null;
       setStatus(data.active ? "active" : "inactive");
       setPlan(activePlan);
+      setBillingStatus(
+        data.billingStatus === "past_due" ||
+          data.billingStatus === "cancel_pending" ||
+          data.billingStatus === "canceled" ||
+          data.billingStatus === "active"
+          ? data.billingStatus
+          : data.active
+            ? "active"
+            : "none",
+      );
       setEntitlementSource(
         parseEntitlementSource(
           data.entitlementSource ?? data.entitlement,
@@ -260,6 +283,7 @@ export function useSubscription(): UseSubscriptionResult {
       setPlan(null);
       setEntitlementSource("none");
       setCapabilities(NO_SUBSCRIPTION_CAPABILITIES);
+      setBillingStatus("none");
       setBillingError(
         "We could not reach billing services. Please check your connection and try again.",
       );
@@ -286,16 +310,18 @@ export function useSubscription(): UseSubscriptionResult {
   const startCheckout = useCallback(
     async (
       selectedPlan: Plan,
-      context?: { source?: CheckoutSource; intent?: string },
+      context?: { source?: CheckoutSource; intent?: string; interval?: BillingInterval },
     ) => {
       if (localFullApp) return;
       const source = context?.source ?? "unknown";
+      const interval = context?.interval ?? "year";
       trackEvent("plan_selected", {
         plan: selectedPlan,
         source,
         intent: context?.intent ?? "unspecified",
+        interval,
       });
-      trackEvent("checkout_started", { plan: selectedPlan, source });
+      trackEvent("checkout_started", { plan: selectedPlan, source, interval });
       try {
         const token = await getToken();
         const res = await fetch(`${API_BASE}/api/billing/checkout`, {
@@ -306,6 +332,7 @@ export function useSubscription(): UseSubscriptionResult {
           },
           body: JSON.stringify({
             plan: selectedPlan,
+            interval,
             returnUrl: checkoutReturnBase(),
             source,
             intent: context?.intent ?? "unspecified",
@@ -388,6 +415,7 @@ export function useSubscription(): UseSubscriptionResult {
     entitlementSource,
     capabilities,
     billingError,
+    billingStatus,
     startCheckout,
     openPortal,
     refetch: fetchStatus,

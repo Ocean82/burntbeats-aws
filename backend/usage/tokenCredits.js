@@ -194,13 +194,18 @@ export async function creditSubscriptionAllowance(
  * Credit one-time purchased tokens.
  * @param {string} clerkUserId
  * @param {number} grant
+ * @param {{ entitlementTier?: "basic" | "premium", stripeEventId?: string }} [meta]
  */
-export async function creditTopupTokens(clerkUserId, grant) {
+export async function creditTopupTokens(clerkUserId, grant, meta = {}) {
   if (!Number.isFinite(grant) || grant <= 0) return;
 
   // Primary: DB
   if (isDbTokensAvailable()) {
-    const dbResult = await creditDbTopup(clerkUserId, grant);
+    const dbResult = await creditDbTopup(clerkUserId, grant, {
+      stripeEventId: meta.stripeEventId,
+      entitlementTier: meta.entitlementTier,
+      note: "one-time top-up",
+    });
     if (!dbResult.success) {
       throw new Error(`Database ledger failure: failed to credit topup for user ${clerkUserId}`);
     }

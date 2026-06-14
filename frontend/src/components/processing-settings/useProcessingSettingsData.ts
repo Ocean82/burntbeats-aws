@@ -58,6 +58,8 @@ export function useProcessingSettingsData() {
   const {
     subscription,
     usageBalance,
+    freeMonthlyRemaining,
+    paidBalance,
     usageLoading,
     stemQualityOptions,
     canSplitFourStems,
@@ -101,6 +103,8 @@ export function useProcessingSettingsData() {
     setSplitError,
     subscription,
     usageBalance,
+    freeMonthlyRemaining,
+    paidBalance,
     usageLoading,
     stemQualityOptions,
     canSplitFourStems,

@@ -46,7 +46,14 @@ export function isUsageTokensDevUnlimited() {
 
 /**
  * @param {string} userId
- * @returns {Promise<{ balance: number, periodEnd: number | null }>}
+ * @returns {Promise<{
+ *   balance: number;
+ *   periodEnd: number | null;
+ *   paidBalance: number;
+ *   freeMonthlyRemaining: number;
+ *   maxEntitlementTier: "basic" | "premium";
+ *   welcomeGranted: boolean;
+ * }>}
  */
 export async function getUsageBalance(userId) {
   // Prefer DB when available
@@ -54,12 +61,31 @@ export async function getUsageBalance(userId) {
     const dbResult = await getDbBalance(userId);
     if (dbResult !== null) {
       const periodEndMs = dbResult.periodEnd ? dbResult.periodEnd.getTime() : null;
-      return { balance: dbResult.balance, periodEnd: periodEndMs };
+      const paidBalance = dbResult.balance;
+      const freeMonthlyRemaining = dbResult.freeMonthlyRemaining ?? 0;
+      return {
+        balance: paidBalance + freeMonthlyRemaining,
+        periodEnd: periodEndMs,
+        paidBalance,
+        freeMonthlyRemaining,
+        maxEntitlementTier:
+          dbResult.maxEntitlementTier === "premium" ? "premium" : "basic",
+        welcomeGranted: Boolean(dbResult.welcomeGranted),
+      };
     }
   }
   // Fallback to Clerk metadata
   const clerk = getClerkClient();
-  if (!clerk) return { balance: 0, periodEnd: null };
+  if (!clerk) {
+    return {
+      balance: 0,
+      periodEnd: null,
+      paidBalance: 0,
+      freeMonthlyRemaining: 0,
+      maxEntitlementTier: "basic",
+      welcomeGranted: false,
+    };
+  }
   const user = await clerk.users.getUser(userId);
   const u = user.privateMetadata?.usageTokens;
   const rec =
@@ -68,10 +94,15 @@ export async function getUsageBalance(userId) {
       : {};
   const balance = Number(rec.balance);
   const periodEnd = rec.periodEnd != null ? Number(rec.periodEnd) : null;
+  const paidBalance = Number.isFinite(balance) ? balance : 0;
   return {
-    balance: Number.isFinite(balance) ? balance : 0,
+    balance: paidBalance,
     periodEnd:
       periodEnd != null && Number.isFinite(periodEnd) ? periodEnd : null,
+    paidBalance,
+    freeMonthlyRemaining: 0,
+    maxEntitlementTier: "basic",
+    welcomeGranted: false,
   };
 }
 

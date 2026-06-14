@@ -3,37 +3,41 @@ import { describe, expect, it, vi } from "vitest";
 import { PricingPage } from "./PricingPage";
 
 describe("PricingPage", () => {
+  const inactiveSub = {
+    status: "inactive" as const,
+    plan: null,
+    entitlementSource: "none" as const,
+    capabilities: {
+      canSplitFourStems: false,
+      canExpandToFourStems: false,
+      canUsePremiumStemQualities: false,
+      canUseBatchQueue: false,
+      canDownloadFullPreview: false,
+      canShareCleanPreview: false,
+    },
+    billingError: null,
+    billingStatus: "none" as const,
+    startCheckout: vi.fn(() => Promise.resolve()),
+    openPortal: vi.fn(() => Promise.resolve()),
+    refetch: vi.fn(),
+  };
+
   it("starts checkout when a visible plan price is clicked", () => {
     const startCheckout = vi.fn(() => Promise.resolve());
 
     render(
       <PricingPage
-        subscription={{
-          status: "inactive",
-          plan: null,
-          entitlementSource: "none",
-          capabilities: {
-            canSplitFourStems: false,
-            canExpandToFourStems: false,
-            canUsePremiumStemQualities: false,
-            canUseBatchQueue: false,
-            canDownloadFullPreview: false,
-            canShareCleanPreview: false,
-          },
-          billingError: null,
-          startCheckout,
-          openPortal: vi.fn(() => Promise.resolve()),
-          refetch: vi.fn(),
-        }}
+        subscription={{ ...inactiveSub, startCheckout }}
         onClose={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByText("$15/month"));
+    fireEvent.click(screen.getByText("$144/yr ($12/mo)"));
 
     expect(startCheckout).toHaveBeenCalledWith("premium", {
       source: "pricing_page",
       intent: "pricing_page_cta",
+      interval: "year",
     });
   });
 
@@ -55,6 +59,7 @@ describe("PricingPage", () => {
             canShareCleanPreview: true,
           },
           billingError: null,
+          billingStatus: "active",
           startCheckout,
           openPortal: vi.fn(() => Promise.resolve()),
           refetch: vi.fn(),
@@ -72,26 +77,7 @@ describe("PricingPage", () => {
 
   it("uses workflow-oriented copy for subscriptions and credit packs", () => {
     render(
-      <PricingPage
-        subscription={{
-          status: "inactive",
-          plan: null,
-          entitlementSource: "none",
-          capabilities: {
-            canSplitFourStems: false,
-            canExpandToFourStems: false,
-            canUsePremiumStemQualities: false,
-            canUseBatchQueue: false,
-            canDownloadFullPreview: false,
-            canShareCleanPreview: false,
-          },
-          billingError: null,
-          startCheckout: vi.fn(() => Promise.resolve()),
-          openPortal: vi.fn(() => Promise.resolve()),
-          refetch: vi.fn(),
-        }}
-        onClose={vi.fn()}
-      />,
+      <PricingPage subscription={inactiveSub} onClose={vi.fn()} />,
     );
 
     expect(

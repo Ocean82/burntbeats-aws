@@ -4,7 +4,8 @@ export interface UsageTokenRowProps {
   usageBalance: number | null;
   usageLoading: boolean;
   estimatedSplitTokens: number | null;
-  isSample: boolean;
+  freeMonthlyRemaining?: number | null;
+  paidBalance?: number | null;
   /** Label for job cost line (default "This split"). */
   jobLabel?: string;
   /** When false, balance is shown only in header badge. */
@@ -16,7 +17,8 @@ export function UsageTokenRow({
   usageBalance,
   usageLoading,
   estimatedSplitTokens,
-  isSample,
+  freeMonthlyRemaining = null,
+  paidBalance = null,
   jobLabel = "This split",
   showBalance = true,
 }: UsageTokenRowProps) {
@@ -39,21 +41,22 @@ export function UsageTokenRow({
           {showBalance && usageBalance !== null && (
             <span className="font-medium text-secondary-foreground">
               Balance: {Math.floor(usageBalance)} tokens
+              {freeMonthlyRemaining != null && (paidBalance ?? 0) <= 0 && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({Math.floor(freeMonthlyRemaining)} free min left this month)
+                </span>
+              )}
             </span>
           )}
           {estimatedSplitTokens !== null && (
             <span className={cn(showBalance && usageBalance !== null && "ml-2")}>
               {showBalance && usageBalance !== null ? "· " : ""}
               {jobLabel}:{" "}
-              {isSample ? (
-                <span className="text-success-400 font-bold">FREE</span>
-              ) : (
-                `~${estimatedSplitTokens} token${estimatedSplitTokens === 1 ? "" : "s"}`
-              )}
+              {`~${estimatedSplitTokens} token${estimatedSplitTokens === 1 ? "" : "s"}`}
             </span>
           )}
           <span className="mt-1 block text-xs text-muted-foreground">
-            1 token ≈ 1 minute of audio (partial minutes round up).
+            1 token ≈ 1 minute of audio (partial minutes round up). Free minutes reset monthly.
           </span>
         </>
       )}

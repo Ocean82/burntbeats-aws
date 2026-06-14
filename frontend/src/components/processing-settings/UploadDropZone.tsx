@@ -100,7 +100,7 @@ export function UploadDropZone({
           <span className="h-1 w-1 rounded-full bg-secondary" />
           <span>Vocals · Drums · Bass · Melody</span>
           <span className="h-1 w-1 rounded-full bg-secondary" />
-          <span>60s free sample available</span>
+          <span>5 free minutes/month for signed-in users</span>
         </div>
         {DEMO_TRACK_ENABLED && onLoadDemo && (
           <button

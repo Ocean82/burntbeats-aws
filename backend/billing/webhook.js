@@ -17,6 +17,7 @@ import { getStripe } from "./stripeClient.js";
 import {
   creditTopupTokens,
   tokensPerTopupFromPrice,
+  entitlementTierFromPrice,
 } from "../usageTokens.js";
 import {
   tryClaimWebhookEvent,
@@ -26,6 +27,8 @@ import {
   creditActiveSubscriptionAllowance,
   resolveClerkUserIdFromCustomerRef,
 } from "./stripeWebhookUtils.js";
+import { handleInvoicePaymentFailed, syncSubscriptionBillingStatus } from "./dunning.js";
+import { handleSubscriptionChurned } from "./winback.js";
 
 export const webhookRouter = express.Router();
 
@@ -46,18 +49,25 @@ async function handleCheckoutSessionCompleted(stripe, session, stripeEventId) {
       limit: 20,
     });
     let grant = 0;
+    /** @type {"basic" | "premium"} */
+    let packTier = "basic";
     for (const li of lineItems.data) {
       const p = li.price;
       if (!p?.id) continue;
       const price = await stripe.prices.retrieve(p.id);
       const unit = tokensPerTopupFromPrice(price);
+      const tier = entitlementTierFromPrice(price);
+      if (tier === "premium") packTier = "premium";
       const qty = Number(li.quantity) || 1;
       grant += unit * Math.max(1, qty);
     }
     if (grant > 0) {
-      await creditTopupTokens(clerkUserId, grant);
+      await creditTopupTokens(clerkUserId, grant, {
+        entitlementTier: packTier,
+        stripeEventId: stripeEventId,
+      });
       console.log(
-        `[billing/webhook] topup credited user=${clerkUserId} amount=${grant}`,
+        `[billing/webhook] topup credited user=${clerkUserId} amount=${grant} tier=${packTier}`,
       );
     }
     return;
@@ -121,6 +131,7 @@ webhookRouter.post("/webhook", async (req, res) => {
         await creditActiveSubscriptionAllowance(stripe, sub, {
           stripeEventId: event.id,
         });
+        await syncSubscriptionBillingStatus(stripe, sub);
         break;
       }
       case "customer.subscription.deleted": {
@@ -139,9 +150,26 @@ webhookRouter.post("/webhook", async (req, res) => {
             err instanceof Error ? err.message : err,
           );
         }
+        if (clerkUserId) {
+          await handleSubscriptionChurned(stripe, sub, clerkUserId);
+        }
         console.log(
           `[billing/webhook] ${event.type} customer=${sub.customer} clerkUserId=${clerkUserId ?? "unknown"} — subscription entitlements end; usage token balance unchanged`,
         );
+        break;
+      }
+      case "invoice.payment_failed": {
+        const inv = /** @type {import("stripe").Stripe.Invoice} */ (
+          event.data.object
+        );
+        await handleInvoicePaymentFailed(stripe, inv);
+        break;
+      }
+      case "invoice.payment_action_required": {
+        const inv = /** @type {import("stripe").Stripe.Invoice} */ (
+          event.data.object
+        );
+        await handleInvoicePaymentFailed(stripe, inv);
         break;
       }
       case "invoice.payment_succeeded": {

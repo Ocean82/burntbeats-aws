@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS user_token_balances (
   period_end       TIMESTAMPTZ,                       -- current billing period end
   last_credited_period_start BIGINT,                  -- Stripe period_start (epoch sec)
   welcome_granted  BOOLEAN NOT NULL DEFAULT FALSE,
+  max_entitlement_tier TEXT NOT NULL DEFAULT 'basic', -- basic | premium from pack metadata
+  free_monthly_remaining INTEGER NOT NULL DEFAULT 5,
+  free_monthly_period TEXT,                           -- YYYY-MM for free allowance reset
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

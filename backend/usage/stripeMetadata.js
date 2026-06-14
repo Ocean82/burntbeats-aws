@@ -70,3 +70,14 @@ export function tokensPerTopupFromPrice(price) {
   // Backwards-compatible fallback for teams using a shared metadata key.
   return tokensPerMonthFromPrice(price);
 }
+
+/**
+ * Entitlement tier from Stripe Price metadata (pack purchases).
+ * @param {import("stripe").Stripe.Price} price
+ * @returns {"basic" | "premium"}
+ */
+export function entitlementTierFromPrice(price) {
+  const raw = price?.metadata?.entitlement_tier;
+  if (typeof raw === "string" && raw.toLowerCase() === "premium") return "premium";
+  return "basic";
+}

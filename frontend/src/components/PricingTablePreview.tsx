@@ -109,6 +109,9 @@ function PlanCard({
 
 export interface PricingTablePreviewProps {
   pricingType: PricingTableType;
+  billingInterval?: import("../data/plans").BillingInterval;
+  heroOnly?: boolean;
+  plansOverride?: PlanConfig[];
   onSelectPlan?: (planId: Plan) => void;
   ctaButtonRenderer?: (plan: PlanConfig) => ReactNode;
   currentPlan?: Plan | null;
@@ -116,17 +119,28 @@ export interface PricingTablePreviewProps {
 
 export function PricingTablePreview({
   pricingType,
+  billingInterval = "month",
+  heroOnly = false,
+  plansOverride,
   onSelectPlan,
   ctaButtonRenderer,
   currentPlan = null,
 }: PricingTablePreviewProps) {
-  const plans = getPlansForType(pricingType);
+  const plans =
+    plansOverride ??
+    getPlansForType(pricingType, {
+      heroOnly: heroOnly && pricingType === "subscriptions",
+      interval: billingInterval,
+    });
 
   return (
     <div className="space-y-lg" data-testid="pricing-table-preview">
       <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-3">
         {plans.map((plan) => (
-          <div key={plan.id} className="min-w-0">
+          <div
+            key={plan.id}
+            className={cn("min-w-0", plan.id === "premium" && "lg:order-first sm:col-span-2 lg:col-span-1")}
+          >
             <PlanCard
               plan={plan}
               onSelect={onSelectPlan}

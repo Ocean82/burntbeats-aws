@@ -20,6 +20,9 @@ export function useSubscriptionCoordinator({
   const {
     subscription,
     usageBalance,
+    paidBalance,
+    freeMonthlyRemaining,
+    welcomeGranted,
     usageLoading,
     stemQualityOptions,
     canSplitFourStems,
@@ -44,6 +47,9 @@ export function useSubscriptionCoordinator({
   return {
     subscription,
     usageBalance,
+    paidBalance,
+    freeMonthlyRemaining,
+    welcomeGranted,
     usageLoading,
     stemQualityOptions,
     canSplitFourStems,

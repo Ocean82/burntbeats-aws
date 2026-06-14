@@ -47,19 +47,74 @@ export async function getDbBalance(clerkUserId) {
   if (!pool) return null;
   try {
     const res = await pool.query(
-      `SELECT balance, period_end FROM user_token_balances WHERE clerk_user_id = $1`,
+      `SELECT balance, period_end, max_entitlement_tier, free_monthly_remaining,
+              free_monthly_period, welcome_granted
+       FROM user_token_balances WHERE clerk_user_id = $1`,
       [clerkUserId],
     );
-    if (res.rows.length === 0) return { balance: 0, periodEnd: null };
+    if (res.rows.length === 0) {
+      return {
+        balance: 0,
+        periodEnd: null,
+        maxEntitlementTier: "basic",
+        freeMonthlyRemaining: freeMonthlyAllowanceDefault(),
+        freeMonthlyPeriod: null,
+        welcomeGranted: false,
+      };
+    }
     const row = res.rows[0];
     return {
       balance: row.balance,
       periodEnd: row.period_end || null,
+      maxEntitlementTier: row.max_entitlement_tier === "premium" ? "premium" : "basic",
+      freeMonthlyRemaining: row.free_monthly_remaining ?? freeMonthlyAllowanceDefault(),
+      freeMonthlyPeriod: row.free_monthly_period || null,
+      welcomeGranted: Boolean(row.welcome_granted),
     };
   } catch (err) {
     console.error("[db-tokens] getDbBalance failed:", err instanceof Error ? err.message : err);
     return null;
   }
+}
+
+/** @returns {number} */
+function freeMonthlyAllowanceDefault() {
+  const n = Number(process.env.FREE_MONTHLY_ALLOWANCE_MINUTES);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 5;
+}
+
+/** @returns {boolean} */
+export function isFreeMonthlyAllowanceEnabled() {
+  return !["0", "false", "no"].includes(
+    (process.env.FREE_MONTHLY_ALLOWANCE_ENABLED || "1").toLowerCase(),
+  );
+}
+
+/** @returns {string} YYYY-MM UTC */
+function currentMonthPeriod() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * @param {import("pg").PoolClient} client
+ * @param {string} clerkUserId
+ * @param {{ free_monthly_remaining?: number, free_monthly_period?: string | null }} row
+ * @returns {Promise<number>}
+ */
+async function syncFreeMonthlyPeriod(client, clerkUserId, row) {
+  const period = currentMonthPeriod();
+  const allowance = freeMonthlyAllowanceDefault();
+  if (row.free_monthly_period !== period) {
+    await client.query(
+      `UPDATE user_token_balances
+       SET free_monthly_remaining = $2, free_monthly_period = $3
+       WHERE clerk_user_id = $1`,
+      [clerkUserId, allowance, period],
+    );
+    return allowance;
+  }
+  return row.free_monthly_remaining ?? allowance;
 }
 
 /**
@@ -85,36 +140,57 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
 
     // Lock the row
     const lockRes = await client.query(
-      `SELECT balance FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
+      `SELECT balance, free_monthly_remaining, free_monthly_period
+       FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
       [clerkUserId],
     );
-    const currentBalance = lockRes.rows[0]?.balance ?? 0;
+    const row = lockRes.rows[0];
+    const currentBalance = row?.balance ?? 0;
 
-    if (currentBalance < intCost) {
-      await client.query("ROLLBACK");
-      return {
-        success: false,
-        error: `Insufficient usage tokens (need ${intCost}, have ${currentBalance}). Upgrade your plan or wait for renewal.`,
-      };
+    if (currentBalance >= intCost) {
+      const newBalance = currentBalance - intCost;
+      await client.query(
+        `UPDATE user_token_balances SET balance = $2 WHERE clerk_user_id = $1`,
+        [clerkUserId, newBalance],
+      );
+      await client.query(
+        `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
+         VALUES ($1, 'debit', $2, $3, $4, $5)`,
+        [clerkUserId, -intCost, newBalance, meta.jobId || null, meta.note || "split/expand debit"],
+      );
+      await client.query("COMMIT");
+      return { success: true, balanceAfter: newBalance, source: "paid" };
     }
 
-    const newBalance = currentBalance - intCost;
+    if (isFreeMonthlyAllowanceEnabled() && row) {
+      const freeRemaining = await syncFreeMonthlyPeriod(client, clerkUserId, row);
+      if (freeRemaining >= intCost) {
+        const newFree = freeRemaining - intCost;
+        await client.query(
+          `UPDATE user_token_balances SET free_monthly_remaining = $2 WHERE clerk_user_id = $1`,
+          [clerkUserId, newFree],
+        );
+        await client.query(
+          `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
+           VALUES ($1, 'free_monthly_debit', $2, $3, $4, $5)`,
+          [
+            clerkUserId,
+            -intCost,
+            currentBalance,
+            meta.jobId || null,
+            meta.note || "free monthly allowance debit",
+          ],
+        );
+        await client.query("COMMIT");
+        return { success: true, balanceAfter: currentBalance, source: "free_monthly" };
+      }
+    }
 
-    // Update balance
-    await client.query(
-      `UPDATE user_token_balances SET balance = $2 WHERE clerk_user_id = $1`,
-      [clerkUserId, newBalance],
-    );
-
-    // Record transaction
-    await client.query(
-      `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
-       VALUES ($1, 'debit', $2, $3, $4, $5)`,
-      [clerkUserId, -intCost, newBalance, meta.jobId || null, meta.note || "split/expand debit"],
-    );
-
-    await client.query("COMMIT");
-    return { success: true, balanceAfter: newBalance };
+    await client.query("ROLLBACK");
+    return {
+      success: false,
+      error: `Insufficient usage tokens (need ${intCost}, have ${currentBalance}). Upgrade your plan or wait for renewal.`,
+    };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
     console.error("[db-tokens] reserveDbTokens failed:", err instanceof Error ? err.message : err);
@@ -257,7 +333,7 @@ export async function creditDbSubscription(clerkUserId, grant, meta = {}) {
  * Credit one-time top-up tokens.
  * @param {string} clerkUserId
  * @param {number} grant
- * @param {{ stripeEventId?: string, note?: string }} [meta]
+ * @param {{ stripeEventId?: string, note?: string, entitlementTier?: "basic" | "premium" }} [meta]
  * @returns {Promise<{ success: boolean, balanceAfter?: number }>}
  */
 export async function creditDbTopup(clerkUserId, grant, meta = {}) {
@@ -284,15 +360,18 @@ export async function creditDbTopup(clerkUserId, grant, meta = {}) {
     }
 
     const lockRes = await client.query(
-      `SELECT balance FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
+      `SELECT balance, max_entitlement_tier FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
       [clerkUserId],
     );
     const currentBalance = lockRes.rows[0]?.balance ?? 0;
     const newBalance = currentBalance + grant;
+    const incomingTier = meta.entitlementTier === "premium" ? "premium" : "basic";
+    const prevTier = lockRes.rows[0]?.max_entitlement_tier === "premium" ? "premium" : "basic";
+    const nextTier = incomingTier === "premium" || prevTier === "premium" ? "premium" : "basic";
 
     await client.query(
-      `UPDATE user_token_balances SET balance = $2 WHERE clerk_user_id = $1`,
-      [clerkUserId, newBalance],
+      `UPDATE user_token_balances SET balance = $2, max_entitlement_tier = $3 WHERE clerk_user_id = $1`,
+      [clerkUserId, newBalance, nextTier],
     );
 
     await client.query(

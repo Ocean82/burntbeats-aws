@@ -1,35 +1,41 @@
 import { useState } from "react";
 
-type UpsellTrigger = "sample_complete" | "low_balance";
+type UpsellTrigger = "free_allowance_exhausted" | "welcome_used" | "low_balance";
 
 interface UseUpsellTriggersArgs {
   isSplitting: boolean;
-  isSample: boolean;
   splitResultStemsLength: number;
   usageBalance: number | null;
+  freeMonthlyRemaining: number | null;
+  paidBalance: number | null;
+  subscriptionActive: boolean;
 }
 
 export function useUpsellTriggers({
   isSplitting,
-  isSample,
   splitResultStemsLength,
   usageBalance,
+  freeMonthlyRemaining,
+  paidBalance,
+  subscriptionActive,
 }: UseUpsellTriggersArgs) {
   const [upsellOpen, setUpsellOpen] = useState(false);
   const [upsellTrigger, setUpsellTrigger] =
-    useState<UpsellTrigger>("sample_complete");
+    useState<UpsellTrigger>("low_balance");
   const [prevIsSplitting, setPrevIsSplitting] = useState(isSplitting);
-  const [prevIsSample, setPrevIsSample] = useState(isSample);
 
-  if (isSplitting !== prevIsSplitting || isSample !== prevIsSample) {
+  if (isSplitting !== prevIsSplitting) {
     const wasSplitting = prevIsSplitting;
-    const wasSample = prevIsSample;
     setPrevIsSplitting(isSplitting);
-    setPrevIsSample(isSample);
 
     if (wasSplitting && !isSplitting && splitResultStemsLength > 0) {
-      if (wasSample) {
-        setUpsellTrigger("sample_complete");
+      if (
+        !subscriptionActive &&
+        (paidBalance ?? 0) <= 0 &&
+        freeMonthlyRemaining !== null &&
+        freeMonthlyRemaining <= 0
+      ) {
+        setUpsellTrigger("free_allowance_exhausted");
         setUpsellOpen(true);
       } else if (usageBalance !== null && usageBalance < 2) {
         setUpsellTrigger("low_balance");
@@ -40,3 +46,5 @@ export function useUpsellTriggers({
 
   return { upsellOpen, setUpsellOpen, upsellTrigger };
 }
+
+export type { UpsellTrigger };

@@ -7,6 +7,7 @@
  */
 import { getClerkClient } from "../clerkAuth.js";
 import { getStripe, getPriceIds } from "./stripeClient.js";
+import { planFromPriceId } from "./priceResolver.js";
 
 /**
  * Get or create a Stripe customer for a Clerk userId.
@@ -64,8 +65,5 @@ export async function getActiveSubscription(customerId) {
  */
 export function planFromSubscription(sub) {
   const priceId = sub.items?.data?.[0]?.price?.id;
-  for (const [plan, id] of Object.entries(getPriceIds())) {
-    if (id && id === priceId) return plan;
-  }
-  return "unknown";
+  return planFromPriceId(priceId);
 }

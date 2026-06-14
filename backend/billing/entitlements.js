@@ -150,7 +150,12 @@ async function defaultGetClerkUser(userId) {
  *   getClerkUser?: (userId: string) => Promise<unknown | null>;
  *   getActiveSubscription?: (customerId: string) => Promise<unknown | null>;
  *   planFromSubscription?: (sub: unknown) => unknown;
- *   getUsageBalance?: (userId: string) => Promise<{ balance: number; periodEnd: Date | null } | null>;
+ *   getUsageBalance?: (userId: string) => Promise<{
+ *     balance: number;
+ *     periodEnd: Date | null;
+ *     maxEntitlementTier?: "basic" | "premium";
+ *     freeMonthlyRemaining?: number;
+ *   } | null>;
  * }} [deps]
  * @returns {Promise<EntitlementState>}
  */
@@ -184,6 +189,16 @@ export async function resolveEntitlementStateForUser(userId, deps = {}) {
 
   const usage = await readUsageBalance(userId);
   if (usage && usage.balance > 0) {
+    const tier =
+      usage.maxEntitlementTier === "premium" ? "premium" : "basic";
+    return buildEntitlementState({
+      plan: tier,
+      entitlementSource: "usage_tokens",
+    });
+  }
+
+  const freeRemaining = usage?.freeMonthlyRemaining ?? 0;
+  if (freeRemaining > 0) {
     return buildEntitlementState({
       plan: "basic",
       entitlementSource: "usage_tokens",

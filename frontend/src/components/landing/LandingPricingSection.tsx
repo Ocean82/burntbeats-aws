@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 import { BillingRules } from "../BillingRules";
+import { PricingFeatureComparison } from "../PricingFeatureComparison";
 import { PricingTablePreview } from "../PricingTablePreview";
 import { PricingTabToggle } from "../PricingTabToggle";
 import type { PlanConfig, PricingTableType } from "../../data/plans";
@@ -89,8 +90,13 @@ export function LandingPricingSection({
         <BillingRules className="mb-md" />
         <PricingTablePreview
           pricingType={pricingTab}
+          heroOnly={pricingTab === "subscriptions"}
+          billingInterval="year"
           ctaButtonRenderer={renderPricingCTA}
         />
+        <div className="mt-lg">
+          <PricingFeatureComparison hideStudio={pricingTab === "subscriptions"} />
+        </div>
       </div>
 
       <div className="mt-12 grid w-full gap-md text-left sm:grid-cols-2 md:gap-lg">

@@ -122,11 +122,35 @@ test("resolveEntitlementStateForUser prefers active subscriptions", async () => 
     }),
     getActiveSubscription: async () => ({ id: "sub_123" }),
     planFromSubscription: () => "premium",
-    getUsageBalance: async () => ({ balance: 99, periodEnd: null }),
+    getUsageBalance: async () => ({
+      balance: 99,
+      periodEnd: null,
+      maxEntitlementTier: "basic",
+      freeMonthlyRemaining: 0,
+    }),
   });
 
   assert.equal(state.plan, "premium");
   assert.equal(state.entitlementSource, "subscription");
+  assert.equal(state.capabilities.canSplitFourStems, true);
+});
+
+test("resolveEntitlementStateForUser grants premium capabilities for top-up buyers", async () => {
+  const state = await resolveEntitlementStateForUser("user_topup", {
+    getClerkUser: async () => ({
+      publicMetadata: {},
+    }),
+    getActiveSubscription: async () => null,
+    planFromSubscription: () => "unknown",
+    getUsageBalance: async () => ({
+      balance: 60,
+      periodEnd: null,
+      maxEntitlementTier: "premium",
+      freeMonthlyRemaining: 0,
+    }),
+  });
+
+  assert.equal(state.plan, "premium");
   assert.equal(state.capabilities.canSplitFourStems, true);
 });
 
@@ -137,7 +161,12 @@ test("resolveEntitlementStateForUser falls back to usage-token basic access", as
     }),
     getActiveSubscription: async () => null,
     planFromSubscription: () => "unknown",
-    getUsageBalance: async () => ({ balance: 12, periodEnd: null }),
+    getUsageBalance: async () => ({
+      balance: 12,
+      periodEnd: null,
+      maxEntitlementTier: "basic",
+      freeMonthlyRemaining: 0,
+    }),
   });
 
   assert.equal(state.plan, "basic");
@@ -152,7 +181,12 @@ test("resolveEntitlementStateForUser fails closed for unknown subscription plans
     }),
     getActiveSubscription: async () => ({ id: "sub_789" }),
     planFromSubscription: () => "mystery_plan",
-    getUsageBalance: async () => ({ balance: 500, periodEnd: null }),
+    getUsageBalance: async () => ({
+      balance: 500,
+      periodEnd: null,
+      maxEntitlementTier: "basic",
+      freeMonthlyRemaining: 0,
+    }),
   });
 
   assert.equal(state.plan, "unknown");

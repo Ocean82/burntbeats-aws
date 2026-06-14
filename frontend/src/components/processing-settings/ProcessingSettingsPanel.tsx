@@ -78,6 +78,8 @@ export function ProcessingSettingsPanel({
     onContinueCheckout,
     usageBalance,
     usageLoading,
+    freeMonthlyRemaining,
+    paidBalance,
     estimatedSplitTokens,
     isCollapsed,
     canExpandToFourStems,
@@ -91,8 +93,6 @@ export function ProcessingSettingsPanel({
   const [removeVocalsMode, setRemoveVocalsMode] = useState(false);
   const [fullSepMode, setFullSepMode] = useState<"2" | "4">("2");
   const [loadExpanded, setLoadExpanded] = useState(false);
-  const [isSample, setIsSample] = useState(false);
-  // Local override: user can re-expand the panel after auto-collapse
   const [userExpanded, setUserExpanded] = useState(false);
   const [showNewSplitConfirm, setShowNewSplitConfirm] = useState(false);
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
@@ -103,7 +103,6 @@ export function ProcessingSettingsPanel({
     sizeBytes: uploadedFile?.size,
     durationSec: uploadDurationSec,
     estimatedTokens: estimatedSplitTokens,
-    isSample,
   });
 
   // When a new split completes (isCollapsed flips true), reset the user override
@@ -212,15 +211,14 @@ export function ProcessingSettingsPanel({
       <AnimatePresence initial={false}>
         {!panelCollapsed && (
           <motion.div key="full-panel" {...collapse}>
-      {subscriptionInactive && sourceMode === "split" && !isSample && (
+      {subscriptionInactive && sourceMode === "split" && (
         <div className="mb-sm rounded-xl border border-primary-400/35 bg-primary-500/10 px-md py-sm text-sm leading-relaxed text-primary-100/95">
           <p>
             <span className="font-semibold text-primary-50">
-              Active plan required to split full tracks.
+              Need more minutes?
             </span>{" "}
-            Continue to secure checkout, or enable{" "}
-            <span className="font-semibold text-primary-200">Try for free</span>{" "}
-            in the split controls below.
+            Free accounts get 5 minutes each month plus a one-time welcome grant.
+            Upgrade for full-length splits, 4-stem mode, and batch queue.
           </p>
           <div className="mt-xs">
             <button
@@ -253,7 +251,6 @@ export function ProcessingSettingsPanel({
           uploadedFile={uploadedFile}
           durationSec={uploadDurationSec}
           estimatedTokens={estimatedSplitTokens}
-          isSample={isSample}
           onBrowseUpload={onBrowseUpload}
           onClearUpload={onClearUpload}
           onDropUpload={onDropUpload}
@@ -318,9 +315,8 @@ export function ProcessingSettingsPanel({
                 <SplitActions
                   uploadedFile={uploadedFile}
                   splitIntent={resolvedSplitIntent}
-                  isSample={isSample}
-                  onToggleSample={() => setIsSample((v) => !v)}
                   onSplit={onSplit}
+                  hideSampleToggle
                   isSplitting={isSplitting}
                   splitProgress={splitProgress}
                   uploadProgress={uploadProgress}
@@ -363,7 +359,8 @@ export function ProcessingSettingsPanel({
                 usageBalance={usageBalance}
                 usageLoading={usageLoading}
                 estimatedSplitTokens={estimatedSplitTokens}
-                isSample={isSample}
+                freeMonthlyRemaining={freeMonthlyRemaining}
+                paidBalance={paidBalance}
                 showBalance={false}
               />
             ) : null}

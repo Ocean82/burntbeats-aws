@@ -8,7 +8,7 @@
  *   GET /balance      — backward-compatible alias for /usage
  */
 import express from "express";
-import { verifyClerkBearer } from "../clerkAuth.js";
+import { verifyClerkBearer, getClerkClient } from "../clerkAuth.js";
 import { getUsageBalance } from "../usageTokens.js";
 import { publicErrorMessage } from "../clientSafeError.js";
 import { resolveEntitlementStateForUser } from "./entitlements.js";
@@ -32,11 +32,29 @@ export function createSubscriptionRouter(deps = {}) {
     try {
       const userId = await readUserId(req);
       const entitlements = await readEntitlements(userId);
+      let billingStatus = "none";
+      const clerk = getClerkClient();
+      if (clerk) {
+        try {
+          const user = await clerk.users.getUser(userId);
+          const meta = user.publicMetadata;
+          if (
+            meta &&
+            typeof meta === "object" &&
+            typeof meta.billingStatus === "string"
+          ) {
+            billingStatus = meta.billingStatus;
+          }
+        } catch {
+          /* non-fatal */
+        }
+      }
       return res.json({
         active: entitlements.plan !== null,
         plan: entitlements.plan,
         entitlementSource: entitlements.entitlementSource,
         capabilities: entitlements.capabilities,
+        billingStatus,
       });
     } catch (/** @type {any} */ err) {
       console.error("[billing/subscription] error:", err.message);
@@ -53,8 +71,15 @@ export function createSubscriptionRouter(deps = {}) {
   router.get("/usage", async (req, res) => {
     try {
       const userId = await readUserId(req);
-      const { balance, periodEnd } = await readUsageBalance(userId);
-      return res.json({ balance, periodEnd });
+      const usage = await readUsageBalance(userId);
+      return res.json({
+        balance: usage.balance,
+        periodEnd: usage.periodEnd,
+        paidBalance: usage.paidBalance,
+        freeMonthlyRemaining: usage.freeMonthlyRemaining,
+        welcomeGranted: usage.welcomeGranted,
+        maxEntitlementTier: usage.maxEntitlementTier,
+      });
     } catch (/** @type {any} */ err) {
       console.error("[billing/usage] error:", err.message);
       const msg = publicErrorMessage(
@@ -70,8 +95,15 @@ export function createSubscriptionRouter(deps = {}) {
   router.get("/balance", async (req, res) => {
     try {
       const userId = await readUserId(req);
-      const { balance, periodEnd } = await readUsageBalance(userId);
-      return res.json({ balance, periodEnd });
+      const usage = await readUsageBalance(userId);
+      return res.json({
+        balance: usage.balance,
+        periodEnd: usage.periodEnd,
+        paidBalance: usage.paidBalance,
+        freeMonthlyRemaining: usage.freeMonthlyRemaining,
+        welcomeGranted: usage.welcomeGranted,
+        maxEntitlementTier: usage.maxEntitlementTier,
+      });
     } catch (/** @type {any} */ err) {
       console.error("[billing/balance] error:", err.message);
       const msg = publicErrorMessage(

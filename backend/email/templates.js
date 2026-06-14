@@ -321,4 +321,70 @@ export const TEMPLATES = {
 </body>
 </html>`,
   },
+
+  paymentFailed: {
+    subject: "Action needed: payment failed for Burnt Beats",
+    getHtml: (data) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #ffffff; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+    .card { background: #1a1a2e; border-radius: 16px; padding: 32px; }
+    .button { display: inline-block; background: linear-gradient(135deg, #e94560 0%, #ff6b8a 100%); color: white; padding: 16px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h1 style="margin: 0 0 16px 0;">We couldn't process your payment</h1>
+      <p style="color: #a0a0b0; line-height: 1.6;">
+        Your latest Burnt Beats subscription payment${data.amountDue ? ` ($${escapeHtml(String(data.amountDue))})` : ""} did not go through.
+        Update your payment method to keep Premium access uninterrupted.
+      </p>
+      <p style="margin-top: 24px; text-align: center;">
+        <a href="${escapeHtml(data.updateUrl || "https://www.burntbeats.com")}" class="button">Update payment method</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>`,
+  },
+
+  winbackDay7: {
+    subject: "We miss you at Burnt Beats",
+    getHtml: (data) => `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background:#0a0a0a; color:#fff; padding:32px;">
+  <p>Your ${escapeHtml(data.lastPlan || "Premium")} subscription ended recently. Your stem jobs and mixer presets are still waiting whenever you're ready to come back.</p>
+  <p><a href="${escapeHtml(data.returnUrl || "https://www.burntbeats.com")}" style="color:#ff6b8a;">Return to Burnt Beats</a></p>
+</body>
+</html>`,
+  },
+
+  winbackDay30: {
+    subject: "25% off when you return to Burnt Beats",
+    getHtml: (data) => `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background:#0a0a0a; color:#fff; padding:32px;">
+  <p>Ready to split again? Come back to Burnt Beats and pick up where you left off — full workstation, 4-stem splits, and export in one session.</p>
+  <p><a href="${escapeHtml(data.returnUrl || "https://www.burntbeats.com")}?promo=winback30" style="color:#ff6b8a;">Restart ${escapeHtml(data.lastPlan || "Premium")}</a></p>
+</body>
+</html>`,
+  },
+
+  winbackDay60: {
+    subject: "Your Burnt Beats workstation is still here",
+    getHtml: (data) => `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; background:#0a0a0a; color:#fff; padding:32px;">
+  <p>Last chance reminder: Burnt Beats still runs in your browser — no plugins, no GPU required. Jump back in with a Top-Up pack or resubscribe anytime.</p>
+  <p><a href="${escapeHtml(data.returnUrl || "https://www.burntbeats.com")}" style="color:#ff6b8a;">Open Burnt Beats</a></p>
+</body>
+</html>`,
+  },
 };

@@ -21,6 +21,7 @@ export interface SettingsMenuProps {
   onOpenPricing: () => void;
   onOpenFullPricingTab: () => void;
   onOpenPortal: () => void;
+  onCancelSubscription?: () => void;
   onOpenPresets: () => void;
   onOpenHelp: () => void;
   onOpenFeedback: () => void;
@@ -39,6 +40,7 @@ export function SettingsMenu({
   onOpenPricing,
   onOpenFullPricingTab,
   onOpenPortal,
+  onCancelSubscription,
   onOpenPresets,
   onOpenHelp,
   onOpenFeedback,
@@ -143,14 +145,27 @@ export function SettingsMenu({
               }}
             />
             {showBilling && (
-              <SettingsMenuItem
-                icon={<CreditCard className="h-4 w-4" />}
-                label="Manage billing"
-                onClick={() => {
-                  void onOpenPortal();
-                  close();
-                }}
-              />
+              <>
+                <SettingsMenuItem
+                  icon={<CreditCard className="h-4 w-4" />}
+                  label="Manage billing"
+                  onClick={() => {
+                    void onOpenPortal();
+                    close();
+                  }}
+                />
+                {onCancelSubscription && (
+                  <SettingsMenuItem
+                    icon={<CreditCard className="h-4 w-4" />}
+                    label="Cancel subscription"
+                    testId="settings-menu-cancel"
+                    onClick={() => {
+                      onCancelSubscription();
+                      close();
+                    }}
+                  />
+                )}
+              </>
             )}
             <SettingsMenuItem
               icon={<ExternalLink className="h-4 w-4" />}

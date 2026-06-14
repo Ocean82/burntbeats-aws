@@ -25,6 +25,7 @@ export {
   subscriptionBillingPeriod,
   tokensPerMonthFromPrice,
   tokensPerTopupFromPrice,
+  entitlementTierFromPrice,
   getAudioDurationSeconds,
   findJobInputPath,
 } from "./usage/index.js";

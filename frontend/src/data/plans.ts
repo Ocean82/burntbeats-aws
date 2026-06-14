@@ -24,7 +24,32 @@ export const PACK_TOKEN_GRANTS = {
   topup: 60,
 } as const;
 
-export const SUBSCRIPTION_PLANS: PlanConfig[] = [
+export type BillingInterval = "month" | "year";
+
+/** Annual effective monthly framing — matches Stripe annual prices in plan. */
+export const ANNUAL_PLAN_PRICING: Record<
+  "basic" | "premium" | "studio",
+  { annualTotal: string; effectiveMonthly: string; savings: string }
+> = {
+  basic: { annualTotal: "$86/yr", effectiveMonthly: "~$7.17/mo", savings: "Save $22/yr" },
+  premium: { annualTotal: "$144/yr", effectiveMonthly: "$12/mo", savings: "Save 20%" },
+  studio: { annualTotal: "$240/yr", effectiveMonthly: "$20/mo", savings: "Save 20%" },
+};
+
+export function planPriceLabel(
+  planId: "basic" | "premium" | "studio",
+  interval: BillingInterval,
+  monthlyLabel: string,
+): string {
+  if (interval === "year") {
+    const annual = ANNUAL_PLAN_PRICING[planId];
+    return `${annual.annualTotal} (${annual.effectiveMonthly})`;
+  }
+  return monthlyLabel;
+}
+
+/** Hero subscription cards — Premium + Basic only. */
+export const HERO_SUBSCRIPTION_PLANS: PlanConfig[] = [
   {
     id: "premium",
     name: "Premium",
@@ -60,23 +85,29 @@ export const SUBSCRIPTION_PLANS: PlanConfig[] = [
     ],
     cta: "Start Basic",
   },
-  {
-    id: "studio",
-    name: "Studio",
-    priceLabel: "$25/month",
-    badge: "For power users",
-    description:
-      "Premium workstation features with the highest monthly token allowance and priority processing.",
-    details: [
-      "600 tokens/month (1 token = 1 minute of audio).",
-      "Everything in Premium: 4-stem, quality, batch, mixer, MIDI, vocal cleanup.",
-      "Priority queue for heavier session volume.",
-      "Unused tokens roll over month to month.",
-      "Early access to beta features as they ship.",
-      "Built for studios and frequent multi-track revisions.",
-    ],
-    cta: "Start Studio",
-  },
+];
+
+export const STUDIO_PLAN: PlanConfig = {
+  id: "studio",
+  name: "Studio",
+  priceLabel: "$25/month",
+  badge: "Power users",
+  description:
+    "Premium workstation features with the highest monthly token allowance and priority processing.",
+  details: [
+    "800 tokens/month (1 token = 1 minute of audio).",
+    "Everything in Premium: 4-stem, quality, batch, mixer, MIDI, vocal cleanup.",
+    "Priority queue for heavier session volume.",
+    "Unused tokens roll over month to month.",
+    "Early access to beta features as they ship.",
+    "Built for studios and frequent multi-track revisions.",
+  ],
+  cta: "Start Studio",
+};
+
+export const SUBSCRIPTION_PLANS: PlanConfig[] = [
+  ...HERO_SUBSCRIPTION_PLANS,
+  STUDIO_PLAN,
 ];
 
 export const PACK_PLANS: PlanConfig[] = [
@@ -103,6 +134,7 @@ export const PACK_PLANS: PlanConfig[] = [
     description: "One-time credits for occasional sessions — no monthly plan required.",
     details: [
       `${PACK_TOKEN_GRANTS.topup} tokens (~${PACK_TOKEN_GRANTS.topup} minutes of audio).`,
+      "Includes 4-stem and quality modes while you have balance.",
       "Same stem engine and workstation tools as monthly plans.",
       "Tokens stay on your balance until you use them.",
       "Great for guest edits, one-off prep, and topping up mid-project.",
@@ -117,8 +149,23 @@ export const ALL_PLANS: PlanConfig[] = [...PACK_PLANS, ...SUBSCRIPTION_PLANS];
 export type PricingTableType = "subscriptions" | "packs";
 
 /** Get plans for a given pricing tab. */
-export function getPlansForType(type: PricingTableType): PlanConfig[] {
-  return type === "subscriptions" ? SUBSCRIPTION_PLANS : PACK_PLANS;
+export function getPlansForType(
+  type: PricingTableType,
+  opts?: { heroOnly?: boolean; interval?: BillingInterval },
+): PlanConfig[] {
+  if (type === "packs") return PACK_PLANS;
+  const base = opts?.heroOnly ? HERO_SUBSCRIPTION_PLANS : SUBSCRIPTION_PLANS;
+  const interval = opts?.interval ?? "month";
+  if (interval === "month") return base;
+  return base.map((plan) => {
+    if (plan.id !== "basic" && plan.id !== "premium" && plan.id !== "studio") {
+      return plan;
+    }
+    return {
+      ...plan,
+      priceLabel: planPriceLabel(plan.id, interval, plan.priceLabel),
+    };
+  });
 }
 
 /** Short value prop for paywalls and teasers. */

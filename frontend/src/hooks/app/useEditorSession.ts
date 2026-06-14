@@ -337,6 +337,8 @@ export function useEditorSession(): EditorSession {
   const {
     subscription,
     usageBalance,
+    paidBalance,
+    freeMonthlyRemaining,
     usageLoading,
     stemQualityOptions,
     canSplitFourStems,
@@ -525,9 +527,11 @@ export function useEditorSession(): EditorSession {
 
   const { upsellOpen, setUpsellOpen, upsellTrigger } = useUpsellTriggers({
     isSplitting,
-    isSample,
     splitResultStemsLength: splitResultStems.length,
     usageBalance,
+    freeMonthlyRemaining,
+    paidBalance,
+    subscriptionActive: subscription.status === "active",
   });
 
   useAppEvent("open-pricing", () => setActiveView("pricing"));

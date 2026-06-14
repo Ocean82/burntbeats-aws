@@ -41,6 +41,7 @@ export {
   subscriptionBillingPeriod,
   tokensPerMonthFromPrice,
   tokensPerTopupFromPrice,
+  entitlementTierFromPrice,
 } from "./stripeMetadata.js";
 
 // Audio file utilities

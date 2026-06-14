@@ -142,7 +142,7 @@ export function useStemSplitting({
       setUploadState((prev) => ({
         ...prev,
         splitError:
-          "Full-track split requires a plan or one-time pack. Review options below, or use Try for free.",
+          "You need tokens to split. Use your free monthly minutes, grab a $0.99 pack, or start Premium below.",
       }));
       return;
     }

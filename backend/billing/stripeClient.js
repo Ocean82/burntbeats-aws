@@ -47,6 +47,9 @@ export function getPriceIds() {
     studio: process.env.STRIPE_PRICE_ID_STUDIO || "",
     topup: process.env.STRIPE_PRICE_ID_TOPUP || "",
     single: process.env.STRIPE_PRICE_ID_SINGLE || "",
+    basic_annual: process.env.STRIPE_PRICE_ID_BASIC_ANNUAL || "",
+    premium_annual: process.env.STRIPE_PRICE_ID_PREMIUM_ANNUAL || "",
+    studio_annual: process.env.STRIPE_PRICE_ID_STUDIO_ANNUAL || "",
   };
 }
 

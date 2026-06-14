@@ -1,13 +1,17 @@
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { viewSwitchMotion } from "../motion/presets";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Loader2, ChevronDown } from "lucide-react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import type { PlanConfig, PricingTableType } from "../data/plans";
+import { STUDIO_PLAN } from "../data/plans";
 import { PricingTablePreview } from "./PricingTablePreview";
 import { PricingTabToggle } from "./PricingTabToggle";
+import { BillingIntervalToggle } from "./BillingIntervalToggle";
+import { PricingFeatureComparison } from "./PricingFeatureComparison";
 import { BillingRules } from "./BillingRules";
 import { trackEvent } from "../analytics/events";
+import type { BillingInterval } from "../analytics/billingEvents";
 
 interface UsageContext {
   hasCompletedFirstExport?: boolean;
@@ -33,6 +37,8 @@ export function PricingPage({
     null,
   );
   const [pricingTab, setPricingTab] = useState<PricingTableType>(initialTab ?? "subscriptions");
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>("year");
+  const [studioExpanded, setStudioExpanded] = useState(false);
   const isCurrentPlan = (plan: Plan) =>
     subscription.status === "active" && subscription.plan === plan;
 
@@ -47,6 +53,7 @@ export function PricingPage({
       .startCheckout(plan, {
         source: "pricing_page",
         intent: "pricing_page_cta",
+        interval: billingInterval,
       })
       .finally(() => {
         setCheckoutLoadingPlan(null);
@@ -224,12 +231,20 @@ export function PricingPage({
           <p className="text-readable mb-md text-sm text-secondary-foreground">
             Compare every feature and limit across our plans below.
           </p>
-          <div className="mx-auto flex justify-center">
+          <div className="mx-auto flex flex-col items-center justify-center gap-sm">
             <PricingTabToggle activeTab={pricingTab} onTabChange={setPricingTab} />
+            {pricingTab === "subscriptions" && (
+              <BillingIntervalToggle
+                value={billingInterval}
+                onChange={setBillingInterval}
+              />
+            )}
           </div>
         </div>
         <PricingTablePreview
           pricingType={pricingTab}
+          billingInterval={billingInterval}
+          heroOnly={pricingTab === "subscriptions"}
           onSelectPlan={handleSelectPlan}
           ctaButtonRenderer={renderCheckoutCTA}
           currentPlan={
@@ -238,6 +253,35 @@ export function PricingPage({
               : null
           }
         />
+        {pricingTab === "subscriptions" && (
+          <details
+            className="mt-md rounded-2xl border border-border bg-muted/40 p-md"
+            open={studioExpanded}
+            onToggle={(e) => setStudioExpanded(e.currentTarget.open)}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-secondary-foreground">
+              Need more minutes? Studio for power users
+              <ChevronDown className="h-4 w-4" />
+            </summary>
+            <div className="mt-md">
+              <PricingTablePreview
+                pricingType="subscriptions"
+                billingInterval={billingInterval}
+                plansOverride={[STUDIO_PLAN]}
+                onSelectPlan={handleSelectPlan}
+                ctaButtonRenderer={renderCheckoutCTA}
+                currentPlan={
+                  subscription.status === "active" && subscription.plan === "studio"
+                    ? "studio"
+                    : null
+                }
+              />
+            </div>
+          </details>
+        )}
+        <div className="mt-lg">
+          <PricingFeatureComparison hideStudio={pricingTab === "subscriptions"} />
+        </div>
       </section>
 
       {/* FAQ / objections reducer */}

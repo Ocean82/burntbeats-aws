@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Undo2, Redo2, Mic2, Music, Drum, Radio } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
 import { SettingsMenu } from "../components/SettingsMenu";
+import { PastDueBanner } from "../components/PastDueBanner";
+import { CancelSubscriptionFlow } from "../components/CancelSubscriptionFlow";
 import { WhatsNewBadge } from "../components/WhatsNewBadge";
 import { WorkflowStepper } from "../components/ui";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
@@ -59,6 +62,7 @@ export function EditorHeader({
   editorWorkflow = null,
 }: EditorHeaderProps) {
   const { tabsWithNews, markTabSeen } = useWhatsNew();
+  const [cancelFlowOpen, setCancelFlowOpen] = useState(false);
   const workflow = useEditorWorkflowSteps(
     editorWorkflow ?? {
       uploadedFile: null,
@@ -86,6 +90,17 @@ export function EditorHeader({
       )}
       aria-label="Burnt Beats"
     >
+      <PastDueBanner
+        billingStatus={subscription.billingStatus}
+        onUpdatePayment={() => void subscription.openPortal()}
+      />
+      <CancelSubscriptionFlow
+        open={cancelFlowOpen}
+        onClose={() => setCancelFlowOpen(false)}
+        plan={subscription.plan}
+        onOpenPortal={() => void subscription.openPortal()}
+        onOfferAccepted={() => subscription.refetch()}
+      />
       {/* Brand row + actions */}
       <div className="flex flex-wrap items-center justify-between gap-md">
         <div className="flex min-w-0 items-center gap-sm sm:gap-md">
@@ -145,6 +160,7 @@ export function EditorHeader({
             }}
             onOpenPricing={() => setActiveView("pricing")}
             onOpenPortal={() => void subscription.openPortal()}
+            onCancelSubscription={() => setCancelFlowOpen(true)}
             onOpenPresets={() => openModal("presets")}
             onOpenHelp={() => openModal("help")}
             onOpenFeedback={openFeedback}

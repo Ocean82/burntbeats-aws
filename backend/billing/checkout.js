@@ -11,6 +11,7 @@ import { verifyClerkBearer } from "../clerkAuth.js";
 import { resolveStripeReturnUrl } from "../returnUrl.js";
 import { getStripe, getPriceIds, safeBillingError } from "./stripeClient.js";
 import { getOrCreateStripeCustomer } from "./stripeCustomer.js";
+import { resolveCheckoutPriceId, isAnnualBillingEnabled } from "./priceResolver.js";
 
 export const checkoutRouter = express.Router();
 
@@ -35,7 +36,12 @@ checkoutRouter.post("/checkout", async (req, res) => {
         ? req.body.intent.trim().slice(0, 96)
         : "unspecified";
     const priceIds = getPriceIds();
-    const priceId = priceIds[/** @type {keyof typeof priceIds} */ (plan)];
+    const intervalRaw = req.body?.interval;
+    const interval =
+      intervalRaw === "year" && isAnnualBillingEnabled() ? "year" : "month";
+    const priceId =
+      resolveCheckoutPriceId(plan, interval) ||
+      priceIds[/** @type {keyof typeof priceIds} */ (plan)];
     if (!priceId) {
       return res.status(400).json({
         error: `Unknown plan "${plan}". Valid: ${Object.keys(priceIds).join(", ")}`,
@@ -59,6 +65,7 @@ checkoutRouter.post("/checkout", async (req, res) => {
         plan,
         source,
         intent,
+        interval,
       },
     };
     if (!isOneTime) {

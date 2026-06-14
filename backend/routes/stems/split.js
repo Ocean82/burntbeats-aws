@@ -206,7 +206,11 @@ splitRouter.post(
     let usageReserved = false;
     /** @type {number | null} */
     let durationSeconds = null;
-    const isSample = req.body && req.body.sample === "true";
+    const isSample =
+      (process.env.SAMPLE_MODE_ENABLED || "").toLowerCase() === "1" ||
+      (process.env.SAMPLE_MODE_ENABLED || "").toLowerCase() === "true"
+        ? req.body && req.body.sample === "true"
+        : false;
 
     if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH && !isSample) {
       try {

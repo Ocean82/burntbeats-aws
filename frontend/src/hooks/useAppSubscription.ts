@@ -10,6 +10,9 @@ import { usePostSignupPlanCheckout } from "./usePostSignupPlanCheckout";
 export interface AppSubscriptionResult {
   subscription: ReturnType<typeof useSubscription>;
   usageBalance: number | null;
+  paidBalance: number | null;
+  freeMonthlyRemaining: number | null;
+  welcomeGranted: boolean;
   usageLoading: boolean;
   refetchUsage: () => void;
   /** "speed_only" for basic plans, "full" otherwise. */
@@ -31,9 +34,12 @@ export function useAppSubscription(opts: {
   const subscription = useSubscription();
   const {
     balance: usageBalance,
+    paidBalance,
+    freeMonthlyRemaining,
+    welcomeGranted,
     loading: usageLoading,
     refetch: refetchUsage,
-  } = useUsageBalance(subscription.status === "active" && !opts.localDevFullApp);
+  } = useUsageBalance(!opts.localDevFullApp);
 
   // Refetch usage when stems change or subscription activates
   useEffect(() => {
@@ -60,6 +66,9 @@ export function useAppSubscription(opts: {
     () => ({
       subscription,
       usageBalance,
+      paidBalance,
+      freeMonthlyRemaining,
+      welcomeGranted,
       usageLoading,
       refetchUsage,
       stemQualityOptions,
@@ -71,6 +80,9 @@ export function useAppSubscription(opts: {
     [
       subscription,
       usageBalance,
+      paidBalance,
+      freeMonthlyRemaining,
+      welcomeGranted,
       usageLoading,
       refetchUsage,
       stemQualityOptions,

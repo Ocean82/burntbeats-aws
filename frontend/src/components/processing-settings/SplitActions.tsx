@@ -10,8 +10,8 @@ import { intentLabel, legacyStemsFromIntent } from "../../utils/splitIntent";
 export interface SplitActionsProps {
   uploadedFile: File | null;
   splitIntent: SplitIntent;
-  isSample: boolean;
-  onToggleSample: () => void;
+  isSample?: boolean;
+  onToggleSample?: () => void;
   onSplit: (intent: SplitIntent, isSample?: boolean) => void;
   isSplitting: boolean;
   splitProgress: number;
@@ -33,7 +33,7 @@ export interface SplitActionsProps {
 export function SplitActions({
   uploadedFile,
   splitIntent,
-  isSample,
+  isSample = false,
   onToggleSample,
   onSplit,
   isSplitting,
@@ -149,7 +149,7 @@ export function SplitActions({
               actionLabel
             )}
           </button>
-          {!hideSampleToggle && (
+          {!hideSampleToggle && onToggleSample && (
             <button
               type="button"
               onClick={onToggleSample}
