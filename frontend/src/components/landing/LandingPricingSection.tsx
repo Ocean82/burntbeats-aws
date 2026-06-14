@@ -30,12 +30,17 @@ const PRICING_FAQ = [
   {
     title: "How do tokens map to songs?",
     body:
-      "1 token = 1 minute of audio. A 3-minute track costs 3 tokens to run in either 2-stem or 4-stem mode, depending on the split you choose. Partial minutes round up.",
+      "1 token = 1 minute of audio. A 3-minute track costs 3 tokens to split. Speech cleanup and MIDI conversion also use tokens. Mixer edits and browser export are free. Unused monthly tokens roll over. Partial minutes round up.",
+  },
+  {
+    title: "What tools are included?",
+    body:
+      "Paid access unlocks the full workstation: stem separation, waveform mixer, multi-stem editor, WAV/MP3 export, audio-to-MIDI, vocal cleanup, beat maker, and job history — not just a download link.",
   },
   {
     title: "Do I have to subscribe?",
     body:
-      "No. If you only need stems occasionally, buy a one-time Top-Up pack instead of a monthly plan. Subscribe when Burnt Beats becomes part of your regular workflow.",
+      "No. Start with a $0.99 Single Song pack or a $5 Top-Up (60 minutes). Subscribe to Premium ($15/mo) when you want 4-stem splits, quality modes, batch queue, and the best per-minute value.",
   },
 ] as const;
 

@@ -1,11 +1,15 @@
 /**
  * PaywallBanner: shown when the user has no active subscription.
- * Presents the subscription tiers and redirects to Stripe Checkout on selection.
+ * Presents packs and subscription tiers; redirects to Stripe Checkout on selection.
  */
 import { Loader2, ArrowRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
-import { SUBSCRIPTION_PLANS } from "../data/plans";
+import {
+  PACK_PLANS,
+  SUBSCRIPTION_PLANS,
+  WORKSTATION_VALUE_LINE,
+} from "../data/plans";
 import { cn } from "../utils/cn";
 import { trackEvent } from "../analytics/events";
 import { BillingRules } from "./BillingRules";
@@ -29,13 +33,13 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
     });
   }, [subscription.plan, subscription.status, variant]);
 
-  const handleCheckout = async (plan: Plan, source: string) => {
+  const handleCheckout = async (plan: Plan, source: string, intent?: string) => {
     trackEvent("paywall_cta_clicked", { source, plan });
     setLoading(plan);
     try {
       await subscription.startCheckout(plan, {
         source: source === "teaser" ? "paywall_banner" : "split_gate",
-        intent: `${source}_checkout`,
+        intent: intent ?? `${source}_checkout`,
       });
     } finally {
       setLoading(null);
@@ -47,20 +51,33 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
     return (
       <div className="flex flex-col items-center gap-sm py-xs sm:flex-row sm:justify-between">
         <p className="text-readable text-sm text-secondary-foreground">
-          <span className="font-semibold text-secondary-foreground">Subscribe to unlock full features.</span>{" "}
-          Plans start at $5/mo.
+          <span className="font-semibold text-secondary-foreground">
+            Unlock the full workstation.
+          </span>{" "}
+          From $0.99 per song or $15/mo for Premium.
         </p>
-        <div className="flex items-center gap-xs">
+        <div className="flex flex-wrap items-center justify-center gap-xs">
           <button
             type="button"
-            onClick={() => void handleCheckout("basic", "teaser")}
+            onClick={() => void handleCheckout("single", "teaser", "teaser_single_pack")}
+            disabled={loading !== null}
+            className="ghost-button flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold disabled:opacity-60"
+          >
+            {loading === "single" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            Try one song · $0.99
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleCheckout("premium", "teaser", "teaser_premium_sub")}
             disabled={loading !== null}
             className="fire-button flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold disabled:opacity-60"
           >
-            {loading === "basic" ? (
+            {loading === "premium" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : null}
-            Start Basic
+            Start Premium
           </button>
           {onViewPlans && (
             <button
@@ -78,7 +95,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
   }
 
   // ── Full variant ──
-  const handleSelect = async (plan: Plan) => {
+  const handleSelect = async (plan: Plan, intent: string) => {
     trackEvent("paywall_cta_clicked", {
       source: "split_gate",
       plan,
@@ -87,48 +104,65 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
     try {
       await subscription.startCheckout(plan, {
         source: "paywall_banner",
-        intent: "blocked_split_checkout",
+        intent,
       });
     } finally {
       setLoading(null);
     }
   };
 
+  const singlePack = PACK_PLANS.find((p) => p.id === "single");
+  const topupPack = PACK_PLANS.find((p) => p.id === "topup");
+
   return (
     <div className="flex flex-col gap-lg">
       <div className="flex flex-col gap-2xs text-center">
         <p className="text-sm font-semibold text-secondary-foreground">Choose a plan to get started</p>
-        <p className="text-readable text-sm text-muted-foreground">
-          Continue to secure Stripe checkout or start with one-time credits.
-        </p>
+        <p className="text-readable text-sm text-muted-foreground">{WORKSTATION_VALUE_LINE}</p>
       </div>
 
       <BillingRules />
 
-      <div className="grid gap-xs sm:grid-cols-2">
+      <div className="grid gap-xs sm:grid-cols-3">
         <button
           type="button"
-          onClick={() => void handleSelect("basic")}
+          onClick={() => void handleSelect("premium", "blocked_split_checkout_premium")}
           disabled={loading !== null}
-          aria-label="Pay now with Stripe and start Basic plan"
+          aria-label="Start Premium subscription"
           aria-live="polite"
           className={cn(
-            "fire-button flex min-h-[48px] w-full items-center justify-center gap-xs px-md py-sm text-sm font-semibold",
+            "fire-button flex min-h-[48px] w-full items-center justify-center gap-xs px-md py-sm text-sm font-semibold sm:col-span-1",
             "disabled:cursor-not-allowed disabled:opacity-60",
           )}
         >
-          {loading === "basic" ? (
+          {loading === "premium" ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
               Redirecting...
             </>
           ) : (
-            "Continue to checkout · Basic"
+            "Start Premium · $15/mo"
           )}
         </button>
         <button
           type="button"
-          onClick={() => void handleSelect("topup")}
+          onClick={() => void handleSelect("single", "blocked_split_checkout_single")}
+          disabled={loading !== null}
+          aria-label="Buy single song pack"
+          className="ghost-button min-h-[48px] w-full px-md py-sm text-sm font-semibold disabled:opacity-60"
+        >
+          {loading === "single" ? (
+            <span className="inline-flex items-center justify-center gap-xs">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Redirecting...
+            </span>
+          ) : (
+            `Try one song · ${singlePack?.priceLabel ?? "$0.99"}`
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleSelect("topup", "blocked_split_checkout_topup")}
           disabled={loading !== null}
           aria-label="Buy one-time top-up credits"
           className="ghost-button min-h-[48px] w-full px-md py-sm text-sm font-semibold disabled:opacity-60"
@@ -139,7 +173,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
               Redirecting...
             </span>
           ) : (
-            "Continue to checkout · Top-Up"
+            `Top-Up · ${topupPack?.priceLabel ?? "$5"} (60 min)`
           )}
         </button>
       </div>
@@ -149,7 +183,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
           <button
             key={plan.id}
             type="button"
-            onClick={() => void handleSelect(plan.id)}
+            onClick={() => void handleSelect(plan.id, `blocked_split_checkout_${plan.id}`)}
             disabled={loading !== null || (subscription.status === "active" && subscription.plan === plan.id)}
             aria-label={
               subscription.status === "active" && subscription.plan === plan.id
@@ -175,7 +209,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
               </span>
               <span className="text-readable text-sm text-muted-foreground">{plan.details.slice(0, 3).join(" · ")}</span>
             </div>
-            <div className="flex items-center gap-xs shrink-0 pl-md">
+            <div className="flex shrink-0 items-center gap-xs pl-md">
               <span className="text-sm font-semibold text-primary-300">{plan.priceLabel}</span>
               {loading === plan.id && <Loader2 className="h-4 w-4 animate-spin text-primary-300" />}
             </div>
@@ -184,7 +218,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
       </div>
 
       <p className="text-readable text-center text-xs text-muted-foreground">
-        Not ready for a full plan? Start with Top-Up now and upgrade later.
+        Not ready for Premium? Single and Top-Up packs unlock the workstation with no subscription.
       </p>
     </div>
   );

@@ -121,7 +121,7 @@ export function useProcessingSettingsData() {
         intent: "four_stem_unlock",
       }),
     onContinueCheckout: () =>
-      void subscription.startCheckout("basic", {
+      void subscription.startCheckout("premium", {
         source: "split_gate",
         intent: "continue_from_split_blocker",
       }),

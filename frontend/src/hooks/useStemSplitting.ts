@@ -137,7 +137,7 @@ export function useStemSplitting({
       });
       trackEvent("checkout_preprompt_shown", {
         source: "split_gate",
-        suggested_plan: "basic",
+        suggested_plan: "premium",
       });
       setUploadState((prev) => ({
         ...prev,

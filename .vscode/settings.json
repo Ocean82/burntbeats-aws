@@ -1,4 +1,5 @@
 {
     "snyk.advanced.autoSelectOrganization": true,
-    "diffEditor.codeLens": true
+    "diffEditor.codeLens": true,
+    "typescript.native-preview.goMemLimit": "1GiB"
 }

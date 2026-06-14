@@ -2,6 +2,8 @@
  * Single source of truth for all plan definitions.
  * Every pricing surface (PaywallBanner, PricingPage, LandingPage, PricingTablePreview)
  * pulls from these arrays so pricing copy stays consistent.
+ *
+ * Token grants mirror Stripe Price metadata (tokens_per_month / tokens_per_topup).
  */
 import type { Plan } from "../hooks/useSubscription";
 
@@ -16,54 +18,62 @@ export interface PlanConfig {
   cta: string;
 }
 
+/** One-time pack token grants — keep in sync with Stripe Price metadata. */
+export const PACK_TOKEN_GRANTS = {
+  single: 4,
+  topup: 60,
+} as const;
+
 export const SUBSCRIPTION_PLANS: PlanConfig[] = [
+  {
+    id: "premium",
+    name: "Premium",
+    priceLabel: "$15/month",
+    badge: "Most popular",
+    description:
+      "Full browser workstation: split, mix, MIDI, vocal cleanup, and export in one session.",
+    highlight: true,
+    details: [
+      "300 tokens/month (1 token = 1 minute of audio).",
+      "4-stem split, quality modes, and batch queue.",
+      "Waveform mixer, multi-stem editor, and client-side export.",
+      "Audio-to-MIDI, vocal cleanup, and beat maker (unlimited patterns).",
+      "Unused tokens roll over — they add to your balance each month.",
+      "Best when Burnt Beats is part of your weekly workflow.",
+    ],
+    cta: "Start Premium",
+  },
   {
     id: "basic",
     name: "Basic",
     priceLabel: "$9/month",
     badge: "Starter",
     description:
-      "For producers who want the workstation ready whenever a track needs a first pass.",
+      "Speed-mode 2-stem splits plus the in-browser mixer and export when you need a lighter monthly plan.",
     details: [
-      "120 tokens/month (1 token = 1 minute).",
-      "2-stem workflow for vocals and instrumentals.",
-      "Open the mixer and export without leaving the browser.",
-      "Great for acapellas, edits, and first-pass prep.",
-      "Priority processing over free traffic.",
-      "Built for repeat use without committing to a larger tier.",
+      "120 tokens/month (1 token = 1 minute of audio).",
+      "2-stem split in speed mode (vocals + instrumental).",
+      "Mixer, export, MIDI tools, and vocal cleanup with your token balance.",
+      "Beat maker with up to 10 saved patterns.",
+      "Unused tokens roll over month to month.",
+      "Upgrade to Premium for 4-stem, quality modes, and batch queue.",
     ],
     cta: "Start Basic",
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    priceLabel: "$15/month",
-    badge: "Most popular",
-    description: "For DJs and producers building edits, remixes, and repeat sessions every week.",
-    highlight: true,
-    details: [
-      "300 tokens/month (1 token = 1 minute).",
-      "4-stem workflow for deeper control over the split.",
-      "Full-quality options and batch tools unlocked.",
-      "Browser mixer, editor, and MIDI workflow included.",
-      "Great for repeat sessions, live-set prep, and ongoing projects.",
-      "The best fit when Burnt Beats is part of your weekly workflow.",
-    ],
-    cta: "Start Premium",
   },
   {
     id: "studio",
     name: "Studio",
     priceLabel: "$25/month",
     badge: "For power users",
-    description: "For engineers, studios, and heavy users keeping multiple projects moving.",
+    description:
+      "Premium workstation features with the highest monthly token allowance and priority processing.",
     details: [
-      "600 tokens/month (1 token = 1 minute).",
-      "Highest-quality stem options and full multi-stem workflow.",
-      "Priority queue placement for heavier session volume.",
-      "Built for frequent exports, revisions, and multi-track work.",
-      "Bonus tokens awarded regularly.",
-      "Access to beta feature previews.",
+      "600 tokens/month (1 token = 1 minute of audio).",
+      "Everything in Premium: 4-stem, quality, batch, mixer, MIDI, vocal cleanup.",
+      "Priority queue for heavier session volume.",
+      "Unused tokens roll over month to month.",
+      "Early access to beta features as they ship.",
+      "Built for studios and frequent multi-track revisions.",
     ],
     cta: "Start Studio",
   },
@@ -75,13 +85,12 @@ export const PACK_PLANS: PlanConfig[] = [
     name: "Single Song Pack",
     priceLabel: "$0.99 one-time",
     badge: "Best for trying",
-    description: "A low-risk way to open the workstation for one track.",
+    description: "Try the full split-to-export workflow on one track with no subscription.",
     details: [
-      "4 tokens (enough for ~4 minutes of audio).",
-      "Perfect for testing Burnt Beats on one song.",
-      "No recurring charges, ever.",
-      "Standard-quality stems plus browser-based mix and export workflow.",
-      "Buy again any time you need another one-off session.",
+      `${PACK_TOKEN_GRANTS.single} tokens (~${PACK_TOKEN_GRANTS.single} minutes of audio).`,
+      "Speed-mode 2-stem split plus in-browser mixer and export.",
+      "No recurring charges — buy again any time.",
+      "Upgrade to Premium later for 4-stem and quality modes.",
     ],
     cta: "Buy Single Pack",
   },
@@ -91,13 +100,12 @@ export const PACK_PLANS: PlanConfig[] = [
     priceLabel: "$5 one-time",
     badge: "Most flexible",
     highlight: true,
-    description: "Open the workstation when you need stems, without a monthly plan.",
+    description: "One-time credits for occasional sessions — no monthly plan required.",
     details: [
-      "One-time purchase of tokens — no recurring charge.",
-      "Use the same high-quality stem engine as monthly plans.",
-      "Great for one-off edits, guest work, and occasional sessions.",
-      "Top up again any time you run low.",
-      "No plan required if Burnt Beats is not part of your regular workflow.",
+      `${PACK_TOKEN_GRANTS.topup} tokens (~${PACK_TOKEN_GRANTS.topup} minutes of audio).`,
+      "Same stem engine and workstation tools as monthly plans.",
+      "Tokens stay on your balance until you use them.",
+      "Great for guest edits, one-off prep, and topping up mid-project.",
     ],
     cta: "Buy Top-Up Pack",
   },
@@ -112,3 +120,7 @@ export type PricingTableType = "subscriptions" | "packs";
 export function getPlansForType(type: PricingTableType): PlanConfig[] {
   return type === "subscriptions" ? SUBSCRIPTION_PLANS : PACK_PLANS;
 }
+
+/** Short value prop for paywalls and teasers. */
+export const WORKSTATION_VALUE_LINE =
+  "Split, mix, export, MIDI, vocal cleanup, and beat tools — all in your browser.";

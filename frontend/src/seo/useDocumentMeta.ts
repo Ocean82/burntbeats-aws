@@ -6,6 +6,8 @@ const META_ROBOTS_SELECTOR = 'meta[name="robots"]';
 const OG_TITLE_SELECTOR = 'meta[property="og:title"]';
 const OG_DESCRIPTION_SELECTOR = 'meta[property="og:description"]';
 const OG_URL_SELECTOR = 'meta[property="og:url"]';
+const TWITTER_TITLE_SELECTOR = 'meta[name="twitter:title"]';
+const TWITTER_DESCRIPTION_SELECTOR = 'meta[name="twitter:description"]';
 const CANONICAL_SELECTOR = 'link[rel="canonical"]';
 
 function upsertMeta(selector: string, attributes: Record<string, string>): void {
@@ -52,6 +54,11 @@ function applyPageMeta(meta: PageMeta): void {
     content: meta.description,
   });
   upsertMeta(OG_URL_SELECTOR, { property: "og:url", content: url });
+  upsertMeta(TWITTER_TITLE_SELECTOR, { name: "twitter:title", content: meta.title });
+  upsertMeta(TWITTER_DESCRIPTION_SELECTOR, {
+    name: "twitter:description",
+    content: meta.description,
+  });
   upsertCanonical(url);
 }
 

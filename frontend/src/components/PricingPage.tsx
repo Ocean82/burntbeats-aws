@@ -132,9 +132,11 @@ export function PricingPage({
               Pick your plan and start splitting in minutes.
             </h1>
             <p className="text-readable text-base leading-7 text-secondary-foreground">
-              Go monthly for consistent tokens, or start with a{" "}
-              <span className="font-semibold text-primary-200">Top-Up Pack</span>{" "}
-              to try Burnt Beats with no subscription.
+              Split, mix, export, MIDI, vocal cleanup, and beat tools in one browser
+              session. Go monthly for rollover tokens, or start with a{" "}
+              <span className="font-semibold text-primary-200">$0.99 Single Pack</span>{" "}
+              or <span className="font-semibold text-primary-200">$5 Top-Up</span> with no
+              subscription.
             </p>
             <BillingRules />
             <ul className="grid gap-xs text-sm text-secondary-foreground sm:grid-cols-2">
@@ -168,26 +170,46 @@ export function PricingPage({
               </p>
             )}
             {showPrimaryCheckout && (
-              <button
-                type="button"
-                onClick={() => handleSelectPlan("basic")}
-                disabled={
-                  subscription.status === "loading" ||
-                  checkoutLoadingPlan !== null
-                }
-                aria-label="Pay now with Stripe and start Basic plan"
-                aria-live="polite"
-                className="fire-button tap-feedback min-h-[44px] w-full px-lg py-xs text-sm sm:w-auto sm:min-w-[240px]"
-              >
-                {checkoutLoadingPlan === "basic" ? (
-                  <span className="inline-flex items-center gap-xs">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Redirecting to checkout...
-                  </span>
-                ) : (
-                  "Start Basic · Secure Stripe checkout"
-                )}
-              </button>
+              <div className="flex w-full flex-col gap-xs sm:w-auto sm:items-end">
+                <button
+                  type="button"
+                  onClick={() => handleSelectPlan("premium")}
+                  disabled={
+                    subscription.status === "loading" ||
+                    checkoutLoadingPlan !== null
+                  }
+                  aria-label="Pay now with Stripe and start Premium plan"
+                  aria-live="polite"
+                  className="fire-button tap-feedback min-h-[44px] w-full px-lg py-xs text-sm sm:min-w-[240px]"
+                >
+                  {checkoutLoadingPlan === "premium" ? (
+                    <span className="inline-flex items-center gap-xs">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Redirecting to checkout...
+                    </span>
+                  ) : (
+                    "Start Premium · Secure Stripe checkout"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPlan("single")}
+                  disabled={
+                    subscription.status === "loading" ||
+                    checkoutLoadingPlan !== null
+                  }
+                  className="ghost-button tap-feedback min-h-[40px] w-full px-md py-xs text-xs sm:min-w-[240px]"
+                >
+                  {checkoutLoadingPlan === "single" ? (
+                    <span className="inline-flex items-center justify-center gap-xs">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Redirecting...
+                    </span>
+                  ) : (
+                    "Or try one song · $0.99"
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>

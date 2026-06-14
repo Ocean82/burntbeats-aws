@@ -95,16 +95,16 @@ describe("PricingPage", () => {
     );
 
     expect(
-      screen.getByText(/workstation ready whenever a track needs a first pass/i),
+      screen.getByText(/full browser workstation/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/building edits, remixes, and repeat sessions every week/i),
+      screen.getByText(/speed-mode 2-stem splits/i),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("pricing-tab-credit-packs"));
 
     expect(
-      screen.getByText(/open the workstation when you need stems, without a monthly plan/i),
+      screen.getByText(/one-time credits for occasional sessions/i),
     ).toBeInTheDocument();
   });
 });
