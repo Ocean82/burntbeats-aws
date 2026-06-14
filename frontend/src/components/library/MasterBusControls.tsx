@@ -25,7 +25,7 @@ export function MasterBusControls({
 }: MasterBusControlsProps) {
   return (
     <div
-      className="inline-flex flex-col gap-2 rounded-xl border border-border bg-muted p-3"
+      className="inline-flex flex-col gap-2 rounded-lg border border-border bg-muted p-3"
       role="group"
       aria-label="Master bus volume controls"
     >

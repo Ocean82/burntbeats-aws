@@ -1,13 +1,15 @@
 /**
  * patternVariations — Algorithmic variation generators for beat patterns.
  *
- * Each function takes a VelocityPattern and returns a new modified copy.
- * They reference the DEFAULT_KIT row indices for instrument awareness.
+ * Used by both the grid sequencer and overlay transport. Each function takes
+ * a VelocityPattern and returns a new modified copy without mutating input.
+ *
+ * Row indices follow DEFAULT_KIT order:
+ *   0=kick, 1=snare, 2=closedHat, 3=openHat, 4=clap, 5=ride, 6=tomHi, 7=tomLo
  */
 import type { VelocityPattern } from "./types";
 import { VELOCITY_ACCENT, VELOCITY_GHOST, VELOCITY_NORMAL, VELOCITY_OFF } from "./types";
 
-// Row indices in DEFAULT_KIT
 const KICK = 0;
 const SNARE = 1;
 const CLOSED_HAT = 2;
@@ -17,126 +19,129 @@ const RIDE = 5;
 const TOM_HI = 6;
 const TOM_LO = 7;
 
+function clonePattern(pattern: VelocityPattern): VelocityPattern {
+  return pattern.map((row) => [...row]);
+}
+
 /**
- * Generate a fill — adds snare/tom activity in the last quarter of the pattern.
- * Creates a drum fill effect leading into the next bar.
+ * Apply fill variation — snare/tom hits in the final 25% with building velocity;
+ * cymbals silenced in the fill region.
  */
 export function applyFill(pattern: VelocityPattern): VelocityPattern {
-  const result = pattern.map((row) => [...row]);
+  const result = clonePattern(pattern);
+  const rows = result.length;
+  if (rows === 0) return result;
+
   const steps = result[0].length;
-  const fillStart = Math.floor(steps * 0.75); // Last 25% of pattern
+  if (steps === 0) return result;
+
+  const fillStart = Math.floor(steps * 0.75);
+  const fillLength = steps - fillStart;
 
   for (let i = fillStart; i < steps; i++) {
     const position = i - fillStart;
-    const fillLength = steps - fillStart;
-
-    // Snare: add 16th notes with building velocity
-    const snareVel = Math.round(
-      VELOCITY_GHOST + ((VELOCITY_ACCENT - VELOCITY_GHOST) * position) / fillLength,
+    const vel = Math.round(
+      VELOCITY_GHOST + ((VELOCITY_ACCENT - VELOCITY_GHOST) * position) / (fillLength - 1 || 1),
     );
-    result[SNARE][i] = snareVel;
 
-    // Toms: alternate tom hi/lo on off-beats
-    if (position % 2 === 1) {
-      const tomRow = position % 4 < 2 ? TOM_HI : TOM_LO;
-      result[tomRow][i] = VELOCITY_NORMAL;
+    if (SNARE < rows) {
+      result[SNARE][i] = vel;
     }
-
-    // Silence the hi-hat during the fill for clarity
-    result[CLOSED_HAT][i] = VELOCITY_OFF;
-    result[OPEN_HAT][i] = VELOCITY_OFF;
-    result[RIDE][i] = VELOCITY_OFF;
-  }
-
-  // Add a crash/accent on the very last step
-  if (steps > 0) {
-    result[OPEN_HAT][steps - 1] = VELOCITY_ACCENT;
+    if (TOM_HI < rows) {
+      result[TOM_HI][i] = vel;
+    }
+    if (TOM_LO < rows) {
+      result[TOM_LO][i] = vel;
+    }
+    if (CLOSED_HAT < rows) {
+      result[CLOSED_HAT][i] = VELOCITY_OFF;
+    }
+    if (OPEN_HAT < rows) {
+      result[OPEN_HAT][i] = VELOCITY_OFF;
+    }
+    if (RIDE < rows) {
+      result[RIDE][i] = VELOCITY_OFF;
+    }
   }
 
   return result;
 }
 
 /**
- * Generate a breakdown — strips the pattern to its minimal elements.
- * Removes cymbals, reduces kick to downbeats only, removes snare ghost notes.
+ * Apply breakdown — strips the pattern to minimal kick/snare backbone.
  */
 export function applyBreakdown(pattern: VelocityPattern): VelocityPattern {
-  const result = pattern.map((row) => [...row]);
+  const result = clonePattern(pattern);
+  const rows = result.length;
+  if (rows === 0) return result;
+
   const steps = result[0].length;
 
-  // Mute all cymbals
   for (let i = 0; i < steps; i++) {
-    result[CLOSED_HAT][i] = VELOCITY_OFF;
-    result[OPEN_HAT][i] = VELOCITY_OFF;
-    result[RIDE][i] = VELOCITY_OFF;
-  }
-
-  // Kick: keep only strong beats (every 8 steps = half-notes)
-  for (let i = 0; i < steps; i++) {
-    if (i % 8 !== 0) {
+    if (CLOSED_HAT < rows) {
+      result[CLOSED_HAT][i] = VELOCITY_OFF;
+    }
+    if (OPEN_HAT < rows) {
+      result[OPEN_HAT][i] = VELOCITY_OFF;
+    }
+    if (RIDE < rows) {
+      result[RIDE][i] = VELOCITY_OFF;
+    }
+    if (KICK < rows && i % 8 !== 0) {
       result[KICK][i] = VELOCITY_OFF;
     }
-  }
-
-  // Snare: keep only backbeats (steps 4, 12, 20, 28...)
-  for (let i = 0; i < steps; i++) {
-    if (i % 8 !== 4) {
+    if (SNARE < rows && i % 8 !== 4) {
       result[SNARE][i] = VELOCITY_OFF;
     }
-  }
-
-  // Remove clap, toms
-  for (let i = 0; i < steps; i++) {
-    result[CLAP][i] = VELOCITY_OFF;
-    result[TOM_HI][i] = VELOCITY_OFF;
-    result[TOM_LO][i] = VELOCITY_OFF;
+    if (CLAP < rows) {
+      result[CLAP][i] = VELOCITY_OFF;
+    }
+    if (TOM_HI < rows) {
+      result[TOM_HI][i] = VELOCITY_OFF;
+    }
+    if (TOM_LO < rows) {
+      result[TOM_LO][i] = VELOCITY_OFF;
+    }
   }
 
   return result;
 }
 
 /**
- * Generate a buildup — increases density and energy.
- * Doubles hi-hat speed, adds snare rolls building in velocity,
- * keeps kick steady for the foundation.
+ * Apply buildup — increases hi-hat density and snare ghost intensity.
  */
 export function applyBuildup(pattern: VelocityPattern): VelocityPattern {
-  const result = pattern.map((row) => [...row]);
+  const result = clonePattern(pattern);
+  const rows = result.length;
+  if (rows === 0) return result;
+
   const steps = result[0].length;
+  if (steps === 0) return result;
 
-  // Hi-hat: fill every step with building velocity
-  for (let i = 0; i < steps; i++) {
-    const progress = i / steps;
-    const vel = Math.round(VELOCITY_GHOST + (VELOCITY_NORMAL - VELOCITY_GHOST) * progress);
-    result[CLOSED_HAT][i] = vel;
-  }
-
-  // Remove open hat (closed hat dominates)
-  for (let i = 0; i < steps; i++) {
-    result[OPEN_HAT][i] = VELOCITY_OFF;
-  }
-
-  // Snare: add ghost notes that intensify over time
-  for (let i = 0; i < steps; i++) {
-    const progress = i / steps;
-    // In the first half, add ghosts every 4 steps
-    // In the second half, add ghosts every 2 steps
-    if (progress < 0.5) {
-      if (i % 4 === 2 && result[SNARE][i] === VELOCITY_OFF) {
-        result[SNARE][i] = VELOCITY_GHOST;
-      }
-    } else {
-      if (i % 2 === 1 && result[SNARE][i] === VELOCITY_OFF) {
-        const vel = Math.round(VELOCITY_GHOST + (VELOCITY_NORMAL - VELOCITY_GHOST) * (progress - 0.5) * 2);
-        result[SNARE][i] = vel;
-      }
+  if (CLOSED_HAT < rows) {
+    for (let i = 0; i < steps; i++) {
+      const vel = Math.round(
+        VELOCITY_GHOST + ((VELOCITY_NORMAL - VELOCITY_GHOST) * i) / (steps - 1 || 1),
+      );
+      result[CLOSED_HAT][i] = vel;
     }
   }
 
-  // Kick: ensure steady four-on-the-floor for energy
-  for (let i = 0; i < steps; i++) {
-    if (i % 4 === 0) {
-      result[KICK][i] = Math.max(result[KICK][i], VELOCITY_NORMAL);
+  if (SNARE < rows) {
+    const half = Math.floor(steps / 2);
+
+    for (let i = 0; i < steps; i++) {
+      const vel = Math.round(
+        VELOCITY_GHOST + ((VELOCITY_NORMAL - VELOCITY_GHOST) * i) / (steps - 1 || 1),
+      );
+
+      if (i < half) {
+        if (i % 4 === 0) {
+          result[SNARE][i] = vel;
+        }
+      } else if (i % 2 === 0) {
+        result[SNARE][i] = vel;
+      }
     }
   }
 
@@ -159,3 +164,6 @@ export function applyVariation(
       return applyBuildup(pattern);
   }
 }
+
+/** @deprecated Use applyVariation — kept for overlay transport migration. */
+export const applyOverlayVariation = applyVariation;

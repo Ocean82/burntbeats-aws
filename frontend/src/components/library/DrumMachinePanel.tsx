@@ -9,7 +9,7 @@
  * routed through a compressor. The overlay transport synchronizes with the main
  * beat maker transport for layered playback.
  */
-import { Download, Play, Square } from "lucide-react";
+import { Download, Lock, Play, Square } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
 import { downloadMidiBlob, exportNotesToMidi } from "../../utils/midiExport";
@@ -20,7 +20,7 @@ import { VELOCITY_OFF } from "../../audio/types";
 import type { CellVelocity, PatternLength } from "../../audio/types";
 import { useBeatMaker, getAudibleRows } from "../../hooks/useBeatMaker";
 import type { UseBeatMakerReturn } from "../../hooks/useBeatMaker";
-import { useMasterBus } from "../../hooks/useMasterBus";
+import { useMasterBus, type UseMasterBusReturn } from "../../hooks/useMasterBus";
 import { useOverlayTransport } from "../../hooks/useOverlayTransport";
 import { PatternLibraryPanel } from "./PatternLibraryPanel";
 import { MasterBusControls } from "./MasterBusControls";
@@ -41,22 +41,32 @@ export interface DrumMachinePanelProps {
   embedded?: boolean;
   /** Optionally pass in an external beat maker instance (for shared state). */
   beatMaker?: UseBeatMakerReturn;
+  /** Shared master bus instance (avoids duplicate AudioContexts when beatMaker is external). */
+  masterBus?: UseMasterBusReturn;
   /** Whether full MIDI export is allowed (false = limited to 16 steps). */
   canExportFullMidi?: boolean;
+  /** Whether variation generators are unlocked. */
+  canUseVariations?: boolean;
   /** Callback when user hits the export gate. */
   onExportGated?: () => void;
+  /** Callback when user hits a variation entitlement gate. */
+  onVariationGated?: () => void;
 }
 
 export function DrumMachinePanel({
   embedded = false,
   beatMaker: externalBeatMaker,
+  masterBus: externalMasterBus,
   canExportFullMidi = true,
+  canUseVariations = true,
   onExportGated,
+  onVariationGated,
 }: DrumMachinePanelProps) {
   // ─── Master Bus ─────────────────────────────────────────────────
   // Provides shared AudioContext, grid and overlay gain nodes routed
   // through a compressor to the destination.
-  const masterBus = useMasterBus();
+  const internalMasterBus = useMasterBus();
+  const masterBus = externalMasterBus ?? internalMasterBus;
 
   // Use external hook instance if provided, otherwise create internal one
   // connected to the master bus grid gain node via stable getters.
@@ -81,6 +91,7 @@ export function DrumMachinePanel({
     clearPattern,
     toggleMute,
     toggleSolo,
+    setRowVolume,
     setBpm,
     setSwing,
     start,
@@ -148,7 +159,9 @@ export function DrumMachinePanel({
 
   const audibleRows = useMemo(() => getAudibleRows(rowStates), [rowStates]);
 
-  const gridCols = `grid-cols-[80px_repeat(${steps},minmax(24px,1fr))]`;
+  const sequencerGridStyle = {
+    "--sequencer-cols": `96px repeat(${steps}, minmax(24px, 1fr))`,
+  } as React.CSSProperties;
 
   // ─── Render ───────────────────────────────────────────────────
 
@@ -236,7 +249,9 @@ export function DrumMachinePanel({
         >
           <Download className="h-3.5 w-3.5" />
           Export MIDI
-          {!canExportFullMidi && steps > 16 && <span className="ml-0.5 text-[8px]">🔒</span>}
+          {!canExportFullMidi && steps > 16 && (
+            <Lock className="ml-0.5 h-3 w-3 shrink-0 opacity-70" aria-hidden />
+          )}
         </button>
       </div>
 
@@ -252,7 +267,7 @@ export function DrumMachinePanel({
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
           {/* Step numbers header */}
-          <div className={cn("mb-0.5 grid gap-0.5", gridCols)}>
+          <div className="mb-0.5 sequencer-grid gap-0.5" style={sequencerGridStyle}>
             <div /> {/* spacer for row labels */}
             {Array.from({ length: steps }, (_, i) => (
               <div
@@ -274,52 +289,63 @@ export function DrumMachinePanel({
           {kit.map((voice, ri) => (
             <div
               key={voice.id}
-              className={cn("mb-0.5 grid gap-0.5", gridCols)}
+              className="mb-0.5 sequencer-grid gap-0.5"
+              style={sequencerGridStyle}
             >
               {/* Row label + controls */}
-              <div className="flex items-center gap-0.5 pr-1">
-                {/* Mute */}
-                <button
-                  type="button"
-                  onClick={() => toggleMute(ri)}
-                  className={cn(
-                    "h-5 w-5 rounded-sm flex items-center justify-center text-[8px] font-bold transition",
-                    rowStates[ri].muted
-                      ? "bg-error/20 text-error"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  )}
-                  aria-label={`${rowStates[ri].muted ? "Unmute" : "Mute"} ${voice.label}`}
-                  title="Mute"
-                >
-                  M
-                </button>
-                {/* Solo */}
-                <button
-                  type="button"
-                  onClick={() => toggleSolo(ri)}
-                  className={cn(
-                    "h-5 w-5 rounded-sm flex items-center justify-center text-[8px] font-bold transition",
-                    rowStates[ri].solo
-                      ? "bg-warning/20 text-warning"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted",
-                  )}
-                  aria-label={`${rowStates[ri].solo ? "Unsolo" : "Solo"} ${voice.label}`}
-                  title="Solo"
-                >
-                  S
-                </button>
-                {/* Label */}
-                <span
-                  className={cn(
-                    "text-[10px] font-medium truncate min-w-0",
-                    !audibleRows[ri]
-                      ? "text-muted-foreground line-through"
-                      : "text-accent-midi-200",
-                  )}
-                  title={voice.label}
-                >
-                  {voice.shortLabel}
-                </span>
+              <div className="flex flex-col gap-0.5 pr-1 min-w-0">
+                <div className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleMute(ri)}
+                    className={cn(
+                      "relative flex h-5 w-5 items-center justify-center rounded-sm text-[8px] font-bold transition before:absolute before:-inset-2.5 before:content-['']",
+                      rowStates[ri].muted
+                        ? "bg-error/20 text-error"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                    aria-label={`${rowStates[ri].muted ? "Unmute" : "Mute"} ${voice.label}`}
+                    title="Mute"
+                  >
+                    M
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleSolo(ri)}
+                    className={cn(
+                      "relative flex h-5 w-5 items-center justify-center rounded-sm text-[8px] font-bold transition before:absolute before:-inset-2.5 before:content-['']",
+                      rowStates[ri].solo
+                        ? "bg-warning/20 text-warning"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                    aria-label={`${rowStates[ri].solo ? "Unsolo" : "Solo"} ${voice.label}`}
+                    title="Solo"
+                  >
+                    S
+                  </button>
+                  <span
+                    className={cn(
+                      "text-[10px] font-medium truncate min-w-0",
+                      !audibleRows[ri]
+                        ? "text-muted-foreground line-through"
+                        : "text-accent-midi-200",
+                    )}
+                    title={voice.label}
+                  >
+                    {voice.shortLabel}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={rowStates[ri].volume}
+                  onChange={(e) => setRowVolume(ri, Number(e.target.value))}
+                  disabled={!audibleRows[ri]}
+                  className="h-1 w-full min-w-0 accent-primary-400 disabled:opacity-40"
+                  aria-label={`${voice.label} volume`}
+                />
               </div>
 
               {/* Step cells */}
@@ -339,7 +365,7 @@ export function DrumMachinePanel({
                       clearCell(ri, ci);
                     }}
                     className={cn(
-                      "aspect-square rounded-sm border transition-colors duration-75 min-h-[24px]",
+                      "relative aspect-square min-h-[28px] rounded-sm border transition-colors duration-75 before:absolute before:-inset-1 before:content-['']",
                       isActive
                         ? cn(
                             "border-primary-400/60 bg-primary-500/50",
@@ -388,6 +414,8 @@ export function DrumMachinePanel({
         activePatternId={overlayTransport.activePattern?.id ?? null}
         onVariationApply={overlayTransport.applyVariation}
         activeVariation={overlayTransport.activeVariation}
+        canUseVariations={canUseVariations}
+        onUpgradeRequest={onVariationGated}
       />
     </div>
   );

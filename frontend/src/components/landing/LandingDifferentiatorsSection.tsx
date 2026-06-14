@@ -10,7 +10,7 @@ const DIFFERENTIATORS = [
   {
     title: "Reopen past stem jobs",
     body:
-      "Your splits are not disposable downloads. Return to old jobs from My Stems and keep working from the same library.",
+      "Your splits are not disposable downloads. Return to old jobs from My Stems and keep working from the same history.",
   },
   {
     title: "Stem-to-MIDI workflow built in",

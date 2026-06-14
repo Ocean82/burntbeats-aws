@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { StemLaneGhostPreview } from "../editor/StemLaneGhostPreview";
 
-const WORKSPACE_TABS = ["Stem editor", "MIDI", "Library"] as const;
+const WORKSPACE_TABS = ["Stem editor", "MIDI", "Beats"] as const;
 const STEM_ROWS = [
   { label: "Vocals", value: "Ready", colorClass: "bg-[var(--stem-vocals)]" },
   { label: "Drums", value: "Ready", colorClass: "bg-[var(--stem-drums)]" },
@@ -118,7 +118,7 @@ export function LandingProductShowcase() {
                       Workflow stays live
                     </p>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Mix levels, reopen jobs from Library, then hand off into
+                      Mix levels, reopen jobs from My stems, then hand off into
                       MIDI or export.
                     </p>
                   </div>
@@ -188,7 +188,7 @@ export function LandingProductShowcase() {
                 className="h-4 w-4 text-primary-200"
                 aria-hidden="true"
               />
-              Library replay
+              My stems replay
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Reopen past jobs instead of losing the session to a download

@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { playDrumVoice } from "../audio/drumSynth";
 import type { GenrePresetPattern, VariationType } from "../audio/genrePresets";
-import { applyOverlayVariation } from "../audio/overlayVariations";
+import { applyVariation as computePatternVariation } from "../audio/patternVariations";
 import { getSwungStepTime } from "../audio/swingQuantize";
 import { DEFAULT_KIT, VELOCITY_OFF } from "../audio/types";
 import type { VelocityPattern } from "../audio/types";
@@ -101,7 +101,7 @@ export function useOverlayTransport(
     }
 
     const computed = activeVariation
-      ? applyOverlayVariation(activePattern.pattern, activeVariation)
+      ? computePatternVariation(activePattern.pattern, activeVariation)
       : activePattern.pattern;
 
     setEffectivePattern(computed);

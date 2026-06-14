@@ -6,8 +6,7 @@ import { FeedbackChip } from "../components/FeedbackChip";
 import { getBurntQuip } from "../utils/burntQuips";
 import { EditorHeader } from "./editor-header.component";
 import { WaitingGamePanel } from "./waiting-game-panel.component";
-import { DevLatencyPanel } from "./dev-latency-panel.component";
-import { DevHealthPanel } from "./dev-health-panel.component";
+import { DevOverlayControls } from "./dev-overlay-controls.component";
 import { LazyModalLayer } from "./lazy-modal-layer.component";
 import { AppBackgroundOrbs } from "./app-background-orbs.component";
 import { EditorFloatingOverlays } from "./editor-floating-overlays.component";
@@ -161,6 +160,8 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
               triggerSplit: split.triggerSplit,
               mixerProps: session.editorMainViewProps.mixerProps,
             }}
+            devLatencyStats={dev.latencyStats}
+            onResetDevLatencyStats={dev.resetLatencyStats}
           />
         </main>
       </div>
@@ -172,11 +173,11 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
         onToggle={modals.toggleGame}
         onClose={() => modals.closeModal("game")}
       />
-      <DevLatencyPanel
+      <DevOverlayControls
         latencyStats={dev.latencyStats}
         onResetLatencyStats={dev.resetLatencyStats}
+        activeView={ui.activeView}
       />
-      <DevHealthPanel />
 
       <EditorFloatingOverlays
         reduceMotion={ui.reduceMotion}

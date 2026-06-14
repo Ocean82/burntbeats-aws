@@ -49,13 +49,16 @@ export async function gotoEditor(page: import("@playwright/test").Page) {
   });
 }
 
-/** Open the library view and wait for the catalog shell. */
-export async function gotoLibrary(page: import("@playwright/test").Page) {
-  await page.goto("/library");
-  await expect(page.getByTestId("library-page")).toBeVisible({
+/** Open the Beats view and wait for the page shell. */
+export async function gotoBeats(page: import("@playwright/test").Page) {
+  await page.goto("/beats");
+  await expect(page.getByTestId("beats-page")).toBeVisible({
     timeout: E2E_APP_READY_MS,
   });
 }
+
+/** @deprecated Use gotoBeats */
+export const gotoLibrary = gotoBeats;
 
 /** Open in-app pricing via Settings → Plans & subscriptions. */
 export async function openPricingPage(page: import("@playwright/test").Page) {

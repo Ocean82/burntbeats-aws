@@ -9,7 +9,7 @@ const viewImports: Record<AppView, ImportFn> = {
   "my-stems": () => import("../components/MyStemsPage"),
   speech: () => import("../pages/SpeechCleanPage"),
   midi: () => import("../pages/MidiConvertPage"),
-  library: () => import("../pages/LibraryPage"),
+  beats: () => import("../pages/LibraryPage"),
   tuner: () => import("../pages/TunerPage"),
 };
 
@@ -22,9 +22,9 @@ const ADJACENCY_MAP: Record<AppView, AppView[]> = {
   pricing: ["my-stems", "editor"],
   "my-stems": ["pricing", "editor"],
   speech: ["midi", "editor"],
-  midi: ["speech", "library", "editor"],
-  library: ["midi", "tuner", "editor"],
-  tuner: ["library", "editor"],
+  midi: ["speech", "beats", "editor"],
+  beats: ["midi", "tuner", "editor"],
+  tuner: ["beats", "editor"],
 };
 
 export function getViewsToPreload(currentView: AppView): AppView[] {

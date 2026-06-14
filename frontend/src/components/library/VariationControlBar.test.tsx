@@ -2,11 +2,16 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { VariationControlBar } from "./VariationControlBar";
 
+const defaultProps = {
+  onApply: vi.fn(),
+  activeVariation: null,
+  disabled: false,
+  canUseVariations: true,
+} as const;
+
 describe("VariationControlBar", () => {
   it("renders three variation buttons: Fill, Breakdown, Buildup", () => {
-    render(
-      <VariationControlBar onApply={() => {}} activeVariation={null} disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} />);
 
     expect(screen.getByRole("button", { name: "Fill" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Breakdown" })).toBeInTheDocument();
@@ -15,9 +20,7 @@ describe("VariationControlBar", () => {
   });
 
   it("disables all buttons when disabled prop is true", () => {
-    render(
-      <VariationControlBar onApply={() => {}} activeVariation={null} disabled={true} />,
-    );
+    render(<VariationControlBar {...defaultProps} disabled={true} />);
 
     const buttons = screen.getAllByRole("button");
     for (const btn of buttons) {
@@ -26,9 +29,7 @@ describe("VariationControlBar", () => {
   });
 
   it("enables all buttons when disabled prop is false", () => {
-    render(
-      <VariationControlBar onApply={() => {}} activeVariation={null} disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} disabled={false} />);
 
     const buttons = screen.getAllByRole("button");
     for (const btn of buttons) {
@@ -37,9 +38,7 @@ describe("VariationControlBar", () => {
   });
 
   it("visually indicates active variation via aria-pressed", () => {
-    render(
-      <VariationControlBar onApply={() => {}} activeVariation="breakdown" disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} activeVariation="breakdown" />);
 
     expect(screen.getByRole("button", { name: "Fill" })).toHaveAttribute(
       "aria-pressed",
@@ -56,9 +55,7 @@ describe("VariationControlBar", () => {
   });
 
   it("only one button has aria-pressed=true at a time", () => {
-    render(
-      <VariationControlBar onApply={() => {}} activeVariation="fill" disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} activeVariation="fill" />);
 
     const pressedButtons = screen
       .getAllByRole("button")
@@ -68,9 +65,7 @@ describe("VariationControlBar", () => {
   });
 
   it("no button is pressed when activeVariation is null", () => {
-    render(
-      <VariationControlBar onApply={() => {}} activeVariation={null} disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} />);
 
     const pressedButtons = screen
       .getAllByRole("button")
@@ -80,9 +75,7 @@ describe("VariationControlBar", () => {
 
   it("calls onApply with 'fill' when Fill button is clicked", () => {
     const onApply = vi.fn();
-    render(
-      <VariationControlBar onApply={onApply} activeVariation={null} disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} onApply={onApply} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Fill" }));
     expect(onApply).toHaveBeenCalledWith("fill");
@@ -90,9 +83,7 @@ describe("VariationControlBar", () => {
 
   it("calls onApply with 'breakdown' when Breakdown button is clicked", () => {
     const onApply = vi.fn();
-    render(
-      <VariationControlBar onApply={onApply} activeVariation={null} disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} onApply={onApply} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Breakdown" }));
     expect(onApply).toHaveBeenCalledWith("breakdown");
@@ -100,9 +91,7 @@ describe("VariationControlBar", () => {
 
   it("calls onApply with 'buildup' when Buildup button is clicked", () => {
     const onApply = vi.fn();
-    render(
-      <VariationControlBar onApply={onApply} activeVariation={null} disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} onApply={onApply} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Buildup" }));
     expect(onApply).toHaveBeenCalledWith("buildup");
@@ -111,7 +100,7 @@ describe("VariationControlBar", () => {
   it("calls onApply with the active variation type when re-clicking (toggle off)", () => {
     const onApply = vi.fn();
     render(
-      <VariationControlBar onApply={onApply} activeVariation="buildup" disabled={false} />,
+      <VariationControlBar {...defaultProps} onApply={onApply} activeVariation="buildup" />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Buildup" }));
@@ -120,9 +109,7 @@ describe("VariationControlBar", () => {
 
   it("does not call onApply when buttons are disabled", () => {
     const onApply = vi.fn();
-    render(
-      <VariationControlBar onApply={onApply} activeVariation={null} disabled={true} />,
-    );
+    render(<VariationControlBar {...defaultProps} onApply={onApply} disabled={true} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Fill" }));
     fireEvent.click(screen.getByRole("button", { name: "Breakdown" }));
@@ -130,10 +117,25 @@ describe("VariationControlBar", () => {
     expect(onApply).not.toHaveBeenCalled();
   });
 
-  it("buttons are keyboard accessible (not disabled, no negative tabindex)", () => {
+  it("calls onUpgradeRequest instead of onApply when variations are locked", () => {
+    const onApply = vi.fn();
+    const onUpgradeRequest = vi.fn();
     render(
-      <VariationControlBar onApply={() => {}} activeVariation={null} disabled={false} />,
+      <VariationControlBar
+        {...defaultProps}
+        onApply={onApply}
+        canUseVariations={false}
+        onUpgradeRequest={onUpgradeRequest}
+      />,
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Fill" }));
+    expect(onApply).not.toHaveBeenCalled();
+    expect(onUpgradeRequest).toHaveBeenCalled();
+  });
+
+  it("buttons are keyboard accessible (not disabled, no negative tabindex)", () => {
+    render(<VariationControlBar {...defaultProps} />);
 
     const buttons = screen.getAllByRole("button");
     for (const btn of buttons) {
@@ -143,11 +145,11 @@ describe("VariationControlBar", () => {
   });
 
   it("has an accessible toolbar role with aria-label", () => {
-    render(
-      <VariationControlBar onApply={() => {}} activeVariation={null} disabled={false} />,
-    );
+    render(<VariationControlBar {...defaultProps} />);
 
-    const toolbar = screen.getByRole("toolbar", { name: "Pattern variation controls" });
+    const toolbar = screen.getByRole("toolbar", {
+      name: "Overlay pattern variation controls",
+    });
     expect(toolbar).toBeInTheDocument();
   });
 });

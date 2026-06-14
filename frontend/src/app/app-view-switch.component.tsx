@@ -3,6 +3,7 @@ import { motion, type MotionProps } from "framer-motion"
 
 import type { AppView } from "../hooks/workflow/useEditorViewRouting"
 import type { UseSubscriptionResult } from "../hooks/useSubscription"
+import type { UiLatencySnapshot } from "../hooks/useUiLatencyMonitor"
 import type { EditorMainViewProps } from "./editor-main-view.component"
 import type { TransitionalShellProps } from "../components/EditorAppShell"
 import { PageSkeleton } from "../views/PageSkeleton"
@@ -42,6 +43,8 @@ export interface AppViewSwitchProps {
   transitionalEditorShell?: LazyExoticComponent<ComponentType<TransitionalShellProps>>
   /** Props forwarded to the transitional shell for split engine wiring. */
   transitionalShellProps?: TransitionalShellProps
+  devLatencyStats?: UiLatencySnapshot
+  onResetDevLatencyStats?: () => void
 }
 
 export function AppViewSwitch({
@@ -70,6 +73,8 @@ export function AppViewSwitch({
   editorMainView: EditorMainView,
   transitionalEditorShell: TransitionalEditorShell,
   transitionalShellProps,
+  devLatencyStats,
+  onResetDevLatencyStats,
 }: AppViewSwitchProps) {
   return (
     <Suspense fallback={<PageSkeleton view={activeView} />}>
@@ -111,12 +116,20 @@ export function AppViewSwitch({
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
         />
-      ) : activeView === "library" ? (
+      ) : activeView === "beats" ? (
         <LibraryPage
           reduceMotion={reduceMotion}
           subscription={subscription}
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
+          devTools={
+            devLatencyStats && onResetDevLatencyStats
+              ? {
+                  latencyStats: devLatencyStats,
+                  onResetLatencyStats: onResetDevLatencyStats,
+                }
+              : undefined
+          }
         />
       ) : activeView === "tuner" ? (
         <TunerPage

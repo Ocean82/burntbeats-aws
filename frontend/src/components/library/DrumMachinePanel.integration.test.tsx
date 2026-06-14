@@ -217,6 +217,28 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     expect(overlaySlider).toHaveValue("0.3");
   });
 
+  it("row volume slider updates state and scales grid playback velocity", () => {
+    render(<DrumMachinePanel embedded />);
+
+    const kickVolume = screen.getByRole("slider", { name: /kick volume/i });
+    expect(kickVolume).toHaveValue("0.8");
+
+    fireEvent.change(kickVolume, { target: { value: "0.4" } });
+    expect(kickVolume).toHaveValue("0.4");
+
+    // Place a hit on kick row step 1 and start playback
+    const kickStep = screen.getByRole("button", { name: "Kick step 1" });
+    fireEvent.click(kickStep);
+    clickPlay();
+    advanceTimers(100);
+
+    const hitCall = mockPlayDrumVoice.mock.calls.find((call) => call[3] > 0);
+    expect(hitCall).toBeDefined();
+    expect(hitCall![3]).toBe(Math.round(100 * 0.4));
+
+    clickStop();
+  });
+
   it("pattern hot-swap during playback switches to new pattern", () => {
     render(<DrumMachinePanel embedded />);
 

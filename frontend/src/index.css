@@ -38,6 +38,7 @@
   --shadow-glass-ambient-ice: 0 0 28px rgba(0, 200, 255, 0.04);
 }
 
+/* stylelint-disable-next-line at-rule-no-unknown -- Tailwind v4 @theme is valid */
 @theme {
   --font-sans: "Manrope", sans-serif;
 
@@ -86,10 +87,10 @@
     box-sizing: border-box;
   }
 
-  /* Pair unprefixed alongside webkit for linter compliance */
+  /* Pair unprefixed alongside webkit; text-size-adjust not yet in Firefox/Safari but harmless */
   html {
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%; /* stylelint-disable-line property-no-vendor-prefix */
+    text-size-adjust: 100%; /* stylelint-disable-line property-no-unknown */
   }
 
   /* Remove ineffective vertical-align from block-display media elements */
@@ -191,8 +192,8 @@
     display: none;
   }
   .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    -ms-overflow-style: none; /* IE/Edge legacy */
+    scrollbar-width: none; /* Firefox; Chrome 121+, not Safari — paired with ::-webkit-scrollbar above */ /* stylelint-disable-line property-no-unknown */
   }
 
   /* Tool chrome: ≥12px on mobile; compact metadata on sm+ (see RESPONSIVE-DESIGN.md) */
@@ -861,7 +862,11 @@
   /* Active stem: tinted surface, accent border + outer glow */
   .waveform-lane-surface--active {
     background: color-mix(in srgb, var(--stem-color) 8%, transparent);
-    border-color: color-mix(in srgb, var(--stem-color) 70%, transparent);
+    /* Fallback border for Chrome < 111 (no color-mix support) */
+    border-color: var(--stem-color);
+    @supports (border-color: color-mix(in srgb, red 70%, transparent)) {
+      border-color: color-mix(in srgb, var(--stem-color) 70%, transparent);
+    }
     box-shadow:
       0 0 0 1px color-mix(in srgb, var(--stem-color) 45%, transparent),
       0 0 18px color-mix(in srgb, var(--stem-color) 28%, transparent);
@@ -928,7 +933,8 @@
     opacity: 0.9;
     border-radius: 4px 0 0 4px;
     pointer-events: none;
-    transition: width var(--motion-fast, 140ms) ease, left var(--motion-fast, 140ms) ease,
+    transform-origin: left center;
+    transition: transform var(--motion-fast, 140ms) ease,
       box-shadow var(--motion-fast, 140ms) ease, opacity var(--motion-fast, 140ms) ease;
   }
 
@@ -949,24 +955,17 @@
     opacity: 0.9;
     border-radius: 0 4px 4px 0;
     pointer-events: none;
-    transition: width var(--motion-fast, 140ms) ease, right var(--motion-fast, 140ms) ease,
+    transform-origin: right center;
+    transition: transform var(--motion-fast, 140ms) ease,
       box-shadow var(--motion-fast, 140ms) ease, opacity var(--motion-fast, 140ms) ease;
   }
 
-  /* Hover/active affordances for trim handles: widen the bar and add a glow. */
+  /* Hover/active affordances for trim handles: scale the bar and add a glow. */
   .waveform-lane-handle[data-state='hover']::after,
   .waveform-lane-handle[data-state='active']::after {
-    width: 9px;
+    transform: scaleX(1.5);
     opacity: 1;
     box-shadow: 0 0 10px var(--stem-color-soft, rgba(255, 255, 255, 0.45));
-  }
-  .waveform-lane-handle-start[data-state='hover']::after,
-  .waveform-lane-handle-start[data-state='active']::after {
-    left: 3px;
-  }
-  .waveform-lane-handle-end[data-state='hover']::after,
-  .waveform-lane-handle-end[data-state='active']::after {
-    right: 3px;
   }
 
   /* Vertical grip dots, centered on the handle bar; revealed on hover/active. */
@@ -1004,7 +1003,11 @@
     top: -6px;
     color: #fff;
     background: color-mix(in srgb, var(--stem-color) 32%, rgba(10, 10, 12, 0.92));
-    border: 1px solid color-mix(in srgb, var(--stem-color) 55%, transparent);
+    /* Fallback border for Chrome < 111 */
+    border: 1px solid var(--stem-color);
+    @supports (border-color: color-mix(in srgb, red 55%, transparent)) {
+      border-color: color-mix(in srgb, var(--stem-color) 55%, transparent);
+    }
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5), 0 0 12px var(--stem-color-soft, transparent);
   }
 
@@ -1023,7 +1026,11 @@
   }
 
   .waveform-editor-shell {
-    border-color: color-mix(in srgb, var(--stem-color) 25%, transparent);
+    /* Fallback border for Chrome < 111 */
+    border-color: var(--stem-color);
+    @supports (border-color: color-mix(in srgb, red 25%, transparent)) {
+      border-color: color-mix(in srgb, var(--stem-color) 25%, transparent);
+    }
     background: linear-gradient(
       180deg,
       color-mix(in srgb, var(--stem-color) 3.1%, transparent) 0%,
@@ -1698,12 +1705,21 @@
     pointer-events: none;
   }
 
+  /* Brand exception: thermal gradient on landing logo wordmark (DESIGN.md). */
   .logo-burnt-fire {
     background: linear-gradient(180deg, #ffcc66 0%, #ff8800 20%, #ff4400 45%, #cc1100 70%, #660000 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     filter: drop-shadow(0 0 24px rgba(255, 80, 20, 0.6)) drop-shadow(0 0 48px rgba(255, 40, 0, 0.35));
+  }
+
+  @media (prefers-contrast: more) {
+    .logo-burnt-fire {
+      background: none;
+      -webkit-text-fill-color: #ff8800;
+      color: #ff8800;
+    }
   }
 
   /* Logo emblem — circular image with fire-ice dual glow */
@@ -1899,7 +1915,11 @@
   }
 
   .dj-mixer-console .mixer-vertical-fader__thumb {
-    border-color: color-mix(in srgb, var(--fader-accent, #f59e0b) 30%, rgba(255, 255, 255, 0.2));
+    /* Fallback border for Chrome < 111 */
+    border-color: var(--fader-accent, #f59e0b);
+    @supports (border-color: color-mix(in srgb, red 30%, white)) {
+      border-color: color-mix(in srgb, var(--fader-accent, #f59e0b) 30%, rgba(255, 255, 255, 0.2));
+    }
   }
 
   /* DJ touch targets: 44px default; compact on fine pointer + sm+ */

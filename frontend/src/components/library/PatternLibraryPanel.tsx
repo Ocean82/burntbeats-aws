@@ -7,12 +7,13 @@
  */
 import { useMemo, useState, useCallback } from "react";
 import { cn } from "../../utils/cn";
+import { SectionLabel } from "../ui";
 import {
   getValidPresets,
   getPresetsByGenre,
   type GenrePresetPattern,
-  type VariationType,
 } from "../../audio/genrePresets";
+import type { VariationType } from "../../audio/patternVariations";
 import { GenreFilterBar } from "./GenreFilterBar";
 import { VariationControlBar } from "./VariationControlBar";
 
@@ -37,6 +38,8 @@ export interface PatternLibraryPanelProps {
   onVariationApply: (type: VariationType) => void;
   activeVariation: VariationType | null;
   disabled?: boolean;
+  canUseVariations?: boolean;
+  onUpgradeRequest?: () => void;
 }
 
 // ─── Component ────────────────────────────────────────────────────
@@ -47,6 +50,8 @@ export function PatternLibraryPanel({
   onVariationApply,
   activeVariation,
   disabled = false,
+  canUseVariations = true,
+  onUpgradeRequest,
 }: PatternLibraryPanelProps) {
   const [selectedGenre, setSelectedGenre] = useState<string>("all");
 
@@ -90,7 +95,13 @@ export function PatternLibraryPanel({
       aria-label="Pattern Library Panel"
       className="flex flex-col gap-2 rounded-lg border border-border bg-background/50 p-3"
     >
-      {/* Genre Filter */}
+      <div>
+        <SectionLabel>Overlay layer</SectionLabel>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          Plays in sync with your grid. Select a pattern to layer on top during playback.
+        </p>
+      </div>
+
       <GenreFilterBar
         genres={GENRE_OPTIONS}
         selected={selectedGenre}
@@ -121,10 +132,10 @@ export function PatternLibraryPanel({
                 onClick={() => handleSelect(pattern)}
                 onKeyDown={(e) => handleEntryKeyDown(e, pattern)}
                 className={cn(
-                  "flex flex-col gap-0.5 px-3 py-2 cursor-pointer transition-[background-color,border-color] duration-[var(--motion-fast)] border-l-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                  "flex flex-col gap-0.5 px-3 py-2 cursor-pointer transition-[background-color,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   isSelected
-                    ? "border-l-primary-400 bg-primary-500/10"
-                    : "border-l-transparent hover:bg-muted/60",
+                    ? "bg-primary-500/10 ring-1 ring-inset ring-primary-400/45"
+                    : "hover:bg-muted/60",
                   disabled && "opacity-50 cursor-not-allowed",
                 )}
               >
@@ -165,6 +176,8 @@ export function PatternLibraryPanel({
         onApply={onVariationApply}
         activeVariation={activeVariation}
         disabled={disabled || activePatternId === null}
+        canUseVariations={canUseVariations}
+        onUpgradeRequest={onUpgradeRequest}
       />
     </div>
   );

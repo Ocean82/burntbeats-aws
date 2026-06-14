@@ -15,7 +15,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import { applyBreakdown, applyBuildup, applyFill } from "./overlayVariations";
+import { applyBreakdown, applyBuildup, applyFill } from "./patternVariations";
 import type { VelocityPattern } from "./types";
 import { VELOCITY_ACCENT, VELOCITY_GHOST, VELOCITY_OFF } from "./types";
 

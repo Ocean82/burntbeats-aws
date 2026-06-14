@@ -1,4 +1,4 @@
-import { Undo2, Redo2, Mic2, Music, BookOpen, Radio } from "lucide-react";
+import { Undo2, Redo2, Mic2, Music, Drum, Radio } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
 import { SettingsMenu } from "../components/SettingsMenu";
@@ -14,9 +14,9 @@ import {
 
 interface EditorHeaderProps {
   headerVisible: boolean;
-  activeView: "editor" | "speech" | "midi" | "library" | "tuner" | "pricing" | "my-stems";
+  activeView: "editor" | "speech" | "midi" | "beats" | "tuner" | "pricing" | "my-stems";
   setActiveView: (
-    view: "editor" | "speech" | "midi" | "library" | "tuner" | "pricing" | "my-stems",
+    view: "editor" | "speech" | "midi" | "beats" | "tuner" | "pricing" | "my-stems",
   ) => void;
   canUndo: boolean;
   canRedo: boolean;
@@ -71,7 +71,7 @@ export function EditorHeader({
     activeView === "editor" && editorWorkflow != null;
 
   const handleTabClick = (
-    view: "editor" | "speech" | "midi" | "library" | "tuner" | "my-stems",
+    view: "editor" | "speech" | "midi" | "beats" | "tuner" | "my-stems",
   ) => {
     setActiveView(view);
     markTabSeen(view);
@@ -200,12 +200,12 @@ export function EditorHeader({
         </button>
         <button
           type="button"
-          onClick={() => handleTabClick("library")}
-          className={TAB_CLASS(activeView === "library")}
-          aria-current={activeView === "library" ? "page" : undefined}
+          onClick={() => handleTabClick("beats")}
+          className={TAB_CLASS(activeView === "beats")}
+          aria-current={activeView === "beats" ? "page" : undefined}
         >
-          <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Library
+          <Drum className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Beats
         </button>
         <button
           type="button"

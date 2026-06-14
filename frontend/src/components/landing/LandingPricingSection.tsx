@@ -15,7 +15,7 @@ const PRICING_FAQ = [
   {
     title: "What happens after the split?",
     body:
-      "Your work does not vanish into a downloads folder. Reopen past stem jobs from My Stems, return to earlier projects, and keep building from the same library.",
+      "Your work does not vanish into a downloads folder. Reopen past stem jobs from My Stems, return to earlier projects, and keep building in the same session.",
   },
   {
     title: "Can I turn stems into MIDI?",

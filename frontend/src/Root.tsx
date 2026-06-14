@@ -194,6 +194,9 @@ export function Root() {
       <Route path="/my-stems">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
+      <Route path="/beats">
+        {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
       <Route path="/library">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>

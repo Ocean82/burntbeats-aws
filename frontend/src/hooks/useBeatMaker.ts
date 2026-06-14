@@ -113,6 +113,7 @@ export interface UseBeatMakerReturn {
   // Row mutations
   toggleMute: (row: number) => void;
   toggleSolo: (row: number) => void;
+  setRowVolume: (row: number, volume: number) => void;
 
   // Transport mutations
   setBpm: (bpm: number) => void;
@@ -230,6 +231,15 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
     setRowStates((prev) => {
       const next = [...prev];
       next[row] = { ...next[row], solo: !next[row].solo };
+      return next;
+    });
+  }, []);
+
+  const setRowVolume = useCallback((row: number, volume: number) => {
+    const clamped = Math.max(0, Math.min(1, volume));
+    setRowStates((prev) => {
+      const next = [...prev];
+      next[row] = { ...next[row], volume: clamped };
       return next;
     });
   }, []);
@@ -423,6 +433,7 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
     setPattern,
     toggleMute,
     toggleSolo,
+    setRowVolume,
     setBpm,
     setSwing,
     start,

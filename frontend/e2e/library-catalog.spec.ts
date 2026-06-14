@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { gotoLibrary, skipOnboarding } from "./fixtures/helpers";
 
-test.describe("Library catalog", () => {
+test.describe("Beats catalog", () => {
   test.beforeEach(async ({ page }) => {
     await skipOnboarding(page);
 

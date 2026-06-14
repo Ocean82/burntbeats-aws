@@ -59,7 +59,7 @@ describe("PatternLibraryPanel", () => {
     const listbox = screen.getByRole("listbox", { name: "Available rhythm patterns" });
     const selectedOption = within(listbox).getByRole("option", { selected: true });
     expect(selectedOption).toBeInTheDocument();
-    expect(selectedOption).toHaveClass("border-l-primary-400");
+    expect(selectedOption).toHaveClass("ring-primary-400/45");
     expect(selectedOption).toHaveClass("bg-primary-500/10");
   });
 
@@ -211,7 +211,7 @@ describe("PatternLibraryPanel", () => {
   it("integrates VariationControlBar component", () => {
     render(<PatternLibraryPanel {...defaultProps} />);
     expect(
-      screen.getByRole("toolbar", { name: "Pattern variation controls" }),
+      screen.getByRole("toolbar", { name: "Overlay pattern variation controls" }),
     ).toBeInTheDocument();
   });
 
@@ -219,7 +219,7 @@ describe("PatternLibraryPanel", () => {
     render(<PatternLibraryPanel {...defaultProps} activePatternId={null} />);
 
     const variationToolbar = screen.getByRole("toolbar", {
-      name: "Pattern variation controls",
+      name: "Overlay pattern variation controls",
     });
     const buttons = within(variationToolbar).getAllByRole("button");
     for (const btn of buttons) {
@@ -233,7 +233,7 @@ describe("PatternLibraryPanel", () => {
     );
 
     const variationToolbar = screen.getByRole("toolbar", {
-      name: "Pattern variation controls",
+      name: "Overlay pattern variation controls",
     });
     const buttons = within(variationToolbar).getAllByRole("button");
     for (const btn of buttons) {

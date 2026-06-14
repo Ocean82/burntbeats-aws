@@ -48,7 +48,7 @@ export function LandingHero() {
         <p className="landing-prose text-readable text-readable-tight text-center text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground">
           Burnt Beats is the browser workstation for producers and DJs who need
           more than isolated files. Split tracks into stems, shape the mix
-          in-browser, reopen past jobs from your library, and move straight into
+          in-browser, reopen past jobs from My stems, and move straight into
           MIDI or export.
         </p>
       </motion.div>

@@ -7,7 +7,7 @@ export const SITE_NAME = "Burnt Beats";
 export const SITE_DEFAULT_META = {
   title: "Burnt Beats — AI Stem Splitter, Mixer & MIDI Workstation",
   description:
-    "Browser workstation for producers and DJs. Split tracks into vocals, drums, bass, and melody, mix in-browser, reopen past jobs from your library, and convert stems to MIDI — no install required.",
+    "Browser workstation for producers and DJs. Split tracks into vocals, drums, bass, and melody, mix in-browser, reopen past jobs from My stems, browse beat patterns, and convert stems to MIDI — no install required.",
 } as const;
 
 export interface PageMeta {
@@ -56,6 +56,7 @@ const SIGNED_OUT_APP_PATHS = new Set([
   "/speech",
   "/midi",
   "/my-stems",
+  "/beats",
   "/library",
   "/tuner",
 ]);

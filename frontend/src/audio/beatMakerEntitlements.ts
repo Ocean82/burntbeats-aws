@@ -28,7 +28,7 @@
  *   - Priority features / beta presets (future)
  */
 import type { SubscriptionStatus, ServerPlan } from "../hooks/useSubscription";
-import type { Genre } from "./rhythmPatterns";
+import type { GenreType } from "./genrePresets";
 
 // ─── Tier Definitions ─────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ export interface BeatMakerLimits {
   /** Max saved patterns in localStorage (0 = unlimited) */
   maxSavedPatterns: number;
   /** Genres available for preset loading */
-  unlockedGenres: Genre[];
+  unlockedGenres: GenreType[];
   /** Can use variation generators (fill/breakdown/buildup) */
   canUseVariations: boolean;
   /** Can export full-length MIDI (false = limited to 16 steps) */
@@ -51,8 +51,8 @@ export interface BeatMakerLimits {
   tierLabel: string;
 }
 
-const FREE_GENRES: Genre[] = ["rock", "edm"];
-const ALL_GENRES: Genre[] = ["rock", "hiphop", "edm", "jazz", "latin", "reggae"];
+const FREE_GENRES: GenreType[] = ["rock", "edm"];
+const ALL_GENRES: GenreType[] = ["rock", "hip-hop", "edm", "jazz", "latin", "reggae"];
 
 const FREE_LIMITS: BeatMakerLimits = {
   maxSavedPatterns: 3,
@@ -108,7 +108,7 @@ export function getBeatMakerLimits(tier: BeatMakerTier): BeatMakerLimits {
 }
 
 /** Check if a genre is locked for the current tier. */
-export function isGenreLocked(genre: Genre, limits: BeatMakerLimits): boolean {
+export function isGenreLocked(genre: GenreType, limits: BeatMakerLimits): boolean {
   return !limits.unlockedGenres.includes(genre);
 }
 

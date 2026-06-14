@@ -15,7 +15,7 @@ import { VELOCITY_ACCENT, VELOCITY_GHOST, VELOCITY_NORMAL, VELOCITY_OFF } from "
 
 export type GenreType = "rock" | "hip-hop" | "edm" | "jazz" | "latin" | "reggae";
 
-export type VariationType = "fill" | "breakdown" | "buildup";
+export type { VariationType } from "./patternVariations";
 
 export interface GenrePresetPattern {
   id: string;
@@ -126,6 +126,27 @@ const rockDriving: GenrePresetPattern = {
   tags: ["driving", "rock", "energetic"],
 };
 
+const rockHalftime: GenrePresetPattern = {
+  id: "rock-halftime",
+  name: "Half-Time Rock",
+  genre: "rock",
+  tempo: 140,
+  timeSignature: "4/4",
+  swing: 0,
+  steps: 16,
+  pattern: [
+    /* Kick  */ [a, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Snare */ [_, _, _, _, _, _, _, _, a, _, _, _, _, _, _, _],
+    /* CH HH */ [n, _, n, _, n, _, n, _, n, _, n, _, n, _, n, _],
+    /* OH HH */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, a],
+    /* Clap  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Ride  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomHi */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomLo */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+  ],
+  tags: ["rock", "halftime", "heavy"],
+};
+
 // ─── HIP-HOP PRESETS ──────────────────────────────────────────────
 
 const hiphopBoomBap: GenrePresetPattern = {
@@ -170,6 +191,27 @@ const hiphopTrap: GenrePresetPattern = {
   tags: ["trap", "hip-hop", "modern"],
 };
 
+const hiphopLofi: GenrePresetPattern = {
+  id: "hiphop-lofi",
+  name: "Lo-Fi",
+  genre: "hip-hop",
+  tempo: 78,
+  timeSignature: "4/4",
+  swing: 45,
+  steps: 16,
+  pattern: [
+    /* Kick  */ [n, _, _, _, _, _, _, _, _, _, n, _, _, _, _, _],
+    /* Snare */ [_, _, _, _, n, _, _, g, _, _, _, _, n, _, _, _],
+    /* CH HH */ [g, _, n, _, g, _, n, _, g, _, n, _, g, _, n, _],
+    /* OH HH */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, n],
+    /* Clap  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Ride  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomHi */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomLo */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+  ],
+  tags: ["lo-fi", "hip-hop", "chill"],
+};
+
 // ─── EDM PRESETS ──────────────────────────────────────────────────
 
 const edmFourFloor: GenrePresetPattern = {
@@ -191,6 +233,27 @@ const edmFourFloor: GenrePresetPattern = {
     /* TomLo */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
   ],
   tags: ["house", "edm", "dance", "four-on-floor"],
+};
+
+const edmBreakbeat: GenrePresetPattern = {
+  id: "edm-breakbeat",
+  name: "Breakbeat",
+  genre: "edm",
+  tempo: 135,
+  timeSignature: "4/4",
+  swing: 0,
+  steps: 16,
+  pattern: [
+    /* Kick  */ [a, _, _, _, _, _, n, _, _, _, _, _, _, _, n, _],
+    /* Snare */ [_, _, _, _, a, _, _, _, _, _, n, _, _, _, _, _],
+    /* CH HH */ [n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n],
+    /* OH HH */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Clap  */ [_, _, _, _, _, _, _, _, _, _, _, _, a, _, _, _],
+    /* Ride  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomHi */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomLo */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+  ],
+  tags: ["breakbeat", "edm", "breaks"],
 };
 
 const edmDnB: GenrePresetPattern = {
@@ -258,6 +321,27 @@ const jazzBossa: GenrePresetPattern = {
   tags: ["jazz", "bossa-nova", "latin-jazz"],
 };
 
+const jazzBrush: GenrePresetPattern = {
+  id: "jazz-brush-shuffle",
+  name: "Brush Shuffle",
+  genre: "jazz",
+  tempo: 110,
+  timeSignature: "4/4",
+  swing: 60,
+  steps: 16,
+  pattern: [
+    /* Kick  */ [n, _, _, _, _, _, _, _, n, _, _, _, _, _, _, _],
+    /* Snare */ [_, _, g, _, n, _, g, _, _, _, g, _, n, _, g, _],
+    /* CH HH */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* OH HH */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Clap  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Ride  */ [n, _, g, n, _, g, n, _, n, _, g, n, _, g, n, _],
+    /* TomHi */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomLo */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+  ],
+  tags: ["jazz", "brush", "shuffle"],
+};
+
 // ─── LATIN PRESETS ────────────────────────────────────────────────
 
 const latinSalsa: GenrePresetPattern = {
@@ -302,6 +386,27 @@ const latinReggaeton: GenrePresetPattern = {
   tags: ["reggaeton", "latin", "dembow"],
 };
 
+const latinSamba: GenrePresetPattern = {
+  id: "latin-samba",
+  name: "Samba",
+  genre: "latin",
+  tempo: 100,
+  timeSignature: "4/4",
+  swing: 15,
+  steps: 16,
+  pattern: [
+    /* Kick  */ [a, _, _, _, _, _, n, _, _, _, _, _, n, _, _, _],
+    /* Snare */ [_, _, n, _, _, _, _, _, n, _, _, _, _, _, n, _],
+    /* CH HH */ [n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n],
+    /* OH HH */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Clap  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Ride  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomHi */ [_, _, _, g, _, _, _, g, _, _, _, g, _, _, _, g],
+    /* TomLo */ [_, _, _, _, _, g, _, _, _, _, _, _, _, g, _, _],
+  ],
+  tags: ["samba", "latin", "brazil"],
+};
+
 // ─── REGGAE PRESETS ───────────────────────────────────────────────
 
 const reggaeOneDrop: GenrePresetPattern = {
@@ -323,6 +428,27 @@ const reggaeOneDrop: GenrePresetPattern = {
     /* TomLo */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
   ],
   tags: ["reggae", "one-drop", "roots"],
+};
+
+const reggaeRocker: GenrePresetPattern = {
+  id: "reggae-rocker",
+  name: "Rockers",
+  genre: "reggae",
+  tempo: 80,
+  timeSignature: "4/4",
+  swing: 10,
+  steps: 16,
+  pattern: [
+    /* Kick  */ [a, _, _, _, _, _, _, _, a, _, _, _, _, _, _, _],
+    /* Snare */ [_, _, _, _, a, _, _, _, _, _, _, _, a, _, _, _],
+    /* CH HH */ [_, n, _, n, _, n, _, n, _, n, _, n, _, n, _, n],
+    /* OH HH */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Clap  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* Ride  */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomHi */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+    /* TomLo */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+  ],
+  tags: ["reggae", "rockers", "roots"],
 };
 
 const reggaeSteppers: GenrePresetPattern = {
@@ -352,19 +478,35 @@ export const GENRE_PRESETS: GenrePresetPattern[] = [
   // Rock
   rockBasic,
   rockDriving,
+  rockHalftime,
   // Hip-Hop
   hiphopBoomBap,
   hiphopTrap,
+  hiphopLofi,
   // EDM
   edmFourFloor,
+  edmBreakbeat,
   edmDnB,
   // Jazz
   jazzSwing,
   jazzBossa,
+  jazzBrush,
   // Latin
   latinSalsa,
   latinReggaeton,
+  latinSamba,
   // Reggae
   reggaeOneDrop,
+  reggaeRocker,
   reggaeSteppers,
+];
+
+/** All available genres in display order. */
+export const GENRES: { value: GenreType; label: string }[] = [
+  { value: "rock", label: "Rock" },
+  { value: "hip-hop", label: "Hip-Hop" },
+  { value: "edm", label: "EDM" },
+  { value: "jazz", label: "Jazz" },
+  { value: "latin", label: "Latin" },
+  { value: "reggae", label: "Reggae" },
 ];

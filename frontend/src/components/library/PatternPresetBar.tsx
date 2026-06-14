@@ -1,24 +1,23 @@
 /**
- * PatternPresetBar — Genre selector, pattern presets, variations, and save/load.
+ * PatternPresetBar — Grid pattern presets, variations, and save/load.
  * Integrates entitlements to gate features behind subscription tiers.
  */
 import { Bookmark, ChevronDown, Lock, Sparkles, Trash2, Zap } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { cn } from "../../utils/cn";
-import { SegmentedControl } from "../ui";
+import { SectionLabel, SegmentedControl } from "../ui";
 import type { UseBeatMakerReturn } from "../../hooks/useBeatMaker";
 import type { UsePatternStorageReturn, SavedPattern } from "../../hooks/usePatternStorage";
 import type { UseBeatMakerEntitlementsReturn } from "../../hooks/useBeatMakerEntitlements";
 import {
   GENRES,
   getPresetsByGenre,
-  type Genre,
-  type PresetEntry,
-} from "../../audio/rhythmPatterns";
+  type GenreType,
+  type GenrePresetPattern,
+} from "../../audio/genrePresets";
+import { genrePresetToBeatPreset } from "../../audio/beatPresetAdapters";
 import { applyVariation, type VariationType } from "../../audio/patternVariations";
 import { isGenreLocked, isAtSaveLimit } from "../../audio/beatMakerEntitlements";
-
-// ─── Props ────────────────────────────────────────────────────────
 
 export interface PatternPresetBarProps {
   beatMaker: UseBeatMakerReturn;
@@ -26,12 +25,10 @@ export interface PatternPresetBarProps {
   entitlements: UseBeatMakerEntitlementsReturn;
 }
 
-// ─── Component ────────────────────────────────────────────────────
-
 export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPresetBarProps) {
   const { limits, startCheckout } = entitlements;
 
-  const [selectedGenre, setSelectedGenre] = useState<Genre>("rock");
+  const [selectedGenre, setSelectedGenre] = useState<GenreType>("rock");
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [showSaved, setShowSaved] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -53,22 +50,18 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
     [storage.savedPatterns.length, limits],
   );
 
-  // ─── Load Preset ──────────────────────────────────────────────
-
   const handleLoadPreset = useCallback(
-    (entry: PresetEntry) => {
+    (preset: GenrePresetPattern) => {
       if (genreLocked) {
         setShowUpgradeHint("preset");
         return;
       }
-      beatMaker.loadPreset(entry.preset);
-      setActivePresetId(entry.id);
+      beatMaker.loadPreset(genrePresetToBeatPreset(preset));
+      setActivePresetId(preset.id);
       setShowUpgradeHint(null);
     },
     [beatMaker, genreLocked],
   );
-
-  // ─── Variations ───────────────────────────────────────────────
 
   const handleVariation = useCallback(
     (type: VariationType) => {
@@ -83,8 +76,6 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
     },
     [beatMaker, limits.canUseVariations],
   );
-
-  // ─── Save ─────────────────────────────────────────────────────
 
   const handleSave = useCallback(() => {
     if (!saveName.trim()) return;
@@ -104,8 +95,6 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
     setShowUpgradeHint(null);
   }, [saveName, storage, beatMaker, atSaveLimit]);
 
-  // ─── Load Saved ───────────────────────────────────────────────
-
   const handleLoadSaved = useCallback(
     (saved: SavedPattern) => {
       beatMaker.loadPreset(saved.preset);
@@ -115,20 +104,16 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
     [beatMaker],
   );
 
-  // ─── Upgrade CTA ──────────────────────────────────────────────
-
   const handleUpgrade = useCallback(() => {
     void startCheckout("basic", { source: "upgrade_prompt", intent: "unlock_beat_maker_features" });
   }, [startCheckout]);
-
-  // ─── Genre options for SegmentedControl ───────────────────────
 
   const genreOptions = useMemo(
     () =>
       GENRES.map((g) => ({
         value: g.value,
         label: isGenreLocked(g.value, limits)
-          ? `${g.label} 🔒`
+          ? `${g.label} (locked)`
           : g.label,
       })),
     [limits],
@@ -136,23 +121,28 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
 
   return (
     <div className="space-y-sm">
-      {/* Genre selector */}
+      <div>
+        <SectionLabel>Grid pattern</SectionLabel>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          Edits your sequencer. Load presets or save your own patterns here.
+        </p>
+      </div>
+
       <div className="flex flex-wrap items-center gap-sm">
         <SegmentedControl
           value={selectedGenre}
           onChange={(val) => {
-            setSelectedGenre(val);
+            setSelectedGenre(val as GenreType);
             setActivePresetId(null);
             setShowUpgradeHint(null);
           }}
           options={genreOptions}
-          aria-label="Select genre"
+          aria-label="Select genre for grid presets"
           className="text-xs"
         />
 
-        {/* Variation buttons */}
         <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[9px] text-muted-foreground mr-1">Variations:</span>
+          <span className="text-[9px] text-muted-foreground mr-1">Grid variations:</span>
           {(["fill", "breakdown", "buildup"] as const).map((type) => (
             <button
               key={type}
@@ -164,8 +154,8 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
               )}
               title={
                 limits.canUseVariations
-                  ? `Apply ${type} variation`
-                  : `Upgrade to unlock ${type} variations`
+                  ? `Apply ${type} to grid pattern`
+                  : `Upgrade to unlock grid ${type} variations`
               }
             >
               {limits.canUseVariations ? (
@@ -179,12 +169,13 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
         </div>
       </div>
 
-      {/* Preset cards for selected genre */}
       <div className="flex flex-wrap items-center gap-1">
         {genreLocked ? (
           <div className="flex items-center gap-sm rounded-md border border-warning/30 bg-warning/5 px-sm py-1.5 text-xs text-warning">
             <Lock className="h-3.5 w-3.5 shrink-0" />
-            <span>{selectedGenre.charAt(0).toUpperCase() + selectedGenre.slice(1)} presets require a subscription.</span>
+            <span>
+              {selectedGenre.charAt(0).toUpperCase() + selectedGenre.slice(1)} presets require a subscription.
+            </span>
             <button
               type="button"
               onClick={handleUpgrade}
@@ -195,27 +186,26 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
             </button>
           </div>
         ) : (
-          genrePresets.map((entry) => (
+          genrePresets.map((preset) => (
             <button
-              key={entry.id}
+              key={preset.id}
               type="button"
-              onClick={() => handleLoadPreset(entry)}
+              onClick={() => handleLoadPreset(preset)}
               className={cn(
                 "rounded-md border px-sm py-1 text-xs font-medium transition",
-                activePresetId === entry.id
+                activePresetId === preset.id
                   ? "border-accent-midi-400/60 bg-accent-midi/15 text-accent-midi-200"
                   : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              {entry.preset.name}
+              {preset.name}
               <span className="ml-1 text-[9px] opacity-60">
-                {entry.preset.bpm}bpm
+                {preset.tempo}bpm
               </span>
             </button>
           ))
         )}
 
-        {/* Saved patterns toggle */}
         <button
           type="button"
           onClick={() => setShowSaved(!showSaved)}
@@ -239,7 +229,6 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
           />
         </button>
 
-        {/* Save current */}
         {!showSaveInput ? (
           <button
             type="button"
@@ -274,32 +263,30 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
               onChange={(e) => setSaveName(e.target.value)}
               placeholder="Pattern name..."
               className="w-28 rounded border border-border bg-muted px-xs py-0.5 text-xs text-foreground placeholder:text-muted-foreground"
-              onBlur={() => {
-                if (!saveName.trim()) setShowSaveInput(false);
-              }}
             />
             <button
               type="submit"
               disabled={!saveName.trim()}
+              onMouseDown={(e) => e.preventDefault()}
               className="midi-btn text-[10px] px-2 py-0.5 disabled:opacity-40"
             >
               Save
             </button>
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setShowSaveInput(false);
                 setSaveName("");
               }}
               className="text-[10px] text-muted-foreground hover:text-foreground"
             >
-              ✕
+              Cancel
             </button>
           </form>
         )}
       </div>
 
-      {/* Upgrade hint banner */}
       {showUpgradeHint && (
         <div className="flex items-center gap-sm rounded-md border border-primary-400/30 bg-primary-500/5 px-sm py-1.5 text-xs text-primary-200">
           <Zap className="h-3.5 w-3.5 shrink-0 text-primary-400" />
@@ -307,7 +294,7 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
             {showUpgradeHint === "save" &&
               `You've reached the ${limits.maxSavedPatterns}-pattern limit. Upgrade for more.`}
             {showUpgradeHint === "variation" &&
-              "Pattern variations are available on Basic and above."}
+              "Grid pattern variations are available on Basic and above."}
             {showUpgradeHint === "preset" &&
               "This genre pack requires a subscription."}
           </span>
@@ -323,12 +310,11 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
             onClick={() => setShowUpgradeHint(null)}
             className="text-muted-foreground hover:text-foreground text-[10px]"
           >
-            ✕
+            Cancel
           </button>
         </div>
       )}
 
-      {/* Saved patterns dropdown */}
       {showSaved && storage.savedPatterns.length > 0 && (
         <div className="rounded-md border border-border bg-muted/30 p-sm space-y-1 max-h-40 overflow-y-auto">
           {storage.savedPatterns.map((saved) => (

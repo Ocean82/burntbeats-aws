@@ -42,7 +42,7 @@ const SKELETON_MAP: Record<AppView, () => React.ReactNode> = {
   "my-stems": MyStemsPageSkeleton,
   speech: GenericPageSkeleton,
   midi: GenericPageSkeleton,
-  library: GenericPageSkeleton,
+  beats: GenericPageSkeleton,
   tuner: GenericPageSkeleton,
 };
 

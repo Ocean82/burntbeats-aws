@@ -1,0 +1,4 @@
+.sequencer-grid {
+  display: grid;
+  grid-template-columns: var(--sequencer-cols);
+}

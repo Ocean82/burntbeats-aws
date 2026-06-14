@@ -27,7 +27,7 @@ export function GenreFilterBar({ genres, selected, onSelect }: GenreFilterBarPro
     <div
       role="toolbar"
       aria-label="Filter patterns by genre"
-      className="inline-flex flex-wrap gap-1 rounded-xl border border-border bg-muted p-0.5"
+      className="inline-flex flex-wrap gap-1 rounded-lg border border-border bg-muted p-0.5"
     >
       {allOptions.map((option) => {
         const isActive = option.value === selected;

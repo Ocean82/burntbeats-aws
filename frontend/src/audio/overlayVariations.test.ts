@@ -3,7 +3,7 @@
  * generator functions (applyFill, applyBreakdown, applyBuildup).
  */
 import { describe, expect, it } from "vitest";
-import { applyBreakdown, applyBuildup, applyFill, applyOverlayVariation } from "./overlayVariations";
+import { applyBreakdown, applyBuildup, applyFill, applyVariation } from "./patternVariations";
 import { VELOCITY_ACCENT, VELOCITY_GHOST, VELOCITY_NORMAL, VELOCITY_OFF } from "./types";
 import type { VelocityPattern } from "./types";
 
@@ -243,22 +243,22 @@ describe("graceful handling of patterns with fewer than 8 rows", () => {
   });
 });
 
-describe("applyOverlayVariation", () => {
+describe("applyVariation", () => {
   it("dispatches to applyFill for 'fill' type", () => {
     const input = makePattern(8, 16, VELOCITY_NORMAL);
-    const result = applyOverlayVariation(input, "fill");
+    const result = applyVariation(input, "fill");
     expect(result).toEqual(applyFill(input));
   });
 
   it("dispatches to applyBreakdown for 'breakdown' type", () => {
     const input = makePattern(8, 16, VELOCITY_NORMAL);
-    const result = applyOverlayVariation(input, "breakdown");
+    const result = applyVariation(input, "breakdown");
     expect(result).toEqual(applyBreakdown(input));
   });
 
   it("dispatches to applyBuildup for 'buildup' type", () => {
     const input = makePattern(8, 16, VELOCITY_NORMAL);
-    const result = applyOverlayVariation(input, "buildup");
+    const result = applyVariation(input, "buildup");
     expect(result).toEqual(applyBuildup(input));
   });
 });
