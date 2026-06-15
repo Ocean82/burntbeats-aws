@@ -6,7 +6,7 @@ librosa>=0.10.0
 safetensors>=0.4.0
 fastapi>=0.109.0
 uvicorn>=0.27.0
-python-multipart>=0.0.6
+python-multipart>=0.0.31
 einops>=0.7.0
 vocos @ git+https://github.com/langtech-bsc/vocos.git@matcha
 
