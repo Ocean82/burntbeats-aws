@@ -35,10 +35,10 @@ export function LandingDifferentiatorsSection() {
     >
       <div className="grid w-full gap-md py-[clamp(2rem,5vw,4rem)] text-left sm:grid-cols-2 md:gap-lg">
         <div className="w-full min-w-0 sm:col-span-2">
-          <p className="eyebrow mb-sm">Why Burnt Beats is different</p>
           <h2
             id="landing-differentiators-title"
-            className="landing-prose-lg text-readable font-display text-[clamp(1.25rem,3vw,1.9rem)] font-bold leading-tight text-secondary-foreground"
+            className="font-display text-[clamp(1.25rem,3vw,1.9rem)] font-bold leading-tight text-secondary-foreground"
+            style={{ maxInlineSize: "48rem" }}
           >
             Most stem splitters stop at the download. Burnt Beats keeps the
             workflow moving.

@@ -21,11 +21,11 @@ export function LandingFinalCta() {
         />
         <h2
           id="landing-cta-title"
-          className="landing-prose-lg text-readable relative mb-xs text-center font-display text-[clamp(1.5rem,4vw,2.5rem)] font-bold leading-tight text-secondary-foreground"
+          className="relative mx-auto mb-xs max-w-[48rem] text-center font-display text-[clamp(1.5rem,4vw,2.5rem)] font-bold leading-tight text-secondary-foreground"
         >
           Ready to build your first stem workflow?
         </h2>
-        <p className="landing-prose text-readable text-readable-tight relative mb-10 text-center text-base text-secondary-foreground/80">
+        <p className="relative mx-auto mb-10 max-w-[56ch] text-center text-base text-secondary-foreground/80">
           Create an account, split your first track, and keep working inside the
           same browser session.
         </p>

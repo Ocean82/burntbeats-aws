@@ -38,14 +38,14 @@ export function LandingHero() {
       <motion.div variants={heroItem} className="w-full">
         <h1
           id="landing-hero-title"
-          className="logo-burnt mx-auto w-full max-w-5xl text-[clamp(3.5rem,10vw,8rem)] font-bold leading-[0.92] tracking-[-0.05em]"
+          className="logo-burnt mx-auto w-full max-w-5xl text-[clamp(3.5rem,10vw,8rem)] font-bold leading-[0.92] tracking-[-0.04em]"
         >
           <span className="logo-burnt-fire">Burnt Beats</span>
         </h1>
       </motion.div>
 
       <motion.div variants={heroItem} className="w-full">
-        <p className="landing-prose text-readable text-readable-tight text-center text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground">
+        <p className="mx-auto max-w-[56ch] text-center text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground">
           Burnt Beats is the browser workstation for producers and DJs who need
           more than isolated files. Split tracks into stems, shape the mix
           in-browser, reopen past jobs from My stems, and move straight into
@@ -62,7 +62,7 @@ export function LandingHero() {
             type="button"
             className="fire-button tap-feedback text-[clamp(1.1rem,2.5vw,1.35rem)] px-[clamp(2rem,5vw,3.5rem)] py-[clamp(1rem,2vw,1.4rem)] font-bold"
           >
-            Try for Free
+            Split your first track free
           </button>
         </SignUpButton>
         <SignInButton mode="modal">
@@ -73,24 +73,6 @@ export function LandingHero() {
             Sign In
           </button>
         </SignInButton>
-      </motion.div>
-
-      <motion.div
-        variants={heroItem}
-        className="mx-auto mt-lg w-full max-w-lg px-md"
-      >
-        <WorkflowStepper
-          steps={[...EDITOR_WORKFLOW_STEPS]}
-          activeStepId="upload"
-          completedStepIds={[]}
-        />
-      </motion.div>
-
-      <motion.div
-        variants={heroItem}
-        className="mt-md w-full"
-      >
-        <LandingProductShowcase />
       </motion.div>
 
       <motion.div
@@ -114,7 +96,25 @@ export function LandingHero() {
         </div>
       </motion.div>
 
-      <motion.div variants={heroItem} className="w-full">
+      <motion.div
+        variants={heroItem}
+        className="mt-xl w-full"
+      >
+        <LandingProductShowcase />
+      </motion.div>
+
+      <motion.div
+        variants={heroItem}
+        className="mx-auto mt-lg w-full max-w-lg px-md"
+      >
+        <WorkflowStepper
+          steps={[...EDITOR_WORKFLOW_STEPS]}
+          activeStepId="upload"
+          completedStepIds={[]}
+        />
+      </motion.div>
+
+      <motion.div variants={heroItem} className="mt-sm w-full">
         <p className="text-center text-xs text-muted-foreground/70">
           Secure Stripe billing · cancel anytime · one-time packs available
         </p>

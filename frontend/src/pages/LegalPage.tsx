@@ -1,7 +1,34 @@
+import DOMPurify from "dompurify";
 import privacyMd from "./legal/privacy-policy.md?raw";
 import tosMd from "./legal/terms-of-service.md?raw";
 
 type LegalDoc = "privacy-policy" | "terms-of-service";
+
+const LEGAL_HTML_SANITIZE_CONFIG: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "p",
+    "strong",
+    "code",
+    "a",
+    "ul",
+    "li",
+    "span",
+    "hr",
+    "div",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+  ],
+  ALLOWED_ATTR: ["class", "href", "target", "rel", "aria-hidden"],
+  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|\/|#)/i,
+};
 
 function getDoc(doc: LegalDoc): { title: string; markdown: string } {
   if (doc === "privacy-policy") return { title: "Privacy Policy", markdown: privacyMd };
@@ -132,30 +159,9 @@ function renderMarkdown(md: string): string {
   return out.join("\n");
 }
 
-/** Strip event handlers and javascript: hrefs only inside HTML tag openers (not text nodes). */
-function sanitizeHtmlTagOpeners(html: string): string {
-  return html.replace(
-    /<([a-z][a-z0-9]*)\b([^>]*?)(\/?)>/gi,
-    (_match, tag: string, attrs: string, selfClose: string) => {
-      const withoutEvents = attrs.replace(
-        /\s(on[a-z][a-z0-9]*)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>/]+)/gi,
-        "",
-      );
-      const withoutJsHref = withoutEvents.replace(
-        /\shref\s*=\s*(["']?)\s*javascript:[^"'>\s]*/gi,
-        " href=$1#",
-      );
-      return `<${tag}${withoutJsHref}${selfClose}>`;
-    },
-  );
-}
-
-/** Defense-in-depth: strip active content if markdown ever contains raw HTML. */
+/** Sanitize rendered legal HTML with DOMPurify before dangerouslySetInnerHTML. */
 function sanitizeLegalHtml(html: string): string {
-  const withoutEmbeds = html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
-  return sanitizeHtmlTagOpeners(withoutEmbeds);
+  return DOMPurify.sanitize(html, LEGAL_HTML_SANITIZE_CONFIG);
 }
 
 export function LegalPage({ doc }: { doc: LegalDoc }) {

@@ -427,7 +427,7 @@
     font-size: 0.72rem;
     letter-spacing: 0.34em;
     text-transform: uppercase;
-    color: rgba(255, 243, 229, 0.45);
+    color: var(--muted-foreground); /* oklch(72% 0.014 48) — passes 4.5:1 on forge-base */
   }
 
   /* Readable copy blocks — full width inside flex columns (avoids 1–2 chars per line) */

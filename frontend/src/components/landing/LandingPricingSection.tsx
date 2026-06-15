@@ -66,31 +66,39 @@ export function LandingPricingSection({
       {...brandScrollSection(reduceMotion)}
     >
       <div className="mb-10 w-full text-center">
-        <p className="eyebrow mb-sm">Pricing</p>
         <h2
           id="landing-pricing-title"
-          className="landing-prose text-readable font-display text-center text-[clamp(1.25rem,3vw,1.75rem)] font-bold leading-tight text-secondary-foreground"
+          className="font-display text-center text-[clamp(1.25rem,3vw,1.75rem)] font-bold leading-tight text-secondary-foreground"
         >
           Choose a plan or buy a one-time pack
         </h2>
-        <p className="landing-prose text-readable mt-xs text-center text-sm text-muted-foreground">
+        <p className="mx-auto mt-xs max-w-xl text-center text-sm text-muted-foreground">
           Monthly plans fit repeat workflow. Packs keep the workstation open for
           occasional sessions.
         </p>
       </div>
 
-      <div className="mb-lg flex justify-center">
+      <div className="mb-lg flex flex-col items-center gap-sm">
         <PricingTabToggle
           activeTab={pricingTab}
           onTabChange={onPricingTabChange}
         />
+        {pricingTab === "subscriptions" && (
+          <button
+            type="button"
+            onClick={() => onPricingTabChange("packs")}
+            className="text-xs text-muted-foreground transition hover:text-primary-200"
+          >
+            Just need one track? Packs start at <span className="font-semibold text-primary-200">$0.99</span> →
+          </button>
+        )}
       </div>
 
       <div className="glass-panel rounded-2xl border border-border p-md sm:p-lg">
         <BillingRules className="mb-md" />
         <PricingTablePreview
           pricingType={pricingTab}
-          heroOnly={pricingTab === "subscriptions"}
+          heroOnly={false}
           billingInterval="year"
           ctaButtonRenderer={renderPricingCTA}
         />
@@ -99,20 +107,35 @@ export function LandingPricingSection({
         </div>
       </div>
 
-      <div className="mt-12 grid w-full gap-md text-left sm:grid-cols-2 md:gap-lg">
-        {PRICING_FAQ.map((item) => (
-          <div
-            key={item.title}
-            className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg"
-          >
-            <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
-              {item.title}
-            </h3>
-            <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
-              {item.body}
-            </p>
-          </div>
-        ))}
+      <div className="mt-12 w-full">
+        <h3 className="mb-md font-display text-sm font-bold text-secondary-foreground">
+          Common questions
+        </h3>
+        <div className="divide-y divide-border rounded-2xl border border-border bg-secondary/40">
+          {PRICING_FAQ.map((item) => (
+            <details
+              key={item.title}
+              className="group"
+            >
+              <summary className="flex cursor-pointer items-center justify-between gap-sm px-lg py-md text-sm font-semibold text-secondary-foreground transition hover:text-foreground [&::-webkit-details-marker]:hidden">
+                <span>{item.title}</span>
+                <svg
+                  className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M4 6l4 4 4-4" />
+                </svg>
+              </summary>
+              <div className="px-lg pb-md text-sm leading-relaxed text-muted-foreground">
+                {item.body}
+              </div>
+            </details>
+          ))}
+        </div>
       </div>
     </motion.section>
   );

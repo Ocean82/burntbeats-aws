@@ -1,4 +1,5 @@
 import { Check, Minus } from "lucide-react";
+import { useState } from "react";
 import {
   PRICING_COLUMNS,
   PRICING_FEATURE_ROWS,
@@ -17,6 +18,17 @@ function CellValue({ value }: { value: string | boolean }) {
   return <span className="text-xs leading-snug text-secondary-foreground">{value}</span>;
 }
 
+function MobileCellValue({ value }: { value: string | boolean }) {
+  if (typeof value === "boolean") {
+    return value ? (
+      <Check className="h-4 w-4 text-success-300" aria-label="Included" />
+    ) : (
+      <Minus className="h-4 w-4 text-muted-foreground/60" aria-label="Not included" />
+    );
+  }
+  return <span className="text-xs text-secondary-foreground">{value}</span>;
+}
+
 interface PricingFeatureComparisonProps {
   /** Hide Studio column in compact hero views */
   hideStudio?: boolean;
@@ -31,51 +43,93 @@ export function PricingFeatureComparison({
     ? PRICING_COLUMNS.filter((c) => c.id !== "studio")
     : PRICING_COLUMNS;
 
+  const [mobileColumn, setMobileColumn] = useState<PricingColumnId>(highlightColumn);
+
   return (
-    <div
-      className="overflow-x-auto rounded-2xl border border-border"
-      data-testid="pricing-feature-comparison"
-    >
-      <table className="w-full min-w-[640px] border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-border bg-muted/60">
-            <th className="px-md py-sm text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Feature
-            </th>
-            {columns.map((col) => (
-              <th
-                key={col.id}
-                className={cn(
-                  "px-sm py-sm text-center text-xs font-semibold uppercase tracking-wide",
-                  col.id === highlightColumn
-                    ? "bg-primary-500/15 text-primary-100"
-                    : "text-muted-foreground",
-                )}
-              >
-                {col.label}
+    <div data-testid="pricing-feature-comparison">
+      {/* Desktop table — hidden on mobile */}
+      <div className="hidden overflow-x-auto rounded-2xl border border-border md:block">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/60">
+              <th className="px-md py-sm text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Feature
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {PRICING_FEATURE_ROWS.map((row) => (
-            <tr key={row.label} className="border-b border-border/60 last:border-0">
-              <td className="px-md py-sm text-secondary-foreground">{row.label}</td>
               {columns.map((col) => (
-                <td
+                <th
                   key={col.id}
                   className={cn(
-                    "px-sm py-sm text-center align-middle",
-                    col.id === highlightColumn && "bg-primary-500/8",
+                    "px-sm py-sm text-center text-xs font-semibold uppercase tracking-wide",
+                    col.id === highlightColumn
+                      ? "bg-primary-500/15 text-primary-100"
+                      : "text-muted-foreground",
                   )}
                 >
-                  <CellValue value={row.values[col.id]} />
-                </td>
+                  {col.label}
+                </th>
               ))}
             </tr>
+          </thead>
+          <tbody>
+            {PRICING_FEATURE_ROWS.map((row) => (
+              <tr key={row.label} className="border-b border-border/60 last:border-0">
+                <td className="px-md py-sm text-secondary-foreground">{row.label}</td>
+                {columns.map((col) => (
+                  <td
+                    key={col.id}
+                    className={cn(
+                      "px-sm py-sm text-center align-middle",
+                      col.id === highlightColumn && "bg-primary-500/8",
+                    )}
+                  >
+                    <CellValue value={row.values[col.id]} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile card view — visible only on small screens */}
+      <div className="md:hidden">
+        {/* Plan selector */}
+        <div className="mb-md flex flex-wrap gap-xs">
+          {columns.map((col) => (
+            <button
+              key={col.id}
+              type="button"
+              onClick={() => setMobileColumn(col.id)}
+              className={cn(
+                "rounded-full border px-sm py-xs text-xs font-semibold transition",
+                mobileColumn === col.id
+                  ? "border-primary-400/50 bg-primary-500/20 text-primary-100"
+                  : "border-border bg-muted text-muted-foreground",
+              )}
+            >
+              {col.label}
+            </button>
           ))}
-        </tbody>
-      </table>
+        </div>
+
+        {/* Feature list for selected plan */}
+        <div className="rounded-2xl border border-border bg-secondary/40 p-md">
+          <p className="mb-sm text-sm font-semibold text-foreground">
+            {columns.find((c) => c.id === mobileColumn)?.label} plan features
+          </p>
+          <ul className="space-y-sm">
+            {PRICING_FEATURE_ROWS.map((row) => (
+              <li
+                key={row.label}
+                className="flex items-center justify-between gap-sm border-b border-border/40 pb-sm last:border-0 last:pb-0"
+              >
+                <span className="text-sm text-secondary-foreground">{row.label}</span>
+                <MobileCellValue value={row.values[mobileColumn]} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
