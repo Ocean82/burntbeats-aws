@@ -30,7 +30,9 @@ export function SessionSidebar({
   }
 
   return (
-    <aside className="hardware-panel fixed inset-y-0 left-0 z-50 flex w-80 flex-col gap-lg border-r border-white/10 p-md shadow-2xl animate-in slide-in-from-left duration-300">
+    <aside className="hardware-panel fixed inset-y-0 left-0 z-50 flex w-80 flex-col gap-lg border-r border-white/10 p-md shadow-2xl"
+      style={{ animation: "slideInFromLeft 300ms var(--ease-out-quart) both" }}
+    >
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-xs text-lg font-bold tracking-tight">
           <Sparkles className="h-5 w-5 text-primary-400" aria-hidden />

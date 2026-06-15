@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp, Volume2, Music } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { LAYOUT } from "@/constants/layout";
 import { useWorkspaceLayout } from "@/hooks/useWorkspaceLayout";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { useWorkflow } from "@/contexts/WorkflowContext";
+import { useAudio } from "@/contexts/AudioContext";
 import { MasterProcessingPanel } from "@/components/master-processing";
 import { mergeMixerState } from "@/types";
 import type { StemEditorState } from "@/stem-editor-state";
@@ -136,10 +137,15 @@ function ChannelStrip({
 
 interface MasterStripProps {
   stemCount: number;
+  masterVolume: number;
+  onMasterVolumeChange: (value: number) => void;
 }
 
-function MasterStrip({ stemCount }: MasterStripProps) {
-  const [masterVolume, setMasterVolume] = useState(0);
+function MasterStrip({ stemCount, masterVolume, onMasterVolumeChange }: MasterStripProps) {
+  // Convert linear gain (0–1.5) to dB for display: dB = 20 * log10(gain)
+  // Clamp to avoid -Infinity when gain is 0
+  const gainDb = masterVolume > 0 ? 20 * Math.log10(masterVolume) : -60;
+  const displayDb = Math.max(-12, Math.min(12, gainDb));
 
   return (
     <div
@@ -155,7 +161,7 @@ function MasterStrip({ stemCount }: MasterStripProps) {
 
       {/* Label */}
       <div className="flex items-center gap-1">
-        <Music className="w-3 h-3 text-violet-400" />
+        <Music className="w-3 h-3 text-violet-400" aria-hidden />
         <span className="text-[9px] font-bold uppercase tracking-wider text-violet-400">
           Master
         </span>
@@ -164,27 +170,27 @@ function MasterStrip({ stemCount }: MasterStripProps) {
       {/* Stem count */}
       <span className="text-[8px] text-white/30">{stemCount} stems</span>
 
-      {/* Volume fader */}
+      {/* Volume fader — wired to audio engine master gain */}
       <div className="flex flex-col items-center gap-0.5 w-full">
         <input
           type="range"
-          min={-12}
-          max={12}
-          step={0.1}
+          min={0}
+          max={1.5}
+          step={0.01}
           value={masterVolume}
-          onChange={(e) => setMasterVolume(Number(e.target.value))}
+          onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
           aria-label="Master volume"
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-violet-500 cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
         />
         <span className="text-[8px] text-white/40 tabular-nums">
-          {masterVolume >= 0 ? "+" : ""}
-          {masterVolume.toFixed(1)} dB
+          {displayDb >= 0 ? "+" : ""}
+          {displayDb.toFixed(1)} dB
         </span>
       </div>
 
-      {/* VU indicator placeholder */}
+      {/* VU indicator */}
       <div className="flex gap-0.5">
-        <Volume2 className="w-3 h-3 text-violet-400/60" />
+        <Volume2 className="w-3 h-3 text-violet-400/60" aria-hidden />
       </div>
     </div>
   );
@@ -217,6 +223,7 @@ export function MixerConsole({ className }: MixerConsoleProps) {
   const { mixerExpanded, toggleMixer } = useWorkspaceLayout();
   const reducedMotion = useReducedMotion();
   const { stemStates, setStemStates } = useWorkflow();
+  const audio = useAudio();
 
   const stemIds = useMemo(() => Object.keys(stemStates), [stemStates]);
 
@@ -309,9 +316,9 @@ export function MixerConsole({ className }: MixerConsoleProps) {
           aria-label={mixerExpanded ? "Collapse mixer" : "Expand mixer"}
           aria-expanded={mixerExpanded}
           className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded-md",
+            "flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer",
             "text-white/60 hover:text-white/90 hover:bg-white/5",
-            "transition-colors",
+            "transition-colors min-h-[36px]",
           )}
           data-testid="mixer-toggle"
         >
@@ -361,7 +368,11 @@ export function MixerConsole({ className }: MixerConsoleProps) {
           )}
 
           {/* Master channel strip */}
-          <MasterStrip stemCount={stemIds.length} />
+          <MasterStrip
+            stemCount={stemIds.length}
+            masterVolume={audio.masterVolume}
+            onMasterVolumeChange={audio.setMasterVolume}
+          />
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 /* Fonts loaded via <link> in index.html for non-blocking render */
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "./design-tokens-oklch.css";
 @import "./design-tokens-responsive.css";
 @import "./design-tokens-motion.css";
@@ -516,6 +517,7 @@
     border: 1px solid rgba(255, 180, 100, 0.3);
     padding: 0.95rem 1.2rem;
     color: #fffbf8;
+    cursor: pointer;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 32%),
       linear-gradient(135deg, #cc2200 0%, #ff5500 35%, #ff8800 65%, #ffbb33 100%);
@@ -575,6 +577,7 @@
     gap: 0.55rem;
     border-radius: 9999px;
     border: 1px solid rgba(0, 200, 255, 0.18);
+    cursor: pointer;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
       linear-gradient(135deg, rgba(0, 200, 255, 0.06) 0%, transparent 100%);
@@ -2027,6 +2030,18 @@
   100% {
     transform: translateX(35%) skewX(-14deg);
     opacity: 0;
+  }
+}
+
+/* Sidebar slide-in — used by session hub panel */
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }
 

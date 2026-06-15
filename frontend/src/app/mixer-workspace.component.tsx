@@ -95,8 +95,7 @@ export function MixerWorkspace({
         <EmptyState
           icon={<Music className="h-6 w-6" />}
           title="No stems loaded"
-          description="Upload a track to start mixing your project"
-          action={{ label: "Upload Track", onClick: onExport }}
+          description="Upload a track and run a split to start mixing your project"
         />
       )}
       <ErrorBoundary

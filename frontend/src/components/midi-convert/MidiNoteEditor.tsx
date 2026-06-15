@@ -316,8 +316,6 @@ export function MidiNoteEditor({
     [editor],
   );
 
-  }, [estimatedKey, isDrumContent]);
-
   const applyMarkerExportNotice = useCallback((exported: number, requested: number) => {
     if (requested === 0) {
       setMarkerExportNotice(null);
@@ -418,8 +416,6 @@ export function MidiNoteEditor({
   const handleRemoveMarker = useCallback((id: string) => {
     setMarkers((prev) => prev.filter((m) => m.id !== id));
   }, []);
-
-  }, [jobId, jobToken, editor, markers, applyMarkerExportNotice]);
 
   const defaultMarkerTime = useMemo(() => {
     const playhead = minStart + playback.currentTime;

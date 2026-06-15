@@ -84,7 +84,12 @@ export function LandingSocialProof() {
               "{t.quote}"
             </p>
             <footer className="mt-sm flex items-center gap-xs">
-              <div className="h-6 w-6 rounded-full bg-primary-500/20" aria-hidden="true" />
+              <div
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-500/20 text-[9px] font-bold text-primary-300"
+                aria-hidden="true"
+              >
+                {t.author.charAt(0)}
+              </div>
               <div>
                 <cite className="not-italic text-xs font-semibold text-foreground">
                   {t.author}

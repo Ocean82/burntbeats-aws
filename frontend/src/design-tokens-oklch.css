@@ -234,4 +234,15 @@
   --color-accent-midi-950: var(--accent-midi-950);
   --color-chrome: var(--chrome);
   --color-chrome-strong: var(--chrome-strong);
+
+  /* MIDI gold — standalone semantic alias for Tailwind utility usage */
+  --color-midi-gold: var(--accent-midi);
+
+  /* Destructive scale (supplements the base --destructive token) */
+  --color-destructive-400: oklch(62% 0.18 25);
+  --color-destructive-500: var(--error);
+
+  /* Success scale alias */
+  --color-success-300: oklch(72% 0.12 155);
+  --color-success-500: var(--success);
 }

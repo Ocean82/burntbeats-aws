@@ -1,12 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
 import { cn } from "@/utils/cn";
 import { useToolDrawer } from "@/hooks/useToolDrawer";
 import { useWorkspaceLayout } from "@/hooks/useWorkspaceLayout";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useWorkflow } from "@/contexts/WorkflowContext";
+import { useAudio } from "@/contexts/AudioContext";
+import { useAppStore } from "@/store/appStore";
 import { LAYOUT } from "@/constants/layout";
 import { ToolSidebar } from "./ToolSidebar";
+import { TransportBar } from "./TransportBar";
 import { EffectsPanel } from "./EffectsPanel";
 import { EffectsPanelBottomSheet } from "./EffectsPanelBottomSheet";
 import { MixerConsole } from "./MixerConsole";
@@ -27,17 +30,54 @@ export function Workspace() {
   const { isOpen, activeTool, toggle, close } = useToolDrawer();
   useWorkspaceLayout(); // MixerConsole uses this hook directly for collapse state
   const { stemStates } = useWorkflow();
+  const audio = useAudio();
+  const splitResultStems = useAppStore((s) => s.splitResultStems);
 
   // Track which stem the effects panel applies to.
   // Defaults to the first available stem or empty string if no stems loaded.
   const stemIds = useMemo(() => Object.keys(stemStates), [stemStates]);
-  const [activeStemId, _setActiveStemId] = useState<string>("");
 
-  // Keep activeStemId in sync: if it's not in stemStates, reset to first available
-  const resolvedStemId = useMemo(() => {
-    if (activeStemId && stemIds.includes(activeStemId)) return activeStemId;
-    return stemIds[0] ?? "";
-  }, [activeStemId, stemIds]);
+  // Resolve to first available stem (stable default for effects panel targeting)
+  const resolvedStemId = useMemo(() => stemIds[0] ?? "", [stemIds]);
+
+  // --- Transport state ---
+  const [zoom, setZoom] = useState(1);
+  const hasStemsLoaded = Object.keys(audio.stemBuffers).length > 0;
+
+  const handlePlayPause = useCallback(() => {
+    if (audio.isPlayingMix) {
+      audio.handleStopMix();
+    } else {
+      void audio.handlePlayMix(splitResultStems, stemStates, audio.stemBuffers);
+    }
+  }, [audio, splitResultStems, stemStates]);
+
+  const handleStop = useCallback(() => {
+    audio.handleStopMix();
+  }, [audio]);
+
+  const handleRewind = useCallback(() => {
+    audio.handleSeekMix(0);
+  }, [audio]);
+
+  const handleSeek = useCallback(
+    (pct: number) => {
+      audio.handleSeekMix(pct);
+    },
+    [audio],
+  );
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(z * 2, 8));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => Math.max(z / 2, 1));
+  }, []);
+
+  const handleLoopToggle = useCallback(() => {
+    audio.setLoopEnabled(!audio.loopEnabled);
+  }, [audio]);
 
   const isDesktop = useMediaQuery(
     `(min-width: ${LAYOUT.BREAKPOINT_DESKTOP}px)`,
@@ -110,7 +150,19 @@ export function Workspace() {
           borderRadius: 0,
         }}
       >
-        {/* TransportBar component will be rendered here */}
+        <TransportBar
+          isPlaying={audio.isPlayingMix}
+          onPlayPause={handlePlayPause}
+          onStop={handleStop}
+          onRewind={handleRewind}
+          onSeek={handleSeek}
+          zoom={zoom}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          loopEnabled={audio.loopEnabled}
+          onLoopToggle={handleLoopToggle}
+          disabled={!hasStemsLoaded}
+        />
       </div>
 
       {/* ToolSidebar — vertical on tablet+, horizontal toolbar on mobile */}
