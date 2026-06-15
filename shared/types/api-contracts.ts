@@ -148,6 +148,47 @@ export interface MidiConvertAcceptResponse {
   status_url?: string;
 }
 
+export interface MidiExportSourceJob {
+  job_id: string;
+  stem_name: string;
+  bpm?: number;
+}
+
+export interface MidiExportRequest {
+  mode: "stems" | "mixdown";
+  format?: "midi0" | "midi1";
+  selected_stems: string[];
+  source_jobs: MidiExportSourceJob[];
+  time_range?: "full_project" | "custom";
+  range_start_s?: number;
+  range_end_s?: number;
+  title?: string;
+  artist?: string;
+  genre?: string;
+}
+
+export interface MidiExportStatus {
+  status: JobStatus;
+  progress: number;
+  job_id?: string;
+  message?: string;
+  error?: string;
+  result?: {
+    archive: string;
+    files: string[];
+    selected_stems: string[];
+    mode: string;
+  };
+}
+
+export interface MidiExportAcceptResponse {
+  export_id: string;
+  export_token: string;
+  status: "queued";
+  status_url: string;
+  archive_url: string;
+}
+
 export interface MidiMergeRequest {
   jobs: Array<{
     job_id: string;

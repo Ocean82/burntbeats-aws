@@ -52,6 +52,7 @@ def test_build_metadata_payload_preserves_public_metadata_shape():
             "target_velocity": 110,
             "max_note_length_ms": 2400,
             "quantize_strength": 0.75,
+            "transpose": 0,
         },
         "analysis": {"estimated_key": "C major"},
         "midi_file_analysis": {
@@ -61,3 +62,24 @@ def test_build_metadata_payload_preserves_public_metadata_shape():
             "tempo_bpm": 128,
         },
     }
+
+
+def test_completed_progress_includes_empty_transcription_flag():
+    """Zero-note jobs should surface empty_transcription without changing completed status."""
+    completed_progress = {
+        "status": "completed",
+        "progress": 100,
+        "empty_transcription": True,
+        "warning": "No notes detected",
+        "message": "No notes detected",
+        "result": {
+            "notes_detected": 0,
+            "duration_seconds": 0.0,
+            "tracks": 0,
+            "inference_time_seconds": 1.2,
+            "piano_roll_notes": [],
+        },
+    }
+    assert completed_progress["status"] == "completed"
+    assert completed_progress["empty_transcription"] is True
+    assert completed_progress["result"]["notes_detected"] == 0

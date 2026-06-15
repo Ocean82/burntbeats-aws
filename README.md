@@ -73,8 +73,10 @@ End users of the public site do not read this repo; this file is for **direction
 ### MIDI conversion flow
 
 1. Browser → **`POST /api/midi/convert`** (Node: auth, metering, upload or stem reference) → **`midi_service`**.
+   - **Stem reference:** backend resolves `{STEM_OUTPUT_DIR}/{stem_job_id}/stems/{stem_name}.wav` on disk. If local WAVs were removed after S3 upload (`S3_DELETE_LOCAL_AFTER_UPLOAD=true`), the backend downloads the stem from S3 (using `progress.json` keys) into a temp file before proxying to `midi_service` — same source of truth as **`GET /api/stems/file`**.
+   - **Shared MIDI storage:** `backend` and `midi_service` must mount the same host directory (`tmp/midi`). Compose uses `/app/tmp/midi` vs `/repo/tmp/midi` inside containers; alignment is checked via **`GET /api/health`** (`storage.midi_shared.aligned`).
 2. MIDI service returns **202** + `job_id`; Basic Pitch inference runs asynchronously (2-8s typical).
-3. Browser polls **`GET /api/midi/status/:job_id`** (includes piano roll note data on completion).
+3. Browser polls **`GET /api/midi/status/:job_id`** (includes piano roll note data and **`midi_file_analysis`** on completion).
 4. MIDI file via **`GET /api/midi/file/:job_id/output.mid`**.
 5. Optional: **`POST /api/midi/merge`** combines multiple completed jobs into a multi-track MIDI Type 1 file.
 6. Optional export orchestration:

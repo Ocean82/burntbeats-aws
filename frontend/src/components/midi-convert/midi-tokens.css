@@ -1198,6 +1198,13 @@
         var(--midi-surface-raised);
 }
 
+@media (max-width: 1023px) {
+    .midi-inspector-wrap {
+        max-height: min(42vh, 28rem);
+        overflow-y: auto;
+    }
+}
+
 .midi-editor-canvas-shell {
     position: relative;
 }

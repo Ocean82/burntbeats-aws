@@ -11,7 +11,8 @@ import { cn } from "../../utils/cn";
 interface MidiAnalysisPanelProps {
   analysis: MidiAnalysis;
   fileAnalysis?: MidiFileAnalysisDetail | null;
-  onApplySuggestedBpm?: (bpm: number) => void;
+  onApplyEditorBpm?: (bpm: number) => void;
+  onApplyReconvertBpm?: (bpm: number) => void;
 }
 
 /** Segmented complexity meter (5 segments). */
@@ -59,37 +60,16 @@ function DensityBar({ density }: { density: number }) {
 export function MidiAnalysisPanel({
   analysis,
   fileAnalysis = null,
-  onApplySuggestedBpm,
 }: MidiAnalysisPanelProps) {
   const { pitch_range: range } = analysis;
   const complexity =
     fileAnalysis?.complexity_score ?? analysis.complexity_score;
   const genreHints = fileAnalysis?.genre_hints ?? [];
   const trackInfo = fileAnalysis?.track_info ?? [];
-  const bpm = fileAnalysis?.tempo_bpm ?? analysis.suggested_bpm;
 
   return (
     <div className="midi-inspector" data-testid="midi-analysis-panel">
       <p className="midi-inspector__title">Musical analysis</p>
-
-      {/* BPM hero badge */}
-      {bpm != null && (
-        <div className="flex items-center gap-sm">
-          <div className="midi-analysis-bpm-badge">
-            <span className="midi-analysis-bpm-badge__value">{bpm}</span>
-            <span className="midi-analysis-bpm-badge__unit">BPM</span>
-          </div>
-          {onApplySuggestedBpm && analysis.suggested_bpm != null && (
-            <button
-              type="button"
-              onClick={() => onApplySuggestedBpm(bpm)}
-              className="midi-btn text-[10px] px-sm py-0"
-            >
-              Use for quantize
-            </button>
-          )}
-        </div>
-      )}
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-3">
         <div>

@@ -7,6 +7,7 @@ import { useAuth } from "@clerk/react";
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE, isLocalDevFullApp } from "../config";
 import { userFacingHttpError } from "../userFacingError";
+import { trackCheckoutReturnedOnce } from "../analytics/checkoutTracking";
 import { trackEvent } from "../analytics/events";
 import type { BillingInterval } from "../analytics/billingEvents";
 
@@ -298,12 +299,12 @@ export function useSubscription(): UseSubscriptionResult {
   // Refetch after Stripe redirects back with ?checkout=success
   useEffect(() => {
     if (window.location.search.includes("checkout=success")) {
-      trackEvent("checkout_returned_success");
+      trackCheckoutReturnedOnce("success", "subscription_hook");
       // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch after checkout redirect
       void fetchStatus();
     }
     if (window.location.search.includes("checkout=cancelled")) {
-      trackEvent("checkout_returned_cancelled");
+      trackCheckoutReturnedOnce("cancelled", "subscription_hook");
     }
   }, [fetchStatus]);
 

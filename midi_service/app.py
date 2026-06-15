@@ -34,6 +34,7 @@ from midi_service.routes.ops import build_ops_router
 from midi_service.routes.rhythm import build_rhythm_router
 from midi_service.routes.render import build_render_router
 from midi_service.services.export import run_export_sync
+from midi_service.services.merge_job import run_merge_sync
 from midi_service.services.render import run_render_sync
 from midi_service.services.storage import probe_storage, write_storage_sentinel
 
@@ -60,6 +61,14 @@ def _run_job(
     if options.get("job_kind") == "render":
         render_opts = options.get("render_request") or {}
         run_render_sync(job_id, input_path, out_dir, render_opts)
+        return
+    if options.get("job_kind") == "merge":
+        run_merge_sync(
+            job_id=job_id,
+            out_dir=out_dir,
+            merge_request=options.get("merge_request") or {},
+            output_dir=MIDI_OUTPUT_DIR,
+        )
         return
     run_midi_convert_sync(job_id, input_path, out_dir, options)
 
@@ -121,7 +130,12 @@ def create_app() -> FastAPI:
         )
     )
     app.include_router(build_jobs_router())
-    app.include_router(build_merge_router())
+    app.include_router(
+        build_merge_router(
+            enqueue_job=enqueue_job,
+            get_queue_depth=get_queue_depth,
+        )
+    )
     app.include_router(build_waveform_router())
     app.include_router(
         build_export_router(

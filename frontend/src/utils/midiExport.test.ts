@@ -32,8 +32,31 @@ describe("exportTracksToMidi", () => {
       ], [{ cc: 7, time: 0, value: 100 }]),
     ];
 
-    const blob = exportTracksToMidi(tracks, 120);
+    const { blob } = exportTracksToMidi(tracks, 120);
     expect(blob.type).toMatch(/audio\/midi|application\/octet-stream/);
+    expect(blob.size).toBeGreaterThan(50);
+  });
+
+  it("exports section markers on the first track", () => {
+    const tracks: EditorTrack[] = [
+      makeTrack("t1", "Melody", [
+        { id: "n1", pitch: 60, start: 0, duration: 0.5, velocity: 100 },
+      ]),
+    ];
+
+    const { blob, markersExported, markersRequested } = exportTracksToMidi(
+      tracks,
+      120,
+      {
+        markers: [
+          { id: "m1", time: 1, label: "Verse" },
+          { id: "m2", time: 2, label: "Chorus" },
+        ],
+      },
+    );
+
+    expect(markersRequested).toBe(2);
+    expect(markersExported).toBe(2);
     expect(blob.size).toBeGreaterThan(50);
   });
 });

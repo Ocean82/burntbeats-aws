@@ -152,6 +152,11 @@ async def _worker_loop(run_fn: Callable[..., None]) -> None:
                     "job_kind": "render",
                     "render_request": item.get("render_request") or {},
                 }
+            elif job_kind == "merge":
+                options = {
+                    "job_kind": "merge",
+                    "merge_request": item.get("merge_request") or {},
+                }
             else:
                 options = options_from_job_item(item)
             await loop.run_in_executor(

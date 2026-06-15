@@ -10,6 +10,7 @@ import {
   issueJobToken,
   DEV_BYPASS_UPLOAD_AUTH,
 } from "../../middleware/auth.js";
+import { requireJobOwnership } from "../../middleware/ownership.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
@@ -178,7 +179,7 @@ midiRenderRouter.post(
 /**
  * GET /render/status/:jobId — Poll render job status.
  */
-midiRenderRouter.get("/status/:jobId", authMiddleware, async (req, res) => {
+midiRenderRouter.get("/status/:jobId", authMiddleware, requireJobOwnership, async (req, res) => {
   const { jobId } = req.params;
   if (!isValidMidiJobId(jobId)) {
     return res.status(400).json({ error: "Invalid job_id" });
@@ -213,7 +214,7 @@ midiRenderRouter.get("/status/:jobId", authMiddleware, async (req, res) => {
 /**
  * GET /render/file/:jobId — Download the rendered audio file.
  */
-midiRenderRouter.get("/file/:jobId", authMiddleware, async (req, res) => {
+midiRenderRouter.get("/file/:jobId", authMiddleware, requireJobOwnership, async (req, res) => {
   const { jobId } = req.params;
   if (!isValidMidiJobId(jobId)) {
     return res.status(400).json({ error: "Invalid job_id" });

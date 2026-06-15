@@ -15,6 +15,8 @@ export interface MarkerStripProps {
   markers: SectionMarker[];
   duration: number;
   pixelsPerSecond: number;
+  defaultAddTime?: number;
+  markerExportSupported?: boolean;
   onAdd: (time: number, label: string) => void;
   onRemove: (id: string) => void;
   onSeek?: (time: number) => void;
@@ -27,6 +29,8 @@ export function MarkerStrip({
   markers,
   duration,
   pixelsPerSecond,
+  defaultAddTime = 0,
+  markerExportSupported = true,
   onAdd,
   onRemove,
   onSeek,
@@ -35,9 +39,9 @@ export function MarkerStrip({
   const [newLabel, setNewLabel] = useState("Section");
 
   const handleAdd = useCallback(() => {
-    const time = markers.length ? Math.min(duration, (markers.length + 1) * (duration / 4)) : 0;
+    const time = Math.max(0, Math.min(duration, defaultAddTime));
     onAdd(time, newLabel.trim() || "Section");
-  }, [markers.length, duration, newLabel, onAdd]);
+  }, [defaultAddTime, duration, newLabel, onAdd]);
 
   const width = Math.max(200, duration * pixelsPerSecond);
 
@@ -59,12 +63,18 @@ export function MarkerStrip({
             type="button"
             onClick={handleAdd}
             className="inline-flex items-center gap-0.5 rounded px-xs py-0.5 text-[10px] text-accent-midi-300 hover:bg-accent-midi/10"
+            aria-label="Add marker"
           >
             <Plus className="h-3 w-3" />
             Add
           </button>
         </div>
       </div>
+      <p className="border-b border-border/40 px-sm py-0.5 text-[9px] text-muted-foreground">
+        {markerExportSupported
+          ? "Markers export with Download / Save when supported by your DAW."
+          : "Markers are session-only — export is unavailable in this browser."}
+      </p>
       <div className="relative h-8 overflow-x-auto">
         <div className="relative h-full" style={{ width }}>
           {markers.map((m) => (

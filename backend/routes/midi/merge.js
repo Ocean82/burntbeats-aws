@@ -115,18 +115,76 @@ midiMergeRouter.post("/", midiMergeRateLimitMiddleware, authMiddleware, async (r
   }
 
   try {
-    const url = new URL("/merge", MIDI_SERVICE_URL);
     const headers = withMidiServiceAuthHeader({
       "Content-Type": "application/json",
     });
 
-    // Forward correlation ID for distributed tracing
     const correlationId = /** @type {any} */ (req).correlationId;
     if (correlationId) {
       headers["X-Correlation-ID"] = correlationId;
     }
 
     const payload = JSON.stringify({ jobs, bpm: bpm || 120 });
+
+    if (jobs.length >= 3) {
+      const asyncUrl = new URL("/merge/async", MIDI_SERVICE_URL);
+      const acceptRes = await fetch(asyncUrl, {
+        method: "POST",
+        headers,
+        body: payload,
+      });
+      if (!acceptRes.ok) {
+        const errText = await acceptRes.text().catch(() => "");
+        let errorMsg = "Multi-track merge failed";
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed.detail) errorMsg = parsed.detail;
+        } catch {
+          /* default */
+        }
+        return res.status(acceptRes.status).json({ error: errorMsg });
+      }
+      const accepted = await acceptRes.json();
+      const mergeId = accepted.merge_id;
+      if (!mergeId) {
+        return res.status(502).json({ error: "MIDI service did not return merge_id" });
+      }
+
+      let attempts = 0;
+      while (attempts < 120) {
+        const statusRes = await fetch(`${MIDI_SERVICE_URL}/merge/status/${mergeId}`, {
+          headers: withMidiServiceAuthHeader({}),
+        });
+        if (!statusRes.ok) {
+          return res.status(statusRes.status).json({ error: "Merge status lookup failed" });
+        }
+        const statusData = await statusRes.json();
+        if (statusData.status === "completed") break;
+        if (statusData.status === "failed") {
+          return res.status(500).json({ error: statusData.error || "Merge job failed" });
+        }
+        attempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      if (attempts >= 120) {
+        return res.status(504).json({ error: "Merge timed out" });
+      }
+
+      const fileRes = await fetch(`${MIDI_SERVICE_URL}/merge/file/${mergeId}/multitrack.mid`, {
+        headers: withMidiServiceAuthHeader({}),
+      });
+      if (!fileRes.ok) {
+        return res.status(fileRes.status).json({ error: "Merge file not available" });
+      }
+      const body = Buffer.from(await fileRes.arrayBuffer());
+      const trackCount = fileRes.headers.get("x-merge-tracks") || String(jobs.length);
+      res.setHeader("Content-Type", "audio/midi");
+      res.setHeader("Content-Disposition", 'attachment; filename="multitrack.mid"');
+      res.setHeader("X-Merge-Tracks", trackCount);
+      return res.send(body);
+    }
+
+    const url = new URL("/merge", MIDI_SERVICE_URL);
 
     const result = await midiServiceClient.breaker.call(() =>
       new Promise((resolve, reject) => {
@@ -156,7 +214,7 @@ midiMergeRouter.post("/", midiMergeRateLimitMiddleware, authMiddleware, async (r
           },
         );
         proxyReq.on("error", reject);
-        proxyReq.setTimeout(30_000, () => {
+        proxyReq.setTimeout(90_000, () => {
           proxyReq.destroy();
           reject(new Error("TimeoutError"));
         });

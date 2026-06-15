@@ -77,6 +77,8 @@ def build_export_router(
                         "artist": req.artist,
                         "genre": req.genre,
                         "time_range": req.time_range,
+                        "range_start_s": req.range_start_s,
+                        "range_end_s": req.range_end_s,
                     },
                 }
             )

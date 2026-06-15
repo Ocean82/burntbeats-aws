@@ -26,6 +26,14 @@ dev = [
     "httpx>=0.23.0,<0.28.0",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-p no:xonsh"
+markers = [
+    "integration: marks tests that require Basic Pitch installed (deselect with '-m \"not integration\"')",
+]
+
 [tool.pyrefly]
 search_path = [
     ".venv/lib/python3.11/site-packages",

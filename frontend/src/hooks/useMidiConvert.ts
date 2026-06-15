@@ -5,6 +5,7 @@
  */
 import { useCallback, useMemo, useRef, useState } from "react";
 import { authHeaders, setJobToken as storeJobToken } from "../api/auth";
+import { streamMidiJobUntilDone } from "../api/midiStatus";
 import { fetchWithRetry } from "../api/retry";
 import { trackEvent } from "../analytics/events";
 import {
@@ -16,6 +17,11 @@ import {
 import { useAppStore } from "../store/appStore";
 import { uploadWithProgress } from "../utils/uploadWithProgress";
 import { userFacingApiError, userFacingHttpError } from "../userFacingError";
+import {
+  buildMidiDownloadName,
+  classifyMidiHttpError,
+  midiErrorMessage,
+} from "../utils/midiErrors";
 
 export type MidiSourceMode = "split" | "upload" | "loaded";
 
@@ -85,6 +91,7 @@ export interface MidiConvertResult {
   pianoRollNotes: MidiNoteEvent[];
   analysis: MidiAnalysis | null;
   fileAnalysis: MidiFileAnalysisDetail | null;
+  emptyTranscription?: boolean;
 }
 
 export interface BatchJob {
@@ -92,9 +99,11 @@ export interface BatchJob {
   jobId: string | null;
   jobToken: string | null;
   fileUrl: string | null;
-  status: "pending" | "converting" | "completed" | "failed";
+  status: "pending" | "converting" | "completed" | "failed" | "cancelled";
   result: MidiConvertResult | null;
   error: string | null;
+  progress?: number;
+  statusMessage?: string;
 }
 
 interface PollResponse {
@@ -103,6 +112,8 @@ interface PollResponse {
   progress: number;
   message?: string;
   error?: string;
+  empty_transcription?: boolean;
+  warning?: string;
   midi_file_analysis?: MidiFileAnalysisDetail;
   result?: {
     notes_detected: number;
@@ -161,6 +172,8 @@ function buildConvertResult(
     pianoRollNotes: poll.result.piano_roll_notes || [],
     analysis: poll.result.analysis ?? null,
     fileAnalysis,
+    emptyTranscription:
+      poll.empty_transcription === true || poll.result.notes_detected === 0,
   };
 }
 
@@ -242,6 +255,7 @@ export function useMidiConvert() {
   const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isDownloadingMidi, setIsDownloadingMidi] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const [result, setResult] = useState<MidiConvertResult | null>(null);
   const [midiFileUrl, setMidiFileUrl] = useState<string | null>(null);
@@ -390,39 +404,25 @@ export function useMidiConvert() {
 
   const pollStatus = useCallback(
     (jobId: string, token: string) => {
-      const poll = async () => {
-        // Skip poll tick while offline — the interval keeps running but does nothing
-        if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
+      stopPolling();
+      void (async () => {
         try {
-          const headers = await authHeaders();
-          const res = await fetchWithRetry(
-            `${API_BASE}/api/midi/status/${jobId}`,
-            { headers: { ...headers, "x-job-token": token } },
-            { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
-          );
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(
-              userFacingHttpError(
-                res.status,
-                typeof data.error === "string" ? data.error : null,
-                `Status check failed (${res.status})`,
-              ),
-            );
-          }
-          const data: PollResponse = await res.json();
-
-          setProgress(data.progress || 0);
-          setStatusMessage(data.message || "");
+          const data = await streamMidiJobUntilDone(jobId, token, (status) => {
+            setProgress(status.progress || 0);
+            setStatusMessage(status.message || "");
+          });
 
           if (data.status === "completed" && data.result) {
-            stopPolling();
             setIsConverting(false);
-            const built = buildConvertResult(data);
+            const built = buildConvertResult(data as PollResponse);
             if (built) {
               maybeApplyDrumsPreset(built.fileAnalysis);
               setResult(built);
+              if (built.emptyTranscription || built.notesDetected === 0) {
+                trackEvent("midi_empty_transcription_completed", {
+                  duration_seconds: data.result.duration_seconds,
+                });
+              }
             }
             trackEvent("midi_convert_completed", {
               notes_detected: data.result.notes_detected,
@@ -430,7 +430,6 @@ export function useMidiConvert() {
               inference_time_seconds: data.result.inference_time_seconds,
             });
           } else if (data.status === "failed") {
-            stopPolling();
             setIsConverting(false);
             setError(
               userFacingApiError(data.error, "MIDI conversion failed. Please try again."),
@@ -439,21 +438,16 @@ export function useMidiConvert() {
               error: (data.error || "unknown").slice(0, 120),
             });
           } else if (data.status === "cancelled") {
-            stopPolling();
             setIsConverting(false);
             setActiveMidiJobId(null);
             setProgress(0);
             setStatusMessage("");
           }
         } catch (e) {
-          stopPolling();
           setIsConverting(false);
           setError(resolveUserFacingError(e, "Could not check conversion status. Please try again."));
         }
-      };
-
-      pollRef.current = setInterval(poll, 1500);
-      void poll();
+      })();
     },
     [stopPolling, maybeApplyDrumsPreset],
   );
@@ -607,10 +601,27 @@ export function useMidiConvert() {
     ],
   );
 
+  const downloadSourceLabel = useMemo(() => {
+    if (sourceMode === "split" && effectiveSelectedStem) {
+      return effectiveSelectedStem;
+    }
+    if (sourceMode === "upload" && uploadName) return uploadName;
+    if (sourceMode === "loaded" && selectedLoadedStem?.label) {
+      return selectedLoadedStem.label;
+    }
+    return null;
+  }, [
+    sourceMode,
+    effectiveSelectedStem,
+    uploadName,
+    selectedLoadedStem?.label,
+  ]);
+
   const downloadMidi = useCallback(async () => {
     if (!midiFileUrl || !jobToken || isDownloadingMidiRef.current) return;
     isDownloadingMidiRef.current = true;
     setIsDownloadingMidi(true);
+    setDownloadError(null);
     trackEvent("midi_download_started");
     try {
       const headers = await authHeaders();
@@ -618,26 +629,41 @@ export function useMidiConvert() {
         headers: { ...headers, "x-job-token": jobToken },
       });
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         throw new Error(
-          userFacingHttpError(res.status, null, "Download failed"),
+          midiErrorMessage(
+            "download",
+            classifyMidiHttpError(
+              res.status,
+              typeof data.error === "string" ? data.error : null,
+            ),
+          ),
         );
       }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "output.mid";
+      a.download = buildMidiDownloadName({
+        stemName: downloadSourceLabel,
+        uploadName: downloadSourceLabel,
+        jobId: activeMidiJobId,
+      });
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      window.open(midiFileUrl, "_blank");
+    } catch (e) {
+      const msg = midiErrorMessage(
+        "download",
+        e instanceof Error ? e.message : null,
+      );
+      setDownloadError(msg);
     } finally {
       isDownloadingMidiRef.current = false;
       setIsDownloadingMidi(false);
     }
-  }, [midiFileUrl, jobToken]);
+  }, [midiFileUrl, jobToken, downloadSourceLabel, activeMidiJobId]);
 
   const cancelConvert = useCallback(async () => {
     stopPolling();
@@ -665,6 +691,9 @@ export function useMidiConvert() {
   const [batchJobs, setBatchJobs] = useState<BatchJob[]>([]);
   const [isBatchMode, setIsBatchMode] = useState(false);
   const batchAbortRef = useRef(false);
+  const batchActiveJobIdsRef = useRef<Map<number, { jobId: string; token: string }>>(
+    new Map(),
+  );
 
   const batchProgress = useMemo(() => {
     const completed = batchJobs.filter((j) => j.status === "completed").length;
@@ -672,41 +701,30 @@ export function useMidiConvert() {
   }, [batchJobs]);
 
   const pollBatchJob = useCallback(
-    async (jobId: string, token: string): Promise<PollResponse> => {
-      const POLL_INTERVAL = 1500;
-      const MAX_POLLS = 400;
-      let polls = 0;
-
-      while (polls < MAX_POLLS) {
-        // Pause while offline — don't count toward MAX_POLLS
-        if (typeof navigator !== "undefined" && !navigator.onLine) {
-          await new Promise<void>((resolve) => {
-            const handler = () => { window.removeEventListener("online", handler); resolve(); };
-            window.addEventListener("online", handler);
-          });
-        }
-
-        const headers = await authHeaders();
-        const res = await fetchWithRetry(
-          `${API_BASE}/api/midi/status/${jobId}`,
-          { headers: { ...headers, "x-job-token": token } },
-          { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
-        );
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `Status check failed (${res.status})`);
-        }
-        const data: PollResponse = await res.json();
-
-        if (data.status === "completed" && data.result) return data;
-        if (data.status === "failed") {
-          throw new Error(data.error || "Conversion failed");
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
-        polls++;
+    async (
+      jobId: string,
+      token: string,
+      onProgress?: (data: PollResponse) => void,
+    ): Promise<PollResponse> => {
+      if (batchAbortRef.current) {
+        throw new Error("Batch cancelled");
       }
-      throw new Error("Conversion timed out");
+      const data = (await streamMidiJobUntilDone(
+        jobId,
+        token,
+        (status) => onProgress?.(status as PollResponse),
+      )) as PollResponse;
+      if (batchAbortRef.current) {
+        throw new Error("Batch cancelled");
+      }
+      if (data.status === "completed" && data.result) return data;
+      if (data.status === "failed") {
+        throw new Error(data.error || "Conversion failed");
+      }
+      if (data.status === "cancelled") {
+        throw new Error("Conversion cancelled");
+      }
+      throw new Error("Conversion ended without result");
     },
     [],
   );
@@ -715,6 +733,7 @@ export function useMidiConvert() {
     async (
       splitJobId: string,
       stemName: string,
+      batchIndex?: number,
     ): Promise<{
       jobId: string;
       token: string;
@@ -729,9 +748,39 @@ export function useMidiConvert() {
       const data = await submitConvertJob(formData, false);
       const token = data.job_token;
       storeJobToken(data.job_id, token);
+      if (typeof batchIndex === "number") {
+        batchActiveJobIdsRef.current.set(batchIndex, {
+          jobId: data.job_id,
+          token,
+        });
+        setBatchJobs((prev) =>
+          prev.map((job, idx) =>
+            idx === batchIndex
+              ? { ...job, jobId: data.job_id, jobToken: token, status: "converting" }
+              : job,
+          ),
+        );
+      }
 
       const fileUrl = normalizeFileUrl(data.file_url);
-      const pollResult = await pollBatchJob(data.job_id, token);
+      const pollResult = await pollBatchJob(data.job_id, token, (status) => {
+        if (typeof batchIndex !== "number") return;
+        setBatchJobs((prev) =>
+          prev.map((job, idx) =>
+            idx === batchIndex
+              ? {
+                  ...job,
+                  progress: status.progress,
+                  statusMessage: status.message,
+                }
+              : job,
+          ),
+        );
+      });
+
+      if (typeof batchIndex === "number") {
+        batchActiveJobIdsRef.current.delete(batchIndex);
+      }
 
       const built = buildConvertResult(pollResult);
       if (!built) throw new Error("Conversion completed without result");
@@ -750,6 +799,7 @@ export function useMidiConvert() {
     async (splitJobId: string, stemNames: string[]) => {
       setIsBatchMode(true);
       batchAbortRef.current = false;
+      batchActiveJobIdsRef.current.clear();
       setError(null);
 
       const initialJobs: BatchJob[] = stemNames.map((name) => ({
@@ -773,7 +823,7 @@ export function useMidiConvert() {
         const stemName = stemNames[index];
         setBatchJobs((prev) =>
           prev.map((job, idx) =>
-            idx === index ? { ...job, status: "converting" } : job,
+            idx === index ? { ...job, status: "converting", progress: 0 } : job,
           ),
         );
         try {
@@ -782,7 +832,7 @@ export function useMidiConvert() {
             token,
             fileUrl,
             result: stemResult,
-          } = await convertSingleStem(splitJobId, stemName);
+          } = await convertSingleStem(splitJobId, stemName, index);
           setBatchJobs((prev) =>
             prev.map((job, idx) =>
               idx === index
@@ -798,6 +848,16 @@ export function useMidiConvert() {
             ),
           );
         } catch (e) {
+          if (batchAbortRef.current) {
+            setBatchJobs((prev) =>
+              prev.map((job, idx) =>
+                idx === index && job.status === "converting"
+                  ? { ...job, status: "cancelled", error: "Cancelled" }
+                  : job,
+              ),
+            );
+            return;
+          }
           const errorMsg = e instanceof Error ? e.message : "Conversion failed";
           setBatchJobs((prev) =>
             prev.map((job, idx) =>
@@ -875,8 +935,42 @@ export function useMidiConvert() {
     [batchJobs, convertSingleStem],
   );
 
+  const cancelBatch = useCallback(async () => {
+    batchAbortRef.current = true;
+    const activeJobs = Array.from(batchActiveJobIdsRef.current.values());
+    batchActiveJobIdsRef.current.clear();
+
+    trackEvent("midi_batch_cancelled", {
+      in_flight_jobs: activeJobs.length,
+      pending_jobs: batchJobs.filter((j) => j.status === "pending").length,
+    });
+
+    await Promise.all(
+      activeJobs.map(async ({ jobId, token }) => {
+        try {
+          const headers = await authHeaders();
+          await fetch(`${API_BASE}/api/midi/jobs/${jobId}`, {
+            method: "DELETE",
+            headers: { ...headers, "x-job-token": token },
+          });
+        } catch {
+          /* best-effort */
+        }
+      }),
+    );
+
+    setBatchJobs((prev) =>
+      prev.map((job) =>
+        job.status === "pending" || job.status === "converting"
+          ? { ...job, status: "cancelled", error: "Cancelled" }
+          : job,
+      ),
+    );
+  }, [batchJobs]);
+
   const clearBatch = useCallback(() => {
     batchAbortRef.current = true;
+    batchActiveJobIdsRef.current.clear();
     setBatchJobs([]);
     setIsBatchMode(false);
   }, []);
@@ -923,12 +1017,16 @@ export function useMidiConvert() {
     jobToken,
     downloadMidi,
     isDownloadingMidi,
+    downloadError,
+    setDownloadError,
+    downloadSourceLabel,
     triggerConvert,
     batchJobs,
     isBatchMode,
     batchProgress,
     triggerBatchConvert,
     retryBatchJob,
+    cancelBatch,
     clearBatch,
     cancelConvert,
   };

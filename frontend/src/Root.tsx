@@ -7,7 +7,7 @@
  * Also handles ?checkout=success redirect from Stripe — cleans the URL
  * so the app doesn't re-trigger on refresh.
  */
-import { useAuth } from "@clerk/react";
+import { useAuth, useUser } from "@clerk/react";
 import { lazy, Suspense, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Route, Switch, useLocation } from "wouter";
@@ -15,7 +15,8 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import { trackEvent } from "./analytics/events";
+import { trackCheckoutReturnedOnce } from "./analytics/checkoutTracking";
+import { trackSignupCompletedOnce } from "./analytics/signupTracking";
 import { usePageViews } from "./analytics/usePageViews";
 import { useDocumentMeta } from "./seo/useDocumentMeta";
 
@@ -117,24 +118,37 @@ function RouteSeoSync() {
 /** Authenticated root: Clerk sign-in gate + token injection. */
 function AuthenticatedRoot() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
+  const { user } = useUser();
   const [location] = useLocation();
 
   useEffect(() => {
     if (isLoaded) setTokenProvider(() => getToken());
   }, [isLoaded, getToken]);
 
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    trackSignupCompletedOnce(
+      user
+        ? {
+            id: user.id,
+            createdAt: user.createdAt,
+          }
+        : null,
+    );
+  }, [isLoaded, isSignedIn, user]);
+
   // Clean up ?checkout= query params left by Stripe redirect
   useEffect(() => {
     if (window.location.search.includes("checkout=")) {
       if (window.location.search.includes("checkout=cancelled")) {
-        trackEvent("checkout_returned_cancelled", { source: "root_handler" });
+        trackCheckoutReturnedOnce("cancelled", "root_handler");
         window.sessionStorage.setItem(
           "burntbeats_checkout_notice",
           "Checkout was canceled. You can try again or use a one-time pack.",
         );
       }
       if (window.location.search.includes("checkout=success")) {
-        trackEvent("checkout_returned_success", { source: "root_handler" });
+        trackCheckoutReturnedOnce("success", "root_handler");
       }
       const url = new URL(window.location.href);
       url.searchParams.delete("checkout");

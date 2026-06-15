@@ -3,12 +3,13 @@
  * Pattern matches SpeechCleanPanel: source → settings → action → progress → result.
  * Includes batch conversion support for converting all stems at once.
  */
-import { Check, Download, Layers, Loader2, Music, Piano, RefreshCw, X } from "lucide-react";
+import { Check, Download, Layers, Loader2, Music, Piano, Pencil, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useMidiConvert } from "../../hooks/useMidiConvert";
+import { useMidiConvert, type MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
 import { cn } from "../../utils/cn";
+import { buildMidiDownloadName, midiErrorMessage } from "../../utils/midiErrors";
 import { WorkflowStepper } from "../ui/WorkflowStepper";
 import { MidiSourceSelector } from "./MidiSourceSelector";
 import { MidiSourcePreview } from "./MidiSourcePreview";
@@ -18,6 +19,7 @@ import { MidiResultPanel } from "./MidiResultPanel";
 import { MidiLaneDrawer } from "./MidiLaneDrawer";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
+import { trackEvent } from "../../analytics/events";
 import { MidiExportDashboard } from "../library/MidiExportDashboard";
 import { ErrorState } from "../ui/error-state";
 import { EmptyState } from "../ui/empty-state";
@@ -28,12 +30,14 @@ export interface MidiConvertPanelProps {
   usageBalance?: number | null;
   usageLoading?: boolean;
   subscriptionInactive?: boolean;
+  onViewPlans?: () => void;
 }
 
 export function MidiConvertPanel({
   usageBalance = null,
   usageLoading = false,
   subscriptionInactive = false,
+  onViewPlans,
 }: MidiConvertPanelProps) {
   const { splitJobId } = useAppStore();
 
@@ -69,6 +73,9 @@ export function MidiConvertPanel({
     result,
     downloadMidi,
     isDownloadingMidi,
+    downloadError,
+    setDownloadError,
+    downloadSourceLabel,
     triggerConvert,
     batchJobs,
     isBatchMode,
@@ -76,10 +83,40 @@ export function MidiConvertPanel({
     triggerBatchConvert,
     retryBatchJob,
     clearBatch,
+    cancelBatch,
     activeMidiJobId,
     jobToken,
     cancelConvert,
   } = useMidiConvert();
+
+  const settingsSectionRef = useRef<HTMLDivElement>(null);
+  const [batchViewResult, setBatchViewResult] = useState<{
+    result: MidiConvertResult;
+    jobId: string;
+    jobToken: string;
+    stemName: string;
+  } | null>(null);
+
+  const handleViewPlans = useCallback(
+    (source: "token_low" | "subscription_inactive" | "batch_token_low") => {
+      trackEvent("midi_upgrade_cta_clicked", { source });
+      onViewPlans?.();
+    },
+    [onViewPlans],
+  );
+
+  const displayResult = result ?? batchViewResult?.result ?? null;
+  const displayJobId = result ? activeMidiJobId : batchViewResult?.jobId ?? null;
+  const displayJobToken = result ? jobToken : batchViewResult?.jobToken ?? null;
+
+  const batchCompletedCount = batchJobs.filter((j) => j.status === "completed").length;
+  const batchFailedCount = batchJobs.filter((j) => j.status === "failed").length;
+  const batchDone =
+    isBatchMode &&
+    batchJobs.length > 0 &&
+    batchJobs.every((j) =>
+      ["completed", "failed", "cancelled"].includes(j.status),
+    );
 
   const canConvert =
     !isConverting &&
@@ -104,7 +141,7 @@ export function MidiConvertPanel({
     usageBalance >= batchCost;
   const isBatchInProgress = isBatchMode && batchJobs.some((j) => j.status === "converting" || j.status === "pending");
 
-  const workflowActiveId = result
+  const workflowActiveId = displayResult
     ? "result"
     : isConverting || isUploading || isBatchInProgress
       ? "convert"
@@ -114,10 +151,10 @@ export function MidiConvertPanel({
   const workflowCompleted = [
     ...(hasSourceSelected ? ["source"] : []),
     ...(hasSourceSelected && !isConverting && !isUploading ? ["settings"] : []),
-    ...(result || batchJobs.some((j) => j.status === "completed")
+    ...(displayResult || batchJobs.some((j) => j.status === "completed") || batchDone
       ? ["convert"]
       : []),
-    ...(result ? ["result"] : []),
+    ...(displayResult || batchDone ? ["result"] : []),
   ];
 
   // Export ZIP state
@@ -126,16 +163,36 @@ export function MidiConvertPanel({
   // Drawer collapse states
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const openedSettingsForResultRef = useRef(false);
 
-  // Task 17.1: SuccessFlash — fires when result transitions from null to non-null
+  // Task 17.1: SuccessFlash — fires when result transitions from null to non-null with notes
   const [showSuccessFlash, setShowSuccessFlash] = useState(false);
-  const prevResultRef = useRef(result);
+  const prevResultRef = useRef(displayResult);
   useEffect(() => {
-    if (result !== null && prevResultRef.current === null) {
+    const hadNotes =
+      displayResult !== null &&
+      displayResult.notesDetected > 0 &&
+      prevResultRef.current === null;
+    if (hadNotes) {
       setShowSuccessFlash(true);
+      setHistoryDrawerOpen(true);
     }
-    prevResultRef.current = result;
-  }, [result]);
+    if (displayResult && !openedSettingsForResultRef.current) {
+      setSettingsDrawerOpen(true);
+      openedSettingsForResultRef.current = true;
+    }
+    if (!displayResult) {
+      openedSettingsForResultRef.current = false;
+    }
+    prevResultRef.current = displayResult;
+  }, [displayResult]);
+
+  const scrollToSettings = useCallback(() => {
+    setSettingsDrawerOpen(true);
+    requestAnimationFrame(() => {
+      settingsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   const downloadAllAsZip = useCallback(async () => {
     const completedJobs = batchJobs.filter(
@@ -163,7 +220,12 @@ export function MidiConvertPanel({
       });
       if (!createRes.ok) {
         const data = await createRes.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to create export job");
+        throw new Error(
+          midiErrorMessage(
+            "export_zip",
+            typeof data.error === "string" ? data.error : null,
+          ),
+        );
       }
       const created = (await createRes.json()) as {
         export_id: string;
@@ -218,33 +280,48 @@ export function MidiConvertPanel({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "ZIP export failed";
+      const msg =
+        e instanceof Error
+          ? e.message
+          : midiErrorMessage("export_zip");
       setError(msg);
     } finally {
       setIsExportingZip(false);
     }
   }, [batchJobs, settings.quantizeBpm, setError]);
 
-  const downloadSingleBatchMidi = useCallback(async (fileUrl: string, token: string, stemName: string) => {
+  const downloadSingleBatchMidi = useCallback(async (fileUrl: string, token: string, stemName: string, jobId: string) => {
     try {
       const headers = await authHeaders();
       const res = await fetch(fileUrl, {
         headers: { ...headers, "x-job-token": token },
       });
-      if (!res.ok) throw new Error("Download failed");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          midiErrorMessage(
+            "download",
+            typeof data.error === "string" ? data.error : null,
+          ),
+        );
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${stemName}.mid`;
+      a.download = buildMidiDownloadName({ stemName, jobId });
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch {
-      window.open(fileUrl, "_blank");
+    } catch (e) {
+      const msg =
+        e instanceof Error
+          ? e.message
+          : midiErrorMessage("download");
+      setError(msg);
     }
-  }, []);
+  }, [setError]);
 
   // Multi-track export state
   const [isMerging, setIsMerging] = useState(false);
@@ -272,7 +349,12 @@ export function MidiConvertPanel({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Multi-track merge failed");
+        throw new Error(
+          midiErrorMessage(
+            "export_merge",
+            typeof data.error === "string" ? data.error : null,
+          ),
+        );
       }
 
       const blob = await res.blob();
@@ -285,7 +367,10 @@ export function MidiConvertPanel({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Multi-track export failed";
+      const msg =
+        e instanceof Error
+          ? e.message
+          : midiErrorMessage("export_merge");
       setError(msg);
     } finally {
       setIsMerging(false);
@@ -331,6 +416,12 @@ export function MidiConvertPanel({
     </>
   );
 
+  const settingsBlock = (
+    <div ref={settingsSectionRef}>
+      {sourceAndSettings}
+    </div>
+  );
+
   return (
     <div data-testid="midi-convert-panel" className="midi-workspace flex flex-col gap-md">
       <WorkflowStepper
@@ -344,16 +435,28 @@ export function MidiConvertPanel({
         completedStepIds={workflowCompleted}
       />
 
-      {result && !isConverting ? (
+      {displayResult && !isConverting ? (
         <MidiLaneDrawer
           title="Source and conversion settings"
           open={settingsDrawerOpen}
           onToggle={() => setSettingsDrawerOpen((v) => !v)}
         >
-          {sourceAndSettings}
+          {settingsBlock}
+          <button
+            type="button"
+            data-testid="midi-convert-again-button"
+            onClick={() => {
+              setBatchViewResult(null);
+              void triggerConvert(splitJobId);
+            }}
+            disabled={!canConvert}
+            className="midi-btn text-sm mt-sm"
+          >
+            Convert again
+          </button>
         </MidiLaneDrawer>
       ) : (
-        <div className="midi-workspace-section">{sourceAndSettings}</div>
+        <div className="midi-workspace-section">{settingsBlock}</div>
       )}
 
       {/* Usage info */}
@@ -371,25 +474,45 @@ export function MidiConvertPanel({
                   {Math.floor(usageBalance)} tokens
                 </span>
               </span>
-              {usageBalance < 1 && (
+              {usageBalance < 1 && onViewPlans ? (
+                <button
+                  type="button"
+                  onClick={() => handleViewPlans("token_low")}
+                  className="text-xs font-medium text-accent-midi-300 underline-offset-2 hover:underline"
+                >
+                  Get more tokens
+                </button>
+              ) : usageBalance < 1 ? (
                 <span className="text-destructive-300/80 text-meta">
                   — not enough tokens
                 </span>
-              )}
+              ) : null}
             </>
           )}
         </div>
       )}
 
       {/* Convert button */}
+      {!displayResult ? (
       <div className="flex flex-wrap items-center gap-sm">
         {subscriptionInactive ? (
-          <div className="midi-callout">
-            <p className="midi-callout__title">Subscribe to unlock MIDI conversion</p>
-            <p className="midi-callout__body">
-              Paid plans include Audio-to-MIDI. Each conversion uses 1 token from your balance.
-            </p>
-          </div>
+          <>
+            <div className="midi-callout">
+              <p className="midi-callout__title">Subscribe to unlock MIDI conversion</p>
+              <p className="midi-callout__body">
+                Paid plans include Audio-to-MIDI. Each conversion uses 1 token from your balance.
+              </p>
+            </div>
+            {onViewPlans ? (
+              <button
+                type="button"
+                onClick={() => handleViewPlans("subscription_inactive")}
+                className="midi-btn midi-btn--play text-sm"
+              >
+                View plans
+              </button>
+            ) : null}
+          </>
         ) : (
           <button
             type="button"
@@ -403,14 +526,13 @@ export function MidiConvertPanel({
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {isUploading ? "Uploading…" : "Converting…"}
               </>
-            ) : result ? (
-              "Conversion complete"
             ) : (
               "Convert to MIDI"
             )}
           </button>
         )}
       </div>
+      ) : null}
 
       {/* Batch Convert All Stems button */}
       {showBatchButton && !subscriptionInactive && (
@@ -430,11 +552,19 @@ export function MidiConvertPanel({
             <span className="font-medium text-accent-midi-200">{batchCost} tokens</span>
             {" "}({splitResultStems.length} stems × 1)
           </span>
-          {usageBalance !== null && usageBalance < batchCost && (
+          {usageBalance !== null && usageBalance < batchCost && onViewPlans ? (
+            <button
+              type="button"
+              onClick={() => handleViewPlans("batch_token_low")}
+              className="text-xs font-medium text-accent-midi-300 underline-offset-2 hover:underline"
+            >
+              Upgrade for {batchCost} tokens
+            </button>
+          ) : usageBalance !== null && usageBalance < batchCost ? (
             <span className="text-xs text-destructive-300/80">
               — not enough tokens (need {batchCost}, have {Math.floor(usageBalance)})
             </span>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -450,13 +580,32 @@ export function MidiConvertPanel({
                   {batchProgress.completed} of {batchProgress.total} stems converted
                 </>
               ) : (
-                <>{batchProgress.completed} of {batchProgress.total} stems converted</>
+                <>
+                  {batchProgress.completed} of {batchProgress.total} stems converted
+                  {batchDone ? (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      ({batchCompletedCount} succeeded
+                      {batchFailedCount > 0 ? `, ${batchFailedCount} failed` : ""})
+                    </span>
+                  ) : null}
+                </>
               )}
             </p>
-            {!isBatchInProgress && (
+            {isBatchInProgress ? (
               <button
                 type="button"
-                onClick={clearBatch}
+                onClick={() => void cancelBatch()}
+                className="text-xs text-destructive-300 hover:underline"
+              >
+                Cancel batch
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  clearBatch();
+                  setBatchViewResult(null);
+                }}
                 className="text-xs text-muted-foreground hover:text-secondary-foreground underline"
               >
                 Clear batch
@@ -475,10 +624,10 @@ export function MidiConvertPanel({
                   job.status === "converting" && "midi-batch-card--converting border-accent-midi/30 bg-accent-midi-950/15",
                   job.status === "completed" && "midi-batch-card--completed border-success/30 bg-success-muted/10",
                   job.status === "failed" && "midi-batch-card--failed border-destructive-500/30 bg-destructive-950/15",
+                  job.status === "cancelled" && "border-border/60 bg-muted/40 opacity-70",
                 )}
               >
                 <div className="flex min-w-0 flex-1 items-start gap-xs sm:items-center">
-                  {/* Status indicator */}
                   {job.status === "pending" && (
                     <span className="mt-2xs h-2.5 w-2.5 shrink-0 rounded-full bg-secondary sm:mt-0" />
                   )}
@@ -491,23 +640,60 @@ export function MidiConvertPanel({
                   {job.status === "failed" && (
                     <X className="h-4 w-4 shrink-0 text-destructive-400" />
                   )}
+                  {job.status === "cancelled" && (
+                    <X className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
                   <div className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-secondary-foreground capitalize">
                       {job.stemName}
                     </span>
+                    {job.status === "converting" && (
+                      <span className="mt-2xs block text-xs text-muted-foreground">
+                        {job.statusMessage || "Converting…"}
+                        {typeof job.progress === "number" ? ` · ${job.progress}%` : ""}
+                      </span>
+                    )}
                     {job.status === "failed" && job.error && (
                       <span className="mt-2xs block text-xs text-destructive-300/90 line-clamp-2">
                         {job.error}
                       </span>
                     )}
+                    {job.status === "cancelled" && (
+                      <span className="mt-2xs block text-xs text-muted-foreground">
+                        Cancelled
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-xs self-end sm:self-auto">
-                  {/* Individual download button for completed stems */}
-                  {job.status === "completed" && job.fileUrl && job.jobToken && (
+                  {job.status === "completed" && job.result && job.result.notesDetected > 0 && job.jobId && job.jobToken && (
                     <button
                       type="button"
-                      onClick={() => void downloadSingleBatchMidi(job.fileUrl!, job.jobToken!, job.stemName)}
+                      onClick={() =>
+                        setBatchViewResult({
+                          result: job.result!,
+                          jobId: job.jobId!,
+                          jobToken: job.jobToken!,
+                          stemName: job.stemName,
+                        })
+                      }
+                      className="midi-btn text-xs"
+                    >
+                      <Pencil className="h-3 w-3" />
+                      Open in editor
+                    </button>
+                  )}
+                  {job.status === "completed" && job.fileUrl && job.jobToken && job.jobId && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void downloadSingleBatchMidi(
+                          job.fileUrl!,
+                          job.jobToken!,
+                          job.stemName,
+                          job.jobId!,
+                        )
+                      }
                       className="midi-btn text-xs"
                     >
                       <Download className="h-3 w-3" />
@@ -623,25 +809,38 @@ export function MidiConvertPanel({
             <EmptyState
               icon={<Piano className="h-6 w-6" />}
               title="No conversions yet"
-              description="Convert an audio stem to MIDI to start your collection"
-              action={{ label: "Convert a Stem", onClick: handleBrowse }}
+              description="Select a stem or upload audio, then convert to MIDI"
+              action={{ label: "Choose source", onClick: handleBrowse }}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Result */}
-      {result && !isConverting ? (
+      {displayResult && !isConverting ? (
         <MidiResultPanel
-          result={result}
+          result={displayResult}
           onDownload={downloadMidi}
           isDownloading={isDownloadingMidi}
-          onNewConversion={handleClear}
-          jobId={activeMidiJobId}
-          jobToken={jobToken}
-          onApplySuggestedBpm={(bpm) => {
+          downloadError={downloadError}
+          onNewConversion={() => {
+            setDownloadError(null);
+            setBatchViewResult(null);
+            handleClear();
+          }}
+          jobId={displayJobId}
+          jobToken={displayJobToken}
+          sourceLabel={batchViewResult?.stemName ?? downloadSourceLabel ?? undefined}
+          initialMode="edit"
+          onApplyReconvertBpm={(bpm) => {
             updateSettings({ quantizeBpm: bpm, quantize: true });
           }}
+          onAdjustSettings={scrollToSettings}
+          onRetry={() => {
+            setDownloadError(null);
+            void triggerConvert(splitJobId);
+          }}
+          onOpenExportHistory={() => setHistoryDrawerOpen(true)}
         />
       ) : null}
 

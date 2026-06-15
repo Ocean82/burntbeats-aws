@@ -22,15 +22,24 @@ import type {
   ActiveLane,
   AutomationParam,
   EditorViewState,
+  MidiFxApplyMode,
 } from "../components/midi-convert/editorTypes";
 import {
   DEFAULT_TIME_SIG,
   DEFAULT_LOOP,
   BUILTIN_CC_LANES,
   TRACK_COLORS,
+  createDefaultTrackMidiFx,
+  DEFAULT_MIDI_FX_APPLY_MODE,
   generateTrackId,
   generateNoteId,
 } from "../components/midi-convert/editorTypes";
+import type { MidiEffectsConfig } from "../audio/midiEffects/types";
+import { cloneMidiEffects } from "../audio/midiEffects/presets";
+import {
+  constrainPitch,
+  type ScaleGuideConstraint,
+} from "../utils/musicTheory";
 
 export type {
   EditorTool,
@@ -76,16 +85,42 @@ function createInitialTrack(
       events: [],
       visible: false,
     })),
+    midiEffects: createDefaultTrackMidiFx(),
+    midiFxApplyMode: DEFAULT_MIDI_FX_APPLY_MODE,
+    midiFxPreview: false,
   };
+}
+
+function withTrackMidiFxDefaults(track: EditorTrack): EditorTrack {
+  return {
+    ...track,
+    midiEffects: track.midiEffects
+      ? cloneMidiEffects(track.midiEffects)
+      : createDefaultTrackMidiFx(),
+    midiFxApplyMode: track.midiFxApplyMode ?? DEFAULT_MIDI_FX_APPLY_MODE,
+    midiFxPreview: track.midiFxPreview ?? false,
+  };
+}
+
+function cloneTrackFromHistory(track: EditorTrack): EditorTrack {
+  return withTrackMidiFxDefaults({
+    ...track,
+    notes: track.notes.map((n) => ({ ...n })),
+    selectedIds: new Set(track.selectedIds),
+    ccLanes: track.ccLanes.map((l) => ({
+      ...l,
+      events: l.events.map((e) => ({ ...e })),
+    })),
+  });
 }
 
 function normalizeTrackState(track: EditorTrack): EditorTrack {
   const notes = resolvePitchOverlaps(track.notes);
-  return {
+  return withTrackMidiFxDefaults({
     ...track,
     notes,
     selectedIds: sanitizeSelectedIds(notes, track.selectedIds),
-  };
+  });
 }
 
 export interface UseMidiEditorReturn {
@@ -145,6 +180,14 @@ export interface UseMidiEditorReturn {
   pasteClipboard: (pasteTime?: number) => void;
   humanizeSelected: (timingJitter?: number, velocityJitter?: number) => void;
   randomizeSelected: (minVelocity?: number, maxVelocity?: number) => void;
+  applyMidiEffectsToNotes: (
+    noteIds: string[],
+    processed: MidiNoteEvent[],
+    mode?: MidiFxApplyMode,
+  ) => void;
+  setTrackMidiEffects: (trackId: string, config: MidiEffectsConfig) => void;
+  setTrackMidiFxApplyMode: (trackId: string, mode: MidiFxApplyMode) => void;
+  setTrackMidiFxPreview: (trackId: string, enabled: boolean) => void;
   setTrackNotes: (trackId: string, notes: EditableNote[]) => void;
   undo: () => void;
   redo: () => void;
@@ -165,6 +208,8 @@ export interface UseMidiEditorReturn {
   setNoteChannel: (noteId: string, channel: number) => void;
   legatoSelected: () => void;
   beginRecordedNote: (pitch: number, start: number, velocity: number) => string;
+  setScaleConstraint: (guide: ScaleGuideConstraint | null) => void;
+  markAsSaved: () => void;
   finishRecordedNote: (noteId: string, endAbsolute: number) => void;
   beginEditGesture: () => void;
   addCcPoint: (ccNumber: number, time: number, value: number) => void;
@@ -201,6 +246,19 @@ export function useMidiEditor(
     isModified: false,
     clipboard: [] as EditableNote[],
   });
+
+  const scaleConstraintRef = useRef<ScaleGuideConstraint | null>(null);
+
+  const setScaleConstraint = useCallback(
+    (guide: ScaleGuideConstraint | null) => {
+      scaleConstraintRef.current = guide?.locked ? guide : null;
+    },
+    [],
+  );
+
+  const markAsSaved = useCallback(() => {
+    setState((s) => ({ ...s, isModified: false }));
+  }, []);
 
   const historyRef = useRef<HistoryEntry[]>([
     {
@@ -408,9 +466,13 @@ export function useMidiEditor(
               state.timeSignature,
             )
           : snapDuration(0.25, state.bpm, state.snapGrid, state.timeSignature);
+        const constrainedPitch = constrainPitch(
+          pitch,
+          scaleConstraintRef.current,
+        );
         const newNote: EditableNote = {
           id: generateNoteId(),
-          pitch: Math.max(0, Math.min(127, pitch)),
+          pitch: Math.max(0, Math.min(127, constrainedPitch)),
           start: Math.max(0, snappedStart),
           duration: snappedDuration,
           velocity: state.drawVelocity,
@@ -441,7 +503,16 @@ export function useMidiEditor(
           ...track,
           notes: track.notes.map((n) => {
             if (!idSet.has(n.id)) return n;
-            const newPitch = Math.max(0, Math.min(127, n.pitch + deltaPitch));
+            const newPitch = Math.max(
+              0,
+              Math.min(
+                127,
+                constrainPitch(
+                  n.pitch + deltaPitch,
+                  scaleConstraintRef.current,
+                ),
+              ),
+            );
             const snappedDelta = snapDeltaTime(
               deltaTime,
               state.bpm,
@@ -529,7 +600,16 @@ export function useMidiEditor(
             if (!track.selectedIds.has(n.id)) return n;
             return {
               ...n,
-              pitch: Math.max(0, Math.min(127, n.pitch + semitones)),
+              pitch: Math.max(
+                0,
+                Math.min(
+                  127,
+                  constrainPitch(
+                    n.pitch + semitones,
+                    scaleConstraintRef.current,
+                  ),
+                ),
+              ),
             };
           }),
         });
@@ -555,7 +635,16 @@ export function useMidiEditor(
             );
             return {
               ...n,
-              pitch: Math.max(0, Math.min(127, n.pitch + deltaPitch)),
+              pitch: Math.max(
+                0,
+                Math.min(
+                  127,
+                  constrainPitch(
+                    n.pitch + deltaPitch,
+                    scaleConstraintRef.current,
+                  ),
+                ),
+              ),
               start: Math.max(0, n.start + snappedDelta),
             };
           }),
@@ -892,6 +981,64 @@ export function useMidiEditor(
     [modifyActiveTrack, pushHistory],
   );
 
+  const applyMidiEffectsToNotes = useCallback(
+    (
+      noteIds: string[],
+      processed: MidiNoteEvent[],
+      mode: MidiFxApplyMode = DEFAULT_MIDI_FX_APPLY_MODE,
+    ) => {
+      if (processed.length === 0) return;
+      modifyActiveTrack((track) => {
+        const idSet = new Set(
+          noteIds.length > 0 ? noteIds : track.notes.map((n) => n.id),
+        );
+        const sourceNotes = track.notes.filter((n) => idSet.has(n.id));
+        if (sourceNotes.length === 0) return track;
+
+        pushHistory();
+        const transformed: EditableNote[] = processed.map((note) => ({
+          ...note,
+          id: generateNoteId(),
+        }));
+        const remaining =
+          mode === "replace"
+            ? track.notes.filter((n) => !idSet.has(n.id))
+            : track.notes;
+
+        return normalizeTrackState({
+          ...track,
+          notes: [...remaining, ...transformed],
+          selectedIds: new Set(transformed.map((n) => n.id)),
+        });
+      });
+    },
+    [modifyActiveTrack, pushHistory],
+  );
+
+  const setTrackMidiEffects = useCallback(
+    (trackId: string, config: MidiEffectsConfig) => {
+      updateTrack(trackId, (track) => ({
+        ...track,
+        midiEffects: cloneMidiEffects(config),
+      }));
+    },
+    [updateTrack],
+  );
+
+  const setTrackMidiFxApplyMode = useCallback(
+    (trackId: string, mode: MidiFxApplyMode) => {
+      updateTrack(trackId, (track) => ({ ...track, midiFxApplyMode: mode }));
+    },
+    [updateTrack],
+  );
+
+  const setTrackMidiFxPreview = useCallback(
+    (trackId: string, enabled: boolean) => {
+      updateTrack(trackId, (track) => ({ ...track, midiFxPreview: enabled }));
+    },
+    [updateTrack],
+  );
+
   const setTrackNotes = useCallback(
     (trackId: string, notes: EditableNote[]) => {
       updateTrack(trackId, (t) => ({ ...t, notes }));
@@ -905,15 +1052,7 @@ export function useMidiEditor(
     const entry = historyRef.current[newIdx];
     setState((s) => ({
       ...s,
-      tracks: entry.tracks.map((t) => ({
-        ...t,
-        notes: t.notes.map((n) => ({ ...n })),
-        selectedIds: new Set(t.selectedIds),
-        ccLanes: t.ccLanes.map((l) => ({
-          ...l,
-          events: l.events.map((e) => ({ ...e })),
-        })),
-      })),
+      tracks: entry.tracks.map((t) => cloneTrackFromHistory(t)),
       activeTrackId: entry.activeTrackId,
       isModified: newIdx > 0,
     }));
@@ -927,15 +1066,7 @@ export function useMidiEditor(
     const entry = historyRef.current[newIdx];
     setState((s) => ({
       ...s,
-      tracks: entry.tracks.map((t) => ({
-        ...t,
-        notes: t.notes.map((n) => ({ ...n })),
-        selectedIds: new Set(t.selectedIds),
-        ccLanes: t.ccLanes.map((l) => ({
-          ...l,
-          events: l.events.map((e) => ({ ...e })),
-        })),
-      })),
+      tracks: entry.tracks.map((t) => cloneTrackFromHistory(t)),
       activeTrackId: entry.activeTrackId,
       isModified: true,
     }));
@@ -1034,9 +1165,13 @@ export function useMidiEditor(
           state.snapGrid,
           state.timeSignature,
         );
+        const constrainedPitch = constrainPitch(
+          pitch,
+          scaleConstraintRef.current,
+        );
         const newNote: EditableNote = {
           id: noteId,
-          pitch: Math.max(0, Math.min(127, pitch)),
+          pitch: Math.max(0, Math.min(127, constrainedPitch)),
           start: Math.max(0, snappedStart),
           duration: minDur,
           velocity: Math.max(1, Math.min(127, velocity)),
@@ -1301,6 +1436,10 @@ export function useMidiEditor(
     pasteClipboard,
     humanizeSelected,
     randomizeSelected,
+    applyMidiEffectsToNotes,
+    setTrackMidiEffects,
+    setTrackMidiFxApplyMode,
+    setTrackMidiFxPreview,
     setTrackNotes,
     undo,
     redo,
@@ -1318,6 +1457,8 @@ export function useMidiEditor(
     setNoteChannel,
     legatoSelected,
     beginRecordedNote,
+    setScaleConstraint,
+    markAsSaved,
     finishRecordedNote,
     beginEditGesture,
     addCcPoint,

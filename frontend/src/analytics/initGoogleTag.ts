@@ -19,6 +19,17 @@ export function initGoogleTag(measurementId: string): void {
   };
   window.gtag = gtag as unknown as typeof window.gtag;
 
+  gtag("consent", "default", {
+    analytics_storage: "denied",
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+    wait_for_update: 500,
+  });
+  gtag("consent", "update", {
+    analytics_storage: "granted",
+  });
+
   const script = document.createElement("script");
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`;

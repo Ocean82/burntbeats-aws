@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
+import {
+  applyMidiEffects,
+  hasActiveMidiEffects,
+  previewNotesWithMidiFx,
+} from "../../audio/midiEffects";
 import { useMidiEditor } from "../../hooks/useMidiEditor";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
 import { useMidiInstruments } from "../../hooks/useMidiInstruments";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
-import { exportTracksToMidi, downloadMidiBlob } from "../../utils/midiExport";
+import { exportTracksToMidi, downloadMidiBlob, midiMarkerExportSupported } from "../../utils/midiExport";
+import { buildMidiDownloadName } from "../../utils/midiErrors";
 import { useWebMidiInput } from "../../hooks/useWebMidiInput";
 import { snapToGrid } from "../../utils/midiEditorSnap";
 import { MidiEditorToolbar } from "./MidiEditorToolbar";
@@ -15,18 +21,20 @@ import { MidiEditorShell } from "./MidiEditorShell";
 import { MidiTransportBar } from "./MidiTransportBar";
 import { MarkerStrip, createMarker, type SectionMarker } from "./MarkerStrip";
 import { MidiSmartPanel } from "./MidiSmartPanel";
+import { MidiEffectsPanel } from "./MidiEffectsPanel";
 import { MidiVelocityLane } from "./MidiVelocityLane";
 import { MidiCcLane } from "./MidiCcLane";
 import { MidiAutomationLane } from "./MidiAutomationLane";
 import { MidiTrackList } from "./MidiTrackList";
-import { BounceToAudioButton } from "./BounceToAudioButton";
+import { MidiInspectorSection } from "./MidiInspectorSection";
+import { MidiRenderAudioControl } from "./MidiRenderAudioControl";
 import { clampEditorVerticalZoom, clampEditorZoom } from "./pianoRollTheme";
 import {
   useMidiTimelineLayout,
   useTimelineViewportWidth,
 } from "./useMidiTimelineLayout";
 import type { LoopRegion } from "./editorTypes";
-import { midiToFreq, type RootNote, type Scale } from "../../utils/musicTheory";
+import { midiToFreq, parseEstimatedKey, type RootNote, type Scale } from "../../utils/musicTheory";
 import { AUTOMATION_PARAMS } from "./editorTypes";
 import { MidiLaneDrawer } from "./MidiLaneDrawer";
 
@@ -35,8 +43,16 @@ interface MidiNoteEditorProps {
   bpm: number;
   jobId?: string | null;
   jobToken?: string | null;
+  sourceLabel?: string;
+  estimatedKey?: string;
+  isDrumContent?: boolean;
   className?: string;
   e2eMode?: boolean;
+  onRegisterEditor?: (api: {
+    setBpm: (bpm: number) => void;
+    quantizeSelected: () => void;
+    hasSelection: () => boolean;
+  }) => void;
 }
 
 export function MidiNoteEditor({
@@ -44,8 +60,12 @@ export function MidiNoteEditor({
   bpm,
   jobId = null,
   jobToken = null,
+  sourceLabel,
+  estimatedKey,
+  isDrumContent = false,
   className = "",
   e2eMode = false,
+  onRegisterEditor,
 }: MidiNoteEditorProps) {
   const editor = useMidiEditor(initialNotes, bpm);
   const playback = useMidiPlayback();
@@ -56,6 +76,13 @@ export function MidiNoteEditor({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [verticalZoomLevel, setVerticalZoomLevel] = useState(1);
   const [laneDrawerOpen, setLaneDrawerOpen] = useState(true);
+  const [fxApplyToAll, setFxApplyToAll] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState({
+    selection: true,
+    render: false,
+    fx: false,
+    chords: false,
+  });
   const [scaleGuide, setScaleGuide] = useState<{
     root: RootNote;
     scale: Scale;
@@ -68,11 +95,57 @@ export function MidiNoteEditor({
     totalDuration,
     pixelsPerSecond,
     timelineWidth,
-    leftMargin,
   } = useMidiTimelineLayout(editor.notes, zoomLevel, viewportWidth);
   const [markers, setMarkers] = useState<SectionMarker[]>([]);
+  const [markerExportNotice, setMarkerExportNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isDrumContent) {
+      editor.setScaleConstraint(null);
+      setScaleGuide((prev) => ({ ...prev, locked: false }));
+      return;
+    }
+    editor.setScaleConstraint(scaleGuide.locked ? scaleGuide : null);
+  }, [editor, scaleGuide, isDrumContent]);
+
+  useEffect(() => {
+    if (!estimatedKey || isDrumContent) return;
+    const parsed = parseEstimatedKey(estimatedKey);
+    if (!parsed) return;
+    setScaleGuide((prev) => ({ ...prev, ...parsed }));
+  }, [estimatedKey]);
+
+  useEffect(() => {
+    onRegisterEditor?.({
+      setBpm: editor.setBpm,
+      quantizeSelected: editor.quantizeSelected,
+      hasSelection: () => editor.selectedNotes.length > 0,
+    });
+  }, [
+    editor.setBpm,
+    editor.quantizeSelected,
+    editor.selectedNotes.length,
+    onRegisterEditor,
+  ]);
+
+  useEffect(() => {
+    if (!editor.isModified) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [editor.isModified]);
+
+  useEffect(() => {
+    if (editor.selectedNotes.length > 0) {
+      setInspectorOpen((prev) => ({ ...prev, selection: true }));
+    }
+  }, [editor.selectedNotes.length]);
+
   const lastAuditionRef = useRef<{ key: string; time: number }>({
     key: "",
     time: 0,
@@ -89,22 +162,47 @@ export function MidiNoteEditor({
     return minStart + playback.currentTime;
   }, [minStart, playback.isPlaying, playback.isPaused, playback.currentTime]);
 
+  const activeMidiFx = editor.activeTrack.midiEffects;
+  const activeMidiFxApplyMode = editor.activeTrack.midiFxApplyMode;
+  const activeMidiFxPreview = editor.activeTrack.midiFxPreview;
+
   const playbackTracks = useMemo(
     () =>
-      editor.tracks.map((t) => ({
-        id: t.id,
-        notes: t.notes,
-        muted: t.muted,
-        soloed: t.soloed,
-        instrument: t.instrument,
-      })),
-    [editor.tracks],
+      editor.tracks.map((t) => {
+        const baseNotes = t.notes.map((n) => ({
+          pitch: n.pitch,
+          start: n.start,
+          duration: n.duration,
+          velocity: n.velocity,
+          muted: n.muted,
+        }));
+        const notes =
+          t.midiFxPreview && hasActiveMidiEffects(t.midiEffects)
+            ? previewNotesWithMidiFx(baseNotes, t.midiEffects, editor.bpm)
+            : baseNotes;
+
+        return {
+          id: t.id,
+          notes,
+          muted: t.muted,
+          soloed: t.soloed,
+          instrument: t.instrument,
+        };
+      }),
+    [editor.tracks, editor.bpm],
+  );
+
+  const playbackOptions = useMemo(
+    () => ({
+      bpm: editor.bpm,
+      loopRegion: editor.loopRegion.enabled ? editor.loopRegion : undefined,
+    }),
+    [editor.bpm, editor.loopRegion],
   );
 
   const handlePlay = useCallback(() => {
-    const loop = editor.loopRegion.enabled ? editor.loopRegion : undefined;
-    playback.play(playbackTracks, { bpm: editor.bpm, loopRegion: loop });
-  }, [playback, playbackTracks, editor.bpm, editor.loopRegion]);
+    playback.play(playbackTracks, playbackOptions);
+  }, [playback, playbackTracks, playbackOptions]);
 
   interface ActiveRecordedNote {
     noteId: string;
@@ -218,17 +316,56 @@ export function MidiNoteEditor({
     [editor],
   );
 
+  }, [estimatedKey, isDrumContent]);
+
+  const applyMarkerExportNotice = useCallback((exported: number, requested: number) => {
+    if (requested === 0) {
+      setMarkerExportNotice(null);
+      return;
+    }
+    if (!midiMarkerExportSupported()) {
+      setMarkerExportNotice(
+        "Markers are session-only in this browser — MIDI marker export is unavailable.",
+      );
+      return;
+    }
+    if (exported < requested) {
+      setMarkerExportNotice(
+        `Exported ${exported} of ${requested} markers. Some markers may not appear in your DAW.`,
+      );
+      return;
+    }
+    setMarkerExportNotice(
+      `Exported ${exported} section marker${exported === 1 ? "" : "s"} with your MIDI file.`,
+    );
+  }, []);
+
   const handleExport = useCallback(() => {
-    const blob = exportTracksToMidi(editor.tracks, editor.bpm);
-    downloadMidiBlob(blob, "edited.mid");
-  }, [editor.tracks, editor.bpm]);
+    const { blob, markersExported, markersRequested } = exportTracksToMidi(
+      editor.tracks,
+      editor.bpm,
+      { markers },
+    );
+    applyMarkerExportNotice(markersExported, markersRequested);
+    const filename = buildMidiDownloadName({
+      stemName: sourceLabel ? `${sourceLabel}-edited` : "edited-transcription",
+      jobId,
+    });
+    downloadMidiBlob(blob, filename);
+    editor.markAsSaved();
+  }, [editor, markers, sourceLabel, jobId, applyMarkerExportNotice]);
 
   const handleSaveToJob = useCallback(async () => {
     if (!jobId) return;
     setIsSaving(true);
     setSaveError(null);
     try {
-      const blob = exportTracksToMidi(editor.tracks, editor.bpm);
+      const { blob, markersExported, markersRequested } = exportTracksToMidi(
+        editor.tracks,
+        editor.bpm,
+        { markers },
+      );
+      applyMarkerExportNotice(markersExported, markersRequested);
       const headers = await authHeaders();
       const putHeaders: Record<string, string> = {
         ...headers,
@@ -244,6 +381,7 @@ export function MidiNoteEditor({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "Failed to save MIDI");
       }
+      editor.markAsSaved();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -281,16 +419,96 @@ export function MidiNoteEditor({
     setMarkers((prev) => prev.filter((m) => m.id !== id));
   }, []);
 
+  }, [jobId, jobToken, editor, markers, applyMarkerExportNotice]);
+
+  const defaultMarkerTime = useMemo(() => {
+    const playhead = minStart + playback.currentTime;
+    return snapToGrid(
+      playhead,
+      editor.bpm,
+      editor.snapGrid,
+      editor.timeSignature,
+    );
+  }, [
+    minStart,
+    playback.currentTime,
+    editor.bpm,
+    editor.snapGrid,
+    editor.timeSignature,
+  ]);
+
+  const effectsTargetNotes = useMemo(() => {
+    if (editor.selectedNotes.length > 0) return editor.selectedNotes;
+    if (fxApplyToAll) return editor.notes;
+    return [];
+  }, [editor.selectedNotes, editor.notes, fxApplyToAll]);
+
+  const handleApplyMidiEffects = useCallback(() => {
+    const targets = effectsTargetNotes;
+    if (targets.length === 0) return;
+
+    const processed = applyMidiEffects(
+      targets.map((n) => ({
+        pitch: n.pitch,
+        start: n.start,
+        duration: n.duration,
+        velocity: n.velocity,
+      })),
+      activeMidiFx,
+      editor.bpm,
+    );
+
+    editor.applyMidiEffectsToNotes(
+      targets.map((n) => n.id),
+      processed,
+      activeMidiFxApplyMode,
+    );
+  }, [editor, effectsTargetNotes, activeMidiFx, activeMidiFxApplyMode]);
+
+  const handleMidiFxChange = useCallback(
+    (config: typeof activeMidiFx) => {
+      editor.setTrackMidiEffects(editor.activeTrackId, config);
+    },
+    [editor],
+  );
+
+  const handleMidiFxPreset = useCallback(
+    (config: typeof activeMidiFx) => {
+      editor.setTrackMidiEffects(editor.activeTrackId, config);
+    },
+    [editor],
+  );
+
+  useEffect(() => {
+    if (!activeMidiFxPreview || !hasActiveMidiEffects(activeMidiFx)) return;
+    if (!playback.isPlaying) return;
+
+    playback.refresh(playbackTracks, playbackOptions);
+  }, [
+    activeMidiFx,
+    activeMidiFxPreview,
+    playback.isPlaying,
+    playback.isPaused,
+    playback.refresh,
+    playbackTracks,
+    playbackOptions,
+  ]);
+
   const handleInsertChord = useCallback(
     (midiNotes: number[]) => {
       const start = editor.selectedNotes.length
         ? Math.min(...editor.selectedNotes.map((n) => n.start))
-        : 0;
+        : snapToGrid(
+            minStart + playback.currentTime,
+            editor.bpm,
+            editor.snapGrid,
+            editor.timeSignature,
+          );
       for (const pitch of midiNotes) {
         editor.addNote(pitch, start);
       }
     },
-    [editor],
+    [editor, minStart, playback.currentTime],
   );
 
   const handleSetNoteVelocity = useCallback(
@@ -644,9 +862,22 @@ export function MidiNoteEditor({
               markers={markers}
               duration={duration}
               pixelsPerSecond={pixelsPerSecond}
+              defaultAddTime={defaultMarkerTime}
+              markerExportSupported={midiMarkerExportSupported()}
               onAdd={handleAddMarker}
               onRemove={handleRemoveMarker}
+              onSeek={handleSeek}
             />
+            {markerExportNotice ? (
+              <p className="text-[10px] text-muted-foreground" role="status">
+                {markerExportNotice}
+              </p>
+            ) : null}
+            {isDrumContent ? (
+              <p className="text-[10px] text-amber-300/90" role="note">
+                Drum content detected — scale lock is off so hits keep their pitch.
+              </p>
+            ) : null}
             <MidiEditorCanvas
               notes={editor.notes}
               selectedIds={editor.selectedIds}
@@ -705,7 +936,7 @@ export function MidiNoteEditor({
                 onToggle={() => setLaneDrawerOpen((open) => !open)}
               >
                 <div className="flex">
-                  <div className="shrink-0" style={{ width: leftMargin }} />
+                  <div className="h-full w-11 shrink-0" />
                   <div
                     ref={laneScrollRef}
                     className="min-w-0 flex-1 overflow-x-auto"
@@ -773,32 +1004,93 @@ export function MidiNoteEditor({
         }
         inspector={
           <div className="space-y-sm">
-            <MidiEditorSelectionInfo
-              selectedNotes={editor.selectedNotes}
-              onDelete={editor.deleteSelected}
-              onTranspose={editor.transposeSelected}
-              onSetVelocity={editor.setSelectedVelocity}
-              onHumanize={() => editor.humanizeSelected()}
-              onRandomize={() => editor.randomizeSelected()}
-              onJoin={() => editor.joinSelected()}
-            />
-            <BounceToAudioButton
-              notes={editor.notes.map((n) => ({
-                pitch: n.pitch,
-                start: n.start,
-                duration: n.duration,
-                velocity: n.velocity,
-              }))}
-              bpm={editor.bpm}
-              instrument={editor.tracks.find((t) => t.id === editor.activeTrackId)?.instrument}
-              sourceJobId={jobId}
-            />
-            <MidiSmartPanel
-              root={scaleGuide.root}
-              scale={scaleGuide.scale}
-              onInsertChord={handleInsertChord}
-              onScaleChange={setScaleGuide}
-            />
+            <MidiInspectorSection
+              title="Selection"
+              subtitle="Transpose, velocity, humanize"
+              open={inspectorOpen.selection}
+              onToggle={() =>
+                setInspectorOpen((prev) => ({
+                  ...prev,
+                  selection: !prev.selection,
+                }))
+              }
+            >
+              <MidiEditorSelectionInfo
+                selectedNotes={editor.selectedNotes}
+                onDelete={editor.deleteSelected}
+                onTranspose={editor.transposeSelected}
+                onSetVelocity={editor.setSelectedVelocity}
+                onHumanize={() => editor.humanizeSelected()}
+                onRandomize={() => editor.randomizeSelected()}
+                onJoin={() => editor.joinSelected()}
+              />
+            </MidiInspectorSection>
+            <MidiInspectorSection
+              title="Render audio"
+              subtitle="Server-side WAV preview"
+              open={inspectorOpen.render}
+              onToggle={() =>
+                setInspectorOpen((prev) => ({ ...prev, render: !prev.render }))
+              }
+            >
+              <MidiRenderAudioControl
+                notes={editor.notes.map((n) => ({
+                  pitch: n.pitch,
+                  start: n.start,
+                  duration: n.duration,
+                  velocity: n.velocity,
+                }))}
+                bpm={editor.bpm}
+                instrument={
+                  editor.tracks.find((t) => t.id === editor.activeTrackId)
+                    ?.instrument
+                }
+                sourceJobId={jobId}
+              />
+            </MidiInspectorSection>
+            <MidiInspectorSection
+              title="MIDI FX"
+              subtitle={editor.activeTrack.name}
+              open={inspectorOpen.fx}
+              onToggle={() =>
+                setInspectorOpen((prev) => ({ ...prev, fx: !prev.fx }))
+              }
+            >
+              <MidiEffectsPanel
+                trackName={editor.activeTrack.name}
+                config={activeMidiFx}
+                applyMode={activeMidiFxApplyMode}
+                previewEnabled={activeMidiFxPreview}
+                applyToAllTrack={fxApplyToAll}
+                onApplyToAllTrackChange={setFxApplyToAll}
+                onChange={handleMidiFxChange}
+                onApplyModeChange={(mode) =>
+                  editor.setTrackMidiFxApplyMode(editor.activeTrackId, mode)
+                }
+                onPreviewChange={(enabled) =>
+                  editor.setTrackMidiFxPreview(editor.activeTrackId, enabled)
+                }
+                onApplyPreset={handleMidiFxPreset}
+                onApply={handleApplyMidiEffects}
+                targetCount={effectsTargetNotes.length}
+              />
+            </MidiInspectorSection>
+            <MidiInspectorSection
+              title="Smart chords"
+              subtitle="Diatonic suggestions"
+              open={inspectorOpen.chords}
+              onToggle={() =>
+                setInspectorOpen((prev) => ({ ...prev, chords: !prev.chords }))
+              }
+            >
+              <MidiSmartPanel
+                root={scaleGuide.root}
+                scale={scaleGuide.scale}
+                scaleLockDisabled={isDrumContent}
+                onInsertChord={handleInsertChord}
+                onScaleChange={setScaleGuide}
+              />
+            </MidiInspectorSection>
           </div>
         }
         shortcuts={

@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
 import { useMidiHistory, type MidiHistoryRecord } from "../../hooks/useMidiHistory";
+import { midiErrorMessage } from "../../utils/midiErrors";
 import { cn } from "../../utils/cn";
 import { EmptyState, JobStatusChip, PanelHeader, SectionLabel } from "../ui";
 
@@ -33,7 +34,12 @@ export function MidiExportDashboard() {
   const [exportError, setExportError] = useState<string | null>(null);
 
   const available = useMemo(
-    () => records.filter((r) => r.file_available),
+    () => records.filter((r) => r.file_available && r.notes_detected > 0),
+    [records],
+  );
+
+  const recordById = useMemo(
+    () => new Map(records.map((r) => [r.job_id, r])),
     [records],
   );
 
@@ -67,7 +73,7 @@ export function MidiExportDashboard() {
     const headers = await authHeaders();
     const url = `${API_BASE}/api/midi/file/${record.job_id}/output.mid`;
     const res = await fetch(url, { headers });
-    if (!res.ok) throw new Error("Download failed");
+    if (!res.ok) throw new Error(midiErrorMessage("download"));
     const blob = await res.blob();
     const obj = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -85,11 +91,23 @@ export function MidiExportDashboard() {
     setExporting(true);
     setExportError(null);
     try {
+      const selectedRecords = ids
+        .map((id) => recordById.get(id))
+        .filter((r): r is MidiHistoryRecord => !!r && r.file_available && r.notes_detected > 0);
+      if (!selectedRecords.length) {
+        throw new Error(midiErrorMessage("empty_export"));
+      }
+
       const headers = await authHeaders();
       const payload = {
-        mode: "history",
+        mode: "stems",
         format: "midi1",
-        job_ids: ids,
+        selected_stems: selectedRecords.map((r) => r.stem_name || r.job_id.slice(0, 8)),
+        source_jobs: selectedRecords.map((r) => ({
+          job_id: r.job_id,
+          stem_name: r.stem_name || r.job_id.slice(0, 8),
+          bpm: r.analysis?.suggested_bpm ?? 120,
+        })),
       };
       const createRes = await fetch(`${API_BASE}/api/midi/export`, {
         method: "POST",
@@ -98,37 +116,81 @@ export function MidiExportDashboard() {
       });
       if (!createRes.ok) {
         const data = await createRes.json().catch(() => ({}));
-        throw new Error(data.error || "Export failed");
+        throw new Error(
+          midiErrorMessage(
+            "export_history",
+            typeof data.error === "string" ? data.error : null,
+          ),
+        );
       }
       const created = (await createRes.json()) as {
+        export_id: string;
+        export_token: string;
+        status_url?: string;
         archive_url?: string;
-        export_token?: string;
       };
-      if (!created.archive_url || !created.export_token) {
+      const statusUrl = created.status_url;
+      const archiveUrl = created.archive_url;
+      if (!statusUrl || !archiveUrl || !created.export_token) {
         throw new Error("Incomplete export response");
       }
-      const archiveRes = await fetch(created.archive_url, {
+
+      let attempts = 0;
+      while (attempts < 160) {
+        const statusRes = await fetch(statusUrl, {
+          headers: { ...headers, "x-job-token": created.export_token },
+        });
+        if (!statusRes.ok) {
+          const data = await statusRes.json().catch(() => ({}));
+          throw new Error(
+            midiErrorMessage(
+              "export_history",
+              typeof data.error === "string" ? data.error : null,
+            ),
+          );
+        }
+        const statusData = (await statusRes.json()) as {
+          status: string;
+          error?: string;
+        };
+        if (statusData.status === "completed") break;
+        if (statusData.status === "failed") {
+          throw new Error(
+            midiErrorMessage("export_history", statusData.error ?? null),
+          );
+        }
+        attempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      if (attempts >= 160) {
+        throw new Error(midiErrorMessage("export_history", "Export timed out"));
+      }
+
+      const archiveRes = await fetch(archiveUrl, {
         headers: { ...headers, "x-job-token": created.export_token },
       });
-      if (!archiveRes.ok) throw new Error("Archive download failed");
+      if (!archiveRes.ok) throw new Error(midiErrorMessage("export_history", "Archive download failed"));
       const blob = await archiveRes.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `midi-export-${ids.length}.zip`;
+      a.download = `midi-export-${selectedRecords.length}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      setExportError(e instanceof Error ? e.message : "Export failed");
+      setExportError(
+        e instanceof Error ? e.message : midiErrorMessage("export_history"),
+      );
     } finally {
       setExporting(false);
     }
-  }, [selected]);
+  }, [selected, recordById]);
 
   const renderRow = (record: MidiHistoryRecord) => {
     const isSelected = selected.has(record.job_id);
+    const canExport = record.file_available && record.notes_detected > 0;
     return (
       <li
         key={record.job_id}
@@ -138,7 +200,7 @@ export function MidiExportDashboard() {
         )}
       >
         <div className="flex min-w-0 flex-1 items-start gap-sm">
-          {tab === "export" && record.file_available && (
+          {tab === "export" && canExport && (
             <input
               type="checkbox"
               checked={isSelected}
@@ -159,10 +221,10 @@ export function MidiExportDashboard() {
         </div>
         <div className="flex shrink-0 items-center gap-xs">
           <JobStatusChip
-            variant={record.file_available ? "done" : "queued"}
-            label={record.file_available ? "Ready" : "Unavailable"}
+            variant={canExport ? "done" : "queued"}
+            label={canExport ? "Ready" : record.notes_detected === 0 ? "Empty" : "Unavailable"}
           />
-          {record.file_available && (
+          {canExport && (
             <button
               type="button"
               onClick={() => void downloadRecord(record)}

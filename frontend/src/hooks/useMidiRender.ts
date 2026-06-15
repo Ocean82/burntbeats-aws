@@ -9,6 +9,7 @@ import {
   type RenderRequest,
   type RenderJobStatus,
 } from "../api/midiRender";
+import { authHeaders } from "../api/auth";
 
 export interface UseMidiRenderReturn {
   /** Submit a render job. */
@@ -53,7 +54,14 @@ export function useMidiRender(): UseMidiRenderReturn {
       if (s.status === "completed") {
         stopPolling();
         setBusy(false);
-        setDownloadUrl(getRenderDownloadUrl(jobId));
+        const fileRes = await fetch(getRenderDownloadUrl(jobId), {
+          headers: await authHeaders(),
+        });
+        if (!fileRes.ok) {
+          throw new Error("Failed to load rendered audio");
+        }
+        const blob = await fileRes.blob();
+        setDownloadUrl(URL.createObjectURL(blob));
       } else if (s.status === "failed" || s.status === "cancelled") {
         stopPolling();
         setBusy(false);

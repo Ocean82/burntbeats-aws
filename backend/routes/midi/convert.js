@@ -4,7 +4,7 @@
  */
 import { Router } from "express";
 import FormData from "form-data";
-import { createReadStream, readdirSync, unlink } from "fs";
+import { createReadStream, unlink } from "fs";
 import { unlink as unlinkPromise } from "fs/promises";
 import path from "path";
 
@@ -36,8 +36,10 @@ import {
   handleMidiProxyError,
 } from "./shared.js";
 import { midiServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
-import { resolveStemJobPath } from "../stems/shared.js";
-import { isSafePathSegment, resolvePathWithinBase } from "../../helpers/safePath.js";
+import {
+  cleanupTempStemFile,
+  resolveStemAudioPath,
+} from "../../helpers/resolveStemAudio.js";
 
 export const midiConvertRouter = Router();
 
@@ -50,37 +52,6 @@ const MIDI_ALLOWED_UPLOAD_EXTS = new Set([
   ".webm",
 ]);
 const MIDI_ALLOWED_UPLOAD_FORMATS_LABEL = "MP3, WAV, FLAC, OGG, M4A, WebM";
-
-/**
- * Resolve a stem WAV path from a previous split job.
- * @param {string} stemJobId
- * @param {string} stemName - e.g. "vocals", "drums", "bass", "melody"
- * @returns {string | null} Absolute path to the WAV file, or null if not found.
- */
-function resolveStemPath(stemJobId, stemName) {
-  if (typeof stemName !== "string") return null;
-  const trimmedStemName = stemName.trim();
-  if (!trimmedStemName || !isSafePathSegment(trimmedStemName)) return null;
-
-  try {
-    const stemsDir = resolveStemJobPath(stemJobId, "stems");
-    if (!stemsDir) return null;
-
-    const entries = readdirSync(stemsDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      if (!isSafePathSegment(entry.name)) continue;
-      if (path.extname(entry.name).toLowerCase() !== ".wav") continue;
-      if (path.basename(entry.name, ".wav") !== trimmedStemName) continue;
-      const filePath = resolvePathWithinBase(stemsDir, entry.name);
-      if (!filePath) continue;
-      return filePath;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
 midiConvertRouter.post(
   "/",
@@ -109,16 +80,18 @@ midiConvertRouter.post(
     const stemName = req.body?.stem_name;
     let filePath = req.file?.path || null;
     let useStemFile = false;
+    let isTempStemFile = false;
 
-    // If referencing a stem from a previous split, resolve its path
+    // If referencing a stem from a previous split, resolve local disk or S3 fallback
     if (stemJobId && stemName && !req.file) {
-      const resolved = resolveStemPath(stemJobId, stemName);
+      const resolved = await resolveStemAudioPath(stemJobId, stemName);
       if (!resolved) {
         return res.status(404).json({
           error: `Stem file not found: ${stemName} from job ${stemJobId}`,
         });
       }
-      filePath = resolved;
+      filePath = resolved.filePath;
+      isTempStemFile = resolved.isTempFile;
       useStemFile = true;
     }
 
@@ -304,8 +277,9 @@ midiConvertRouter.post(
         usageCost,
       });
     } finally {
-      // Clean up uploaded temp file (don't delete stem references)
-      if (!useStemFile && filePath) {
+      if (isTempStemFile && filePath) {
+        cleanupTempStemFile(filePath).catch(() => {});
+      } else if (!useStemFile && filePath) {
         unlinkPromise(filePath).catch(() => {
           unlink(filePath, () => {});
         });

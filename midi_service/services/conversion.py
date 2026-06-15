@@ -51,6 +51,7 @@ def build_metadata_payload(
             "target_velocity": options.get("target_velocity", 90),
             "max_note_length_ms": options.get("max_note_length_ms", 0),
             "quantize_strength": options.get("quantize_strength", 1.0),
+            "transpose": options.get("transpose", 0),
         },
         "analysis": analysis,
     }
@@ -101,14 +102,47 @@ def run_conversion_sync(
     if is_job_cancelled(job_id):
         raise RuntimeError("Job cancelled")
 
-    _model_output, midi_data, note_events = predict(
-        str(input_path),
-        model_or_model_path=model_path,
-        onset_threshold=min_confidence,
-        frame_threshold=max(0.1, min_confidence - 0.2),
-        minimum_note_length=min_note_length_ms,
-        multiple_pitch_bends=include_pitch_bends,
-    )
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    heartbeat_stop = threading.Event()
+    heartbeat_value = 25
+
+    def _analysis_heartbeat() -> None:
+        nonlocal heartbeat_value
+        while not heartbeat_stop.wait(2.5):
+            if is_job_cancelled(job_id):
+                heartbeat_stop.set()
+                return
+            heartbeat_value = min(heartbeat_value + 5, 60)
+            write_progress(out_dir, {
+                "status": "processing",
+                "job_id": job_id,
+                "progress": heartbeat_value,
+                "message": "Analyzing audio…",
+            })
+
+    heartbeat_thread = threading.Thread(target=_analysis_heartbeat, daemon=True)
+    heartbeat_thread.start()
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(
+                predict,
+                str(input_path),
+                model_or_model_path=model_path,
+                onset_threshold=min_confidence,
+                frame_threshold=max(0.1, min_confidence - 0.2),
+                minimum_note_length=min_note_length_ms,
+                multiple_pitch_bends=include_pitch_bends,
+            )
+            _model_output, midi_data, note_events = future.result()
+    finally:
+        heartbeat_stop.set()
+        heartbeat_thread.join(timeout=1.0)
+
+    if is_job_cancelled(job_id):
+        raise RuntimeError("Job cancelled")
 
     inference_time_seconds = round(time.perf_counter() - t_start, 3)
 
@@ -204,14 +238,17 @@ def run_conversion_sync(
     notes_detected = len(piano_roll_notes)
     tracks = 1 if piano_roll_notes else 0
 
-    if notes_detected == 0:
+    empty_transcription = notes_detected == 0
+    if empty_transcription:
         job_log.info("Zero notes detected for job %s (completed with empty result)", job_id)
 
-    write_progress(out_dir, {
+    completed_progress: dict[str, Any] = {
         "status": "completed",
         "job_id": job_id,
         "progress": 100,
-        "message": "Conversion complete",
+        "message": "No notes detected" if empty_transcription else "Conversion complete",
+        "empty_transcription": empty_transcription,
+        "midi_file_analysis": midi_file_analysis,
         "result": {
             "notes_detected": notes_detected,
             "duration_seconds": round(duration_seconds, 2),
@@ -220,8 +257,13 @@ def run_conversion_sync(
             "piano_roll_notes": piano_roll_notes,
             "analysis": analysis,
             "post_process": post_metrics,
+            "midi_file_analysis": midi_file_analysis,
         },
-    })
+    }
+    if empty_transcription:
+        completed_progress["warning"] = "No notes detected"
+
+    write_progress(out_dir, completed_progress)
 
     metadata = build_metadata_payload(
         job_id=job_id,

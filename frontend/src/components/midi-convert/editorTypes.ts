@@ -1,5 +1,8 @@
 export type EditorTool = "select" | "draw" | "erase" | "split";
 
+import type { MidiEffectsConfig } from "../../audio/midiEffects/types";
+import { defaultMidiEffects } from "../../audio/midiEffects/types";
+
 export type SnapGrid =
   | "1/4"
   | "1/8"
@@ -63,6 +66,14 @@ export interface EditableNote {
 
 export type TrackInstrument = "piano" | "synth" | "bass" | "strings";
 
+export type MidiFxApplyMode = "replace" | "duplicate";
+
+export const DEFAULT_MIDI_FX_APPLY_MODE: MidiFxApplyMode = "replace";
+
+export function createDefaultTrackMidiFx(): MidiEffectsConfig {
+  return defaultMidiEffects();
+}
+
 export const TRACK_INSTRUMENTS: { value: TrackInstrument; label: string }[] = [
   { value: "piano", label: "Piano" },
   { value: "synth", label: "Synth" },
@@ -80,6 +91,9 @@ export interface EditorTrack {
   soloed: boolean;
   instrument: TrackInstrument;
   ccLanes: CcLane[];
+  midiEffects: MidiEffectsConfig;
+  midiFxApplyMode: MidiFxApplyMode;
+  midiFxPreview: boolean;
 }
 
 export type ActiveLane = "notes" | "velocity" | "cc" | "automation";

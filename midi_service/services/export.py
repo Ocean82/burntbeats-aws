@@ -6,8 +6,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from midi_service.export.model import ExportRequest, ExportSourceJob
+from midi_service.export.model import ExportMode, ExportRequest, ExportSourceJob
 from midi_service.midi_io import write_notes_to_midi
+from midi_service.multi_track import merge_jobs_to_multitrack
 from midi_service.routes.common import UUID_REGEX
 from midi_service.services.storage import (
     METADATA_FILENAME,
@@ -16,6 +17,29 @@ from midi_service.services.storage import (
     write_metadata,
     write_progress,
 )
+
+
+def _filter_notes_by_range(
+    notes: list[dict[str, Any]],
+    request: ExportRequest,
+) -> list[dict[str, Any]]:
+    if request.time_range != "custom":
+        return notes
+    start_s = float(request.range_start_s or 0)
+    end_s = float(request.range_end_s or 0)
+    filtered: list[dict[str, Any]] = []
+    for note in notes:
+        note_start = float(note.get("start", 0))
+        note_end = note_start + float(note.get("duration", 0))
+        if note_end <= start_s or note_start >= end_s:
+            continue
+        clipped = dict(note)
+        clipped_start = max(note_start, start_s)
+        clipped_end = min(note_end, end_s)
+        clipped["start"] = round(clipped_start, 4)
+        clipped["duration"] = round(max(clipped_end - clipped_start, 0.01), 4)
+        filtered.append(clipped)
+    return filtered
 
 
 def run_export_sync(job_id: str, out_dir: Path, request: ExportRequest, output_dir: Path) -> None:
@@ -38,21 +62,60 @@ def run_export_sync(job_id: str, out_dir: Path, request: ExportRequest, output_d
             "status": "processing",
             "job_id": job_id,
             "progress": 55,
-            "message": "Generating per-stem MIDI files",
+            "message": "Generating MIDI files",
         },
     )
 
+    midi_type = 0 if request.format.value == "midi0" else 1
     generated_files: list[str] = []
-    for source in selected_sources:
-        stem_filename = f"{_sanitize_name(source.stem_name)}.mid"
-        stem_path = out_dir / stem_filename
-        write_notes_to_midi(
-            source_notes[source.stem_name],
-            stem_path,
-            bpm=max(40, min(300, int(source.bpm))),
-            instrument_name=source.stem_name,
+
+    if request.mode == ExportMode.MIXDOWN:
+        merge_jobs = []
+        for source in selected_sources:
+            notes = _filter_notes_by_range(source_notes[source.stem_name], request)
+            merge_jobs.append(
+                {
+                    "stem_name": source.stem_name,
+                    "notes": notes,
+                    "program": -1,
+                    "transpose": 0,
+                    "is_drum": False,
+                }
+            )
+        mixdown_name = "mixdown.mid"
+        mixdown_path = out_dir / mixdown_name
+        merge_jobs_to_multitrack(
+            merge_jobs,
+            mixdown_path,
+            bpm=max(40, min(300, int(selected_sources[0].bpm if selected_sources else 120))),
         )
-        generated_files.append(stem_filename)
+        if midi_type == 0:
+            combined_notes: list[dict[str, Any]] = []
+            for source in selected_sources:
+                combined_notes.extend(
+                    _filter_notes_by_range(source_notes[source.stem_name], request),
+                )
+            write_notes_to_midi(
+                combined_notes,
+                mixdown_path,
+                bpm=max(40, min(300, int(selected_sources[0].bpm if selected_sources else 120))),
+                instrument_name="Mixdown",
+                midi_type=0,
+            )
+        generated_files.append(mixdown_name)
+    else:
+        for source in selected_sources:
+            notes = _filter_notes_by_range(source_notes[source.stem_name], request)
+            stem_filename = f"{_sanitize_name(source.stem_name)}.mid"
+            stem_path = out_dir / stem_filename
+            write_notes_to_midi(
+                notes,
+                stem_path,
+                bpm=max(40, min(300, int(source.bpm))),
+                instrument_name=source.stem_name,
+                midi_type=midi_type,
+            )
+            generated_files.append(stem_filename)
 
     write_progress(
         out_dir,
@@ -60,11 +123,11 @@ def run_export_sync(job_id: str, out_dir: Path, request: ExportRequest, output_d
             "status": "processing",
             "job_id": job_id,
             "progress": 80,
-            "message": "Packaging stems archive",
+            "message": "Packaging archive",
         },
     )
 
-    archive_name = "stems.zip"
+    archive_name = "stems.zip" if request.mode == ExportMode.STEMS else "mixdown.zip"
     archive_path = out_dir / archive_name
     with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for filename in generated_files:
@@ -76,6 +139,8 @@ def run_export_sync(job_id: str, out_dir: Path, request: ExportRequest, output_d
         "mode": request.mode.value,
         "format": request.format.value,
         "time_range": request.time_range,
+        "range_start_s": request.range_start_s,
+        "range_end_s": request.range_end_s,
         "title": request.title,
         "artist": request.artist,
         "genre": request.genre,

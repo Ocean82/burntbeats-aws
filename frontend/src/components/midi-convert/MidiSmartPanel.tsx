@@ -1,7 +1,7 @@
 /**
  * MidiSmartPanel — diatonic chord suggestions with Tone.js preview.
  */
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Plus, Unlock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PolySynth, start, Synth } from "tone";
 import {
@@ -32,6 +32,7 @@ export interface MidiSmartPanelProps {
     scale: Scale;
     locked: boolean;
   }) => void;
+  scaleLockDisabled?: boolean;
   className?: string;
 }
 
@@ -40,18 +41,23 @@ export function MidiSmartPanel({
   scale: initialScale = "major",
   onInsertChord,
   onScaleChange,
+  scaleLockDisabled = false,
   className,
 }: MidiSmartPanelProps) {
   const [root, setRoot] = useState<RootNote>(initialRoot);
   const [scale, setScale] = useState<Scale>(initialScale);
-  const [scaleLock, setScaleLock] = useState(true);
+  const [scaleLock, setScaleLock] = useState(() => !scaleLockDisabled);
   const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
 
   const chords = useMemo(() => getDiatonicChords(root, scale), [root, scale]);
 
   useEffect(() => {
-    onScaleChange?.({ root, scale, locked: scaleLock });
-  }, [root, scale, scaleLock, onScaleChange]);
+    if (scaleLockDisabled) setScaleLock(false);
+  }, [scaleLockDisabled]);
+
+  useEffect(() => {
+    onScaleChange?.({ root, scale, locked: scaleLockDisabled ? false : scaleLock });
+  }, [root, scale, scaleLock, scaleLockDisabled, onScaleChange]);
 
   const previewChord = useCallback(async (midiNotes: number[]) => {
     await start();
@@ -69,9 +75,15 @@ export function MidiSmartPanel({
   const handleChordClick = useCallback(
     (midiNotes: number[]) => {
       void previewChord(midiNotes);
+    },
+    [previewChord],
+  );
+
+  const handleChordInsert = useCallback(
+    (midiNotes: number[]) => {
       onInsertChord?.(midiNotes);
     },
-    [previewChord, onInsertChord],
+    [onInsertChord],
   );
 
   return (
@@ -85,22 +97,37 @@ export function MidiSmartPanel({
         <div>
           <SectionLabel>Smart chords</SectionLabel>
           <p className="mt-0.5 text-[10px] text-muted-foreground">
-            Scale guide syncs with the piano roll
+            Click to preview · double-click or + to insert
           </p>
         </div>
         <button
           type="button"
           onClick={() => setScaleLock((v) => !v)}
+          disabled={scaleLockDisabled}
           className={cn(
             "inline-flex items-center gap-1 rounded px-xs py-0.5 text-[10px] font-medium",
             scaleLock ? "text-primary-300" : "text-muted-foreground",
+            scaleLockDisabled && "opacity-50 cursor-not-allowed",
           )}
-          title={scaleLock ? "Scale locked" : "Scale unlocked"}
+          title={
+            scaleLockDisabled
+              ? "Scale lock disabled for drum content"
+              : scaleLock
+                ? "Scale locked"
+                : "Scale unlocked"
+          }
+          aria-label={
+            scaleLockDisabled
+              ? "Scale lock unavailable for drum content"
+              : scaleLock
+                ? "Unlock scale guide"
+                : "Lock scale guide"
+          }
         >
           {scaleLock ? (
-            <Lock className="h-3 w-3" />
+            <Lock className="h-3 w-3" aria-hidden />
           ) : (
-            <Unlock className="h-3 w-3" />
+            <Unlock className="h-3 w-3" aria-hidden />
           )}
           {scaleLock ? "Locked" : "Free"}
         </button>
@@ -141,14 +168,28 @@ export function MidiSmartPanel({
 
       <div className="mt-sm grid grid-cols-2 gap-xs sm:grid-cols-3">
         {chords.map((chord) => (
-          <button
-            key={chord.name}
-            type="button"
-            onClick={() => handleChordClick(chord.midi)}
-            className="rounded-md border border-accent-midi/25 bg-accent-midi/10 px-sm py-xs text-xs font-medium text-accent-midi-200 transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-200"
-          >
-            {chord.name}
-          </button>
+          <div key={chord.name} className="relative flex">
+            <button
+              type="button"
+              onClick={() => handleChordClick(chord.midi)}
+              onDoubleClick={() => handleChordInsert(chord.midi)}
+              className="min-w-0 flex-1 rounded-md border border-accent-midi/25 bg-accent-midi/10 px-sm py-xs text-xs font-medium text-accent-midi-200 transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-200"
+              data-testid={`smart-chord-${chord.name}`}
+            >
+              {chord.name}
+            </button>
+            {onInsertChord ? (
+              <button
+                type="button"
+                onClick={() => handleChordInsert(chord.midi)}
+                className="ml-0.5 inline-flex items-center justify-center rounded-md border border-border/60 bg-muted/50 px-1 text-accent-midi-300 hover:bg-accent-midi/10"
+                aria-label={`Insert ${chord.name} chord`}
+                title={`Insert ${chord.name}`}
+              >
+                <Plus className="h-3 w-3" aria-hidden />
+              </button>
+            ) : null}
+          </div>
         ))}
       </div>
     </div>

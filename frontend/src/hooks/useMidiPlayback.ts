@@ -5,6 +5,9 @@ import type { LoopRegion } from "../components/midi-convert/editorTypes";
 import type { TrackInstrument } from "../components/midi-convert/editorTypes";
 import { useMidiInstruments } from "./useMidiInstruments";
 
+/** Minimum ms between live playback reschedule operations inside refresh(). */
+const MIN_REFRESH_INTERVAL_MS = 80;
+
 export interface MidiPlaybackTrack {
   id?: string;
   notes: MidiNoteEvent[];
@@ -25,6 +28,11 @@ export interface UseMidiPlaybackReturn {
   currentTime: number;
   metronomeEnabled: boolean;
   play: (
+    tracksOrNotes: MidiPlaybackTrack[] | MidiNoteEvent[],
+    options?: MidiPlaybackOptions,
+  ) => void;
+  /** Re-schedule audible notes from the current transport position. */
+  refresh: (
     tracksOrNotes: MidiPlaybackTrack[] | MidiNoteEvent[],
     options?: MidiPlaybackOptions,
   ) => void;
@@ -114,6 +122,20 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
   const tracksRef = useRef<MidiPlaybackTrack[]>([]);
   const bpmRef = useRef(120);
   const isPlayingRef = useRef(false);
+  const lastRefreshAtRef = useRef(0);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRefreshRef = useRef<{
+    tracks: MidiPlaybackTrack[];
+    options?: MidiPlaybackOptions;
+  } | null>(null);
+
+  const clearRefreshTimer = useCallback(() => {
+    if (refreshTimerRef.current !== null) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    pendingRefreshRef.current = null;
+  }, []);
 
   useEffect(() => {
     metronomeEnabledRef.current = metronomeEnabled;
@@ -287,6 +309,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
   }, [stopRaf]);
 
   const stop = useCallback(() => {
+    clearRefreshTimer();
     stopRaf();
     clearScheduled();
     Tone.getTransport().stop();
@@ -299,10 +322,12 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     isPausedRef.current = false;
     pausedPositionRef.current = 0;
     playbackStartRelativeRef.current = 0;
-  }, [clearScheduled, stopRaf, releaseAll]);
+    lastRefreshAtRef.current = 0;
+  }, [clearRefreshTimer, clearScheduled, stopRaf, releaseAll]);
 
   const pause = useCallback(() => {
     if (!isPlayingRef.current || isPausedRef.current) return;
+    clearRefreshTimer();
     clearScheduled();
     Tone.getTransport().stop();
     releaseAll();
@@ -315,7 +340,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     isPlayingRef.current = false;
     setIsPaused(true);
     setIsPlaying(false);
-  }, [clearScheduled, stopRaf, releaseAll]);
+  }, [clearRefreshTimer, clearScheduled, stopRaf, releaseAll]);
 
   const startPlaybackAt = useCallback(
     async (relativeStart: number) => {
@@ -357,6 +382,47 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       updatePlayhead,
       releaseAll,
     ],
+  );
+
+  const getCurrentRelativePosition = useCallback((): number => {
+    if (isPausedRef.current) return pausedPositionRef.current;
+    const elapsed = Tone.now() - startTimeRef.current;
+    const relative = playbackStartRelativeRef.current + elapsed;
+    return Math.max(0, Math.min(relative, durationRef.current));
+  }, []);
+
+  const performRefresh = useCallback(
+    (
+      tracks: MidiPlaybackTrack[],
+      options?: MidiPlaybackOptions,
+    ) => {
+      const notes = flattenAudibleNotes(tracks);
+      if (!notes.length) return;
+
+      tracksRef.current = tracks;
+      if (options?.bpm !== undefined) bpmRef.current = options.bpm;
+      if (options?.loopRegion !== undefined) {
+        loopRegionRef.current = options.loopRegion;
+      }
+
+      if (isPausedRef.current) {
+        pausedPositionRef.current = getCurrentRelativePosition();
+        return;
+      }
+
+      const resumePos = getCurrentRelativePosition();
+
+      clearScheduled();
+      releaseAll();
+      playbackStartRelativeRef.current = resumePos;
+      startTimeRef.current = Tone.now();
+      setCurrentTime(resumePos);
+
+      void scheduleNotesFromRef.current(resumePos, () => {
+        stop();
+      });
+    },
+    [clearScheduled, getCurrentRelativePosition, releaseAll, stop],
   );
 
   const seek = useCallback(
@@ -427,8 +493,54 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     ],
   );
 
+  const refresh = useCallback(
+    (
+      tracksOrNotes: MidiPlaybackTrack[] | MidiNoteEvent[],
+      options?: MidiPlaybackOptions,
+    ) => {
+      if (!isPlayingRef.current && !isPausedRef.current) return;
+
+      const tracks = normalizeTracks(tracksOrNotes);
+      const notes = flattenAudibleNotes(tracks);
+      if (!notes.length) return;
+
+      pendingRefreshRef.current = { tracks, options };
+
+      if (isPausedRef.current) {
+        clearRefreshTimer();
+        performRefresh(tracks, options);
+        return;
+      }
+
+      const now = performance.now();
+      const elapsed = now - lastRefreshAtRef.current;
+
+      if (elapsed >= MIN_REFRESH_INTERVAL_MS) {
+        clearRefreshTimer();
+        lastRefreshAtRef.current = now;
+        performRefresh(tracks, options);
+        return;
+      }
+
+      if (refreshTimerRef.current !== null) return;
+
+      refreshTimerRef.current = setTimeout(() => {
+        refreshTimerRef.current = null;
+        const pending = pendingRefreshRef.current;
+        pendingRefreshRef.current = null;
+        if (!pending) return;
+        if (!isPlayingRef.current || isPausedRef.current) return;
+
+        lastRefreshAtRef.current = performance.now();
+        performRefresh(pending.tracks, pending.options);
+      }, MIN_REFRESH_INTERVAL_MS - elapsed);
+    },
+    [clearRefreshTimer, performRefresh],
+  );
+
   useEffect(() => {
     return () => {
+      clearRefreshTimer();
       stopRaf();
       clearScheduled();
       Tone.getTransport().stop();
@@ -440,7 +552,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
         clickSynthRef.current = null;
       }
     };
-  }, [clearScheduled, stopRaf, disposeAll]);
+  }, [clearRefreshTimer, clearScheduled, stopRaf, disposeAll]);
 
   return {
     isPlaying,
@@ -448,6 +560,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     currentTime,
     metronomeEnabled,
     play,
+    refresh,
     pause,
     stop,
     seek,

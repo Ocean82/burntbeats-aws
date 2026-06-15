@@ -5,6 +5,22 @@
 import MidiWriter from "midi-writer-js";
 import type { MidiNoteEvent } from "../hooks/useMidiConvert";
 import type { EditorTrack } from "../components/midi-convert/editorTypes";
+import type { SectionMarker } from "../components/midi-convert/MarkerStrip";
+
+export interface MidiExportOptions {
+  markers?: SectionMarker[];
+}
+
+export interface MidiExportResult {
+  blob: Blob;
+  markersExported: number;
+  markersRequested: number;
+}
+
+/** True when midi-writer-js exposes timed marker meta events. */
+export function midiMarkerExportSupported(): boolean {
+  return typeof MidiWriter.MarkerEvent === "function";
+}
 
 /**
  * Convert seconds to MIDI ticks at the given BPM.
@@ -27,13 +43,47 @@ function dataUriToBlob(dataUri: string): Blob {
   return new Blob([ab], { type: mimeString });
 }
 
+function addMarkersToTrack(
+  track: InstanceType<typeof MidiWriter.Track>,
+  markers: SectionMarker[],
+  bpm: number,
+): number {
+  if (!midiMarkerExportSupported() || markers.length === 0) return 0;
+
+  const sorted = [...markers].sort((a, b) => a.time - b.time);
+  let previousTick = 0;
+  let exported = 0;
+
+  for (const marker of sorted) {
+    const absoluteTick = secondsToTicks(marker.time, bpm);
+    const delta = Math.max(0, absoluteTick - previousTick);
+    track.addEvent(
+      new MidiWriter.MarkerEvent({
+        text: marker.label,
+        delta,
+      }),
+    );
+    previousTick = absoluteTick;
+    exported += 1;
+  }
+
+  return exported;
+}
+
 function buildTrackFromEditorTrack(
   track: EditorTrack,
   bpm: number,
-): InstanceType<typeof MidiWriter.Track> {
+  markers?: SectionMarker[],
+  includeMarkers = false,
+): { writerTrack: InstanceType<typeof MidiWriter.Track>; markersExported: number } {
   const writerTrack = new MidiWriter.Track();
   writerTrack.setTempo(bpm);
   writerTrack.addTrackName(track.name);
+
+  const markersExported =
+    includeMarkers && markers?.length
+      ? addMarkersToTrack(writerTrack, markers, bpm)
+      : 0;
 
   const sorted = [...track.notes]
     .filter((note) => !note.muted)
@@ -66,7 +116,7 @@ function buildTrackFromEditorTrack(
     }
   }
 
-  return writerTrack;
+  return { writerTrack, markersExported };
 }
 
 /**
@@ -75,15 +125,31 @@ function buildTrackFromEditorTrack(
 export function exportTracksToMidi(
   tracks: EditorTrack[],
   bpm: number = 120,
-): Blob {
+  options?: MidiExportOptions,
+): MidiExportResult {
+  const markerCount = options?.markers?.length ?? 0;
   const nonEmpty = tracks.filter(
     (t) => t.notes.length > 0 || t.ccLanes.some((l) => l.events.length > 0),
   );
+  let markersExported = 0;
   const writerTracks = (nonEmpty.length ? nonEmpty : tracks.slice(0, 1)).map(
-    (t) => buildTrackFromEditorTrack(t, bpm),
+    (t, index) => {
+      const built = buildTrackFromEditorTrack(
+        t,
+        bpm,
+        options?.markers,
+        index === 0,
+      );
+      if (index === 0) markersExported = built.markersExported;
+      return built.writerTrack;
+    },
   );
   const writer = new MidiWriter.Writer(writerTracks);
-  return dataUriToBlob(writer.dataUri());
+  return {
+    blob: dataUriToBlob(writer.dataUri()),
+    markersExported,
+    markersRequested: markerCount,
+  };
 }
 
 /**

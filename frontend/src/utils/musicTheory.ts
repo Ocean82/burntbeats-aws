@@ -62,6 +62,7 @@ export const CHORD_TYPES: Record<
   sus4: { name: "Sus4", intervals: [0, 5, 7] },
   dim: { name: "Dim", intervals: [0, 3, 6] },
   aug: { name: "Aug", intervals: [0, 4, 8] },
+  add9: { name: "Add9", intervals: [0, 4, 7, 14] },
 };
 
 export function midiToFreq(midi: number): number {
@@ -112,6 +113,59 @@ export function isMidiInScale(
   return SCALE_INTERVALS[scale].some(
     (interval) => (rootIdx + interval) % 12 === noteClass,
   );
+}
+
+export interface ScaleGuideConstraint {
+  root: RootNote;
+  scale: Scale;
+  locked: boolean;
+}
+
+export function constrainPitch(
+  pitch: number,
+  guide: ScaleGuideConstraint | null | undefined,
+): number {
+  if (!guide?.locked) return pitch;
+  return quantizeToScale(pitch, guide.root, guide.scale);
+}
+
+/** Parse keys like "C major", "F# minor" from conversion analysis. */
+export function parseEstimatedKey(estimatedKey: string): {
+  root: RootNote;
+  scale: Scale;
+} | null {
+  const normalized = estimatedKey.trim();
+  const match = normalized.match(/^([A-G](?:#|b)?)\s+(\w+)/i);
+  if (!match) return null;
+  const flatToSharp: Record<string, RootNote> = {
+    Bb: "A#",
+    Eb: "D#",
+    Ab: "G#",
+    Db: "C#",
+    Gb: "F#",
+    Cb: "B",
+    Fb: "E",
+  };
+  const rootToken = match[1];
+  const root =
+    flatToSharp[rootToken] ??
+    (NOTE_NAMES.find(
+      (n) => n.toLowerCase() === rootToken.toLowerCase(),
+    ) as RootNote | undefined);
+  if (!root) return null;
+  const scaleWord = match[2].toLowerCase();
+  const scaleMap: Record<string, Scale> = {
+    major: "major",
+    minor: "minor",
+    dorian: "dorian",
+    mixolydian: "mixolydian",
+    pentatonic: "pentatonic",
+    blues: "blues",
+    chromatic: "chromatic",
+  };
+  const scale = scaleMap[scaleWord];
+  if (!scale) return null;
+  return { root, scale };
 }
 
 export function quantizeToScale(

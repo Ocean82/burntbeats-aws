@@ -119,6 +119,9 @@ const BASE_HOOK_RETURN = {
   jobToken: null,
   downloadMidi: vi.fn(),
   isDownloadingMidi: false,
+  downloadError: null as string | null,
+  setDownloadError: vi.fn(),
+  downloadSourceLabel: null as string | null,
   triggerConvert: mockTriggerConvert,
   batchJobs: [],
   isBatchMode: false,
@@ -126,6 +129,7 @@ const BASE_HOOK_RETURN = {
   triggerBatchConvert: vi.fn(),
   retryBatchJob: vi.fn(),
   clearBatch: vi.fn(),
+  cancelBatch: vi.fn(),
   cancelConvert: vi.fn(),
 };
 
@@ -235,6 +239,22 @@ describe("MidiConvertPanel — EmptyState wiring (Task 13.2)", () => {
       screen.queryByRole("heading", { name: /no conversions yet/i }),
     ).not.toBeInTheDocument();
   });
+
+  it("hides primary convert button when a result already exists", () => {
+    const fakeResult: MidiConvertResult = {
+      notesDetected: 10,
+      durationSeconds: 5,
+      tracks: 1,
+      inferenceTimeSeconds: 0.5,
+      pianoRollNotes: [{ pitch: 60, start: 0, duration: 0.5, velocity: 80 }],
+      analysis: null,
+      fileAnalysis: null,
+    };
+    resetHookState({ hasSourceSelected: true, result: fakeResult });
+    render(<MidiConvertPanel />);
+    expect(screen.queryByTestId("midi-convert-button")).not.toBeInTheDocument();
+    expect(screen.getByTestId("midi-convert-again-button")).toBeInTheDocument();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -293,5 +313,46 @@ describe("MidiConvertPanel — SuccessFlash wiring (Task 17.2)", () => {
 
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
     vi.useRealTimers();
+  });
+});
+
+describe("MidiConvertPanel — batch cancel wiring", () => {
+  const mockCancelBatch = vi.fn();
+
+  beforeEach(() => {
+    mockCancelBatch.mockReset();
+    resetHookState({
+      isBatchMode: true,
+      batchJobs: [
+        {
+          stemName: "vocals",
+          jobId: "job-1",
+          jobToken: "token-1",
+          fileUrl: null,
+          status: "converting",
+          result: null,
+          error: null,
+          progress: 40,
+        },
+        {
+          stemName: "drums",
+          jobId: null,
+          jobToken: null,
+          fileUrl: null,
+          status: "pending",
+          result: null,
+          error: null,
+        },
+      ],
+      batchProgress: { completed: 0, total: 2 },
+      cancelBatch: mockCancelBatch,
+    });
+  });
+
+  it("shows Cancel batch while batch is in progress and calls cancelBatch", () => {
+    render(<MidiConvertPanel />);
+    const cancelButton = screen.getByRole("button", { name: /cancel batch/i });
+    fireEvent.click(cancelButton);
+    expect(mockCancelBatch).toHaveBeenCalledOnce();
   });
 });

@@ -148,21 +148,25 @@ export function MidiConvertSettings({
           hint="Filters out very short notes. Increase for cleaner output."
         />
 
-        {/* Pitch bends toggle */}
-        <div className="flex items-center gap-xs px-sm py-1">
+        {/* Pitch bends toggle — affects Basic Pitch inference only */}
+        <div className="flex flex-col gap-2xs px-sm py-1">
           <button
             type="button"
             role="switch"
             aria-checked={settings.includePitchBends}
             onClick={() => handleChange({ includePitchBends: !settings.includePitchBends })}
             disabled={disabled}
+            title="Improves pitch detection for slides and vibrato; exported MIDI does not include bend events yet."
             className={`midi-toggle${settings.includePitchBends ? " midi-toggle--on" : ""}${disabled ? " midi-toggle--disabled" : ""}`}
           >
             <span className="midi-toggle__track">
               <span className="midi-toggle__thumb" aria-hidden />
             </span>
-            <span className="text-sm">Pitch bends</span>
+            <span className="text-sm">Improve detection (pitch bends)</span>
           </button>
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Affects transcription quality; bends are not included in downloaded MIDI yet.
+          </p>
         </div>
 
         {/* Post-processing section */}

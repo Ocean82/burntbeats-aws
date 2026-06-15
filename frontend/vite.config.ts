@@ -6,6 +6,7 @@ import react from "@vitejs/plugin-react";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { defineConfig as defineViteConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { burntBeatsSeoPlugin } from "./vite-seo-plugin";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +24,7 @@ export default defineViteConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      ...(isSingleFileMode ? [] : [burntBeatsSeoPlugin()]),
       ...(isSingleFileMode ? [viteSingleFile()] : []),
       ...(enableSentryPlugin
         ? [

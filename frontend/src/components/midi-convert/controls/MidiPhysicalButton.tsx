@@ -29,7 +29,7 @@ export function MidiPhysicalButton({
         variant === "tool" && "midi-btn--tool",
         className,
       )}
-      aria-pressed={pressed}
+      aria-pressed={pressed !== undefined ? pressed : undefined}
       {...rest}
     >
       {children}

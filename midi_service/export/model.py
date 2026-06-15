@@ -37,6 +37,8 @@ class ExportRequest:
     artist: str | None = None
     genre: str | None = None
     time_range: Literal["full_project", "custom"] = "full_project"
+    range_start_s: float | None = None
+    range_end_s: float | None = None
 
 
 def parse_export_request(raw: dict[str, Any]) -> ExportRequest:
@@ -101,6 +103,17 @@ def parse_export_request(raw: dict[str, Any]) -> ExportRequest:
         if stem not in source_stem_names:
             raise ValueError(f"selected_stem not present in source_jobs: {stem}")
 
+    range_start_s: float | None = None
+    range_end_s: float | None = None
+    if time_range == "custom":
+        try:
+            range_start_s = float(raw.get("range_start_s", 0))
+            range_end_s = float(raw.get("range_end_s", 0))
+        except Exception as exc:
+            raise ValueError("range_start_s and range_end_s must be numbers") from exc
+        if range_end_s <= range_start_s:
+            raise ValueError("range_end_s must be greater than range_start_s")
+
     return ExportRequest(
         mode=mode,
         selected_stems=selected_stems,
@@ -110,6 +123,8 @@ def parse_export_request(raw: dict[str, Any]) -> ExportRequest:
         artist=_normalize_text(raw.get("artist")),
         genre=_normalize_text(raw.get("genre")),
         time_range=time_range,
+        range_start_s=range_start_s,
+        range_end_s=range_end_s,
     )
 
 

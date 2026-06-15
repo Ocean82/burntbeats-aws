@@ -71,3 +71,35 @@ def test_run_export_sync_rejects_unfinished_source(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="not completed"):
         run_export_sync(export_id, export_dir, request, tmp_path)
+
+
+def test_run_export_sync_mixdown_mode(tmp_path: Path) -> None:
+    vocals_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
+    bass_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
+    notes_a = [{"pitch": 60, "start": 0.0, "duration": 0.5, "velocity": 88}]
+    notes_b = [{"pitch": 48, "start": 0.25, "duration": 0.5, "velocity": 80}]
+    _write_completed_job(tmp_path, vocals_id, notes_a)
+    _write_completed_job(tmp_path, bass_id, notes_b)
+
+    request = parse_export_request(
+        {
+            "mode": "mixdown",
+            "format": "midi1",
+            "selected_stems": ["vocals", "bass"],
+            "source_jobs": [
+                {"job_id": vocals_id, "stem_name": "vocals", "bpm": 120},
+                {"job_id": bass_id, "stem_name": "bass", "bpm": 120},
+            ],
+        }
+    )
+
+    export_id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
+    export_dir = tmp_path / export_id
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    run_export_sync(export_id, export_dir, request, tmp_path)
+
+    archive = export_dir / "mixdown.zip"
+    assert archive.is_file()
+    with zipfile.ZipFile(archive, "r") as zf:
+        assert "mixdown.mid" in zf.namelist()

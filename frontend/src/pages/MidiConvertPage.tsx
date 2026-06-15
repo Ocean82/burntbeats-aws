@@ -24,6 +24,7 @@ export function MidiConvertPage({
   usageBalance,
   usageLoading,
   checkoutNotice,
+  onViewPlans,
 }: MidiConvertPageProps) {
   const showE2eMidiEditor =
     typeof window !== "undefined" &&
@@ -53,6 +54,7 @@ export function MidiConvertPage({
               usageBalance={usageBalance ?? null}
               usageLoading={usageLoading}
               subscriptionInactive={subscription.status === "inactive"}
+              onViewPlans={onViewPlans}
             />
           )}
         </div>

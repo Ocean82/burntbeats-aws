@@ -11,6 +11,7 @@ def write_notes_to_midi(
     *,
     bpm: int = 120,
     instrument_name: str = "Transcribed",
+    midi_type: int = 1,
 ) -> None:
     """Serialize note dicts (pitch, start, duration, velocity) to a .mid file."""
     import pretty_midi
@@ -29,4 +30,9 @@ def write_notes_to_midi(
             )
         )
     midi.instruments.append(inst)
+    if midi_type == 0 and len(midi.instruments) > 1:
+        merged = pretty_midi.Instrument(program=0, name=instrument_name)
+        for instrument in midi.instruments:
+            merged.notes.extend(instrument.notes)
+        midi.instruments = [merged]
     midi.write(str(output_path))
