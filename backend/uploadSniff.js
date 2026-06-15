@@ -5,6 +5,8 @@
  */
 import { openSync, readSync, closeSync } from "fs";
 
+import { assertUploadProcessingPath } from "./helpers/uploadPaths.js";
+
 const HEADER_BYTES = 4096;
 /** Reject absurd ID3 size claims (mitigate header DoS). */
 const MAX_ID3_SYNTHETIC = 256 * 1024;
@@ -22,10 +24,15 @@ export function verifyUploadMatchesExtension(filePath, extWithDot) {
     return { ok: false, message: "Missing or invalid file extension." };
   }
 
+  const trustedPath = assertUploadProcessingPath(filePath);
+  if (!trustedPath) {
+    return { ok: false, message: "Invalid file path." };
+  }
+
   /** @type {number | undefined} */
   let fd;
   try {
-    fd = openSync(filePath, "r");
+    fd = openSync(trustedPath, "r");
     const buf = Buffer.allocUnsafe(HEADER_BYTES);
     let n = readSync(fd, buf, 0, HEADER_BYTES, 0);
     if (n < 4) {

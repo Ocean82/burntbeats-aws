@@ -14,11 +14,21 @@ import path from "path";
 import { fileURLToPath } from "url";
 import pg from "pg";
 
+import { resolvePathWithinBase } from "./helpers/safePath.js";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @param {string} [envFilePath] */
 export function loadBackendEnv(envFilePath) {
-  const envPath = envFilePath ?? path.join(__dirname, ".env");
+  const defaultEnv = path.join(__dirname, ".env");
+  let envPath = defaultEnv;
+  if (envFilePath) {
+    const resolved = resolvePathWithinBase(__dirname, path.basename(envFilePath));
+    if (!resolved) {
+      throw new Error("Invalid env file path");
+    }
+    envPath = resolved;
+  }
   try {
     const lines = readFileSync(envPath, "utf-8").split("\n");
     for (const line of lines) {
@@ -62,7 +72,11 @@ export async function runMigrations(client) {
     }
 
     for (const file of migrationFiles) {
-      const migrationPath = path.join(migrationsDir, file);
+      const migrationPath = resolvePathWithinBase(migrationsDir, file);
+      if (!migrationPath) {
+        console.warn(`[migrate] skipping unsafe migration filename: ${file}`);
+        continue;
+      }
       const migrationSql = readFileSync(migrationPath, "utf-8");
       console.log(`[migrate] applying ${file}...`);
       await client.query(migrationSql);

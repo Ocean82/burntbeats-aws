@@ -97,6 +97,9 @@ async function resolveStemS3Location(stemJobId, stemName) {
  * @returns {Promise<string | null>}
  */
 async function fetchStemFromS3ToTemp(stemJobId, stemName) {
+  const trimmedStemName = stemName.trim();
+  if (!trimmedStemName || !isSafePathSegment(trimmedStemName)) return null;
+
   const location = await resolveStemS3Location(stemJobId, stemName);
   if (!location) return null;
 
@@ -117,7 +120,8 @@ async function fetchStemFromS3ToTemp(stemJobId, stemName) {
     }
 
     const tempDir = await mkdtemp(path.join(os.tmpdir(), "burntbeats-stem-"));
-    const tempPath = path.join(tempDir, `${stemName}.wav`);
+    const tempPath = resolvePathWithinBase(tempDir, `${trimmedStemName}.wav`);
+    if (!tempPath) return null;
     const { Readable } = await import("stream");
     const nodeStream = Readable.fromWeb(/** @type {any} */ (s3Res.body));
     await pipeline(nodeStream, createWriteStream(tempPath));

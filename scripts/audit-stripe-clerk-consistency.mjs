@@ -15,8 +15,13 @@
 import fs from "fs";
 import path from "path";
 
+import { resolvePathWithinBase } from "../backend/helpers/safePath.js";
+
 const root = process.cwd();
-const envPath = path.join(root, "backend", ".env");
+const envPath = resolvePathWithinBase(root, "backend", ".env");
+if (!envPath) {
+  throw new Error("Invalid env file path");
+}
 
 function parseEnvFile(filePath) {
   const env = {};

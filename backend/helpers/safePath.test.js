@@ -1,11 +1,13 @@
 // @ts-check
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "path";
 import os from "os";
 
 import {
   isSafePathSegment,
+  resolveExistingPathWithinBase,
   resolvePathUnderAllowedBases,
   resolvePathWithinBase,
   resolveUuidJobDir,
@@ -17,12 +19,48 @@ test("isSafePathSegment rejects traversal segments", () => {
   assert.equal(isSafePathSegment("vocals.wav"), true);
 });
 
+test("isSafePathSegment rejects absolute segments", () => {
+  assert.equal(isSafePathSegment("/etc/passwd"), false);
+});
+
 test("resolvePathWithinBase blocks escape from base", () => {
   const base = path.join(os.tmpdir(), "bb-safe-path-test");
   assert.equal(resolvePathWithinBase(base, "..", "etc", "passwd"), null);
   const ok = resolvePathWithinBase(base, "job-id", "input.wav");
   assert.ok(ok);
   assert.ok(ok.startsWith(path.resolve(base)));
+});
+
+test("resolvePathWithinBase allows new files under existing directories", () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "bb-safe-path-new-"));
+  const jobDir = path.join(base, "job-id");
+  fs.mkdirSync(jobDir);
+  const target = resolvePathWithinBase(base, "job-id", "new-output.wav");
+  assert.ok(target);
+  assert.equal(path.basename(target), "new-output.wav");
+});
+
+test("resolvePathWithinBase rejects symlink directory hops", () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "bb-safe-path-symlink-"));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "bb-safe-path-outside-"));
+  const jobDir = path.join(base, "job-id");
+  fs.mkdirSync(jobDir);
+  const link = path.join(jobDir, "stems");
+  try {
+    fs.symlinkSync(outside, link, "dir");
+  } catch {
+    return;
+  }
+  assert.equal(resolvePathWithinBase(base, "job-id", "stems", "vocals.wav"), null);
+});
+
+test("resolveExistingPathWithinBase returns canonical path for existing files", () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), "bb-safe-path-existing-"));
+  const filePath = path.join(base, "input.wav");
+  fs.writeFileSync(filePath, "RIFF");
+  const resolved = resolveExistingPathWithinBase(base, "input.wav");
+  assert.ok(resolved);
+  assert.equal(resolved, fs.realpathSync.native(filePath));
 });
 
 test("resolveUuidJobDir requires UUID", () => {

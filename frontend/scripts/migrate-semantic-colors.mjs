@@ -7,23 +7,9 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-function isSafePathSegment(segment) {
-  if (typeof segment !== "string" || !segment) return false;
-  if (segment === "." || segment === "..") return false;
-  if (/[\0/\\]/.test(segment)) return false;
-  return true;
-}
-
-function resolvePathWithinBase(baseDir, ...segments) {
-  for (const segment of segments) {
-    if (!isSafePathSegment(segment)) return null;
-  }
-  const base = path.resolve(baseDir);
-  const resolved = path.resolve(base, ...segments);
-  const relative = path.relative(base, resolved);
-  if (relative.startsWith("..") || path.isAbsolute(relative)) return null;
-  return resolved;
-}
+import {
+  resolvePathWithinBase,
+} from "../../backend/helpers/safePath.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(__dirname, "../src");

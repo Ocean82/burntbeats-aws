@@ -81,7 +81,11 @@ function formatBytes(bytes) {
 
 async function loadHistory() {
   try {
-    const historyFile = path.join(CONFIG.backupPath, "backup-history.json");
+    const historyFile = resolvePathWithinBase(
+      CONFIG.backupPath,
+      "backup-history.json",
+    );
+    if (!historyFile) return [];
     const data = await fs.readFile(historyFile, "utf-8");
     return JSON.parse(data);
   } catch {
@@ -91,7 +95,13 @@ async function loadHistory() {
 
 async function saveHistory(backups) {
   await fs.mkdir(CONFIG.backupPath, { recursive: true });
-  const historyFile = path.join(CONFIG.backupPath, "backup-history.json");
+  const historyFile = resolvePathWithinBase(
+    CONFIG.backupPath,
+    "backup-history.json",
+  );
+  if (!historyFile) {
+    throw new Error("Invalid backup history path");
+  }
   await fs.writeFile(historyFile, JSON.stringify(backups, null, 2));
 }
 
@@ -107,7 +117,10 @@ async function createBackup() {
   const timeStr = timestamp.toISOString().slice(11, 19).replace(/:/g, "");
   const backupId = `backup-${dateStr}-${timeStr}`;
   const filename = `burntbeats-${dateStr}-${timeStr}.sql.gz`;
-  const backupFilePath = path.join(CONFIG.backupPath, filename);
+  const backupFilePath = resolvePathWithinBase(CONFIG.backupPath, filename);
+  if (!backupFilePath) {
+    throw new Error("Invalid backup path");
+  }
 
   log("🔄", `Creating backup: ${filename}`);
 
@@ -131,7 +144,10 @@ async function createBackup() {
   } catch (err) {
     // Try without gzip if gzip not available
     const plainFilename = filename.replace(".gz", "");
-    const plainPath = path.join(CONFIG.backupPath, plainFilename);
+    const plainPath = resolvePathWithinBase(CONFIG.backupPath, plainFilename);
+    if (!plainPath) {
+      throw new Error("Invalid backup path");
+    }
     const plainCmd = `PGPASSWORD='${password}' pg_dump -h ${host} -p ${port} -U ${username} -d ${database} --no-owner --no-acl -f "${plainPath}"`;
     await execAsync(plainCmd, { shell: "/bin/bash", timeout: 120_000 });
     // Update filename reference
