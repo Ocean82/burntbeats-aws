@@ -133,9 +133,15 @@ export function PricingTablePreview({
       interval: billingInterval,
     });
 
+  // On mobile for subscriptions with 3+ plans, show first 2 and collapse the rest
+  const showMobileCollapse = pricingType === "subscriptions" && plans.length > 2;
+  const mobilePrimaryPlans = showMobileCollapse ? plans.slice(0, 2) : plans;
+  const mobileCollapsedPlans = showMobileCollapse ? plans.slice(2) : [];
+
   return (
     <div className="space-y-lg" data-testid="pricing-table-preview">
-      <div className="grid gap-md sm:grid-cols-2 lg:grid-cols-3">
+      {/* Desktop: show all plans */}
+      <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-md">
         {plans.map((plan) => (
           <div
             key={plan.id}
@@ -150,11 +156,55 @@ export function PricingTablePreview({
           </div>
         ))}
       </div>
+
+      {/* Mobile: primary plans visible, extras collapsed */}
+      <div className="sm:hidden space-y-md">
+        {mobilePrimaryPlans.map((plan) => (
+          <div key={plan.id} className="min-w-0">
+            <PlanCard
+              plan={plan}
+              onSelect={onSelectPlan}
+              ctaButton={ctaButtonRenderer?.(plan)}
+              isCurrentPlan={currentPlan === plan.id}
+            />
+          </div>
+        ))}
+        {mobileCollapsedPlans.length > 0 && (
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-center gap-xs rounded-xl border border-border/60 bg-secondary/40 px-md py-sm text-sm font-medium text-muted-foreground transition hover:text-secondary-foreground [&::-webkit-details-marker]:hidden">
+              <span>Show {mobileCollapsedPlans.length} more plan{mobileCollapsedPlans.length > 1 ? "s" : ""}</span>
+              <svg
+                className="h-4 w-4 shrink-0 transition-transform duration-200 group-open:rotate-180"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M4 6l4 4 4-4" />
+              </svg>
+            </summary>
+            <div className="mt-md space-y-md">
+              {mobileCollapsedPlans.map((plan) => (
+                <div key={plan.id} className="min-w-0">
+                  <PlanCard
+                    plan={plan}
+                    onSelect={onSelectPlan}
+                    ctaButton={ctaButtonRenderer?.(plan)}
+                    isCurrentPlan={currentPlan === plan.id}
+                  />
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
+
       <div className="rounded-3xl border border-border bg-muted p-lg text-sm text-secondary-foreground">
         <p className="font-medium text-foreground">
           Secure checkout powered by Stripe.
         </p>
-        <p className="text-readable mt-xs">
+        <p className="mt-xs">
           All plan prices are secured and managed through Stripe. Create an
           account or sign in to select a plan and complete your purchase.
         </p>

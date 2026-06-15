@@ -103,7 +103,7 @@ export function LandingPricingSection({
           ctaButtonRenderer={renderPricingCTA}
         />
         <div className="mt-lg">
-          <PricingFeatureComparison hideStudio={pricingTab === "subscriptions"} />
+          <PricingFeatureComparison hideStudio={false} />
         </div>
       </div>
 

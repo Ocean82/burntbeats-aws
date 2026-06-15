@@ -1,23 +1,29 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { Layers, RotateCcw, Piano, Workflow } from "lucide-react";
 import { brandScrollSection } from "../../motion/brandPresets";
 
 const DIFFERENTIATORS = [
   {
+    icon: Layers,
     title: "In-browser mixer and editor",
     body:
       "After the split, you can level, trim, and shape the result without immediately bouncing into another tool.",
   },
   {
+    icon: RotateCcw,
     title: "Reopen past stem jobs",
     body:
       "Your splits are not disposable downloads. Return to old jobs from My Stems and keep working from the same history.",
   },
   {
+    icon: Piano,
     title: "Stem-to-MIDI workflow built in",
     body:
       "Move from separated audio into MIDI conversion inside the same product instead of breaking your workflow across multiple apps.",
+    highlight: true,
   },
   {
+    icon: Workflow,
     title: "Built for producers and DJs",
     body:
       "Burnt Beats is designed like a lightweight browser workstation, not a one-click converter. The value is in the workflow, not just the split.",
@@ -48,12 +54,19 @@ export function LandingDifferentiatorsSection() {
         {DIFFERENTIATORS.map((item) => (
           <div
             key={item.title}
-            className="min-w-0 rounded-2xl border border-border bg-secondary/60 p-lg"
+            className={`min-w-0 rounded-2xl border p-lg ${
+              "highlight" in item && item.highlight
+                ? "border-primary-400/30 bg-primary-500/8"
+                : "border-border bg-secondary/60"
+            }`}
           >
+            <div className="mb-sm flex h-8 w-8 items-center justify-center rounded-lg border border-border/70 bg-muted/60">
+              <item.icon className="h-4 w-4 text-primary-300/90" aria-hidden="true" />
+            </div>
             <h3 className="mb-2 font-display text-sm font-bold tracking-[-0.01em] text-secondary-foreground">
               {item.title}
             </h3>
-            <p className="text-readable w-full text-sm leading-relaxed text-muted-foreground">
+            <p className="w-full text-sm leading-relaxed text-muted-foreground">
               {item.body}
             </p>
           </div>

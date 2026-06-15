@@ -65,7 +65,7 @@ export function LandingPage({ focusSection }: LandingPageProps = {}) {
   if (isSignedIn) return null;
 
   return (
-    <div className="min-h-screen scroll-pt-20 bg-(--bg) text-foreground">
+    <div className="min-h-screen scroll-pt-16 bg-(--bg) text-foreground">
       <a
         href="#landing-main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-lg focus:left-lg focus:z-tooltip focus:rounded-full focus:border focus:border-primary-400/30 focus:bg-primary-500/20 focus:px-md focus:py-xs focus:text-sm focus:font-medium focus:text-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:ring-offset-2 focus:ring-offset-background"
@@ -78,53 +78,54 @@ export function LandingPage({ focusSection }: LandingPageProps = {}) {
       {/* Sentinel element for IntersectionObserver — triggers sticky header style */}
       <div ref={sentinelRef} className="absolute top-0 h-px w-full" aria-hidden="true" />
 
-      <div className="relative mx-auto max-w-5xl px-md sm:px-lg lg:px-xl">
-        <header
-          className={`sticky top-0 z-40 -mx-md sm:-mx-lg lg:-mx-xl px-md sm:px-lg lg:px-xl transition-[background-color,border-color,box-shadow] duration-200 ease-out ${
-            headerScrolled
-              ? "border-b border-border/50 bg-background/85 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-xl"
-              : "border-b border-transparent bg-transparent"
-          }`}
-        >
-          <nav className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-sm py-sm sm:py-md">
-            <div className="flex items-center gap-sm">
-              <img
-                src="/logo-emblem.png"
-                alt=""
-                className="logo-emblem h-9 w-9 sm:h-10 sm:w-10"
-                aria-hidden="true"
-              />
-              <div className="logo-burnt">
-                <span className="logo-burnt-fire text-xl sm:text-2xl">Burnt Beats</span>
-              </div>
+      {/* Full-bleed sticky header — lives outside the content container */}
+      <header
+        className={`sticky top-0 z-40 w-full transition-[background-color,border-color,box-shadow] duration-200 ease-out ${
+          headerScrolled
+            ? "border-b border-border/50 bg-background/85 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-xl"
+            : "border-b border-transparent bg-transparent"
+        }`}
+      >
+        <nav className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-sm px-md py-sm sm:px-lg sm:py-md lg:px-xl">
+          <div className="flex items-center gap-sm">
+            <img
+              src="/logo-emblem.png"
+              alt=""
+              className="logo-emblem h-9 w-9 sm:h-10 sm:w-10"
+              aria-hidden="true"
+            />
+            <div className="logo-burnt">
+              <span className="logo-burnt-fire text-xl sm:text-2xl">Burnt Beats</span>
             </div>
-            <div className="flex flex-wrap items-center gap-xs sm:gap-sm">
-              <a
-                href="#pricing"
-                className="hidden text-sm font-medium text-secondary-foreground transition hover:text-primary-200 sm:inline-block"
+          </div>
+          <div className="flex flex-wrap items-center gap-xs sm:gap-sm">
+            <a
+              href="#pricing"
+              className="hidden text-sm font-medium text-secondary-foreground transition hover:text-primary-200 sm:inline-block"
+            >
+              Pricing
+            </a>
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="ghost-button px-md py-xs text-xs sm:px-lg sm:text-sm"
               >
-                Pricing
-              </a>
-              <SignInButton mode="modal">
-                <button
-                  type="button"
-                  className="ghost-button px-md py-xs text-xs sm:px-lg sm:text-sm"
-                >
-                  Sign in
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button
-                  type="button"
-                  className="fire-button px-md py-xs text-xs sm:px-lg sm:text-sm"
-                >
-                  Get started
-                </button>
-              </SignUpButton>
-            </div>
-          </nav>
-        </header>
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button
+                type="button"
+                className="fire-button px-md py-xs text-xs sm:px-lg sm:text-sm"
+              >
+                Get started
+              </button>
+            </SignUpButton>
+          </div>
+        </nav>
+      </header>
 
+      <div className="relative mx-auto max-w-5xl px-md sm:px-lg lg:px-xl">
         <main id="landing-main">
           <LandingHero />
           <LandingSocialProof />

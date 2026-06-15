@@ -41,6 +41,9 @@ export function LandingHero() {
           className="logo-burnt mx-auto w-full max-w-5xl text-[clamp(3.5rem,10vw,8rem)] font-bold leading-[0.92] tracking-[-0.04em]"
         >
           <span className="logo-burnt-fire">Burnt Beats</span>
+          <span className="sr-only">
+            : AI stem splitter, mixer, and MIDI workstation in your browser
+          </span>
         </h1>
       </motion.div>
 
