@@ -1,0 +1,53 @@
+version: 2
+
+updates:
+  # Frontend (production)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      radix-ui:
+        patterns:
+          - "@radix-ui/*"
+      dev-dependencies:
+        dependency-type: "development"
+
+  # Backend (production)
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Python workspace (uv / pip)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # Pricing structure (non-production prototype)
+  - package-ecosystem: "npm"
+    directory: "/burnt-beats-pricing-structure"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+
+  # Gamer tag (non-production prototype)
+  - package-ecosystem: "npm"
+    directory: "/gamer_tag"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+# Note: /archive/ is intentionally excluded — it contains stale prototypes
+# that are not deployed and should not generate security alerts.

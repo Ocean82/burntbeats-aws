@@ -78,6 +78,10 @@ Thumbs.db
 npm-debug.log*
 job_metrics.jsonl
 
+# Archive — stale prototypes; lock files excluded to prevent Dependabot noise
+archive/*/package-lock.json
+archive/*/node_modules/
+
 # Temp
 tmp/
 tmp*/
