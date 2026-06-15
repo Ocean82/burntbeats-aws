@@ -33,6 +33,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from stem_service.subprocess_safe import resolve_subprocess_path, run_subprocess
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
@@ -74,20 +76,23 @@ def _sha256_file(path: Path) -> dict[str, Any]:
 
 
 def _try_mp3(wav: Path, mp3: Path) -> bool:
-    if shutil.which("ffmpeg") is None:
+    from stem_service.ffmpeg_util import resolve_ffmpeg_executable
+
+    ff = resolve_ffmpeg_executable()
+    if ff is None:
         return False
     try:
-        subprocess.run(
+        run_subprocess(
             [
-                "ffmpeg",
+                str(ff),
                 "-y",
                 "-i",
-                str(wav),
+                resolve_subprocess_path(wav),
                 "-codec:a",
                 "libmp3lame",
                 "-qscale:a",
                 "2",
-                str(mp3),
+                resolve_subprocess_path(mp3),
             ],
             capture_output=True,
             text=True,
@@ -106,12 +111,12 @@ def extract_clip_wav(src: Path, dest: Path, duration_s: float) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     ff = resolve_ffmpeg_executable()
     if ff is not None:
-        subprocess.run(
+        run_subprocess(
             [
                 str(ff),
                 "-y",
                 "-i",
-                str(src),
+                resolve_subprocess_path(src),
                 "-t",
                 str(duration_s),
                 "-ar",
@@ -120,7 +125,7 @@ def extract_clip_wav(src: Path, dest: Path, duration_s: float) -> None:
                 "2",
                 "-c:a",
                 "pcm_s16le",
-                str(dest),
+                resolve_subprocess_path(dest),
             ],
             check=True,
             capture_output=True,

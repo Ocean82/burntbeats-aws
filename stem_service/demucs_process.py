@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from stem_service.subprocess_safe import popen_subprocess, run_subprocess
+
 
 class DemucsProcessTimeoutError(RuntimeError):
     """Raised when the supervised process exceeds configured timeout policy."""
@@ -35,7 +37,7 @@ def _kill_process_tree(process: subprocess.Popen[str]) -> None:
         return
 
     if os.name == "nt":
-        subprocess.run(
+        run_subprocess(
             ["taskkill", "/PID", str(process.pid), "/T", "/F"],
             capture_output=True,
             text=True,
@@ -68,18 +70,16 @@ def run_supervised_subprocess(
     last_line = ""
 
     popen_kwargs: dict[str, object] = {
-        "args": cmd,
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "text": True,
-        "cwd": str(cwd),
     }
     if os.name == "nt":
         popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         popen_kwargs["start_new_session"] = True
 
-    proc = subprocess.Popen(**popen_kwargs)
+    proc = popen_subprocess(cmd, cwd=cwd, **popen_kwargs)
 
     stdout_chunks: list[str] = []
     stderr_chunks: list[str] = []

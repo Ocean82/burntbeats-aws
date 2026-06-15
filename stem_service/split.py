@@ -16,6 +16,10 @@ import sys
 from pathlib import Path
 from typing import Callable
 
+from stem_service.subprocess_safe import (
+    resolve_subprocess_path,
+    validate_model_name,
+)
 from stem_service.demucs_subprocess import format_demucs_subprocess_failure
 from stem_service.demucs_process import (
     DemucsHealthMarker,
@@ -288,14 +292,15 @@ def _build_demucs_cmd(
     two_stems: bool = False,
 ) -> list[str]:
     """Build demucs command arguments."""
+    safe_model = validate_model_name(model_name)
     cmd: list[str] = [
         sys.executable,
         "-m",
         demucs_cli_module(),
         "-n",
-        model_name,
+        safe_model,
         "-o",
-        str(output_dir),
+        resolve_subprocess_path(output_dir),
         "-d",
         DEMUCS_DEVICE,
         "--shifts",
@@ -305,10 +310,10 @@ def _build_demucs_cmd(
         "--segment",
         str(segment),
     ]
-    cmd.extend(["--repo", str(repo)])
+    cmd.extend(["--repo", resolve_subprocess_path(repo)])
     if two_stems:
         cmd.extend(["--two-stems", "vocals"])
-    cmd.append(str(input_path))
+    cmd.append(resolve_subprocess_path(input_path))
     return cmd
 
 

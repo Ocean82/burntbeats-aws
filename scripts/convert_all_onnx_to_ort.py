@@ -14,12 +14,21 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
+from stem_service.subprocess_safe import assert_trusted_onnx_path, run_subprocess
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_EXCLUDE = ("demucs.onnx-main", "node_modules", ".git", "__pycache__")
+
+
+def _display_path(path: Path, base: Path = REPO_ROOT) -> str:
+    resolved = path.resolve()
+    try:
+        return str(resolved.relative_to(base.resolve()))
+    except ValueError:
+        return str(resolved)
 
 
 def _skip_path(p: Path, models_dir: Path, extra_exclude: tuple[str, ...]) -> bool:
@@ -70,26 +79,32 @@ def main() -> int:
     for p in onnx_files:
         ort = p.with_suffix(".ort")
         if ort.is_file() and not args.force:
-            lines.append(f"SKIP (exists) {p.relative_to(REPO_ROOT)}")
+            lines.append(f"SKIP (exists) {_display_path(p)}")
             skip_n += 1
             continue
         if args.dry_run:
-            lines.append(f"DRY-RUN would convert {p.relative_to(REPO_ROOT)}")
+            lines.append(f"DRY-RUN would convert {_display_path(p)}")
+            continue
+        try:
+            onnx_resolved = assert_trusted_onnx_path(p, models_dir)
+        except ValueError as exc:
+            lines.append(f"FAIL {_display_path(p)} :: {exc}")
+            fail_n += 1
             continue
         cmd = [
             sys.executable,
             "-m",
             "onnxruntime.tools.convert_onnx_models_to_ort",
-            str(p),
+            onnx_resolved,
             "--enable_type_reduction",
         ]
-        r = subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
+        r = run_subprocess(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
         if r.returncode == 0:
-            lines.append(f"OK {p.relative_to(REPO_ROOT)}")
+            lines.append(f"OK {_display_path(p)}")
             ok_n += 1
         else:
             err = (r.stderr or r.stdout or "")[-500:]
-            lines.append(f"FAIL {p.relative_to(REPO_ROOT)} :: {err}")
+            lines.append(f"FAIL {_display_path(p)} :: {err}")
             fail_n += 1
 
     summary = f"\nSummary: ok={ok_n} fail={fail_n} skip={skip_n} dry_run={args.dry_run}\n"

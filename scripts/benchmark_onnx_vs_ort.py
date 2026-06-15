@@ -23,11 +23,12 @@ import argparse
 import csv
 import json
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
 from typing import Any, Callable
+
+from stem_service.subprocess_safe import assert_trusted_onnx_path, run_subprocess
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
@@ -71,17 +72,21 @@ def _resolve_wav(args: argparse.Namespace) -> Path:
     )
 
 
-def _convert_onnx_to_ort(onnx_path: Path) -> tuple[bool, str]:
+def _convert_onnx_to_ort(onnx_path: Path, models_dir: Path) -> tuple[bool, str]:
     if not onnx_path.is_file():
         return False, f"missing: {onnx_path}"
+    try:
+        onnx_resolved = assert_trusted_onnx_path(onnx_path, models_dir)
+    except ValueError as exc:
+        return False, str(exc)
     cmd = [
         sys.executable,
         "-m",
         "onnxruntime.tools.convert_onnx_models_to_ort",
-        str(onnx_path),
+        onnx_resolved,
         "--enable_type_reduction",
     ]
-    r = subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
+    r = run_subprocess(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
     msg = (r.stdout or "") + (r.stderr or "")
     if r.returncode != 0:
         return False, msg[-4000:]
@@ -246,7 +251,7 @@ def main() -> int:
     if not args.skip_convert and to_convert:
         print(f"Converting {len(to_convert)} ONNX file(s) to ORT (--enable_type_reduction)...")
         for p in to_convert:
-            ok, log = _convert_onnx_to_ort(p)
+            ok, log = _convert_onnx_to_ort(p, models_dir)
             print(f"  {'OK' if ok else 'FAIL'}  {p.name}")
             if not ok:
                 print(log[:1500])

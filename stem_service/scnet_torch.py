@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
-import subprocess
+from stem_service.subprocess_safe import resolve_subprocess_path, run_subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -78,17 +78,17 @@ def run_scnet_torch_4stem(
                 "-m",
                 "scnet.inference",
                 "--input_dir",
-                str(in_dir),
+                resolve_subprocess_path(in_dir),
                 "--output_dir",
-                str(out_dir),
+                resolve_subprocess_path(out_dir),
                 "--config_path",
-                str(config),
+                resolve_subprocess_path(config),
                 "--checkpoint_path",
-                str(checkpoint),
+                resolve_subprocess_path(checkpoint),
             ]
-            proc = subprocess.run(
+            proc = run_subprocess(
                 cmd,
-                cwd=str(repo),
+                cwd=repo,
                 env=env,
                 capture_output=True,
                 text=True,

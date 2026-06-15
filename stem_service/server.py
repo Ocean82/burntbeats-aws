@@ -19,6 +19,8 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from stem_service.subprocess_safe import resolve_subprocess_path, run_subprocess
+
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -556,13 +558,13 @@ async def split(
                 "-t",
                 "60",
                 "-i",
-                str(input_path),
+                resolve_subprocess_path(input_path),
                 "-c",
                 "copy",
-                str(clipped_path),
+                resolve_subprocess_path(clipped_path),
             ]
             try:
-                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                run_subprocess(cmd, check=True, capture_output=True, text=True)
                 if clipped_path.exists() and clipped_path.stat().st_size > 0:
                     input_path.unlink()
                     input_path = clipped_path
