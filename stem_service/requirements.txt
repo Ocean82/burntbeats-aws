@@ -33,7 +33,7 @@ numpy>=1.24.0,<2.6
 scipy>=1.9.0
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
-python-multipart>=0.0.27
+python-multipart>=0.0.31
 
 # Optional: upload stems to S3 after each job (S3_ENABLED=true; see docs/ARCHITECTURE-FLOW.md)
 boto3>=1.28.0
