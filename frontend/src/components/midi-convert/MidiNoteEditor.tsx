@@ -104,6 +104,7 @@ export function MidiNoteEditor({
   useEffect(() => {
     if (isDrumContent) {
       editor.setScaleConstraint(null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: sync derived state when drum detection changes
       setScaleGuide((prev) => ({ ...prev, locked: false }));
       return;
     }
@@ -114,8 +115,9 @@ export function MidiNoteEditor({
     if (!estimatedKey || isDrumContent) return;
     const parsed = parseEstimatedKey(estimatedKey);
     if (!parsed) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: initialize scale guide from server-provided key estimate
     setScaleGuide((prev) => ({ ...prev, ...parsed }));
-  }, [estimatedKey]);
+  }, [estimatedKey, isDrumContent]);
 
   useEffect(() => {
     onRegisterEditor?.({
@@ -142,6 +144,7 @@ export function MidiNoteEditor({
 
   useEffect(() => {
     if (editor.selectedNotes.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: auto-expand inspector on selection for discoverability
       setInspectorOpen((prev) => ({ ...prev, selection: true }));
     }
   }, [editor.selectedNotes.length]);
@@ -385,7 +388,7 @@ export function MidiNoteEditor({
     } finally {
       setIsSaving(false);
     }
-  }, [jobId, jobToken, editor.tracks, editor.bpm]);
+  }, [jobId, jobToken, editor, markers, applyMarkerExportNotice]);
 
   const handleReset = useCallback(() => {
     playback.stop();
@@ -483,9 +486,7 @@ export function MidiNoteEditor({
   }, [
     activeMidiFx,
     activeMidiFxPreview,
-    playback.isPlaying,
-    playback.isPaused,
-    playback.refresh,
+    playback,
     playbackTracks,
     playbackOptions,
   ]);

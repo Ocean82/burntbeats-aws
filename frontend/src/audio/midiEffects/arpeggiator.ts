@@ -17,7 +17,7 @@ export class MidiArpeggiator {
   private generatePattern(pitches: number[]): number[] {
     if (pitches.length === 0) return [];
 
-    let expanded: number[] = [];
+    const expanded: number[] = [];
     for (let octave = 0; octave < this.config.octaves; octave++) {
       expanded.push(...pitches.map((n) => n + octave * 12));
     }

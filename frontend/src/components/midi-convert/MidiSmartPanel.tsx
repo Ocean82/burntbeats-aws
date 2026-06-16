@@ -47,17 +47,18 @@ export function MidiSmartPanel({
   const [root, setRoot] = useState<RootNote>(initialRoot);
   const [scale, setScale] = useState<Scale>(initialScale);
   const [scaleLock, setScaleLock] = useState(() => !scaleLockDisabled);
+
+  // Derive scaleLock from prop: when scaleLockDisabled becomes true, lock must be off.
+  // This avoids useEffect setState while keeping local state for user toggles.
+  const effectiveScaleLock = scaleLockDisabled ? false : scaleLock;
+
   const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
 
   const chords = useMemo(() => getDiatonicChords(root, scale), [root, scale]);
 
   useEffect(() => {
-    if (scaleLockDisabled) setScaleLock(false);
-  }, [scaleLockDisabled]);
-
-  useEffect(() => {
-    onScaleChange?.({ root, scale, locked: scaleLockDisabled ? false : scaleLock });
-  }, [root, scale, scaleLock, scaleLockDisabled, onScaleChange]);
+    onScaleChange?.({ root, scale, locked: effectiveScaleLock });
+  }, [root, scale, effectiveScaleLock, onScaleChange]);
 
   const previewChord = useCallback(async (midiNotes: number[]) => {
     await start();
@@ -106,30 +107,30 @@ export function MidiSmartPanel({
           disabled={scaleLockDisabled}
           className={cn(
             "inline-flex items-center gap-1 rounded px-xs py-0.5 text-[10px] font-medium",
-            scaleLock ? "text-primary-300" : "text-muted-foreground",
+            effectiveScaleLock ? "text-primary-300" : "text-muted-foreground",
             scaleLockDisabled && "opacity-50 cursor-not-allowed",
           )}
           title={
             scaleLockDisabled
               ? "Scale lock disabled for drum content"
-              : scaleLock
+              : effectiveScaleLock
                 ? "Scale locked"
                 : "Scale unlocked"
           }
           aria-label={
             scaleLockDisabled
               ? "Scale lock unavailable for drum content"
-              : scaleLock
+              : effectiveScaleLock
                 ? "Unlock scale guide"
                 : "Lock scale guide"
           }
         >
-          {scaleLock ? (
+          {effectiveScaleLock ? (
             <Lock className="h-3 w-3" aria-hidden />
           ) : (
             <Unlock className="h-3 w-3" aria-hidden />
           )}
-          {scaleLock ? "Locked" : "Free"}
+          {effectiveScaleLock ? "Locked" : "Free"}
         </button>
       </div>
 
@@ -137,7 +138,7 @@ export function MidiSmartPanel({
         <select
           value={root}
           onChange={(e) => setRoot(e.target.value as RootNote)}
-          disabled={scaleLock}
+          disabled={effectiveScaleLock}
           className="rounded border border-border bg-muted px-xs py-0.5 text-xs"
           aria-label="Root note"
         >
@@ -150,7 +151,7 @@ export function MidiSmartPanel({
         <select
           value={scale}
           onChange={(e) => setScale(e.target.value as Scale)}
-          disabled={scaleLock}
+          disabled={effectiveScaleLock}
           className="rounded border border-border bg-muted px-xs py-0.5 text-xs"
           aria-label="Scale"
         >

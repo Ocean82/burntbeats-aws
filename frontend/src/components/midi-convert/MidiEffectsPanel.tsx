@@ -208,7 +208,7 @@ export function MidiEffectsPanel({
       </div>
 
       <div className="space-y-xs">
-        <label className="text-[10px] text-muted-foreground">Track preset</label>
+        <span className="text-[10px] text-muted-foreground">Track preset</span>
         <select
           aria-label="MIDI FX preset"
           className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
@@ -285,9 +285,9 @@ export function MidiEffectsPanel({
           {config.quantizer.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <label className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-[10px] text-muted-foreground">
                   Root
-                </label>
+                </span>
                 <select
                   aria-label="Quantizer root"
                   value={config.quantizer.root}
@@ -304,9 +304,9 @@ export function MidiEffectsPanel({
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-[10px] text-muted-foreground">
                   Scale
-                </label>
+                </span>
                 <select
                   aria-label="Quantizer scale"
                   value={config.quantizer.scale}
@@ -348,9 +348,9 @@ export function MidiEffectsPanel({
           {config.chordGenerator.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <label className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-[10px] text-muted-foreground">
                   Type
-                </label>
+                </span>
                 <select
                   aria-label="Chord type"
                   value={config.chordGenerator.chordType}
@@ -369,9 +369,9 @@ export function MidiEffectsPanel({
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-[10px] text-muted-foreground">
                   Voicing
-                </label>
+                </span>
                 <select
                   aria-label="Chord voicing"
                   value={config.chordGenerator.voicing}
@@ -424,9 +424,9 @@ export function MidiEffectsPanel({
           {config.noteRepeater.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <label className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-[10px] text-muted-foreground">
                   Rate
-                </label>
+                </span>
                 <select
                   aria-label="Repeater rate"
                   value={config.noteRepeater.rate}
@@ -485,9 +485,9 @@ export function MidiEffectsPanel({
           {config.arpeggiator.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <label className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-[10px] text-muted-foreground">
                   Pattern
-                </label>
+                </span>
                 <select
                   aria-label="Arpeggiator pattern"
                   value={config.arpeggiator.pattern}
@@ -506,9 +506,9 @@ export function MidiEffectsPanel({
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-[10px] text-muted-foreground">
                   Rate
-                </label>
+                </span>
                 <select
                   aria-label="Arpeggiator rate"
                   value={config.arpeggiator.rate}

@@ -52,10 +52,11 @@ export function MidiPianoRoll({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(MIN_WIDTH);
   const [localZoom, setLocalZoom] = useState(zoom);
-
-  useEffect(() => {
+  const prevZoomRef = useRef(zoom);
+  if (prevZoomRef.current !== zoom) {
+    prevZoomRef.current = zoom;
     setLocalZoom(zoom);
-  }, [zoom]);
+  }
 
   useEffect(() => {
     const el = containerRef.current;

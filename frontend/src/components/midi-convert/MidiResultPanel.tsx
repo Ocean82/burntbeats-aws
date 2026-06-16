@@ -62,7 +62,7 @@ export function MidiResultPanel({
   isDownloading = false,
   downloadError = null,
   onNewConversion,
-  onApplyEditorBpm,
+  onApplyEditorBpm: _onApplyEditorBpm,
   onApplyReconvertBpm,
   onAdjustSettings,
   onRetry,
@@ -108,6 +108,7 @@ export function MidiResultPanel({
 
   const [loopRegion, setLoopRegion] = useState<LoopRegion>(DEFAULT_LOOP);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset loop region when note span changes (new MIDI data loaded)
     setLoopRegion({
       enabled: false,
       start: noteSpan.start,

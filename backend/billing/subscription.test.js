@@ -43,6 +43,7 @@ test("GET /subscription returns explicit premium capabilities", async () => {
       canUsePremiumStemQualities: true,
       canUseBatchQueue: true,
     },
+    billingStatus: "none",
   });
 });
 
@@ -77,6 +78,7 @@ test("GET /subscription exposes limited capabilities for usage-token basic acces
       canUsePremiumStemQualities: false,
       canUseBatchQueue: false,
     },
+    billingStatus: "none",
   });
 });
 
@@ -111,5 +113,6 @@ test("GET /subscription fails closed for unknown active plans", async () => {
       canUsePremiumStemQualities: false,
       canUseBatchQueue: false,
     },
+    billingStatus: "none",
   });
 });

@@ -6,7 +6,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { authHeaders, setJobToken as storeJobToken } from "../api/auth";
 import { streamMidiJobUntilDone } from "../api/midiStatus";
-import { fetchWithRetry } from "../api/retry";
 import { trackEvent } from "../analytics/events";
 import {
   API_BASE,
@@ -16,7 +15,7 @@ import {
 } from "../config";
 import { useAppStore } from "../store/appStore";
 import { uploadWithProgress } from "../utils/uploadWithProgress";
-import { userFacingApiError, userFacingHttpError } from "../userFacingError";
+import { userFacingApiError } from "../userFacingError";
 import {
   buildMidiDownloadName,
   classifyMidiHttpError,
@@ -610,12 +609,7 @@ export function useMidiConvert() {
       return selectedLoadedStem.label;
     }
     return null;
-  }, [
-    sourceMode,
-    effectiveSelectedStem,
-    uploadName,
-    selectedLoadedStem?.label,
-  ]);
+  }, [sourceMode, effectiveSelectedStem, uploadName, selectedLoadedStem]);
 
   const downloadMidi = useCallback(async () => {
     if (!midiFileUrl || !jobToken || isDownloadingMidiRef.current) return;

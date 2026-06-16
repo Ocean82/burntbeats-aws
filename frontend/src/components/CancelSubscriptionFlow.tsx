@@ -58,6 +58,11 @@ function offersForReason(reason: CancelReason): { id: string; label: string; des
   ];
 }
 
+/**
+ * Outer shell: manages open/close lifecycle and AnimatePresence transitions.
+ * The stateful dialog body (CancelFlowContent) mounts fresh each time `open`
+ * becomes true, so state is automatically reset without useEffect-based resets.
+ */
 export function CancelSubscriptionFlow({
   open,
   onClose,
@@ -66,34 +71,73 @@ export function CancelSubscriptionFlow({
   onOfferAccepted,
 }: CancelSubscriptionFlowProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  useModalA11y(open, modalRef, onClose);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            className="fixed inset-0 z-modal-backdrop bg-secondary/80 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            aria-hidden
+          />
+          <div className="fixed inset-0 z-modal flex items-center justify-center p-md pointer-events-none">
+            <motion.div
+              ref={modalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cancel-flow-title"
+              tabIndex={-1}
+              className="pointer-events-auto w-full max-w-md rounded-2xl border border-border bg-popover p-lg shadow-elevation-xl outline-none"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+            >
+              <CancelFlowContent
+                plan={plan}
+                onClose={onClose}
+                onOpenPortal={onOpenPortal}
+                onOfferAccepted={onOfferAccepted}
+              />
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/**
+ * Stateful dialog content. Mounts fresh each time the dialog opens,
+ * ensuring clean initial state without explicit reset effects.
+ */
+function CancelFlowContent({
+  plan,
+  onClose,
+  onOpenPortal,
+  onOfferAccepted,
+}: {
+  plan: ServerPlan | null;
+  onClose: () => void;
+  onOpenPortal: () => void;
+  onOfferAccepted?: () => void;
+}) {
   const { getToken } = useAuth();
   const [step, setStep] = useState<Step>("survey");
   const [reason, setReason] = useState<CancelReason | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useModalA11y(open, modalRef, onClose);
-
-  const reset = useCallback(() => {
-    setStep("survey");
-    setReason(null);
-    setError(null);
-    setLoading(false);
-  }, []);
-
+  // Track analytics on mount (component only mounts when dialog opens)
   useEffect(() => {
-    if (open) {
-      trackCancelFlowStarted(plan);
-      reset();
-    }
-  }, [open, plan, reset]);
+    trackCancelFlowStarted(plan);
+  }, [plan]);
 
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
-  const postJson = async (path: string, body: Record<string, unknown>) => {
+  const postJson = useCallback(async (path: string, body: Record<string, unknown>) => {
     const token = await getToken();
     const res = await fetch(`${API_BASE}/api/billing${path}`, {
       method: "POST",
@@ -108,7 +152,7 @@ export function CancelSubscriptionFlow({
       throw new Error(j?.error || "Request failed");
     }
     return res.json();
-  };
+  }, [getToken]);
 
   const handleReasonSelect = async (selected: CancelReason) => {
     setReason(selected);
@@ -129,8 +173,8 @@ export function CancelSubscriptionFlow({
 
   const handleAcceptOffer = async (offerId: string) => {
     if (offerId === "support") {
-      window.location.href = "mailto:support@burntbeats.com?subject=Burnt%20Beats%20billing%20help";
-      handleClose();
+      window.open("mailto:support@burntbeats.com?subject=Burnt%20Beats%20billing%20help", "_self");
+      onClose();
       return;
     }
     setLoading(true);
@@ -139,7 +183,7 @@ export function CancelSubscriptionFlow({
     try {
       await postJson("/retention-offer", { offerType: offerId, reason: reason ?? "other" });
       onOfferAccepted?.();
-      handleClose();
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to apply offer");
     } finally {
@@ -153,7 +197,7 @@ export function CancelSubscriptionFlow({
     try {
       await postJson("/cancel-confirm", { reason: reason ?? "other" });
       onOpenPortal();
-      handleClose();
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to cancel");
     } finally {
@@ -164,126 +208,100 @@ export function CancelSubscriptionFlow({
   const offers = reason ? offersForReason(reason) : [];
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div
-            className="fixed inset-0 z-modal-backdrop bg-secondary/80 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={handleClose}
-            aria-hidden
-          />
-          <div className="fixed inset-0 z-modal flex items-center justify-center p-md pointer-events-none">
-            <motion.div
-              ref={modalRef}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="cancel-flow-title"
-              tabIndex={-1}
-              className="pointer-events-auto w-full max-w-md rounded-2xl border border-border bg-popover p-lg shadow-elevation-xl outline-none"
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-            >
-              <button
-                type="button"
-                onClick={handleClose}
-                className="absolute right-md top-md rounded-lg p-xs text-muted-foreground hover:bg-muted"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
+    <>
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-md top-md rounded-lg p-xs text-muted-foreground hover:bg-muted"
+        aria-label="Close"
+      >
+        <X className="h-5 w-5" />
+      </button>
 
-              <h2 id="cancel-flow-title" className="text-lg font-semibold text-foreground">
-                {step === "survey" && "Before you go…"}
-                {step === "offer" && "We'd love to keep you"}
-                {step === "confirm" && "Confirm cancellation"}
-              </h2>
+      <h2 id="cancel-flow-title" className="text-lg font-semibold text-foreground">
+        {step === "survey" && "Before you go…"}
+        {step === "offer" && "We'd love to keep you"}
+        {step === "confirm" && "Confirm cancellation"}
+      </h2>
 
-              {error && (
-                <p className="mt-sm rounded-lg border border-destructive/40 bg-destructive/10 px-sm py-xs text-sm text-destructive-200">
-                  {error}
-                </p>
-              )}
-
-              {step === "survey" && (
-                <div className="mt-md space-y-xs">
-                  <p className="text-sm text-secondary-foreground">
-                    What's the main reason you're cancelling?
-                  </p>
-                  {CANCEL_REASONS.map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => void handleReasonSelect(r.id)}
-                      className="flex min-h-[44px] w-full items-center rounded-lg border border-border px-md py-sm text-left text-sm text-secondary-foreground transition hover:border-primary-400/40 hover:bg-primary-500/10"
-                    >
-                      {loading && reason === r.id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {step === "offer" && reason && (
-                <div className="mt-md space-y-sm">
-                  {offers.map((offer) => (
-                    <button
-                      key={offer.id}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => void handleAcceptOffer(offer.id)}
-                      className="w-full rounded-xl border border-primary-400/35 bg-primary-500/10 px-md py-sm text-left transition hover:bg-primary-500/20"
-                    >
-                      <p className="font-semibold text-primary-100">{offer.label}</p>
-                      <p className="text-xs text-secondary-foreground">{offer.description}</p>
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      trackSaveOfferDeclined(offers[0]?.id ?? "none");
-                      setStep("confirm");
-                    }}
-                    className="w-full text-center text-sm text-muted-foreground underline-offset-2 hover:underline"
-                  >
-                    Continue cancelling
-                  </button>
-                </div>
-              )}
-
-              {step === "confirm" && (
-                <div className="mt-md space-y-md">
-                  <p className="text-sm text-secondary-foreground">
-                    Your subscription will cancel at the end of the current billing period.
-                    You keep access until then.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => void handleConfirmCancel()}
-                    className="w-full rounded-lg border border-destructive/40 bg-destructive/15 px-md py-sm text-sm font-semibold text-destructive-100"
-                  >
-                    {loading ? "Processing…" : "Cancel at period end"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="w-full text-sm text-primary-200 hover:underline"
-                  >
-                    Keep subscription
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        </>
+      {error && (
+        <p className="mt-sm rounded-lg border border-destructive/40 bg-destructive/10 px-sm py-xs text-sm text-destructive-200">
+          {error}
+        </p>
       )}
-    </AnimatePresence>
+
+      {step === "survey" && (
+        <div className="mt-md space-y-xs">
+          <p className="text-sm text-secondary-foreground">
+            What's the main reason you're cancelling?
+          </p>
+          {CANCEL_REASONS.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              disabled={loading}
+              onClick={() => void handleReasonSelect(r.id)}
+              className="flex min-h-[44px] w-full items-center rounded-lg border border-border px-md py-sm text-left text-sm text-secondary-foreground transition hover:border-primary-400/40 hover:bg-primary-500/10"
+            >
+              {loading && reason === r.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {step === "offer" && reason && (
+        <div className="mt-md space-y-sm">
+          {offers.map((offer) => (
+            <button
+              key={offer.id}
+              type="button"
+              disabled={loading}
+              onClick={() => void handleAcceptOffer(offer.id)}
+              className="w-full rounded-xl border border-primary-400/35 bg-primary-500/10 px-md py-sm text-left transition hover:bg-primary-500/20"
+            >
+              <p className="font-semibold text-primary-100">{offer.label}</p>
+              <p className="text-xs text-secondary-foreground">{offer.description}</p>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              trackSaveOfferDeclined(offers[0]?.id ?? "none");
+              setStep("confirm");
+            }}
+            className="w-full text-center text-sm text-muted-foreground underline-offset-2 hover:underline"
+          >
+            Continue cancelling
+          </button>
+        </div>
+      )}
+
+      {step === "confirm" && (
+        <div className="mt-md space-y-md">
+          <p className="text-sm text-secondary-foreground">
+            Your subscription will cancel at the end of the current billing period.
+            You keep access until then.
+          </p>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void handleConfirmCancel()}
+            className="w-full rounded-lg border border-destructive/40 bg-destructive/15 px-md py-sm text-sm font-semibold text-destructive-100"
+          >
+            {loading ? "Processing…" : "Cancel at period end"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full text-sm text-primary-200 hover:underline"
+          >
+            Keep subscription
+          </button>
+        </div>
+      )}
+    </>
   );
 }

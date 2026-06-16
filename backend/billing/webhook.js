@@ -131,7 +131,15 @@ webhookRouter.post("/webhook", async (req, res) => {
         await creditActiveSubscriptionAllowance(stripe, sub, {
           stripeEventId: event.id,
         });
-        await syncSubscriptionBillingStatus(stripe, sub);
+        try {
+          await syncSubscriptionBillingStatus(stripe, sub);
+        } catch (syncErr) {
+          // Non-fatal: billing status sync is best-effort
+          console.error(
+            `[billing/webhook] syncSubscriptionBillingStatus failed:`,
+            syncErr?.message || syncErr,
+          );
+        }
         break;
       }
       case "customer.subscription.deleted": {
