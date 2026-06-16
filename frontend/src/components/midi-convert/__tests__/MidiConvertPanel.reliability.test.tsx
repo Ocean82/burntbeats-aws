@@ -123,7 +123,7 @@ const BASE_HOOK_RETURN = {
   setDownloadError: vi.fn(),
   downloadSourceLabel: null as string | null,
   triggerConvert: mockTriggerConvert,
-  batchJobs: [],
+  batchJobs: [] as import("../../../hooks/useMidiConvert").BatchJob[],
   isBatchMode: false,
   batchProgress: { completed: 0, total: 0 },
   triggerBatchConvert: vi.fn(),
@@ -290,7 +290,9 @@ describe("MidiConvertPanel — SuccessFlash wiring (Task 17.2)", () => {
     rerender(<MidiConvertPanel />);
 
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByLabelText(/action completed successfully/i)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/action completed successfully/i),
+    ).toBeInTheDocument();
   });
 
   it("hides SuccessFlash after onComplete fires", async () => {

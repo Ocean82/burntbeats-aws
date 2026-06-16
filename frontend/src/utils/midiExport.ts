@@ -7,6 +7,11 @@ import type { MidiNoteEvent } from "../hooks/useMidiConvert";
 import type { EditorTrack } from "../components/midi-convert/editorTypes";
 import type { SectionMarker } from "../components/midi-convert/MarkerStrip";
 
+// midi-writer-js may expose MarkerEvent in newer builds; access via dynamic key
+type MidiWriterModule = typeof MidiWriter & {
+  MarkerEvent?: new (params: Record<string, unknown>) => unknown;
+};
+
 export interface MidiExportOptions {
   markers?: SectionMarker[];
 }
@@ -19,7 +24,7 @@ export interface MidiExportResult {
 
 /** True when midi-writer-js exposes timed marker meta events. */
 export function midiMarkerExportSupported(): boolean {
-  return typeof MidiWriter.MarkerEvent === "function";
+  return typeof (MidiWriter as MidiWriterModule).MarkerEvent === "function";
 }
 
 /**
@@ -58,7 +63,7 @@ function addMarkersToTrack(
     const absoluteTick = secondsToTicks(marker.time, bpm);
     const delta = Math.max(0, absoluteTick - previousTick);
     track.addEvent(
-      new MidiWriter.MarkerEvent({
+      new (MidiWriter as MidiWriterModule).MarkerEvent!({
         text: marker.label,
         delta,
       }),
@@ -75,7 +80,10 @@ function buildTrackFromEditorTrack(
   bpm: number,
   markers?: SectionMarker[],
   includeMarkers = false,
-): { writerTrack: InstanceType<typeof MidiWriter.Track>; markersExported: number } {
+): {
+  writerTrack: InstanceType<typeof MidiWriter.Track>;
+  markersExported: number;
+} {
   const writerTrack = new MidiWriter.Track();
   writerTrack.setTempo(bpm);
   writerTrack.addTrackName(track.name);

@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { exportTracksToMidi } from "./midiExport";
 import type { EditorTrack } from "../components/midi-convert/editorTypes";
-import { BUILTIN_CC_LANES } from "../components/midi-convert/editorTypes";
+import {
+  BUILTIN_CC_LANES,
+  createDefaultTrackMidiFx,
+  DEFAULT_MIDI_FX_APPLY_MODE,
+} from "../components/midi-convert/editorTypes";
 
-function makeTrack(id: string, name: string, notes: EditorTrack["notes"], ccEvents?: { cc: number; time: number; value: number }[]): EditorTrack {
+function makeTrack(
+  id: string,
+  name: string,
+  notes: EditorTrack["notes"],
+  ccEvents?: { cc: number; time: number; value: number }[],
+): EditorTrack {
   return {
     id,
     name,
@@ -16,8 +25,13 @@ function makeTrack(id: string, name: string, notes: EditorTrack["notes"], ccEven
     ccLanes: BUILTIN_CC_LANES.map((lane) => ({
       ...lane,
       events:
-        ccEvents?.filter((e) => e.cc === lane.ccNumber).map((e) => ({ time: e.time, value: e.value })) ?? [],
+        ccEvents
+          ?.filter((e) => e.cc === lane.ccNumber)
+          .map((e) => ({ time: e.time, value: e.value })) ?? [],
     })),
+    midiEffects: createDefaultTrackMidiFx(),
+    midiFxApplyMode: DEFAULT_MIDI_FX_APPLY_MODE,
+    midiFxPreview: false,
   };
 }
 
@@ -27,9 +41,12 @@ describe("exportTracksToMidi", () => {
       makeTrack("t1", "Melody", [
         { id: "n1", pitch: 60, start: 0, duration: 0.5, velocity: 100 },
       ]),
-      makeTrack("t2", "Bass", [
-        { id: "n2", pitch: 36, start: 0, duration: 1, velocity: 90 },
-      ], [{ cc: 7, time: 0, value: 100 }]),
+      makeTrack(
+        "t2",
+        "Bass",
+        [{ id: "n2", pitch: 36, start: 0, duration: 1, velocity: 90 }],
+        [{ cc: 7, time: 0, value: 100 }],
+      ),
     ];
 
     const { blob } = exportTracksToMidi(tracks, 120);

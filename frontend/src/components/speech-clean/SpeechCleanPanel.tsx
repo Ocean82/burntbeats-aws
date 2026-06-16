@@ -70,7 +70,8 @@ export function SpeechCleanPanel({
               Speech Clean
             </h2>
             <p className="mt-0.5 text-sm text-info-100/55">
-              Denoise and restore voice recordings. This tool is tuned for speech, not music stem separation.
+              Denoise and restore voice recordings. This tool is tuned for
+              speech, not music stem separation.
             </p>
           </div>
         </div>
@@ -148,7 +149,6 @@ export function SpeechCleanPanel({
             usageBalance={usageBalance}
             usageLoading={usageLoading}
             estimatedSplitTokens={estimatedTokens}
-            isSample={false}
             jobLabel="This job"
             showBalance={false}
           />
@@ -197,7 +197,10 @@ export function SpeechCleanPanel({
           variant="server"
           title="Enhancement failed"
           description={error}
-          onRetry={() => { setError(null); void triggerEnhance(); }}
+          onRetry={() => {
+            setError(null);
+            void triggerEnhance();
+          }}
         />
       )}
 

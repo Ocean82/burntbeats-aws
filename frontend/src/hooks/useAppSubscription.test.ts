@@ -25,6 +25,9 @@ describe("useAppSubscription", () => {
     mockedUseUsageBalance.mockReturnValue({
       balance: 12,
       periodEnd: null,
+      paidBalance: 0,
+      freeMonthlyRemaining: 12,
+      welcomeGranted: false,
       loading: false,
       refetch: vi.fn(),
     });
@@ -43,6 +46,7 @@ describe("useAppSubscription", () => {
         canDownloadFullPreview: false,
         canShareCleanPreview: false,
       },
+      billingStatus: "none",
       billingError: null,
       startCheckout: vi.fn(),
       openPortal: vi.fn(),
@@ -75,6 +79,7 @@ describe("useAppSubscription", () => {
         canDownloadFullPreview: true,
         canShareCleanPreview: true,
       },
+      billingStatus: "active",
       billingError: null,
       startCheckout: vi.fn(),
       openPortal: vi.fn(),

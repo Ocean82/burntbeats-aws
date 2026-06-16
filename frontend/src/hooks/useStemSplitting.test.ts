@@ -20,16 +20,17 @@ vi.mock("../analytics/events", () => ({
 }));
 
 vi.mock("../store/appStore", () => {
-  const useAppStore = ((selector: (state: {
-    setUploadState: typeof setUploadStateMock;
-  }) => unknown) =>
+  const useAppStore = ((
+    selector: (state: { setUploadState: typeof setUploadStateMock }) => unknown,
+  ) =>
     selector({
       setUploadState: setUploadStateMock,
     })) as typeof import("../store/appStore").useAppStore;
 
-  useAppStore.getState = () => storeState as ReturnType<
-    typeof import("../store/appStore").useAppStore.getState
-  >;
+  useAppStore.getState = () =>
+    storeState as ReturnType<
+      typeof import("../store/appStore").useAppStore.getState
+    >;
 
   return { useAppStore };
 });
@@ -63,6 +64,7 @@ describe("useStemSplitting", () => {
             canDownloadFullPreview: false,
             canShareCleanPreview: false,
           },
+          billingStatus: "none",
           billingError: null,
           startCheckout: vi.fn(),
           openPortal: vi.fn(),

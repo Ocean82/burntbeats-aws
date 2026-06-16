@@ -1,13 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MidiAnalysisSummary } from "../MidiAnalysisSummary";
-import type { MidiAnalysis } from "../../hooks/useMidiConvert";
+import type { MidiAnalysis } from "../../../hooks/useMidiConvert";
 
 const analysis: MidiAnalysis = {
   suggested_bpm: 128,
   estimated_key: "C major",
+  scale: "major",
   note_density: 4.2,
   complexity_score: 0.4,
+  total_notes: 42,
   pitch_range: {
     min: 48,
     max: 72,

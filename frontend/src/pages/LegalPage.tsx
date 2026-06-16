@@ -1,10 +1,12 @@
-import DOMPurify from "dompurify";
+import DOMPurify, { type Config as DOMPurifyConfig } from "dompurify";
 import privacyMd from "./legal/privacy-policy.md?raw";
 import tosMd from "./legal/terms-of-service.md?raw";
 
 type LegalDoc = "privacy-policy" | "terms-of-service";
 
-const LEGAL_HTML_SANITIZE_CONFIG: DOMPurify.Config = {
+const LEGAL_HTML_SANITIZE_CONFIG: DOMPurifyConfig & {
+  RETURN_TRUSTED_TYPE?: boolean;
+} = {
   ALLOWED_TAGS: [
     "h1",
     "h2",
@@ -31,7 +33,8 @@ const LEGAL_HTML_SANITIZE_CONFIG: DOMPurify.Config = {
 };
 
 function getDoc(doc: LegalDoc): { title: string; markdown: string } {
-  if (doc === "privacy-policy") return { title: "Privacy Policy", markdown: privacyMd };
+  if (doc === "privacy-policy")
+    return { title: "Privacy Policy", markdown: privacyMd };
   return { title: "Terms of Service", markdown: tosMd };
 }
 
@@ -73,10 +76,17 @@ function renderMarkdown(md: string): string {
       );
 
   const closeList = () => {
-    if (inList) { out.push("</ul>"); inList = false; }
+    if (inList) {
+      out.push("</ul>");
+      inList = false;
+    }
   };
   const closeTable = () => {
-    if (inTable) { out.push("</tbody></table>"); inTable = false; tableHeaderDone = false; }
+    if (inTable) {
+      out.push("</tbody></table>");
+      inTable = false;
+      tableHeaderDone = false;
+    }
   };
 
   for (const raw of lines) {
@@ -84,7 +94,8 @@ function renderMarkdown(md: string): string {
 
     // Horizontal rule
     if (/^---+$/.test(line)) {
-      closeList(); closeTable();
+      closeList();
+      closeTable();
       out.push('<hr class="border-border my-6" />');
       continue;
     }
@@ -92,22 +103,27 @@ function renderMarkdown(md: string): string {
     // Headings
     const h = line.match(/^(#{1,4})\s+(.*)/);
     if (h) {
-      closeList(); closeTable();
+      closeList();
+      closeTable();
       const level = h[1].length;
       const text = inlineFormat(h[2]);
-      const cls = [
-        "text-2xl font-bold text-foreground mt-8 mb-sm",
-        "text-xl font-semibold text-secondary-foreground mt-lg mb-xs",
-        "text-base font-semibold text-primary-200/90 mt-lg mb-1 uppercase tracking-wide",
-        "text-sm font-semibold text-secondary-foreground mt-md mb-1",
-      ][level - 1] ?? "text-base font-semibold text-foreground mt-md mb-1";
+      const cls =
+        [
+          "text-2xl font-bold text-foreground mt-8 mb-sm",
+          "text-xl font-semibold text-secondary-foreground mt-lg mb-xs",
+          "text-base font-semibold text-primary-200/90 mt-lg mb-1 uppercase tracking-wide",
+          "text-sm font-semibold text-secondary-foreground mt-md mb-1",
+        ][level - 1] ?? "text-base font-semibold text-foreground mt-md mb-1";
       out.push(`<h${level} class="${cls}">${text}</h${level}>`);
       continue;
     }
 
     // Table row
     if (line.startsWith("|")) {
-      const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+      const cells = line
+        .split("|")
+        .slice(1, -1)
+        .map((c) => c.trim());
       // Separator row (---|---)
       if (cells.every((c) => /^[-:]+$/.test(c))) {
         if (!tableHeaderDone) {
@@ -118,8 +134,10 @@ function renderMarkdown(md: string): string {
       }
       if (!inTable) {
         closeList();
-        out.push('<div class="overflow-x-auto my-4"><table class="w-full text-sm border-collapse">');
-        out.push('<thead><tr>');
+        out.push(
+          '<div class="overflow-x-auto my-4"><table class="w-full text-sm border-collapse">',
+        );
+        out.push("<thead><tr>");
         inTable = true;
         tableHeaderDone = false;
       } else if (tableHeaderDone) {
@@ -129,17 +147,26 @@ function renderMarkdown(md: string): string {
       const cellCls = tableHeaderDone
         ? "border border-border px-sm py-xs text-secondary-foreground"
         : "border border-border px-sm py-xs text-left text-muted-foreground font-semibold bg-muted";
-      cells.forEach((c) => out.push(`<${tag} class="${cellCls}">${inlineFormat(c)}</${tag}>`));
+      cells.forEach((c) =>
+        out.push(`<${tag} class="${cellCls}">${inlineFormat(c)}</${tag}>`),
+      );
       if (tableHeaderDone) out.push("</tr>");
       continue;
     }
-    if (inTable) { closeTable(); }
+    if (inTable) {
+      closeTable();
+    }
 
     // List item
     if (/^[-*]\s+/.test(line)) {
-      if (!inList) { out.push('<ul class="list-none space-y-1.5 my-3 ml-1">'); inList = true; }
+      if (!inList) {
+        out.push('<ul class="list-none space-y-1.5 my-3 ml-1">');
+        inList = true;
+      }
       const text = inlineFormat(line.replace(/^[-*]\s+/, ""));
-      out.push(`<li class="flex gap-xs text-secondary-foreground"><span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-400/70"></span><span>${text}</span></li>`);
+      out.push(
+        `<li class="flex gap-xs text-secondary-foreground"><span class="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary-400/70"></span><span>${text}</span></li>`,
+      );
       continue;
     }
     closeList();
@@ -151,7 +178,9 @@ function renderMarkdown(md: string): string {
     }
 
     // Paragraph
-    out.push(`<p class="text-readable text-secondary-foreground leading-7">${inlineFormat(line)}</p>`);
+    out.push(
+      `<p class="text-readable text-secondary-foreground leading-7">${inlineFormat(line)}</p>`,
+    );
   }
 
   closeList();
@@ -161,13 +190,18 @@ function renderMarkdown(md: string): string {
 
 /** Sanitize rendered legal HTML with DOMPurify before dangerouslySetInnerHTML. */
 function sanitizeLegalHtml(html: string): string {
-  return DOMPurify.sanitize(html, LEGAL_HTML_SANITIZE_CONFIG);
+  return DOMPurify.sanitize(
+    html,
+    LEGAL_HTML_SANITIZE_CONFIG,
+  ) as unknown as string;
 }
 
 export function LegalPage({ doc }: { doc: LegalDoc }) {
   const { title, markdown } = getDoc(doc);
-  const otherDoc = doc === "privacy-policy" ? "terms-of-service" : "privacy-policy";
-  const otherTitle = doc === "privacy-policy" ? "Terms of Service" : "Privacy Policy";
+  const otherDoc =
+    doc === "privacy-policy" ? "terms-of-service" : "privacy-policy";
+  const otherTitle =
+    doc === "privacy-policy" ? "Terms of Service" : "Privacy Policy";
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-foreground">
@@ -210,17 +244,31 @@ export function LegalPage({ doc }: { doc: LegalDoc }) {
           <p className="mb-lg text-sm text-muted-foreground">Burnt Beats</p>
           <div
             className="prose-legal"
-            dangerouslySetInnerHTML={{ __html: sanitizeLegalHtml(renderMarkdown(markdown)) }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeLegalHtml(renderMarkdown(markdown)),
+            }}
           />
         </article>
 
         {/* Footer links */}
         <div className="mt-8 flex flex-wrap justify-center gap-md text-sm text-muted-foreground">
-          <a href="/terms-of-service" className="hover:text-secondary-foreground transition">Terms of Service</a>
+          <a
+            href="/terms-of-service"
+            className="hover:text-secondary-foreground transition"
+          >
+            Terms of Service
+          </a>
           <span aria-hidden>·</span>
-          <a href="/privacy-policy" className="hover:text-secondary-foreground transition">Privacy Policy</a>
+          <a
+            href="/privacy-policy"
+            className="hover:text-secondary-foreground transition"
+          >
+            Privacy Policy
+          </a>
           <span aria-hidden>·</span>
-          <a href="/" className="hover:text-secondary-foreground transition">Home</a>
+          <a href="/" className="hover:text-secondary-foreground transition">
+            Home
+          </a>
         </div>
       </div>
     </div>

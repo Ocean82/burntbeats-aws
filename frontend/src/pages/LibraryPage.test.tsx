@@ -15,6 +15,7 @@ const subscription: UseSubscriptionResult = {
     canDownloadFullPreview: true,
     canShareCleanPreview: false,
   },
+  billingStatus: "none",
   billingError: null,
   startCheckout: vi.fn(),
   openPortal: vi.fn(),

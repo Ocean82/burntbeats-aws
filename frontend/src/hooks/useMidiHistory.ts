@@ -14,6 +14,7 @@ export interface MidiHistoryRecord {
   duration_seconds: number;
   created_at: string | null;
   file_available: boolean;
+  analysis?: { suggested_bpm?: number } | null;
 }
 
 async function fetchMidiHistoryRecords(): Promise<MidiHistoryRecord[]> {
