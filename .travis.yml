@@ -1,0 +1,225 @@
+language: minimal
+os: linux
+dist: jammy
+
+# Parallel job stages for faster builds
+stages:
+  - lint
+  - test
+  - build
+
+# Cache node_modules and uv virtualenvs between builds
+cache:
+  directories:
+    - frontend/node_modules
+    - backend/node_modules
+    - $HOME/.cache/uv
+
+# Shared environment
+env:
+  global:
+    - NODE_ENV=test
+    - CI=true
+
+# --------------------------------------------------------------------------
+# Jobs
+# --------------------------------------------------------------------------
+jobs:
+  include:
+    # ── Frontend Lint & Typecheck ──────────────────────────────────────────
+    - stage: lint
+      name: "Frontend: lint + typecheck"
+      language: node_js
+      node_js: "20"
+      before_install:
+        - cd frontend
+      install:
+        - npm ci
+      script:
+        - npm run lint
+        - npx tsc --noEmit
+
+    # ── Backend Lint ──────────────────────────────────────────────────────
+    - stage: lint
+      name: "Backend: lint"
+      language: node_js
+      node_js: "20"
+      before_install:
+        - cd backend
+      install:
+        - npm ci
+      script:
+        - npm run lint
+
+    # ── Python Lint ───────────────────────────────────────────────────────
+    - stage: lint
+      name: "Python: ruff check"
+      language: python
+      python: "3.11"
+      before_install:
+        - pip install uv
+      install:
+        - uv sync --frozen --package burntbeats-stem --no-install-project
+        - uv sync --frozen --group dev
+      script:
+        - uv run ruff check stem_service --select E9,F63,F7,F82 --quiet
+        - uv run python -m py_compile stem_service/server.py
+
+    # ── Frontend Unit Tests ───────────────────────────────────────────────
+    - stage: test
+      name: "Frontend: unit tests"
+      language: node_js
+      node_js: "20"
+      before_install:
+        - cd frontend
+      install:
+        - npm ci
+      script:
+        - npm run test:run
+        - npm run test:assertions
+
+    # ── Frontend E2E Tests ────────────────────────────────────────────────
+    - stage: test
+      name: "Frontend: Playwright E2E"
+      language: node_js
+      node_js: "20"
+      before_install:
+        - cd frontend
+      install:
+        - npm ci
+        - npm run test:e2e:install-browsers:ci
+      script:
+        - npm run test:e2e
+
+    # ── Backend Unit Tests ────────────────────────────────────────────────
+    - stage: test
+      name: "Backend: unit tests"
+      language: node_js
+      node_js: "20"
+      env:
+        - INTERNAL_SERVICE_AUTH_REQUIRED=0
+        - DEV_BYPASS_UPLOAD_AUTH=1
+        - RATE_LIMIT_MAX_REQUESTS=200
+      before_install:
+        - cd backend
+      install:
+        - npm ci
+      script:
+        - npm test
+
+    # ── Backend Health Smoke ──────────────────────────────────────────────
+    - stage: test
+      name: "Backend: health smoke"
+      language: node_js
+      node_js: "20"
+      before_install:
+        - cd backend
+      install:
+        - npm ci
+      script:
+        - |
+          export PORT=3001
+          export STEM_SERVICE_URL=http://localhost:5000
+          node server.js &
+          pid=$!
+          trap "kill $pid >/dev/null 2>&1 || true" EXIT
+          sleep 2
+          curl -fsS http://localhost:3001/api/health | cat
+
+    # ── Stem Service Python Tests ─────────────────────────────────────────
+    - stage: test
+      name: "Python: stem_service tests"
+      language: python
+      python: "3.11"
+      addons:
+        apt:
+          packages:
+            - libsndfile1
+      env:
+        - STEM_ALLOW_MISSING_HTDEMUCS=1
+        - INTERNAL_SERVICE_AUTH_REQUIRED=0
+      before_install:
+        - pip install uv
+      install:
+        - uv sync --frozen --package burntbeats-stem --no-install-project
+        - uv sync --frozen --group dev
+      script:
+        - uv run pytest stem_service/tests -q
+
+    # ── MIDI Service Python Tests ─────────────────────────────────────────
+    - stage: test
+      name: "Python: midi_service tests"
+      language: python
+      python: "3.11"
+      addons:
+        apt:
+          packages:
+            - libsndfile1
+            - ffmpeg
+      before_install:
+        - pip install uv
+      install:
+        - uv sync --frozen --all-packages --group dev
+      script:
+        - uv run pytest midi_service/tests -q -m "not integration"
+
+    # ── Speech Service Python Tests ───────────────────────────────────────
+    - stage: test
+      name: "Python: speech_service tests"
+      language: python
+      python: "3.11"
+      env:
+        - INTERNAL_SERVICE_AUTH_REQUIRED=0
+      before_install:
+        - pip install uv
+      install:
+        - uv sync --frozen --all-packages --group dev
+      script:
+        - uv run pytest speech_service/tests -q
+
+    # ── Frontend Production Build ─────────────────────────────────────────
+    - stage: build
+      name: "Frontend: production build"
+      language: node_js
+      node_js: "20"
+      before_install:
+        - cd frontend
+      install:
+        - npm ci
+      script:
+        - npm run build
+        - npm run quality:baseline
+      env:
+        - QUALITY_BASELINE_ENFORCE=1
+
+    # ── Docker: stem_service ──────────────────────────────────────────────
+    - stage: build
+      name: "Docker: stem_service"
+      language: minimal
+      services:
+        - docker
+      script:
+        - docker build -f stem_service/Dockerfile .
+
+    # ── Docker: speech_service ────────────────────────────────────────────
+    - stage: build
+      name: "Docker: speech_service"
+      language: minimal
+      services:
+        - docker
+      script:
+        - docker build -f speech_service/Dockerfile .
+
+    # ── Docker: backend ───────────────────────────────────────────────────
+    - stage: build
+      name: "Docker: backend"
+      language: minimal
+      services:
+        - docker
+      script:
+        - docker build -t burntbeats-backend:latest -f backend/Dockerfile backend
+
+notifications:
+  email:
+    on_success: never
+    on_failure: change
