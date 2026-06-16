@@ -32,7 +32,10 @@ describe("PricingPage", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("$144/yr ($12/mo)"));
+    // Price text appears in both desktop and mobile card renders;
+    // use the testid to target the interactive price button.
+    const priceButtons = screen.getAllByTestId("pricing-price-premium");
+    fireEvent.click(priceButtons[0]);
 
     expect(startCheckout).toHaveBeenCalledWith("premium", {
       source: "pricing_page",
@@ -70,27 +73,28 @@ describe("PricingPage", () => {
 
     expect(screen.getAllByText(/current plan/i).length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByTestId("pricing-price-premium"));
+    const priceElements = screen.getAllByTestId("pricing-price-premium");
+    fireEvent.click(priceElements[0]);
 
     expect(startCheckout).not.toHaveBeenCalled();
   });
 
   it("uses workflow-oriented copy for subscriptions and credit packs", () => {
-    render(
-      <PricingPage subscription={inactiveSub} onClose={vi.fn()} />,
-    );
+    render(<PricingPage subscription={inactiveSub} onClose={vi.fn()} />);
 
+    // Descriptions render in both desktop and mobile card variants;
+    // use getAllByText and assert at least one match.
     expect(
-      screen.getByText(/full browser workstation/i),
-    ).toBeInTheDocument();
+      screen.getAllByText(/full browser workstation/i).length,
+    ).toBeGreaterThan(0);
     expect(
-      screen.getByText(/speed-mode 2-stem splits/i),
-    ).toBeInTheDocument();
+      screen.getAllByText(/speed-mode 2-stem splits/i).length,
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByTestId("pricing-tab-credit-packs"));
 
     expect(
-      screen.getByText(/one-time credits for occasional sessions/i),
-    ).toBeInTheDocument();
+      screen.getAllByText(/one-time credits for occasional sessions/i).length,
+    ).toBeGreaterThan(0);
   });
 });
