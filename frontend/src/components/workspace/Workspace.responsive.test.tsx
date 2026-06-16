@@ -23,18 +23,65 @@ vi.mock("@/hooks/useWorkspaceLayout", () => ({
 // Mock WorkflowContext
 vi.mock("@/contexts/WorkflowContext", () => ({
   useWorkflow: () => ({
-    stemStates: { "stem-1": { pitchSemitones: 0, timeStretch: 1, fadeIn: 0, fadeOut: 0, mixer: { gain: 0, pan: 0, eqLow: 0, eqMid: 0, eqHigh: 0, reverbWet: 0, delayWet: 0 } } },
+    stemStates: {
+      "stem-1": {
+        pitchSemitones: 0,
+        timeStretch: 1,
+        fadeIn: 0,
+        fadeOut: 0,
+        mixer: {
+          gain: 0,
+          pan: 0,
+          eqLow: 0,
+          eqMid: 0,
+          eqHigh: 0,
+          reverbWet: 0,
+          delayWet: 0,
+        },
+      },
+    },
     setStemStates: vi.fn(),
+  }),
+}));
+
+// Mock AudioContext
+vi.mock("@/contexts/AudioContext", () => ({
+  useAudio: () => ({
+    isPlayingMix: false,
+    handlePlayMix: vi.fn(),
+    handleStopMix: vi.fn(),
+    handleSeek: vi.fn(),
+    playbackPosition: 0,
+    duration: 0,
+    stemBuffers: {},
+    setStemBuffers: vi.fn(),
+    isLoadingStems: false,
+    loadingError: null,
+    retryLoadStems: vi.fn(),
+    clearStemLoadingState: vi.fn(),
+    applyMasterEq: vi.fn(),
+    applyMasterCompressor: vi.fn(),
   }),
 }));
 
 // Mock framer-motion AnimatePresence to render children directly
 vi.mock("framer-motion", () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
   motion: {
-    div: ({ children, onTouchStart, onTouchEnd, ...rest }: React.PropsWithChildren<Record<string, unknown>>) => {
+    div: ({
+      children,
+      onTouchStart,
+      onTouchEnd,
+      ...rest
+    }: React.PropsWithChildren<Record<string, unknown>>) => {
       return (
-        <div {...rest} onTouchStart={onTouchStart as React.TouchEventHandler} onTouchEnd={onTouchEnd as React.TouchEventHandler}>
+        <div
+          {...rest}
+          onTouchStart={onTouchStart as React.TouchEventHandler}
+          onTouchEnd={onTouchEnd as React.TouchEventHandler}
+        >
           {children}
         </div>
       );
@@ -144,7 +191,9 @@ describe("Workspace responsive behavior", () => {
     it("does NOT render workspace-effects-overlay (tablet overlay)", () => {
       render(<Workspace />);
 
-      expect(screen.queryByTestId("workspace-effects-overlay")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("workspace-effects-overlay"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -162,7 +211,9 @@ describe("Workspace responsive behavior", () => {
     it("renders workspace-effects-overlay when a tool is active", () => {
       render(<Workspace />);
 
-      expect(screen.getByTestId("workspace-effects-overlay")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("workspace-effects-overlay"),
+      ).toBeInTheDocument();
     });
 
     it("does NOT render workspace-effects (desktop push column)", () => {
@@ -174,7 +225,9 @@ describe("Workspace responsive behavior", () => {
     it("does NOT render EffectsPanelBottomSheet (mobile bottom sheet)", () => {
       render(<Workspace />);
 
-      expect(screen.queryByTestId("effects-bottom-sheet")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("effects-bottom-sheet"),
+      ).not.toBeInTheDocument();
     });
 
     it("renders workspace-sidebar (vertical ToolSidebar)", () => {

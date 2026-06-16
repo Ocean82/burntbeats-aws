@@ -5,8 +5,24 @@ import { Workspace } from "./Workspace";
 import { LAYOUT } from "@/constants/layout";
 
 // Mock hooks
-const mockToolDrawer: { activeTool: import("@/types/tools").ToolCategory | null; isOpen: boolean; open: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn>; toggle: ReturnType<typeof vi.fn> } = { activeTool: null, isOpen: false, open: vi.fn(), close: vi.fn(), toggle: vi.fn() };
-const mockWorkspaceLayout = { mixerExpanded: true, toggleMixer: vi.fn(), viewportSize: { width: 1280, height: 900 } };
+const mockToolDrawer: {
+  activeTool: import("@/types/tools").ToolCategory | null;
+  isOpen: boolean;
+  open: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+  toggle: ReturnType<typeof vi.fn>;
+} = {
+  activeTool: null,
+  isOpen: false,
+  open: vi.fn(),
+  close: vi.fn(),
+  toggle: vi.fn(),
+};
+const mockWorkspaceLayout = {
+  mixerExpanded: true,
+  toggleMixer: vi.fn(),
+  viewportSize: { width: 1280, height: 900 },
+};
 
 vi.mock("@/hooks/useToolDrawer", () => ({
   useToolDrawer: () => mockToolDrawer,
@@ -18,8 +34,43 @@ vi.mock("@/hooks/useWorkspaceLayout", () => ({
 
 vi.mock("@/contexts/WorkflowContext", () => ({
   useWorkflow: () => ({
-    stemStates: { "stem-1": { pitchSemitones: 0, timeStretch: 1, fadeIn: 0, fadeOut: 0, mixer: { gain: 0, pan: 0, eqLow: 0, eqMid: 0, eqHigh: 0, reverbWet: 0, delayWet: 0 } } },
+    stemStates: {
+      "stem-1": {
+        pitchSemitones: 0,
+        timeStretch: 1,
+        fadeIn: 0,
+        fadeOut: 0,
+        mixer: {
+          gain: 0,
+          pan: 0,
+          eqLow: 0,
+          eqMid: 0,
+          eqHigh: 0,
+          reverbWet: 0,
+          delayWet: 0,
+        },
+      },
+    },
     setStemStates: vi.fn(),
+  }),
+}));
+
+vi.mock("@/contexts/AudioContext", () => ({
+  useAudio: () => ({
+    isPlayingMix: false,
+    handlePlayMix: vi.fn(),
+    handleStopMix: vi.fn(),
+    handleSeek: vi.fn(),
+    playbackPosition: 0,
+    duration: 0,
+    stemBuffers: {},
+    setStemBuffers: vi.fn(),
+    isLoadingStems: false,
+    loadingError: null,
+    retryLoadStems: vi.fn(),
+    clearStemLoadingState: vi.fn(),
+    applyMasterEq: vi.fn(),
+    applyMasterCompressor: vi.fn(),
   }),
 }));
 
@@ -30,16 +81,26 @@ vi.mock("@/hooks/useMediaQuery", () => ({
 
 // Mock framer-motion AnimatePresence to just render children
 vi.mock("framer-motion", () => ({
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
   motion: {
-    div: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => <div {...props}>{children}</div>,
+    div: ({
+      children,
+      ...props
+    }: React.PropsWithChildren<Record<string, unknown>>) => (
+      <div {...props}>{children}</div>
+    ),
   },
   useReducedMotion: () => false,
 }));
 
 // Mock EffectsPanelBottomSheet
 vi.mock("./EffectsPanelBottomSheet", () => ({
-  EffectsPanelBottomSheet: ({ activeTool, onClose }: Record<string, unknown>) => (
+  EffectsPanelBottomSheet: ({
+    activeTool,
+    onClose,
+  }: Record<string, unknown>) => (
     <div data-testid="effects-bottom-sheet" data-tool={activeTool as string}>
       <button onClick={onClose as React.MouseEventHandler}>Close</button>
     </div>
@@ -51,7 +112,11 @@ vi.mock("./MixerConsole", () => ({
   MixerConsole: () => <div data-testid="mixer-console" />,
 }));
 
-function setViewport(opts: { desktop?: boolean; tablet?: boolean; tall?: boolean }) {
+function setViewport(opts: {
+  desktop?: boolean;
+  tablet?: boolean;
+  tall?: boolean;
+}) {
   const desktop = opts.desktop ?? true;
   const tablet = opts.tablet ?? true;
   const tall = opts.tall ?? true;
@@ -69,7 +134,9 @@ describe("Workspace", () => {
       render(<Workspace />);
 
       const workspace = screen.getByTestId("workspace");
-      expect(workspace.style.height).toBe(`calc(100vh - ${LAYOUT.HEADER_HEIGHT}px)`);
+      expect(workspace.style.height).toBe(
+        `calc(100vh - ${LAYOUT.HEADER_HEIGHT}px)`,
+      );
       expect(workspace.style.gridTemplateAreas).toContain("transport");
       expect(workspace.style.gridTemplateAreas).toContain("sidebar");
       expect(workspace.style.gridTemplateAreas).toContain("waveform");
@@ -109,7 +176,9 @@ describe("Workspace", () => {
       render(<Workspace />);
 
       const workspace = screen.getByTestId("workspace");
-      expect(workspace.style.gridTemplateColumns).toContain(`${LAYOUT.EFFECTS_PANEL_WIDTH}px`);
+      expect(workspace.style.gridTemplateColumns).toContain(
+        `${LAYOUT.EFFECTS_PANEL_WIDTH}px`,
+      );
       expect(screen.getByTestId("workspace-effects")).toBeInTheDocument();
 
       mockToolDrawer.isOpen = false;
@@ -122,7 +191,9 @@ describe("Workspace", () => {
       render(<Workspace />);
 
       const workspace = screen.getByTestId("workspace");
-      expect(workspace.style.gridTemplateColumns).not.toContain(`${LAYOUT.EFFECTS_PANEL_WIDTH}px`);
+      expect(workspace.style.gridTemplateColumns).not.toContain(
+        `${LAYOUT.EFFECTS_PANEL_WIDTH}px`,
+      );
       expect(screen.queryByTestId("workspace-effects")).not.toBeInTheDocument();
     });
   });
@@ -136,9 +207,13 @@ describe("Workspace", () => {
 
       // No effects column in grid
       const workspace = screen.getByTestId("workspace");
-      expect(workspace.style.gridTemplateColumns).not.toContain(`${LAYOUT.EFFECTS_PANEL_WIDTH}px`);
+      expect(workspace.style.gridTemplateColumns).not.toContain(
+        `${LAYOUT.EFFECTS_PANEL_WIDTH}px`,
+      );
       // But overlay exists inside waveform area
-      expect(screen.getByTestId("workspace-effects-overlay")).toBeInTheDocument();
+      expect(
+        screen.getByTestId("workspace-effects-overlay"),
+      ).toBeInTheDocument();
 
       mockToolDrawer.isOpen = false;
       mockToolDrawer.activeTool = null;
@@ -188,7 +263,9 @@ describe("Workspace", () => {
       mockToolDrawer.activeTool = null;
       render(<Workspace />);
 
-      expect(screen.queryByTestId("effects-bottom-sheet")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("effects-bottom-sheet"),
+      ).not.toBeInTheDocument();
     });
 
     it("allows vertical scrolling on mobile", () => {
