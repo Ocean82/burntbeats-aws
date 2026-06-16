@@ -9,7 +9,7 @@ imageio-ffmpeg==0.5.1
 demucs==4.0.1
 diffq==0.2.4
 onnxruntime==1.23.2
-numpy==1.26.4
+numpy==2.4.6
 fastapi==0.137.1
 uvicorn==0.27.0
 python-multipart==0.0.31
