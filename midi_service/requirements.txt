@@ -3,7 +3,7 @@
 basic-pitch>=0.4.0
 onnxruntime>=1.17.0
 numpy>=1.24.0
-fastapi>=0.109.0
+fastapi>=0.137.1
 uvicorn>=0.27.0
 python-multipart>=0.0.31
 soundfile>=0.12.0
