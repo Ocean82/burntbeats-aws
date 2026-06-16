@@ -120,13 +120,15 @@ def run_supervised_subprocess(
                 break
             except subprocess.TimeoutExpired as exc:
                 if exc.output:
-                    stdout_chunks.append(exc.output)
+                    decoded_out = exc.output.decode("utf-8", errors="replace") if isinstance(exc.output, bytes) else exc.output
+                    stdout_chunks.append(decoded_out)
                     last_output_ts = time.monotonic()
-                    last_line = exc.output.strip().splitlines()[-1]
+                    last_line = decoded_out.strip().splitlines()[-1]
                 if exc.stderr:
-                    stderr_chunks.append(exc.stderr)
+                    decoded_err = exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
+                    stderr_chunks.append(decoded_err)
                     last_output_ts = time.monotonic()
-                    last_line = exc.stderr.strip().splitlines()[-1]
+                    last_line = decoded_err.strip().splitlines()[-1]
 
             if health_callback:
                 health_callback(
