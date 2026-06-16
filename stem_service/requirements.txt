@@ -36,7 +36,7 @@ uvicorn[standard]>=0.22.0
 python-multipart>=0.0.31
 
 # Optional: upload stems to S3 after each job (S3_ENABLED=true; see docs/ARCHITECTURE-FLOW.md)
-boto3>=1.28.0
+boto3>=1.43.30
 
 # APM / error tracking (Sentry with FastAPI integration for automatic request tracing)
 sentry-sdk[fastapi]>=2.0.0
