@@ -62,10 +62,10 @@ export function PricingPage({
 
   const showPrimaryCheckout = subscription.status !== "active";
 
-  const renderCheckoutCTA = (plan: PlanConfig) => (
+  const renderCheckoutCTA = (plan: PlanConfig, opts?: { hideTestId?: boolean }) => (
     <button
       type="button"
-      data-testid={`pricing-cta-${plan.id}`}
+      data-testid={opts?.hideTestId ? undefined : `pricing-cta-${plan.id}`}
       onClick={() => handleSelectPlan(plan.id)}
       disabled={
         subscription.status === "loading" ||

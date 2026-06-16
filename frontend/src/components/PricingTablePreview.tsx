@@ -16,6 +16,7 @@ interface PlanCardProps {
   onSelect?: (planId: Plan) => void;
   ctaButton?: ReactNode;
   isCurrentPlan?: boolean;
+  hideTestId?: boolean;
 }
 
 function PlanCard({
@@ -23,13 +24,14 @@ function PlanCard({
   onSelect,
   ctaButton,
   isCurrentPlan = false,
+  hideTestId = false,
 }: PlanCardProps) {
   const interactive = Boolean(onSelect) && !isCurrentPlan;
   const handleSelect = () => onSelect?.(plan.id);
 
   return (
     <article
-      data-testid={`pricing-plan-${plan.id}`}
+      data-testid={hideTestId ? undefined : `pricing-plan-${plan.id}`}
       className={cn(
         "group flex flex-col rounded-3xl border border-border bg-secondary p-lg shadow-elevation-md transition",
         interactive &&
@@ -62,7 +64,7 @@ function PlanCard({
       {interactive ? (
         <button
           type="button"
-          data-testid={`pricing-price-${plan.id}`}
+          data-testid={hideTestId ? undefined : `pricing-price-${plan.id}`}
           onClick={handleSelect}
           className="mt-lg inline-flex w-fit items-center gap-xs rounded-full border border-primary-400/25 bg-primary-500/10 px-md py-xs text-left text-2xl font-semibold text-primary-100 transition group-hover:border-primary-400/45 group-hover:bg-primary-500/18 group-hover:text-primary-50 hover:border-primary-300/60 hover:bg-primary-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-3xl"
           aria-label={`Choose ${plan.name} for ${plan.priceLabel}`}
@@ -75,7 +77,7 @@ function PlanCard({
         </button>
       ) : (
         <p
-          data-testid={`pricing-price-${plan.id}`}
+          data-testid={hideTestId ? undefined : `pricing-price-${plan.id}`}
           className={cn(
             "mt-lg text-3xl font-semibold text-primary-200",
             isCurrentPlan && "text-success-100",
@@ -113,7 +115,7 @@ export interface PricingTablePreviewProps {
   heroOnly?: boolean;
   plansOverride?: PlanConfig[];
   onSelectPlan?: (planId: Plan) => void;
-  ctaButtonRenderer?: (plan: PlanConfig) => ReactNode;
+  ctaButtonRenderer?: (plan: PlanConfig, opts?: { hideTestId?: boolean }) => ReactNode;
   currentPlan?: Plan | null;
 }
 
@@ -164,8 +166,9 @@ export function PricingTablePreview({
             <PlanCard
               plan={plan}
               onSelect={onSelectPlan}
-              ctaButton={ctaButtonRenderer?.(plan)}
+              ctaButton={ctaButtonRenderer?.(plan, { hideTestId: true })}
               isCurrentPlan={currentPlan === plan.id}
+              hideTestId
             />
           </div>
         ))}
@@ -190,8 +193,9 @@ export function PricingTablePreview({
                   <PlanCard
                     plan={plan}
                     onSelect={onSelectPlan}
-                    ctaButton={ctaButtonRenderer?.(plan)}
+                    ctaButton={ctaButtonRenderer?.(plan, { hideTestId: true })}
                     isCurrentPlan={currentPlan === plan.id}
+                    hideTestId
                   />
                 </div>
               ))}
