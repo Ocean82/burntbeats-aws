@@ -4,9 +4,9 @@
   "typescript.native-preview.goMemLimit": "1GiB",
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "chat.editor.wordWrap": "on",
-  "chat.useClaudeSkills": true,
   "kilo-code.new.autoApprove.enabled": true,
   "kilo-code.new.browserAutomation.enabled": true,
   "kilo-code.new.claudeCodeCompat": true,
-  "java.templates.newFile.enabled": false
+  "java.templates.newFile.enabled": false,
+  "chat.useAgentSkills": true
 }
