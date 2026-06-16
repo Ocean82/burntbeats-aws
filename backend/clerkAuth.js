@@ -9,21 +9,32 @@ import {
 
 let _clerk = /** @type {ReturnType<typeof createClerkClient> | null} */ (null);
 let _clerkKey = "";
+let _envChecked = false;
 
-// Ensure sensitive environment variables are not exposed
-if (!process.env.CLERK_SECRET_KEY) {
-  console.warn(
-    "Warning: CLERK_SECRET_KEY is not set. Ensure this is configured in your environment.",
-  );
-}
+/**
+ * Emit missing-env-var warnings once on first use (not at import time).
+ * This avoids noise during test process startup where env vars are set
+ * after module evaluation but before any route handler executes.
+ */
+function checkEnvOnce() {
+  if (_envChecked) return;
+  _envChecked = true;
+  if (process.env.NODE_ENV === "test") return;
 
-if (!process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
-  console.warn(
-    "Warning: CLERK_WEBHOOK_SIGNING_SECRET is not set. Ensure this is configured in your environment.",
-  );
+  if (!process.env.CLERK_SECRET_KEY) {
+    console.warn(
+      "Warning: CLERK_SECRET_KEY is not set. Ensure this is configured in your environment.",
+    );
+  }
+  if (!process.env.CLERK_WEBHOOK_SIGNING_SECRET) {
+    console.warn(
+      "Warning: CLERK_WEBHOOK_SIGNING_SECRET is not set. Ensure this is configured in your environment.",
+    );
+  }
 }
 
 export function getClerkClient() {
+  checkEnvOnce();
   const key = process.env.CLERK_SECRET_KEY || "";
   if (!key) return null;
   if (key !== _clerkKey) {

@@ -12,7 +12,10 @@ export function initSentry() {
   const dsn = process.env.SENTRY_DSN;
 
   if (!dsn) {
-    console.log("[sentry] SENTRY_DSN not set — skipping Sentry initialization.");
+    // Only log in non-test environments — tests intentionally skip Sentry
+    if (process.env.NODE_ENV !== "test") {
+      console.log("[sentry] SENTRY_DSN not set — skipping Sentry initialization.");
+    }
     return;
   }
 

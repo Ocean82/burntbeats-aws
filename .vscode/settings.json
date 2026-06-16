@@ -1,5 +1,12 @@
 {
     "snyk.advanced.autoSelectOrganization": true,
     "diffEditor.codeLens": true,
-    "typescript.native-preview.goMemLimit": "1GiB"
+    "typescript.native-preview.goMemLimit": "1GiB",
+    "editor.defaultFormatter": "TabbyML.pochi",
+    "chat.editor.wordWrap": "on",
+    "chat.useClaudeSkills": true,
+    "kilo-code.new.autoApprove.enabled": true,
+    "kilo-code.new.browserAutomation.enabled": true,
+    "kilo-code.new.claudeCodeCompat": true,
+    "java.templates.newFile.enabled": false
 }
