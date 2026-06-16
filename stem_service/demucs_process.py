@@ -13,6 +13,10 @@ from typing import Callable
 from stem_service.subprocess_safe import popen_subprocess, run_subprocess
 
 
+_SUBPROCESS_ENCODING = "utf-8"
+"""Encoding used to decode partial subprocess output on timeout."""
+
+
 class DemucsProcessTimeoutError(RuntimeError):
     """Raised when the supervised process exceeds configured timeout policy."""
 
@@ -29,6 +33,19 @@ class DemucsHealthMarker:
     elapsed_seconds: float
     seconds_since_output: float
     last_output_line: str
+
+
+def _ensure_text(data: bytes | str | None) -> str | None:
+    """Decode partial subprocess output to str if it arrived as bytes.
+
+    CPython bug #87597: TimeoutExpired.output/.stderr are bytes even
+    when text=True was passed to Popen.  This helper normalises to str.
+    """
+    if data is None:
+        return None
+    if isinstance(data, bytes):
+        return data.decode(_SUBPROCESS_ENCODING, errors="replace")
+    return data
 
 
 def _kill_process_tree(process: subprocess.Popen[str]) -> None:
@@ -119,16 +136,22 @@ def run_supervised_subprocess(
                     last_line = stderr.strip().splitlines()[-1]
                 break
             except subprocess.TimeoutExpired as exc:
-                if exc.output:
-                    decoded_out = exc.output.decode("utf-8", errors="replace") if isinstance(exc.output, bytes) else exc.output
-                    stdout_chunks.append(decoded_out)
+                # CPython bug #87597: TimeoutExpired.output/.stderr are
+                # bytes even when text=True was passed to Popen.
+                chunk = _ensure_text(exc.output)
+                if chunk:
+                    stdout_chunks.append(chunk)
                     last_output_ts = time.monotonic()
-                    last_line = decoded_out.strip().splitlines()[-1]
-                if exc.stderr:
-                    decoded_err = exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
-                    stderr_chunks.append(decoded_err)
+                    lines = chunk.strip().splitlines()
+                    if lines:
+                        last_line = lines[-1]
+                chunk = _ensure_text(exc.stderr)
+                if chunk:
+                    stderr_chunks.append(chunk)
                     last_output_ts = time.monotonic()
-                    last_line = decoded_err.strip().splitlines()[-1]
+                    lines = chunk.strip().splitlines()
+                    if lines:
+                        last_line = lines[-1]
 
             if health_callback:
                 health_callback(
