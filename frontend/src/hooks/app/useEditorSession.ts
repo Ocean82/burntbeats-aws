@@ -65,10 +65,6 @@ function canPreloadChunks(): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Grouped sub-interfaces
-// ---------------------------------------------------------------------------
-
 export interface SessionModals {
   activeModals: Partial<Record<ModalKey, boolean>>;
   openModal: (key: ModalKey) => void;
