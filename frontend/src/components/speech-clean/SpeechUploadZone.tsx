@@ -129,7 +129,7 @@ export function SpeechUploadZone({
           <Upload className="h-8 w-8 text-info-300" strokeWidth={1.5} />
         )}
       </div>
-      <div>
+      <div className="w-full">
         <p className="text-lg font-bold text-foreground">
           {isDragging
             ? "Drop your recording"
@@ -151,7 +151,7 @@ export function SpeechUploadZone({
           )}
         </p>
       </div>
-      <p className="max-w-md text-[11px] leading-relaxed text-info-200/55">
+      <p className="w-full shrink-0 max-w-md text-[11px] leading-relaxed text-info-200/55">
         For podcasts, voice memos, calls, and dialogue —{" "}
         <span className="font-semibold text-info-100/80">not for songs or full mixes</span>.
       </p>

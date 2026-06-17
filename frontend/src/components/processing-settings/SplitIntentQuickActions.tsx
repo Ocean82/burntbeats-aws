@@ -12,6 +12,7 @@ export interface SplitIntentQuickActionsProps {
   selected: SplitIntent;
   onSelect: (intent: SplitIntent) => void;
   disabled?: boolean;
+  hideLabel?: boolean;
 }
 
 function QuickActionButton({
@@ -66,6 +67,7 @@ export function SplitIntentQuickActions({
   selected,
   onSelect,
   disabled = false,
+  hideLabel = false,
 }: SplitIntentQuickActionsProps) {
   const selectedKey = JSON.stringify({
     task: selected.task,
@@ -75,9 +77,11 @@ export function SplitIntentQuickActions({
 
   return (
     <div className="flex flex-col gap-xs">
-      <span className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">
-        Quick actions
-      </span>
+      {!hideLabel && (
+        <span className="text-meta font-semibold uppercase tracking-wider text-muted-foreground">
+          Quick actions
+        </span>
+      )}
       <TooltipProvider delayDuration={300}>
         <div className="flex flex-wrap gap-1.5">
           {QUICK_INTENTS.map(({ id, label, hint, intent }) => {

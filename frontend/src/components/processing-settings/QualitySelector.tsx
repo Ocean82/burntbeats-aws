@@ -9,15 +9,16 @@ export interface QualitySelectorProps {
   canChoosePaidQuality: boolean;
   isSplitting: boolean;
   splitResultStemsLength: number;
+  variant?: "full" | "compact";
 }
 
-/** Quality tier radio buttons (Fast / Quality). */
 export function QualitySelector({
   quality,
   onQualityChange,
   canChoosePaidQuality,
   isSplitting,
   splitResultStemsLength,
+  variant = "full",
 }: QualitySelectorProps) {
   const qualityOptions = useMemo(() => {
     const opts: Array<{
@@ -43,6 +44,39 @@ export function QualitySelector({
     ];
     return opts;
   }, [canChoosePaidQuality]);
+
+  if (variant === "compact") {
+    return (
+      <div className="flex items-center gap-0.5 rounded-lg border border-border bg-neutral-900/60 p-0.5">
+        {qualityOptions.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={
+              !opt.enabled || isSplitting || splitResultStemsLength > 0
+            }
+            title={opt.hint}
+            onClick={() => onQualityChange(opt.value)}
+            className={cn(
+              "rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wide transition-colors",
+              !opt.enabled
+                ? "cursor-not-allowed text-muted-foreground/40"
+                : opt.value === quality
+                  ? "bg-primary-500/20 text-primary-200"
+                  : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <span className="inline-flex items-center gap-1">
+              {opt.label}
+              {!opt.enabled && (
+                <Lock className="h-3 w-3" aria-hidden="true" />
+              )}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div

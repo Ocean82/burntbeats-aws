@@ -69,7 +69,7 @@ export function SpeechCleanPanel({
             <h2 className="text-lg font-bold tracking-tight text-foreground">
               Speech Clean
             </h2>
-            <p className="mt-0.5 text-sm text-info-100/55">
+            <p className="w-full shrink-0 mt-0.5 text-sm text-info-100/55">
               Denoise and restore voice recordings. This tool is tuned for
               speech, not music stem separation.
             </p>

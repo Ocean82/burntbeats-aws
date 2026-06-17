@@ -8,24 +8,13 @@ import type { ProcessingSettingsPanelProps } from "./types";
 import { useProcessingSettingsData } from "./useProcessingSettingsData";
 import { UploadDropZone } from "./UploadDropZone";
 import { LoadStemsZone } from "./LoadStemsZone";
-import { QualitySelector } from "./QualitySelector";
+import { SourceFileHeader } from "./SourceFileHeader";
+import { ExecutionFooter } from "./ExecutionFooter";
 import { SplitIntentQuickActions } from "./SplitIntentQuickActions";
-import {
-  SplitIntentAdvanced,
-  advancedSelectionToIntent,
-} from "./SplitIntentAdvanced";
-import {
-  FullSeparationOptions,
-  fullSeparationIntent,
-} from "./FullSeparationOptions";
+import { SplitIntentAdvanced, advancedSelectionToIntent } from "./SplitIntentAdvanced";
+import { FullSeparationOptions, fullSeparationIntent } from "./FullSeparationOptions";
 import type { SplitIntent, SplitTarget } from "@shared/types";
-import {
-  DEFAULT_SPLIT_INTENT,
-  withIntentQuality,
-} from "../../utils/splitIntent";
-import { SplitActions } from "./SplitActions";
-import { UsageTokenRow } from "./UsageTokenRow";
-import { ErrorState } from "../ui/error-state";
+import { DEFAULT_SPLIT_INTENT, withIntentQuality } from "../../utils/splitIntent";
 import { SuccessFlash } from "../ui/success-flash";
 import { NewSplitConfirmDialog } from "./NewSplitConfirmDialog";
 import { ExpandStemsAction } from "./ExpandStemsAction";
@@ -45,7 +34,6 @@ export function ProcessingSettingsPanel({
   onRemoveLoadedStem,
   onSplit,
   onNewSplit,
-  onAddToQueue,
   onOpenWaitingGame,
   onExpandToFourStems,
 }: ProcessingSettingsPanelProps) {
@@ -66,33 +54,30 @@ export function ProcessingSettingsPanel({
     isUploading,
     queuePosition,
     jobsAhead,
-    splitElapsedSeconds,
     splitStageLabel,
     uploadDurationSec,
     splitResultStemsLength,
     splitError,
     onDismissError,
-    canUseBatchQueue,
     onUpgradeToPremium,
     subscriptionInactive,
     onContinueCheckout,
     usageBalance,
     usageLoading,
-    freeMonthlyRemaining,
-    paidBalance,
     estimatedSplitTokens,
     isCollapsed,
     canExpandToFourStems,
     isExpanding,
     splitJobId,
+    isSample,
   } = useProcessingSettingsData();
   const reduceMotion = useReducedMotion() ?? false;
   const collapse = collapseMotion(reduceMotion);
-  const [splitIntent, setSplitIntent] =
-    useState<SplitIntent>(DEFAULT_SPLIT_INTENT);
+  const [splitIntent, setSplitIntent] = useState<SplitIntent>(DEFAULT_SPLIT_INTENT);
   const [advancedTargets, setAdvancedTargets] = useState<SplitTarget[]>([]);
   const [removeVocalsMode, setRemoveVocalsMode] = useState(false);
   const [fullSepMode, setFullSepMode] = useState<"2" | "4">("2");
+  const [workflowMode, setWorkflowMode] = useState<"presets" | "custom">("presets");
   const [loadExpanded, setLoadExpanded] = useState(false);
   const [userExpanded, setUserExpanded] = useState(false);
   const [showNewSplitConfirm, setShowNewSplitConfirm] = useState(false);
@@ -105,15 +90,13 @@ export function ProcessingSettingsPanel({
     durationSec: uploadDurationSec,
     estimatedTokens: estimatedSplitTokens,
   });
+  const disabledControls = isSplitting || splitResultStemsLength > 0;
 
-  // When a new split completes (isCollapsed flips true), reset the user override
-  // so the panel collapses cleanly for the new result.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset derived state on dependency change
     if (isCollapsed) setUserExpanded(false);
   }, [isCollapsed]);
 
-  // Fire SuccessFlash on the 0 → N transition of splitResultStemsLength
   useEffect(() => {
     if (splitResultStemsLength > 0 && prevStemsLengthRef.current === 0) {
       setShowSuccessFlash(true);
@@ -123,7 +106,6 @@ export function ProcessingSettingsPanel({
 
   const canChoosePaidQuality = stemQualityOptions !== "speed_only";
 
-  // Safety: clamp stale persisted quality values to the current supported UI surface.
   useEffect(() => {
     const currentQuality = quality as string;
     if (currentQuality !== "speed" && currentQuality !== "quality") {
@@ -138,10 +120,7 @@ export function ProcessingSettingsPanel({
   }, [canSplitFourStems, fullSepMode]);
 
   const resolvedSplitIntent = ((): SplitIntent => {
-    const advanced = advancedSelectionToIntent(
-      advancedTargets,
-      removeVocalsMode,
-    );
+    const advanced = advancedSelectionToIntent(advancedTargets, removeVocalsMode);
     if (advanced && advancedTargets.length > 0) {
       return withIntentQuality(advanced, quality);
     }
@@ -151,13 +130,8 @@ export function ProcessingSettingsPanel({
     return withIntentQuality(splitIntent, quality);
   })();
 
-  const showUsageRow =
-    !subscriptionInactive &&
-    (usageLoading || usageBalance !== null || estimatedSplitTokens !== null);
-
   return (
     <div data-testid="processing-settings-panel">
-      {/* ── Collapsed bar: shown after a split completes ── */}
       <AnimatePresence initial={false}>
         {panelCollapsed && (
           <motion.div key="collapsed-bar" {...collapse}>
@@ -211,7 +185,6 @@ export function ProcessingSettingsPanel({
         )}
       </AnimatePresence>
 
-      {/* ── Full panel: hidden when collapsed ── */}
       <AnimatePresence initial={false}>
         {!panelCollapsed && (
           <motion.div key="full-panel" {...collapse}>
@@ -249,100 +222,110 @@ export function ProcessingSettingsPanel({
               className="mb-md"
             />
 
-            {/* ── Upload drop zone (split mode) ── */}
             {sourceMode === "split" && (
-              <UploadDropZone
-                uploadName={uploadName}
-                uploadedFile={uploadedFile}
-                durationSec={uploadDurationSec}
-                estimatedTokens={estimatedSplitTokens}
-                onBrowseUpload={onBrowseUpload}
-                onClearUpload={onClearUpload}
-                onDropUpload={onDropUpload}
-                isDragging={isDragging}
-                onSetIsDragging={onSetIsDragging}
-              />
-            )}
-
-            {/* ── Progressive disclosure: settings shown only after file is ready ── */}
-            <AnimatePresence>
-              {(uploadedFile != null || sourceMode === "load") && (
-                <motion.div key="settings-revealed" {...collapse}>
-                  {sourceMode === "load" ? (
-                    <LoadStemsZone
-                      loadedStemCount={loadedStemCount}
-                      loadStemsInputRef={loadStemsInputRef}
-                      onLoadStems={onLoadStems}
-                      loadedStems={loadedStems}
-                      onRemoveLoadedStem={onRemoveLoadedStem}
-                      isDragging={isDragging}
-                      onSetIsDragging={onSetIsDragging}
-                      loadExpanded={loadExpanded}
-                      onToggleLoadExpanded={() => setLoadExpanded((v) => !v)}
+              <>
+                {!uploadedFile ? (
+                  <UploadDropZone
+                    uploadName={uploadName}
+                    uploadedFile={uploadedFile}
+                    durationSec={uploadDurationSec}
+                    estimatedTokens={estimatedSplitTokens}
+                    onBrowseUpload={onBrowseUpload}
+                    onClearUpload={onClearUpload}
+                    onDropUpload={onDropUpload}
+                    isDragging={isDragging}
+                    onSetIsDragging={onSetIsDragging}
+                  />
+                ) : (
+                  <div className="flex flex-col gap-md">
+                    <SourceFileHeader
+                      uploadName={uploadName}
+                      uploadedFile={uploadedFile}
+                      durationSec={uploadDurationSec}
+                      estimatedTokens={estimatedSplitTokens}
+                      quality={quality}
+                      onQualityChange={onQualityChange}
+                      canChoosePaidQuality={canChoosePaidQuality}
+                      onClearUpload={onClearUpload}
+                      onBrowseUpload={onBrowseUpload}
                     />
-                  ) : (
-                    <div className="flex flex-col gap-md">
-                      <QualitySelector
-                        quality={quality}
-                        onQualityChange={onQualityChange}
-                        canChoosePaidQuality={canChoosePaidQuality}
-                        isSplitting={isSplitting}
-                        splitResultStemsLength={splitResultStemsLength}
-                      />
-                      <SplitIntentQuickActions
-                        selected={splitIntent}
-                        onSelect={(intent) => {
-                          setSplitIntent(intent);
-                          setAdvancedTargets([]);
-                          setRemoveVocalsMode(false);
-                        }}
-                        disabled={isSplitting || splitResultStemsLength > 0}
-                      />
-                      <SplitIntentAdvanced
-                        targets={advancedTargets}
-                        removeVocals={removeVocalsMode}
-                        onTargetsChange={setAdvancedTargets}
-                        onRemoveVocalsChange={setRemoveVocalsMode}
-                        disabled={isSplitting || splitResultStemsLength > 0}
-                      />
-                      <FullSeparationOptions
-                        mode={fullSepMode}
-                        onModeChange={(mode) => {
-                          setFullSepMode(mode);
-                          setSplitIntent(fullSeparationIntent(mode));
-                          setAdvancedTargets([]);
-                          setRemoveVocalsMode(false);
-                        }}
-                        canSplitFourStems={canSplitFourStems}
-                        disabled={isSplitting || splitResultStemsLength > 0}
-                        onUpgradeToPremium={onUpgradeToPremium}
-                      />
-                      <SplitActions
-                        uploadedFile={uploadedFile}
-                        splitIntent={resolvedSplitIntent}
-                        onSplit={onSplit}
-                        isSplitting={isSplitting}
-                        splitProgress={splitProgress}
-                        uploadProgress={uploadProgress}
-                        isUploading={isUploading}
-                        queuePosition={queuePosition}
-                        jobsAhead={jobsAhead}
-                        splitElapsedSeconds={splitElapsedSeconds}
-                        splitStageLabel={splitStageLabel}
-                        uploadDurationSec={uploadDurationSec}
-                        splitResultStemsLength={splitResultStemsLength}
-                        canUseBatchQueue={canUseBatchQueue}
-                        onAddToQueue={onAddToQueue ?? (() => {})}
-                        onOpenWaitingGame={onOpenWaitingGame}
-                        hideSampleToggle={false}
+
+                    <div className="rounded-xl border border-border bg-muted/30 px-md py-sm">
+                      <SegmentedControl
+                        testId="workflow-selector"
+                        aria-label="Workflow"
+                        value={workflowMode}
+                        onChange={setWorkflowMode}
+                        options={[
+                          { value: "presets", label: "Quick Presets", testId: "workflow-presets" },
+                          { value: "custom", label: "Custom Matrix", testId: "workflow-custom" },
+                        ]}
                       />
                     </div>
-                  )}
 
-                  {sourceMode === "split" &&
-                    splitResultStemsLength > 0 &&
-                    onExpandToFourStems && (
-                      <details className="mt-sm rounded-xl border border-border/60 bg-muted/30 px-sm py-xs">
+                    <div className="rounded-xl border border-border bg-muted/30 px-md py-sm">
+                      {workflowMode === "presets" ? (
+                        <SplitIntentQuickActions
+                          selected={splitIntent}
+                          onSelect={(intent) => {
+                            setSplitIntent(intent);
+                            setAdvancedTargets([]);
+                            setRemoveVocalsMode(false);
+                          }}
+                          disabled={disabledControls}
+                          hideLabel
+                        />
+                      ) : (
+                        <div className="flex flex-col gap-3">
+                          <FullSeparationOptions
+                            mode={fullSepMode}
+                            onModeChange={(mode) => {
+                              setFullSepMode(mode);
+                              setSplitIntent(fullSeparationIntent(mode));
+                              setAdvancedTargets([]);
+                              setRemoveVocalsMode(false);
+                            }}
+                            canSplitFourStems={canSplitFourStems}
+                            disabled={disabledControls}
+                            onUpgradeToPremium={onUpgradeToPremium}
+                          />
+                          <div className="border-t border-border/40 pt-3">
+                            <SplitIntentAdvanced
+                              targets={advancedTargets}
+                              removeVocals={removeVocalsMode}
+                              onTargetsChange={setAdvancedTargets}
+                              onRemoveVocalsChange={setRemoveVocalsMode}
+                              disabled={disabledControls}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <ExecutionFooter
+                      splitError={splitError}
+                      onDismissError={onDismissError}
+                      onSplit={onSplit}
+                      uploadedFile={uploadedFile}
+                      splitIntent={resolvedSplitIntent}
+                      isSplitting={isSplitting}
+                      splitProgress={splitProgress}
+                      uploadProgress={uploadProgress}
+                      isUploading={isUploading}
+                      queuePosition={queuePosition}
+                      jobsAhead={jobsAhead}
+                      splitStageLabel={splitStageLabel}
+                      splitResultStemsLength={splitResultStemsLength}
+                      estimatedSplitTokens={estimatedSplitTokens}
+                      usageBalance={usageBalance}
+                      usageLoading={usageLoading}
+                      isSample={isSample}
+                      onOpenWaitingGame={onOpenWaitingGame}
+                      subscriptionInactive={subscriptionInactive}
+                    />
+
+                    {splitResultStemsLength > 0 && onExpandToFourStems && (
+                      <details className="rounded-xl border border-border/60 bg-muted/30 px-sm py-xs">
                         <summary className="cursor-pointer px-xs py-xs text-xs font-medium text-muted-foreground hover:text-foreground">
                           More options
                         </summary>
@@ -357,31 +340,22 @@ export function ProcessingSettingsPanel({
                         </div>
                       </details>
                     )}
+                  </div>
+                )}
+              </>
+            )}
 
-                  {showUsageRow && sourceMode === "split" ? (
-                    <UsageTokenRow
-                      usageBalance={usageBalance}
-                      usageLoading={usageLoading}
-                      estimatedSplitTokens={estimatedSplitTokens}
-                      freeMonthlyRemaining={freeMonthlyRemaining}
-                      paidBalance={paidBalance}
-                      showBalance={false}
-                    />
-                  ) : null}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Error */}
-            {splitError && (
-              <ErrorState
-                variant="server"
-                title="Couldn't split this track"
-                description={splitError}
-                onRetry={() => {
-                  onDismissError();
-                  onSplit(resolvedSplitIntent);
-                }}
+            {sourceMode === "load" && (
+              <LoadStemsZone
+                loadedStemCount={loadedStemCount}
+                loadStemsInputRef={loadStemsInputRef}
+                onLoadStems={onLoadStems}
+                loadedStems={loadedStems}
+                onRemoveLoadedStem={onRemoveLoadedStem}
+                isDragging={isDragging}
+                onSetIsDragging={onSetIsDragging}
+                loadExpanded={loadExpanded}
+                onToggleLoadExpanded={() => setLoadExpanded((v) => !v)}
               />
             )}
 
@@ -393,7 +367,6 @@ export function ProcessingSettingsPanel({
         )}
       </AnimatePresence>
 
-      {/* Always-present hidden file inputs (needed even when panel is collapsed) */}
       <input
         ref={inputRef}
         type="file"
@@ -415,7 +388,6 @@ export function ProcessingSettingsPanel({
         }}
       />
 
-      {/* New Split confirmation dialog */}
       {onNewSplit && (
         <NewSplitConfirmDialog
           open={showNewSplitConfirm}

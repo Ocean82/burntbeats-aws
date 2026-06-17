@@ -38,10 +38,10 @@ export function CookieConsentBanner() {
       <div className="mx-auto max-w-2xl overflow-y-auto max-h-[calc(100dvh-var(--space-xl))] rounded-2xl border border-border bg-popover/95 px-lg py-md shadow-elevation-xl backdrop-blur-xl sm:px-lg sm:py-lg">
         <div className="flex flex-col gap-md sm:flex-row sm:items-center sm:justify-between sm:gap-lg">
           <div className="flex-1">
-            <p
-              id="cookie-consent-description"
-              className="text-readable text-sm leading-relaxed text-secondary-foreground"
-            >
+              <p
+                id="cookie-consent-description"
+                className="w-full shrink-0 text-readable text-sm leading-relaxed text-secondary-foreground"
+              >
               We use cookies to analyze site usage and improve your experience.
               Essential cookies for authentication are always active.{" "}
               <a
