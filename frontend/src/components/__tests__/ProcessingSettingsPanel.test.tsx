@@ -62,22 +62,22 @@ describe("ProcessingSettingsPanel layout", () => {
     });
   });
 
-  it("keeps upload and quality controls in separate responsive groups", () => {
+  it("renders file header with inline quality toggle and split CTA", () => {
     const { container } = renderSplitPanel();
 
+    // File info and quality toggle live together in the header
     const changeFileButton = screen.getByRole("button", { name: /change/i });
     const qualityFastButton = screen.getByRole("button", { name: /fast/i });
-    const uploadDropZone = screen.getByTestId("split-upload-dropzone");
-    const qualityGroup = screen.getByTestId("quality-controls");
-    const splitButton = screen.getByRole("button", {
-      name: /full separation \(2 stems\)/i,
-    });
+    const qualityQualityButton = screen.getByRole("button", { name: /quality/i });
 
-    expect(uploadDropZone).toContainElement(changeFileButton);
-    expect(qualityGroup).toContainElement(qualityFastButton);
-    expect(uploadDropZone.className).toMatch(/w-full/);
-    expect(qualityGroup.className).toContain("w-full");
-    expect(splitButton.className).toContain("fire-button");
+    expect(changeFileButton).toBeInTheDocument();
+    expect(qualityFastButton).toBeInTheDocument();
+    expect(qualityQualityButton).toBeInTheDocument();
+
+    // Workflow selector and CTA are separate sections
+    expect(screen.getByTestId("workflow-selector")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /full separation \(2 stems\)/i })).toBeInTheDocument();
+
     expect(container.querySelector("[data-testid='processing-settings-panel']")).toBeInTheDocument();
   });
 

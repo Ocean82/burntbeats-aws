@@ -31,8 +31,11 @@ vi.mock("../UploadDropZone", () => ({
 vi.mock("../LoadStemsZone", () => ({
   LoadStemsZone: () => <div data-testid="load-stems-zone" />,
 }));
-vi.mock("../QualitySelector", () => ({
-  QualitySelector: () => <div data-testid="quality-selector" />,
+vi.mock("../SourceFileHeader", () => ({
+  SourceFileHeader: () => <div data-testid="source-file-header" />,
+}));
+vi.mock("../ExecutionFooter", () => ({
+  ExecutionFooter: () => <div data-testid="execution-footer" />,
 }));
 vi.mock("../SplitIntentQuickActions", () => ({
   SplitIntentQuickActions: () => <div data-testid="split-intent-quick" />,
@@ -44,12 +47,6 @@ vi.mock("../SplitIntentAdvanced", () => ({
 vi.mock("../FullSeparationOptions", () => ({
   FullSeparationOptions: () => <div data-testid="full-separation-options" />,
   fullSeparationIntent: (mode: string) => ({ task: "full_separation", mode }),
-}));
-vi.mock("../SplitActions", () => ({
-  SplitActions: () => <div data-testid="split-actions" />,
-}));
-vi.mock("../UsageTokenRow", () => ({
-  UsageTokenRow: () => <div data-testid="usage-token-row" />,
 }));
 vi.mock("../ExpandStemsAction", () => ({
   ExpandStemsAction: () => <div data-testid="expand-stems-action" />,
@@ -169,44 +166,38 @@ afterEach(() => {
 // Validates: Requirements 7.1, 7.3
 // ─────────────────────────────────────────────────────────────────────────────
 describe("7.2 ProcessingSettingsPanel — ErrorState wiring", () => {
-  it("renders ErrorState with variant=server when splitError is non-null", () => {
+  it("renders inline error banner when splitError is non-null", () => {
     mockHookReturnValue.splitError = "Split service unavailable";
 
     render(<ProcessingSettingsPanel {...buildProps()} />);
 
-    // ErrorState renders with role="alert"
-    const alert = screen.getByRole("alert");
-    expect(alert).toBeInTheDocument();
-
     // The error description text is displayed
     expect(screen.getByText("Split service unavailable")).toBeInTheDocument();
 
-    // The "Couldn't split this track" title is present (from the variant="server" wiring)
-    expect(screen.getByText("Couldn't split this track")).toBeInTheDocument();
+    // Dismiss button is present
+    expect(screen.getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
   });
 
-  it("does not render ErrorState when splitError is null", () => {
+  it("does not render error banner when splitError is null", () => {
     mockHookReturnValue.splitError = null;
 
     render(<ProcessingSettingsPanel {...buildProps()} />);
 
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText("Split service unavailable")).not.toBeInTheDocument();
   });
 
-  it("calls onDismissError and onSplit when retry button is clicked", () => {
-    const onSplit = vi.fn();
+  it("calls onDismissError when dismiss button is clicked", () => {
     const onDismissError = vi.fn();
 
     mockHookReturnValue.splitError = "Split service unavailable";
     mockHookReturnValue.onDismissError = onDismissError;
 
-    render(<ProcessingSettingsPanel {...buildProps({ onSplit })} />);
+    render(<ProcessingSettingsPanel {...buildProps()} />);
 
-    const retryButton = screen.getByRole("button", { name: /try again/i });
-    fireEvent.click(retryButton);
+    const dismissButton = screen.getByRole("button", { name: /dismiss/i });
+    fireEvent.click(dismissButton);
 
     expect(onDismissError).toHaveBeenCalledOnce();
-    expect(onSplit).toHaveBeenCalledOnce();
   });
 });
 

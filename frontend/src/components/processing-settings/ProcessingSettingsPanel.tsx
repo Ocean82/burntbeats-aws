@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { collapseMotion } from "../../motion/presets";
-import { Music2, Settings2, RotateCcw } from "lucide-react";
+import { Music2, Settings2, RotateCcw, AlertTriangle } from "lucide-react";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
 import { AUDIO_INPUT_ACCEPT } from "../../config";
 import type { ProcessingSettingsPanelProps } from "./types";
@@ -225,17 +225,32 @@ export function ProcessingSettingsPanel({
             {sourceMode === "split" && (
               <>
                 {!uploadedFile ? (
-                  <UploadDropZone
-                    uploadName={uploadName}
-                    uploadedFile={uploadedFile}
-                    durationSec={uploadDurationSec}
-                    estimatedTokens={estimatedSplitTokens}
-                    onBrowseUpload={onBrowseUpload}
-                    onClearUpload={onClearUpload}
-                    onDropUpload={onDropUpload}
-                    isDragging={isDragging}
-                    onSetIsDragging={onSetIsDragging}
-                  />
+                  <>
+                    <UploadDropZone
+                      uploadName={uploadName}
+                      uploadedFile={uploadedFile}
+                      durationSec={uploadDurationSec}
+                      estimatedTokens={estimatedSplitTokens}
+                      onBrowseUpload={onBrowseUpload}
+                      onClearUpload={onClearUpload}
+                      onDropUpload={onDropUpload}
+                      isDragging={isDragging}
+                      onSetIsDragging={onSetIsDragging}
+                    />
+                    {splitError && (
+                      <div className="flex items-start gap-2 rounded-xl border border-destructive-400/20 bg-destructive-500/10 px-md py-2">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive-300" />
+                        <p className="flex-1 text-xs text-destructive-200">{splitError}</p>
+                        <button
+                          type="button"
+                          onClick={onDismissError}
+                          className="text-xs font-medium text-destructive-300 hover:text-destructive-100"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex flex-col gap-md">
                     <SourceFileHeader
