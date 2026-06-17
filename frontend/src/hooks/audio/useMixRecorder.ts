@@ -141,12 +141,11 @@ export function useMixRecorder(
         }
 
         try {
-          // Decode webm to AudioBuffer using a temporary AudioContext
-          const decodeCtx = new AudioContext();
+          // Decode webm to AudioBuffer using a temporary OfflineAudioContext
+          const decodeCtx = new OfflineAudioContext(1, 1, 44100);
           const arrayBuf = await webmBlob.arrayBuffer();
           const audioBuf = await decodeCtx.decodeAudioData(arrayBuf);
           const wav = audioBufferToWav(audioBuf);
-          await decodeCtx.close();
 
           const filename = buildRecordingFilename(pendingUploadNameRef.current);
           setWavBlob(wav);

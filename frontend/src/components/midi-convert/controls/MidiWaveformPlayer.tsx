@@ -165,9 +165,8 @@ function MidiWaveformPlayerInner({
         const arrayBuffer = await response.arrayBuffer();
         if (cancelled) return;
 
-        const audioCtx = new AudioContext();
+        const audioCtx = new OfflineAudioContext(1, 1, 44100);
         const buffer = await audioCtx.decodeAudioData(arrayBuffer);
-        await audioCtx.close();
         if (cancelled) return;
 
         waveformDataRef.current = buffer.getChannelData(0);

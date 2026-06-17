@@ -3,6 +3,9 @@ let audioCtx: AudioContext | null = null;
 function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    if (audioCtx.state === "suspended") {
+      void audioCtx.resume();
+    }
   }
   return audioCtx;
 }
