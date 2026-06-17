@@ -13,7 +13,8 @@
  * All functions return gracefully when the pool is unavailable.
  */
 import { getPool } from "./db.js";
-import { ensureUser } from "./db-jobs.js";
+// NOTE: ensureUser from db-jobs.js is no longer used here — user row creation
+// is done inline within each transaction to prevent FK race conditions.
 
 /**
  * Ensure a user_token_balances row exists for the user.
@@ -66,13 +67,18 @@ export async function getDbBalance(clerkUserId) {
     return {
       balance: row.balance,
       periodEnd: row.period_end || null,
-      maxEntitlementTier: row.max_entitlement_tier === "premium" ? "premium" : "basic",
-      freeMonthlyRemaining: row.free_monthly_remaining ?? freeMonthlyAllowanceDefault(),
+      maxEntitlementTier:
+        row.max_entitlement_tier === "premium" ? "premium" : "basic",
+      freeMonthlyRemaining:
+        row.free_monthly_remaining ?? freeMonthlyAllowanceDefault(),
       freeMonthlyPeriod: row.free_monthly_period || null,
       welcomeGranted: Boolean(row.welcome_granted),
     };
   } catch (err) {
-    console.error("[db-tokens] getDbBalance failed:", err instanceof Error ? err.message : err);
+    console.error(
+      "[db-tokens] getDbBalance failed:",
+      err instanceof Error ? err.message : err,
+    );
     return null;
   }
 }
@@ -127,7 +133,8 @@ async function syncFreeMonthlyPeriod(client, clerkUserId, row) {
 export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
   const pool = getPool();
   if (!pool) return { success: false, error: "DB not available" };
-  if (!Number.isFinite(cost) || cost <= 0) return { success: true, balanceAfter: undefined };
+  if (!Number.isFinite(cost) || cost <= 0)
+    return { success: true, balanceAfter: undefined };
 
   // DB column is integer — ceil fractional costs to prevent type errors
   const intCost = Math.ceil(cost);
@@ -135,16 +142,40 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await ensureUser(clerkUserId);
-    await ensureBalanceRow(client, clerkUserId);
 
-    // Lock the row
-    const lockRes = await client.query(
-      `SELECT balance, free_monthly_remaining, free_monthly_period
-       FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
+    // Ensure user row exists WITHIN the transaction to prevent FK violations.
+    // Previously ensureUser() used a separate pool connection which could race
+    // with ensureBalanceRow's FK reference to users(clerk_user_id).
+    await client.query(
+      `INSERT INTO users (clerk_user_id) VALUES ($1) ON CONFLICT (clerk_user_id) DO NOTHING`,
       [clerkUserId],
     );
-    const row = lockRes.rows[0];
+    await ensureBalanceRow(client, clerkUserId);
+
+    // Lock the row — use column list that works whether or not migration 003 has been applied
+    let row;
+    try {
+      const lockRes = await client.query(
+        `SELECT balance, free_monthly_remaining, free_monthly_period
+         FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
+        [clerkUserId],
+      );
+      row = lockRes.rows[0];
+    } catch (colErr) {
+      // If free_monthly columns don't exist (migration 003 not applied), fall back to balance-only
+      if (colErr.code === "42703") {
+        console.warn(
+          "[db-tokens] free_monthly columns missing — run db:migrate to apply migration 003",
+        );
+        const lockRes = await client.query(
+          `SELECT balance FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
+          [clerkUserId],
+        );
+        row = lockRes.rows[0];
+      } else {
+        throw colErr;
+      }
+    }
     const currentBalance = row?.balance ?? 0;
 
     if (currentBalance >= intCost) {
@@ -156,33 +187,80 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
       await client.query(
         `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
          VALUES ($1, 'debit', $2, $3, $4, $5)`,
-        [clerkUserId, -intCost, newBalance, meta.jobId || null, meta.note || "split/expand debit"],
+        [
+          clerkUserId,
+          -intCost,
+          newBalance,
+          meta.jobId || null,
+          meta.note || "split/expand debit",
+        ],
       );
       await client.query("COMMIT");
       return { success: true, balanceAfter: newBalance, source: "paid" };
     }
 
-    if (isFreeMonthlyAllowanceEnabled() && row) {
-      const freeRemaining = await syncFreeMonthlyPeriod(client, clerkUserId, row);
+    // Free monthly allowance path — only if columns exist on the row
+    if (
+      isFreeMonthlyAllowanceEnabled() &&
+      row &&
+      row.free_monthly_remaining !== undefined
+    ) {
+      const freeRemaining = await syncFreeMonthlyPeriod(
+        client,
+        clerkUserId,
+        row,
+      );
       if (freeRemaining >= intCost) {
         const newFree = freeRemaining - intCost;
         await client.query(
           `UPDATE user_token_balances SET free_monthly_remaining = $2 WHERE clerk_user_id = $1`,
           [clerkUserId, newFree],
         );
-        await client.query(
-          `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
-           VALUES ($1, 'free_monthly_debit', $2, $3, $4, $5)`,
-          [
-            clerkUserId,
-            -intCost,
-            currentBalance,
-            meta.jobId || null,
-            meta.note || "free monthly allowance debit",
-          ],
-        );
+        // Use 'debit' tx_type as fallback if 'free_monthly_debit' enum value doesn't exist yet
+        let txType = "free_monthly_debit";
+        try {
+          await client.query(
+            `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
+             VALUES ($1, $2::token_tx_type, $3, $4, $5, $6)`,
+            [
+              clerkUserId,
+              txType,
+              -intCost,
+              currentBalance,
+              meta.jobId || null,
+              meta.note || "free monthly allowance debit",
+            ],
+          );
+        } catch (enumErr) {
+          // If 'free_monthly_debit' enum value doesn't exist (migration 003 not fully applied),
+          // fall back to 'debit' which always exists in the base schema
+          if (enumErr.code === "22P02") {
+            console.warn(
+              "[db-tokens] 'free_monthly_debit' enum missing — using 'debit' fallback. Run db:migrate.",
+            );
+            txType = "debit";
+            await client.query(
+              `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
+               VALUES ($1, $2::token_tx_type, $3, $4, $5, $6)`,
+              [
+                clerkUserId,
+                txType,
+                -intCost,
+                currentBalance,
+                meta.jobId || null,
+                meta.note || "free monthly allowance debit (enum fallback)",
+              ],
+            );
+          } else {
+            throw enumErr;
+          }
+        }
         await client.query("COMMIT");
-        return { success: true, balanceAfter: currentBalance, source: "free_monthly" };
+        return {
+          success: true,
+          balanceAfter: currentBalance,
+          source: "free_monthly",
+        };
       }
     }
 
@@ -193,8 +271,22 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
     };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
-    console.error("[db-tokens] reserveDbTokens failed:", err instanceof Error ? err.message : err);
-    return { success: false, error: "Database error during token reservation" };
+    const pgCode = err?.code || "unknown";
+    const pgConstraint = err?.constraint || "";
+    const pgDetail = err?.detail || "";
+    console.error("[db-tokens] reserveDbTokens failed:", {
+      message: err instanceof Error ? err.message : String(err),
+      code: pgCode,
+      constraint: pgConstraint,
+      detail: pgDetail,
+      userId: clerkUserId,
+      cost: intCost,
+    });
+    return {
+      success: false,
+      error:
+        "Database error during token reservation. Please try again or contact support if this persists.",
+    };
   } finally {
     client.release();
   }
@@ -215,6 +307,11 @@ export async function refundDbTokens(clerkUserId, amount, meta = {}) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    // Ensure user row exists within the transaction (FK for user_token_balances)
+    await client.query(
+      `INSERT INTO users (clerk_user_id) VALUES ($1) ON CONFLICT (clerk_user_id) DO NOTHING`,
+      [clerkUserId],
+    );
     await ensureBalanceRow(client, clerkUserId);
 
     const lockRes = await client.query(
@@ -232,14 +329,23 @@ export async function refundDbTokens(clerkUserId, amount, meta = {}) {
     await client.query(
       `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
        VALUES ($1, 'refund', $2, $3, $4, $5)`,
-      [clerkUserId, amount, newBalance, meta.jobId || null, meta.note || "job refund"],
+      [
+        clerkUserId,
+        amount,
+        newBalance,
+        meta.jobId || null,
+        meta.note || "job refund",
+      ],
     );
 
     await client.query("COMMIT");
     return { success: true, balanceAfter: newBalance };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
-    console.error("[db-tokens] refundDbTokens failed:", err instanceof Error ? err.message : err);
+    console.error(
+      "[db-tokens] refundDbTokens failed:",
+      err instanceof Error ? err.message : err,
+    );
     return { success: false };
   } finally {
     client.release();
@@ -257,12 +363,16 @@ export async function refundDbTokens(clerkUserId, amount, meta = {}) {
 export async function creditDbSubscription(clerkUserId, grant, meta = {}) {
   const pool = getPool();
   if (!pool) return { success: false, credited: false };
-  if (!Number.isFinite(grant) || grant <= 0) return { success: true, credited: false };
+  if (!Number.isFinite(grant) || grant <= 0)
+    return { success: true, credited: false };
 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await ensureUser(clerkUserId);
+    await client.query(
+      `INSERT INTO users (clerk_user_id) VALUES ($1) ON CONFLICT (clerk_user_id) DO NOTHING`,
+      [clerkUserId],
+    );
     await ensureBalanceRow(client, clerkUserId);
 
     // Idempotency: check stripe_event_id
@@ -285,7 +395,10 @@ export async function creditDbSubscription(clerkUserId, grant, meta = {}) {
       );
       const row = lockRes.rows[0];
       // pg returns BIGINT as string; coerce both sides for safe comparison
-      if (row && String(row.last_credited_period_start) === String(meta.periodStart)) {
+      if (
+        row &&
+        String(row.last_credited_period_start) === String(meta.periodStart)
+      ) {
         await client.query("ROLLBACK");
         return { success: true, credited: false };
       }
@@ -315,14 +428,23 @@ export async function creditDbSubscription(clerkUserId, grant, meta = {}) {
     await client.query(
       `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, stripe_event_id, note)
        VALUES ($1, 'subscription', $2, $3, $4, $5)`,
-      [clerkUserId, grant, newBalance, meta.stripeEventId || null, "monthly subscription credit"],
+      [
+        clerkUserId,
+        grant,
+        newBalance,
+        meta.stripeEventId || null,
+        "monthly subscription credit",
+      ],
     );
 
     await client.query("COMMIT");
     return { success: true, credited: true, balanceAfter: newBalance };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
-    console.error("[db-tokens] creditDbSubscription failed:", err instanceof Error ? err.message : err);
+    console.error(
+      "[db-tokens] creditDbSubscription failed:",
+      err instanceof Error ? err.message : err,
+    );
     return { success: false, credited: false };
   } finally {
     client.release();
@@ -344,7 +466,10 @@ export async function creditDbTopup(clerkUserId, grant, meta = {}) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await ensureUser(clerkUserId);
+    await client.query(
+      `INSERT INTO users (clerk_user_id) VALUES ($1) ON CONFLICT (clerk_user_id) DO NOTHING`,
+      [clerkUserId],
+    );
     await ensureBalanceRow(client, clerkUserId);
 
     // Idempotency
@@ -365,9 +490,14 @@ export async function creditDbTopup(clerkUserId, grant, meta = {}) {
     );
     const currentBalance = lockRes.rows[0]?.balance ?? 0;
     const newBalance = currentBalance + grant;
-    const incomingTier = meta.entitlementTier === "premium" ? "premium" : "basic";
-    const prevTier = lockRes.rows[0]?.max_entitlement_tier === "premium" ? "premium" : "basic";
-    const nextTier = incomingTier === "premium" || prevTier === "premium" ? "premium" : "basic";
+    const incomingTier =
+      meta.entitlementTier === "premium" ? "premium" : "basic";
+    const prevTier =
+      lockRes.rows[0]?.max_entitlement_tier === "premium" ? "premium" : "basic";
+    const nextTier =
+      incomingTier === "premium" || prevTier === "premium" ?
+        "premium"
+      : "basic";
 
     await client.query(
       `UPDATE user_token_balances SET balance = $2, max_entitlement_tier = $3 WHERE clerk_user_id = $1`,
@@ -377,14 +507,23 @@ export async function creditDbTopup(clerkUserId, grant, meta = {}) {
     await client.query(
       `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, stripe_event_id, note)
        VALUES ($1, 'topup', $2, $3, $4, $5)`,
-      [clerkUserId, grant, newBalance, meta.stripeEventId || null, meta.note || "one-time top-up"],
+      [
+        clerkUserId,
+        grant,
+        newBalance,
+        meta.stripeEventId || null,
+        meta.note || "one-time top-up",
+      ],
     );
 
     await client.query("COMMIT");
     return { success: true, balanceAfter: newBalance };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
-    console.error("[db-tokens] creditDbTopup failed:", err instanceof Error ? err.message : err);
+    console.error(
+      "[db-tokens] creditDbTopup failed:",
+      err instanceof Error ? err.message : err,
+    );
     return { success: false };
   } finally {
     client.release();
@@ -405,7 +544,10 @@ export async function grantDbWelcomeTokens(clerkUserId, grant) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await ensureUser(clerkUserId);
+    await client.query(
+      `INSERT INTO users (clerk_user_id) VALUES ($1) ON CONFLICT (clerk_user_id) DO NOTHING`,
+      [clerkUserId],
+    );
     await ensureBalanceRow(client, clerkUserId);
 
     const lockRes = await client.query(
@@ -436,7 +578,10 @@ export async function grantDbWelcomeTokens(clerkUserId, grant) {
     return { success: true, granted: true, balanceAfter: newBalance };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
-    console.error("[db-tokens] grantDbWelcomeTokens failed:", err instanceof Error ? err.message : err);
+    console.error(
+      "[db-tokens] grantDbWelcomeTokens failed:",
+      err instanceof Error ? err.message : err,
+    );
     return { success: false, granted: false };
   } finally {
     client.release();
@@ -464,7 +609,10 @@ export async function getTokenHistory(clerkUserId, opts = {}) {
     );
     return res.rows;
   } catch (err) {
-    console.error("[db-tokens] getTokenHistory failed:", err instanceof Error ? err.message : err);
+    console.error(
+      "[db-tokens] getTokenHistory failed:",
+      err instanceof Error ? err.message : err,
+    );
     return [];
   }
 }
