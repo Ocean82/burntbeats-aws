@@ -2,41 +2,17 @@
   "version": 1,
   "generated_at": "2026-06-07T16:38:45.000Z",
   "statistics": {
-    "total_entries": 12,
+    "total_entries": 8,
     "by_genre": {
-      "rock": 3,
-      "pop": 2,
+      "rock": 1,
+      "pop": 1,
       "electronic": 2,
-      "jazz": 2,
+      "jazz": 1,
       "hiphop": 1,
       "classical": 2
     }
   },
   "entries": [
-    {
-      "id": "midi-001",
-      "title": "Classic Rock Progression I-V-vi-IV",
-      "filename": "rock-progression-1.mid",
-      "category": {
-        "type": "progression",
-        "genre": "rock",
-        "key": "E major",
-        "time_signature": "4/4",
-        "complexity": "beginner",
-        "tempo": "moderate"
-      },
-      "analysis": {
-        "estimatedTempo": 120,
-        "length": 16,
-        "track_count": 1,
-        "note_count": 16
-      },
-      "tags": [
-        "rock",
-        "progression",
-        "guitar"
-      ]
-    },
     {
       "id": "midi-002",
       "title": "Blues Shuffle in A",
@@ -59,30 +35,6 @@
         "blues",
         "shuffle",
         "bass"
-      ]
-    },
-    {
-      "id": "midi-003",
-      "title": "Power Ballad Arpeggio",
-      "filename": "power-ballad.mid",
-      "category": {
-        "type": "progression",
-        "genre": "rock",
-        "key": "D major",
-        "time_signature": "4/4",
-        "complexity": "intermediate",
-        "tempo": "slow"
-      },
-      "analysis": {
-        "estimatedTempo": 72,
-        "length": 16,
-        "track_count": 1,
-        "note_count": 16
-      },
-      "tags": [
-        "ballad",
-        "piano",
-        "strings"
       ]
     },
     {
@@ -155,30 +107,6 @@
         "edm",
         "build",
         "drop"
-      ]
-    },
-    {
-      "id": "midi-007",
-      "title": "Jazz ii-V-I in Bb",
-      "filename": "jazz-251-bb.mid",
-      "category": {
-        "type": "progression",
-        "genre": "jazz",
-        "key": "Bb major",
-        "time_signature": "4/4",
-        "complexity": "intermediate",
-        "tempo": "moderate"
-      },
-      "analysis": {
-        "estimatedTempo": 100,
-        "length": 16,
-        "track_count": 1,
-        "note_count": 16
-      },
-      "tags": [
-        "jazz",
-        "251",
-        "piano"
       ]
     },
     {
@@ -275,30 +203,6 @@
         "strings",
         "quartet",
         "orchestral"
-      ]
-    },
-    {
-      "id": "midi-012",
-      "title": "Pop Ballad Verse",
-      "filename": "pop-ballad.mid",
-      "category": {
-        "type": "progression",
-        "genre": "pop",
-        "key": "G major",
-        "time_signature": "4/4",
-        "complexity": "intermediate",
-        "tempo": "slow"
-      },
-      "analysis": {
-        "estimatedTempo": 68,
-        "length": 16,
-        "track_count": 1,
-        "note_count": 16
-      },
-      "tags": [
-        "pop",
-        "ballad",
-        "piano"
       ]
     }
   ]

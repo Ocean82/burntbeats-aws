@@ -63,6 +63,22 @@ export const CHORD_TYPES: Record<
   dim: { name: "Dim", intervals: [0, 3, 6] },
   aug: { name: "Aug", intervals: [0, 4, 8] },
   add9: { name: "Add9", intervals: [0, 4, 7, 14] },
+  dim7: { name: "Dim7", intervals: [0, 3, 6, 9] },
+  m7b5: { name: "m7b5", intervals: [0, 3, 6, 10] },
+  aug7: { name: "Aug7", intervals: [0, 4, 8, 10] },
+  "7sus4": { name: "7sus4", intervals: [0, 5, 7, 10] },
+  "9": { name: "9", intervals: [0, 4, 7, 10, 14] },
+  maj9: { name: "Maj9", intervals: [0, 4, 7, 11, 14] },
+  m9: { name: "m9", intervals: [0, 3, 7, 10, 14] },
+  "11": { name: "11", intervals: [0, 4, 7, 10, 14, 17] },
+  "13": { name: "13", intervals: [0, 4, 7, 10, 14, 21] },
+  madd9: { name: "mAdd9", intervals: [0, 3, 7, 14] },
+  "6": { name: "6", intervals: [0, 4, 7, 9] },
+  m6: { name: "m6", intervals: [0, 3, 7, 9] },
+  "7b9": { name: "7b9", intervals: [0, 4, 7, 10, 13] },
+  "7#9": { name: "7#9", intervals: [0, 4, 7, 10, 15] },
+  "7b5": { name: "7b5", intervals: [0, 4, 6, 10] },
+  "7#5": { name: "7#5", intervals: [0, 4, 8, 10] },
 };
 
 export function midiToFreq(midi: number): number {

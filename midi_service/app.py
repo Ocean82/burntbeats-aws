@@ -33,6 +33,7 @@ from midi_service.routes.export import build_export_router
 from midi_service.routes.ops import build_ops_router
 from midi_service.routes.rhythm import build_rhythm_router
 from midi_service.routes.render import build_render_router
+from midi_service.routes.analyze import build_analyze_router
 from midi_service.services.export import run_export_sync
 from midi_service.services.merge_job import run_merge_sync
 from midi_service.services.render import run_render_sync
@@ -150,6 +151,7 @@ def create_app() -> FastAPI:
             get_queue_depth=get_queue_depth,
         )
     )
+    app.include_router(build_analyze_router())
     return app
 
 

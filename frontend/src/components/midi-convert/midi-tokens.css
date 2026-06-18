@@ -2134,3 +2134,229 @@
         padding: 8px 6px;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Visual polish: mobile responsive + micro-animations
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 639px) {
+    .midi-control-bar {
+        gap: 3px;
+        padding: 3px 6px;
+        min-height: 32px;
+    }
+
+    .midi-control-bar__time {
+        min-width: 3.2rem;
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+
+    .midi-control-bar__num {
+        width: 2.5rem;
+        font-size: 9px;
+    }
+
+    .midi-control-bar__group > .midi-physical-btn--metronome,
+    .midi-control-bar__group > .midi-physical-btn--shortcuts {
+        display: none;
+    }
+
+    .midi-control-bar__tool-btn {
+        min-width: 22px !important;
+        min-height: 22px !important;
+    }
+
+    .midi-control-bar__tool-group {
+        gap: 0;
+    }
+
+    .midi-editor-panel {
+        padding: 4px 8px 6px;
+    }
+
+    .midi-inspector {
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    .midi-inspector-wrap {
+        max-height: min(48vh, 24rem);
+        overflow-y: auto;
+    }
+
+    .midi-control-bar__overflow {
+        position: fixed;
+        top: auto;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        min-width: auto;
+        max-height: 60vh;
+        border-radius: 12px;
+    }
+}
+
+/* Overflow menu enter animation */
+.midi-overflow-enter {
+    animation: midi-overflow-in 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@keyframes midi-overflow-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Dialog enter animation */
+.midi-dialog-enter {
+    animation: midi-dialog-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes midi-dialog-in {
+    from {
+        opacity: 0;
+        transform: scale(0.96) translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Backdrop fade */
+.midi-backdrop-fade {
+    animation: midi-backdrop-in 0.15s ease-out;
+}
+
+@keyframes midi-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Chord card staggered enter */
+.midi-chord-card {
+    animation: midi-card-in 0.2s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@keyframes midi-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Quality metrics value glow on update */
+.midi-metric-value {
+    transition: color 0.3s ease;
+}
+
+.midi-metric-value--updated {
+    color: var(--midi-accent);
+}
+
+/* Loading shimmer pulse */
+@keyframes midi-shimmer {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+}
+
+.midi-loading-shimmer {
+    animation: midi-shimmer 1.2s ease-in-out infinite;
+}
+
+/* Secondary control bar buttons (metronome, shortcuts) */
+.midi-physical-btn--metronome,
+.midi-physical-btn--shortcuts {
+    display: inline-flex;
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+    .midi-control-bar__group:has(.midi-physical-btn--metronome) {
+        gap: 2px;
+    }
+}
+
+/* Nested section expand animation */
+.midi-nested-section {
+    overflow: hidden;
+    animation: midi-section-grow 0.15s ease-out;
+}
+
+@keyframes midi-section-grow {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 200px;
+    }
+}
+
+/* Key badge hover lift */
+.midi-key-badge {
+    transition:
+        box-shadow 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.12s ease;
+}
+
+.midi-key-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(205, 165, 60, 0.15);
+    border-color: rgba(205, 165, 60, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .midi-overflow-enter {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .midi-dialog-enter {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .midi-backdrop-fade {
+        animation: none;
+    }
+
+    .midi-chord-card {
+        animation: none;
+    }
+
+    .midi-metric-value {
+        transition: none;
+    }
+
+    .midi-loading-shimmer {
+        animation: none;
+        opacity: 0.5;
+    }
+
+    .midi-nested-section {
+        animation: none;
+    }
+
+    .midi-key-badge {
+        transition: none;
+        transform: none !important;
+    }
+}

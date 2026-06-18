@@ -187,10 +187,10 @@ describe("MidiConvertPanel — ErrorState wiring (Task 9.2)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 13.2 — EmptyState wiring
+// Task 13.2 — Stage rendering (was EmptyState wiring)
 // Validates: Requirements 13.1, 13.2
 // ---------------------------------------------------------------------------
-describe("MidiConvertPanel — EmptyState wiring (Task 13.2)", () => {
+describe("MidiConvertPanel — Stage rendering (Task 13.2)", () => {
   beforeEach(() => {
     resetHookState({
       hasSourceSelected: false,
@@ -200,30 +200,24 @@ describe("MidiConvertPanel — EmptyState wiring (Task 13.2)", () => {
     });
   });
 
-  it("renders <EmptyState> with 'No conversions yet' title when no source is selected", () => {
+  it("renders source selector when no source is selected", () => {
     render(<MidiConvertPanel />);
-    expect(
-      screen.getByRole("heading", { name: /no conversions yet/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId("midi-source-selector")).toBeInTheDocument();
   });
 
-  it("does NOT render <EmptyState> when a source is selected", () => {
+  it("renders settings when source is selected", () => {
     resetHookState({ hasSourceSelected: true });
     render(<MidiConvertPanel />);
-    expect(
-      screen.queryByRole("heading", { name: /no conversions yet/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("midi-convert-settings")).toBeInTheDocument();
   });
 
-  it("does NOT render <EmptyState> when isConverting is true", () => {
-    resetHookState({ hasSourceSelected: false, isConverting: true });
+  it("renders progress when isConverting is true", () => {
+    resetHookState({ hasSourceSelected: true, isConverting: true });
     render(<MidiConvertPanel />);
-    expect(
-      screen.queryByRole("heading", { name: /no conversions yet/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("midi-convert-progress")).toBeInTheDocument();
   });
 
-  it("does NOT render <EmptyState> when result is non-null", () => {
+  it("renders editor stage when result is non-null", () => {
     const fakeResult: MidiConvertResult = {
       notesDetected: 10,
       durationSeconds: 5,
@@ -233,11 +227,9 @@ describe("MidiConvertPanel — EmptyState wiring (Task 13.2)", () => {
       analysis: null,
       fileAnalysis: null,
     };
-    resetHookState({ hasSourceSelected: false, result: fakeResult });
+    resetHookState({ hasSourceSelected: true, result: fakeResult });
     render(<MidiConvertPanel />);
-    expect(
-      screen.queryByRole("heading", { name: /no conversions yet/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("midi-result-panel")).toBeInTheDocument();
   });
 
   it("hides primary convert button when a result already exists", () => {
@@ -253,7 +245,7 @@ describe("MidiConvertPanel — EmptyState wiring (Task 13.2)", () => {
     resetHookState({ hasSourceSelected: true, result: fakeResult });
     render(<MidiConvertPanel />);
     expect(screen.queryByTestId("midi-convert-button")).not.toBeInTheDocument();
-    expect(screen.getByTestId("midi-convert-again-button")).toBeInTheDocument();
+    expect(screen.queryByTestId("midi-convert-again-button")).not.toBeInTheDocument();
   });
 });
 

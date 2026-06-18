@@ -54,7 +54,23 @@ export type ChordType =
   | "sus4"
   | "dim"
   | "aug"
-  | "add9";
+  | "add9"
+  | "dim7"
+  | "m7b5"
+  | "aug7"
+  | "7sus4"
+  | "9"
+  | "maj9"
+  | "m9"
+  | "11"
+  | "13"
+  | "madd9"
+  | "6"
+  | "m6"
+  | "7b9"
+  | "7#9"
+  | "7b5"
+  | "7#5";
 
 export interface ChordGeneratorConfig {
   enabled: boolean;

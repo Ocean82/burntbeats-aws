@@ -1,10 +1,8 @@
-/**
- * MidiSmartPanel — diatonic chord suggestions with Tone.js preview.
- */
-import { Lock, Plus, Unlock } from "lucide-react";
+import { Lock, Plus, Shuffle, Unlock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PolySynth, start, Synth } from "tone";
 import {
+  getChordNotes,
   getDiatonicChords,
   midiToFreq,
   type RootNote,
@@ -12,6 +10,12 @@ import {
   NOTE_NAMES,
   SCALE_INTERVALS,
 } from "../../utils/musicTheory";
+import {
+  generateProgression,
+  generateVariation,
+  type GeneratedProgression,
+} from "../../utils/chordProgressionGenerator";
+import { chordToMidi } from "../../utils/midiChordParser";
 import { cn } from "../../utils/cn";
 import { SectionLabel } from "../ui";
 
@@ -23,10 +27,15 @@ const SCALES: Scale[] = [
   "pentatonic",
 ];
 
+const MOODS = ["happy", "sad", "energetic", "calm", "mysterious", "romantic", "dramatic", "nostalgic"];
+
+const GENRES = ["pop", "rock", "jazz", "blues", "folk", "electronic", "classical", "reggae", "country", "hiphop"];
+
 export interface MidiSmartPanelProps {
   root?: RootNote;
   scale?: Scale;
   onInsertChord?: (notes: number[]) => void;
+  onInsertProgression?: (chords: number[][]) => void;
   onScaleChange?: (state: {
     root: RootNote;
     scale: Scale;
@@ -40,6 +49,7 @@ export function MidiSmartPanel({
   root: initialRoot = "C",
   scale: initialScale = "major",
   onInsertChord,
+  onInsertProgression,
   onScaleChange,
   scaleLockDisabled = false,
   className,
@@ -47,9 +57,10 @@ export function MidiSmartPanel({
   const [root, setRoot] = useState<RootNote>(initialRoot);
   const [scale, setScale] = useState<Scale>(initialScale);
   const [scaleLock, setScaleLock] = useState(() => !scaleLockDisabled);
+  const [genre, setGenre] = useState("pop");
+  const [mood, setMood] = useState("happy");
+  const [progression, setProgression] = useState<GeneratedProgression | null>(null);
 
-  // Derive scaleLock from prop: when scaleLockDisabled becomes true, lock must be off.
-  // This avoids useEffect setState while keeping local state for user toggles.
   const effectiveScaleLock = scaleLockDisabled ? false : scaleLock;
 
   const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
@@ -85,6 +96,32 @@ export function MidiSmartPanel({
       onInsertChord?.(midiNotes);
     },
     [onInsertChord],
+  );
+
+  const handleGenerate = useCallback(() => {
+    const prog = generateProgression(
+      { tonic: root, mode: scale },
+      genre,
+      mood,
+      4,
+    );
+    setProgression(prog);
+  }, [root, scale, genre, mood]);
+
+  const handleInsertProgression = useCallback(() => {
+    if (!progression) return;
+    const allChords = progression.chords.map((c) =>
+      chordToMidi(c.root, c.quality, 4),
+    );
+    onInsertProgression?.(allChords);
+  }, [progression, onInsertProgression]);
+
+  const handleVariation = useCallback(
+    (type: "substitute" | "extend" | "invert" | "reharmonize") => {
+      if (!progression) return;
+      setProgression(generateVariation(progression, type));
+    },
+    [progression],
   );
 
   return (
@@ -192,6 +229,112 @@ export function MidiSmartPanel({
             ) : null}
           </div>
         ))}
+      </div>
+
+      <hr className="my-sm border-border/50" />
+
+      <div className="space-y-sm">
+        <div className="flex items-center justify-between">
+          <SectionLabel>Generate progression</SectionLabel>
+          <div className="flex items-center gap-1">
+            <select
+              value={genre}
+              onChange={(e) => setGenre(e.target.value)}
+              className="rounded border border-border bg-muted px-1 py-0.5 text-[10px]"
+              aria-label="Genre"
+            >
+              {GENRES.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+            <select
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
+              className="rounded border border-border bg-muted px-1 py-0.5 text-[10px]"
+              aria-label="Mood"
+            >
+              {MOODS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              className="inline-flex items-center gap-0.5 rounded bg-accent-midi/20 px-1.5 py-0.5 text-[10px] font-medium text-accent-midi-200 hover:bg-accent-midi/30"
+              aria-label="Generate progression"
+            >
+              <Shuffle className="h-2.5 w-2.5" aria-hidden />
+              Generate
+            </button>
+          </div>
+        </div>
+
+        {progression && (
+          <div className="space-y-1 rounded border border-accent-midi/15 bg-accent-midi/5 p-xs">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground">
+                {progression.description} · {progression.tempo} BPM
+              </p>
+              <div className="flex items-center gap-0.5">
+                {(["substitute", "extend", "invert", "reharmonize"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => handleVariation(v)}
+                    className="rounded bg-muted/40 px-1 py-0.5 text-[9px] text-muted-foreground hover:bg-accent-midi/20 hover:text-accent-midi-200"
+                    title={`Apply ${v} variation`}
+                  >
+                    {v}
+                  </button>
+                ))}
+                {onInsertProgression && (
+                  <button
+                    type="button"
+                    onClick={handleInsertProgression}
+                    className="rounded bg-accent-midi/20 px-1.5 py-0.5 text-[9px] font-medium text-accent-midi-200 hover:bg-accent-midi/30"
+                    title="Insert all chords"
+                  >
+                    Insert all
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {progression.chords.map((c, i) => {
+                const midi = chordToMidi(c.root, c.quality, 4);
+                const label = `${c.root}${c.quality === "major" ? "" : c.quality === "minor" ? "m" : c.quality === "dom7" ? "7" : c.quality === "dim" ? "dim" : c.quality === "maj7" ? "maj7" : c.quality === "min7" ? "m7" : ""}`;
+                return (
+                  <div key={i} className="relative flex">
+                    <button
+                      type="button"
+                      onClick={() => handleChordClick(midi)}
+                      onDoubleClick={() => handleChordInsert(midi)}
+                      className="min-w-0 rounded border border-accent-midi/20 bg-accent-midi/8 px-1.5 py-0.5 text-[10px] font-medium text-accent-midi-200 transition hover:bg-accent-midi/20"
+                      title={`${progression.romanNumerals[i]} — ${label}`}
+                    >
+                      {progression.romanNumerals[i]}
+                      <span className="ml-0.5 opacity-60">{label}</span>
+                    </button>
+                    {onInsertChord && (
+                      <button
+                        type="button"
+                        onClick={() => handleChordInsert(midi)}
+                        className="ml-px inline-flex items-center justify-center rounded border border-border/50 bg-muted/30 px-0.5 text-accent-midi-300 hover:bg-accent-midi/10"
+                        aria-label={`Insert ${label}`}
+                      >
+                        <Plus className="h-2 w-2" aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -21,6 +21,8 @@ import { MidiEditorShell } from "./MidiEditorShell";
 import { MarkerStrip, createMarker, type SectionMarker } from "./MarkerStrip";
 import { MidiSmartPanel } from "./MidiSmartPanel";
 import { MidiEffectsPanel } from "./MidiEffectsPanel";
+import { MidiHarmonyPanel } from "./MidiHarmonyPanel";
+import { MidiProcessDialog } from "./MidiProcessDialog";
 import { MidiVelocityLane } from "./MidiVelocityLane";
 import { MidiCcLane } from "./MidiCcLane";
 import { MidiAutomationLane } from "./MidiAutomationLane";
@@ -81,6 +83,7 @@ export function MidiNoteEditor({
     render: false,
     fx: false,
     chords: false,
+    harmony: false,
   });
   const anyInspectorOpen = Object.values(inspectorOpen).some(Boolean);
   const [scaleGuide, setScaleGuide] = useState<{
@@ -100,6 +103,15 @@ export function MidiNoteEditor({
   const [markerExportNotice, setMarkerExportNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [processDialogOpen, setProcessDialogOpen] = useState(false);
+
+  const handleProcess = useCallback(
+    (processedNotes: import("./editorTypes").EditableNote[]) => {
+      editor.beginEditGesture();
+      editor.setTrackNotes(editor.activeTrackId, processedNotes);
+    },
+    [editor.beginEditGesture, editor.setTrackNotes, editor.activeTrackId],
+  );
 
   useEffect(() => {
     if (isDrumContent) {
@@ -508,6 +520,28 @@ export function MidiNoteEditor({
     [editor, minStart, playback.currentTime],
   );
 
+  const handleInsertProgression = useCallback(
+    (chordSets: number[][]) => {
+      const base = editor.selectedNotes.length
+        ? Math.min(...editor.selectedNotes.map((n) => n.start))
+        : snapToGrid(
+            minStart + playback.currentTime,
+            editor.bpm,
+            editor.snapGrid,
+            editor.timeSignature,
+          );
+      const beatsPerChord = 2;
+      const secondsPerBeat = 60 / editor.bpm;
+      chordSets.forEach((chord, i) => {
+        const start = base + i * beatsPerChord * secondsPerBeat;
+        for (const pitch of chord) {
+          editor.addNote(pitch, start);
+        }
+      });
+    },
+    [editor, minStart, playback.currentTime],
+  );
+
   const handleSetNoteVelocity = useCallback(
     (noteId: string, velocity: number) => {
       editor.setNoteVelocity(noteId, velocity);
@@ -825,6 +859,7 @@ export function MidiNoteEditor({
             onSaveToJob={() => void handleSaveToJob()}
             showShortcuts={showShortcuts}
             onToggleShortcuts={handleToggleShortcuts}
+            onOpenProcessDialog={() => setProcessDialogOpen(true)}
           />
         }
         trackList={
@@ -1098,7 +1133,22 @@ export function MidiNoteEditor({
                     scale={scaleGuide.scale}
                     scaleLockDisabled={isDrumContent}
                     onInsertChord={handleInsertChord}
+                    onInsertProgression={handleInsertProgression}
                     onScaleChange={setScaleGuide}
+                  />
+                </MidiInspectorSection>
+                <MidiInspectorSection
+                  title="Harmony"
+                  subtitle="Key & chords"
+                  open={inspectorOpen.harmony}
+                  onToggle={() =>
+                    setInspectorOpen((prev) => ({ ...prev, harmony: !prev.harmony }))
+                  }
+                >
+                  <MidiHarmonyPanel
+                    notes={editor.notes}
+                    bpm={editor.bpm}
+                    timeSignature={editor.timeSignature}
                   />
                 </MidiInspectorSection>
               </>
@@ -1134,6 +1184,16 @@ export function MidiNoteEditor({
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="6" y1="8" x2="6" y2="16"/><line x1="18" y1="8" x2="18" y2="16"/></svg>
                 </button>
+                <button
+                  type="button"
+                  className="midi-inspector-tab"
+                  onClick={() =>
+                    setInspectorOpen((prev) => ({ ...prev, harmony: true }))
+                  }
+                  title="Harmonic analysis"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </button>
               </div>
             )}
           </div>
@@ -1148,6 +1208,15 @@ export function MidiNoteEditor({
             )}
           </div>
         }
+      />
+      <MidiProcessDialog
+        open={processDialogOpen}
+        onClose={() => setProcessDialogOpen(false)}
+        notes={editor.notes}
+        bpm={editor.bpm}
+        snapGrid={editor.snapGrid}
+        timeSignature={editor.timeSignature}
+        onApply={handleProcess}
       />
     </div>
   );

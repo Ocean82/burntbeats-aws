@@ -19,6 +19,7 @@ import {
   Scissors,
   Square,
   Undo2,
+  Wand2,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -112,6 +113,9 @@ export interface MidiControlBarProps {
   // Shortcuts
   showShortcuts: boolean;
   onToggleShortcuts: () => void;
+
+  // Process MIDI dialog trigger
+  onOpenProcessDialog?: () => void;
 }
 
 export function MidiControlBar(props: MidiControlBarProps) {
@@ -160,6 +164,7 @@ export function MidiControlBar(props: MidiControlBarProps) {
     onDuplicateSelection,
     onToggleMidiRecord,
     onSaveToJob,
+    onOpenProcessDialog,
     showShortcuts,
     onToggleShortcuts,
   } = props;
@@ -365,6 +370,7 @@ export function MidiControlBar(props: MidiControlBarProps) {
           title="Metronome click track"
           aria-label="Toggle metronome"
           aria-pressed={metronomeEnabled}
+          className="midi-physical-btn--metronome"
         >
           <span className="text-[10px] font-bold leading-none">♩</span>
         </MidiPhysicalButton>
@@ -376,6 +382,7 @@ export function MidiControlBar(props: MidiControlBarProps) {
           title={showShortcuts ? "Hide keyboard shortcuts" : "Show keyboard shortcuts"}
           aria-label={showShortcuts ? "Hide shortcuts" : "Show shortcuts"}
           aria-pressed={showShortcuts}
+          className="midi-physical-btn--shortcuts"
         >
           <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded border border-current text-[8px] font-bold leading-none">
             ?
@@ -397,7 +404,7 @@ export function MidiControlBar(props: MidiControlBarProps) {
           </MidiPhysicalButton>
 
           {overflowOpen && (
-            <div className="midi-control-bar__overflow" role="menu">
+            <div className="midi-control-bar__overflow midi-overflow-enter" role="menu">
               {/* Time signature */}
               <div className="midi-control-bar__overflow-row">
                 <span className="midi-control-bar__overflow-label">Time</span>
@@ -499,6 +506,19 @@ export function MidiControlBar(props: MidiControlBarProps) {
                 <Copy className="h-3.5 w-3.5" />
                 Duplicate
               </button>
+
+              {/* Process MIDI */}
+              {onOpenProcessDialog && (
+                <button
+                  type="button"
+                  onClick={() => { onOpenProcessDialog(); setOverflowOpen(false); }}
+                  className="midi-control-bar__overflow-btn"
+                  role="menuitem"
+                >
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Process MIDI
+                </button>
+              )}
 
               {/* MIDI Record */}
               {midiRecordSupported && onToggleMidiRecord && (
