@@ -82,6 +82,7 @@ export function MidiNoteEditor({
     fx: false,
     chords: false,
   });
+  const anyInspectorOpen = Object.values(inspectorOpen).some(Boolean);
   const [scaleGuide, setScaleGuide] = useState<{
     root: RootNote;
     scale: Scale;
@@ -800,9 +801,6 @@ export function MidiNoteEditor({
             zoomLevel={zoomLevel}
             verticalZoomLevel={verticalZoomLevel}
             metronomeEnabled={playback.metronomeEnabled}
-            activeLane={editor.activeLane}
-            activeCcNumber={editor.activeCcNumber}
-            activeAutomationParam={editor.activeAutomationParam}
             canSaveToJob={!!jobId}
             isSaving={isSaving}
             midiRecordSupported={webMidi.isSupported}
@@ -823,9 +821,6 @@ export function MidiNoteEditor({
             onToggleMetronome={playback.toggleMetronome}
             onQuantizeSelection={editor.quantizeSelected}
             onDuplicateSelection={editor.duplicateSelected}
-            onActiveLaneChange={editor.setActiveLane}
-            onActiveCcNumberChange={editor.setActiveCcNumber}
-            onActiveAutomationParamChange={editor.setActiveAutomationParam}
             onToggleMidiRecord={() => webMidi.setEnabled(!webMidi.isEnabled)}
             onSaveToJob={() => void handleSaveToJob()}
             showShortcuts={showShortcuts}
@@ -911,6 +906,33 @@ export function MidiNoteEditor({
               onLoopChange={handleLoopChange}
               e2eMode={e2eMode}
             />
+            {/* Lane tabs — persistent toggle for velocity/CC/automation lanes */}
+            <div className="midi-lane-tabs" role="tablist" aria-label="Editor lanes">
+              {([
+                { value: "notes" as const, label: "Notes" },
+                { value: "velocity" as const, label: "Velocity" },
+                { value: "cc" as const, label: "CC" },
+                { value: "automation" as const, label: "Auto" },
+              ]).map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={editor.activeLane === value}
+                  onClick={() => {
+                    editor.setActiveLane(value);
+                    setLaneDrawerOpen(value !== "notes");
+                  }}
+                  className={
+                    editor.activeLane === value
+                      ? "midi-lane-tab midi-lane-tab--active"
+                      : "midi-lane-tab"
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             {(showVelocityLane || showCcLane || showAutomationLane) && (
               <MidiLaneDrawer
                 title={
@@ -995,97 +1017,125 @@ export function MidiNoteEditor({
                 </div>
               </MidiLaneDrawer>
             )}
+            {/* Selection info strip — only visible when notes are selected */}
+            <div className="midi-selection-strip">
+              <MidiEditorSelectionInfo
+              selectedNotes={editor.selectedNotes}
+              onDelete={editor.deleteSelected}
+              onTranspose={editor.transposeSelected}
+              onSetVelocity={editor.setSelectedVelocity}
+              onHumanize={() => editor.humanizeSelected()}
+              onRandomize={() => editor.randomizeSelected()}
+              onJoin={() => editor.joinSelected()}
+            />
+          </div>
           </div>
         }
         inspector={
           <div className="space-y-sm">
-            <MidiInspectorSection
-              title="Selection"
-              subtitle="Transpose, velocity, humanize"
-              open={inspectorOpen.selection}
-              onToggle={() =>
-                setInspectorOpen((prev) => ({
-                  ...prev,
-                  selection: !prev.selection,
-                }))
-              }
-            >
-              <MidiEditorSelectionInfo
-                selectedNotes={editor.selectedNotes}
-                onDelete={editor.deleteSelected}
-                onTranspose={editor.transposeSelected}
-                onSetVelocity={editor.setSelectedVelocity}
-                onHumanize={() => editor.humanizeSelected()}
-                onRandomize={() => editor.randomizeSelected()}
-                onJoin={() => editor.joinSelected()}
-              />
-            </MidiInspectorSection>
-            <MidiInspectorSection
-              title="Render audio"
-              subtitle="Server-side WAV preview"
-              open={inspectorOpen.render}
-              onToggle={() =>
-                setInspectorOpen((prev) => ({ ...prev, render: !prev.render }))
-              }
-            >
-              <MidiRenderAudioControl
-                notes={editor.notes.map((n) => ({
-                  pitch: n.pitch,
-                  start: n.start,
-                  duration: n.duration,
-                  velocity: n.velocity,
-                }))}
-                bpm={editor.bpm}
-                instrument={
-                  editor.tracks.find((t) => t.id === editor.activeTrackId)
-                    ?.instrument
-                }
-                sourceJobId={jobId}
-              />
-            </MidiInspectorSection>
-            <MidiInspectorSection
-              title="MIDI FX"
-              subtitle={editor.activeTrack.name}
-              open={inspectorOpen.fx}
-              onToggle={() =>
-                setInspectorOpen((prev) => ({ ...prev, fx: !prev.fx }))
-              }
-            >
-              <MidiEffectsPanel
-                trackName={editor.activeTrack.name}
-                config={activeMidiFx}
-                applyMode={activeMidiFxApplyMode}
-                previewEnabled={activeMidiFxPreview}
-                applyToAllTrack={fxApplyToAll}
-                onApplyToAllTrackChange={setFxApplyToAll}
-                onChange={handleMidiFxChange}
-                onApplyModeChange={(mode) =>
-                  editor.setTrackMidiFxApplyMode(editor.activeTrackId, mode)
-                }
-                onPreviewChange={(enabled) =>
-                  editor.setTrackMidiFxPreview(editor.activeTrackId, enabled)
-                }
-                onApplyPreset={handleMidiFxPreset}
-                onApply={handleApplyMidiEffects}
-                targetCount={effectsTargetNotes.length}
-              />
-            </MidiInspectorSection>
-            <MidiInspectorSection
-              title="Smart chords"
-              subtitle="Diatonic suggestions"
-              open={inspectorOpen.chords}
-              onToggle={() =>
-                setInspectorOpen((prev) => ({ ...prev, chords: !prev.chords }))
-              }
-            >
-              <MidiSmartPanel
-                root={scaleGuide.root}
-                scale={scaleGuide.scale}
-                scaleLockDisabled={isDrumContent}
-                onInsertChord={handleInsertChord}
-                onScaleChange={setScaleGuide}
-              />
-            </MidiInspectorSection>
+            {anyInspectorOpen ? (
+              <>
+                <MidiInspectorSection
+                  title="Render audio"
+                  subtitle="Server-side WAV preview"
+                  open={inspectorOpen.render}
+                  onToggle={() =>
+                    setInspectorOpen((prev) => ({ ...prev, render: !prev.render }))
+                  }
+                >
+                  <MidiRenderAudioControl
+                    notes={editor.notes.map((n) => ({
+                      pitch: n.pitch,
+                      start: n.start,
+                      duration: n.duration,
+                      velocity: n.velocity,
+                    }))}
+                    bpm={editor.bpm}
+                    instrument={
+                      editor.tracks.find((t) => t.id === editor.activeTrackId)
+                        ?.instrument
+                    }
+                    sourceJobId={jobId}
+                  />
+                </MidiInspectorSection>
+                <MidiInspectorSection
+                  title="MIDI FX"
+                  subtitle={editor.activeTrack.name}
+                  open={inspectorOpen.fx}
+                  onToggle={() =>
+                    setInspectorOpen((prev) => ({ ...prev, fx: !prev.fx }))
+                  }
+                >
+                  <MidiEffectsPanel
+                    trackName={editor.activeTrack.name}
+                    config={activeMidiFx}
+                    applyMode={activeMidiFxApplyMode}
+                    previewEnabled={activeMidiFxPreview}
+                    applyToAllTrack={fxApplyToAll}
+                    onApplyToAllTrackChange={setFxApplyToAll}
+                    onChange={handleMidiFxChange}
+                    onApplyModeChange={(mode) =>
+                      editor.setTrackMidiFxApplyMode(editor.activeTrackId, mode)
+                    }
+                    onPreviewChange={(enabled) =>
+                      editor.setTrackMidiFxPreview(editor.activeTrackId, enabled)
+                    }
+                    onApplyPreset={handleMidiFxPreset}
+                    onApply={handleApplyMidiEffects}
+                    targetCount={effectsTargetNotes.length}
+                  />
+                </MidiInspectorSection>
+                <MidiInspectorSection
+                  title="Smart chords"
+                  subtitle="Diatonic suggestions"
+                  open={inspectorOpen.chords}
+                  onToggle={() =>
+                    setInspectorOpen((prev) => ({ ...prev, chords: !prev.chords }))
+                  }
+                >
+                  <MidiSmartPanel
+                    root={scaleGuide.root}
+                    scale={scaleGuide.scale}
+                    scaleLockDisabled={isDrumContent}
+                    onInsertChord={handleInsertChord}
+                    onScaleChange={setScaleGuide}
+                  />
+                </MidiInspectorSection>
+              </>
+            ) : (
+              <div className="midi-inspector-tabs">
+                <button
+                  type="button"
+                  className="midi-inspector-tab"
+                  onClick={() =>
+                    setInspectorOpen((prev) => ({ ...prev, render: true }))
+                  }
+                  title="Render audio"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                </button>
+                <button
+                  type="button"
+                  className="midi-inspector-tab"
+                  onClick={() =>
+                    setInspectorOpen((prev) => ({ ...prev, fx: true }))
+                  }
+                  title="MIDI FX"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                </button>
+                <button
+                  type="button"
+                  className="midi-inspector-tab"
+                  onClick={() =>
+                    setInspectorOpen((prev) => ({ ...prev, chords: true }))
+                  }
+                  title="Smart chords"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="6" y1="8" x2="6" y2="16"/><line x1="18" y1="8" x2="18" y2="16"/></svg>
+                </button>
+              </div>
+            )}
           </div>
         }
         shortcuts={

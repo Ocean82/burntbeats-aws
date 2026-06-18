@@ -25,8 +25,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "../../utils/cn";
 import { MidiPhysicalButton } from "./controls/MidiPhysicalButton";
-import type { ActiveLane, AutomationParam, EditorTool, SnapGrid, TimeSignature } from "./editorTypes";
-import { AUTOMATION_PARAMS, BUILTIN_CC_LANES } from "./editorTypes";
+import type { EditorTool, SnapGrid, TimeSignature } from "./editorTypes";
 import { EDITOR_TOOLS } from "./pianoRollTheme";
 
 function formatControlBarTime(seconds: number): string {
@@ -57,13 +56,6 @@ const GRIDS: { value: SnapGrid; label: string }[] = [
   { value: "dotted", label: "Dotted" },
   { value: "shuffle", label: "Shuffle" },
   { value: "free", label: "Off" },
-];
-
-const LANES: { value: ActiveLane; label: string }[] = [
-  { value: "notes", label: "Notes" },
-  { value: "velocity", label: "Vel" },
-  { value: "cc", label: "CC" },
-  { value: "automation", label: "Auto" },
 ];
 
 export interface MidiControlBarProps {
@@ -110,16 +102,10 @@ export interface MidiControlBarProps {
   isSaving?: boolean;
   midiRecordSupported?: boolean;
   midiRecordEnabled?: boolean;
-  activeLane: ActiveLane;
-  activeCcNumber: number;
-  activeAutomationParam: AutomationParam;
   onTimeSignatureChange: (ts: TimeSignature) => void;
   onDrawVelocityChange: (vel: number) => void;
   onQuantizeSelection: () => void;
   onDuplicateSelection: () => void;
-  onActiveLaneChange: (lane: ActiveLane) => void;
-  onActiveCcNumberChange: (cc: number) => void;
-  onActiveAutomationParamChange: (param: AutomationParam) => void;
   onToggleMidiRecord?: () => void;
   onSaveToJob?: () => void;
 
@@ -168,16 +154,10 @@ export function MidiControlBar(props: MidiControlBarProps) {
     isSaving = false,
     midiRecordSupported = false,
     midiRecordEnabled = false,
-    activeLane,
-    activeCcNumber,
-    activeAutomationParam,
     onTimeSignatureChange,
     onDrawVelocityChange,
     onQuantizeSelection,
     onDuplicateSelection,
-    onActiveLaneChange,
-    onActiveCcNumberChange,
-    onActiveAutomationParamChange,
     onToggleMidiRecord,
     onSaveToJob,
     showShortcuts,
@@ -457,65 +437,6 @@ export function MidiControlBar(props: MidiControlBarProps) {
                   {drawVelocity}
                 </span>
               </div>
-
-              {/* Lane selector */}
-              <div className="midi-control-bar__overflow-row">
-                <span className="midi-control-bar__overflow-label">Lane</span>
-                <div className="inline-flex gap-0.5">
-                  {LANES.map(({ value, label }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => onActiveLaneChange(value)}
-                      className={cn(
-                        "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider transition-colors",
-                        activeLane === value
-                          ? "bg-accent-midi/20 text-accent-midi-200"
-                          : "text-muted-foreground hover:text-secondary-foreground",
-                      )}
-                      aria-pressed={activeLane === value}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* CC number (only when CC lane active) */}
-              {activeLane === "cc" && (
-                <div className="midi-control-bar__overflow-row">
-                  <span className="midi-control-bar__overflow-label">CC</span>
-                  <select
-                    value={activeCcNumber}
-                    onChange={(e) => onActiveCcNumberChange(Number(e.target.value))}
-                    className="midi-control-bar__select"
-                    aria-label="MIDI CC number"
-                  >
-                    {BUILTIN_CC_LANES.map((lane) => (
-                      <option key={lane.ccNumber} value={lane.ccNumber}>
-                        CC{lane.ccNumber} {lane.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Automation param (only when automation lane active) */}
-              {activeLane === "automation" && (
-                <div className="midi-control-bar__overflow-row">
-                  <span className="midi-control-bar__overflow-label">Auto</span>
-                  <select
-                    value={activeAutomationParam}
-                    onChange={(e) => onActiveAutomationParamChange(e.target.value as AutomationParam)}
-                    className="midi-control-bar__select"
-                    aria-label="Automation parameter"
-                  >
-                    {AUTOMATION_PARAMS.map((p) => (
-                      <option key={p.param} value={p.param}>{p.label}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* H zoom slider */}
               <div className="midi-control-bar__overflow-row">

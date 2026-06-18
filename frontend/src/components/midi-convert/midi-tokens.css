@@ -2030,3 +2030,107 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ─── Lane tabs (Phase 3) ─── */
+.midi-lane-tabs {
+    display: flex;
+    gap: 1px;
+    padding: 0;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.midi-lane-tab {
+    flex: 1;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border: 1px solid var(--midi-border);
+    background: var(--midi-surface-inset);
+    color: var(--midi-text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.midi-lane-tab:not(:first-child) {
+    border-left: none;
+}
+
+.midi-lane-tab:hover {
+    background: var(--midi-surface-raised);
+    color: var(--midi-text);
+}
+
+.midi-lane-tab--active {
+    background: rgba(72, 124, 255, 0.12);
+    color: rgb(148, 188, 255);
+    border-color: rgba(72, 124, 255, 0.25);
+}
+
+.midi-lane-tab--active + .midi-lane-tab {
+    border-left-color: rgba(72, 124, 255, 0.25);
+}
+
+/* ─── Selection info strip (Phase 3) ─── */
+.midi-selection-strip {
+    border-top: 1px solid var(--midi-border);
+    background: var(--midi-surface-raised);
+    min-height: 0;
+}
+
+/* ─── Inspector collapsed tabs (Phase 3) ─── */
+.midi-inspector-tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 4px;
+    background: var(--midi-surface-inset);
+    border-radius: 6px;
+}
+
+.midi-inspector-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 6px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: var(--midi-text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.midi-inspector-tab:hover {
+    background: var(--midi-surface-raised);
+    color: var(--midi-text);
+}
+
+@media (max-width: 1279px) {
+    .midi-inspector-tabs {
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .midi-inspector-tab {
+        width: auto;
+        padding: 6px 10px;
+    }
+}
+
+@media (min-width: 1280px) {
+    .midi-inspector-tabs {
+        padding: 8px 4px;
+    }
+
+    .midi-inspector-tab {
+        padding: 8px 6px;
+    }
+}
