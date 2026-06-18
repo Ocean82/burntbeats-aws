@@ -14,11 +14,10 @@ import { exportTracksToMidi, downloadMidiBlob, midiMarkerExportSupported } from 
 import { buildMidiDownloadName } from "../../utils/midiErrors";
 import { useWebMidiInput } from "../../hooks/useWebMidiInput";
 import { snapToGrid } from "../../utils/midiEditorSnap";
-import { MidiEditorToolbar } from "./MidiEditorToolbar";
+import { MidiControlBar } from "./MidiControlBar";
 import { MidiEditorCanvas } from "./MidiEditorCanvas";
 import { MidiEditorSelectionInfo } from "./MidiEditorSelectionInfo";
 import { MidiEditorShell } from "./MidiEditorShell";
-import { MidiTransportBar } from "./MidiTransportBar";
 import { MarkerStrip, createMarker, type SectionMarker } from "./MarkerStrip";
 import { MidiSmartPanel } from "./MidiSmartPanel";
 import { MidiEffectsPanel } from "./MidiEffectsPanel";
@@ -711,76 +710,63 @@ export function MidiNoteEditor({
   }, [editor, playback.isPlaying, playback.isPaused, handlePlay, handlePause]);
 
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const shortcuts = (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => setShowShortcuts((v) => !v)}
-        className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-secondary-foreground transition-colors"
-        aria-label={showShortcuts ? "Hide keyboard shortcuts" : "Show keyboard shortcuts"}
-        title="Keyboard shortcuts"
-      >
-        <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-current text-[9px]">?</span>
-        <span className="hidden sm:inline">Shortcuts</span>
-      </button>
-      {showShortcuts && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <span>
-            <kbd className="rounded bg-muted px-1">Space</kbd> Play / Pause / Stop
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">1</kbd>
-            <kbd className="rounded bg-muted px-1">2</kbd>
-            <kbd className="rounded bg-muted px-1">3</kbd> Tools
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">S</kbd> Split
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">4</kbd>
-            <kbd className="rounded bg-muted px-1">5</kbd>
-            <kbd className="rounded bg-muted px-1">6</kbd>
-            <kbd className="rounded bg-muted px-1">7</kbd> Lanes
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Del</kbd> Delete
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Ctrl+D</kbd> Duplicate
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">↑↓</kbd> ±1 st
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Shift+↑↓</kbd> ±1 oct
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">←→</kbd> Nudge time
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Alt</kbd> Drag duplicate
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Ctrl+Wheel</kbd> H-Zoom
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Shift+Wheel</kbd> V-Zoom
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Ctrl+Z</kbd> Undo
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Ctrl+C</kbd>
-            <kbd className="rounded bg-muted px-1">Ctrl+V</kbd>
-            <kbd className="rounded bg-muted px-1">Ctrl+X</kbd> Copy / Paste / Cut
-          </span>
-          <span>
-            <kbd className="rounded bg-muted px-1">Ctrl+J</kbd> Join
-          </span>
-        </div>
-      )}
+  const handleToggleShortcuts = useCallback(() => setShowShortcuts((v) => !v), []);
+  const shortcuts = showShortcuts ? (
+    <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <span>
+        <kbd className="rounded bg-muted px-1">Space</kbd> Play / Pause / Stop
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">1</kbd>
+        <kbd className="rounded bg-muted px-1">2</kbd>
+        <kbd className="rounded bg-muted px-1">3</kbd> Tools
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">S</kbd> Split
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">4</kbd>
+        <kbd className="rounded bg-muted px-1">5</kbd>
+        <kbd className="rounded bg-muted px-1">6</kbd>
+        <kbd className="rounded bg-muted px-1">7</kbd> Lanes
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Del</kbd> Delete
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Ctrl+D</kbd> Duplicate
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">↑↓</kbd> ±1 st
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Shift+↑↓</kbd> ±1 oct
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">←→</kbd> Nudge time
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Alt</kbd> Drag duplicate
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Ctrl+Wheel</kbd> H-Zoom
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Shift+Wheel</kbd> V-Zoom
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Ctrl+Z</kbd> Undo
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Ctrl+C</kbd>
+        <kbd className="rounded bg-muted px-1">Ctrl+V</kbd>
+        <kbd className="rounded bg-muted px-1">Ctrl+X</kbd> Copy / Paste / Cut
+      </span>
+      <span>
+        <kbd className="rounded bg-muted px-1">Ctrl+J</kbd> Join
+      </span>
     </div>
-  );
+  ) : null;
 
   return (
     <div
@@ -790,8 +776,8 @@ export function MidiNoteEditor({
       data-testid="midi-note-editor"
     >
       <MidiEditorShell
-        transport={
-          <MidiTransportBar
+        controls={
+          <MidiControlBar
             isPlaying={playback.isPlaying}
             isPaused={playback.isPaused}
             currentTime={playback.currentTime}
@@ -803,13 +789,8 @@ export function MidiNoteEditor({
             onPause={handlePause}
             onStop={handleStop}
             onToggleLoop={handleToggleLoop}
-          />
-        }
-        toolbar={
-          <MidiEditorToolbar
             tool={editor.tool}
             snapGrid={editor.snapGrid}
-            bpm={editor.bpm}
             timeSignature={editor.timeSignature}
             drawVelocity={editor.drawVelocity}
             canUndo={editor.canUndo}
@@ -820,8 +801,12 @@ export function MidiNoteEditor({
             verticalZoomLevel={verticalZoomLevel}
             metronomeEnabled={playback.metronomeEnabled}
             activeLane={editor.activeLane}
+            activeCcNumber={editor.activeCcNumber}
+            activeAutomationParam={editor.activeAutomationParam}
             canSaveToJob={!!jobId}
             isSaving={isSaving}
+            midiRecordSupported={webMidi.isSupported}
+            midiRecordEnabled={webMidi.isEnabled}
             onToolChange={editor.setTool}
             onSnapGridChange={editor.setSnapGrid}
             onBpmChange={editor.setBpm}
@@ -839,14 +824,12 @@ export function MidiNoteEditor({
             onQuantizeSelection={editor.quantizeSelected}
             onDuplicateSelection={editor.duplicateSelected}
             onActiveLaneChange={editor.setActiveLane}
-            activeCcNumber={editor.activeCcNumber}
-            activeAutomationParam={editor.activeAutomationParam}
             onActiveCcNumberChange={editor.setActiveCcNumber}
             onActiveAutomationParamChange={editor.setActiveAutomationParam}
-            midiRecordEnabled={webMidi.isEnabled}
-            midiRecordSupported={webMidi.isSupported}
             onToggleMidiRecord={() => webMidi.setEnabled(!webMidi.isEnabled)}
             onSaveToJob={() => void handleSaveToJob()}
+            showShortcuts={showShortcuts}
+            onToggleShortcuts={handleToggleShortcuts}
           />
         }
         trackList={

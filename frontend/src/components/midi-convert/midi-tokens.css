@@ -203,6 +203,210 @@
     background: var(--midi-surface-inset);
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Consolidated control bar (Phase 1 — merges transport + toolbar)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.midi-control-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 28%),
+        var(--midi-surface-raised);
+    border-bottom: 1px solid var(--midi-border);
+    min-height: 38px;
+    flex-wrap: wrap;
+}
+
+.midi-control-bar__group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.midi-control-bar__divider {
+    width: 1px;
+    height: 20px;
+    background: var(--midi-border);
+    flex-shrink: 0;
+}
+
+.midi-control-bar__time {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--midi-text);
+    min-width: 5rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--midi-surface-inset);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) inset;
+    text-align: center;
+}
+
+.midi-control-bar__tool-group {
+    display: inline-flex;
+    border-radius: 6px;
+    border: 1px solid var(--midi-border);
+    background: var(--midi-surface-inset);
+    padding: 1px;
+    gap: 1px;
+}
+
+.midi-control-bar__tool-btn {
+    min-width: 26px !important;
+    min-height: 26px !important;
+    padding: 0 !important;
+}
+
+.midi-control-bar__select {
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--midi-surface-inset);
+    padding: 0 6px;
+    font-size: 10px;
+    color: var(--midi-text);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) inset;
+    cursor: pointer;
+}
+
+.midi-control-bar__select:focus {
+    outline: 2px solid var(--midi-border-focus);
+    outline-offset: 1px;
+}
+
+.midi-control-bar__num {
+    height: 24px;
+    width: 3rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--midi-surface-inset);
+    padding: 0 4px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--midi-text);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) inset;
+}
+
+.midi-control-bar__num:focus {
+    outline: 2px solid var(--midi-border-focus);
+    outline-offset: 1px;
+}
+
+/* Overflow dropdown */
+.midi-control-bar__overflow {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 30;
+    min-width: 14rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 20%),
+        rgba(20, 18, 14, 0.97);
+    box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+}
+
+.midi-control-bar__overflow-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border-radius: 4px;
+}
+
+.midi-control-bar__overflow-row:hover {
+    background: rgba(255, 245, 220, 0.04);
+}
+
+.midi-control-bar__overflow-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--midi-text-muted);
+    min-width: 3.5rem;
+    flex-shrink: 0;
+}
+
+.midi-control-bar__overflow-slider {
+    flex: 1;
+    height: 4px;
+    accent-color: var(--midi-accent);
+    cursor: pointer;
+}
+
+.midi-control-bar__overflow-divider {
+    height: 1px;
+    margin: 4px 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--midi-border-accent-subtle),
+        transparent
+    );
+}
+
+.midi-control-bar__overflow-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--midi-text);
+    font-size: 11px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.midi-control-bar__overflow-btn:hover:not(:disabled) {
+    background: rgba(255, 245, 220, 0.06);
+}
+
+.midi-control-bar__overflow-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.midi-control-bar__overflow-btn:focus-visible {
+    outline: 2px solid var(--midi-border-focus);
+    outline-offset: -1px;
+}
+
+@media (max-width: 1023px) {
+    .midi-control-bar {
+        gap: 4px;
+        padding: 4px 8px;
+    }
+
+    .midi-control-bar__divider {
+        display: none;
+    }
+
+    .midi-control-bar__time {
+        min-width: 4rem;
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+}
+
 .midi-time-display {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12px;
@@ -882,15 +1086,15 @@
     .midi-editor-shell--wide {
         display: grid;
         grid-template-areas:
-            "transport transport transport"
-            "body      body      inspector"
+            "controls controls controls"
+            "body     body     inspector"
             "shortcuts shortcuts shortcuts";
         grid-template-columns: minmax(0, 1fr) 280px;
         grid-template-rows: auto minmax(280px, 1fr) auto;
     }
 
-    .midi-editor-shell--wide > .midi-transport-bar {
-        grid-area: transport;
+    .midi-editor-shell--wide > .midi-control-bar {
+        grid-area: controls;
     }
 
     .midi-editor-shell--wide .midi-editor-body {
@@ -1118,6 +1322,24 @@
     opacity: 1 !important;
     background: rgba(255, 245, 220, 0.1);
     color: var(--midi-text);
+}
+
+.midi-track-strip__instrument-select {
+    width: 100%;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 245, 220, 0.1);
+    background: var(--midi-surface-inset);
+    padding: 0 4px;
+    font-size: 9px;
+    color: var(--midi-text-muted);
+    cursor: pointer;
+    margin-top: 2px;
+}
+
+.midi-track-strip__instrument-select:focus {
+    outline: none;
+    border-color: var(--midi-border-focus);
 }
 
 .midi-track-strip__stats {

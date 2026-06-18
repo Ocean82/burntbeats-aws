@@ -1,12 +1,11 @@
 /**
- * MIDI editor layout shell — transport, tools, piano roll, inspector.
+ * MIDI editor layout shell — controls, track list, piano roll, inspector.
  */
 import type { ReactNode } from "react";
 import "./midi-tokens.css";
 
 export interface MidiEditorShellProps {
-  transport: ReactNode;
-  toolbar: ReactNode;
+  controls: ReactNode;
   trackList?: ReactNode;
   pianoRoll: ReactNode;
   inspector: ReactNode;
@@ -14,8 +13,7 @@ export interface MidiEditorShellProps {
 }
 
 export function MidiEditorShell({
-  transport,
-  toolbar,
+  controls,
   trackList,
   pianoRoll,
   inspector,
@@ -23,11 +21,10 @@ export function MidiEditorShell({
 }: MidiEditorShellProps) {
   return (
     <div className="midi-editor-shell midi-editor-shell--wide">
-      {transport}
+      {controls}
       <div className="midi-editor-body">
         {trackList && <div className="midi-editor-track-list">{trackList}</div>}
         <div className="midi-editor-panel">
-          {toolbar}
           {pianoRoll}
         </div>
       </div>

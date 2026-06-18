@@ -176,8 +176,9 @@ export function MidiConvertPanel({
     if (hadNotes) {
       setShowSuccessFlash(true);
     }
+    // Collapse settings on result so the piano roll gets maximum room
     if (displayResult && !openedSettingsForResultRef.current) {
-      setSettingsDrawerOpen(true);
+      setSettingsDrawerOpen(false);
       openedSettingsForResultRef.current = true;
     }
     if (!displayResult) {
