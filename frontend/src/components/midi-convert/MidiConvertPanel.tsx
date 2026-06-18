@@ -3,7 +3,7 @@
  * Pattern matches SpeechCleanPanel: source → settings → action → progress → result.
  * Includes batch conversion support for converting all stems at once.
  */
-import { Check, Download, Layers, Loader2, Music, Piano, Pencil, RefreshCw, X } from "lucide-react";
+import { Check, Download, Layers, Loader2, Music, Pencil, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMidiConvert, type MidiConvertResult } from "../../hooks/useMidiConvert";
@@ -21,7 +21,6 @@ import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
 import { trackEvent } from "../../analytics/events";
 import { ErrorState } from "../ui/error-state";
-import { EmptyState } from "../ui/empty-state";
 import { SuccessFlash } from "../ui/success-flash";
 import "./midi-tokens.css";
 
@@ -377,50 +376,24 @@ export function MidiConvertPanel({
     }
   }, [batchJobs, settings.quantizeBpm, setError]);
 
-  const sourceAndSettings = (
-    <>
-      <MidiSourceSelector
-        sourceMode={sourceMode}
-        onSourceModeChange={setSourceMode}
-        selectedStem={selectedStem}
-        onSelectStem={setSelectedStem}
-        splitResultStems={splitResultStems}
-        loadedStems={loadedStems}
-        selectedLoadedStemId={selectedLoadedStemId}
-        onSelectLoadedStem={setSelectedLoadedStemId}
-        uploadedFile={uploadedFile}
-        uploadName={uploadName}
-        onBrowse={handleBrowse}
-        onDrop={acceptFile}
-        inputRef={inputRef}
-        isDragging={isDragging}
-        onSetIsDragging={setIsDragging}
-        disabled={isConverting || isUploading}
-      />
+  const stage: "source" | "settings" | "editor" =
+    !hasSourceSelected ? "source"
+    : result ? "editor"
+    : "settings";
 
-      <MidiSourcePreview
-        sourceMode={sourceMode}
-        uploadedFile={uploadedFile}
-        splitStemUrl={selectedSplitStemUrl}
-        loadedStemUrl={selectedLoadedStem?.url ?? null}
-        loadedStemLabel={selectedLoadedStem?.label}
-        midiJobId={activeMidiJobId}
-        disabled={isConverting || isUploading}
-      />
+  const sourceLabel =
+    sourceMode === "split" ? (selectedStem || selectedSplitStemUrl ? selectedStem : "Split stem")
+    : sourceMode === "loaded" ? (selectedLoadedStem?.label ?? "Loaded stem")
+    : uploadName || "Audio file";
 
-      <MidiConvertSettings
-        settings={settings}
-        onUpdate={updateSettings}
-        disabled={isConverting || isUploading}
-      />
-    </>
-  );
+  const animProps = {
+    initial: { opacity: 0, y: 6 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, y: -6 },
+    transition: { duration: 0.2, ease: [0.25, 1, 0.5, 1] },
+  };
 
-  const settingsBlock = (
-    <div ref={settingsSectionRef}>
-      {sourceAndSettings}
-    </div>
-  );
+  const settingsSubtitle = `${sourceMode === "split" ? "Split stem" : sourceMode === "loaded" ? "Loaded stem" : "Upload"} · ${(settings.minConfidence * 100).toFixed(0)}% Conf · ${settings.minNoteLengthMs}ms Min${settings.quantize ? ` · ${settings.quantizeBpm} BPM` : ""}`;
 
   return (
     <div data-testid="midi-convert-panel" className="midi-workspace flex flex-col gap-md">
@@ -435,145 +408,7 @@ export function MidiConvertPanel({
         completedStepIds={workflowCompleted}
       />
 
-      {displayResult && !isConverting ? (
-        <MidiLaneDrawer
-          title="Conversion config"
-          subtitle={
-            settingsDrawerOpen
-              ? undefined
-              : `${sourceMode === "split" ? "Split stem" : sourceMode === "loaded" ? "Loaded stem" : "Upload"} · ${(settings.minConfidence * 100).toFixed(0)}% Conf · ${settings.minNoteLengthMs}ms Min${settings.quantize ? ` · ${settings.quantizeBpm} BPM` : ""}`
-          }
-          open={settingsDrawerOpen}
-          onToggle={() => setSettingsDrawerOpen((v) => !v)}
-        >
-          {settingsBlock}
-          <button
-            type="button"
-            data-testid="midi-convert-again-button"
-            onClick={() => {
-              setBatchViewResult(null);
-              void triggerConvert(splitJobId);
-            }}
-            disabled={!canConvert}
-            className="midi-btn text-sm mt-sm"
-          >
-            Convert again
-          </button>
-        </MidiLaneDrawer>
-      ) : (
-        <div className="midi-workspace-section">{settingsBlock}</div>
-      )}
-
-      {/* Usage info */}
-      {!subscriptionInactive && !usageLoading && (
-        <div className="flex items-center gap-xs text-xs text-muted-foreground px-sm py-1">
-          <span>
-            Cost: <span className="font-medium text-accent-midi-200">1 token</span> per conversion
-          </span>
-          {usageBalance !== null && (
-            <>
-              <span className="text-muted-foreground">|</span>
-              <span>
-                Balance:{" "}
-                <span className={`font-medium ${usageBalance < 1 ? "text-destructive-300" : "text-accent-midi-200"}`}>
-                  {Math.floor(usageBalance)} tokens
-                </span>
-              </span>
-              {usageBalance < 1 && onViewPlans ? (
-                <button
-                  type="button"
-                  onClick={() => handleViewPlans("token_low")}
-                  className="text-xs font-medium text-accent-midi-300 underline-offset-2 hover:underline"
-                >
-                  Get more tokens
-                </button>
-              ) : usageBalance < 1 ? (
-                <span className="text-destructive-300/80 text-meta">
-                  — not enough tokens
-                </span>
-              ) : null}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Convert button */}
-      {!displayResult ? (
-      <div className="flex flex-wrap items-center gap-sm">
-        {subscriptionInactive ? (
-          <>
-            <div className="midi-callout">
-              <p className="midi-callout__title">Subscribe to unlock MIDI conversion</p>
-              <p className="midi-callout__body">
-                Paid plans include Audio-to-MIDI. Each conversion uses 1 token from your balance.
-              </p>
-            </div>
-            {onViewPlans ? (
-              <button
-                type="button"
-                onClick={() => handleViewPlans("subscription_inactive")}
-                className="midi-btn midi-btn--play text-sm"
-              >
-                View plans
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <button
-            type="button"
-            data-testid="midi-convert-button"
-            onClick={() => void triggerConvert(splitJobId)}
-            disabled={!canConvert}
-            className="midi-btn midi-btn--play text-sm px-lg disabled:opacity-45"
-          >
-            {isConverting || isUploading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {isUploading ? "Uploading…" : "Converting…"}
-              </>
-            ) : (
-              "Convert to MIDI"
-            )}
-          </button>
-        )}
-      </div>
-      ) : null}
-
-      {/* Batch Convert All Stems button */}
-      {showBatchButton && !subscriptionInactive && (
-        <div className="flex flex-wrap items-center gap-sm px-sm">
-          <button
-            type="button"
-            data-testid="midi-batch-convert-button"
-            onClick={() => splitJobId && void triggerBatchConvert(splitJobId, stemNames)}
-            disabled={!canBatch}
-            className="midi-btn text-sm"
-          >
-            <Music className="h-4 w-4" aria-hidden />
-            Convert All Stems
-          </button>
-          <span className="text-xs text-muted-foreground">
-            Estimated cost:{" "}
-            <span className="font-medium text-accent-midi-200">{batchCost} tokens</span>
-            {" "}({splitResultStems.length} stems × 1)
-          </span>
-          {usageBalance !== null && usageBalance < batchCost && onViewPlans ? (
-            <button
-              type="button"
-              onClick={() => handleViewPlans("batch_token_low")}
-              className="text-xs font-medium text-accent-midi-300 underline-offset-2 hover:underline"
-            >
-              Upgrade for {batchCost} tokens
-            </button>
-          ) : usageBalance !== null && usageBalance < batchCost ? (
-            <span className="text-xs text-destructive-300/80">
-              — not enough tokens (need {batchCost}, have {Math.floor(usageBalance)})
-            </span>
-          ) : null}
-        </div>
-      )}
-
-      {/* Batch progress UI */}
+      {/* Batch progress — always visible when batch mode */}
       {isBatchMode && batchJobs.length > 0 && (
         <div className="midi-batch-panel">
           {/* Progress summary */}
@@ -705,7 +540,6 @@ export function MidiConvertPanel({
                       .mid
                     </button>
                   )}
-                  {/* Retry button for failed stems */}
                   {job.status === "failed" && splitJobId && (
                     <button
                       type="button"
@@ -721,7 +555,7 @@ export function MidiConvertPanel({
             ))}
           </div>
 
-          {/* Download All as ZIP button */}
+          {/* Download All as ZIP + Multi-track buttons */}
           {batchJobs.some((j) => j.status === "completed") && !isBatchInProgress && (
             <div className="flex flex-wrap items-center gap-sm pt-xs">
               <button
@@ -744,7 +578,6 @@ export function MidiConvertPanel({
                 )}
               </button>
 
-              {/* Multi-track MIDI export (single .mid with all stems as separate tracks) */}
               {batchJobs.filter((j) => j.status === "completed").length >= 2 && (
                 <button
                   type="button"
@@ -771,15 +604,402 @@ export function MidiConvertPanel({
         </div>
       )}
 
-      {/* Progress */}
-      <MidiConvertProgress
-        isConverting={isConverting}
-        isUploading={isUploading}
-        uploadProgress={uploadProgress}
-        progress={progress}
-        statusMessage={statusMessage}
-        onCancel={cancelConvert}
-      />
+      {/* Progressive stages */}
+      <AnimatePresence mode="wait">
+        {stage === "source" && (
+          <motion.div key="stage-source" {...animProps}>
+            <div className="midi-workspace-section">
+              <MidiSourceSelector
+                sourceMode={sourceMode}
+                onSourceModeChange={setSourceMode}
+                selectedStem={selectedStem}
+                onSelectStem={setSelectedStem}
+                splitResultStems={splitResultStems}
+                loadedStems={loadedStems}
+                selectedLoadedStemId={selectedLoadedStemId}
+                onSelectLoadedStem={setSelectedLoadedStemId}
+                uploadedFile={uploadedFile}
+                uploadName={uploadName}
+                onBrowse={handleBrowse}
+                onDrop={acceptFile}
+                inputRef={inputRef}
+                isDragging={isDragging}
+                onSetIsDragging={setIsDragging}
+                disabled={isConverting || isUploading}
+              />
+
+              {hasSourceSelected && (
+                <MidiSourcePreview
+                  sourceMode={sourceMode}
+                  uploadedFile={uploadedFile}
+                  splitStemUrl={selectedSplitStemUrl}
+                  loadedStemUrl={selectedLoadedStem?.url ?? null}
+                  loadedStemLabel={selectedLoadedStem?.label}
+                  midiJobId={activeMidiJobId}
+                  disabled={isConverting || isUploading}
+                />
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {stage === "settings" && (
+          <motion.div key="stage-settings" {...animProps} className="flex flex-col gap-md">
+            {/* Source summary bar */}
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/20 px-sm py-xs">
+              <div className="flex items-center gap-xs text-sm min-w-0">
+                <Music className="h-4 w-4 shrink-0 text-accent-midi-200" />
+                <span className="font-medium text-secondary-foreground truncate capitalize">{sourceLabel}</span>
+              </div>
+              {!isConverting && !isUploading && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isBatchMode) { clearBatch(); setBatchViewResult(null); }
+                    handleClear();
+                  }}
+                  className="text-xs text-muted-foreground hover:text-secondary-foreground underline shrink-0 ml-2"
+                >
+                  Change source
+                </button>
+              )}
+            </div>
+
+            {/* Settings */}
+            <div ref={settingsSectionRef} className="midi-workspace-section">
+              <MidiSourceSelector
+                sourceMode={sourceMode}
+                onSourceModeChange={setSourceMode}
+                selectedStem={selectedStem}
+                onSelectStem={setSelectedStem}
+                splitResultStems={splitResultStems}
+                loadedStems={loadedStems}
+                selectedLoadedStemId={selectedLoadedStemId}
+                onSelectLoadedStem={setSelectedLoadedStemId}
+                uploadedFile={uploadedFile}
+                uploadName={uploadName}
+                onBrowse={handleBrowse}
+                onDrop={acceptFile}
+                inputRef={inputRef}
+                isDragging={isDragging}
+                onSetIsDragging={setIsDragging}
+                disabled={isConverting || isUploading}
+              />
+
+              <MidiSourcePreview
+                sourceMode={sourceMode}
+                uploadedFile={uploadedFile}
+                splitStemUrl={selectedSplitStemUrl}
+                loadedStemUrl={selectedLoadedStem?.url ?? null}
+                loadedStemLabel={selectedLoadedStem?.label}
+                midiJobId={activeMidiJobId}
+                disabled={isConverting || isUploading}
+              />
+
+              <MidiConvertSettings
+                settings={settings}
+                onUpdate={updateSettings}
+                disabled={isConverting || isUploading}
+              />
+            </div>
+
+            {/* Usage info */}
+            {!subscriptionInactive && !usageLoading && (
+              <div className="flex items-center gap-xs text-xs text-muted-foreground px-sm py-1">
+                <span>
+                  Cost: <span className="font-medium text-accent-midi-200">1 token</span> per conversion
+                </span>
+                {usageBalance !== null && (
+                  <>
+                    <span className="text-muted-foreground">|</span>
+                    <span>
+                      Balance:{" "}
+                      <span className={`font-medium ${usageBalance < 1 ? "text-destructive-300" : "text-accent-midi-200"}`}>
+                        {Math.floor(usageBalance)} tokens
+                      </span>
+                    </span>
+                    {usageBalance < 1 && onViewPlans ? (
+                      <button
+                        type="button"
+                        onClick={() => handleViewPlans("token_low")}
+                        className="text-xs font-medium text-accent-midi-300 underline-offset-2 hover:underline"
+                      >
+                        Get more tokens
+                      </button>
+                    ) : usageBalance < 1 ? (
+                      <span className="text-destructive-300/80 text-meta">— not enough tokens</span>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Convert button */}
+            {!isBatchMode && (
+              <div className="flex flex-wrap items-center gap-sm">
+                {subscriptionInactive ? (
+                  <>
+                    <div className="midi-callout">
+                      <p className="midi-callout__title">Subscribe to unlock MIDI conversion</p>
+                      <p className="midi-callout__body">
+                        Paid plans include Audio-to-MIDI. Each conversion uses 1 token from your balance.
+                      </p>
+                    </div>
+                    {onViewPlans ? (
+                      <button
+                        type="button"
+                        onClick={() => handleViewPlans("subscription_inactive")}
+                        className="midi-btn midi-btn--play text-sm"
+                      >
+                        View plans
+                      </button>
+                    ) : null}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    data-testid="midi-convert-button"
+                    onClick={() => void triggerConvert(splitJobId)}
+                    disabled={!canConvert}
+                    className="midi-btn midi-btn--play text-sm px-lg disabled:opacity-45"
+                  >
+                    {isConverting || isUploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {isUploading ? "Uploading…" : "Converting…"}
+                      </>
+                    ) : (
+                      "Convert to MIDI"
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Batch button */}
+            {showBatchButton && !subscriptionInactive && (
+              <div className="flex flex-wrap items-center gap-sm px-sm">
+                <button
+                  type="button"
+                  data-testid="midi-batch-convert-button"
+                  onClick={() => splitJobId && void triggerBatchConvert(splitJobId, stemNames)}
+                  disabled={!canBatch}
+                  className="midi-btn text-sm"
+                >
+                  <Music className="h-4 w-4" aria-hidden />
+                  Convert All Stems
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  Estimated cost:{" "}
+                  <span className="font-medium text-accent-midi-200">{batchCost} tokens</span>
+                  {" "}({splitResultStems.length} stems × 1)
+                </span>
+                {usageBalance !== null && usageBalance < batchCost && onViewPlans ? (
+                  <button
+                    type="button"
+                    onClick={() => handleViewPlans("batch_token_low")}
+                    className="text-xs font-medium text-accent-midi-300 underline-offset-2 hover:underline"
+                  >
+                    Upgrade for {batchCost} tokens
+                  </button>
+                ) : usageBalance !== null && usageBalance < batchCost ? (
+                  <span className="text-xs text-destructive-300/80">
+                    — not enough tokens (need {batchCost}, have {Math.floor(usageBalance)})
+                  </span>
+                ) : null}
+              </div>
+            )}
+
+            {/* Progress bar */}
+            <MidiConvertProgress
+              isConverting={isConverting}
+              isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              progress={progress}
+              statusMessage={statusMessage}
+              onCancel={cancelConvert}
+            />
+          </motion.div>
+        )}
+
+        {stage === "editor" && (
+          <motion.div key="stage-editor" {...animProps} className="flex flex-col gap-md">
+            <MidiLaneDrawer
+              title="Conversion config"
+              subtitle={settingsDrawerOpen ? undefined : settingsSubtitle}
+              open={settingsDrawerOpen}
+              onToggle={() => setSettingsDrawerOpen((v) => !v)}
+            >
+              <div ref={settingsSectionRef}>
+                <MidiSourceSelector
+                  sourceMode={sourceMode}
+                  onSourceModeChange={setSourceMode}
+                  selectedStem={selectedStem}
+                  onSelectStem={setSelectedStem}
+                  splitResultStems={splitResultStems}
+                  loadedStems={loadedStems}
+                  selectedLoadedStemId={selectedLoadedStemId}
+                  onSelectLoadedStem={setSelectedLoadedStemId}
+                  uploadedFile={uploadedFile}
+                  uploadName={uploadName}
+                  onBrowse={handleBrowse}
+                  onDrop={acceptFile}
+                  inputRef={inputRef}
+                  isDragging={isDragging}
+                  onSetIsDragging={setIsDragging}
+                  disabled={isConverting || isUploading}
+                />
+
+                <MidiSourcePreview
+                  sourceMode={sourceMode}
+                  uploadedFile={uploadedFile}
+                  splitStemUrl={selectedSplitStemUrl}
+                  loadedStemUrl={selectedLoadedStem?.url ?? null}
+                  loadedStemLabel={selectedLoadedStem?.label}
+                  midiJobId={activeMidiJobId}
+                  disabled={isConverting || isUploading}
+                />
+
+                <MidiConvertSettings
+                  settings={settings}
+                  onUpdate={updateSettings}
+                  disabled={isConverting || isUploading}
+                />
+              </div>
+              <button
+                type="button"
+                data-testid="midi-convert-again-button"
+                onClick={() => {
+                  setBatchViewResult(null);
+                  void triggerConvert(splitJobId);
+                }}
+                disabled={!canConvert}
+                className="midi-btn text-sm mt-sm"
+              >
+                Convert again
+              </button>
+            </MidiLaneDrawer>
+
+            <MidiResultPanel
+              result={result}
+              onDownload={downloadMidi}
+              isDownloading={isDownloadingMidi}
+              downloadError={downloadError}
+              onNewConversion={() => {
+                setDownloadError(null);
+                setBatchViewResult(null);
+                handleClear();
+              }}
+              jobId={displayJobId}
+              jobToken={displayJobToken}
+              sourceLabel={batchViewResult?.stemName ?? downloadSourceLabel ?? undefined}
+              initialMode="edit"
+              onApplyReconvertBpm={(bpm) => {
+                updateSettings({ quantizeBpm: bpm, quantize: true });
+              }}
+              onAdjustSettings={scrollToSettings}
+              onRetry={() => {
+                setDownloadError(null);
+                void triggerConvert(splitJobId);
+              }}
+              onOpenExportHistory={onOpenExportHistory ?? undefined}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Open editor overlay: when batch mode has batchViewResult, show result panel above stage */}
+      {isBatchMode && batchViewResult && (
+        <div className="flex flex-col gap-md">
+          <MidiLaneDrawer
+            title="Conversion config"
+            subtitle={settingsDrawerOpen ? undefined : settingsSubtitle}
+            open={settingsDrawerOpen}
+            onToggle={() => setSettingsDrawerOpen((v) => !v)}
+          >
+            <div ref={settingsSectionRef}>
+              <MidiSourceSelector
+                sourceMode={sourceMode}
+                onSourceModeChange={setSourceMode}
+                selectedStem={selectedStem}
+                onSelectStem={setSelectedStem}
+                splitResultStems={splitResultStems}
+                loadedStems={loadedStems}
+                selectedLoadedStemId={selectedLoadedStemId}
+                onSelectLoadedStem={setSelectedLoadedStemId}
+                uploadedFile={uploadedFile}
+                uploadName={uploadName}
+                onBrowse={handleBrowse}
+                onDrop={acceptFile}
+                inputRef={inputRef}
+                isDragging={isDragging}
+                onSetIsDragging={setIsDragging}
+                disabled={isConverting || isUploading}
+              />
+
+              <MidiSourcePreview
+                sourceMode={sourceMode}
+                uploadedFile={uploadedFile}
+                splitStemUrl={selectedSplitStemUrl}
+                loadedStemUrl={selectedLoadedStem?.url ?? null}
+                loadedStemLabel={selectedLoadedStem?.label}
+                midiJobId={activeMidiJobId}
+                disabled={isConverting || isUploading}
+              />
+
+              <MidiConvertSettings
+                settings={settings}
+                onUpdate={updateSettings}
+                disabled={isConverting || isUploading}
+              />
+            </div>
+            <button
+              type="button"
+              data-testid="midi-convert-again-button"
+              onClick={() => {
+                setBatchViewResult(null);
+                void triggerConvert(splitJobId);
+              }}
+              disabled={!canConvert}
+              className="midi-btn text-sm mt-sm"
+            >
+              Convert again
+            </button>
+          </MidiLaneDrawer>
+
+          <MidiResultPanel
+            result={batchViewResult.result}
+            onDownload={downloadMidi}
+            isDownloading={isDownloadingMidi}
+            downloadError={downloadError}
+            onNewConversion={() => {
+              setDownloadError(null);
+              setBatchViewResult(null);
+            }}
+            jobId={batchViewResult.jobId}
+            jobToken={batchViewResult.jobToken}
+            sourceLabel={batchViewResult.stemName}
+            initialMode="edit"
+            onApplyReconvertBpm={(bpm) => {
+              updateSettings({ quantizeBpm: bpm, quantize: true });
+            }}
+            onAdjustSettings={scrollToSettings}
+            onRetry={() => {
+              setDownloadError(null);
+              void triggerConvert(splitJobId);
+            }}
+            onOpenExportHistory={onOpenExportHistory ?? undefined}
+          />
+
+          <button
+            type="button"
+            onClick={() => setBatchViewResult(null)}
+            className="midi-btn text-sm self-start"
+          >
+            ← Back to batch results
+          </button>
+        </div>
+      )}
 
       {/* Error — AnimatePresence for smooth dismiss */}
       <AnimatePresence>
@@ -800,54 +1020,6 @@ export function MidiConvertPanel({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Empty state — no source selected, not converting, no result, not in batch mode */}
-      <AnimatePresence>
-        {!hasSourceSelected && !isConverting && !result && !isBatchMode && (
-          <motion.div
-            key="midi-empty"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
-          >
-            <EmptyState
-              icon={<Piano className="h-6 w-6" />}
-              title="No conversions yet"
-              description="Select a stem or upload audio, then convert to MIDI"
-              action={{ label: "Choose source", onClick: handleBrowse }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Result */}
-      {displayResult && !isConverting ? (
-        <MidiResultPanel
-          result={displayResult}
-          onDownload={downloadMidi}
-          isDownloading={isDownloadingMidi}
-          downloadError={downloadError}
-          onNewConversion={() => {
-            setDownloadError(null);
-            setBatchViewResult(null);
-            handleClear();
-          }}
-          jobId={displayJobId}
-          jobToken={displayJobToken}
-          sourceLabel={batchViewResult?.stemName ?? downloadSourceLabel ?? undefined}
-          initialMode="edit"
-          onApplyReconvertBpm={(bpm) => {
-            updateSettings({ quantizeBpm: bpm, quantize: true });
-          }}
-          onAdjustSettings={scrollToSettings}
-          onRetry={() => {
-            setDownloadError(null);
-            void triggerConvert(splitJobId);
-          }}
-          onOpenExportHistory={onOpenExportHistory ?? undefined}
-        />
-      ) : null}
 
       {/* Success flash — fires when conversion completes */}
       <SuccessFlash show={showSuccessFlash} onComplete={() => setShowSuccessFlash(false)} />
