@@ -20,7 +20,6 @@ import { MidiLaneDrawer } from "./MidiLaneDrawer";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
 import { trackEvent } from "../../analytics/events";
-import { MidiExportDashboard } from "../library/MidiExportDashboard";
 import { ErrorState } from "../ui/error-state";
 import { EmptyState } from "../ui/empty-state";
 import { SuccessFlash } from "../ui/success-flash";
@@ -31,6 +30,7 @@ export interface MidiConvertPanelProps {
   usageLoading?: boolean;
   subscriptionInactive?: boolean;
   onViewPlans?: () => void;
+  onOpenExportHistory?: () => void;
 }
 
 export function MidiConvertPanel({
@@ -38,6 +38,7 @@ export function MidiConvertPanel({
   usageLoading = false,
   subscriptionInactive = false,
   onViewPlans,
+  onOpenExportHistory,
 }: MidiConvertPanelProps) {
   const { splitJobId } = useAppStore();
 
@@ -162,7 +163,6 @@ export function MidiConvertPanel({
 
   // Drawer collapse states
   const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
-  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const openedSettingsForResultRef = useRef(false);
 
   // Task 17.1: SuccessFlash — fires when result transitions from null to non-null with notes
@@ -175,7 +175,6 @@ export function MidiConvertPanel({
       prevResultRef.current === null;
     if (hadNotes) {
       setShowSuccessFlash(true);
-      setHistoryDrawerOpen(true);
     }
     if (displayResult && !openedSettingsForResultRef.current) {
       setSettingsDrawerOpen(true);
@@ -437,7 +436,12 @@ export function MidiConvertPanel({
 
       {displayResult && !isConverting ? (
         <MidiLaneDrawer
-          title="Source and conversion settings"
+          title="Conversion config"
+          subtitle={
+            settingsDrawerOpen
+              ? undefined
+              : `${sourceMode === "split" ? "Split stem" : sourceMode === "loaded" ? "Loaded stem" : "Upload"} · ${(settings.minConfidence * 100).toFixed(0)}% Conf · ${settings.minNoteLengthMs}ms Min${settings.quantize ? ` · ${settings.quantizeBpm} BPM` : ""}`
+          }
           open={settingsDrawerOpen}
           onToggle={() => setSettingsDrawerOpen((v) => !v)}
         >
@@ -840,20 +844,12 @@ export function MidiConvertPanel({
             setDownloadError(null);
             void triggerConvert(splitJobId);
           }}
-          onOpenExportHistory={() => setHistoryDrawerOpen(true)}
+          onOpenExportHistory={onOpenExportHistory ?? undefined}
         />
       ) : null}
 
       {/* Success flash — fires when conversion completes */}
       <SuccessFlash show={showSuccessFlash} onComplete={() => setShowSuccessFlash(false)} />
-
-      <MidiLaneDrawer
-        title="Export history and batch jobs"
-        open={historyDrawerOpen}
-        onToggle={() => setHistoryDrawerOpen((v) => !v)}
-      >
-        <MidiExportDashboard />
-      </MidiLaneDrawer>
     </div>
   );
 }

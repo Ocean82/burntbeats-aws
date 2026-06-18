@@ -202,15 +202,15 @@ export function MidiConvertSettings({
               style={{ overflow: "hidden" }}
             >
               <div className="midi-nested-section">
-                <MidiParamSlider
-                  label="Target Peak Velocity"
+                  <MidiParamSlider
+                    label="Velocity Cap"
                   value={settings.targetVelocity}
                   min={40}
                   max={127}
                   step={1}
                   onChange={(v) => handleChange({ targetVelocity: v })}
                   disabled={disabled}
-                  hint="Peak velocity for normalized notes (MIDI 0-127)."
+                  hint="Cap for note velocity (MIDI 0-127)."
                 />
               </div>
             </motion.div>
@@ -218,7 +218,7 @@ export function MidiConvertSettings({
         </AnimatePresence>
 
         <MidiParamSlider
-          label="Max Note Length"
+          label="Max Hold"
           value={settings.maxNoteLengthMs}
           min={0}
           max={4000}
@@ -226,7 +226,7 @@ export function MidiConvertSettings({
           onChange={(v) => handleChange({ maxNoteLengthMs: v })}
           disabled={disabled}
           formatValue={(v) => (v === 0 ? "OFF" : `${v}ms`)}
-          hint="Caps sustained false notes. 0 = unlimited."
+          hint="Caps note duration. 0 = unlimited."
         />
 
         {/* Quantize section */}
