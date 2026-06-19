@@ -15,9 +15,9 @@
 
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import { applyBreakdown, applyBuildup, applyFill } from "./patternVariations";
+import { applyBreakdown, applyBuildup, applyFill, applyVariation } from "./patternVariations";
 import type { VelocityPattern } from "./types";
-import { VELOCITY_ACCENT, VELOCITY_GHOST, VELOCITY_OFF } from "./types";
+import { VELOCITY_ACCENT, VELOCITY_GHOST, VELOCITY_NORMAL, VELOCITY_OFF } from "./types";
 
 // Row indices (DEFAULT_KIT)
 const KICK = 0;
@@ -318,5 +318,80 @@ describe("Feature: rhythm-pattern-overlay, Property 9: Breakdown variation corre
       }),
       { numRuns: 100 },
     );
+  });
+});
+
+// ─── Buildup variation correctness (unique manual tests beyond Property coverage) ──
+
+describe("applyBuildup — detailed velocity and placement behavior", () => {
+  function makePattern(rows: number, steps: number, fill = 100): VelocityPattern {
+    return Array.from({ length: rows }, () => Array(steps).fill(fill));
+  }
+
+  it("sets closed hi-hat on every step with velocity 40→100", () => {
+    const input = makePattern(8, 16, VELOCITY_OFF);
+    const result = applyBuildup(input);
+    expect(result[2][0]).toBe(VELOCITY_GHOST);
+    expect(result[2][15]).toBe(VELOCITY_NORMAL);
+    for (let step = 0; step < 16; step++) {
+      expect(result[2][step]).toBeGreaterThanOrEqual(VELOCITY_GHOST);
+      expect(result[2][step]).toBeLessThanOrEqual(VELOCITY_NORMAL);
+    }
+  });
+
+  it("adds snare ghost notes every 4 steps in first half", () => {
+    const input = makePattern(8, 16, VELOCITY_OFF);
+    const result = applyBuildup(input);
+    for (let step = 0; step < 8; step++) {
+      if (step % 4 === 0) {
+        expect(result[1][step]).toBeGreaterThanOrEqual(VELOCITY_GHOST);
+      } else {
+        expect(result[1][step]).toBe(VELOCITY_OFF);
+      }
+    }
+  });
+
+  it("adds snare ghost notes every 2 steps in second half", () => {
+    const input = makePattern(8, 16, VELOCITY_OFF);
+    const result = applyBuildup(input);
+    for (let step = 8; step < 16; step++) {
+      if (step % 2 === 0) {
+        expect(result[1][step]).toBeGreaterThanOrEqual(VELOCITY_GHOST);
+        expect(result[1][step]).toBeLessThanOrEqual(VELOCITY_NORMAL);
+      } else {
+        expect(result[1][step]).toBe(VELOCITY_OFF);
+      }
+    }
+  });
+
+  it("snare velocity rises from GHOST to NORMAL across the pattern", () => {
+    const input = makePattern(8, 32, VELOCITY_OFF);
+    const result = applyBuildup(input);
+    expect(result[1][0]).toBe(VELOCITY_GHOST);
+    expect(result[1][30]).toBeGreaterThan(VELOCITY_GHOST);
+    expect(result[1][30]).toBeLessThanOrEqual(VELOCITY_NORMAL);
+  });
+});
+
+// ─── applyVariation dispatch correctness ────────────────────────────
+
+describe("applyVariation — dispatches to correct sub-function", () => {
+  function makePattern(rows: number, steps: number, fill = 100): VelocityPattern {
+    return Array.from({ length: rows }, () => Array(steps).fill(fill));
+  }
+
+  it("dispatches to applyFill for 'fill' type", () => {
+    const input = makePattern(8, 16, VELOCITY_NORMAL);
+    expect(applyVariation(input, "fill")).toEqual(applyFill(input));
+  });
+
+  it("dispatches to applyBreakdown for 'breakdown' type", () => {
+    const input = makePattern(8, 16, VELOCITY_NORMAL);
+    expect(applyVariation(input, "breakdown")).toEqual(applyBreakdown(input));
+  });
+
+  it("dispatches to applyBuildup for 'buildup' type", () => {
+    const input = makePattern(8, 16, VELOCITY_NORMAL);
+    expect(applyVariation(input, "buildup")).toEqual(applyBuildup(input));
   });
 });

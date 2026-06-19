@@ -195,6 +195,42 @@
     color: var(--midi-accent) !important;
 }
 
+/* Record button (idle) */
+.midi-btn--record {
+    color: #ef4444;
+}
+.midi-btn--record:hover:not(:disabled) {
+    color: #f87171;
+    filter: brightness(1.05);
+}
+
+/* Record button (active — armed / recording) */
+.midi-btn--recording {
+    color: #ef4444;
+    animation: midi-record-pulse 1.2s ease-in-out infinite;
+}
+.midi-btn--recording:hover:not(:disabled) {
+    color: #f87171;
+    filter: brightness(1.05);
+}
+
+@keyframes midi-record-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+}
+
+/* Draw velocity readout (visible when Pencil tool is active) */
+.midi-draw-velocity {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--midi-text);
+    white-space: nowrap;
+}
+
 .midi-toolbar-tool-group {
     background: var(--midi-surface-inset);
 }
@@ -2157,7 +2193,6 @@
         font-size: 9px;
     }
 
-    .midi-control-bar__group > .midi-physical-btn--metronome,
     .midi-control-bar__group > .midi-physical-btn--shortcuts {
         display: none;
     }

@@ -200,6 +200,14 @@ describe("MidiConvertPanel — Stage rendering (Task 13.2)", () => {
     });
   });
 
+  it("renders panel element, Source stepper, and convert button", () => {
+    resetHookState({ hasSourceSelected: true });
+    render(<MidiConvertPanel />);
+    expect(screen.getByTestId("midi-convert-panel")).toBeInTheDocument();
+    expect(screen.getByText("Source")).toBeInTheDocument();
+    expect(screen.getByTestId("midi-convert-button")).toBeInTheDocument();
+  });
+
   it("renders source selector when no source is selected", () => {
     render(<MidiConvertPanel />);
     expect(screen.getByTestId("midi-source-selector")).toBeInTheDocument();

@@ -3,11 +3,11 @@
  * Frequently-used tools are always visible; secondary items tuck behind [...] overflow.
  */
 import {
+  Circle,
   Copy,
   Download,
   Eraser,
   Magnet,
-  Mic,
   MoreHorizontal,
   MousePointer2,
   Pause,
@@ -245,6 +245,21 @@ export function MidiControlBar(props: MidiControlBarProps) {
         >
           <RotateCcw className="h-3 w-3" aria-hidden />
         </MidiPhysicalButton>
+
+        {midiRecordSupported && onToggleMidiRecord && (
+          <MidiPhysicalButton
+            variant="icon"
+            pressed={midiRecordEnabled}
+            onClick={onToggleMidiRecord}
+            disabled={!isSupported}
+            title={midiRecordEnabled ? "Stop MIDI record" : "Record MIDI notes"}
+            aria-label={midiRecordEnabled ? "Stop recording" : "Record MIDI"}
+            aria-pressed={midiRecordEnabled}
+            className={midiRecordEnabled ? "midi-btn--recording" : "midi-btn--record"}
+          >
+            <Circle className="h-3 w-3 fill-current" aria-hidden />
+          </MidiPhysicalButton>
+        )}
       </div>
 
       <div className="midi-control-bar__divider" aria-hidden />
@@ -285,14 +300,19 @@ export function MidiControlBar(props: MidiControlBarProps) {
           disabled={!canRedo}
           title="Redo (Ctrl+Y)"
           aria-label="Redo"
-        >
-          <Redo2 className="h-3 w-3" />
-        </MidiPhysicalButton>
+        />
+
+        {tool === "draw" && (
+          <span className="midi-draw-velocity" title="Note velocity">
+            <Pencil className="h-2.5 w-2.5 text-[var(--midi-accent)]" aria-hidden />
+            <span className="tabular-nums">{drawVelocity}</span>
+          </span>
+        )}
       </div>
 
       <div className="midi-control-bar__divider" aria-hidden />
 
-      {/* ─── Grid snap ─── */}
+      {/* ─── Grid snap & Quantize ─── */}
       <div className="midi-control-bar__group" title="Grid snap">
         <Magnet
           className={cn(
@@ -311,15 +331,21 @@ export function MidiControlBar(props: MidiControlBarProps) {
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+        <MidiPhysicalButton
+          variant="icon"
+          onClick={() => { onQuantizeSelection(); }}
+          disabled={!hasSelection}
+          title="Quantize selected notes (Q)"
+          aria-label="Quantize"
+        >
+          <Magnet className="h-3 w-3" aria-hidden />
+        </MidiPhysicalButton>
       </div>
 
       <div className="midi-control-bar__divider" aria-hidden />
 
-      {/* ─── BPM ─── */}
+      {/* ─── BPM & Time Signature ─── */}
       <div className="midi-control-bar__group">
-        <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
-          BPM
-        </span>
         <input
           type="number"
           min={40}
@@ -331,7 +357,31 @@ export function MidiControlBar(props: MidiControlBarProps) {
           }}
           className="midi-control-bar__num tabular-nums"
           aria-label="BPM"
+          title="Tempo (BPM)"
         />
+        <span className="text-[9px] font-semibold uppercase tracking-wide text-[var(--midi-text-muted)]">
+          BPM
+        </span>
+        <span className="mx-0.5 text-[9px] text-[var(--midi-text-muted)] opacity-40">|</span>
+        <select
+          value={`${timeSignature.beatsPerBar}/${timeSignature.beatUnit}`}
+          onChange={(e) => {
+            const [num, den] = e.target.value.split("/").map(Number);
+            if (num && den) onTimeSignatureChange({ beatsPerBar: num, beatUnit: den });
+          }}
+          className="midi-control-bar__select"
+          aria-label="Time signature"
+          title="Time signature"
+        >
+          <option value="2/4">2/4</option>
+          <option value="3/4">3/4</option>
+          <option value="4/4">4/4</option>
+          <option value="5/4">5/4</option>
+          <option value="6/8">6/8</option>
+          <option value="7/8">7/8</option>
+          <option value="9/8">9/8</option>
+          <option value="12/8">12/8</option>
+        </select>
       </div>
 
       <div className="midi-control-bar__divider" aria-hidden />
@@ -405,29 +455,6 @@ export function MidiControlBar(props: MidiControlBarProps) {
 
           {overflowOpen && (
             <div className="midi-control-bar__overflow midi-overflow-enter" role="menu">
-              {/* Time signature */}
-              <div className="midi-control-bar__overflow-row">
-                <span className="midi-control-bar__overflow-label">Time</span>
-                <select
-                  value={`${timeSignature.beatsPerBar}/${timeSignature.beatUnit}`}
-                  onChange={(e) => {
-                    const [num, den] = e.target.value.split("/").map(Number);
-                    if (num && den) onTimeSignatureChange({ beatsPerBar: num, beatUnit: den });
-                  }}
-                  className="midi-control-bar__select"
-                  aria-label="Time signature"
-                >
-                  <option value="2/4">2/4</option>
-                  <option value="3/4">3/4</option>
-                  <option value="4/4">4/4</option>
-                  <option value="5/4">5/4</option>
-                  <option value="6/8">6/8</option>
-                  <option value="7/8">7/8</option>
-                  <option value="9/8">9/8</option>
-                  <option value="12/8">12/8</option>
-                </select>
-              </div>
-
               {/* Draw velocity */}
               <div className="midi-control-bar__overflow-row">
                 <span className="midi-control-bar__overflow-label">Velocity</span>
@@ -483,18 +510,6 @@ export function MidiControlBar(props: MidiControlBarProps) {
 
               <div className="midi-control-bar__overflow-divider" />
 
-              {/* Quantize */}
-              <button
-                type="button"
-                onClick={() => { onQuantizeSelection(); setOverflowOpen(false); }}
-                disabled={!hasSelection}
-                className="midi-control-bar__overflow-btn"
-                role="menuitem"
-              >
-                <Magnet className="h-3.5 w-3.5" />
-                Quantize
-              </button>
-
               {/* Duplicate */}
               <button
                 type="button"
@@ -517,23 +532,6 @@ export function MidiControlBar(props: MidiControlBarProps) {
                 >
                   <Wand2 className="h-3.5 w-3.5" />
                   Process MIDI
-                </button>
-              )}
-
-              {/* MIDI Record */}
-              {midiRecordSupported && onToggleMidiRecord && (
-                <button
-                  type="button"
-                  onClick={() => { onToggleMidiRecord(); setOverflowOpen(false); }}
-                  className={cn(
-                    "midi-control-bar__overflow-btn",
-                    midiRecordEnabled && "text-accent-midi-200",
-                  )}
-                  role="menuitem"
-                  aria-pressed={midiRecordEnabled}
-                >
-                  <Mic className="h-3.5 w-3.5" />
-                  {midiRecordEnabled ? "Stop MIDI record" : "MIDI record"}
                 </button>
               )}
 

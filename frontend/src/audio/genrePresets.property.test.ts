@@ -336,7 +336,15 @@ describe("Feature: rhythm-pattern-overlay, Property 4: Genre filter correctness"
     );
   });
 
-  it("for arbitrary valid patterns and genre selections, filtered list is a correct subset", () => {
+  it("returns at least one preset for every built-in genre", () => {
+  const genres = ["rock", "hip-hop", "edm", "jazz", "latin", "reggae"];
+  for (const genre of genres) {
+    const presets = getPresetsByGenre(genre);
+    expect(presets.length).toBeGreaterThanOrEqual(1);
+  }
+});
+
+it("for arbitrary valid patterns and genre selections, filtered list is a correct subset", () => {
     // Generate a set of valid patterns and a genre to filter by
     fc.assert(
       fc.property(
