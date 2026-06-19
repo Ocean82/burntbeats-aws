@@ -2,7 +2,7 @@ import { Lock, Plus, Shuffle, Unlock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PolySynth, start, Synth } from "tone";
 import {
-  getChordNotes,
+  _getChordNotes,
   getDiatonicChords,
   midiToFreq,
   type RootNote,

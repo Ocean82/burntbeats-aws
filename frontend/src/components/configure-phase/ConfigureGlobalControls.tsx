@@ -47,9 +47,9 @@ export function ConfigureGlobalControls() {
       <div className="flex flex-wrap gap-x-8 gap-y-lg">
         {/* BPM */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             Tempo (BPM)
-          </label>
+          </span>
           <div className="flex items-center gap-2">
             <input
               type="range"
@@ -72,9 +72,9 @@ export function ConfigureGlobalControls() {
 
         {/* Pitch */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             Pitch (semitones)
-          </label>
+          </span>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
@@ -109,9 +109,9 @@ export function ConfigureGlobalControls() {
 
         {/* Metronome */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             Metronome
-          </label>
+          </span>
           <button
             type="button"
             onClick={() => setMetronomeEnabled(!metronomeEnabled)}
@@ -134,9 +134,9 @@ export function ConfigureGlobalControls() {
 
         {/* Count-in */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             Count-in
-          </label>
+          </span>
           <div className="flex gap-1">
             {COUNT_IN_OPTIONS.map((opt) => (
               <button

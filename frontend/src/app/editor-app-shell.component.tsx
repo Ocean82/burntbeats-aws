@@ -53,7 +53,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
     } else if (playbackReady) {
       void audio.handlePlayMix(splitResultStems, stemEditorStates, audio.stemBuffers);
     }
-  }, [audio, playbackReady, splitResultStems, stemEditorStates, mixStemsLength]);
+  }, [audio, playbackReady, splitResultStems, stemEditorStates]);
 
   const transportBarProps: AppTransportBarProps = {
     isPlaying: audio.isPlayingMix,

@@ -1,7 +1,7 @@
 /**
  * midiChordDetection — recognize chord names from sets of MIDI notes.
  */
-import { CHORD_TYPES, NOTE_NAMES } from "./musicTheory";
+import { CHORD_TYPES, NOTE_NAMES as _NOTE_NAMES } from "./musicTheory";
 
 const CHROMATIC: string[] = [
   "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",

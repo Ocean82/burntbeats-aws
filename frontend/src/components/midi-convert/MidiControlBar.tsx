@@ -13,7 +13,7 @@ import {
   Pause,
   Pencil,
   Play,
-  Redo2,
+
   RotateCcw,
   Save,
   Scissors,

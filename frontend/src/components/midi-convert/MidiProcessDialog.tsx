@@ -34,6 +34,7 @@ export function MidiProcessDialog({
 
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setApplied(false);
       setMetrics(null);
       return;
@@ -73,7 +74,10 @@ export function MidiProcessDialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center midi-backdrop-fade"
       style={{ background: "rgba(0,0,0,0.55)" }}
+      role="button"
+      tabIndex={0}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClose(); }}
     >
       <div
         ref={ref}

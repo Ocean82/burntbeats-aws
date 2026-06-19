@@ -2,7 +2,7 @@
  * chordProgressionGenerator — music-theory-driven progression engine.
  * Genre/mood-aware progression selection, circle-of-fifths, 8 scale modes.
  */
-import { CHORD_TYPES, NOTE_NAMES, type RootNote, type Scale } from "./musicTheory";
+import { NOTE_NAMES, type RootNote, type Scale } from "./musicTheory";
 
 export interface ProgressionChord {
   root: string;
@@ -25,7 +25,7 @@ export interface GeneratedProgression {
 
 type Mode = Scale;
 
-const CIRCLE_OF_FIFTHS: string[] = [
+const _CIRCLE_OF_FIFTHS: string[] = [
   "C", "G", "D", "A", "E", "B", "F#", "C#", "Ab", "Eb", "Bb", "F",
 ];
 

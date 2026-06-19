@@ -110,7 +110,7 @@ export function MidiNoteEditor({
       editor.beginEditGesture();
       editor.setTrackNotes(editor.activeTrackId, processedNotes);
     },
-    [editor.beginEditGesture, editor.setTrackNotes, editor.activeTrackId],
+    [editor],
   );
 
   useEffect(() => {

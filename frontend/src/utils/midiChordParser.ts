@@ -31,7 +31,7 @@ export function parseChord(chordSymbol: string): ParsedChord {
     return { root: "C", type: "major" };
   }
   const root = match[1];
-  let suffix = match[2];
+  const suffix = match[2];
 
   if (suffix === "" || suffix === "M") {
     return { root, type: "major" };
