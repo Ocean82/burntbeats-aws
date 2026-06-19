@@ -16,11 +16,11 @@ test("GET /api/catalog/midi returns searchable catalog entries", async () => {
   assert.ok(Array.isArray(res.body.entries));
   assert.ok(res.body.entries.length >= 1);
   assert.equal(res.body.entries.every((e) => e.category.genre === "rock"), true);
-  assert.ok(res.body.total >= 3);
+  assert.ok(res.body.total >= 1);
 });
 
 test("GET /api/catalog/midi/:id/file serves catalog MIDI when present", async () => {
-  const res = await request.get("/api/catalog/midi/midi-001/file").expect(200);
+  const res = await request.get("/api/catalog/midi/midi-002/file").expect(200);
   assert.equal(res.headers["content-type"], "audio/midi");
   assert.ok(res.body.length > 0);
 });

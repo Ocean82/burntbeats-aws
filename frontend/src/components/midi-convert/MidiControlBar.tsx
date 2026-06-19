@@ -18,6 +18,7 @@ import {
   Save,
   Scissors,
   Square,
+  Redo2,
   Undo2,
   Wand2,
   ZoomIn,
@@ -300,7 +301,9 @@ export function MidiControlBar(props: MidiControlBarProps) {
           disabled={!canRedo}
           title="Redo (Ctrl+Y)"
           aria-label="Redo"
-        />
+        >
+          <Redo2 className="h-3 w-3" />
+        </MidiPhysicalButton>
 
         {tool === "draw" && (
           <span className="midi-draw-velocity" title="Note velocity">

@@ -880,30 +880,32 @@ export function MidiConvertPanel({
               </button>
             </MidiLaneDrawer>
 
-            <MidiResultPanel
-              result={result}
-              onDownload={downloadMidi}
-              isDownloading={isDownloadingMidi}
-              downloadError={downloadError}
-              onNewConversion={() => {
-                setDownloadError(null);
-                setBatchViewResult(null);
-                handleClear();
-              }}
-              jobId={displayJobId}
-              jobToken={displayJobToken}
-              sourceLabel={batchViewResult?.stemName ?? downloadSourceLabel ?? undefined}
-              initialMode="edit"
-              onApplyReconvertBpm={(bpm) => {
-                updateSettings({ quantizeBpm: bpm, quantize: true });
-              }}
-              onAdjustSettings={scrollToSettings}
-              onRetry={() => {
-                setDownloadError(null);
-                void triggerConvert(splitJobId);
-              }}
-              onOpenExportHistory={onOpenExportHistory ?? undefined}
-            />
+            {result && (
+              <MidiResultPanel
+                result={result}
+                onDownload={downloadMidi}
+                isDownloading={isDownloadingMidi}
+                downloadError={downloadError}
+                onNewConversion={() => {
+                  setDownloadError(null);
+                  setBatchViewResult(null);
+                  handleClear();
+                }}
+                jobId={displayJobId}
+                jobToken={displayJobToken}
+                sourceLabel={batchViewResult?.stemName ?? downloadSourceLabel ?? undefined}
+                initialMode="edit"
+                onApplyReconvertBpm={(bpm) => {
+                  updateSettings({ quantizeBpm: bpm, quantize: true });
+                }}
+                onAdjustSettings={scrollToSettings}
+                onRetry={() => {
+                  setDownloadError(null);
+                  void triggerConvert(splitJobId);
+                }}
+                onOpenExportHistory={onOpenExportHistory ?? undefined}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>

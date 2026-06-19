@@ -25,10 +25,6 @@ export interface GeneratedProgression {
 
 type Mode = Scale;
 
-const _CIRCLE_OF_FIFTHS: string[] = [
-  "C", "G", "D", "A", "E", "B", "F#", "C#", "Ab", "Eb", "Bb", "F",
-];
-
 const MAJOR_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11];
 const MINOR_SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 10];
 
