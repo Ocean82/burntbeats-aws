@@ -214,7 +214,6 @@ export interface SessionDev {
 // ---------------------------------------------------------------------------
 // Main grouped interface
 // ---------------------------------------------------------------------------
-
 export interface EditorSession {
   audio: ReturnType<typeof useAudio>;
   modals: SessionModals;
@@ -237,11 +236,9 @@ export interface EditorSession {
   resetStemMediaState: () => void;
 }
 
-
 // ---------------------------------------------------------------------------
 // Hook implementation
 // ---------------------------------------------------------------------------
-
 export function useEditorSession(): EditorSession {
   const localDevFullApp = isLocalDevFullApp();
   const reduceMotion = useReducedMotion() ?? false;
