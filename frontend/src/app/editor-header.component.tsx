@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Undo2, Redo2, Mic2, Music, Drum, Radio } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Undo2, Redo2, Mic2, Music, Drum, Radio, ChevronDown } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
 import { SettingsMenu } from "../components/SettingsMenu";
@@ -44,6 +44,16 @@ const TAB_CLASS = (active: boolean) =>
       : "text-muted-foreground hover:text-foreground border border-transparent",
   );
 
+const SECONDARY_TABS: Array<{
+  id: "beats" | "tuner" | "my-stems";
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}> = [
+  { id: "beats", label: "Beats", icon: Drum },
+  { id: "tuner", label: "Tuner", icon: Radio },
+  { id: "my-stems", label: "My stems" },
+];
+
 export function EditorHeader({
   headerVisible,
   activeView,
@@ -63,6 +73,8 @@ export function EditorHeader({
 }: EditorHeaderProps) {
   const { tabsWithNews, markTabSeen } = useWhatsNew();
   const [cancelFlowOpen, setCancelFlowOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
   const workflow = useEditorWorkflowSteps(
     editorWorkflow ?? {
       uploadedFile: null,
@@ -74,12 +86,26 @@ export function EditorHeader({
   const showWorkflow =
     activeView === "editor" && editorWorkflow != null;
 
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [moreOpen]);
+
   const handleTabClick = (
     view: "editor" | "speech" | "midi" | "beats" | "tuner" | "my-stems",
   ) => {
     setActiveView(view);
     markTabSeen(view);
+    setMoreOpen(false);
   };
+
+  const isSecondaryActive = SECONDARY_TABS.some((t) => t.id === activeView);
 
   return (
     <header
@@ -180,7 +206,7 @@ export function EditorHeader({
         </div>
       </div>
 
-      {/* Workspace tabs */}
+      {/* Workspace tabs — primary visible, secondary in "More" dropdown */}
       <nav
         aria-label="Workspace tabs"
         className="flex w-full max-w-full items-center gap-2xs overflow-x-auto rounded-xl border border-border/80 bg-muted/40 p-2xs [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
@@ -214,33 +240,53 @@ export function EditorHeader({
           MIDI
           <WhatsNewBadge visible={tabsWithNews.has("midi")} />
         </button>
-        <button
-          type="button"
-          onClick={() => handleTabClick("beats")}
-          className={TAB_CLASS(activeView === "beats")}
-          aria-current={activeView === "beats" ? "page" : undefined}
-        >
-          <Drum className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Beats
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabClick("tuner")}
-          className={TAB_CLASS(activeView === "tuner")}
-          aria-current={activeView === "tuner" ? "page" : undefined}
-        >
-          <Radio className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Tuner
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabClick("my-stems")}
-          className={TAB_CLASS(activeView === "my-stems")}
-          aria-current={activeView === "my-stems" ? "page" : undefined}
-        >
-          My stems
-          <WhatsNewBadge visible={tabsWithNews.has("my-stems")} />
-        </button>
+
+        <div className="h-5 w-px bg-border/60 shrink-0" aria-hidden="true" />
+
+        {/* More dropdown for secondary tabs */}
+        <div ref={moreRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setMoreOpen(!moreOpen)}
+            className={TAB_CLASS(isSecondaryActive)}
+            aria-expanded={moreOpen}
+            aria-haspopup="true"
+          >
+            More
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {moreOpen && (
+            <div
+              className="absolute left-0 top-full mt-1 min-w-[160px] rounded-xl border border-border/80 bg-popover/95 p-1 shadow-elevation-lg backdrop-blur-xl z-dropdown"
+              role="menu"
+            >
+              {SECONDARY_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeView === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => handleTabClick(tab.id)}
+                    role="menuitem"
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-lg px-sm py-2 text-sm font-medium transition",
+                      isActive
+                        ? "bg-primary-500/20 text-primary-100"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                    )}
+                  >
+                    {Icon && <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+                    {tab.label}
+                    <WhatsNewBadge visible={tabsWithNews.has(tab.id)} />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
 
       {showWorkflow ? (

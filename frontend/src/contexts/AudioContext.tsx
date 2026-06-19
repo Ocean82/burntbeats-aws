@@ -6,6 +6,14 @@ import { useMasterProcessingSync } from "../hooks/audio/useMasterProcessingSync"
 import { useStemMedia } from "./StemMediaContext";
 import { useWorkflow } from "./WorkflowContext";
 import { useAppStore } from "../store/appStore";
+import { useMetronome } from "../hooks/audio/useMetronome";
+
+export interface AudioContextMetronome {
+  startMetronome: () => void;
+  stopMetronome: () => void;
+  getCountInBeats: () => number;
+  metronomeEnabled: boolean;
+}
 
 export type AudioContextValue = UseAudioPlaybackReturn &
   Pick<
@@ -16,7 +24,9 @@ export type AudioContextValue = UseAudioPlaybackReturn &
     | "loadingError"
     | "retryLoadStems"
     | "clearStemLoadingState"
-  >;
+  > & {
+    metronome: AudioContextMetronome;
+  };
 
 const AudioContext = createContext<AudioContextValue | null>(null);
 
@@ -27,11 +37,17 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const beatGrid = useAppStore((s) => s.beatGrid);
   const stemMedia = useStemMedia();
 
+  const globalBpm = useAppStore((s) => s.globalBpm);
+  const globalPitchSemitones = useAppStore((s) => s.globalPitchSemitones);
+
   const audio = useAudioPlayback({
     stemStates,
-    playbackBpm: beatGrid?.bpm ?? null,
+    playbackBpm: globalBpm ?? beatGrid?.bpm ?? 120,
+    globalPitchSemitones,
     audioContextRef: stemMedia.audioContextRef,
   });
+
+  const metronome = useMetronome(stemMedia.audioContextRef);
 
   // Sync master processing store → live Web Audio nodes
   useMasterProcessingSync({
@@ -42,6 +58,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const value = useMemo<AudioContextValue>(
     () => ({
       ...audio,
+      metronome,
       stemBuffers: stemMedia.stemBuffers,
       setStemBuffers: stemMedia.setStemBuffers,
       isLoadingStems: stemMedia.isLoadingStems,
@@ -49,7 +66,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       retryLoadStems: stemMedia.retryLoadStems,
       clearStemLoadingState: stemMedia.clearStemLoadingState,
     }),
-    [audio, stemMedia],
+    [audio, metronome, stemMedia],
   );
 
   return (

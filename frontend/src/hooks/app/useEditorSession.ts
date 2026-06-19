@@ -603,6 +603,9 @@ export function useEditorSession(): EditorSession {
   const editorMainViewProps = useMemo<EditorMainViewProps>(
     () => ({
       reduceMotion,
+      visibleStems,
+      stemStates,
+      onConfigureStemChange: handleStemStateChange,
       chrome: {
         guidanceTarget,
         guidanceRingClass,
@@ -670,6 +673,8 @@ export function useEditorSession(): EditorSession {
       uploadedFile,
       isSplitting,
       mixStems.length,
+      visibleStems,
+      stemStates,
       isExporting,
       sourceMode,
       setSourceMode,

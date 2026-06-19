@@ -68,9 +68,22 @@ export interface AppState {
   /** Master limiter toggle preference (UI state). */
   masterLimiterEnabled: boolean;
 
+  /** Global project BPM for metronome and tempo-synced FX. */
+  globalBpm: number;
+  /** Global pitch shift in semitones (-12 to +12). */
+  globalPitchSemitones: number;
+  /** Metronome click track enabled. */
+  metronomeEnabled: boolean;
+  /** Count-in before playback starts. */
+  countIn: "off" | "1bar" | "2bars" | "4bars";
+
   setUploadState: (update: Partial<AppState> | ((prev: AppState) => Partial<AppState>)) => void;
   setSplitError: (msg: string | null) => void;
   setMasterLimiterEnabled: (enabled: boolean) => void;
+  setGlobalBpm: (bpm: number) => void;
+  setGlobalPitchSemitones: (semitones: number) => void;
+  setMetronomeEnabled: (enabled: boolean) => void;
+  setCountIn: (countIn: "off" | "1bar" | "2bars" | "4bars") => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -96,6 +109,10 @@ export const useAppStore = create<AppState>((set) => ({
   splitElapsedSeconds: null,
   splitStageLabel: null,
   masterLimiterEnabled: false,
+  globalBpm: 120,
+  globalPitchSemitones: 0,
+  metronomeEnabled: false,
+  countIn: "off" as const,
 
   setUploadState: (update) =>
     set((state) => {
@@ -104,4 +121,8 @@ export const useAppStore = create<AppState>((set) => ({
     }),
   setSplitError: (msg) => set({ splitError: msg }),
   setMasterLimiterEnabled: (enabled) => set({ masterLimiterEnabled: enabled }),
+  setGlobalBpm: (bpm) => set({ globalBpm: Math.max(40, Math.min(300, bpm)) }),
+  setGlobalPitchSemitones: (semitones) => set({ globalPitchSemitones: Math.max(-12, Math.min(12, semitones)) }),
+  setMetronomeEnabled: (enabled) => set({ metronomeEnabled: enabled }),
+  setCountIn: (countIn) => set({ countIn }),
 }));

@@ -113,8 +113,23 @@ export interface UseAudioPlaybackOptions {
   stemStates?: Record<string, StemEditorState>;
   /** Detected project BPM (beat grid) for tempo-synced delay on stem FX. */
   playbackBpm?: number | null;
+  /** Global pitch shift in semitones applied to all stems (-12 to +12). */
+  globalPitchSemitones?: number;
   /** Shared AudioContext ref (from StemMediaProvider). */
   audioContextRef?: React.MutableRefObject<AudioContext | null>;
+}
+
+/** Apply global pitch offset to a set of stem states without mutating the originals. */
+function withGlobalPitch(
+  stemStates: Record<string, StemEditorState>,
+  globalPitch: number,
+): Record<string, StemEditorState> {
+  if (globalPitch === 0) return stemStates;
+  const out: Record<string, StemEditorState> = {};
+  for (const [id, st] of Object.entries(stemStates)) {
+    out[id] = { ...st, pitchSemitones: Math.max(-12, Math.min(12, st.pitchSemitones + globalPitch)) };
+  }
+  return out;
 }
 
 const TRIM_HOT_SWAP_DEBOUNCE_MS = 80;
@@ -126,12 +141,18 @@ export function useAudioPlayback(
     onError,
     stemStates: stemStatesProp,
     playbackBpm,
+    globalPitchSemitones = 0,
     audioContextRef: sharedAudioContextRef,
   } = options;
   const playbackBpmRef = useRef(resolvePlaybackBpm(playbackBpm ?? undefined));
   useEffect(() => {
     playbackBpmRef.current = resolvePlaybackBpm(playbackBpm ?? undefined);
   }, [playbackBpm]);
+
+  const globalPitchRef = useRef(globalPitchSemitones);
+  useEffect(() => {
+    globalPitchRef.current = globalPitchSemitones;
+  }, [globalPitchSemitones]);
 
   // --- Sub-hooks ---
   const {
@@ -500,23 +521,26 @@ export function useAudioPlayback(
       }
       stopPreview();
 
-      const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
+      const gp = globalPitchRef.current;
+      const effectiveStemStates = gp !== 0 ? withGlobalPitch(stemStates, gp) : stemStates;
+
+      const stemsToPlay = filterStemsForAudibleMix(splitResultStems, effectiveStemStates);
       if (stemsToPlay.length === 0) return;
 
       lastSplitResultStemsRef.current = splitResultStems;
-      lastStemStatesRef.current = stemStates;
+      lastStemStatesRef.current = effectiveStemStates;
       lastStemBuffersRef.current = stemBuffers;
 
       const ids = splitResultStems.map((s) => s.id);
-      prevMixRoutingSigRef.current = stemRoutingSignature(stemStates, ids);
-      prevMixTrimSigRef.current = stemTrimSignature(stemStates, ids);
-      prevMixPitchTempoSigRef.current = stemPitchTempoSignature(stemStates, ids);
-      prevMixMuteSoloSigRef.current = stemMuteSoloSignature(stemStates, ids);
+      prevMixRoutingSigRef.current = stemRoutingSignature(effectiveStemStates, ids);
+      prevMixTrimSigRef.current = stemTrimSignature(effectiveStemStates, ids);
+      prevMixPitchTempoSigRef.current = stemPitchTempoSignature(effectiveStemStates, ids);
+      prevMixMuteSoloSigRef.current = stemMuteSoloSignature(effectiveStemStates, ids);
 
       const context = await getOrCreateContext();
       if (!context) return;
 
-      await rebuildMixAtPct(0, stemStates);
+      await rebuildMixAtPct(0, effectiveStemStates);
     },
     [
       isPlayingMix,

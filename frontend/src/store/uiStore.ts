@@ -2,6 +2,8 @@ import { create } from "zustand";
 
 export type ModalKey = "help" | "export" | "presets" | "game" | "upsell";
 
+export type EditorPhase = "upload" | "split" | "configure" | "mix";
+
 interface UiState {
   // Modal visibility
   activeModals: Partial<Record<ModalKey, boolean>>;
