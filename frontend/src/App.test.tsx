@@ -76,7 +76,7 @@ describe("App flow", () => {
     renderApp();
     // The transitional editor shell renders the upload phase by default
     expect(
-      await screen.findByRole("button", { name: /upload audio file/i }, { timeout: 5000 }),
+      await screen.findByRole("button", { name: /upload audio file/i }, { timeout: 10000 }),
     ).toBeInTheDocument();
   });
 

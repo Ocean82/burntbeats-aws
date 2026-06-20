@@ -16,7 +16,6 @@ import { AppViewSwitch } from "./app-view-switch.component";
 import { useAudio } from "../contexts/AudioContext";
 import { useAppStore } from "../store/appStore";
 import {
-  LazyEditorMainView,
   LazyLibraryPage,
   LazyMidiConvertPage,
   LazyMyStemsPage,
@@ -195,13 +194,11 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
               midiPage={LazyMidiConvertPage}
               libraryPage={LazyLibraryPage}
               tunerPage={LazyTunerPage}
-              editorMainView={LazyEditorMainView}
-              editorMainViewProps={session.editorMainViewProps}
               transitionalEditorShell={LazyTransitionalEditorShell}
               transitionalShellProps={{
                 handleFile: split.handleFile,
                 triggerSplit: split.triggerSplit,
-                mixerProps: session.editorMainViewProps.mixerProps,
+                mixerProps: session.mixerProps,
               }}
               devLatencyStats={dev.latencyStats}
               onResetDevLatencyStats={dev.resetLatencyStats}

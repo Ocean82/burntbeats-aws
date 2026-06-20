@@ -46,6 +46,10 @@ Emotional goal: the user should feel like they just sat down at an expensive pie
 
 5. **Magic over mechanics** — the AI inference is complex; the user experience is effortless. Hide the plumbing, surface the result.
 
+6. **Progressive disclosure (phased flow)** — reveal the app one phase at a time. Users never see the mixer before stems exist, never see MIDI tools in the stem editor, and never face an all-at-once surface. Each workspace is a focused, sequential path through a single job type. The interface limits choice to the current step so users always know what to do next.
+
+7. **Workspace separation** — fundamentally different tools (stem separation, MIDI conversion) live in separate workspaces with their own navigation and flow. The app is a suite of focused studios under one roof, not a single crowded room. Stem separation handles upload → split → mix → export; MIDI conversion is its own destination with its own source selection, settings, and editor. A user working on stems never sees MIDI complexity, and vice versa.
+
 ## Accessibility & Inclusion
 
 **Standard:** WCAG AA minimum across all interactive surfaces.

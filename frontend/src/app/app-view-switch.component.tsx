@@ -4,7 +4,6 @@ import { motion, type MotionProps } from "framer-motion"
 import type { AppView } from "../hooks/workflow/useEditorViewRouting"
 import type { UseSubscriptionResult } from "../hooks/useSubscription"
 import type { UiLatencySnapshot } from "../hooks/useUiLatencyMonitor"
-import type { EditorMainViewProps } from "./editor-main-view.component"
 import type { TransitionalShellProps } from "../components/EditorAppShell"
 import { PageSkeleton } from "../views/PageSkeleton"
 import type { StemHistoryJob } from "../api/stemHistory"
@@ -31,16 +30,14 @@ export interface AppViewSwitchProps {
   onSetActiveView: (view: AppView) => void
   onLoadHistoryJob: (job: StemHistoryJob) => Promise<void>
   onLoadHistoryJobToMidi: (job: StemHistoryJob) => Promise<void>
-  editorMainViewProps: EditorMainViewProps
   pricingPage: LazyExoticComponent<ComponentType<PricingPageProps>>
   myStemsPage: LazyExoticComponent<ComponentType<MyStemsPageProps>>
   speechPage: LazyExoticComponent<ComponentType<SpeechCleanPageProps>>
   midiPage: LazyExoticComponent<ComponentType<MidiConvertPageProps>>
   libraryPage: LazyExoticComponent<ComponentType<LibraryPageProps>>
   tunerPage: LazyExoticComponent<ComponentType<TunerPageProps>>
-  editorMainView: LazyExoticComponent<ComponentType<EditorMainViewProps>>
   /** Transitional editor shell (spec's phased split flow). */
-  transitionalEditorShell?: LazyExoticComponent<ComponentType<TransitionalShellProps>>
+  transitionalEditorShell: LazyExoticComponent<ComponentType<TransitionalShellProps>>
   /** Props forwarded to the transitional shell for split engine wiring. */
   transitionalShellProps?: TransitionalShellProps
   devLatencyStats?: UiLatencySnapshot
@@ -63,14 +60,12 @@ export function AppViewSwitch({
   onSetActiveView,
   onLoadHistoryJob,
   onLoadHistoryJobToMidi,
-  editorMainViewProps,
   pricingPage: PricingPage,
   myStemsPage: MyStemsPage,
   speechPage: SpeechPage,
   midiPage: MidiPage,
   libraryPage: LibraryPage,
   tunerPage: TunerPage,
-  editorMainView: EditorMainView,
   transitionalEditorShell: TransitionalEditorShell,
   transitionalShellProps,
   devLatencyStats,
@@ -139,10 +134,8 @@ export function AppViewSwitch({
           onViewPlans={() => onSetActiveView("pricing")}
           onGoToEditor={() => onSetActiveView("editor")}
         />
-      ) : TransitionalEditorShell ? (
-        <TransitionalEditorShell {...(transitionalShellProps ?? {})} />
       ) : (
-        <EditorMainView {...editorMainViewProps} />
+        <TransitionalEditorShell {...(transitionalShellProps ?? {})} />
       )}
     </Suspense>
   )

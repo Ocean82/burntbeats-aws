@@ -22,7 +22,6 @@ import { useGuidanceSystem } from "../useGuidanceSystem";
 import { useAppKeyboardShortcuts } from "../useAppKeyboardShortcuts";
 import {
   useUiLatencyMonitor,
-  startUiLatencyMark,
 } from "../useUiLatencyMonitor";
 import { useAudio } from "../../contexts/AudioContext";
 import { useWorkflow } from "../../contexts/WorkflowContext";
@@ -38,7 +37,8 @@ import { useHeaderVisibility } from "../useHeaderVisibility";
 import { useCheckoutNotice } from "../ui/useCheckoutNotice";
 import { isLocalDevFullApp } from "../../config";
 import { DEFAULT_SPLIT_INTENT } from "../../utils/splitIntent";
-import type { EditorMainViewProps } from "../../app/editor-main-view.component";
+import type { ComponentProps } from "react";
+import type { MixerWorkspace } from "../../app/mixer-workspace.component";
 import type { AppView } from "../workflow/useEditorViewRouting";
 
 const importHelpModal = () => import("../../components/HelpModal");
@@ -227,8 +227,8 @@ export interface EditorSession {
   recovery: SessionRecovery;
   ui: SessionUi;
   dev: SessionDev;
-  /** Pre-composed props for EditorMainView — avoids re-computing in the shell. */
-  editorMainViewProps: EditorMainViewProps;
+  /** Pre-composed mixer workspace props. */
+  mixerProps: ComponentProps<typeof MixerWorkspace>;
   /** Audio stem media loading state (from AudioContext). */
   isLoadingStems: boolean;
   loadingError: string | null;
@@ -597,96 +597,37 @@ export function useEditorSession(): EditorSession {
     },
   });
 
-  const editorMainViewProps = useMemo<EditorMainViewProps>(
+  const mixerProps = useMemo<ComponentProps<typeof MixerWorkspace>>(
     () => ({
-      reduceMotion,
-      visibleStems,
-      stemStates,
-      onConfigureStemChange: handleStemStateChange,
-      chrome: {
-        guidanceTarget,
-        guidanceRingClass,
-        handleGuidancePanelInteract,
-        subscription,
-        checkoutNotice,
-        uploadedFile,
-        isSplitting,
-        mixStemsLength: mixStems.length,
-        isExporting,
-      },
-      processingProps: {
-        sourceMode,
-        onSourceModeChange: setSourceMode,
-        loadStemsInputRef,
-        onLoadStems: handleLoadStems,
-        onRemoveLoadedStem: removeLoadedStem,
-        onBrowseUpload: handleBrowseUpload,
-        onClearUpload: handleClearUpload,
-        onDropUpload: (file) => handleFileFromInput(file),
-        inputRef,
-        onUploadFileInput: (file) => handleFileFromInput(file),
-        onSplit: (intent, sample) => {
-          startUiLatencyMark("mixer-ready-after-stems");
-          void triggerSplit(intent, sample);
-        },
-        onOpenWaitingGame: toggleGame,
-        onAddToQueue: () => addToBatchQueue(uploadedFile),
-        onNewSplit: handleClearUpload,
-        onExpandToFourStems: () => void triggerExpand(),
-      },
-      mixerProps: {
-        mixerSectionRef,
-        onPointerDownMixer: handleGuidancePanelInteract,
-        guidanceTarget,
-        guidanceRingClass,
-        onResetLevels: resetTrackAdjustments,
-        onResetSingleStem: handleResetSingleStem,
-        stemWaveforms,
-        activeStemId,
-        onActiveStemChange: setActiveStemId,
-        onStemStateChange: handleStemStateChange,
-        onPreviewStem: handlePreviewStemFromMixer,
-        onExport: () => {
-          if (isSample) {
-            setActiveView("pricing");
-          } else {
-            openModal("export");
-          }
-        },
-        isExporting,
-        isComparingExport,
-        onCompareExport,
-        exportCompareSummary,
-        onLoadGenrePreset: handleLoadPreset,
-      },
-    }),
-    [
-      reduceMotion,
+      mixerSectionRef,
+      onPointerDownMixer: handleGuidancePanelInteract,
       guidanceTarget,
       guidanceRingClass,
-      handleGuidancePanelInteract,
-      subscription,
-      checkoutNotice,
-      uploadedFile,
-      isSplitting,
-      mixStems.length,
-      visibleStems,
-      stemStates,
+      onResetLevels: resetTrackAdjustments,
+      onResetSingleStem: handleResetSingleStem,
+      stemWaveforms,
+      activeStemId,
+      onActiveStemChange: setActiveStemId,
+      onStemStateChange: handleStemStateChange,
+      onPreviewStem: handlePreviewStemFromMixer,
+      onExport: () => {
+        if (isSample) {
+          setActiveView("pricing");
+        } else {
+          openModal("export");
+        }
+      },
       isExporting,
-      sourceMode,
-      setSourceMode,
-      loadStemsInputRef,
-      handleLoadStems,
-      removeLoadedStem,
-      handleBrowseUpload,
-      handleClearUpload,
-      handleFileFromInput,
-      inputRef,
-      triggerSplit,
-      toggleGame,
-      addToBatchQueue,
-      triggerExpand,
+      isComparingExport,
+      onCompareExport,
+      exportCompareSummary,
+      onLoadGenrePreset: handleLoadPreset,
+    }),
+    [
       mixerSectionRef,
+      handleGuidancePanelInteract,
+      guidanceTarget,
+      guidanceRingClass,
       resetTrackAdjustments,
       handleResetSingleStem,
       stemWaveforms,
@@ -697,6 +638,7 @@ export function useEditorSession(): EditorSession {
       isSample,
       openModal,
       setActiveView,
+      isExporting,
       isComparingExport,
       onCompareExport,
       exportCompareSummary,
@@ -841,7 +783,7 @@ export function useEditorSession(): EditorSession {
       resetLatencyStats,
       toast,
     },
-    editorMainViewProps,
+    mixerProps,
     isLoadingStems,
     loadingError,
     retryLoadStems,

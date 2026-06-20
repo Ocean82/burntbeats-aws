@@ -18,11 +18,6 @@ export const LazyLibraryPage = lazy(() =>
 export const LazyTunerPage = lazy(() =>
   import("../pages/TunerPage").then((m) => ({ default: m.TunerPage })),
 );
-export const LazyEditorMainView = lazy(() =>
-  import("./editor-main-view.component").then((m) => ({
-    default: m.EditorMainView,
-  })),
-);
 export const LazyTransitionalEditorShell = lazy(() =>
   import("../components/EditorAppShell").then((m) => ({
     default: m.EditorAppShell,

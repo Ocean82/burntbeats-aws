@@ -270,3 +270,6 @@ Glass surfaces add a third layer: backdrop-filter blur + prismatic sheens create
 - **Don't** animate CSS layout properties (width, height, top, left). Use transform and opacity only.
 - **Don't** nest cards inside cards. If you're reaching for a card-in-card, the information architecture needs rethinking.
 - **Don't** use modals as the first solution. Exhaust inline disclosure, progressive reveal, and panel-based alternatives before reaching for a modal.
+- **Don't** show every tool and feature on the same surface. An all-in-one view overwhelms users and buries the process under clutter. If a user can see stem splitting, MIDI conversion, speech enhancement, and the mixer simultaneously, the design has failed.
+- **Do** use phased flows for complex workflows. Divide multi-step jobs (upload → configure → split → mix → export) into sequential phases where each phase only reveals controls relevant to the current step. Use animated transitions between phases to reinforce progress and direction.
+- **Do** separate fundamentally different tools into distinct workspaces with their own navigation endpoints. Stem separation, MIDI conversion, and speech enhancement should each feel like focused applications that happen to share a parent shell — not features crammed into a single view.

@@ -75,15 +75,11 @@ describe("useEditorSession", () => {
     )
   })
 
-  it("exposes editor session shape including editorMainViewProps", () => {
+  it("exposes editor session shape including mixerProps", () => {
     const { result } = renderHook(() => useEditorSession(), { wrapper })
     expect(result.current.ui.activeView).toBe("editor")
-    expect(result.current.editorMainViewProps).toMatchObject({
-      chrome: expect.objectContaining({
-        subscription: expect.any(Object),
-      }),
-      processingProps: expect.any(Object),
-      mixerProps: expect.any(Object),
+    expect(result.current.mixerProps).toMatchObject({
+      stemWaveforms: expect.any(Object),
     })
     expect(typeof result.current.split.triggerSplit).toBe("function")
     expect(typeof result.current.resetStemMediaState).toBe("function")

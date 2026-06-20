@@ -4,7 +4,7 @@ import type { AppView } from "../hooks/workflow/useEditorViewRouting";
 type ImportFn = () => Promise<unknown>;
 
 const viewImports: Record<AppView, ImportFn> = {
-  editor: () => import("../app/editor-main-view.component"),
+  editor: () => import("../components/EditorAppShell"),
   pricing: () => import("../components/PricingPage"),
   "my-stems": () => import("../components/MyStemsPage"),
   speech: () => import("../pages/SpeechCleanPage"),
