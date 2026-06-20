@@ -3,15 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import { ToolSidebar } from "./ToolSidebar";
 
 describe("ToolSidebar", () => {
-  const labels = ["Pitch", "EQ", "Time Stretch", "Amplitude", "FX"];
+  const labels = ["Pitch", "EQ", "Time Stretch", "Amplitude", "FX", "Analyze"];
 
-  it("renders 5 tool buttons with accessible labels", () => {
+  it("renders 6 tool buttons with accessible labels", () => {
     render(<ToolSidebar activeTool={null} onToolToggle={() => {}} />);
 
     for (const label of labels) {
       expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
     }
-    expect(screen.getAllByRole("button")).toHaveLength(5);
+    expect(screen.getAllByRole("button")).toHaveLength(6);
   });
 
   it("marks only the active tool button as pressed", () => {

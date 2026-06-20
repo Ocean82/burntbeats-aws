@@ -1,5 +1,5 @@
 /** Categories of audio processing tools available in the workspace. */
-export type ToolCategory = 'pitch' | 'eq' | 'timeStretch' | 'amplitude' | 'fx';
+export type ToolCategory = 'pitch' | 'eq' | 'timeStretch' | 'amplitude' | 'fx' | 'intelligence';
 
 /** State for the slide-out effects drawer. */
 export interface ToolDrawerState {

@@ -7,6 +7,7 @@ import { useWorkflow } from "@/contexts/WorkflowContext";
 import { defaultStemState } from "@/stem-editor-state";
 import type { StemEditorState } from "@/stem-editor-state";
 import type { ToolCategory } from "@/types/tools";
+import { AudioIntelligencePanel } from "@/components/mix-phase/AudioIntelligencePanel";
 
 export interface EffectsPanelProps {
   activeTool: ToolCategory;
@@ -24,6 +25,7 @@ const TOOL_LABELS: Record<ToolCategory, string> = {
   timeStretch: "Time Stretch",
   amplitude: "Amplitude",
   fx: "Effects",
+  intelligence: "Audio Intelligence",
 };
 
 /**
@@ -110,7 +112,9 @@ export function EffectsPanel({ activeTool, onClose, isOverlay = false, activeSte
 
       {/* Tool-specific controls */}
       <div className="flex-1 overflow-y-auto p-4">
-        {stemState ? (
+        {activeTool === "intelligence" ? (
+          <AudioIntelligencePanel onClose={onClose} />
+        ) : stemState ? (
           <ToolControls
             activeTool={activeTool}
             stemState={stemState}

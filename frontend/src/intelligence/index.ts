@@ -1,0 +1,10 @@
+export { AudioAnalysisEngine } from "./AudioAnalysisEngine";
+export type { AudioFeatures, BeatInfo, PitchInfo } from "./AudioAnalysisEngine";
+export { BPMDetector } from "./BPMDetector";
+export type { BPMAnalysis, BeatInfo as BPMBeatInfo, TimeSignature, RhythmPattern, SyncPoint, TempoMap } from "./BPMDetector";
+export { KeyDetector } from "./KeyDetector";
+export type { KeyDetectionResult, TranspositionOptions, TranspositionResult } from "./KeyDetector";
+export { GenreClassifier } from "./GenreClassifier";
+export type { GenreClassification, GenreProfile } from "./GenreClassifier";
+export { MoodAnalyzer } from "./MoodAnalyzer";
+export type { MoodAnalysis, EnergyProfile, ValenceProfile, ArousalProfile, EmotionScores } from "./MoodAnalyzer";

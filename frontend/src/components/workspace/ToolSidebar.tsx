@@ -4,6 +4,7 @@ import {
   Timer,
   Volume2,
   Sparkles,
+  Brain,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
@@ -22,6 +23,7 @@ const TOOL_BUTTONS: ToolButtonDef[] = [
   { id: "timeStretch", label: "Time Stretch", icon: Timer },
   { id: "amplitude", label: "Amplitude", icon: Volume2 },
   { id: "fx", label: "FX", icon: Sparkles },
+  { id: "intelligence", label: "Analyze", icon: Brain },
 ];
 
 export interface ToolSidebarProps {

@@ -36,6 +36,7 @@ vi.mock("@/contexts/WorkflowContext", () => ({
 }));
 
 const TOOL_CATEGORIES: ToolCategory[] = ["pitch", "eq", "timeStretch", "amplitude", "fx"];
+// intelligence is excluded from property-based testing because it requires AudioContext provider
 
 /** Maps each tool category to the data-testid of its rendered control set */
 const TOOL_TESTID_MAP: Record<ToolCategory, string> = {
@@ -44,6 +45,7 @@ const TOOL_TESTID_MAP: Record<ToolCategory, string> = {
   timeStretch: "time-stretch-controls",
   amplitude: "amplitude-controls",
   fx: "fx-controls",
+  intelligence: "audio-intelligence-panel",
 };
 
 /** Arbitrary for a single tool category */
