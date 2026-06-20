@@ -16,7 +16,7 @@
 # subprocess uses the venv Python (sys.executable).
 # Keep torch/torchaudio on the same minor and <2.9 so wheels resolve together and load/save paths
 # avoid torchcodec issues on some hosts (WSL/CI).
-torch>=2.0.0,<2.13
+torch>=2.12.1,<2.13
 torchaudio>=2.0.0,<2.9
 soundfile>=0.12.0
 # Bundled ffmpeg when system ffmpeg is not on PATH (matrix clip extraction)
@@ -33,7 +33,7 @@ numpy>=2.4.6,<2.6
 scipy>=1.9.0
 fastapi>=0.137.1
 uvicorn[standard]>=0.22.0
-python-multipart>=0.0.31
+python-multipart>=0.0.32
 
 # Optional: upload stems to S3 after each job (S3_ENABLED=true; see docs/ARCHITECTURE-FLOW.md)
 boto3>=1.43.30
