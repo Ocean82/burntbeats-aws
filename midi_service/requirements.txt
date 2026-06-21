@@ -9,5 +9,5 @@ python-multipart>=0.0.31
 soundfile>=0.12.0
 librosa>=0.10.0
 mido>=1.3.0
-pretty-midi>=0.2.10
+pretty-midi>=0.2.11
 prometheus-client>=0.20.0
