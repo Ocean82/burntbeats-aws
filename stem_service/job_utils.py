@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from burntbeats_common.storage import PROGRESS_FILENAME, safe_job_path as _safe_job_path, write_progress as _write_progress
 from stem_service.config import (
     REPO_ROOT,
     SUPPORTED_AUDIO_FORMATS,
@@ -26,8 +27,6 @@ from stem_service.config import (
 from stem_service.s3_upload import submit_background_task, upload_job_stems_to_s3
 
 logger = logging.getLogger(__name__)
-
-PROGRESS_FILENAME = "progress.json"
 
 # Output base: must match Node backend STEM_OUTPUT_DIR
 OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "stems")))
@@ -190,19 +189,10 @@ def build_progress_payload(
 
 
 def safe_job_path(job_id: str, *parts: str) -> Path:
-    """Construct a path under OUTPUT_BASE for a job_id with traversal protection.
-
-    Raises ValueError if the resolved path escapes OUTPUT_BASE.
-    """
-    candidate = (OUTPUT_BASE / job_id / Path(*parts) if parts else OUTPUT_BASE / job_id).resolve()
-    if not str(candidate).startswith(str(OUTPUT_BASE.resolve())):
-        raise ValueError(f"Path traversal detected for job_id: {job_id}")
-    return candidate
+    return _safe_job_path(OUTPUT_BASE, job_id, *parts)
 
 
-def write_progress(out_dir: Path, data: dict) -> None:
-    """Write progress.json for a job directory."""
-    (out_dir / PROGRESS_FILENAME).write_text(json.dumps(data), encoding="utf-8")
+write_progress = _write_progress
 
 
 def append_metrics_log(record: dict) -> None:
