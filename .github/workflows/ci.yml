@@ -175,7 +175,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Build frontend image
-        run: docker build -f frontend/Dockerfile .
+        run: docker build -f frontend/Dockerfile frontend
 
   backend-docker-deps:
     runs-on: ubuntu-latest
