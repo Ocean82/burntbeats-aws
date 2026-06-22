@@ -1,6 +1,7 @@
 import os
 import sys
 import tempfile
+import wave
 from pathlib import Path
 
 # Ensure repo root is on sys.path so `stem_service` resolves reliably.
@@ -259,7 +260,11 @@ def test_run_expand_sync_inherits_beat_grid_from_source_progress(monkeypatch) ->
     bass_path = stems_dir / "bass.wav"
     other_path = stems_dir / "other.wav"
     for p in (vocal_path, drums_path, bass_path, other_path):
-        p.write_bytes(b"x")
+        with wave.open(str(p), "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(44100)
+            wf.writeframes(b"\x00" * 44100)
 
     monkeypatch.setattr(
         job_worker,
