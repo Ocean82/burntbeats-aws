@@ -109,8 +109,8 @@
     "vitest": "^4.1.9"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.59.0",
-    "@rollup/rollup-win32-x64-msvc": "^4.62.2"
+    "@rollup/rollup-linux-x64-gnu": "^4.62.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.60.1"
   },
   "overrides": {
     "js-cookie": "^3.0.7",
