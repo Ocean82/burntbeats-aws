@@ -53,7 +53,8 @@ export class BPMDetector {
   private sampleRate = 44100;
 
   constructor() {
-    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AC: typeof AudioContext = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    this.audioContext = new AC();
     this.sampleRate = this.audioContext.sampleRate;
   }
 

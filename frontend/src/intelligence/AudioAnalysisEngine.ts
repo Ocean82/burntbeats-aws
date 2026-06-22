@@ -45,7 +45,8 @@ export class AudioAnalysisEngine {
   private windowFunction: Float32Array;
 
   constructor() {
-    this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AC: typeof AudioContext = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    this.audioContext = new AC();
     this.windowFunction = this.createHanningWindow(this.fftSize);
   }
 

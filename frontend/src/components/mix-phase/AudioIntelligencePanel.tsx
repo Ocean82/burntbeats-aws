@@ -25,7 +25,7 @@ export interface AudioIntelligencePanelProps {
   onClose?: () => void;
 }
 
-function StatCard({ icon: Icon, label, value, sub }: { icon: any; label: string; value: string; sub?: string }) {
+function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType<{ size?: number }>; label: string; value: string; sub?: string }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
       <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
@@ -103,8 +103,8 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
       const mood = moodAnalyzer.analyzeMood(audioFeatures, genre, bpm);
       setResults({ audioFeatures, bpm, key, genre, mood });
       setState("done");
-    } catch (err: any) {
-      setError(err?.message ?? "Analysis failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Analysis failed");
       setState("error");
     }
   }, [firstBuffer, engine, bpmDetector, keyDetector, genreClassifier, moodAnalyzer]);

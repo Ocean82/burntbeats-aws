@@ -80,8 +80,8 @@ export class KeyDetector {
       const preservedIntervals = this.checkPreservedIntervals(options.fromKey, options.fromMode, options.toKey, options.toMode);
       const warnings = this.generateTranspositionWarnings(options, semitoneShift);
       return { success: true, originalKey: `${options.fromKey} ${options.fromMode}`, targetKey: `${options.toKey} ${options.toMode}`, semitoneShift, scaleMapping, preservedIntervals, warnings };
-    } catch (error: any) {
-      return { success: false, originalKey: options.fromKey, targetKey: options.toKey, semitoneShift: 0, scaleMapping: {}, preservedIntervals: false, warnings: [`Transposition failed: ${error.message}`] };
+    } catch (error: unknown) {
+      return { success: false, originalKey: options.fromKey, targetKey: options.toKey, semitoneShift: 0, scaleMapping: {}, preservedIntervals: false, warnings: [`Transposition failed: ${error instanceof Error ? error.message : String(error)}`] };
     }
   }
 
@@ -155,13 +155,13 @@ export class KeyDetector {
     return { key: bestKey, mode: bestMode, strength: bestCorrelation };
   }
 
-  private calculateConfidence(correlations: Map<string, number>, _bestMatch: any): number {
+  private calculateConfidence(correlations: Map<string, number>, _bestMatch: { key: string; mode: "major" | "minor"; strength: number }): number {
     const values = Array.from(correlations.values()).sort((a, b) => b - a);
     const separation = values[0] - (values[1] || 0);
     return Math.min(1, Math.max(0, separation * 2 + 0.5));
   }
 
-  private getAlternativeKeys(correlations: Map<string, number>, _bestMatch: any): Array<{ key: string; mode: "major" | "minor"; confidence: number }> {
+  private getAlternativeKeys(correlations: Map<string, number>, _bestMatch: { key: string; mode: "major" | "minor"; strength: number }): Array<{ key: string; mode: "major" | "minor"; confidence: number }> {
     return Array.from(correlations.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(1, 4)
@@ -220,7 +220,7 @@ export class KeyDetector {
     return warnings;
   }
 
-  private calculateTonalCenterStrength(chromaVector: number[], bestMatch: any): number {
+  private calculateTonalCenterStrength(chromaVector: number[], bestMatch: { key: string; mode: "major" | "minor"; strength: number }): number {
     const keyIndex = this.getKeyIndex(bestMatch.key);
     return keyIndex >= 0 ? chromaVector[keyIndex] : 0;
   }
