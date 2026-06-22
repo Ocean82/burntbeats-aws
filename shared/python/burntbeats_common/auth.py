@@ -1,5 +1,3 @@
-"""Shared internal service API token policy for stem/speech/midi workers."""
-
 from __future__ import annotations
 
 import os

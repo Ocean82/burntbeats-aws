@@ -60,6 +60,9 @@ def _kill_process_tree(process: subprocess.Popen[str]) -> None:
             text=True,
             check=False,
         )
+        deadline = time.monotonic() + 2.0
+        while process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.05)
         return
 
     pgid = os.getpgid(process.pid)

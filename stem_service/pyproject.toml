@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Burnt Beats CPU stem separation service (Demucs / MDX / hybrid)"
 requires-python = ">=3.11,<3.13"
 dependencies = [
+    "burntbeats-common",
     "torch>=2.0.0,<2.13",
     "torchaudio>=2.0.0,<2.9",
     "soundfile>=0.12.0",
@@ -28,11 +29,12 @@ dependencies = [
 [tool.uv]
 package = false
 
+[tool.uv.sources]
+burntbeats-common = { workspace = true }
+torch = { index = "pytorch-cpu" }
+torchaudio = { index = "pytorch-cpu" }
+
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
-
-[tool.uv.sources]
-torch = { index = "pytorch-cpu" }
-torchaudio = { index = "pytorch-cpu" }

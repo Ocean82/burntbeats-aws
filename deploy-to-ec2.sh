@@ -30,6 +30,7 @@ tar czf /tmp/burntbeats-deploy.tar.gz \
   --exclude='./.env' \
   --exclude='./backend/.env' \
   --exclude='./frontend/.env' \
+  --exclude='./docs' \
   .
 
 echo "✅ Archive created"

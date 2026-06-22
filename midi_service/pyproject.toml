@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "Burnt Beats audio-to-MIDI service (Basic Pitch)"
 requires-python = ">=3.11,<3.13"
 dependencies = [
+    "burntbeats-common",
     "basic-pitch>=0.4.0",
     "onnxruntime>=1.17.0",
     "numpy>=1.24.0",
@@ -21,3 +22,6 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+burntbeats-common = { workspace = true }

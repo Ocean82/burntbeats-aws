@@ -13,7 +13,7 @@ from midi_service.config import (
     MIDI_OUTPUT_DIR,
     MIDI_SERVICE_API_TOKEN,
 )
-from midi_service.correlation import (
+from burntbeats_common.correlation import (
     CorrelationLoggingMiddleware,
     install_correlation_logging_filter,
 )

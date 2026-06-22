@@ -16,11 +16,13 @@ COPY pyproject.toml uv.lock ./
 COPY stem_service/pyproject.toml ./stem_service/pyproject.toml
 COPY midi_service/pyproject.toml ./midi_service/pyproject.toml
 COPY speech_service/pyproject.toml ./speech_service/pyproject.toml
+COPY shared/python/pyproject.toml ./shared/python/pyproject.toml
 
 RUN pip install --no-cache-dir uv \
     && UV_SYSTEM_PYTHON=1 uv sync --frozen --package burntbeats-stem --no-install-project
 
 COPY stem_service/ ./stem_service/
+COPY shared/python/ ./shared/python/
 
 RUN groupadd --system --gid 10001 appuser \
     && useradd --system --uid 10001 --gid appuser --home /repo --shell /usr/sbin/nologin appuser \

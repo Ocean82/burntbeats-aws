@@ -31,7 +31,6 @@
   },
   "include": ["./src", "./vite.config.ts", "./../shared/**/*.ts"],
   "exclude": [
-    "src/components/ui/**/*",
     "src/components/multi-stem-editor/pitch-tempo-plugin/vite.config.lib.ts"
   ]
 }

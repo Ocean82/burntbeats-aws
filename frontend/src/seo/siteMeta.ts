@@ -61,6 +61,13 @@ const SIGNED_OUT_APP_PATHS = new Set([
   "/tuner",
 ]);
 
+/** PageMeta entries for signed-out app routes (used by the Vite SEO plugin to emit noindex HTML). */
+export const SIGNED_OUT_APP_ROUTES: PageMeta[] = [...SIGNED_OUT_APP_PATHS].map((path) => ({
+  ...SITE_DEFAULT_META,
+  path,
+  indexable: false,
+}));
+
 export function resolvePageMeta(pathname: string): PageMeta {
   const path = pathname.replace(/\/+$/, "") || "/";
   const explicit = PUBLIC_ROUTE_META[path];

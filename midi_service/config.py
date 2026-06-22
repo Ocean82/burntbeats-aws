@@ -13,7 +13,7 @@ MIDI_OUTPUT_DIR = Path(
 
 MIDI_SERVICE_API_TOKEN: str = os.environ.get("MIDI_SERVICE_API_TOKEN", "")
 
-from midi_service.internal_auth import validate_service_token_at_startup
+from burntbeats_common.auth import validate_service_token_at_startup
 
 validate_service_token_at_startup("MIDI_SERVICE_API_TOKEN", MIDI_SERVICE_API_TOKEN)
 

@@ -1,7 +1,7 @@
 /**
  * Shared types for the API layer.
  */
-import type { JobStatus, SplitQuality as SharedSplitQuality } from "@shared/types";
+import type { JobStatus, SplitQuality as SharedSplitQuality, BeatGridMetadata } from "@shared/types";
 import type { StemResult } from "../types";
 import type { StemEditorState } from "../stem-editor-state";
 
@@ -10,12 +10,6 @@ export interface SplitResponse {
   status: string;
   stems: StemResult[];
   beat_grid?: BeatGridMetadata;
-}
-
-export interface BeatGridMetadata {
-  bpm: number;
-  beat_offset_seconds: number;
-  confidence: number;
 }
 
 export interface StemJobStatus {

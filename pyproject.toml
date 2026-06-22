@@ -6,7 +6,7 @@ requires-python = ">=3.11,<3.13"
 dependencies = []
 
 [tool.uv.workspace]
-members = ["stem_service", "midi_service", "speech_service"]
+members = ["stem_service", "midi_service", "speech_service", "shared/python"]
 
 # basic-pitch declares TensorFlow on non-Darwin; burntbeats-midi uses ONNX only (see midi_service/services/model_runtime.py).
 [tool.uv]

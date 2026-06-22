@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useSyncExternalStore } from "react";
 import { AnimatePresence } from "framer-motion";
 import { cn } from "@/utils/cn";
 import { useToolDrawer } from "@/hooks/useToolDrawer";
@@ -13,6 +13,9 @@ import { TransportBar } from "./TransportBar";
 import { EffectsPanel } from "./EffectsPanel";
 import { EffectsPanelBottomSheet } from "./EffectsPanelBottomSheet";
 import { MixerConsole } from "./MixerConsole";
+import { WaveformTimeline, STEM_LANE_COLORS } from "./WaveformTimeline";
+import type { WaveformTimelineStem } from "./WaveformTimeline";
+import { getStemDefinition, getLoadedStemDefinition } from "@/data/stemDefinitions";
 
 /**
  * Workspace — CSS Grid layout container for the post-split editing environment.
@@ -42,7 +45,41 @@ export function Workspace() {
 
   // --- Transport state ---
   const [zoom, setZoom] = useState(1);
+  const [activeStemId, setActiveStemId] = useState<string | undefined>(undefined);
   const hasStemsLoaded = Object.keys(audio.stemBuffers).length > 0;
+
+  // --- Waveform data ---
+  const loadedStems = useAppStore((s) => s.loadedStems);
+  const resolvedStems = useMemo((): WaveformTimelineStem[] => {
+    const entries: WaveformTimelineStem[] = [];
+    let colorIdx = 0;
+    for (const stem of splitResultStems) {
+      const def = getStemDefinition(stem.id);
+      entries.push({
+        id: stem.id,
+        label: def.label,
+        color: STEM_LANE_COLORS[colorIdx % STEM_LANE_COLORS.length],
+      });
+      colorIdx++;
+    }
+    for (const stem of loadedStems) {
+      const def = getLoadedStemDefinition(stem.id, stem.label);
+      entries.push({
+        id: stem.id,
+        label: def.label,
+        color: STEM_LANE_COLORS[colorIdx % STEM_LANE_COLORS.length],
+      });
+      colorIdx++;
+    }
+    return entries;
+  }, [splitResultStems, loadedStems]);
+
+  // Playhead position (0–100)
+  const playheadPct = useSyncExternalStore(
+    audio.subscribePlayheadPosition,
+    audio.getPlayheadPosition,
+    () => 0,
+  );
 
   const handlePlayPause = useCallback(() => {
     if (audio.isPlayingMix) {
@@ -203,7 +240,14 @@ export function Workspace() {
           minHeight: `${LAYOUT.WAVEFORM_MIN_HEIGHT}px`,
         }}
       >
-        {/* WaveformTimeline component will be rendered here */}
+        <WaveformTimeline
+          stems={resolvedStems}
+          activeStemId={activeStemId}
+          onStemActivate={setActiveStemId}
+          playheadPct={playheadPct}
+          showPlayhead
+          zoom={zoom}
+        />
 
         {/* EffectsPanel overlay mode (tablet 768-1023px) */}
         {effectsOverlays && activeTool && (

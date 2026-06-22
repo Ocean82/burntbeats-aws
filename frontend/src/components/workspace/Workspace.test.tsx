@@ -71,6 +71,18 @@ vi.mock("@/contexts/AudioContext", () => ({
     clearStemLoadingState: vi.fn(),
     applyMasterEq: vi.fn(),
     applyMasterCompressor: vi.fn(),
+    getPlayheadPosition: vi.fn(() => 0),
+    subscribePlayheadPosition: vi.fn(() => vi.fn()),
+    handleSeekMix: vi.fn(),
+    masterVolume: 1,
+    setMasterVolume: vi.fn(),
+    masterLimiterEnabled: false,
+    setMasterLimiterEnabled: vi.fn(),
+    setLoopEnabled: vi.fn(),
+    isPlaying: false,
+    loopEnabled: false,
+    handlePlayMix: vi.fn(),
+    handleStopMix: vi.fn(),
   }),
 }));
 

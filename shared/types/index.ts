@@ -90,20 +90,4 @@ export interface HealthResponse {
   repo_root?: string;
 }
 
-// API Endpoints
-export const API_ENDPOINTS = {
-  SPLIT: "/api/stems/split",
-  STATUS: (jobId: string) => `/api/stems/status/${jobId}`,
-  CANCEL: (jobId: string) => `/api/stems/${jobId}`,
-  FILE: (jobId: string, stemId: string) => `/api/stems/file/${jobId}/${stemId}.wav`,
-  CLEANUP: "/api/stems/cleanup",
-  HEALTH: "/api/health",
-} as const;
 
-// Validation
-export const VALIDATION = {
-  SUPPORTED_FORMATS: [".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aiff"],
-  MAX_FILE_SIZE_MB: 500,
-  MIN_SAMPLE_RATE: 8000,
-  MAX_SAMPLE_RATE: 48000,
-} as const;

@@ -1,8 +1,4 @@
-export interface BeatGridMetadata {
-  bpm: number;
-  beat_offset_seconds: number;
-  confidence: number;
-}
+import type { BeatGridMetadata } from "@shared/types";
 
 export interface BeatGridComputeOptions {
   beatGrid: BeatGridMetadata;
