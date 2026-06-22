@@ -16,12 +16,14 @@ COPY pyproject.toml uv.lock ./
 COPY stem_service/pyproject.toml ./stem_service/pyproject.toml
 COPY midi_service/pyproject.toml ./midi_service/pyproject.toml
 COPY speech_service/pyproject.toml ./speech_service/pyproject.toml
+COPY shared/python/pyproject.toml ./shared/python/pyproject.toml
 
 RUN pip install --no-cache-dir uv \
     && UV_SYSTEM_PYTHON=1 uv sync --frozen --package burntbeats-speech --no-install-project
 
 COPY Speech/ ./Speech/
 COPY speech_service/ ./speech_service/
+COPY shared/python/ ./shared/python/
 
 ENV PYTHONPATH=/repo/Speech
 ENV SPEECH_MODELS_DIR=/repo/speech_models

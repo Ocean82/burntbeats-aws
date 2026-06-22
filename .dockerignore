@@ -134,5 +134,6 @@ test.log
 # soundfonts/ is bind-mounted into midi_service at runtime — exclude from image build contexts
 soundfonts/
 
-# shared/ contains dev-only utilities
-shared/
+# Exclude shared/ dev-only utilities except shared/python/ needed for Docker builds
+shared/*
+!shared/python/

@@ -128,8 +128,15 @@ async function runStemsCleanup(req, res) {
 
 cleanupRouter.post("/", authMiddleware, runStemsCleanup);
 
-// Deprecated: cleanup is destructive, so GET is intentionally not allowed.
+// Deprecated: cleanup is destructive, so GET and DELETE are intentionally not allowed.
 cleanupRouter.get("/", authMiddleware, (req, res) => {
+  return res.status(405).json({
+    error:
+      "Method Not Allowed. Use POST /api/stems/cleanup for destructive cleanup.",
+  });
+});
+
+cleanupRouter.delete("/", authMiddleware, (req, res) => {
   return res.status(405).json({
     error:
       "Method Not Allowed. Use POST /api/stems/cleanup for destructive cleanup.",

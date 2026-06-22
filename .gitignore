@@ -32,6 +32,9 @@ models/
 *.pkl
 *.pickle
 
+# Python build artifacts
+*.egg-info/
+
 # ML / binary weights and archives — keep ignoring by extension repo-wide.
 # Do NOT use blanket *.json / *.yaml / *.toml / *.yml here: those hid tsconfig,
 # GitHub Actions, pyproject.toml, and other source files.
@@ -123,16 +126,9 @@ docs/**
 !docs/DEPENDABOT-MIDI-ONNX.md
 !docs/superpowers/
 !docs/superpowers/**
-.cursor/
-.cursorignore/
-.kiro/
-.claude
-.idea/
-
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
 benchmark_song.local.txt
 agent-transcripts/
-docs/deploy-reports/
 
 # Playwright (frontend)
 frontend/test-results/

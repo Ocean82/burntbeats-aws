@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 
+from burntbeats_common.storage import PROGRESS_FILENAME, safe_job_path as _safe_job_path, write_progress as _write_progress
 from speech_service.config import MAX_FILE_SIZE_MB, SPEECH_OUTPUT_DIR
 
 logger = logging.getLogger(__name__)
 
-PROGRESS_FILENAME = "progress.json"
 OUTPUT_FILENAME = "enhanced.wav"
 SUPPORTED_AUDIO_FORMATS = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".webm"}
 MIN_SAMPLE_RATE = 8000
@@ -18,18 +17,10 @@ MAX_SAMPLE_RATE = 48000
 
 
 def safe_job_path(job_id: str, *parts: str) -> Path:
-    candidate = (
-        SPEECH_OUTPUT_DIR / job_id / Path(*parts)
-        if parts
-        else SPEECH_OUTPUT_DIR / job_id
-    ).resolve()
-    if not str(candidate).startswith(str(SPEECH_OUTPUT_DIR.resolve())):
-        raise ValueError(f"Path traversal detected for job_id: {job_id}")
-    return candidate
+    return _safe_job_path(SPEECH_OUTPUT_DIR, job_id, *parts)
 
 
-def write_progress(out_dir: Path, data: dict) -> None:
-    (out_dir / PROGRESS_FILENAME).write_text(json.dumps(data), encoding="utf-8")
+write_progress = _write_progress
 
 
 def _probe_sample_rate(path: Path) -> int:

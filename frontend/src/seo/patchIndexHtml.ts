@@ -1,4 +1,4 @@
-import { canonicalUrl, PUBLIC_ROUTE_META, type PageMeta } from "./siteMeta";
+import { canonicalUrl, PUBLIC_ROUTE_META, SIGNED_OUT_APP_ROUTES, type PageMeta } from "./siteMeta";
 import { staticSeoMainHtml } from "./staticSeoContent";
 
 function escapeHtml(value: string): string {
@@ -83,4 +83,9 @@ export function patchIndexHtml(html: string, meta: PageMeta): string {
 /** Indexable marketing/legal routes emitted as static HTML at build time. */
 export function listIndexablePublicRoutes(): PageMeta[] {
   return Object.values(PUBLIC_ROUTE_META).filter((meta) => meta.indexable !== false);
+}
+
+/** Non-indexable signed-out app routes emitted as noindex static HTML at build time. */
+export function listNonIndexableRoutes(): PageMeta[] {
+  return SIGNED_OUT_APP_ROUTES;
 }

@@ -96,23 +96,27 @@ def queued_position(job_id: str) -> int | None:
     return None
 
 
+def _write_job_progress(item: dict[str, Any], position: int) -> None:
+    """Write progress.json for a single queued job."""
+    out_dir: Path = item["out_dir"]
+    write_progress(
+        out_dir,
+        build_progress_payload(
+            status="queued",
+            progress=0,
+            stem_count=int(item.get("stem_count", 2)),
+            quality_mode=item.get("quality_mode", "quality"),
+            job_type=item.get("job_type", "split"),
+            queue_position=position,
+            intent=item.get("intent"),
+        ),
+    )
+
+
 def _refresh_queue_progress_locked() -> None:
     """Update progress.json for all queued jobs with their current position."""
     for idx, item in enumerate(_queued_jobs):
-        out_dir: Path = item["out_dir"]
-        quality_mode: str = item.get("quality_mode", "quality")
-        write_progress(
-            out_dir,
-            build_progress_payload(
-                status="queued",
-                progress=0,
-                stem_count=int(item.get("stem_count", 2)),
-                quality_mode=quality_mode,
-                job_type=item.get("job_type", "split"),
-                queue_position=idx + 1,
-                intent=item.get("intent"),
-            ),
-        )
+        _write_job_progress(item, idx + 1)
 
 
 async def enqueue_heavy_job(job: dict[str, Any]) -> int:
@@ -121,8 +125,9 @@ async def enqueue_heavy_job(job: dict[str, Any]) -> int:
         raise RuntimeError("Split queue not initialized")
     async with _queue_condition:
         _queued_jobs.append(job)
-        _refresh_queue_progress_locked()
-        pos = queued_position(job["job_id"]) or len(_queued_jobs)
+        # Only write progress for the newly enqueued job
+        pos = len(_queued_jobs)
+        _write_job_progress(job, pos)
         _queue_condition.notify()
         return pos
 

@@ -75,26 +75,13 @@ from stem_service.config.device import (  # noqa: F401
     DEMUCS_SEGMENT_SEC,
     DEMUCS_EXTRA_SEGMENT,
     DEMUCS_TIMEOUT_SEC,
-    DEMUCS_TIMEOUT_HARD_SEC,
     DEMUCS_TIMEOUT_ACTIVITY_SEC,
     DEMUCS_TIMEOUT_STARTUP_GRACE_SEC,
     MAX_QUEUE_DEPTH,
     USE_DEMUCS_SHIFTS_0,
-    DEMUCS_EXECUTION_MODE,
-    DEMUCS_RPC_CANARY_PERCENT,
-    DEMUCS_RPC_FALLBACK_ON_ERROR,
-    DEMUCS_RPC_WORKERS,
-    DEMUCS_RPC_SOCKET_HOST,
-    DEMUCS_RPC_SOCKET_PORT,
-    DEMUCS_RPC_REQUEST_TIMEOUT_SEC,
-    DEMUCS_RPC_HEARTBEAT_TIMEOUT_SEC,
-    DEMUCS_POLICY_QUALITY_ONLY,
-    DEMUCS_RPC_MAX_CONCURRENCY,
-    DEMUCS_RPC_DISABLE_RSS_MB,
     DEMUCS_SLO_MIN_SAMPLES,
     DEMUCS_SLO_MAX_TIMEOUT_RATE,
     DEMUCS_SLO_MAX_ERROR_RATE,
-    DEMUCS_SLO_AUTO_ROLLBACK,
 )
 
 from stem_service.config.demucs_bags import (  # noqa: F401
@@ -123,3 +110,7 @@ from stem_service.config.cpu_budget import (  # noqa: F401
     apply_cpu_budget_env,
     log_cpu_budget,
 )
+
+from stem_service.config.device import validate_config  # noqa: F401
+
+validate_config()

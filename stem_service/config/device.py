@@ -87,12 +87,8 @@ DEMUCS_EXTRA_SEGMENT = 44
 # Timeout for Demucs subprocess (seconds). 10 min default.
 DEMUCS_TIMEOUT_SEC = int(os.environ.get("DEMUCS_TIMEOUT_SEC", "600"))
 # Demucs supervised execution timeouts (seconds).
-# hard: absolute cap for job runtime
 # activity: max silence window after startup grace
 # startup_grace: no activity timeout checks before this window
-DEMUCS_TIMEOUT_HARD_SEC = int(
-    os.environ.get("DEMUCS_TIMEOUT_HARD_SEC", str(DEMUCS_TIMEOUT_SEC))
-)
 DEMUCS_TIMEOUT_ACTIVITY_SEC = int(
     os.environ.get("DEMUCS_TIMEOUT_ACTIVITY_SEC", "180")
 )
@@ -154,33 +150,64 @@ def _bool_from_env(name: str, default: bool) -> bool:
     return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
-DEMUCS_EXECUTION_MODE = os.environ.get("DEMUCS_EXECUTION_MODE", "legacy").strip().lower()
-if DEMUCS_EXECUTION_MODE not in ("legacy", "rpc", "hybrid"):
-    _config_log.warning(
-        "DEMUCS_EXECUTION_MODE=%r is invalid; using legacy", DEMUCS_EXECUTION_MODE
-    )
-    DEMUCS_EXECUTION_MODE = "legacy"
-DEMUCS_RPC_CANARY_PERCENT = max(
-    0, min(100, int(os.environ.get("DEMUCS_RPC_CANARY_PERCENT", "0")))
-)
-DEMUCS_RPC_FALLBACK_ON_ERROR = _bool_from_env("DEMUCS_RPC_FALLBACK_ON_ERROR", True)
-DEMUCS_RPC_WORKERS = max(1, int(os.environ.get("DEMUCS_RPC_WORKERS", "1")))
-DEMUCS_RPC_SOCKET_HOST = os.environ.get("DEMUCS_RPC_SOCKET_HOST", "127.0.0.1")
-DEMUCS_RPC_SOCKET_PORT = int(os.environ.get("DEMUCS_RPC_SOCKET_PORT", "8733"))
-DEMUCS_RPC_REQUEST_TIMEOUT_SEC = int(
-    os.environ.get("DEMUCS_RPC_REQUEST_TIMEOUT_SEC", "300")
-)
-DEMUCS_RPC_HEARTBEAT_TIMEOUT_SEC = int(
-    os.environ.get("DEMUCS_RPC_HEARTBEAT_TIMEOUT_SEC", "20")
-)
-
-# Phase 3 optimization controls.
-DEMUCS_POLICY_QUALITY_ONLY = _bool_from_env("DEMUCS_POLICY_QUALITY_ONLY", False)
-DEMUCS_RPC_MAX_CONCURRENCY = max(1, int(os.environ.get("DEMUCS_RPC_MAX_CONCURRENCY", "1")))
-DEMUCS_RPC_DISABLE_RSS_MB = int(os.environ.get("DEMUCS_RPC_DISABLE_RSS_MB", "0"))
-
-# SLO guardrails for canary / RPC rollout (evaluated from recent job metrics JSONL).
+# SLO guardrails for Demucs subprocess execution (evaluated from job metrics JSONL).
 DEMUCS_SLO_MIN_SAMPLES = max(1, int(os.environ.get("DEMUCS_SLO_MIN_SAMPLES", "20")))
 DEMUCS_SLO_MAX_TIMEOUT_RATE = float(os.environ.get("DEMUCS_SLO_MAX_TIMEOUT_RATE", "0.05"))
 DEMUCS_SLO_MAX_ERROR_RATE = float(os.environ.get("DEMUCS_SLO_MAX_ERROR_RATE", "0.10"))
-DEMUCS_SLO_AUTO_ROLLBACK = _bool_from_env("DEMUCS_SLO_AUTO_ROLLBACK", True)
+
+
+# =======================
+# Config Validation
+# =======================
+
+
+def validate_config() -> bool:
+    """Validate all module-level config constants at import time.
+    Returns True if all checks pass; logs warnings for every issue found.
+    Call from config/__init__.py to catch misconfiguration at startup.
+    """
+    import math
+
+    all_ok = True
+    checks: list[tuple[str, object, str, tuple]] = [
+        ("DEMUCS_TIMEOUT_SEC", DEMUCS_TIMEOUT_SEC, "positive_int", (1,)),
+        ("DEMUCS_TIMEOUT_ACTIVITY_SEC", DEMUCS_TIMEOUT_ACTIVITY_SEC, "positive_int", (1,)),
+        ("DEMUCS_TIMEOUT_STARTUP_GRACE_SEC", DEMUCS_TIMEOUT_STARTUP_GRACE_SEC, "min_int", (0,)),
+        ("MAX_QUEUE_DEPTH", MAX_QUEUE_DEPTH, "positive_int", (1,)),
+        ("DEMUCS_SLO_MIN_SAMPLES", DEMUCS_SLO_MIN_SAMPLES, "positive_int", (1,)),
+        ("DEMUCS_SLO_MAX_TIMEOUT_RATE", DEMUCS_SLO_MAX_TIMEOUT_RATE, "fraction", ()),
+        ("DEMUCS_SLO_MAX_ERROR_RATE", DEMUCS_SLO_MAX_ERROR_RATE, "fraction", ()),
+        ("STEM_BACKEND", STEM_BACKEND, "choices", ("hybrid", "demucs_only")),
+        ("USE_GPU", USE_GPU, "choices", ("auto", "1", "true", "yes", "0", "false", "no")),
+        ("TARGET_SAMPLE_RATE", TARGET_SAMPLE_RATE, "positive_int", (1,)),
+        ("MAX_FILE_SIZE_MB", MAX_FILE_SIZE_MB, "positive_int", (1,)),
+        ("DEMUCS_SHIFTS_SPEED", DEMUCS_SHIFTS_SPEED, "min_int", (0,)),
+        ("DEMUCS_SHIFTS_QUALITY", DEMUCS_SHIFTS_QUALITY, "min_int", (0,)),
+    ]
+
+    for name, value, kind, args in checks:
+        ok = True
+        if kind == "positive_int":
+            if not isinstance(value, int) or value <= 0:
+                ok = False
+        elif kind == "min_int":
+            if not isinstance(value, (int, float)) or value < args[0]:
+                ok = False
+        elif kind == "fraction":
+            if not isinstance(value, (int, float)) or math.isnan(value) or value < 0 or value > 1:
+                ok = False
+        elif kind == "choices":
+            if value not in args:
+                ok = False
+        if not ok:
+            _config_log.warning(
+                "Config validation: %s=%r is invalid (expected %s %s)",
+                name, value, kind, args,
+            )
+            all_ok = False
+
+    if all_ok:
+        _config_log.info("Config validation: all %d checks passed", len(checks))
+    else:
+        _config_log.warning("Config validation: some values are invalid — review warnings above")
+    return all_ok
