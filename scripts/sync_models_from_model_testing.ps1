@@ -167,4 +167,3 @@ if (Test-Path $wav) {
 
 Write-Host "Done. Destination: $DstRoot"
 Write-Host "Next: python scripts/check_models.py"
-Write-Host "      python scripts/test_scnet_sample.py"
