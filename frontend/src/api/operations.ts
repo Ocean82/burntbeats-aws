@@ -145,10 +145,10 @@ export async function startStemSplit(
     throw new Error("Unexpected response from split");
   } catch (err) {
     if (err instanceof Error) {
-      if (err.name === "AbortError") throw new Error("Stem service did not accept in time. Try again.");
+      if (err.name === "AbortError") throw new Error("Stem service did not accept in time. Try again.", { cause: err });
       throw err;
     }
-    throw new Error("Stem split request failed");
+    throw new Error("Stem split request failed", { cause: err });
   }
 }
 

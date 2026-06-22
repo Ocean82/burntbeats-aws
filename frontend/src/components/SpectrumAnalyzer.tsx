@@ -52,7 +52,7 @@ export function SpectrumAnalyzer({
       if (isPlaying) data = getFrequencyData();
 
       for (let i = 0; i < barCount; i++) {
-        let val = 0;
+        let val;
         if (data) {
           const start = Math.floor((i * data.length) / barCount);
           const end = Math.floor(((i + 1) * data.length) / barCount);
