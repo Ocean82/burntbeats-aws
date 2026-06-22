@@ -444,7 +444,7 @@ export class BPMDetector {
 
   private createAudioBuffer(data: Float32Array): AudioBuffer {
     const buffer = this.audioContext.createBuffer(1, data.length, this.sampleRate);
-    buffer.copyToChannel(data, 0);
+    buffer.copyToChannel(data as Float32Array<ArrayBuffer>, 0);
     return buffer;
   }
 

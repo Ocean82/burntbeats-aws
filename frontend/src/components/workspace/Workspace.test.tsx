@@ -81,8 +81,6 @@ vi.mock("@/contexts/AudioContext", () => ({
     setLoopEnabled: vi.fn(),
     isPlaying: false,
     loopEnabled: false,
-    handlePlayMix: vi.fn(),
-    handleStopMix: vi.fn(),
   }),
 }));
 

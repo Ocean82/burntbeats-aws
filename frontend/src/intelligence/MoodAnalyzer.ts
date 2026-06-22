@@ -214,7 +214,7 @@ export class MoodAnalyzer {
     return { primaryMood, secondaryMood, confidence };
   }
 
-  private generateMoodRecommendations(primaryMood: string, emotions: EmotionScores, _musicalFeatures: AudioFeatures) {
+  private generateMoodRecommendations(primaryMood: string, emotions: EmotionScores, _musicalFeatures: Record<string, string>) {
     const recommendations: Array<{ type: string; suggestion: string; reasoning: string; confidence: number }> = [];
     if (primaryMood === "Happy") recommendations.push({ type: "enhancement", suggestion: "Add bright, major chord progressions", reasoning: "Major chords enhance the positive emotional impact", confidence: 0.8 });
     if (primaryMood === "Sad") recommendations.push({ type: "enhancement", suggestion: "Use minor keys and slower tempos", reasoning: "Minor keys and slower tempos reinforce melancholic emotions", confidence: 0.9 });

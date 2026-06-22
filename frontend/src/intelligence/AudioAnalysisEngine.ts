@@ -243,7 +243,7 @@ export class AudioAnalysisEngine {
     const analyser = this.audioContext.createAnalyser();
     analyser.fftSize = this.fftSize;
     const buffer = this.audioContext.createBuffer(1, frame.length, this.audioContext.sampleRate);
-    buffer.copyToChannel(frame, 0);
+    buffer.copyToChannel(frame as Float32Array<ArrayBuffer>, 0);
     const source = this.audioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(analyser);

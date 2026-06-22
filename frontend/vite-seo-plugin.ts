@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Plugin } from "vite";
 import { listIndexablePublicRoutes, listNonIndexableRoutes, patchIndexHtml } from "./src/seo/patchIndexHtml";
-import { canonicalUrl, resolvePageMeta, SITE_ORIGIN } from "./src/seo/siteMeta";
+import { canonicalUrl, resolvePageMeta } from "./src/seo/siteMeta";
 
 /** Generates an sitemap.xml entry for a page route. */
 function sitemapEntry(path: string, priority: string, changefreq: string): string {
