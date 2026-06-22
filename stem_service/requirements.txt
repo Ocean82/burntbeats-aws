@@ -39,7 +39,7 @@ python-multipart>=0.0.32
 boto3>=1.43.30
 
 # APM / error tracking (Sentry with FastAPI integration for automatic request tracing)
-sentry-sdk[fastapi]>=2.0.0
+sentry-sdk[fastapi]>=2.63.0
 
 # YAML parsing for Demucs bag configs (demucs_bags.py)
 pyyaml>=6.0
