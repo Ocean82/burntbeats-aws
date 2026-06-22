@@ -1,6 +1,6 @@
 # Source of truth: speech_service/pyproject.toml (burntbeats-speech). Install: uv sync --package burntbeats-speech
 torch>=2.12.0,<2.13
-torchaudio>=2.0.0,<2.9
+torchaudio>=2.11.0,<2.12
 soundfile>=0.12.0
 librosa>=0.10.0
 safetensors>=0.8.0
