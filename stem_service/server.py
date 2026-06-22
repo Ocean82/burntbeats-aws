@@ -29,7 +29,6 @@ from fastapi.responses import JSONResponse
 from stem_service.config import (
     REPO_ROOT,
     FOUR_STEM_BACKEND,
-    DEMUCS_EXECUTION_MODE,
     htdemucs_available,
     stem_allow_missing_htdemucs_at_startup,
     MAX_QUEUE_DEPTH,
@@ -71,7 +70,7 @@ from stem_service.job_worker import (
     run_expand_sync,
     run_separation_sync,
 )
-from stem_service.demucs_rpc import ensure_rpc_server_started, stop_rpc_server
+
 from stem_service.sentry_init import init_sentry
 
 # Backward-compatible aliases for test monkeypatching.
@@ -84,32 +83,13 @@ _schedule_s3_upload = schedule_s3_upload
 
 def _supported_mode_health_snapshot() -> dict[str, object]:
     """Return readiness for the four supported deterministic CPU modes."""
-    from stem_service.routing.model_bag import (
-        _KUIELAB_B_BAG,
-        resolve_stem_model,
-        select_4stem_bag,
-    )
+    from stem_service.routing.model_bag import check_4stem_ready
 
     fast_vocal = resolve_single_vocal_onnx("UVR_MDXNET_3_9662.onnx")
     quality_vocal = resolve_single_vocal_onnx("UVR_MDXNET_KARA.onnx")
-    bag_quality = select_4stem_bag("high")
-    bag_speed = select_4stem_bag("fast")
-    drum_model = resolve_stem_model("drums", "quality")
-    bass_model = resolve_stem_model("bass", "quality")
-    other_model = (
-        resolve_stem_model("other", "quality") if bag_quality == "kuielab_b" else None
-    )
 
-    mdx_4_ready = (
-        bag_quality == "kuielab_b"
-        and all(m is not None for m in (drum_model, bass_model, other_model))
-        and resolve_stem_model("vocals", "quality") is not None
-    ) or (
-        bag_quality == "uvr"
-        and quality_vocal is not None
-        and drum_model is not None
-        and bass_model is not None
-    )
+    speed_4 = check_4stem_ready("fast")
+    quality_4 = check_4stem_ready("high")
 
     modes = {
         "2_stem_speed": {
@@ -125,104 +105,20 @@ def _supported_mode_health_snapshot() -> dict[str, object]:
             "missing_models": [] if quality_vocal is not None else ["UVR_MDXNET_KARA.onnx"],
         },
         "4_stem_speed": {
-            "ready": (
-                bag_speed == "kuielab_b"
-                and all(
-                    resolve_stem_model(t, "fast") is not None
-                    for t in ("vocals", "drums", "bass", "other")
-                )
-            )
-            or (
-                bag_speed == "uvr"
-                and fast_vocal is not None
-                and resolve_stem_model("drums", "fast") is not None
-                and resolve_stem_model("bass", "fast") is not None
-            ),
-            "four_stem_bag": bag_speed,
-            "required_models": (
-                list(_KUIELAB_B_BAG.values())
-                if bag_speed == "kuielab_b"
-                else [
-                    "UVR_MDXNET_3_9662.onnx",
-                    "UVR-MDX-NET-Drum.onnx",
-                    "UVR-MDX-NET-Bass.onnx",
-                ]
-            ),
-            "resolved_models": [
-                m.name
-                for m in (
-                    resolve_stem_model("vocals", "fast"),
-                    resolve_stem_model("drums", "fast"),
-                    resolve_stem_model("bass", "fast"),
-                    resolve_stem_model("other", "fast")
-                    if bag_speed == "kuielab_b"
-                    else None,
-                )
-                if m is not None
-            ],
-            "missing_models": [],
+            "ready": speed_4.ready,
+            "four_stem_bag": speed_4.bag,
+            "required_models": speed_4.missing_models or speed_4.resolved_models,
+            "resolved_models": speed_4.resolved_models,
+            "missing_models": speed_4.missing_models,
         },
         "4_stem_quality": {
-            "ready": mdx_4_ready,
-            "four_stem_bag": bag_quality,
-            "required_models": (
-                list(_KUIELAB_B_BAG.values())
-                if bag_quality == "kuielab_b"
-                else [
-                    "UVR_MDXNET_KARA.onnx",
-                    "UVR-MDX-NET-Drum.onnx",
-                    "UVR-MDX-NET-Bass.onnx",
-                ]
-            ),
-            "resolved_models": [
-                m.name
-                for m in (
-                    resolve_stem_model("vocals", "quality"),
-                    drum_model,
-                    bass_model,
-                    other_model,
-                )
-                if m is not None
-            ],
-            "missing_models": [],
+            "ready": quality_4.ready,
+            "four_stem_bag": quality_4.bag,
+            "required_models": quality_4.missing_models or quality_4.resolved_models,
+            "resolved_models": quality_4.resolved_models,
+            "missing_models": quality_4.missing_models,
         },
     }
-    for mode_key, bag, tier in (
-        ("4_stem_speed", bag_speed, "fast"),
-        ("4_stem_quality", bag_quality, "quality"),
-    ):
-        if bag is None:
-            modes[mode_key]["ready"] = False
-            modes[mode_key]["missing_models"] = modes[mode_key]["required_models"]
-            continue
-        if bag == "kuielab_b":
-            missing = [
-                _KUIELAB_B_BAG[t]
-                for t in ("vocals", "drums", "bass", "other")
-                if resolve_stem_model(t, tier) is None
-            ]
-        else:
-            vocal_logical = (
-                "UVR_MDXNET_3_9662.onnx"
-                if tier == "fast"
-                else "UVR_MDXNET_KARA.onnx"
-            )
-            missing = [
-                name
-                for name, ok in (
-                    (vocal_logical, resolve_stem_model("vocals", tier) is not None),
-                    (
-                        "UVR-MDX-NET-Drum.onnx",
-                        resolve_stem_model("drums", tier) is not None,
-                    ),
-                    (
-                        "UVR-MDX-NET-Bass.onnx",
-                        resolve_stem_model("bass", tier) is not None,
-                    ),
-                )
-                if not ok
-            ]
-        modes[mode_key]["missing_models"] = missing
     return {
         "all_ready": all(mode["ready"] for mode in modes.values()),
         "supported_modes": modes,
@@ -379,8 +275,6 @@ async def lifespan(app: FastAPI):
 
     # Start the split job queue workers
     await start_split_workers(_run_queued_job)
-    if DEMUCS_EXECUTION_MODE in ("rpc", "hybrid"):
-        ensure_rpc_server_started()
 
     def graceful_shutdown(signal_name):
         logger.info(f"Received {signal_name}, initiating graceful shutdown...")
@@ -394,7 +288,6 @@ async def lifespan(app: FastAPI):
 
     logger.info("Shutting down stem service...")
     await stop_split_workers()
-    stop_rpc_server()
 
 
 # ── App creation ─────────────────────────────────────────────────────────────
@@ -734,11 +627,8 @@ async def health() -> dict:
             "fast": intent_routing_health("fast"),
             "high": intent_routing_health("high"),
         },
-        "demucs_execution": {
-            "mode": DEMUCS_EXECUTION_MODE,
-            "metrics": demucs_metrics,
-            "slo": demucs_slo,
-        },
+        "demucs_metrics": demucs_metrics,
+        "demucs_slo": demucs_slo,
     }
     if os.environ.get("NODE_ENV", "development").lower() != "production":
         payload["repo_root"] = str(REPO_ROOT)

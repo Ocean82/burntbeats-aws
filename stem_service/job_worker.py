@@ -49,6 +49,16 @@ CORRELATION_ID_CONTEXT_VAR: contextvars.ContextVar[str] = contextvars.ContextVar
 )
 
 
+@contextlib.contextmanager
+def _correlation_context(correlation_id: str) -> Any:
+    """Guarantee ContextVar reset even if the enclosed block raises."""
+    token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
+    try:
+        yield
+    finally:
+        CORRELATION_ID_CONTEXT_VAR.reset(token)
+
+
 def _log_demucs_health(job_log: logging.Logger, marker: DemucsHealthMarker) -> None:
     """Emit bounded health markers from supervised Demucs subprocess runs."""
     job_log.info(
@@ -72,19 +82,24 @@ def _finalize_stems_to_16bit(stem_list: list[tuple[str, Path]]) -> None:
 
     from stem_service.audio_utils import write_wav_16bit
 
+    failed_stems: list[dict[str, str]] = []
     for stem_id, path in stem_list:
         if not path.exists():
+            failed_stems.append({"stem": stem_id, "reason": "missing"})
             continue
         try:
             info = sf.info(str(path))
-            # Only convert if not already 16-bit PCM
             if info.subtype == "PCM_16":
                 continue
             audio, sr = sf.read(str(path), dtype="float32", always_2d=True)
             write_wav_16bit(path, audio, sr, dither=True)
         except Exception as e:
-            # Non-fatal: leave the stem as-is if conversion fails
-            logger.warning("Could not finalize %s to 16-bit: %s", stem_id, e)
+            failed_stems.append({"stem": stem_id, "reason": str(e)})
+
+    if failed_stems:
+        raise RuntimeError(
+            f"Stem finalization failed: {failed_stems}"
+        )
 
 
 
@@ -94,7 +109,12 @@ def _resolve_split_intent(
     quality_mode: str,
 ) -> SplitIntent:
     if intent_payload:
-        return parse_intent_dict(intent_payload)
+        intent = parse_intent_dict(intent_payload)
+        logger.debug(
+            "Resolved intent: task=%s targets=%s mode=%s quality=%s",
+            intent.task, intent.targets, intent.mode, intent.quality,
+        )
+        return intent
     return intent_from_legacy(stem_count, quality_mode)
 
 
@@ -109,9 +129,37 @@ def run_separation_sync(
     intent_payload: dict | None = None,
 ) -> None:
     """Blocking separation; writes progress at stages. Called from worker thread."""
-    correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
+    with _correlation_context(correlation_id):
+        _run_separation_sync_impl(
+            job_id, input_path, out_dir, stem_count, prefer_speed,
+            quality_mode, intent_payload,
+        )
+
+
+def _run_separation_sync_impl(
+    job_id: str,
+    input_path: Path,
+    out_dir: Path,
+    stem_count: int,
+    prefer_speed: bool,
+    quality_mode: str,
+    intent_payload: dict | None,
+) -> None:
+    """Inner implementation of the separation logic, called under the ContextVar guard."""
+    _span_stack: contextlib.ExitStack | None = None
 
     split_intent = _resolve_split_intent(intent_payload, stem_count, quality_mode)
+
+    # Log any discrepancies between caller-provided legacy args and intent-derived values
+    derived_speed = split_intent.prefer_speed()
+    derived_quality = split_intent.quality_mode()
+    if intent_payload and (derived_speed != prefer_speed or derived_quality != quality_mode):
+        logger.warning(
+            "Intent parameters override caller arguments: "
+            "caller(speed=%s, quality=%s) vs intent(speed=%s, quality=%s)",
+            prefer_speed, quality_mode, derived_speed, derived_quality,
+        )
+
     prefer_speed = split_intent.prefer_speed()
     quality_mode = split_intent.quality_mode()
     stem_count = split_intent.legacy_stem_count()
@@ -218,7 +266,6 @@ def run_separation_sync(
                 ),
             )
             job_log.info("=== JOB CANCELLED ===")
-            CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
             return
 
         # Finalize: convert all output stems to 16-bit PCM with TPDF dither.
@@ -356,7 +403,8 @@ def run_separation_sync(
             ),
         )
     finally:
-        _span_stack.close()
+        if _span_stack is not None:
+            _span_stack.close()
         unregister_running_job(job_id)
 
         # Always delete the input file once processing resolves to prevent storage leaks.
@@ -391,8 +439,6 @@ def run_separation_sync(
                 except OSError:
                     pass
 
-        CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
-
 
 def run_expand_sync(
     expand_job_id: str,
@@ -403,7 +449,22 @@ def run_expand_sync(
     correlation_id: str = "unknown",
 ) -> None:
     """Blocking expand 2-stem → 4-stem; writes progress. Called from thread."""
-    correlation_token = CORRELATION_ID_CONTEXT_VAR.set(correlation_id)
+    with _correlation_context(correlation_id):
+        _run_expand_sync_impl(
+            expand_job_id, source_job_id, out_dir, prefer_speed,
+            quality_mode,
+        )
+
+
+def _run_expand_sync_impl(
+    expand_job_id: str,
+    source_job_id: str,
+    out_dir: Path,
+    prefer_speed: bool,
+    quality_mode: str,
+) -> None:
+    """Inner implementation of the expand logic, called under the ContextVar guard."""
+    _span_stack: contextlib.ExitStack | None = None
     register_running_job(expand_job_id)
 
     job_log = make_job_logger(expand_job_id, out_dir)
@@ -539,6 +600,6 @@ def run_expand_sync(
             ),
         )
     finally:
-        _span_stack.close()
-        CORRELATION_ID_CONTEXT_VAR.reset(correlation_token)
+        if _span_stack is not None:
+            _span_stack.close()
         unregister_running_job(expand_job_id)

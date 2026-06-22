@@ -222,6 +222,65 @@ def specialized_available(target: str, tier: str) -> bool:
     return False
 
 
+@dataclass(frozen=True)
+class FourStemReadiness:
+    """Structured readiness for the 4-stem MDX pipeline per tier."""
+    ready: bool
+    bag: FourStemBag | None
+    resolved_models: list[str]
+    missing_models: list[str]
+
+
+def check_4stem_ready(tier: str) -> FourStemReadiness:
+    """Canonical 4-stem MDX readiness check. Use this from /health and elsewhere."""
+    tier_key = _tier_key(tier)
+    bag = select_4stem_bag(tier_key)
+
+    if bag is None:
+        return FourStemReadiness(
+            ready=False, bag=None,
+            resolved_models=[],
+            missing_models=["all_models"],
+        )
+
+    if bag == "kuielab_b":
+        resolved = []
+        missing = []
+        for tname in ("vocals", "drums", "bass", "other"):
+            logical = _KUIELAB_B_BAG[tname]
+            path = _resolve_mdx_file(logical)
+            if path is not None and has_mdx_config(path):
+                resolved.append(path.name)
+            else:
+                missing.append(logical)
+    else:  # uvr
+        resolved = []
+        missing = []
+        vocal_logical = _VOCAL_TIER_ONNX.get(tier_key, "UVR_MDXNET_KARA.onnx")
+        vocal = resolve_single_vocal_onnx(vocal_logical)
+        if vocal:
+            resolved.append(vocal.name)
+        else:
+            missing.append(vocal_logical)
+        drums = _resolve_uvr_single_stem("drums", tier_key)
+        if drums:
+            resolved.append(drums.name)
+        else:
+            missing.append("UVR-MDX-NET-Drum.onnx")
+        bass = _resolve_uvr_single_stem("bass", tier_key)
+        if bass:
+            resolved.append(bass.name)
+        else:
+            missing.append("UVR-MDX-NET-Bass.onnx")
+
+    return FourStemReadiness(
+        ready=len(missing) == 0,
+        bag=bag,
+        resolved_models=resolved,
+        missing_models=missing,
+    )
+
+
 def intent_routing_health(tier: str = "high") -> dict[str, object]:
     """Per-target specialized model readiness for /health."""
     targets = ("vocals", "drums", "bass", "guitar", "other", "instrumental")
