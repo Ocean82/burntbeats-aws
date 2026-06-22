@@ -32,7 +32,7 @@ ARG SENTRY_PROJECT
 ENV SENTRY_PROJECT=${SENTRY_PROJECT}
 
 COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 COPY . ./
 RUN npm run build
