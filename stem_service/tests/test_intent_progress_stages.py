@@ -41,7 +41,7 @@ def test_build_progress_payload_uses_intent_stage() -> None:
     assert payload["intent"]["task"] == "extract"
 
 
-def test_build_progress_payload_full_separation_uses_legacy_stages() -> None:
+def test_build_progress_payload_full_separation_uses_intent_stages() -> None:
     payload = build_progress_payload(
         status="running",
         progress=50,

@@ -114,6 +114,16 @@ def _resolve_split_intent(
             "Resolved intent: task=%s targets=%s mode=%s quality=%s",
             intent.task, intent.targets, intent.mode, intent.quality,
         )
+        # Detect and warn when intent overrides caller-provided legacy args
+        derived_speed = intent.prefer_speed()
+        derived_quality = intent.quality_mode()
+        if derived_speed != (quality_mode == "speed") or derived_quality != quality_mode:
+            logger.warning(
+                "Intent overrides caller arguments: "
+                "caller(speed=%s, quality=%s) vs intent(speed=%s, quality=%s)",
+                quality_mode == "speed", quality_mode,
+                derived_speed, derived_quality,
+            )
         return intent
     return intent_from_legacy(stem_count, quality_mode)
 
@@ -149,16 +159,6 @@ def _run_separation_sync_impl(
     _span_stack: contextlib.ExitStack | None = None
 
     split_intent = _resolve_split_intent(intent_payload, stem_count, quality_mode)
-
-    # Log any discrepancies between caller-provided legacy args and intent-derived values
-    derived_speed = split_intent.prefer_speed()
-    derived_quality = split_intent.quality_mode()
-    if intent_payload and (derived_speed != prefer_speed or derived_quality != quality_mode):
-        logger.warning(
-            "Intent parameters override caller arguments: "
-            "caller(speed=%s, quality=%s) vs intent(speed=%s, quality=%s)",
-            prefer_speed, quality_mode, derived_speed, derived_quality,
-        )
 
     prefer_speed = split_intent.prefer_speed()
     quality_mode = split_intent.quality_mode()

@@ -46,6 +46,10 @@ def resolve_mode_name(stem_count: int, quality_mode: str) -> str:
 
 
 def _split_running_stage(mode_name: str, progress: int) -> tuple[str, str]:
+    logger.warning(
+        "DEPRECATED: _split_running_stage() called with mode=%s — prefer intent-based routing",
+        mode_name,
+    )
     if mode_name == "2_stem_speed":
         if progress < 5:
             return ("starting", "Preparing job…")

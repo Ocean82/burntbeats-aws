@@ -59,8 +59,27 @@ def intent_running_stage(
     kind = active_job_kind or ""
 
     if task == "full_separation":
-        # Caller should fall back to legacy mode_name stages.
-        return ("separating", "Separating stems…")
+        mode = intent.get("mode", "4")
+        quality = intent.get("quality", "high")
+        is_speed = quality == "fast"
+        if mode == "2":
+            if progress < 90:
+                return ("separating_vocals", "Separating vocals…")
+            if progress < 95:
+                return ("building_instrumental", "Building instrumental…")
+            return ("finalizing_stems", "Finalising stems…")
+        # 4-stem mode
+        if is_speed:
+            if progress < 80:
+                return ("separating_vocals", "Separating vocals…")
+            if progress < 86:
+                return ("building_instrumental", "Building accompaniment…")
+        else:
+            if progress < 88:
+                return ("separating_vocals", "Separating vocals…")
+            if progress < 92:
+                return ("building_instrumental", "Building accompaniment…")
+        return ("splitting_accompaniment", "Splitting drums, bass & other…")
 
     if task == "remove" or kind == "karaoke":
         if progress < 88:
@@ -92,4 +111,4 @@ def intent_running_stage(
 def should_use_intent_stages(intent: dict[str, Any] | None) -> bool:
     if not intent:
         return False
-    return intent.get("task") in ("extract", "remove")
+    return intent.get("task") in ("full_separation", "extract", "remove")
