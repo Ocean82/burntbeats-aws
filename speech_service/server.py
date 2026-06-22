@@ -19,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from speech_service.config import SPEECH_OUTPUT_DIR
-from speech_service.correlation import (
+from burntbeats_common.correlation import (
     CorrelationLoggingMiddleware,
     install_correlation_logging_filter,
 )
@@ -47,7 +47,7 @@ UUID_REGEX = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I
 )
 
-from speech_service.internal_auth import (
+from burntbeats_common.auth import (
     require_configured_api_token,
     validate_service_token_at_startup,
 )

@@ -16,6 +16,18 @@ describe("staticSeoMainHtml", () => {
     expect(html).toContain("Pricing — Burnt Beats");
     expect(html).toContain("one-time stem packs");
   });
+
+  it("returns sign-in message for signed-out app paths, not home page copy", () => {
+    const html = staticSeoMainHtml("/midi");
+    expect(html).toContain("Sign in to use");
+    expect(html).not.toContain("Why Burnt Beats is different");
+  });
+
+  it("includes BreadcrumbList JSON-LD on pricing page", () => {
+    const html = staticSeoMainHtml("/pricing");
+    expect(html).toContain("BreadcrumbList");
+    expect(html).toContain('"name": "Pricing"');
+  });
 });
 
 describe("patchIndexHtml", () => {
@@ -44,5 +56,15 @@ describe("patchIndexHtml", () => {
     expect(html).toContain('href="https://www.burntbeats.com/pricing"');
     expect(html).toContain('id="bb-static-seo"');
     expect(html).toContain("one-time stem packs");
+  });
+
+  it("injects noindex meta and sign-in message for signed-out app paths", () => {
+    const meta = resolvePageMeta("/midi");
+    const html = patchIndexHtml(template, meta);
+
+    expect(html).toContain('name="robots"');
+    expect(html).toContain("noindex");
+    expect(html).toContain("Sign in to use");
+    expect(html).not.toContain("Why Burnt Beats is different");
   });
 });

@@ -14,11 +14,11 @@ export { setTokenProvider, clearJobToken } from "./auth";
 // Types
 export type {
   SplitResponse,
-  BeatGridMetadata,
   StemJobStatus,
   SplitQuality,
   ServerExportMasterRequest,
 } from "./types";
+export type { BeatGridMetadata } from "@shared/types";
 
 // Validation (re-export only what was previously public — type guards were internal)
 // None were previously exported, but keep available for advanced consumers.

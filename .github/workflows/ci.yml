@@ -163,6 +163,20 @@ jobs:
       - name: Build speech_service image
         run: docker build -f speech_service/Dockerfile .
 
+  midi-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build midi_service image
+        run: docker build -f midi_service/Dockerfile .
+
+  frontend-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile .
+
   backend-docker-deps:
     runs-on: ubuntu-latest
     steps:

@@ -35,7 +35,7 @@ from stem_service.config import (
     DEMUCS_SHIFTS_QUALITY,
     DEMUCS_OVERLAP,
     DEMUCS_SEGMENT_SEC,
-    DEMUCS_TIMEOUT_HARD_SEC,
+    DEMUCS_TIMEOUT_SEC,
     DEMUCS_TIMEOUT_ACTIVITY_SEC,
     DEMUCS_TIMEOUT_STARTUP_GRACE_SEC,
     demucs_cli_module,
@@ -44,9 +44,7 @@ from stem_service.config import (
     ensure_htdemucs_th,
     htdemucs_available,
     DEMUCS_DEVICE,
-    DEMUCS_EXECUTION_MODE,
 )
-from stem_service.demucs_rpc import choose_route, run_demucs_via_rpc
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +88,7 @@ def _run_demucs_4stem_named_checkpoint(
         result = run_supervised_subprocess(
             cmd=cmd,
             cwd=REPO_ROOT,
-            hard_timeout_seconds=DEMUCS_TIMEOUT_HARD_SEC,
+            hard_timeout_seconds=DEMUCS_TIMEOUT_SEC,
             activity_timeout_seconds=DEMUCS_TIMEOUT_ACTIVITY_SEC,
             startup_grace_seconds=DEMUCS_TIMEOUT_STARTUP_GRACE_SEC,
             cancel_check=cancel_check,
@@ -192,7 +190,7 @@ def run_demucs_legacy(
         result = run_supervised_subprocess(
             cmd=cmd,
             cwd=REPO_ROOT,
-            hard_timeout_seconds=DEMUCS_TIMEOUT_HARD_SEC,
+            hard_timeout_seconds=DEMUCS_TIMEOUT_SEC,
             activity_timeout_seconds=DEMUCS_TIMEOUT_ACTIVITY_SEC,
             startup_grace_seconds=DEMUCS_TIMEOUT_STARTUP_GRACE_SEC,
             cancel_check=cancel_check,
@@ -235,51 +233,17 @@ def run_demucs(
     health_callback: Callable[[DemucsHealthMarker], None] | None = None,
     job_id: str | None = None,
 ) -> list[tuple[str, Path]]:
-    """Execute Demucs via selected execution mode with safe fallback behavior."""
-    resolved_job_id = job_id or f"{input_path.name}:{stems}:{'speed' if prefer_speed else 'quality'}"
-    decision = choose_route(
-        execution_mode=DEMUCS_EXECUTION_MODE,
+    """Execute Demucs via direct subprocess."""
+    _ = job_id
+    _set_last_execution_route("legacy")
+    return run_demucs_legacy(
+        input_path=input_path,
+        output_dir=output_dir,
+        stems=stems,
         prefer_speed=prefer_speed,
-        job_id=resolved_job_id,
+        cancel_check=cancel_check,
+        health_callback=health_callback,
     )
-
-    if decision.route == "legacy":
-        _set_last_execution_route("legacy")
-        return run_demucs_legacy(
-            input_path=input_path,
-            output_dir=output_dir,
-            stems=stems,
-            prefer_speed=prefer_speed,
-            cancel_check=cancel_check,
-            health_callback=health_callback,
-        )
-
-    request = {
-        "job_id": resolved_job_id,
-        "input_path": str(input_path),
-        "output_dir": str(output_dir),
-        "stems": stems,
-        "prefer_speed": prefer_speed,
-    }
-    try:
-        response = run_demucs_via_rpc(request)
-        if response.get("status") != "completed":
-            raise RuntimeError(response.get("error", "RPC Demucs failed"))
-        _set_last_execution_route("rpc")
-        return [(stem_id, Path(path)) for stem_id, path in response.get("stems", [])]
-    except Exception as exc:
-        if not decision.fallback_on_error:
-            raise
-        logger.warning("Demucs RPC failed; falling back to legacy subprocess: %s", exc)
-        _set_last_execution_route("rpc_fallback_legacy")
-        return run_demucs_legacy(
-            input_path=input_path,
-            output_dir=output_dir,
-            stems=stems,
-            prefer_speed=prefer_speed,
-            cancel_check=cancel_check,
-            health_callback=health_callback,
-        )
 
 
 def _build_demucs_cmd(

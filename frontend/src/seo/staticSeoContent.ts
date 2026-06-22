@@ -8,7 +8,38 @@ export function staticSeoMainHtml(pathname: string): string {
   if (path === "/pricing") return pricingStaticHtml();
   if (path === "/privacy-policy") return privacyStaticHtml();
   if (path === "/terms-of-service") return termsStaticHtml();
+  if (isSignedOutAppPath(path)) return appRouteStaticHtml();
   return homeStaticHtml();
+}
+
+const SIGNED_OUT_APP_PATHS = new Set([
+  "/speech",
+  "/midi",
+  "/my-stems",
+  "/beats",
+  "/library",
+  "/tuner",
+]);
+
+function isSignedOutAppPath(path: string): boolean {
+  return SIGNED_OUT_APP_PATHS.has(path);
+}
+
+function appRouteStaticHtml(): string {
+  return `
+<main id="bb-static-seo" lang="en">
+  <h1>Burnt Beats</h1>
+  <p>
+    Burnt Beats is a browser workstation for producers and DJs.
+    Sign in to use the stem splitter, mixer, stem library, and MIDI converter.
+  </p>
+  <p>
+    <a href="/">Home</a> &middot;
+    <a href="/pricing">Pricing</a> &middot;
+    <a href="/privacy-policy">Privacy Policy</a> &middot;
+    <a href="/terms-of-service">Terms of Service</a>
+  </p>
+</main>`.trim();
 }
 
 function homeStaticHtml(): string {
@@ -41,6 +72,16 @@ function homeStaticHtml(): string {
 
 function pricingStaticHtml(): string {
   return `
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Burnt Beats", "item": "https://www.burntbeats.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Pricing", "item": "https://www.burntbeats.com/pricing" }
+  ]
+}
+</script>
 <main id="bb-static-seo" lang="en">
   <h1>Pricing — Burnt Beats</h1>
   <p>
@@ -64,6 +105,16 @@ function pricingStaticHtml(): string {
 
 function privacyStaticHtml(): string {
   return `
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Burnt Beats", "item": "https://www.burntbeats.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Privacy Policy", "item": "https://www.burntbeats.com/privacy-policy" }
+  ]
+}
+</script>
 <main id="bb-static-seo" lang="en">
   <h1>Privacy Policy — Burnt Beats</h1>
   <p>
@@ -77,6 +128,16 @@ function privacyStaticHtml(): string {
 
 function termsStaticHtml(): string {
   return `
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Burnt Beats", "item": "https://www.burntbeats.com/" },
+    { "@type": "ListItem", "position": 2, "name": "Terms of Service", "item": "https://www.burntbeats.com/terms-of-service" }
+  ]
+}
+</script>
 <main id="bb-static-seo" lang="en">
   <h1>Terms of Service — Burnt Beats</h1>
   <p>

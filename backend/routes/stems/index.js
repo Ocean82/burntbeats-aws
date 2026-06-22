@@ -33,10 +33,11 @@ stemsRouter.use("/expand", expandRouter);
 // POST /api/stems/server-export
 stemsRouter.use("/server-export", serverExportRouter);
 
+// POST /api/stems/cleanup, GET /api/stems/cleanup (405)
+// Must be mounted before fileServeRouter to avoid DELETE /:job_id intercepting /cleanup.
+stemsRouter.use("/cleanup", cleanupRouter);
+
 // GET /api/stems/file/:job_id/:stemId, DELETE /api/stems/:job_id
 stemsRouter.use("/", fileServeRouter);
-
-// POST /api/stems/cleanup, GET /api/stems/cleanup (405)
-stemsRouter.use("/cleanup", cleanupRouter);
 
 export { STEM_OUTPUT_DIR };
