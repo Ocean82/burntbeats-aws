@@ -27,7 +27,7 @@ test.describe("Ship polish layout", () => {
 
     await waitForWorkspace(page);
     await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: /^Play$/i })).toBeVisible({
+    await expect(page.getByTestId("workspace").getByRole("button", { name: /^Play$/i })).toBeVisible({
       timeout: 15_000,
     });
 

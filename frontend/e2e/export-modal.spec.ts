@@ -25,7 +25,7 @@ test.describe("Export options modal", () => {
     await waitForWorkspace(page);
     await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
 
-    const exportBtn = page.getByRole("button", { name: "Export mix" });
+    const exportBtn = page.getByTestId("workspace").getByRole("button", { name: "Export mix" });
     await expect(exportBtn).toBeEnabled({ timeout: 20_000 });
     await exportBtn.click();
 
@@ -74,11 +74,11 @@ test.describe("Export options modal", () => {
 
     await waitForWorkspace(page);
     await expect(page.getByTestId("workspace").getByText(/vocals/i).first()).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("button", { name: /^Play$/i })).toBeEnabled({
+    await expect(page.getByTestId("workspace").getByRole("button", { name: /^Play$/i })).toBeEnabled({
       timeout: 45_000,
     });
 
-    const exportBtn = page.getByRole("button", { name: "Export mix" });
+    const exportBtn = page.getByTestId("workspace").getByRole("button", { name: "Export mix" });
     await expect(exportBtn).toBeEnabled({ timeout: 15_000 });
     await exportBtn.click();
 
