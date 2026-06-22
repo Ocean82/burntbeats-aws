@@ -11,7 +11,8 @@
  * Validates: Requirements 4.1, 4.3, 5.1, 3.5
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import { render, act } from "@testing-library/react"
+import { screen, fireEvent, within } from "@testing-library/dom";
 import { DrumMachinePanel } from "./DrumMachinePanel";
 
 // ─── Mock drumSynth to prevent actual audio and allow call verification ──
@@ -297,7 +298,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     const rockOptions = within(patternList).queryAllByRole("option");
 
     // Every displayed pattern should mention "Rock" genre
-    rockOptions.forEach((option) => {
+    rockOptions.forEach((option: any) => {
       expect(option.textContent).toMatch(/rock/i);
     });
 

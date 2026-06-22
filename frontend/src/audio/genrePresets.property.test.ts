@@ -89,9 +89,9 @@ function arbitraryInvalidPresetPattern(): fc.Arbitrary<GenrePresetPattern> {
       "bad-velocity-negative",
       "bad-velocity-float",
     )
-    .chain((violationType) => {
+    .chain((violationType: any) => {
       // Start with a valid preset and corrupt one thing
-      return arbitraryGenrePresetPattern().map((validPreset) => {
+      return arbitraryGenrePresetPattern().map((validPreset: any) => {
         switch (violationType) {
           case "bad-genre":
             return { ...validPreset, genre: "country" as GenreType };
@@ -113,7 +113,7 @@ function arbitraryInvalidPresetPattern(): fc.Arbitrary<GenrePresetPattern> {
 
           case "bad-row-length": {
             // Make one row have wrong length
-            const badPattern = validPreset.pattern.map((row, i) =>
+            const badPattern = validPreset.pattern.map((row: any, i: any) =>
               i === 0 ? row.slice(0, row.length - 1) : row,
             );
             return { ...validPreset, pattern: badPattern };
@@ -121,7 +121,7 @@ function arbitraryInvalidPresetPattern(): fc.Arbitrary<GenrePresetPattern> {
 
           case "bad-velocity-high": {
             // Insert velocity > 127
-            const badPattern = validPreset.pattern.map((row, i) =>
+            const badPattern = validPreset.pattern.map((row: any, i: any) =>
               i === 0 ? [200, ...row.slice(1)] : [...row],
             );
             return { ...validPreset, pattern: badPattern };
@@ -129,7 +129,7 @@ function arbitraryInvalidPresetPattern(): fc.Arbitrary<GenrePresetPattern> {
 
           case "bad-velocity-negative": {
             // Insert negative velocity
-            const badPattern = validPreset.pattern.map((row, i) =>
+            const badPattern = validPreset.pattern.map((row: any, i: any) =>
               i === 0 ? [-1, ...row.slice(1)] : [...row],
             );
             return { ...validPreset, pattern: badPattern };
@@ -137,7 +137,7 @@ function arbitraryInvalidPresetPattern(): fc.Arbitrary<GenrePresetPattern> {
 
           case "bad-velocity-float": {
             // Insert float velocity
-            const badPattern = validPreset.pattern.map((row, i) =>
+            const badPattern = validPreset.pattern.map((row: any, i: any) =>
               i === 0 ? [50.5, ...row.slice(1)] : [...row],
             );
             return { ...validPreset, pattern: badPattern };
@@ -155,7 +155,7 @@ function arbitraryInvalidPresetPattern(): fc.Arbitrary<GenrePresetPattern> {
 describe("Feature: rhythm-pattern-overlay, Property 1: Pattern validation accepts valid and rejects invalid presets", () => {
   it("validatePreset returns true for any valid preset (8 rows, correct steps, velocity 0–127, valid genre, tempo 60–200)", () => {
     fc.assert(
-      fc.property(arbitraryGenrePresetPattern(), (preset) => {
+      fc.property(arbitraryGenrePresetPattern(), (preset: any) => {
         expect(validatePreset(preset)).toBe(true);
       }),
       { numRuns: 100 },
@@ -165,8 +165,8 @@ describe("Feature: rhythm-pattern-overlay, Property 1: Pattern validation accept
   it("validatePreset returns false for presets with invalid genre", () => {
     fc.assert(
       fc.property(
-        arbitraryGenrePresetPattern().map((p) => ({ ...p, genre: "country" as GenreType })),
-        (preset) => {
+        arbitraryGenrePresetPattern().map((p: any) => ({ ...p, genre: "country" as GenreType })),
+        (preset: any) => {
           expect(validatePreset(preset)).toBe(false);
         },
       ),
@@ -279,7 +279,7 @@ describe("Feature: rhythm-pattern-overlay, Property 1: Pattern validation accept
 
   it("validatePreset returns false for any generated invalid preset", () => {
     fc.assert(
-      fc.property(arbitraryInvalidPresetPattern(), (preset) => {
+      fc.property(arbitraryInvalidPresetPattern(), (preset: any) => {
         expect(validatePreset(preset)).toBe(false);
       }),
       { numRuns: 100 },
@@ -292,7 +292,7 @@ describe("Feature: rhythm-pattern-overlay, Property 1: Pattern validation accept
 describe("Feature: rhythm-pattern-overlay, Property 4: Genre filter correctness", () => {
   it("filtered list contains only patterns matching the selected genre", () => {
     fc.assert(
-      fc.property(genreArb, (genre) => {
+      fc.property(genreArb, (genre: any) => {
         const filtered = getPresetsByGenre(genre);
         for (const pattern of filtered) {
           expect(pattern.genre).toBe(genre);
@@ -304,7 +304,7 @@ describe("Feature: rhythm-pattern-overlay, Property 4: Genre filter correctness"
 
   it("filtered list contains all matching patterns from the valid presets (up to 50)", () => {
     fc.assert(
-      fc.property(genreArb, (genre) => {
+      fc.property(genreArb, (genre: any) => {
         const allValid = getValidPresets();
         const filtered = getPresetsByGenre(genre);
         const expectedMatches = allValid.filter((p) => p.genre === genre);
@@ -328,7 +328,7 @@ describe("Feature: rhythm-pattern-overlay, Property 4: Genre filter correctness"
       .filter((s) => !VALID_GENRES.includes(s as GenreType));
 
     fc.assert(
-      fc.property(unsupportedGenreArb, (genre) => {
+      fc.property(unsupportedGenreArb, (genre: any) => {
         const filtered = getPresetsByGenre(genre);
         expect(filtered).toHaveLength(0);
       }),

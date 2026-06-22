@@ -1,11 +1,12 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { fireEvent, screen, within } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
 import { PatternLibraryPanel } from "./PatternLibraryPanel";
 import type { GenrePresetPattern } from "../../audio/genrePresets";
 
 // Mock the genrePresets module so we can control what patterns are returned
-vi.mock("../../audio/genrePresets", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../audio/genrePresets")>();
+vi.mock("../../audio/genrePresets", async (importOriginal: any) => {
+  const actual = await importOriginal();
   return {
     ...actual,
     // Re-export real functions — tests that need empty results will mock per-test

@@ -10,7 +10,8 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen } from "@testing-library/dom";
 import { describe, it, expect, vi } from "vitest";
 import * as fc from "fast-check";
 import { EffectsPanel } from "./EffectsPanel";
@@ -54,7 +55,7 @@ const toolCategoryArb = fc.constantFrom<ToolCategory>(...TOOL_CATEGORIES);
 describe("Feature: stem-editor-transitional-ui, Property 4: Tool-to-controls mapping", () => {
   it("renders only the correct control set for any random tool category", () => {
     fc.assert(
-      fc.property(toolCategoryArb, (tool) => {
+      fc.property(toolCategoryArb, (tool: any) => {
         const { unmount } = render(
           <EffectsPanel
             activeTool={tool}
@@ -65,7 +66,7 @@ describe("Feature: stem-editor-transitional-ui, Property 4: Tool-to-controls map
         );
 
         // The correct control set MUST be present
-        const expectedTestId = TOOL_TESTID_MAP[tool];
+        const expectedTestId = TOOL_TESTID_MAP[tool as ToolCategory];
         expect(screen.getByTestId(expectedTestId)).toBeDefined();
 
         // No controls from OTHER tool categories should appear
@@ -85,9 +86,9 @@ describe("Feature: stem-editor-transitional-ui, Property 4: Tool-to-controls map
     fc.assert(
       fc.property(
         fc.uniqueArray(toolCategoryArb, { minLength: 2, maxLength: 5 }),
-        (tools) => {
+        (tools: any) => {
           // Each tool should map to a different testid
-          const testIds = tools.map((t) => TOOL_TESTID_MAP[t]);
+          const testIds = tools.map((t: any) => TOOL_TESTID_MAP[t as ToolCategory]);
           const uniqueIds = new Set(testIds);
           expect(uniqueIds.size).toBe(tools.length);
         },
@@ -98,7 +99,7 @@ describe("Feature: stem-editor-transitional-ui, Property 4: Tool-to-controls map
 
   it("rendered control set always corresponds to the activeTool prop", () => {
     fc.assert(
-      fc.property(toolCategoryArb, (tool) => {
+      fc.property(toolCategoryArb, (tool: any) => {
         const { unmount, container } = render(
           <EffectsPanel
             activeTool={tool}
@@ -115,7 +116,7 @@ describe("Feature: stem-editor-transitional-ui, Property 4: Tool-to-controls map
         );
 
         expect(presentControls).toHaveLength(1);
-        expect(presentControls[0]).toBe(TOOL_TESTID_MAP[tool]);
+        expect(presentControls[0]).toBe(TOOL_TESTID_MAP[tool as ToolCategory]);
 
         unmount();
       }),

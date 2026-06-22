@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen } from "@testing-library/dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { PropsWithChildren, ComponentPropsWithoutRef } from "react";
 import { PhaseRouter, type PhaseRouterProps } from "./PhaseRouter";

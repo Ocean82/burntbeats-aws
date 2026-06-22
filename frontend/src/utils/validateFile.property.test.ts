@@ -27,7 +27,7 @@ describe('Feature: stem-editor-transitional-ui, Property 1: File validation dete
   /** Arbitrary for unsupported format strings — random strings that are NOT in the supported set */
   const unsupportedFormatArb = fc
     .string({ minLength: 1, maxLength: 10 })
-    .filter((s) => !(SUPPORTED_FORMATS as readonly string[]).includes(s.toLowerCase().trim()));
+    .filter((s: any) => !(SUPPORTED_FORMATS as readonly string[]).includes(s.toLowerCase().trim()));
 
   /** Arbitrary for valid sizes: 0 to 500 MB inclusive */
   const validSizeArb = fc.integer({ min: 0, max: MAX_FILE_SIZE_BYTES });
@@ -91,7 +91,7 @@ describe('Feature: stem-editor-transitional-ui, Property 1: File validation dete
 
   it('exactly 500 MB file with supported format → valid (boundary inclusive)', () => {
     fc.assert(
-      fc.property(supportedFormatArb, (format) => {
+      fc.property(supportedFormatArb, (format: any) => {
         const result = validateFile({ format, size: MAX_FILE_SIZE_BYTES });
 
         expect(result.valid).toBe(true);

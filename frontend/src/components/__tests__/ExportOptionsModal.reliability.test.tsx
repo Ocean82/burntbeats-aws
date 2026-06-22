@@ -9,7 +9,8 @@
  */
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, act } from "@testing-library/react"
+import { screen, fireEvent, waitFor } from "@testing-library/dom";
 import { ExportOptionsModal } from "../ExportOptionsModal";
 
 // ---- framer-motion mock (standard project pattern) ----

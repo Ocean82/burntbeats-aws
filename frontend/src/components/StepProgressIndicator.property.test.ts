@@ -28,7 +28,7 @@ const phaseArb = fc.constantFrom<AppPhase>("upload", "configure", "splitting", "
 describe("Property 5: Step indicator state derivation", () => {
   it("preceding phases are 'completed', current is 'active', subsequent are 'upcoming'", () => {
     fc.assert(
-      fc.property(phaseArb, (phase) => {
+      fc.property(phaseArb, (phase: any) => {
         const steps = deriveSteps(phase);
         const currentIndex = PHASE_ORDER.indexOf(phase);
 
@@ -51,7 +51,7 @@ describe("Property 5: Step indicator state derivation", () => {
 
   it("step ids match the ordered phase sequence", () => {
     fc.assert(
-      fc.property(phaseArb, (phase) => {
+      fc.property(phaseArb, (phase: any) => {
         const steps = deriveSteps(phase);
 
         expect(steps.map((s) => s.id)).toEqual(PHASE_ORDER);
@@ -62,7 +62,7 @@ describe("Property 5: Step indicator state derivation", () => {
 
   it("step labels match their designated human-readable names", () => {
     fc.assert(
-      fc.property(phaseArb, (phase) => {
+      fc.property(phaseArb, (phase: any) => {
         const steps = deriveSteps(phase);
 
         for (const step of steps) {
@@ -75,7 +75,7 @@ describe("Property 5: Step indicator state derivation", () => {
 
   it("always returns exactly 4 steps", () => {
     fc.assert(
-      fc.property(phaseArb, (phase) => {
+      fc.property(phaseArb, (phase: any) => {
         const steps = deriveSteps(phase);
         expect(steps).toHaveLength(4);
       }),

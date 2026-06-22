@@ -4,7 +4,8 @@
  * Task 7.2: ErrorState wiring — Validates: Requirements 7.1, 7.3
  * Task 15.2: SuccessFlash wiring — Validates: Requirements 15.1, 15.2
  */
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render } from "@testing-library/react"
+import { fireEvent, screen } from "@testing-library/dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type React from "react";
@@ -68,7 +69,7 @@ vi.mock("../../ui/SegmentedControl", () => ({
     options: { value: string; label: string }[];
   }) => (
     <div data-testid="segmented-control">
-      {options.map((o) => (
+      {options.map((o: any) => (
         <button key={o.value} onClick={() => onChange(o.value)}>
           {o.label}
         </button>

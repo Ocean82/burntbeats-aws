@@ -144,7 +144,7 @@ interface GridSnapshot {
 function captureGridSnapshot(result: { current: ReturnType<typeof useBeatMaker> }): GridSnapshot {
   return {
     pattern: result.current.pattern.map((row) => [...row]),
-    rowStates: result.current.rowStates.map((rs) => ({ ...rs })),
+    rowStates: result.current.rowStates.map((rs: any) => ({ ...rs })),
     steps: result.current.steps,
     bpm: result.current.bpm,
     swing: result.current.swing,
@@ -156,7 +156,7 @@ function captureGridSnapshot(result: { current: ReturnType<typeof useBeatMaker> 
 describe("Feature: rhythm-pattern-overlay, Property 12: Grid state independence from overlay operations", () => {
   it("grid state remains identical after selectPattern overlay operation", () => {
     fc.assert(
-      fc.property(arbitraryGenrePresetPattern(), (presetPattern) => {
+      fc.property(arbitraryGenrePresetPattern(), (presetPattern: any) => {
         // Render both hooks independently (as they would be in the app)
         const { result: gridResult } = renderHook(() => useBeatMaker());
         const { result: overlayResult } = renderHook(() =>
@@ -226,7 +226,7 @@ describe("Feature: rhythm-pattern-overlay, Property 12: Grid state independence 
 
   it("grid state remains identical after clearing the overlay", () => {
     fc.assert(
-      fc.property(arbitraryGenrePresetPattern(), (presetPattern) => {
+      fc.property(arbitraryGenrePresetPattern(), (presetPattern: any) => {
         const { result: gridResult } = renderHook(() => useBeatMaker());
         const { result: overlayResult } = renderHook(() =>
           useOverlayTransport(null, false, 120, 0, null),

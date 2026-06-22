@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, act } from "@testing-library/react"
+import { screen, fireEvent } from "@testing-library/dom";
 import { renderHook } from "@testing-library/react";
 import { NewSplitConfirmDialog } from "../processing-settings/NewSplitConfirmDialog";
 import { usePhaseController } from "@/hooks/usePhaseController";

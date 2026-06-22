@@ -55,7 +55,7 @@ describe("Feature: rhythm-pattern-overlay, Property 8: Fill variation correctnes
 
   it("(a) snare and tom hits in final 25% have linearly increasing velocity from GHOST to ACCENT", () => {
     fc.assert(
-      fc.property(patternArb, (pattern) => {
+      fc.property(patternArb, (pattern: any) => {
         const result = applyFill(pattern);
         const steps = pattern[0].length;
         const fillStart = Math.floor(steps * 0.75);
@@ -83,7 +83,7 @@ describe("Feature: rhythm-pattern-overlay, Property 8: Fill variation correctnes
 
   it("(b) closed hat, open hat, and ride are silenced (VELOCITY_OFF) in fill region", () => {
     fc.assert(
-      fc.property(patternArb, (pattern) => {
+      fc.property(patternArb, (pattern: any) => {
         const result = applyFill(pattern);
         const steps = pattern[0].length;
         const fillStart = Math.floor(steps * 0.75);
@@ -100,7 +100,7 @@ describe("Feature: rhythm-pattern-overlay, Property 8: Fill variation correctnes
 
   it("(c) all steps before the fill region remain unchanged", () => {
     fc.assert(
-      fc.property(patternArb, (pattern) => {
+      fc.property(patternArb, (pattern: any) => {
         const result = applyFill(pattern);
         const steps = pattern[0].length;
         const fillStart = Math.floor(steps * 0.75);
@@ -167,7 +167,7 @@ describe("Feature: rhythm-pattern-overlay, Property 11: Variation immutability a
   for (const { name, fn } of variationFns) {
     it(`${name}: output has the same number of rows as input`, () => {
       fc.assert(
-        fc.property(arbitraryVariableRowPattern(), (pattern) => {
+        fc.property(arbitraryVariableRowPattern(), (pattern: any) => {
           const result = fn(pattern);
           expect(result.length).toBe(pattern.length);
         }),
@@ -177,7 +177,7 @@ describe("Feature: rhythm-pattern-overlay, Property 11: Variation immutability a
 
     it(`${name}: output has the same number of steps per row as input`, () => {
       fc.assert(
-        fc.property(arbitraryVariableRowPattern(), (pattern) => {
+        fc.property(arbitraryVariableRowPattern(), (pattern: any) => {
           const result = fn(pattern);
           for (let row = 0; row < pattern.length; row++) {
             expect(result[row].length).toBe(pattern[row].length);
@@ -189,9 +189,9 @@ describe("Feature: rhythm-pattern-overlay, Property 11: Variation immutability a
 
     it(`${name}: original input pattern is not mutated`, () => {
       fc.assert(
-        fc.property(arbitraryVariableRowPattern(), (pattern) => {
+        fc.property(arbitraryVariableRowPattern(), (pattern: any) => {
           // Deep clone the input before applying variation
-          const originalSnapshot: VelocityPattern = pattern.map((row) => [...row]);
+          const originalSnapshot: VelocityPattern = pattern.map((row: any) => [...row]);
 
           fn(pattern);
 
@@ -206,8 +206,8 @@ describe("Feature: rhythm-pattern-overlay, Property 11: Variation immutability a
       const smallPatternArb = arbitraryVariableRowPattern(1, 7);
 
       fc.assert(
-        fc.property(smallPatternArb, (pattern) => {
-          const originalSnapshot: VelocityPattern = pattern.map((row) => [...row]);
+        fc.property(smallPatternArb, (pattern: any) => {
+          const originalSnapshot: VelocityPattern = pattern.map((row: any) => [...row]);
           const result = fn(pattern);
 
           // Dimension preservation
@@ -250,7 +250,7 @@ describe("Feature: rhythm-pattern-overlay, Property 9: Breakdown variation corre
 
   it("(a) closed hat, open hat, and ride rows are all VELOCITY_OFF on all steps", () => {
     fc.assert(
-      fc.property(patternArb, (pattern) => {
+      fc.property(patternArb, (pattern: any) => {
         const result = applyBreakdown(pattern);
         const steps = pattern[0].length;
 
@@ -266,7 +266,7 @@ describe("Feature: rhythm-pattern-overlay, Property 9: Breakdown variation corre
 
   it("(b) kick retained only on steps where step % 8 === 0, others VELOCITY_OFF", () => {
     fc.assert(
-      fc.property(patternArb, (pattern) => {
+      fc.property(patternArb, (pattern: any) => {
         const result = applyBreakdown(pattern);
         const steps = pattern[0].length;
 
@@ -286,7 +286,7 @@ describe("Feature: rhythm-pattern-overlay, Property 9: Breakdown variation corre
 
   it("(c) snare retained only on steps where step % 8 === 4, others VELOCITY_OFF", () => {
     fc.assert(
-      fc.property(patternArb, (pattern) => {
+      fc.property(patternArb, (pattern: any) => {
         const result = applyBreakdown(pattern);
         const steps = pattern[0].length;
 
@@ -306,7 +306,7 @@ describe("Feature: rhythm-pattern-overlay, Property 9: Breakdown variation corre
 
   it("(d) clap and tom rows are all VELOCITY_OFF on all steps", () => {
     fc.assert(
-      fc.property(patternArb, (pattern) => {
+      fc.property(patternArb, (pattern: any) => {
         const result = applyBreakdown(pattern);
         const steps = pattern[0].length;
 

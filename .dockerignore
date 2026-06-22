@@ -42,6 +42,7 @@ htmlcov/
 # IDE, OS, Python caches
 .vscode/
 .idea/
+.agents/
 .cursor/
 .claude/
 .impeccable/

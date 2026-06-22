@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/dom";
 import { StereoVUMeter } from "./StereoVUMeter";
 
 describe("StereoVUMeter", () => {

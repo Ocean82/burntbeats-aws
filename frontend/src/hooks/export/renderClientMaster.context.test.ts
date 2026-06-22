@@ -3,9 +3,9 @@ import { defaultStemState } from "../../stem-editor-state";
 import type { StemResult } from "../../types";
 import { renderClientMasterWavBlob } from "./renderClientMaster";
 
-vi.mock("../../utils/stemPlaybackUtils", async (importOriginal) => {
+vi.mock("../../utils/stemPlaybackUtils", async (importOriginal: any) => {
   const actual =
-    await importOriginal<typeof import("../../utils/stemPlaybackUtils")>();
+    await importOriginal();
   return {
     ...actual,
     createStemPluginPool: async () => ({

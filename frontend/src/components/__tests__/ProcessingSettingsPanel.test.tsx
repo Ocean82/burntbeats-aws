@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen } from "@testing-library/dom";
 import { createRef } from "react";
 import { ProcessingSettingsPanel } from "../ProcessingSettingsPanel";
 import { useAppStore } from "../../store/appStore";

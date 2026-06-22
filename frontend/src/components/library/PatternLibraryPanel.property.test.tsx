@@ -47,7 +47,7 @@ const arbitrarySelectionSequence = fc.array(arbitraryPatternId, {
 describe("Feature: rhythm-pattern-overlay, Property 3: Single selection invariant", () => {
   it("at most one pattern entry has aria-selected=true for any activePatternId value", () => {
     fc.assert(
-      fc.property(arbitraryPatternId, (activePatternId) => {
+      fc.property(arbitraryPatternId, (activePatternId: any) => {
         cleanup();
         const { container } = render(
           <PatternLibraryPanel
@@ -72,7 +72,7 @@ describe("Feature: rhythm-pattern-overlay, Property 3: Single selection invarian
     fc.assert(
       fc.property(
         fc.constantFrom(...validPatternIds),
-        (activePatternId) => {
+        (activePatternId: any) => {
           cleanup();
           const { container } = render(
             <PatternLibraryPanel
@@ -98,7 +98,7 @@ describe("Feature: rhythm-pattern-overlay, Property 3: Single selection invarian
     fc.assert(
       fc.property(
         fc.constantFrom(...validPatternIds),
-        (activePatternId) => {
+        (activePatternId: any) => {
           cleanup();
           const { container } = render(
             <PatternLibraryPanel
@@ -126,7 +126,7 @@ describe("Feature: rhythm-pattern-overlay, Property 3: Single selection invarian
 
   it("for any sequence of pattern selections, the final render shows at most one selected entry matching the last selection", () => {
     fc.assert(
-      fc.property(arbitrarySelectionSequence, (selections) => {
+      fc.property(arbitrarySelectionSequence, (selections: any) => {
         const lastSelection = selections[selections.length - 1];
 
         // Simulate the sequence: render with each selection, but only final state matters

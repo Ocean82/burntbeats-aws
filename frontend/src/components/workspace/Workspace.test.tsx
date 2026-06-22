@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
 import { Workspace } from "./Workspace";
 import { LAYOUT } from "@/constants/layout";

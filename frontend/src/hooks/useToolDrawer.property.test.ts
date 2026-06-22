@@ -31,8 +31,8 @@ type DrawerOp =
 
 /** Arbitrary for a drawer operation (toggle, open, or close) */
 const drawerOpArb: fc.Arbitrary<DrawerOp> = fc.oneof(
-  toolCategoryArb.map((tool) => ({ type: 'toggle' as const, tool })),
-  toolCategoryArb.map((tool) => ({ type: 'open' as const, tool })),
+  toolCategoryArb.map((tool: any) => ({ type: 'toggle' as const, tool })),
+  toolCategoryArb.map((tool: any) => ({ type: 'open' as const, tool })),
   fc.constant({ type: 'close' as const }),
 );
 
@@ -41,7 +41,7 @@ describe('Feature: stem-editor-transitional-ui, Property 3: Tool selection state
     fc.assert(
       fc.property(
         fc.array(toolCategoryArb, { minLength: 1, maxLength: 50 }),
-        (toggleSequence) => {
+        (toggleSequence: any) => {
           const { result } = renderHook(() => useToolDrawer());
 
           let expectedActive: ToolCategory | null = null;
@@ -76,7 +76,7 @@ describe('Feature: stem-editor-transitional-ui, Property 3: Tool selection state
 
   it('toggling same tool twice always results in no active tool', () => {
     fc.assert(
-      fc.property(toolCategoryArb, (tool) => {
+      fc.property(toolCategoryArb, (tool: any) => {
         const { result } = renderHook(() => useToolDrawer());
 
         act(() => result.current.toggle(tool));
@@ -116,7 +116,7 @@ describe('Feature: stem-editor-transitional-ui, Property 3: Tool selection state
     fc.assert(
       fc.property(
         fc.array(drawerOpArb, { minLength: 1, maxLength: 50 }),
-        (operations) => {
+        (operations: any) => {
           const { result } = renderHook(() => useToolDrawer());
 
           let expectedActive: ToolCategory | null = null;

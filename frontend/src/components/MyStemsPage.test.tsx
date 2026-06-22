@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { fireEvent, screen, waitFor } from "@testing-library/dom";
 import type { ComponentPropsWithoutRef, PropsWithChildren } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

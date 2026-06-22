@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen } from "@testing-library/dom";
 import { DjMixerConsole } from "./DjMixerConsole";
 import type { StemDefinition } from "../../types";
 import { defaultStemState } from "../../stem-editor-state";

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react"
+import { waitFor } from "@testing-library/dom";
 import { useMidiConvert } from "./useMidiConvert";
 import type { AppState } from "../store/appStore";
 import { trackEvent } from "../analytics/events";

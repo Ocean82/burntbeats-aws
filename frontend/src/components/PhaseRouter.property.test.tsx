@@ -13,7 +13,8 @@
  * **Validates: Requirements 2.7, 6.2**
  */
 
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen } from "@testing-library/dom";
 import { describe, it, expect, vi } from "vitest";
 import type { PropsWithChildren, ComponentPropsWithoutRef } from "react";
 import * as fc from "fast-check";
@@ -71,11 +72,11 @@ function buildProps(phase: AppPhase): PhaseRouterProps {
 describe("Feature: stem-editor-transitional-ui, Property 2: Phase exclusivity", () => {
   it("renders only the designated phase component and no elements from other phases", () => {
     fc.assert(
-      fc.property(appPhaseArb, (phase) => {
+      fc.property(appPhaseArb, (phase: any) => {
         const { unmount } = render(<PhaseRouter {...buildProps(phase)} />);
 
         // The current phase's test ID MUST be present
-        expect(screen.getByTestId(PHASE_TEST_IDS[phase])).toBeInTheDocument();
+        expect(screen.getByTestId(PHASE_TEST_IDS[phase as AppPhase])).toBeInTheDocument();
 
         // All other phases' test IDs MUST NOT be present
         const otherPhases = ALL_PHASES.filter((p) => p !== phase);

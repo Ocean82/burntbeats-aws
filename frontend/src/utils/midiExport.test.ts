@@ -22,12 +22,12 @@ function makeTrack(
     muted: false,
     soloed: false,
     instrument: "piano",
-    ccLanes: BUILTIN_CC_LANES.map((lane) => ({
+    ccLanes: BUILTIN_CC_LANES.map((lane: any) => ({
       ...lane,
       events:
         ccEvents
           ?.filter((e) => e.cc === lane.ccNumber)
-          .map((e) => ({ time: e.time, value: e.value })) ?? [],
+          .map((e: any) => ({ time: e.time, value: e.value })) ?? [],
     })),
     midiEffects: createDefaultTrackMidiFx(),
     midiFxApplyMode: DEFAULT_MIDI_FX_APPLY_MODE,

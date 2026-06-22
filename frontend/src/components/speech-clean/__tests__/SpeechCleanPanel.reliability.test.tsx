@@ -4,7 +4,8 @@
  * Task 8.2  — Validates: Requirements 8.1, 8.3
  * Task 14.2 — Validates: Requirements 14.1, 14.2
  */
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen, fireEvent } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
 import { SpeechCleanPanel } from "../SpeechCleanPanel";
 

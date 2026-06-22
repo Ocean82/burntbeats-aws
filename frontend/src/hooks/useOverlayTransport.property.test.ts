@@ -97,7 +97,7 @@ describe("Feature: rhythm-pattern-overlay, Property 7: Volume clamping", () => {
 
   it("setGridVolume clamps any float value to [0.0, 1.0]", () => {
     fc.assert(
-      fc.property(arbitraryVolume, (vol) => {
+      fc.property(arbitraryVolume, (vol: any) => {
         const { result } = renderHook(() => useMasterBus());
 
         // Initialize audio so gain nodes are created
@@ -119,7 +119,7 @@ describe("Feature: rhythm-pattern-overlay, Property 7: Volume clamping", () => {
 
   it("setOverlayVolume clamps any float value to [0.0, 1.0]", () => {
     fc.assert(
-      fc.property(arbitraryVolume, (vol) => {
+      fc.property(arbitraryVolume, (vol: any) => {
         const { result } = renderHook(() => useMasterBus());
 
         // Initialize audio so gain nodes are created
@@ -143,7 +143,7 @@ describe("Feature: rhythm-pattern-overlay, Property 7: Volume clamping", () => {
     fc.assert(
       fc.property(
         fc.double({ min: 0, max: 1, noNaN: true, noDefaultInfinity: true }),
-        (vol) => {
+        (vol: any) => {
           const { result } = renderHook(() => useMasterBus());
 
           act(() => {
@@ -166,7 +166,7 @@ describe("Feature: rhythm-pattern-overlay, Property 7: Volume clamping", () => {
     fc.assert(
       fc.property(
         fc.double({ min: 0, max: 1, noNaN: true, noDefaultInfinity: true }),
-        (vol) => {
+        (vol: any) => {
           const { result } = renderHook(() => useMasterBus());
 
           act(() => {
@@ -189,7 +189,7 @@ describe("Feature: rhythm-pattern-overlay, Property 7: Volume clamping", () => {
     fc.assert(
       fc.property(
         fc.double({ min: -1000, max: -0.001, noNaN: true, noDefaultInfinity: true }),
-        (vol) => {
+        (vol: any) => {
           const { result } = renderHook(() => useMasterBus());
 
           act(() => {
@@ -211,7 +211,7 @@ describe("Feature: rhythm-pattern-overlay, Property 7: Volume clamping", () => {
     fc.assert(
       fc.property(
         fc.double({ min: 1.001, max: 1000, noNaN: true, noDefaultInfinity: true }),
-        (vol) => {
+        (vol: any) => {
           const { result } = renderHook(() => useMasterBus());
 
           act(() => {
@@ -342,7 +342,7 @@ describe("Feature: rhythm-pattern-overlay, Property 5: Overlay step timing match
 
   it("step duration derived from BPM produces correct 16th note intervals", () => {
     fc.assert(
-      fc.property(arbitraryBpm, (bpm) => {
+      fc.property(arbitraryBpm, (bpm: any) => {
         // The overlay transport formula: stepDuration = 60 / bpm / 4
         const stepDuration = 60 / bpm / 4;
 
@@ -392,7 +392,7 @@ describe("Feature: rhythm-pattern-overlay, Property 6: Overlay loop resets at pa
 
   it("step index wraps to 0 after exactly N advances for any valid pattern length", () => {
     fc.assert(
-      fc.property(arbitraryPatternLength, (N) => {
+      fc.property(arbitraryPatternLength, (N: any) => {
         // After advancing exactly N steps, the modulo should give 0
         const stepAfterFullCycle = N % N;
         expect(stepAfterFullCycle).toBe(0);
@@ -455,7 +455,7 @@ describe("Feature: rhythm-pattern-overlay, Property 6: Overlay loop resets at pa
 
   it("after one full cycle of N steps, the next step starts from 0 again", () => {
     fc.assert(
-      fc.property(arbitraryPatternLength, (N) => {
+      fc.property(arbitraryPatternLength, (N: any) => {
         // Simulate stepping through one complete cycle and verify wrap-around
         let stepIndex = 0;
         for (let i = 0; i < N; i++) {

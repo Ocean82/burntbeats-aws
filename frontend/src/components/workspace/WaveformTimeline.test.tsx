@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen, fireEvent } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
 import { WaveformTimeline, type WaveformTimelineProps, type WaveformTimelineStem, STEM_LANE_COLORS } from "./WaveformTimeline";
 
@@ -132,7 +133,7 @@ describe("WaveformTimeline", () => {
   it("each lane has accessible label", () => {
     setup();
     const lanes = screen.getAllByRole("button");
-    lanes.forEach((lane) => {
+    lanes.forEach((lane: any) => {
       expect(lane).toHaveAccessibleName();
     });
   });

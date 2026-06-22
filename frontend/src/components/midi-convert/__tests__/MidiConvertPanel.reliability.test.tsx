@@ -5,7 +5,8 @@
  *            Requirements 13.1, 13.2 (EmptyState wiring)
  *            Requirements 17.1, 17.2 (SuccessFlash wiring)
  */
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen, fireEvent } from "@testing-library/dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MidiConvertPanel } from "../MidiConvertPanel";
 import type { MidiConvertResult } from "../../../hooks/useMidiConvert";

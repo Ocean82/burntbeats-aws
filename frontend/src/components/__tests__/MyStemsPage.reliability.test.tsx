@@ -4,7 +4,8 @@
  * Validates: Requirements 12.1, 12.2, 12.3
  */
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen } from "@testing-library/dom";
 import { MyStemsPage } from "../MyStemsPage";
 
 // ---------------------------------------------------------------------------
@@ -33,8 +34,8 @@ vi.mock("../../hooks/useMidiHistory", () => ({
 }));
 
 // Stub out motion to avoid animation noise in tests
-vi.mock("framer-motion", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("framer-motion")>();
+vi.mock("framer-motion", async (importOriginal: any) => {
+  const actual = await importOriginal();
   return {
     ...actual,
     motion: {

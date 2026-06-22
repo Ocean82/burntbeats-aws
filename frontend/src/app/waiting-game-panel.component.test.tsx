@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { fireEvent, screen } from "@testing-library/dom";
 import { WaitingGamePanel } from "./waiting-game-panel.component";
 
 describe("WaitingGamePanel", () => {

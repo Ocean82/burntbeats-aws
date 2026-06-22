@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { fireEvent, screen } from "@testing-library/dom";
 import { beforeEach, describe, expect, it } from "vitest";
 import { DevOverlayToggleBar } from "./dev-overlay-toggle-bar.component";
 import { restoreDevOverlays } from "./dev-overlay-dismiss";

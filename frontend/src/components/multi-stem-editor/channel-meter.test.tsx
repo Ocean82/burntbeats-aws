@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { waitFor } from "@testing-library/dom";
 import { ChannelMeter } from "./channel-meter.component";
 
 describe("ChannelMeter", () => {

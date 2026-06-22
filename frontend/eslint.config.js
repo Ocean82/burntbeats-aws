@@ -7,7 +7,7 @@ import globals from "globals";
 
 export default tseslint.config(
   // Global ignores
-  { ignores: ["dist/**", "node_modules/**", "*.config.*", "scripts/**", "**/pitch-tempo-plugin/dist/**"] },
+  { ignores: ["dist/**", "node_modules/**", "*.config.*", "scripts/**", "test/**", "**/pitch-tempo-plugin/dist/**"] },
 
   // Base JS recommended rules
   eslint.configs.recommended,
@@ -72,6 +72,14 @@ export default tseslint.config(
       // React hooks — core rules (promoted to error in Wave 2)
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
+    },
+  },
+
+  // Relax strict typing in test files (fast-check callbacks, vi.mock, etc.)
+  {
+    files: ["src/**/*.test.ts", "src/**/*.test.tsx", "src/**/*.property.test.ts", "src/**/*.property.test.tsx", "src/**/*.reliability.test.tsx", "src/**/*.context.test.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 

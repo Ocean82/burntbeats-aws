@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen, fireEvent } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
 import { TransportBar, type TransportBarProps } from "./TransportBar";
 
@@ -138,7 +139,7 @@ describe("TransportBar", () => {
     setup({ onSeek: vi.fn(), onExport: vi.fn() });
     // All buttons should have aria-label
     const buttons = screen.getAllByRole("button");
-    buttons.forEach((btn) => {
+    buttons.forEach((btn: any) => {
       expect(btn).toHaveAccessibleName();
     });
     // Slider should have aria-label

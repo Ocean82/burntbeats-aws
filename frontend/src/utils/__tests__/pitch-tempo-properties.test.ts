@@ -37,7 +37,7 @@ describe('pitch-tempo-plugin-integration properties', () => {
       { numRuns: 100 },
     )(
       'timeStretchToTempoRatio(ts) ≈ 1.0 / ts for positive values',
-      (timeStretch) => {
+      (timeStretch: any) => {
         const result = timeStretchToTempoRatio(timeStretch);
         expect(result).toBeCloseTo(1.0 / timeStretch, 10);
       },
@@ -48,7 +48,7 @@ describe('pitch-tempo-plugin-integration properties', () => {
       { numRuns: 100 },
     )(
       'timeStretchToTempoRatio returns 1.0 for zero/negative values',
-      (timeStretch) => {
+      (timeStretch: any) => {
         const result = timeStretchToTempoRatio(timeStretch);
         expect(result).toBe(1.0);
       },
@@ -63,7 +63,7 @@ describe('pitch-tempo-plugin-integration properties', () => {
       { numRuns: 100 },
     )(
       'pitch values are clamped to [-3, 3]',
-      (value) => {
+      (value: any) => {
         const clamped = Math.max(
           PARAM_META.pitchSemitones.min,
           Math.min(PARAM_META.pitchSemitones.max, value),
@@ -82,7 +82,7 @@ describe('pitch-tempo-plugin-integration properties', () => {
       { numRuns: 100 },
     )(
       'tempo ratio values are clamped to plugin PARAM_META range',
-      (value) => {
+      (value: any) => {
         const clamped = Math.max(
           PARAM_META.tempoRatio.min,
           Math.min(PARAM_META.tempoRatio.max, value),

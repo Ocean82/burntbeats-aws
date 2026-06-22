@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 declare module "tone";
+declare module "lucide-react";
 
 interface ImportMetaEnv {
   /** Backend API base URL. */

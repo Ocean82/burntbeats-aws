@@ -5,11 +5,12 @@ import {
   Volume2,
   Sparkles,
   Brain,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { LAYOUT } from "@/constants/layout";
 import type { ToolCategory } from "@/types/tools";
+
+type LucideIcon = React.ComponentType<{ size?: number | string; className?: string } & React.AriaAttributes>;
 
 interface ToolButtonDef {
   id: ToolCategory;

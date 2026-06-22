@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render } from "@testing-library/react"
+import { screen, within } from "@testing-library/dom";
 import { StatusPanel } from "../status-panel.component";
 import type { StemDefinition } from "../../types";
 

@@ -75,6 +75,10 @@ TEMPcode/
 *.swp
 .DS_Store
 Thumbs.db
+.agents/
+.codex/
+.vscode/
+
 
 # Logs
 *.log
