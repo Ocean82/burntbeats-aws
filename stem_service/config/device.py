@@ -42,6 +42,10 @@ else:
 _stem_backend_raw = os.environ.get("STEM_BACKEND", "hybrid").strip().lower()
 if _stem_backend_raw == "demucs_only":
     STEM_BACKEND = "demucs_only"
+    _config_log.warning(
+        "DEPRECATED: STEM_BACKEND=demucs_only — intent-based routing does not use this path; "
+        "switch to STEM_BACKEND=hybrid (default)"
+    )
 elif _stem_backend_raw in ("", "hybrid"):
     STEM_BACKEND = "hybrid"
 else:

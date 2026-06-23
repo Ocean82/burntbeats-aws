@@ -224,6 +224,7 @@ def get_2stem_stage1_preview(
     Preview the deterministic Stage 1 model required for 2-stem hybrid.
     """
     if stem_backend == "demucs_only":
+        logger.warning("DEPRECATED: stem_backend=demucs_only — prefer hybrid routing")
         return ("demucs", ["htdemucs"])
 
     tier = "fast" if prefer_speed else (model_tier or "quality")

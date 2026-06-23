@@ -20,7 +20,14 @@ def _call_progress(
     try:
         progress_callback(pct, job_kind)
     except TypeError:
-        progress_callback(pct)
+        try:
+            progress_callback(pct)
+        except Exception as e:
+            logger.warning("Progress callback failed: %s", e, exc_info=True)
+            raise
+    except Exception as e:
+        logger.error("Progress callback raised exception: %s", e, exc_info=True)
+        raise
 
 from stem_service.hybrid import run_hybrid_2stem, run_hybrid_4stem
 from stem_service.routing.pipelines.mdx_4stem import run_mdx_4stem

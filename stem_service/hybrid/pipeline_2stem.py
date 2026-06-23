@@ -99,9 +99,12 @@ def run_demucs_only_2stem(
     job_id: str | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
-    2-stem separation using PyTorch Demucs only (no MDX ONNX Stage 1 waterfall).
-    Same flat layout as ``run_hybrid_2stem``: ``stems/vocals.wav`` and ``stems/instrumental.wav``.
+    DEPRECATED: 2-stem separation using PyTorch Demucs only (no MDX ONNX Stage 1).
+    
+    Kept for dev scripts and backward compat; not used by the intent-based routing pipeline.
+    Prefer ``run_hybrid_2stem`` for new code.
     """
+    logger.warning("DEPRECATED: run_demucs_only_2stem called — prefer run_hybrid_2stem")
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     flat_dir = output_dir / "stems"
