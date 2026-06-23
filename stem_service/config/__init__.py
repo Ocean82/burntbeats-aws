@@ -111,6 +111,17 @@ from stem_service.config.cpu_budget import (  # noqa: F401
     log_cpu_budget,
 )
 
+from stem_service.config.models import (  # noqa: F401
+    StemServiceConfig,
+    get_config,
+    validate_config_combinations,
+    _probe_onnx_models,
+)
+
 from stem_service.config.device import validate_config  # noqa: F401
 
 validate_config()
+
+# Run combination validation at import time to catch misconfiguration early.
+# Warnings are logged; does not raise (module-level constants must load).
+validate_config_combinations()

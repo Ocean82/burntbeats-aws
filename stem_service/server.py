@@ -28,11 +28,14 @@ from fastapi.responses import JSONResponse
 
 from stem_service.config import (
     REPO_ROOT,
+    MODELS_DIR,
     FOUR_STEM_BACKEND,
     htdemucs_available,
     stem_allow_missing_htdemucs_at_startup,
     MAX_QUEUE_DEPTH,
     log_cpu_budget,
+    get_config,
+    _probe_onnx_models,
 )
 from stem_service.runtime_info import (
     get_stem_runtime_versions,
@@ -269,6 +272,19 @@ async def lifespan(app: FastAPI):
                 "Deterministic CPU mode matrix is incomplete. Missing required models: "
                 f"{missing_summary}"
             )
+
+    cfg = get_config()
+    logger.info("Config summary: device=%s providers=%s queue=%d timeout=%d",
+                cfg.device, list(cfg.onnx_providers), cfg.max_queue_depth, cfg.demucs_timeout_sec)
+
+    if os.environ.get("STEM_VERIFY_MODELS_AT_STARTUP", "").strip().lower() in ("1", "true", "yes"):
+        failed = _probe_onnx_models(MODELS_DIR)
+        if failed:
+            logger.warning("ONNX model integrity check: %d model(s) failed to load: %s",
+                           len(failed), ", ".join(failed))
+        else:
+            onnx_count = sum(1 for _ in MODELS_DIR.glob("*.onnx"))
+            logger.info("ONNX model integrity check: all %d model(s) OK", onnx_count)
 
     logger.info(f"CORS allowed origins: {FRONTEND_ORIGINS}")
     logger.info("4-stem runtime path: deterministic %s", FOUR_STEM_BACKEND)
