@@ -100,7 +100,9 @@ def test_status_unknown_job_returns_404() -> None:
 
 def test_expand_enqueues_on_shared_heavy_job_queue(monkeypatch) -> None:
     from stem_service import server
+    from stem_service.job_queue import JobQueue
     from stem_service.job_utils import OUTPUT_BASE
+    from starlette.testclient import TestClient as TC
 
     source_job_id = "00000000-0000-0000-0000-000000000111"
     stems_dir = OUTPUT_BASE / source_job_id / "stems"
@@ -114,9 +116,9 @@ def test_expand_enqueues_on_shared_heavy_job_queue(monkeypatch) -> None:
         captured.update(job)
         return 3
 
-    monkeypatch.setattr(server, "enqueue_expand_job", fake_enqueue_expand_job)
-
-    response = client.post("/expand", data={"job_id": source_job_id, "quality": "speed"})
+    with TC(server.app) as tc:
+        monkeypatch.setattr(server._job_queue, "enqueue_expand_job", fake_enqueue_expand_job)
+        response = tc.post("/expand", data={"job_id": source_job_id, "quality": "speed"})
 
     assert response.status_code == 202
     body = response.json()

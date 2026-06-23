@@ -13,6 +13,7 @@ def test_run_separation_sync_ignores_legacy_backend_switch_for_2stem(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     from stem_service import job_worker
+    from stem_service.job_queue import JobQueue
     from stem_service.job_utils import PROGRESS_FILENAME
 
     job_id = "00000000-0000-0000-0000-000000000111"
@@ -44,6 +45,7 @@ def test_run_separation_sync_ignores_legacy_backend_switch_for_2stem(
     monkeypatch.setattr(job_worker, "append_metrics_log", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(job_worker, "_finalize_stems_to_16bit", lambda *_args, **_kwargs: None)
 
+    jq = JobQueue()
     job_worker.run_separation_sync(
         job_id=job_id,
         input_path=input_path,
@@ -51,6 +53,7 @@ def test_run_separation_sync_ignores_legacy_backend_switch_for_2stem(
         stem_count=2,
         prefer_speed=False,
         quality_mode="quality",
+        job_queue=jq,
     )
 
     assert called == ["hybrid"]

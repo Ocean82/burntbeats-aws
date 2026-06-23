@@ -45,17 +45,7 @@ from stem_service.runtime_info import (
 from stem_service.mdx_onnx import get_available_vocal_onnx, resolve_single_vocal_onnx
 from stem_service.vocal_stage1 import get_2stem_stage1_preview
 
-from stem_service.job_queue import (
-    cancel_all_running_jobs,
-    cancel_job,
-    cancel_queued_job,
-    enqueue_expand_job,
-    enqueue_split_job,
-    get_queue_condition,
-    get_queued_splits,
-    start_split_workers,
-    stop_split_workers,
-)
+from stem_service.job_queue import JobCancelledError, JobQueue, split_worker_count
 from stem_service.job_utils import (
     OUTPUT_BASE,
     PROGRESS_FILENAME,
@@ -82,6 +72,10 @@ _run_separation_sync = run_separation_sync
 _run_expand_sync = run_expand_sync
 _append_metrics_log = append_metrics_log
 _schedule_s3_upload = schedule_s3_upload
+
+# Module-level JobQueue instance, set during lifespan so _run_queued_job
+# (called from worker threads) can pass it to worker functions.
+_job_queue: JobQueue | None = None
 
 
 def _supported_mode_health_snapshot() -> dict[str, object]:
@@ -130,6 +124,7 @@ def _supported_mode_health_snapshot() -> dict[str, object]:
 
 def _run_queued_job(job: dict) -> None:
     """Dispatch a queued heavy job through the canonical worker surface."""
+    jq = _job_queue
     job_type = job.get("job_type", "split")
     if job_type == "expand":
         _run_expand_sync(
@@ -139,6 +134,7 @@ def _run_queued_job(job: dict) -> None:
             job["prefer_speed"],
             job.get("quality_mode", "quality"),
             job["correlation_id"],
+            jq,
         )
         return
 
@@ -151,6 +147,7 @@ def _run_queued_job(job: dict) -> None:
         job["quality_mode"],
         job["correlation_id"],
         job.get("intent"),
+        jq,
     )
 
 
@@ -290,20 +287,28 @@ async def lifespan(app: FastAPI):
     logger.info("4-stem runtime path: deterministic %s", FOUR_STEM_BACKEND)
 
     # Start the split job queue workers
-    await start_split_workers(_run_queued_job)
+    global _job_queue
+    _job_queue = JobQueue()
+    await _job_queue.start_workers(_run_queued_job)
+    app.state.job_queue = _job_queue
 
     def graceful_shutdown(signal_name):
         logger.info(f"Received {signal_name}, initiating graceful shutdown...")
-        cancel_all_running_jobs()
+        if _job_queue is not None:
+            _job_queue.cancel_all()
         logger.info("Running jobs marked for cancellation")
 
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        signal.signal(sig, lambda s, f, name=sig.name: graceful_shutdown(name))
+    try:
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            signal.signal(sig, lambda s, f, name=sig.name: graceful_shutdown(name))
+    except ValueError:
+        logger.warning("Cannot register signal handlers (not in main thread)")
 
     yield
 
     logger.info("Shutting down stem service...")
-    await stop_split_workers()
+    if _job_queue is not None:
+        await _job_queue.stop_workers()
 
 
 # ── App creation ─────────────────────────────────────────────────────────────
@@ -387,10 +392,9 @@ async def split(
         intent_payload,
     )
 
-    queue_condition = get_queue_condition()
-    if queue_condition is not None:
-        async with queue_condition:
-            if len(get_queued_splits()) >= MAX_QUEUE_DEPTH:
+    if _job_queue is not None and _job_queue.condition is not None:
+        async with _job_queue.condition:
+            if _job_queue.queued_jobs_count >= MAX_QUEUE_DEPTH:
                 logger.warning(
                     "Rejecting split request: max queue depth %d reached", MAX_QUEUE_DEPTH
                 )
@@ -467,7 +471,9 @@ async def split(
     }
     if intent_payload is not None:
         job_payload["intent"] = intent_payload
-    queue_position = await enqueue_split_job(job_payload)
+    if _job_queue is None:
+        raise RuntimeError("Job queue not initialized")
+    queue_position = await _job_queue.enqueue_split_job(job_payload)
 
     return JSONResponse(
         content={
@@ -507,10 +513,9 @@ async def expand(
     prefer_speed = (quality or "").strip().lower() == "speed"
 
     # Enforce queue depth limit (same as /split) to prevent unbounded expand concurrency
-    queue_condition = get_queue_condition()
-    if queue_condition is not None:
-        async with queue_condition:
-            if len(get_queued_splits()) >= MAX_QUEUE_DEPTH:
+    if _job_queue is not None and _job_queue.condition is not None:
+        async with _job_queue.condition:
+            if _job_queue.queued_jobs_count >= MAX_QUEUE_DEPTH:
                 logger.warning(
                     "Rejecting expand request: max queue depth %d reached", MAX_QUEUE_DEPTH
                 )
@@ -523,7 +528,9 @@ async def expand(
     out_dir = OUTPUT_BASE / expand_job_id
     out_dir.mkdir(parents=True, exist_ok=True)
     correlation_id = getattr(request.state, "correlation_id", "unknown")
-    queue_position = await enqueue_expand_job(
+    if _job_queue is None:
+        raise RuntimeError("Job queue not initialized")
+    queue_position = await _job_queue.enqueue_expand_job(
         {
             "job_type": "expand",
             "job_id": expand_job_id,
@@ -595,7 +602,7 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
         }
 
     # Try to cancel running job
-    if cancel_job(job_id):
+    if _job_queue is not None and _job_queue.cancel_job(job_id):
         write_progress(
             _safe_job_path(job_id),
             build_progress_payload(
@@ -615,7 +622,9 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
         }
 
     # Cancel queued (not yet running) split jobs
-    cancelled = await cancel_queued_job(job_id, OUTPUT_BASE)
+    cancelled = False
+    if _job_queue is not None:
+        cancelled = await _job_queue.cancel_queued_job(job_id, OUTPUT_BASE)
     if cancelled:
         return {
             "job_id": job_id,
@@ -662,7 +671,7 @@ async def metrics():
         sync_demucs_execution_metrics,
     )
 
-    set_queue_depth(len(get_queued_splits()))
+    set_queue_depth(_job_queue.queued_jobs_count if _job_queue is not None else 0)
     demucs_metrics = summarize_demucs_metrics()
     demucs_slo = evaluate_demucs_slo(demucs_metrics)
     sync_demucs_execution_metrics(demucs_metrics, demucs_slo)

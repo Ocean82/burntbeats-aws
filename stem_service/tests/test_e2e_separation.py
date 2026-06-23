@@ -22,6 +22,7 @@ import soundfile as sf
 import numpy as np
 
 from stem_service import job_worker
+from stem_service.job_queue import JobQueue
 from stem_service.job_utils import PROGRESS_FILENAME, build_progress_payload
 
 
@@ -79,6 +80,7 @@ def test_full_job_lifecycle_2stem_produces_16bit_output(monkeypatch) -> None:
     )
     monkeypatch.setattr(job_worker, "append_metrics_log", lambda *_args, **_kwargs: None)
 
+    jq = JobQueue()
     job_worker.run_separation_sync(
         job_id=job_id,
         input_path=input_path,
@@ -86,6 +88,7 @@ def test_full_job_lifecycle_2stem_produces_16bit_output(monkeypatch) -> None:
         stem_count=2,
         prefer_speed=True,
         quality_mode="speed",
+        job_queue=jq,
     )
 
     progress = json.loads((out_dir / PROGRESS_FILENAME).read_text(encoding="utf-8"))
@@ -132,6 +135,7 @@ def test_full_job_lifecycle_4stem_produces_all_stems(monkeypatch) -> None:
     )
     monkeypatch.setattr(job_worker, "append_metrics_log", lambda *_args, **_kwargs: None)
 
+    jq = JobQueue()
     job_worker.run_separation_sync(
         job_id=job_id,
         input_path=input_path,
@@ -139,6 +143,7 @@ def test_full_job_lifecycle_4stem_produces_all_stems(monkeypatch) -> None:
         stem_count=4,
         prefer_speed=False,
         quality_mode="quality",
+        job_queue=jq,
     )
 
     progress = json.loads((out_dir / PROGRESS_FILENAME).read_text(encoding="utf-8"))
@@ -215,6 +220,7 @@ def test_full_job_lifecycle_failed_job_reports_error(monkeypatch) -> None:
     )
     monkeypatch.setattr(job_worker, "append_metrics_log", lambda *_args, **_kwargs: None)
 
+    jq = JobQueue()
     job_worker.run_separation_sync(
         job_id=job_id,
         input_path=input_path,
@@ -222,6 +228,7 @@ def test_full_job_lifecycle_failed_job_reports_error(monkeypatch) -> None:
         stem_count=2,
         prefer_speed=True,
         quality_mode="speed",
+        job_queue=jq,
     )
 
     progress = json.loads((out_dir / PROGRESS_FILENAME).read_text(encoding="utf-8"))

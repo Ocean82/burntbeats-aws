@@ -11,7 +11,7 @@ import json
 import logging
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.hybrid import run_expand_to_4stem
@@ -22,12 +22,7 @@ from stem_service.routing import (
     route_intent,
 )
 from stem_service.routing.schema import parse_intent_dict
-from stem_service.job_queue import (
-    JobCancelledError,
-    is_job_cancelled,
-    register_running_job,
-    unregister_running_job,
-)
+from stem_service.job_queue import JobCancelledError, JobQueue
 from stem_service.job_utils import (
     OUTPUT_BASE,
     PROGRESS_FILENAME,
@@ -42,6 +37,7 @@ from stem_service.job_utils import (
 from stem_service.runtime_info import get_stem_runtime_versions
 from stem_service.sentry_init import job_span
 from stem_service.split import get_last_execution_route
+
 logger = logging.getLogger(__name__)
 
 CORRELATION_ID_CONTEXT_VAR: contextvars.ContextVar[str] = contextvars.ContextVar(
@@ -60,7 +56,6 @@ def _correlation_context(correlation_id: str) -> Any:
 
 
 def _log_demucs_health(job_log: logging.Logger, marker: DemucsHealthMarker) -> None:
-    """Emit bounded health markers from supervised Demucs subprocess runs."""
     job_log.info(
         "demucs_health pid=%s elapsed=%.2fs silence=%.2fs last=%s",
         marker.pid,
@@ -71,15 +66,7 @@ def _log_demucs_health(job_log: logging.Logger, marker: DemucsHealthMarker) -> N
 
 
 def _finalize_stems_to_16bit(stem_list: list[tuple[str, Path]]) -> None:
-    """Convert final output stems from float32 WAV to 16-bit PCM with TPDF dither.
-
-    This is the LAST processing step before delivery. All intermediate processing
-    (ONNX inference, phase inversion, Demucs) operates in float32 to avoid
-    compounding quantization noise. Only the final user-facing stems are dithered
-    down to 16-bit for standard playback compatibility.
-    """
     import soundfile as sf
-
     from stem_service.audio_utils import write_wav_16bit
 
     failed_stems: list[dict[str, str]] = []
@@ -95,12 +82,8 @@ def _finalize_stems_to_16bit(stem_list: list[tuple[str, Path]]) -> None:
             write_wav_16bit(path, audio, sr, dither=True)
         except Exception as e:
             failed_stems.append({"stem": stem_id, "reason": str(e)})
-
     if failed_stems:
-        raise RuntimeError(
-            f"Stem finalization failed: {failed_stems}"
-        )
-
+        raise RuntimeError(f"Stem finalization failed: {failed_stems}")
 
 
 def _resolve_split_intent(
@@ -114,7 +97,6 @@ def _resolve_split_intent(
             "Resolved intent: task=%s targets=%s mode=%s quality=%s",
             intent.task, intent.targets, intent.mode, intent.quality,
         )
-        # Detect and warn when intent overrides caller-provided legacy args
         derived_speed = intent.prefer_speed()
         derived_quality = intent.quality_mode()
         if derived_speed != (quality_mode == "speed") or derived_quality != quality_mode:
@@ -128,6 +110,48 @@ def _resolve_split_intent(
     return intent_from_legacy(stem_count, quality_mode)
 
 
+# ── 6.2: Pure separation logic — no I/O side effects ─────────────────────
+
+
+def _run_separation_core(
+    split_intent: SplitIntent,
+    input_path: Path,
+    out_dir: Path,
+    progress_callback: Callable[[int, str | None], None],
+    cancel_check: Callable[[], bool],
+    health_callback: Callable[[DemucsHealthMarker], None],
+    job_log: logging.Logger,
+    job_id: str,
+) -> tuple[list[tuple[str, Path]], list[str], Any]:
+    """Execute the routing plan and model invocations.
+
+    Returns (stem_list, models_used, plan). All I/O is delegated to the
+    callbacks provided by the caller (the I/O coordinator).
+    """
+    plan = route_intent(split_intent)
+    job_log.info(
+        "Intent routing: task=%s targets=%s jobs=%s notes=%s",
+        split_intent.task,
+        split_intent.targets or split_intent.mode,
+        [j.kind for j in plan.jobs],
+        plan.routing_notes,
+    )
+    stem_list, models_used = execute_plan(
+        plan,
+        input_path,
+        out_dir,
+        progress_callback=progress_callback,
+        job_logger=job_log,
+        cancel_check=cancel_check,
+        health_callback=health_callback,
+        job_id=job_id,
+    )
+    return stem_list, models_used, plan
+
+
+# ── I/O Coordinator: separation ─────────────────────────────────────────
+
+
 def run_separation_sync(
     job_id: str,
     input_path: Path,
@@ -137,12 +161,13 @@ def run_separation_sync(
     quality_mode: str = "quality",
     correlation_id: str = "unknown",
     intent_payload: dict | None = None,
+    job_queue: JobQueue | None = None,
 ) -> None:
     """Blocking separation; writes progress at stages. Called from worker thread."""
     with _correlation_context(correlation_id):
         _run_separation_sync_impl(
             job_id, input_path, out_dir, stem_count, prefer_speed,
-            quality_mode, intent_payload,
+            quality_mode, intent_payload, job_queue,
         )
 
 
@@ -154,9 +179,12 @@ def _run_separation_sync_impl(
     prefer_speed: bool,
     quality_mode: str,
     intent_payload: dict | None,
+    job_queue: JobQueue | None = None,
 ) -> None:
-    """Inner implementation of the separation logic, called under the ContextVar guard."""
     _span_stack: contextlib.ExitStack | None = None
+
+    if job_queue is not None:
+        job_queue.register_running_job(job_id)
 
     split_intent = _resolve_split_intent(intent_payload, stem_count, quality_mode)
 
@@ -168,17 +196,12 @@ def _run_separation_sync_impl(
 
     model_tier = "fast" if prefer_speed else "quality"
 
-    # Register job for tracking (thread-safe)
-    register_running_job(job_id)
-
     job_log = make_job_logger(job_id, out_dir)
     t0 = time.monotonic()
 
-    # Audio duration for realtime-factor (processing_time / song_length)
     audio_duration_seconds: float | None = None
     try:
         import soundfile as sf
-
         info = sf.info(str(input_path))
         audio_duration_seconds = float(info.duration)
     except Exception as e:
@@ -191,13 +214,8 @@ def _run_separation_sync_impl(
 
     job_log.info(
         "=== JOB START  job_id=%s  stems=%d  quality=%s  prefer_speed=%s  model_tier=%s  intent=%s  file=%.2fMB ===",
-        job_id,
-        stem_count,
-        quality_mode,
-        prefer_speed,
-        model_tier,
-        split_intent.to_json_dict(),
-        file_size_mb,
+        job_id, stem_count, quality_mode, prefer_speed, model_tier,
+        split_intent.to_json_dict(), file_size_mb,
     )
     logger.info("Started job %s (quality: %s)", job_id, quality_mode)
 
@@ -205,7 +223,7 @@ def _run_separation_sync_impl(
     mode_name = resolve_mode_name(stem_count, quality_mode)
 
     def on_progress(pct: int, job_kind: str | None = None) -> None:
-        if is_job_cancelled(job_id):
+        if job_queue is not None and job_queue.is_job_cancelled(job_id):
             raise JobCancelledError("Job cancelled by user")
         elapsed = time.monotonic() - t0
         job_log.info("progress=%d%%  elapsed=%.1fs", pct, elapsed)
@@ -235,27 +253,19 @@ def _run_separation_sync_impl(
             )
         )
 
-        plan = route_intent(split_intent)
-        job_log.info(
-            "Intent routing: task=%s targets=%s jobs=%s notes=%s",
-            split_intent.task,
-            split_intent.targets or split_intent.mode,
-            [j.kind for j in plan.jobs],
-            plan.routing_notes,
-        )
-        stem_list, models_used = execute_plan(
-            plan,
-            input_path,
-            out_dir,
+        # Pure logic: routing + model execution via callbacks
+        stem_list, models_used, plan = _run_separation_core(
+            split_intent, input_path, out_dir,
             progress_callback=on_progress,
-            job_logger=job_log,
-            cancel_check=lambda: is_job_cancelled(job_id),
+            cancel_check=lambda: bool(job_queue is not None and job_queue.is_job_cancelled(job_id)),
             health_callback=lambda marker: _log_demucs_health(job_log, marker),
+            job_log=job_log,
             job_id=job_id,
         )
 
-        # Check if cancelled before marking complete
-        if is_job_cancelled(job_id):
+        # ── I/O phase: post-processing, progress, metrics, cleanup ──
+
+        if job_queue is not None and job_queue.is_job_cancelled(job_id):
             write_progress(
                 out_dir,
                 build_progress_payload(
@@ -268,9 +278,6 @@ def _run_separation_sync_impl(
             job_log.info("=== JOB CANCELLED ===")
             return
 
-        # Finalize: convert all output stems to 16-bit PCM with TPDF dither.
-        # This is the last processing step — all prior stages use float32 to
-        # avoid compounding quantization noise through phase inversion / Demucs.
         _finalize_stems_to_16bit(stem_list)
 
         elapsed = time.monotonic() - t0
@@ -301,8 +308,7 @@ def _run_separation_sync_impl(
             extra={
                 "stems": stems_payload,
                 "audio_duration_seconds": round(audio_duration_seconds, 2)
-                if audio_duration_seconds is not None
-                else None,
+                if audio_duration_seconds is not None else None,
                 "realtime_factor": realtime_factor,
                 "prefer_speed": prefer_speed,
                 "models_used": models_used,
@@ -319,7 +325,6 @@ def _run_separation_sync_impl(
             analysis_source=analysis_source,
         )
 
-        # Do not let metrics / logging failures overwrite a successful job
         try:
             metrics_record = {
                 "job_id": job_id,
@@ -330,29 +335,21 @@ def _run_separation_sync_impl(
                 "prefer_speed": prefer_speed,
                 "elapsed_seconds": round(elapsed, 2),
                 "audio_duration_seconds": round(audio_duration_seconds, 2)
-                if audio_duration_seconds is not None
-                else None,
+                if audio_duration_seconds is not None else None,
                 "realtime_factor": realtime_factor,
                 "models_used": models_used,
                 "stem_runtime": get_stem_runtime_versions(),
                 "demucs_execution_route": get_last_execution_route(),
             }
             append_metrics_log(metrics_record)
-
             job_log.info(
                 "=== JOB COMPLETE  elapsed=%.1fs  audio=%.1fs  RTF=%s  mode=%s  models=%s ===",
-                elapsed,
-                audio_duration_seconds or 0,
-                realtime_factor,
-                mode_name,
-                models_used,
+                elapsed, audio_duration_seconds or 0, realtime_factor,
+                mode_name, models_used,
             )
             logger.info(
                 "Completed job %s in %.1fs (mode=%s, RTF=%s)",
-                job_id,
-                elapsed,
-                mode_name,
-                realtime_factor,
+                job_id, elapsed, mode_name, realtime_factor,
             )
         except Exception as post_err:
             job_log.warning(
@@ -405,9 +402,9 @@ def _run_separation_sync_impl(
     finally:
         if _span_stack is not None:
             _span_stack.close()
-        unregister_running_job(job_id)
+        if job_queue is not None:
+            job_queue.unregister_running_job(job_id)
 
-        # Always delete the input file once processing resolves to prevent storage leaks.
         if input_path and input_path.exists():
             try:
                 input_path.unlink()
@@ -415,7 +412,6 @@ def _run_separation_sync_impl(
             except OSError as e:
                 job_log.warning("Could not delete input file: %s", e)
 
-        # Wipe stems/ only for terminal non-success states to recover disk space.
         _final_status: str | None = None
         _progress_path = out_dir / PROGRESS_FILENAME
         if _progress_path.exists():
@@ -430,7 +426,6 @@ def _run_separation_sync_impl(
             stems_dir = out_dir / "stems"
             if stems_dir.exists():
                 import shutil as _shutil
-
                 try:
                     _shutil.rmtree(stems_dir, ignore_errors=True)
                     job_log.info(
@@ -440,6 +435,9 @@ def _run_separation_sync_impl(
                     pass
 
 
+# ── Expand ─────────────────────────────────────────────────────────────
+
+
 def run_expand_sync(
     expand_job_id: str,
     source_job_id: str,
@@ -447,12 +445,13 @@ def run_expand_sync(
     prefer_speed: bool,
     quality_mode: str = "quality",
     correlation_id: str = "unknown",
+    job_queue: JobQueue | None = None,
 ) -> None:
     """Blocking expand 2-stem → 4-stem; writes progress. Called from thread."""
     with _correlation_context(correlation_id):
         _run_expand_sync_impl(
             expand_job_id, source_job_id, out_dir, prefer_speed,
-            quality_mode,
+            quality_mode, job_queue,
         )
 
 
@@ -462,22 +461,22 @@ def _run_expand_sync_impl(
     out_dir: Path,
     prefer_speed: bool,
     quality_mode: str,
+    job_queue: JobQueue | None = None,
 ) -> None:
-    """Inner implementation of the expand logic, called under the ContextVar guard."""
     _span_stack: contextlib.ExitStack | None = None
-    register_running_job(expand_job_id)
+    if job_queue is not None:
+        job_queue.register_running_job(expand_job_id)
 
     job_log = make_job_logger(expand_job_id, out_dir)
     t0 = time.monotonic()
     source_stems_dir = safe_job_path(source_job_id, "stems")
     job_log.info(
         "=== EXPAND START  expand_job=%s  source_job=%s ===",
-        expand_job_id,
-        source_job_id,
+        expand_job_id, source_job_id,
     )
 
     def on_progress(pct: int) -> None:
-        if is_job_cancelled(expand_job_id):
+        if job_queue is not None and job_queue.is_job_cancelled(expand_job_id):
             raise JobCancelledError("Job cancelled by user")
         write_progress(
             out_dir,
@@ -509,11 +508,11 @@ def _run_expand_sync_impl(
             model_tier="fast" if prefer_speed else quality_mode,
             progress_callback=on_progress,
             job_logger=job_log,
-            cancel_check=lambda: is_job_cancelled(expand_job_id),
+            cancel_check=lambda: bool(job_queue is not None and job_queue.is_job_cancelled(expand_job_id)),
             health_callback=lambda marker: _log_demucs_health(job_log, marker),
             job_id=expand_job_id,
         )
-        if is_job_cancelled(expand_job_id):
+        if job_queue is not None and job_queue.is_job_cancelled(expand_job_id):
             write_progress(
                 out_dir,
                 build_progress_payload(
@@ -526,7 +525,6 @@ def _run_expand_sync_impl(
             )
             return
 
-        # Finalize: convert output stems to 16-bit PCM with TPDF dither.
         _finalize_stems_to_16bit(stem_list)
 
         elapsed = time.monotonic() - t0
@@ -602,4 +600,5 @@ def _run_expand_sync_impl(
     finally:
         if _span_stack is not None:
             _span_stack.close()
-        unregister_running_job(expand_job_id)
+        if job_queue is not None:
+            job_queue.unregister_running_job(expand_job_id)

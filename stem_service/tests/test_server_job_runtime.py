@@ -44,7 +44,7 @@ def test_build_progress_payload_tracks_mode_specific_stage_labels() -> None:
 
 
 def test_split_worker_count_env_parsing(monkeypatch) -> None:
-    from stem_service.job_queue import split_worker_count
+    from stem_service.job_queue import split_worker_count, JobQueue
 
     monkeypatch.setenv("STEM_CPU_WORKERS", "2")
     assert split_worker_count() == 2
@@ -59,8 +59,15 @@ def test_split_worker_count_env_parsing(monkeypatch) -> None:
     monkeypatch.setenv("SPLIT_MAX_CONCURRENCY", "bad")
     assert split_worker_count() == 1
 
+    # Verify basic JobQueue lifecycle wiring
+    jq = JobQueue()
+    assert jq.condition is None
+    assert len(jq.queued_jobs) == 0
+
 
 def test_run_separation_sync_quality_does_not_use_uninitialized_model_tier(monkeypatch) -> None:
+    from stem_service.job_queue import JobQueue
+
     job_id = "00000000-0000-0000-0000-000000000001"
     out_dir = job_worker.OUTPUT_BASE / job_id
     stems_dir = out_dir / "stems"
@@ -85,6 +92,8 @@ def test_run_separation_sync_quality_does_not_use_uninitialized_model_tier(monke
     )
     monkeypatch.setattr(job_worker, "append_metrics_log", lambda *_args, **_kwargs: None)
 
+    jq = JobQueue()
+
     # Regression assertion: this call used to raise UnboundLocalError for model_tier.
     job_worker.run_separation_sync(
         job_id=job_id,
@@ -93,6 +102,7 @@ def test_run_separation_sync_quality_does_not_use_uninitialized_model_tier(monke
         stem_count=2,
         prefer_speed=False,
         quality_mode="quality",
+        job_queue=jq,
     )
 
     from stem_service.job_utils import PROGRESS_FILENAME
@@ -101,6 +111,7 @@ def test_run_separation_sync_quality_does_not_use_uninitialized_model_tier(monke
 
 
 def test_run_separation_sync_marks_local_ready_before_optional_artifacts(monkeypatch) -> None:
+    from stem_service.job_queue import JobQueue
     job_id = "00000000-0000-0000-0000-000000000002"
     out_dir = job_worker.OUTPUT_BASE / job_id
     stems_dir = out_dir / "stems"
@@ -130,6 +141,8 @@ def test_run_separation_sync_marks_local_ready_before_optional_artifacts(monkeyp
 
     monkeypatch.setattr(job_worker, "schedule_completion_artifacts", fake_schedule)
 
+    from stem_service.job_queue import JobQueue
+    jq = JobQueue()
     job_worker.run_separation_sync(
         job_id=job_id,
         input_path=input_path,
@@ -137,6 +150,7 @@ def test_run_separation_sync_marks_local_ready_before_optional_artifacts(monkeyp
         stem_count=2,
         prefer_speed=True,
         quality_mode="speed",
+        job_queue=jq,
     )
 
     assert scheduled["job_id"] == job_id
@@ -225,6 +239,8 @@ def test_run_separation_sync_ignores_demucs_only_2stem_backend_switch(monkeypatc
     )
     monkeypatch.setattr(job_worker, "append_metrics_log", lambda *_args, **_kwargs: None)
 
+    from stem_service.job_queue import JobQueue
+    jq = JobQueue()
     job_worker.run_separation_sync(
         job_id=job_id,
         input_path=input_path,
@@ -232,6 +248,7 @@ def test_run_separation_sync_ignores_demucs_only_2stem_backend_switch(monkeypatc
         stem_count=2,
         prefer_speed=False,
         quality_mode="quality",
+        job_queue=jq,
     )
 
     assert called == ["hybrid"]
@@ -283,12 +300,15 @@ def test_run_expand_sync_inherits_beat_grid_from_source_progress(monkeypatch) ->
         job_worker, "schedule_completion_artifacts", lambda *_args, **_kwargs: None
     )
 
+    from stem_service.job_queue import JobQueue
+    jq = JobQueue()
     job_worker.run_expand_sync(
         expand_job_id=expand_job_id,
         source_job_id=source_job_id,
         out_dir=out_dir,
         prefer_speed=True,
         quality_mode="speed",
+        job_queue=jq,
     )
 
     progress = (out_dir / PROGRESS_FILENAME).read_text(encoding="utf-8")
