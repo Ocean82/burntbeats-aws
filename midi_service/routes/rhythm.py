@@ -2,9 +2,12 @@
 Rhythm generation API routes.
 
 Endpoints:
-  POST /rhythm/generate — Generate a rhythm pattern as MIDI
-  GET  /rhythm/styles   — List available groove styles
-  POST /rhythm/variation — Apply variation to a generated pattern
+  POST /rhythm/generate          — Generate a rhythm pattern as MIDI
+  POST /rhythm/generate/full     — Generate with fills, drift, subkick
+  GET  /rhythm/styles            — List available groove styles
+  POST /rhythm/variation         — Apply variation to a generated pattern
+  POST /rhythm/era/generate      — Generate era-accurate groove
+  POST /rhythm/era/generate/json — Era groove as base64 JSON
 """
 
 from __future__ import annotations
@@ -18,6 +21,9 @@ from pydantic import BaseModel, Field
 from midi_service.services.rhythm import (
     generate_groove,
     generate_rhythm_midi,
+    generate_rhythm_midi_full,
+    generate_era_groove,
+    generate_era_rhythm_midi,
     apply_variation,
     steps_to_midi,
     PITCH_MAP,
@@ -46,6 +52,34 @@ class RhythmGenerateRequest(BaseModel):
     seed: Optional[str] = Field(
         default=None, description="Random seed for reproducibility"
     )
+    # New optional fields
+    subkick_enabled: bool = Field(
+        default=False, description="Add subkick doubling the kick"
+    )
+    fill_every: int = Field(
+        default=0, ge=0, le=16, description="Apply hard fill every N bars (0 = off)"
+    )
+    fill_style: str = Field(
+        default="auto", description="Fill style: auto, snare_buzz, tom_run, combo"
+    )
+    fill_len_beats: float = Field(
+        default=1.0, ge=0.25, le=4.0, description="Fill duration in beats"
+    )
+    drift_rate_hz: float = Field(
+        default=0.0, ge=0.0, le=10.0, description="Vinyl wow rate (Hz, 0=off)"
+    )
+    drift_depth: float = Field(
+        default=0.0, ge=0.0, le=0.05, description="Vinyl wow depth (seconds)"
+    )
+    flutter_rate_hz: float = Field(
+        default=0.0, ge=0.0, le=50.0, description="Vinyl flutter rate (Hz, 0=off)"
+    )
+    flutter_depth: float = Field(
+        default=0.0, ge=0.0, le=0.01, description="Vinyl flutter depth (seconds)"
+    )
+    drift_vel_pp: int = Field(
+        default=0, ge=0, le=20, description="Velocity wobble peak-to-peak"
+    )
 
 
 class RhythmVariationRequest(BaseModel):
@@ -56,6 +90,22 @@ class RhythmVariationRequest(BaseModel):
     swing_pct: float = Field(default=0.0, ge=0.0, le=100.0)
     seed: Optional[str] = Field(default=None)
     variation: str = Field(description="Variation type: fill, breakdown, or buildup")
+
+
+class EraRhythmGenerateRequest(BaseModel):
+    era: str = Field(
+        default="motown_60s",
+        description="Era profile: motown_60s, philly_70s, disco_77, new_jack_90, boom_bap_94, g_funk_96, doo_wop_12_8",
+    )
+    bars: int = Field(default=8, ge=1, le=32, description="Number of bars")
+    energy: float = Field(default=0.8, ge=0.0, le=1.0, description="Energy level")
+    tempo: Optional[float] = Field(
+        default=None, ge=40, le=300, description="Override era tempo (None = era default)"
+    )
+    seed: Optional[str] = Field(default=None, description="Random seed")
+    fill_every: int = Field(default=4, ge=0, le=16, description="Fill every N bars")
+    fill_style: str = Field(default="auto", description="Fill style")
+    subkick_enabled: bool = Field(default=False)
 
 
 class StyleInfo(BaseModel):
@@ -132,6 +182,56 @@ AVAILABLE_STYLES = [
         default_tempo=75,
         default_swing=10,
     ),
+    # ─── Era Styles ───────────────────────────────────────────
+    StyleInfo(
+        id="motown_60s",
+        name="Motown (60s)",
+        description="Tambourine-driven four-on-the-floor with vinyl warmth",
+        default_tempo=104,
+        default_swing=58,
+    ),
+    StyleInfo(
+        id="philly_70s",
+        name="Philly Soul (70s)",
+        description="Smooth four-on-the-floor with cowbell accents",
+        default_tempo=116,
+        default_swing=54,
+    ),
+    StyleInfo(
+        id="disco_77",
+        name="Disco (77)",
+        description="Four-on-the-floor with open hats and tight pocket",
+        default_tempo=125,
+        default_swing=52,
+    ),
+    StyleInfo(
+        id="new_jack_90",
+        name="New Jack Swing (90)",
+        description="Swing feel with shaker and syncopated kick",
+        default_tempo=110,
+        default_swing=60,
+    ),
+    StyleInfo(
+        id="boom_bap_94",
+        name="Boom Bap (94)",
+        description="Lo-fi hip-hop with ghost snares and heavy drift",
+        default_tempo=92,
+        default_swing=62,
+    ),
+    StyleInfo(
+        id="g_funk_96",
+        name="G-Funk (96)",
+        description="Laid-back West Coast with conga accents",
+        default_tempo=95,
+        default_swing=60,
+    ),
+    StyleInfo(
+        id="doo_wop_12_8",
+        name="Doo-Wop (12/8)",
+        description="Slow 12/8 ballad with ride bell and heavy drift",
+        default_tempo=80,
+        default_swing=0,
+    ),
 ]
 
 
@@ -160,14 +260,26 @@ def build_rhythm_router() -> APIRouter:
         require_api_token(request)
 
         try:
-            midi_bytes, meta = generate_rhythm_midi(
-                style=body.style,
-                bars=body.bars,
-                tempo=body.tempo,
-                energy=body.energy,
-                swing_pct=body.swing_pct,
-                seed=body.seed,
-            )
+            if any([body.fill_every, body.drift_rate_hz, body.subkick_enabled, body.drift_depth, body.flutter_rate_hz, body.flutter_depth, body.drift_vel_pp]):
+                midi_bytes, meta = generate_rhythm_midi_full(
+                    style=body.style, bars=body.bars, tempo=body.tempo,
+                    energy=body.energy, swing_pct=body.swing_pct, seed=body.seed,
+                    fill_every=body.fill_every, fill_style=body.fill_style,
+                    fill_len_beats=body.fill_len_beats,
+                    subkick_enabled=body.subkick_enabled,
+                    drift_rate_hz=body.drift_rate_hz, drift_depth=body.drift_depth,
+                    flutter_rate_hz=body.flutter_rate_hz, flutter_depth=body.flutter_depth,
+                    drift_vel_pp=body.drift_vel_pp,
+                )
+            else:
+                midi_bytes, meta = generate_rhythm_midi(
+                    style=body.style,
+                    bars=body.bars,
+                    tempo=body.tempo,
+                    energy=body.energy,
+                    swing_pct=body.swing_pct,
+                    seed=body.seed,
+                )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:
@@ -203,14 +315,26 @@ def build_rhythm_router() -> APIRouter:
         import base64
 
         try:
-            midi_bytes, meta = generate_rhythm_midi(
-                style=body.style,
-                bars=body.bars,
-                tempo=body.tempo,
-                energy=body.energy,
-                swing_pct=body.swing_pct,
-                seed=body.seed,
-            )
+            if any([body.fill_every, body.drift_rate_hz, body.subkick_enabled, body.drift_depth, body.flutter_rate_hz, body.flutter_depth, body.drift_vel_pp]):
+                midi_bytes, meta = generate_rhythm_midi_full(
+                    style=body.style, bars=body.bars, tempo=body.tempo,
+                    energy=body.energy, swing_pct=body.swing_pct, seed=body.seed,
+                    fill_every=body.fill_every, fill_style=body.fill_style,
+                    fill_len_beats=body.fill_len_beats,
+                    subkick_enabled=body.subkick_enabled,
+                    drift_rate_hz=body.drift_rate_hz, drift_depth=body.drift_depth,
+                    flutter_rate_hz=body.flutter_rate_hz, flutter_depth=body.flutter_depth,
+                    drift_vel_pp=body.drift_vel_pp,
+                )
+            else:
+                midi_bytes, meta = generate_rhythm_midi(
+                    style=body.style,
+                    bars=body.bars,
+                    tempo=body.tempo,
+                    energy=body.energy,
+                    swing_pct=body.swing_pct,
+                    seed=body.seed,
+                )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -218,6 +342,92 @@ def build_rhythm_router() -> APIRouter:
             "midi_base64": base64.b64encode(midi_bytes).decode("ascii"),
             "metadata": meta,
             "filename": f"rhythm_{body.style}_{int(body.tempo)}bpm_{body.bars}bars.mid",
+        }
+
+    @router.post("/generate/full")
+    async def generate_full(request: Request, body: RhythmGenerateRequest) -> Response:
+        """Generate a rhythm pattern with fills, drift, subkick (explicit endpoint)."""
+        require_api_token(request)
+
+        try:
+            midi_bytes, meta = generate_rhythm_midi_full(
+                style=body.style, bars=body.bars, tempo=body.tempo,
+                energy=body.energy, swing_pct=body.swing_pct, seed=body.seed,
+                fill_every=body.fill_every, fill_style=body.fill_style,
+                fill_len_beats=body.fill_len_beats,
+                subkick_enabled=body.subkick_enabled,
+                drift_rate_hz=body.drift_rate_hz, drift_depth=body.drift_depth,
+                flutter_rate_hz=body.flutter_rate_hz, flutter_depth=body.flutter_depth,
+                drift_vel_pp=body.drift_vel_pp,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Full rhythm generation failed: {e}") from e
+
+        filename = f"rhythm_{body.style}_full_{int(body.tempo)}bpm_{body.bars}bars.mid"
+        return Response(
+            content=midi_bytes,
+            media_type="audio/midi",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Rhythm-Style": body.style,
+                "X-Rhythm-Bars": str(body.bars),
+                "X-Rhythm-Tempo": str(body.tempo),
+            },
+        )
+
+    @router.post("/era/generate")
+    async def era_generate(request: Request, body: EraRhythmGenerateRequest) -> Response:
+        """Generate an era-accurate drum groove with vinyl drift and fills."""
+        require_api_token(request)
+
+        try:
+            midi_bytes, meta = generate_era_rhythm_midi(
+                era=body.era, bars=body.bars, energy=body.energy,
+                tempo=body.tempo, seed=body.seed,
+                fill_every=body.fill_every, fill_style=body.fill_style,
+                subkick_enabled=body.subkick_enabled,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Era generation failed: {e}") from e
+
+        filename = f"era_{body.era}_{int(meta['tempo'])}bpm_{body.bars}bars.mid"
+        return Response(
+            content=midi_bytes,
+            media_type="audio/midi",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "X-Rhythm-Era": body.era,
+                "X-Rhythm-Bars": str(body.bars),
+                "X-Rhythm-Tempo": str(meta["tempo"]),
+                "X-Rhythm-Time-Sig": f'{meta["time_signature"][0]}/{meta["time_signature"][1]}',
+            },
+        )
+
+    @router.post("/era/generate/json")
+    async def era_generate_json(request: Request, body: EraRhythmGenerateRequest) -> dict:
+        """Generate an era groove and return base64 MIDI + metadata."""
+        require_api_token(request)
+
+        import base64
+
+        try:
+            midi_bytes, meta = generate_era_rhythm_midi(
+                era=body.era, bars=body.bars, energy=body.energy,
+                tempo=body.tempo, seed=body.seed,
+                fill_every=body.fill_every, fill_style=body.fill_style,
+                subkick_enabled=body.subkick_enabled,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+        return {
+            "midi_base64": base64.b64encode(midi_bytes).decode("ascii"),
+            "metadata": meta,
+            "filename": f"era_{body.era}_{int(meta['tempo'])}bpm_{body.bars}bars.mid",
         }
 
     @router.post("/variation")

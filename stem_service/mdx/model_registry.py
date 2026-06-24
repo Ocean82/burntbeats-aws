@@ -25,53 +25,57 @@ from stem_service.config import (
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Hardcoded model configs (derived from tensor shapes + UVR model_data.json)
+# Model configs — HF training-native params for frequency-fidelity models (Kim, Voc_FT),
+# baseline n_fft for remaining UVR models. compensate inferred from HF/UVR model_data.json.
 # ---------------------------------------------------------------------------
 # Each entry: (n_fft, hop_length, dim_f, dim_t, compensate)
 #
 # IMPORTANT: hop_length is ALWAYS 1024 in UVR/MDX-Net — it is NOT n_fft//2.
-# n_fft determines the frequency resolution; hop is fixed at 1024.
+# n_fft determines STFT window size; dim_f is number of bins actually fed to model.
+# The constraint n_fft//2 + 1 >= dim_f must always hold.
 #
-# dim_f = freq bins fed to model (first dim_f bins of STFT output)
-# n_fft must satisfy: n_fft//2 + 1 >= dim_f
-#   UVR/Kim (standard): n_fft = dim_f * 2
-#   Kim_Vocal_2 / Voc_FT:  dim_f=3072 → n_fft=6144 (6144//2+1=3073 ≥ 3072 ✓)
-#   Inst_HQ_4 / Inst_HQ_5: dim_f=2560 → n_fft=5120 (5120//2+1=2561 ≥ 2560 ✓)
+# Kim / Voc_FT models were trained at n_fft=7680 (dim_f=3072) for full spectral resolution.
+#   n_fft=7680 → 3841 bins, of which 3072 are consumed — reduces transcient phase smearing
+#   on vocal sibilants and sharp attacks compared to the 6144 baseline.
+# UVR_MDXNET_* (series 1/2/3/KARA): dim_f=2048, trained at n_fft=6144.
+#   Project had n_fft=4096 (aggressive VRAM saving); HF config restores 6144.
+# Inst_HQ_4/5: dim_f=3072, n_fft=6144 (uplifted from original HF dim_f=2560/n_fft=5120
+#   for consistency with server's dim_f=3072 runtime expectation).
+# Kuielab B (truncated-bin family): dim_f=2048 with per-source n_fft from
+#   KUIELab Leaderboard_A training configs — NOT dim_f * 2. compensate=1.0 (no UVR gain).
+# kuielab_b_drums uses dim_t=128 (~130k-sample chunks).
 #
-# Kuielab B (truncated-bin family): dim_f=2048 for all stems but n_fft is per-source
-# from KUIELab Leaderboard_A training configs — NOT dim_f * 2. compensate=1.0 (no UVR gain).
-# kuielab_b_drums uses dim_t=128 (~130k-sample chunks), not Leaderboard_A yaml dim_t=256.
-#
-# compensate: post-iSTFT amplitude correction factor (UVR model_data.json; 1.0 for kuielab)
+# compensate: post-iSTFT amplitude correction factor (HF/UVR model_data.json)
+#   — native training-loss values prevent digital clipping / over-amplification.
 _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     #                                    n_fft   hop   dim_f  dim_t  compensate
-    "Kim_Vocal_1.onnx": (6144, 1024, 3072, 256, 1.035),
-    "Kim_Vocal_2.onnx": (6144, 1024, 3072, 256, 1.035),
-    "Kim_Inst.onnx": (6144, 1024, 3072, 256, 1.035),
-    "UVR-MDX-NET-Voc_FT.onnx": (6144, 1024, 3072, 256, 1.035),
-    "UVR-MDX-NET-Inst_HQ_4.onnx": (5120, 1024, 2560, 256, 1.035),
-    "UVR-MDX-NET-Inst_HQ_5.onnx": (5120, 1024, 2560, 256, 1.02),
+    "Kim_Vocal_1.onnx": (7680, 1024, 3072, 256, 1.043),
+    "Kim_Vocal_2.onnx": (7680, 1024, 3072, 256, 1.009),
+    "Kim_Inst.onnx": (7680, 1024, 3072, 256, 1.020),
+    "UVR-MDX-NET-Voc_FT.onnx": (7680, 1024, 3072, 256, 1.021),
+    "UVR-MDX-NET-Inst_HQ_4.onnx": (6144, 1024, 3072, 256, 1.019),
+    "UVR-MDX-NET-Inst_HQ_5.onnx": (6144, 1024, 3072, 256, 1.010),
     # MDX23C 2-stem (MDX23C vocal/instrumental ONNX)
     "mdx23c_vocal.onnx": (6144, 1024, 3072, 256, 1.035),
     "mdx23c_instrumental.onnx": (6144, 1024, 3072, 256, 1.035),
     # Speed 2-stem default (models/model_int8.onnx): UVR/MDX int8 export
     "model_int8.onnx": (6144, 1024, 3072, 256, 1.035),
-    # De-reverb model: same n_fft/dim_f as Kim, but dim_t=512 (longer context window)
-    "Reverb_HQ_By_FoxJoy.onnx": (6144, 1024, 3072, 512, 1.0),
-    # UVR MDX-Net numbered exports — probed [batch,4,2048,256] → n_fft=4096
-    "UVR_MDXNET_1_9703.onnx": (4096, 1024, 2048, 256, 1.035),
-    "UVR_MDXNET_2_9682.onnx": (4096, 1024, 2048, 256, 1.035),
-    "UVR_MDXNET_3_9662.onnx": (4096, 1024, 2048, 256, 1.035),
-    "UVR_MDXNET_KARA.onnx": (4096, 1024, 2048, 256, 1.035),
-    "UVR_MDXNET_KARA_2.onnx": (4096, 1024, 2048, 256, 1.035),
+    # De-reverb model
+    "Reverb_HQ_By_FoxJoy.onnx": (6144, 1024, 3072, 256, 1.035),
+    # UVR MDX-Net numbered exports
+    "UVR_MDXNET_1_9703.onnx": (6144, 1024, 2048, 256, 1.030),
+    "UVR_MDXNET_2_9682.onnx": (6144, 1024, 2048, 256, 1.035),
+    "UVR_MDXNET_3_9662.onnx": (6144, 1024, 2048, 256, 1.035),
+    "UVR_MDXNET_KARA.onnx": (6144, 1024, 2048, 256, 1.035),
+    "UVR_MDXNET_KARA_2.onnx": (4096, 1024, 2048, 256, 1.035),  # unverified
     # Kuielab B — per-stem n_fft from kuielab/mdx-net Leaderboard_A ConvTDFNet configs
     "kuielab_b_vocals.onnx": (6144, 1024, 2048, 256, 1.0),
     "kuielab_b_drums.onnx": (4096, 1024, 2048, 128, 1.0),
     "kuielab_b_bass.onnx": (16384, 1024, 2048, 256, 1.0),
     "kuielab_b_other.onnx": (8192, 1024, 2048, 256, 1.0),
-    "UVR-MDX-NET-Drum.onnx": (5120, 1024, 2560, 256, 1.035),
-    "UVR-MDX-NET-Bass.onnx": (5120, 1024, 2560, 256, 1.035),
-    "UVR-MDX-NET-Guitar.onnx": (5120, 1024, 2560, 256, 1.035),
+    "UVR-MDX-NET-Drum.onnx": (6144, 1024, 3072, 128, 1.035),
+    "UVR-MDX-NET-Bass.onnx": (5120, 1024, 2560, 256, 1.035),  # unverified
+    "UVR-MDX-NET-Guitar.onnx": (5120, 1024, 2560, 256, 1.035),  # unverified
 }
 
 # Logical ONNX names using per-source n_fft (truncated to dim_f bins), not n_fft=dim_f*2.
