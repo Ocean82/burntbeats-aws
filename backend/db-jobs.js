@@ -145,6 +145,48 @@ export async function insertStems(jobId, stems) {
 }
 
 /**
+ * Get a single job by ID.
+ * @param {string} jobId
+ * @returns {Promise<Record<string, unknown> | null>}
+ */
+export async function getJobById(jobId) {
+  const pool = getPool();
+  if (!pool) return null;
+  try {
+    const result = await pool.query(
+      `SELECT job_id, clerk_user_id, status, stems, quality, is_sample, original_filename,
+              duration_seconds, token_cost, error_message, model_name,
+              created_at, started_at, completed_at, email_notified_at
+       FROM jobs WHERE job_id = $1`,
+      [jobId],
+    );
+    return result.rows[0] || null;
+  } catch (err) {
+    console.error("[db-jobs] getJobById failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * Mark a job's email notification as sent.
+ * @param {string} jobId
+ * @param {string} [error]
+ */
+export async function markJobEmailNotified(jobId, error) {
+  const pool = getPool();
+  if (!pool) return;
+  try {
+    await pool.query(
+      `UPDATE jobs SET email_notified_at = now(), email_notification_error = $2
+       WHERE job_id = $1`,
+      [jobId, error || null],
+    );
+  } catch (err) {
+    console.error("[db-jobs] markJobEmailNotified failed:", err instanceof Error ? err.message : err);
+  }
+}
+
+/**
  * Get job history for a user (most recent first).
  * @param {string} clerkUserId
  * @param {{ limit?: number, offset?: number }} [opts]

@@ -20,6 +20,7 @@ import { writeSseJson } from "../../helpers/sse.js";
 import { publicErrorMessage } from "../../clientSafeError.js";
 
 import { resolveStemJobPath } from "./shared.js";
+import { sendStemCompletionEmail } from "../../email/stemNotifications.js";
 
 /**
  * Client-safe progress payload: JSON only (no HTML). Strips internal paths and
@@ -113,6 +114,8 @@ statusRouter.get(
         }));
         insertStems(job_id, stemRecords).catch(() => {});
       }
+      // Fire-and-forget email notification
+      sendStemCompletionEmail(job_id).catch(() => {});
     } else if (data.status === "processing") {
       updateJobStatus(job_id, "processing").catch(() => {});
     }
@@ -194,6 +197,7 @@ statusRouter.get(
           errorMessage: data.error || undefined,
           modelName: data.model || undefined,
         }).catch(() => {});
+        sendStemCompletionEmail(job_id).catch(() => {});
         return true;
       }
       return false;

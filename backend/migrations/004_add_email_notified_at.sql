@@ -1,0 +1,2 @@
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS email_notified_at TIMESTAMPTZ;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS email_notification_error TEXT;
