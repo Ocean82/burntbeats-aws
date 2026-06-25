@@ -35,11 +35,8 @@ def _stage2_only(
     prefer_speed: bool = False,
     model_tier: str = "quality",
     cancel_check: Callable[[], bool] | None = None,
-    health_callback: Callable[[object], None] | None = None,
-    job_id: str | None = None,
 ) -> list[tuple[str, Path]]:
     """Stage 2 only: MDX drums/bass/other on instrumental. Returns drums, bass, other."""
-    _ = (cancel_check, health_callback, job_id)
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     tier = "fast" if prefer_speed else model_tier
@@ -48,6 +45,7 @@ def _stage2_only(
         output_dir,
         prefer_speed=prefer_speed,
         model_tier=tier,
+        cancel_check=cancel_check,
     )
     return stem_list
 
@@ -149,6 +147,7 @@ def run_expand_to_4stem(
             model_tier=tier,
             progress_callback=progress_callback,
             job_logger=job_logger,
+            cancel_check=cancel_check,
         )
     else:
         _log.info(

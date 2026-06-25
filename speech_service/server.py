@@ -86,7 +86,9 @@ def _run_job(
     denoise: bool,
     batch: bool,
 ) -> None:
+    global _last_job_completed_at
     run_enhance_sync(job_id, input_path, out_dir, denoise=denoise, batch=batch)
+    _last_job_completed_at = job_id
 
 
 app = FastAPI(title="Speech Enhance Service", version="1.0.0", lifespan=lifespan)

@@ -19,6 +19,7 @@ from midi_service.config import DEFAULT_SOUNDFONT, MIDI_OUTPUT_DIR, SOUNDFONT_DI
 from midi_service.job_queue import is_job_cancelled
 from midi_service.services.storage import (
     OUTPUT_FILENAME,
+    safe_job_path,
     write_metadata,
     write_progress,
 )
@@ -58,7 +59,7 @@ def resolve_soundfont(soundfont_name: str | None = None) -> Path:
 
 def find_existing_midi(job_id: str) -> Path:
     """Locate the .mid output from a completed conversion job."""
-    job_dir = MIDI_OUTPUT_DIR / job_id
+    job_dir = safe_job_path(MIDI_OUTPUT_DIR, job_id)
     if not job_dir.is_dir():
         raise FileNotFoundError(f"MIDI job directory not found: {job_id}")
 

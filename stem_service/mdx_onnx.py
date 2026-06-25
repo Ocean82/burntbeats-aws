@@ -15,7 +15,6 @@ from stem_service.mdx import (  # noqa: F401
     SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX,
     _VOCAL_TIER_NAMES,
     _INST_TIER_NAMES,
-    is_mdx23c_vocal_checkpoint,
     vocal_onnx_allowed_for_service,
     resolve_mdx_model_path,
     mdx_model_configured,

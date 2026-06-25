@@ -5,8 +5,8 @@ description = "Burnt Beats speech enhancement service (LavaSR)"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "burntbeats-common",
-    "torch>=2.0.0,<2.9",
-    "torchaudio>=2.0.0,<2.9",
+    "torch>=2.0.0,<2.13",
+    "torchaudio>=2.0.0,<2.13",
     "soundfile>=0.12.0",
     "librosa>=0.10.0",
     "safetensors>=0.4.0",

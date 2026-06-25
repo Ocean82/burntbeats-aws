@@ -15,7 +15,7 @@ def test_max_queue_depth_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_supported_audio_formats_includes_wav() -> None:
-    from speech_service.config import SUPPORTED_AUDIO_FORMATS
+    from burntbeats_common.audio import SUPPORTED_AUDIO_FORMATS
 
     assert ".wav" in SUPPORTED_AUDIO_FORMATS
     assert ".mp3" in SUPPORTED_AUDIO_FORMATS

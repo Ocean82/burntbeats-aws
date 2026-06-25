@@ -16,16 +16,16 @@ def test_safe_job_path_blocks_path_traversal(tmp_path, monkeypatch):
 
 
 def test_validate_audio_file_rejects_unsupported_extension(tmp_path):
-    aac_path = tmp_path / "recording.aac"
-    aac_path.write_bytes(b"fake-aac")
+    xyz_path = tmp_path / "recording.xyz"
+    xyz_path.write_bytes(b"x" * 300)
 
-    with pytest.raises(ValueError, match=r"Unsupported format \.aac"):
-        job_utils.validate_audio_file(aac_path)
+    with pytest.raises(ValueError, match=r"Unsupported format \.xyz"):
+        job_utils.validate_audio_file(xyz_path)
 
 
 def test_validate_audio_file_rejects_sample_rate_out_of_range(tmp_path, monkeypatch):
     wav_path = tmp_path / "recording.wav"
-    wav_path.write_bytes(b"fake-wav")
+    wav_path.write_bytes(b"x" * 300)
 
     fake_soundfile = types.SimpleNamespace(
         info=lambda _path: types.SimpleNamespace(samplerate=4000)

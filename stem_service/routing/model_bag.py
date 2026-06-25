@@ -166,22 +166,6 @@ def resolve_stem_model(
 
     return _resolve_uvr_single_stem(t, tier_key)
 
-
-def resolve_single_stem_model(
-    target: str,
-    tier: str,
-    *,
-    bag: FourStemBag | None = None,
-) -> Path | None:
-    """Return path to specialized single-stem MDX if configured and on disk."""
-    t = normalize_target(target)
-    if t in _KUIELAB_B_BAG and t != "vocals":
-        return resolve_stem_model(t, tier, bag=bag)
-    if t == "guitar":
-        return _resolve_uvr_single_stem(t, _tier_key(tier))
-    return resolve_stem_model(t, tier, bag=bag)
-
-
 def target_model_info(target: str, tier: str) -> TargetModelInfo:
     t = normalize_target(target)
     tier_key = _tier_key(tier)

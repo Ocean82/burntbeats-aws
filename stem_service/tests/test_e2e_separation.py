@@ -276,3 +276,25 @@ def test_progress_callback_old_signature_re_raises_on_failure() -> None:
 
     with pytest.raises(OldError, match="old sig also fails"):
         _call_progress(broken_old_callback, 50, job_kind="hybrid_2")
+
+
+def test_has_job_kind_param() -> None:
+    """_has_job_kind_param correctly inspects callback signatures."""
+    from stem_service.routing.executor import _has_job_kind_param
+
+    def two_pos(pct, job_kind):
+        pass
+
+    def one_pos(pct):
+        pass
+
+    def star_args(*args):
+        pass
+
+    def zero_pos():
+        pass
+
+    assert _has_job_kind_param(two_pos) is True
+    assert _has_job_kind_param(one_pos) is False
+    assert _has_job_kind_param(star_args) is True
+    assert _has_job_kind_param(zero_pos) is False

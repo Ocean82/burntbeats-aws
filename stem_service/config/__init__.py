@@ -42,7 +42,6 @@ from stem_service.config.availability import (  # noqa: F401
     demucs_speed_4stem_available,
     demucs_quality_4stem_available,
     demucs_quality_yaml_bags_allowed,
-    mdx23c_vocal_available,
     mdx23c_inst_available,
     mel_band_roformer_vocal_available,
     mel_band_roformer_inst_available,

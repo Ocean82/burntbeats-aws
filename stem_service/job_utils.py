@@ -12,13 +12,15 @@ import time
 from pathlib import Path
 from typing import Any
 
+from burntbeats_common.audio import (
+    SUPPORTED_AUDIO_FORMATS,
+    validate_audio_file as _shared_validate_audio_file,
+)
 from burntbeats_common.storage import PROGRESS_FILENAME, safe_job_path as _safe_job_path, write_progress as _write_progress
 from stem_service.config import (
     REPO_ROOT,
-    SUPPORTED_AUDIO_FORMATS,
     MIN_SAMPLE_RATE,
     MAX_SAMPLE_RATE,
-    MAX_FILE_SIZE_MB,
     DEMUCS_SLO_MIN_SAMPLES,
     DEMUCS_SLO_MAX_TIMEOUT_RATE,
     DEMUCS_SLO_MAX_ERROR_RATE,
@@ -26,6 +28,20 @@ from stem_service.config import (
 from stem_service.s3_upload import submit_background_task, upload_job_stems_to_s3
 
 logger = logging.getLogger(__name__)
+
+
+def max_parallel_jobs() -> int:
+    """Return the max parallel worker count for stem-separation threads.
+
+    Honour the ``STEM_INTENT_MAX_PARALLEL`` env var when set to a
+    positive integer; otherwise default to half the available CPUs
+    (floor of ``os.cpu_count()``, at least 1).
+    """
+    raw = os.environ.get("STEM_INTENT_MAX_PARALLEL", "").strip()
+    if raw.isdigit():
+        return max(1, int(raw))
+    return max(1, (os.cpu_count() or 2) // 2)
+
 
 # Output base: must match Node backend STEM_OUTPUT_DIR
 OUTPUT_BASE = Path(os.environ.get("STEM_OUTPUT_DIR", str(REPO_ROOT / "tmp" / "stems")))
@@ -426,19 +442,11 @@ def schedule_completion_artifacts(
 
 
 def validate_audio_file(file_path: Path) -> tuple[bool, str]:
-    """Validate audio file format, sample rate, and size. Returns (is_valid, error_message)."""
-    # Check format
-    if file_path.suffix.lower() not in SUPPORTED_FORMATS:
-        return False, f"Unsupported format. Supported: {', '.join(SUPPORTED_FORMATS)}"
+    try:
+        _shared_validate_audio_file(file_path)
+    except ValueError as e:
+        return False, str(e)
 
-    # Check file exists and size
-    if not file_path.exists():
-        return False, "File not found"
-    size_mb = file_path.stat().st_size / (1024 * 1024)
-    if size_mb > MAX_FILE_SIZE_MB:
-        return False, f"File too large. Max size: {MAX_FILE_SIZE_MB}MB"
-
-    # Check sample rate using soundfile
     try:
         import soundfile as sf
 
@@ -450,6 +458,5 @@ def validate_audio_file(file_path: Path) -> tuple[bool, str]:
             )
     except Exception as e:
         logger.warning("Could not validate sample rate for %s: %s", file_path, e)
-        # Allow if we can't check - demucs will handle errors
 
     return True, ""

@@ -46,8 +46,8 @@ def _cfg() -> dict[str, str]:
             "S3_REGION", os.environ.get("AWS_REGION", "us-east-1")
         ),
         "prefix": os.environ.get("S3_PREFIX", "stems").rstrip("/"),
-        "access_key": os.environ.get("S3_ACCESS_KEY", ""),
-        "secret_key": os.environ.get("S3_SECRET_KEY", ""),
+        "access_key": os.environ.get("AWS_ACCESS_KEY_ID") or os.environ.get("S3_ACCESS_KEY", ""),
+        "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY") or os.environ.get("S3_SECRET_KEY", ""),
     }
 
 

@@ -416,8 +416,18 @@ async def split(
     input_path = out_dir / f"input{suffix}"
     try:
         with open(input_path, "wb") as f:
+            total = 0
+            max_bytes = MAX_FILE_SIZE_MB * 1024 * 1024
             while chunk := await file.read(1024 * 1024):
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File too large. Max size: {MAX_FILE_SIZE_MB}MB",
+                    )
                 f.write(chunk)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=400, detail=f"Failed to save upload: {e}"

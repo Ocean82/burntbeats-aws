@@ -5,8 +5,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from burntbeats_common.audio import SUPPORTED_AUDIO_FORMATS, validate_audio_file as _shared_validate_audio_file
 from burntbeats_common.storage import safe_job_path as _safe_job_path, write_progress as _write_progress
-from midi_service.config import MAX_FILE_SIZE_MB, MIDI_OUTPUT_DIR, SUPPORTED_AUDIO_FORMATS
+from midi_service.config import MAX_FILE_SIZE_MB, MIDI_OUTPUT_DIR
 from midi_service.services.storage import OUTPUT_FILENAME
 
 logger = logging.getLogger(__name__)
@@ -34,19 +35,15 @@ def find_job_input_audio_path(job_dir: Path) -> Path | None:
 
 
 def validate_audio_file(path: Path) -> None:
-    """Validate that the file exists, is within size limit, has a supported format, and valid sample rate."""
+    _shared_validate_audio_file(path)
+
     import soundfile as sf
 
-    if not path.is_file():
-        raise ValueError("Uploaded file missing")
     size_mb = path.stat().st_size / (1024 * 1024)
     if size_mb > MAX_FILE_SIZE_MB:
         raise ValueError(f"File exceeds {MAX_FILE_SIZE_MB}MB limit")
 
     ext = path.suffix.lower()
-    if ext not in SUPPORTED_AUDIO_FORMATS:
-        raise ValueError(f"Unsupported format {ext}")
-
     try:
         info = sf.info(str(path))
         if info.samplerate < MIN_SAMPLE_RATE or info.samplerate > MAX_SAMPLE_RATE:

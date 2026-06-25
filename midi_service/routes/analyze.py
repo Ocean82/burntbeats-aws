@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 
 from midi_service.harmonic_analysis import analyze_harmony
+from .common import require_api_token
 
 MAX_NOTES = 10_000
 
@@ -12,6 +13,7 @@ def build_analyze_router() -> APIRouter:
 
     @router.post("/analyze")
     async def analyze_midi_harmony(request: Request) -> dict:
+        require_api_token(request)
         """
         Analyze note events for harmonic structure.
 

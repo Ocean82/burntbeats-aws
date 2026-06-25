@@ -33,6 +33,7 @@ def run_mdx_target_stem(
     progress_callback: Callable[[int], None] | None = None,
     job_logger: logging.Logger | None = None,
     stem_bag: FourStemBag | None = None,
+    cancel_check: "Callable[[], bool] | None" = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     output_dir = output_dir.resolve()
     flat_dir = output_dir / "stems"
@@ -52,6 +53,7 @@ def run_mdx_target_stem(
         job_logger=job_logger,
         progress_callback=progress_callback,
         progress_range=(5, 95),
+        cancel_check=cancel_check,
     )
     if result is None:
         raise RuntimeError(f"MDX inference failed for target: {target}")

@@ -104,12 +104,9 @@ def _estimate_bpm_numpy(audio_path: Path) -> dict[str, Any]:
     window_size = int(0.01 * sr)
     hop_size = int(0.005 * sr)
 
-    energy = []
-    for i in range(0, len(data) - window_size, hop_size):
-        frame = data[i : i + window_size]
-        energy.append(np.sum(frame ** 2))
-
-    energy = np.array(energy)
+    squared = data ** 2
+    energy_conv = np.convolve(squared, np.ones(window_size), mode="valid")
+    energy = energy_conv[::hop_size]
     if len(energy) < 10:
         return {"bpm": 0.0, "beat_offset_seconds": 0.0, "confidence": 0.0}
 

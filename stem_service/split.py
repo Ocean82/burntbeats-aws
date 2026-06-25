@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import shutil
 import sys
+import threading
 from pathlib import Path
 from typing import Callable
 
@@ -52,16 +53,15 @@ logger = logging.getLogger(__name__)
 # With --two-stems=vocals: <out_dir>/htdemucs/<track_name>/{vocals,no_vocals}.wav
 
 _VALID_STEMS = {2, 4}
-_LAST_EXECUTION_ROUTE = "legacy"
+_thread_local = threading.local()
 
 
 def get_last_execution_route() -> str:
-    return _LAST_EXECUTION_ROUTE
+    return getattr(_thread_local, "execution_route", "legacy")
 
 
 def _set_last_execution_route(route: str) -> None:
-    global _LAST_EXECUTION_ROUTE
-    _LAST_EXECUTION_ROUTE = route
+    _thread_local.execution_route = route
 
 
 def _run_demucs_4stem_named_checkpoint(
@@ -133,8 +133,12 @@ def run_demucs_legacy(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if stems == 4:
-        cfgs = demucs_speed_4stem_configs()
-        lane = "speed"
+        if prefer_speed:
+            cfgs = demucs_speed_4stem_configs()
+            lane = "speed"
+        else:
+            cfgs = demucs_quality_4stem_configs()
+            lane = "quality"
         if not cfgs:
             raise FileNotFoundError(
                 f"Demucs 4-stem {lane} checkpoint not found in configured models directory."

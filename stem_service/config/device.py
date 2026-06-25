@@ -72,7 +72,7 @@ QUALITY_QUALITY = "quality"
 # =======================
 # Audio Validation
 # =======================
-SUPPORTED_AUDIO_FORMATS = {".wav", ".mp3", ".flac", ".ogg", ".m4a", ".aiff"}
+from burntbeats_common.audio import SUPPORTED_AUDIO_FORMATS  # noqa: F401
 MIN_SAMPLE_RATE = 8000
 MAX_SAMPLE_RATE = 48000
 MAX_FILE_SIZE_MB = 500
@@ -145,7 +145,6 @@ def get_onnx_providers() -> list[str]:
     return [p for p in order if p in available] or (
         list(available) if available else ["CPUExecutionProvider"]
     )
-
 
 def _bool_from_env(name: str, default: bool) -> bool:
     raw = os.environ.get(name)

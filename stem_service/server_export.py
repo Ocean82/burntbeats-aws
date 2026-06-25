@@ -52,9 +52,12 @@ def _read_payload() -> dict:
         "normalize": true|false
       }
     """
-    raw = sys.stdin.read()
+    MAX_STDIN_BYTES = 10 * 1024 * 1024
+    raw = sys.stdin.read(MAX_STDIN_BYTES)
     if not raw.strip():
         raise ValueError("Missing JSON payload on stdin.")
+    if len(raw.encode("utf-8")) >= MAX_STDIN_BYTES:
+        raise ValueError(f"Payload exceeds {MAX_STDIN_BYTES} byte limit on stdin.")
     try:
         return json.loads(raw)
     except Exception as e:

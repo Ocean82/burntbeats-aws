@@ -42,10 +42,10 @@ def _run_mdx_onnx(
     model_path: Path,
     overlap: float = 0.75,
     job_logger: "logging.Logger | None" = None,
-    instrumental_output_path: Path | None = None,
     progress_callback: "Callable[[int], None] | None" = None,
     progress_range: "tuple[int, int] | None" = None,
     compensate_override: float | None = None,
+    cancel_check: "Callable[[], bool] | None" = None,
 ) -> Path | None:
     """
     Core MDX-Net ONNX inference following the UVR5 / audio-separator reference exactly.
@@ -127,7 +127,7 @@ def _run_mdx_onnx(
     step = int((1.0 - overlap) * chunk_size)
 
     # Pad: trim zeros at start, then enough to make length a multiple of gen_size, then trim zeros at end
-    pad = gen_size + trim - (n_samples % gen_size)
+    pad = (gen_size - (n_samples % gen_size)) % gen_size + trim
     mixture = np.concatenate(
         [
             np.zeros((2, trim), dtype=np.float32),
@@ -168,14 +168,17 @@ def _run_mdx_onnx(
             _last_reported_pct = pct
             try:
                 progress_callback(pct)
-            except Exception:
-                pass  # never let a progress callback crash inference
+            except Exception as exc:
+                _log.warning("Progress callback failed at chunk %d/%d: %s", chunk_idx, n_chunks, exc)
 
     # ── Process chunks ────────────────────────────────────────────────────────
     hann_window_cache: dict[int, np.ndarray] = {}
     chunk_idx = 0
     for i in range(0, total, step):
         chunk_idx += 1
+        if cancel_check is not None and cancel_check():
+            _log.info("mdx_onnx: cancelled at chunk %d/%d", chunk_idx, n_chunks)
+            return None
         if chunk_idx % 10 == 0 or chunk_idx == 1:
             elapsed = time.monotonic() - t_start
             _log.info(
@@ -260,58 +263,23 @@ def _run_mdx_onnx(
     write_wav_float32(output_path, out_wav, sr_original)
     _log.info("mdx_onnx: wrote %s (%s)", output_path.name, model_path.name)
 
-    # MDX23C vocal checkpoint: complementary instrumental = mix minus vocal (same pass, no second ONNX).
-    if (
-        instrumental_output_path is not None
-        and _logical_onnx_name(model_path) == "mdx23c_vocal.onnx"
-    ):
-        try:
-            inst = mix_np[:, :n_samples].astype(np.float32) - vocal_matrix.astype(np.float32)
-            inst_wav = np.clip(inst.T, -1.0, 1.0)
-            # Resample back to original rate if input was not 44.1 kHz
-            if sr_original != 44100:
-                import torchaudio
-
-                inst_tensor = torch.from_numpy(inst_wav.T).unsqueeze(0).float()
-                inst_tensor = torchaudio.functional.resample(
-                    inst_tensor, 44100, sr_original, lowpass_filter_width=64
-                )
-                inst_wav = inst_tensor.squeeze(0).numpy().T
-            instrumental_output_path = Path(instrumental_output_path)
-            instrumental_output_path.parent.mkdir(parents=True, exist_ok=True)
-            write_wav_float32(instrumental_output_path, inst_wav, sr_original)
-            _log.info(
-                "mdx_onnx: wrote %s (mix minus vocal, %s)",
-                instrumental_output_path.name,
-                model_path.name,
-            )
-        except Exception as e:
-            _log.warning("mdx_onnx: instrumental companion write failed: %s", e)
-            try:
-                output_path.unlink(missing_ok=True)
-            except OSError:
-                pass
-            return None
-
     return output_path
 
 
 def run_vocal_onnx(
     input_path: Path,
     output_path: Path,
-    segment_size: int = 256,  # kept for API compat; dim_t is from model config
+    segment_size: int = 256,
     overlap: float = 0.75,
     job_logger: "logging.Logger | None" = None,
     model_path_override: Path | None = None,
-    instrumental_output_path: Path | None = None,
     progress_callback: "Callable[[int], None] | None" = None,
     progress_range: "tuple[int, int] | None" = None,
+    cancel_check: "Callable[[], bool] | None" = None,
 ) -> Path | None:
     """
     Extract vocals using the best available vocal ONNX model (or model_path_override when set).
     overlap: 0.5 for speed, 0.75 for quality (smoother chunk boundaries).
-    For ``mdx23c_vocal.onnx`` / ``.ort``, if ``instrumental_output_path`` is set, also writes
-    instrumental = input mix minus vocal (same inference pass; MDX23C quality path).
     progress_callback: optional callable(pct) called as chunks are processed.
     progress_range: (start, end) to map chunk progress into a sub-range of the parent job.
     Returns output_path on success, None if no model or inference fails.
@@ -336,9 +304,9 @@ def run_vocal_onnx(
         model_path,
         overlap=overlap,
         job_logger=job_logger,
-        instrumental_output_path=instrumental_output_path,
         progress_callback=progress_callback,
         progress_range=progress_range,
+        cancel_check=cancel_check,
     )
 
 
@@ -351,6 +319,7 @@ def run_inst_onnx(
     progress_callback: "Callable[[int], None] | None" = None,
     progress_range: "tuple[int, int] | None" = None,
     compensate_override: float | None = None,
+    cancel_check: "Callable[[], bool] | None" = None,
 ) -> Path | None:
     """
     Extract instrumental using the best available instrumental ONNX model.
@@ -374,4 +343,5 @@ def run_inst_onnx(
         progress_callback=progress_callback,
         progress_range=progress_range,
         compensate_override=compensate_override,
+        cancel_check=cancel_check,
     )

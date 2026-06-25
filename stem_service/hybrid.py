@@ -11,7 +11,6 @@ See: docs/stem-pipeline.md for pipeline routing documentation.
 
 from stem_service.hybrid import (  # noqa: F401
     _materialize_stage1_instrumental,
-    collapse_4stem_to_2stem,
     run_hybrid_2stem,
     run_demucs_only_2stem,
     run_4stem_single_pass_or_hybrid,

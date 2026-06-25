@@ -51,12 +51,11 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     "Kim_Inst.onnx": (6144, 1024, 3072, 256, 1.035),
     "UVR-MDX-NET-Voc_FT.onnx": (6144, 1024, 3072, 256, 1.021),
     # Inst_HQ / MDX23C / Reverb — dim_f=3072 → n_fft=6144
-    "UVR-MDX-NET-Inst_HQ_4.onnx": (6144, 1024, 3072, 256, 1.019),
-    "UVR-MDX-NET-Inst_HQ_5.onnx": (6144, 1024, 3072, 256, 1.010),
-    "mdx23c_vocal.onnx": (6144, 1024, 3072, 256, 1.035),
+    "UVR-MDX-NET-Inst_HQ_4.onnx": (5120, 1024, 2560, 256, 1.019),
+    "UVR-MDX-NET-Inst_HQ_5.onnx": (5120, 1024, 2560, 256, 1.010),
     "mdx23c_instrumental.onnx": (6144, 1024, 3072, 256, 1.035),
     "model_int8.onnx": (6144, 1024, 3072, 256, 1.035),
-    "Reverb_HQ_By_FoxJoy.onnx": (6144, 1024, 3072, 256, 1.035),
+    "Reverb_HQ_By_FoxJoy.onnx": (6144, 1024, 3072, 512, 1.035),
     "UVR-MDX-NET-Drum.onnx": (6144, 1024, 3072, 128, 1.035),
     # UVR MDX-Net numbered — dim_f=2048 → n_fft=4096
     "UVR_MDXNET_1_9703.onnx": (4096, 1024, 2048, 256, 1.030),
@@ -122,6 +121,11 @@ _INST_TIER_NAMES: dict[str, list[str]] = {
     "quality": ["UVR-MDX-NET-Inst_HQ_5.onnx"],
 }
 
+# Deprecated models left on disk for backward compat — treated as unconfigured.
+DEPRECATED_LOGICAL_ONNX: frozenset[str] = frozenset({
+    "mdx23c_vocal.onnx",
+})
+
 # Subjective score < 9 vocal checkpoints — not used at runtime.
 SERVICE_DISALLOWED_VOCAL_LOGICAL_ONNX: frozenset[str] = frozenset(
     {
@@ -141,11 +145,6 @@ def _logical_onnx_name(model_path: Path) -> str:
     if model_path.suffix.lower() == ".ort":
         return model_path.with_suffix(".onnx").name
     return model_path.name
-
-
-def is_mdx23c_vocal_checkpoint(model_path: Path) -> bool:
-    """True for ``mdx23c_vocal.onnx`` / sibling ``.ort`` — single-pass vocal + optional mix-minus-vocal inst."""
-    return _logical_onnx_name(model_path) == "mdx23c_vocal.onnx"
 
 
 def vocal_onnx_allowed_for_service(model_path: Path) -> bool:
@@ -190,7 +189,10 @@ def resolve_mdx_model_path(declared_onnx: Path) -> Path | None:
 
 def _get_config(model_path: Path) -> tuple[int, int, int, int, float] | None:
     """Return (n_fft, hop, dim_f, dim_t, compensate) for a model, or None if unknown."""
-    return _MDX_CONFIGS.get(_logical_onnx_name(model_path))
+    name = _logical_onnx_name(model_path)
+    if name in DEPRECATED_LOGICAL_ONNX:
+        return None
+    return _MDX_CONFIGS.get(name)
 
 
 def mdx_model_configured(model_path: Path) -> bool:

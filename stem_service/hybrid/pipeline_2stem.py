@@ -12,7 +12,6 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
-from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
@@ -31,7 +30,6 @@ def run_hybrid_2stem(
     vocal_model_override: Path | None = None,
     inst_model_override: Path | None = None,
     cancel_check: Callable[[], bool] | None = None,
-    health_callback: Callable[[DemucsHealthMarker], None] | None = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     2-stem separation: vocals + instrumental via Stage 1 ONNX + phase inversion (or inst ONNX pass).
@@ -42,8 +40,6 @@ def run_hybrid_2stem(
     """
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    del cancel_check, health_callback
-
     flat_dir = output_dir / "stems"
     flat_dir.mkdir(parents=True, exist_ok=True)
 
@@ -62,6 +58,7 @@ def run_hybrid_2stem(
         inst_model_override=inst_model_override,
         progress_callback=progress_callback,
         progress_range=(5, 90),
+        cancel_check=cancel_check,
     )
 
     if progress_callback:

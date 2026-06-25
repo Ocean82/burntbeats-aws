@@ -65,13 +65,22 @@ def _kill_process_tree(process: subprocess.Popen[str]) -> None:
             time.sleep(0.05)
         return
 
-    pgid = os.getpgid(process.pid)
-    os.killpg(pgid, signal.SIGTERM)
+    try:
+        pgid = os.getpgid(process.pid)
+    except ProcessLookupError:
+        return  # process already exited
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
     deadline = time.monotonic() + 2.0
     while process.poll() is None and time.monotonic() < deadline:
         time.sleep(0.05)
     if process.poll() is None:
-        os.killpg(pgid, signal.SIGKILL)
+        try:
+            os.killpg(pgid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
 
 def run_supervised_subprocess(
@@ -174,7 +183,7 @@ def run_supervised_subprocess(
 
     return subprocess.CompletedProcess(
         args=cmd,
-        returncode=proc.returncode or 0,
+        returncode=proc.returncode if proc.returncode is not None else -1,
         stdout="".join(stdout_chunks),
         stderr="".join(stderr_chunks),
     )

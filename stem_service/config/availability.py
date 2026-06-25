@@ -80,14 +80,6 @@ def demucs_quality_yaml_bags_allowed() -> bool:
     return _DEMUCS_QUALITY_BAG_KEY != "single"
 
 
-def mdx23c_vocal_available() -> bool:
-    """True if MDX23C vocal ONNX model is available (or sibling ``.ort``)."""
-    p = resolve_models_root_file("mdx23c_vocal.onnx")
-    ort = p.with_suffix(".ort")
-    by_type_ort = MODELS_BY_TYPE_DIR / "ort" / "mdx23c_vocal.ort"
-    return p.is_file() or ort.is_file() or by_type_ort.is_file()
-
-
 def mdx23c_inst_available() -> bool:
     """True if MDX23C instrumental ONNX model is available (or sibling ``.ort``)."""
     p = resolve_models_root_file("mdx23c_instrumental.onnx")

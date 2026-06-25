@@ -9,7 +9,6 @@ See docs/corrections/hybrid-fixes.md for historical bug fixes applied.
 
 from stem_service.hybrid.utils import (  # noqa: F401
     _materialize_stage1_instrumental,
-    collapse_4stem_to_2stem,
 )
 
 from stem_service.hybrid.pipeline_2stem import (  # noqa: F401

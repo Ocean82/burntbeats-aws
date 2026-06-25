@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from stem_service.mdx.model_registry import (  # noqa: E402
+    DEPRECATED_LOGICAL_ONNX,
     _MDX_CONFIGS,
     mdx_config_for_logical_onnx_name,
     mdx_model_configured,
@@ -76,6 +77,9 @@ def test_all_mdx_onnx_in_models_by_type_have_registry() -> None:
         inp = inputs[0]
         shape = inp.shape
         if not _is_mdx_spectrogram_input(inp.name, shape):
+            continue
+
+        if fp.name in DEPRECATED_LOGICAL_ONNX:
             continue
 
         if not mdx_model_configured(fp):

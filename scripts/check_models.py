@@ -32,7 +32,6 @@ from stem_service.config import (
     scnet_torch_config_path,
     scnet_torch_repo_root,
     speed_2stem_onnx_path,
-    mdx23c_vocal_available,
     mdx23c_inst_available,
 )
 from stem_service.mdx_onnx import get_available_vocal_onnx, get_available_inst_onnx
@@ -101,16 +100,7 @@ for tier in ("fast", "quality"):
     print(f"  tier={tier:7}  vocal={v or 'MISSING'}")
     print(f"  tier={tier:7}  inst ={i or '(phase inversion if missing)'}")
 print(f"  speed default path: {speed_2stem_onnx_path()}")
-print(f"  mdx23c_vocal: {mdx23c_vocal_available()}  mdx23c_inst: {mdx23c_inst_available()}")
-_mdx23c = _resolve_mdx("mdx23c_vocal.onnx")
-_kim = _resolve_mdx("Kim_Vocal_2.onnx")
-if _mdx23c and _kim:
-    h23, hk = _file_md5(_mdx23c), _file_md5(_kim)
-    if h23 and hk and h23 == hk:
-        print(
-            "  WARNING: mdx23c_vocal is byte-identical to Kim_Vocal_2 — mislabeled duplicate; "
-            "removed from server export until a verified distinct MDX23C file is available"
-        )
+print(f"  mdx23c_inst: {mdx23c_inst_available()}")
 print()
 
 print("=== 4-stem routing ===")

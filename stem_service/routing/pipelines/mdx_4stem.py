@@ -3,23 +3,17 @@
 from __future__ import annotations
 
 import logging
-import os
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Callable
 
+from stem_service.job_utils import max_parallel_jobs
 from stem_service.phase_inversion import create_residual_stem
 from stem_service.routing.model_bag import select_4stem_bag
 from stem_service.routing.pipelines.single_stem import run_mdx_target_stem
 
 logger = logging.getLogger(__name__)
-
-
-def _max_parallel() -> int:
-    raw = os.environ.get("STEM_INTENT_MAX_PARALLEL", "").strip()
-    if raw.isdigit():
-        return max(1, int(raw))
-    return max(1, (os.cpu_count() or 2) // 2)
 
 
 def run_mdx_4stem(
@@ -30,6 +24,7 @@ def run_mdx_4stem(
     model_tier: str = "quality",
     progress_callback: Callable[[int], None] | None = None,
     job_logger: logging.Logger | None = None,
+    cancel_check: "Callable[[], bool] | None" = None,
 ) -> tuple[list[tuple[str, Path]], list[str]]:
     """
     ONNX-only 4-stem: parallel vocals, drums, bass; other = mix − vocals − drums − bass.
@@ -50,7 +45,7 @@ def run_mdx_4stem(
     )
     stem_results: dict[str, Path] = {}
     models_used: list[str] = []
-    max_workers = min(len(targets), _max_parallel())
+    max_workers = min(len(targets), max_parallel_jobs())
     completed = 0
 
     def _run_one(target: str) -> tuple[str, Path, list[str]]:
@@ -64,6 +59,7 @@ def run_mdx_4stem(
             model_tier=model_tier,
             job_logger=job_logger,
             stem_bag=stem_bag,
+            cancel_check=cancel_check,
         )
         stem_id, path = stems[0]
         return stem_id, path, models
@@ -74,7 +70,7 @@ def run_mdx_4stem(
             stem_id, path, models = fut.result()
             dest = flat_dir / f"{stem_id}.wav"
             if path.resolve() != dest.resolve():
-                dest.write_bytes(path.read_bytes())
+                shutil.copy2(path, dest)
             stem_results[stem_id] = dest
             models_used.extend(models)
             completed += 1

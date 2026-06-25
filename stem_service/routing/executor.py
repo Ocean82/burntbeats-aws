@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
 import shutil
 from pathlib import Path
 from typing import Callable
 
 from stem_service.demucs_process import DemucsHealthMarker
+
+def _has_job_kind_param(cb: Callable[..., None]) -> bool:
+    """Check if callback accepts a second positional arg (for job_kind)."""
+    try:
+        sig = inspect.signature(cb)
+        params = list(sig.parameters.values())
+        if len(params) >= 2:
+            return params[1].kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        return any(p.kind == inspect.Parameter.VAR_POSITIONAL for p in params)
+    except (ValueError, TypeError):
+        return True
 
 def _call_progress(
     progress_callback: Callable[..., None] | None,
@@ -18,13 +33,10 @@ def _call_progress(
     if progress_callback is None:
         return
     try:
-        progress_callback(pct, job_kind)
-    except TypeError:
-        try:
+        if _has_job_kind_param(progress_callback):
+            progress_callback(pct, job_kind)
+        else:
             progress_callback(pct)
-        except Exception as e:
-            logger.warning("Progress callback failed: %s", e, exc_info=True)
-            raise
     except Exception as e:
         logger.error("Progress callback raised exception: %s", e, exc_info=True)
         raise
@@ -111,6 +123,7 @@ def execute_plan(
                 model_tier=model_tier,
                 progress_callback=sub_progress,
                 job_logger=job_logger,
+                cancel_check=cancel_check,
             )
         elif job.kind == "karaoke":
             stems, models = run_hybrid_2stem(
@@ -121,7 +134,6 @@ def execute_plan(
                 progress_callback=sub_progress,
                 job_logger=job_logger,
                 cancel_check=cancel_check,
-                health_callback=health_callback,
             )
             stems = _filter_stems(stems, ("instrumental",))
         elif job.kind == "hybrid_2":
@@ -132,6 +144,7 @@ def execute_plan(
                 model_tier=model_tier,
                 progress_callback=sub_progress,
                 job_logger=job_logger,
+                cancel_check=cancel_check,
             )
         elif job.kind in ("hybrid_4", "demucs_4_fallback"):
             stems, models = run_hybrid_4stem(
@@ -163,6 +176,7 @@ def execute_plan(
                 model_tier=model_tier,
                 progress_callback=sub_progress,
                 job_logger=job_logger,
+                cancel_check=cancel_check,
             )
         elif job.kind == "mdx_stem":
             target = job.targets[0]
@@ -174,6 +188,7 @@ def execute_plan(
                 model_tier=model_tier,
                 progress_callback=sub_progress,
                 job_logger=job_logger,
+                cancel_check=cancel_check,
             )
         elif job.kind == "parallel_mdx":
             stems, models = run_parallel_mdx_targets(
@@ -184,6 +199,7 @@ def execute_plan(
                 model_tier=model_tier,
                 progress_callback=sub_progress,
                 job_logger=job_logger,
+                cancel_check=cancel_check,
             )
         else:
             raise RuntimeError(f"Unknown job kind: {job.kind}")

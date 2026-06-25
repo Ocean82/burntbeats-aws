@@ -85,6 +85,7 @@ def _pair_vocal_with_inst_onnx(
     allow_inst_onnx: bool,
     progress_callback: "Callable[[int], None] | None" = None,
     progress_range: "tuple[int, int] | None" = None,
+    cancel_check: "Callable[[], bool] | None" = None,
 ) -> tuple[Path, Path | None, list[str], InstrumentalSource] | None:
     """Run vocal ONNX; add instrumental ONNX if available, else phase-inversion pending."""
     log = job_logger or logger
@@ -97,6 +98,7 @@ def _pair_vocal_with_inst_onnx(
         model_path_override=vocal_path,
         progress_callback=progress_callback,
         progress_range=progress_range,
+        cancel_check=cancel_check,
     )
     if vocals_path is None:
         return None
@@ -114,6 +116,7 @@ def _pair_vocal_with_inst_onnx(
                 overlap=onnx_overlap,
                 job_logger=job_logger,
                 model_path_override=inst_model,
+                cancel_check=cancel_check,
             )
             if inst_path is not None:
                 log.info(
@@ -153,6 +156,7 @@ def extract_vocals_stage1(
     inst_model_override: Path | None = None,
     progress_callback: "Callable[[int], None] | None" = None,
     progress_range: "tuple[int, int] | None" = None,
+    cancel_check: "Callable[[], bool] | None" = None,
 ) -> tuple[Path, Path | None, list[str], InstrumentalSource]:
     """
     Extract vocals and optionally instrumental.
@@ -207,6 +211,7 @@ def extract_vocals_stage1(
         allow_inst_onnx=allow_inst_onnx,
         progress_callback=progress_callback,
         progress_range=progress_range,
+        cancel_check=cancel_check,
     )
     if got is None:
         raise RuntimeError(

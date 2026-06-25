@@ -88,6 +88,7 @@ def run_hybrid_4stem(
         inst_model_override=inst_model_override,
         progress_callback=progress_callback,
         progress_range=(5, stage1_end),
+        cancel_check=cancel_check,
     )
     if progress_callback:
         progress_callback(stage1_end)
