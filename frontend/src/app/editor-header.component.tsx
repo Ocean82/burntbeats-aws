@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Undo2, Redo2, Mic2, Music, Drum, Radio, ChevronDown } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
+import { PlanBadge } from "../components/PlanBadge";
 import { SettingsMenu } from "../components/SettingsMenu";
 import { PastDueBanner } from "../components/PastDueBanner";
 import { CancelSubscriptionFlow } from "../components/CancelSubscriptionFlow";
@@ -149,6 +150,14 @@ export function EditorHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-xs">
+          <PlanBadge
+            plan={subscription.plan}
+            subscriptionStatus={subscription.status}
+            freeTokensRemaining={usageBalance != null && subscription.status !== "active" ? usageBalance : null}
+            usageLoading={usageLoading}
+            onUpgrade={() => setActiveView("pricing")}
+          />
+
           <div className="flex items-center rounded-xl border border-border bg-muted/80">
             <button
               type="button"

@@ -3,6 +3,11 @@ import { render } from "@testing-library/react"
 import { screen } from "@testing-library/dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({ isSignedIn: false, isLoaded: true, getToken: () => Promise.resolve(null) }),
+  useUser: () => ({ isLoaded: true, isSignedIn: false, user: null }),
+}));
+
 // Mock useMediaQuery hook
 const mockUseMediaQuery = vi.fn<(query: string) => boolean>();
 vi.mock("@/hooks/useMediaQuery", () => ({

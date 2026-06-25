@@ -151,6 +151,8 @@ type CheckoutSource =
   | "paywall_banner"
   | "pricing_page"
   | "upgrade_prompt"
+  | "plan_picker"
+  | "post_split_upsell"
   | "unknown";
 
 export type BillingStatus =

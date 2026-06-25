@@ -8,7 +8,7 @@
  * so the app doesn't re-trigger on refresh.
  */
 import { useAuth, useUser } from "@clerk/react";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState, useMemo } from "react";
 import { Loader2 } from "lucide-react";
 import { Route, Switch, useLocation } from "wouter";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -77,11 +77,29 @@ function RouteLoadingShell() {
   return <ClerkLoadingShell />;
 }
 
+import { PlanPickerPage } from "./pages/PlanPickerPage";
+
+function PlanPickerGate({ children }: { children: React.ReactNode }) {
+  const { user, isLoaded } = useUser();
+  const [dismissed, setDismissed] = useState(false);
+
+  const pickerSeen = useMemo(() => {
+    if (!isLoaded || !user) return true;
+    const meta = user.unsafeMetadata as Record<string, unknown> | undefined;
+    return meta?.planPickerSeen === true;
+  }, [isLoaded, user]);
+
+  if (pickerSeen || dismissed) return <>{children}</>;
+
+  return <PlanPickerPage onComplete={() => setDismissed(true)} />;
+}
+
 function SignedInAppTree() {
   return (
     <Suspense fallback={<RouteLoadingShell />}>
       <LegalAcceptanceGate>
-        <WorkflowProvider>
+        <PlanPickerGate>
+          <WorkflowProvider>
           <StemMediaProvider>
             <AudioProvider>
               <AppShell>
@@ -90,6 +108,7 @@ function SignedInAppTree() {
             </AudioProvider>
           </StemMediaProvider>
         </WorkflowProvider>
+      </PlanPickerGate>
       </LegalAcceptanceGate>
     </Suspense>
   );
@@ -149,6 +168,10 @@ function AuthenticatedRoot() {
       }
       if (window.location.search.includes("checkout=success")) {
         trackCheckoutReturnedOnce("success", "root_handler");
+        const meta = user?.unsafeMetadata as Record<string, unknown> | undefined;
+        if (meta?.planPickerSeen !== true) {
+          user?.update({ unsafeMetadata: { ...meta, planPickerSeen: true } }).catch(() => {});
+        }
       }
       const url = new URL(window.location.href);
       url.searchParams.delete("checkout");

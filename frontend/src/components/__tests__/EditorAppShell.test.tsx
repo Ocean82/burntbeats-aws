@@ -3,6 +3,22 @@ import { render } from "@testing-library/react"
 import { fireEvent, screen } from "@testing-library/dom";
 import { EditorAppShell } from "../EditorAppShell";
 
+// Mock Clerk so ConfigurePhase can use useSubscription safely
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({
+    isSignedIn: true,
+    isLoaded: true,
+    getToken: () => Promise.resolve("mock-token"),
+  }),
+  useUser: () => ({
+    isLoaded: true,
+    isSignedIn: true,
+    user: { fullName: "Test User", imageUrl: null, primaryEmailAddress: { emailAddress: "test@example.com" } },
+  }),
+  useClerk: () => ({ openUserProfile: vi.fn(), signOut: vi.fn() }),
+  ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 // Mock framer-motion for PhaseRouter animations
 vi.mock("framer-motion", () => ({
   motion: {

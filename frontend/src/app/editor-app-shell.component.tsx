@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback } from "react";
+import { lazy, Suspense, useCallback, useEffect } from "react";
+import { useUser } from "@clerk/react";
 import { viewSwitchMotion } from "../motion/presets";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { UpsellModal } from "../components/UpsellModal";
@@ -37,6 +38,7 @@ export interface EditorAppShellProps {
 }
 
 export function EditorAppShell({ session }: EditorAppShellProps) {
+  const { user, isLoaded } = useUser();
   const { modals, workflow, split, subscription: sub, batch, mixer, ui, dev } = session;
   const { export: exp, recovery } = session;
   const audio = useAudio();
@@ -74,6 +76,36 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
   };
 
   const showTransport = ui.activeView === "editor";
+
+  // Global event listeners for cross-component navigation (TokenMeter, PostSplitUpsell)
+  useEffect(() => {
+    const handlePricing = () => ui.setActiveView("pricing");
+    const handlePremiumCheckout = () => {
+      void sub.subscription.startCheckout("premium", {
+        source: "post_split_upsell",
+        intent: "post_split_upsell_premium",
+      });
+    };
+    window.addEventListener("open-pricing-tab", handlePricing);
+    window.addEventListener("start-premium-checkout", handlePremiumCheckout);
+    return () => {
+      window.removeEventListener("open-pricing-tab", handlePricing);
+      window.removeEventListener("start-premium-checkout", handlePremiumCheckout);
+    };
+  }, [ui.setActiveView, sub.subscription.startCheckout]);
+
+  // Auto-show onboarding tour for new users (post-plan-picker)
+  useEffect(() => {
+    const didOnboarding = localStorage.getItem("burnt-beats-onboarding-complete");
+    if (!isLoaded || didOnboarding === "true") return;
+    const meta = user?.unsafeMetadata as Record<string, unknown> | undefined;
+    if (meta?.planPickerSeen === true || !meta?.planPickerSeen) {
+      const t = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("open-onboarding"));
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [isLoaded, user]);
 
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[var(--bg)] text-foreground">

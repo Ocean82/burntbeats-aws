@@ -3,6 +3,11 @@ import { fireEvent, screen } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
 import { ConfigurePhase } from "./ConfigurePhase";
 
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({ isSignedIn: false, isLoaded: true, getToken: () => Promise.resolve(null) }),
+  useUser: () => ({ isLoaded: true, isSignedIn: false, user: null }),
+}));
+
 describe("ConfigurePhase", () => {
   const defaultProps = {
     transitionTo: vi.fn(),

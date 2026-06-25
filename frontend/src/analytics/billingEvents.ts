@@ -1,6 +1,7 @@
 import { trackEvent } from "./events";
+import type { BillingInterval } from "../data/plans";
 
-export type BillingInterval = "month" | "year";
+export type { BillingInterval };
 
 /** Funnel events for monetization restructure (GA4). */
 export function trackPaywallImpression(source: string, trigger?: string) {

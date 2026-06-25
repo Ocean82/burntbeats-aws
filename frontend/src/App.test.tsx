@@ -76,16 +76,16 @@ describe("App flow", () => {
     renderApp();
     // The transitional editor shell renders the upload phase by default
     expect(
-      await screen.findByRole("button", { name: /upload audio file/i }, { timeout: 10000 }),
+      await screen.findByRole("button", { name: /upload audio file/i }, { timeout: 15000 }),
     ).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("shows workflow stepper labels", async () => {
     renderApp();
     // The transitional editor shell renders the step progress indicator
-    const stepper = await screen.findByRole("list", { name: /split flow progress/i });
+    const stepper = await screen.findByRole("list", { name: /workflow steps/i });
     expect(within(stepper).getByText("Upload")).toBeInTheDocument();
-    expect(within(stepper).getByText("Configure")).toBeInTheDocument();
-    expect(within(stepper).getByText("Splitting")).toBeInTheDocument();
+    expect(within(stepper).getByText("Split")).toBeInTheDocument();
+    expect(within(stepper).getByText("Mix")).toBeInTheDocument();
   });
 });

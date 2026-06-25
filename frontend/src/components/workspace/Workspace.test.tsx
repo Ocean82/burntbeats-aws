@@ -5,6 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 import { Workspace } from "./Workspace";
 import { LAYOUT } from "@/constants/layout";
 
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({ isSignedIn: false, isLoaded: true, getToken: () => Promise.resolve(null) }),
+  useUser: () => ({ isLoaded: true, isSignedIn: false, user: null }),
+}));
+
 // Mock hooks
 const mockToolDrawer: {
   activeTool: import("@/types/tools").ToolCategory | null;

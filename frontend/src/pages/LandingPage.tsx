@@ -9,6 +9,7 @@ import { LandingFinalCta } from "../components/landing/LandingFinalCta";
 import { LandingHero } from "../components/landing/LandingHero";
 import { LandingPricingSection } from "../components/landing/LandingPricingSection";
 import { LandingSocialProof } from "../components/landing/LandingSocialProof";
+import { LeadCaptureForm } from "../components/landing/LeadCaptureForm";
 
 interface LandingPageProps {
   /** Scroll to a landing section after mount (e.g. `/pricing` deep link). */
@@ -136,6 +137,9 @@ export function LandingPage({ focusSection }: LandingPageProps = {}) {
             renderPricingCTA={renderPricingCTA}
           />
           <LandingFinalCta />
+          <div className="py-xl">
+            <LeadCaptureForm />
+          </div>
         </main>
 
         <footer className="border-t border-border py-xl text-center text-sm text-muted-foreground">

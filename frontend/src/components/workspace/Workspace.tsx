@@ -7,8 +7,10 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useWorkflow } from "@/contexts/WorkflowContext";
 import { useAudio } from "@/contexts/AudioContext";
 import { useAppStore } from "@/store/appStore";
+import { useSubscription } from "@/hooks/useSubscription";
 import { LAYOUT } from "@/constants/layout";
 import { ToolSidebar } from "./ToolSidebar";
+import { PostSplitUpsell } from "../PostSplitUpsell";
 import { TransportBar } from "./TransportBar";
 import { EffectsPanel } from "./EffectsPanel";
 import { EffectsPanelBottomSheet } from "./EffectsPanelBottomSheet";
@@ -35,6 +37,7 @@ export function Workspace() {
   const { stemStates } = useWorkflow();
   const audio = useAudio();
   const splitResultStems = useAppStore((s) => s.splitResultStems);
+  const { status } = useSubscription();
 
   // Track which stem the effects panel applies to.
   // Defaults to the first available stem or empty string if no stems loaded.
@@ -156,8 +159,17 @@ export function Workspace() {
       : `"transport transport" "sidebar waveform" "sidebar mixer"`;
 
   return (
-    <div
-      data-testid="workspace"
+    <>
+      <div className="mx-md mt-md">
+        <PostSplitUpsell
+          isPaidUser={status === "active"}
+          hasStems={splitResultStems.length > 0}
+          onStartPremium={() => window.dispatchEvent(new CustomEvent("start-premium-checkout"))}
+          onViewPlans={() => window.dispatchEvent(new CustomEvent("open-pricing-tab"))}
+        />
+      </div>
+      <div
+        data-testid="workspace"
       className={cn(
         "grid w-full bg-[hsl(220,15%,8%)]",
         // No-scroll layout on tall+wide viewports (≥768px tall AND ≥1024px wide)
@@ -309,6 +321,7 @@ export function Workspace() {
           />
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </>
   );
 }

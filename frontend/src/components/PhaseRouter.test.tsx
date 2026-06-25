@@ -4,6 +4,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { PropsWithChildren, ComponentPropsWithoutRef } from "react";
 import { PhaseRouter, type PhaseRouterProps } from "./PhaseRouter";
 
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({ isSignedIn: false, isLoaded: true, getToken: () => Promise.resolve(null) }),
+  useUser: () => ({ isLoaded: true, isSignedIn: false, user: null }),
+}));
+
 vi.mock("framer-motion", () => ({
   motion: {
     div: ({

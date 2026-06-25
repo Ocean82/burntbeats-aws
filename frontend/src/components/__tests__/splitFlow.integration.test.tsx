@@ -8,6 +8,22 @@ import { EditorAppShell } from "../EditorAppShell";
  * Validates: Requirements 1.3, 1.4, 1.5, 1.7, 6.4
  */
 
+// Mock Clerk so ConfigurePhase can use useSubscription safely
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({
+    isSignedIn: true,
+    isLoaded: true,
+    getToken: () => Promise.resolve("mock-token"),
+  }),
+  useUser: () => ({
+    isLoaded: true,
+    isSignedIn: true,
+    user: { fullName: "Test User", imageUrl: null, primaryEmailAddress: { emailAddress: "test@example.com" } },
+  }),
+  useClerk: () => ({ openUserProfile: vi.fn(), signOut: vi.fn() }),
+  ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 // Mock framer-motion to avoid animation complexities in tests
 vi.mock("framer-motion", () => ({
   motion: {

@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Zap, Sparkles, Music, Users } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { useSubscription } from "@/hooks/useSubscription";
+import { useUsageBalance } from "@/hooks/useUsageBalance";
+import { TokenMeter } from "@/components/TokenMeter";
 import type { AppPhase } from "@/types/phases";
 import type { SplitQuality } from "@/api";
 
@@ -56,6 +59,8 @@ export function ConfigurePhase({
   fileName,
   onConfigure,
 }: ConfigurePhaseProps) {
+  const subscription = useSubscription();
+  const { freeMonthlyRemaining, loading: usageLoading } = useUsageBalance(true);
   const [quality, setQuality] = useState<SplitQuality>("quality");
   const [stemCount, setStemCount] = useState<2 | 4>(2);
 
@@ -80,6 +85,13 @@ export function ConfigurePhase({
             {fileName}
           </p>
         </div>
+
+        <TokenMeter
+          freeTokensRemaining={freeMonthlyRemaining}
+          isPaidUser={subscription.status === "active"}
+          usageLoading={usageLoading}
+          onUpgrade={() => window.dispatchEvent(new CustomEvent("open-pricing-tab"))}
+        />
 
         {/* Quality selector */}
         <fieldset className="flex flex-col gap-sm">

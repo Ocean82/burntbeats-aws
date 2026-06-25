@@ -36,6 +36,7 @@ import { historyRouter } from "./routes/history.js";
 import { masterRouter } from "./routes/master/index.js";
 import { previewRouter } from "./routes/preview/index.js";
 import { catalogRouter } from "./routes/catalog/index.js";
+import { newsletterRouter } from "./routes/newsletter.js";
 import { getMissingInternalServiceTokens } from "./lib/internalAuth.js";
 
 /**
@@ -180,6 +181,7 @@ app.use("/api/preview", previewRouter);
 app.use("/api/catalog", catalogRouter);
 app.use("/api/legal", legalRouter);
 app.use("/api/health", healthRouter);
+app.use("/api/newsletter", newsletterRouter);
 app.use("/api", historyRouter);
 
 // ── Metrics endpoint ─────────────────────────────────────────────────────────

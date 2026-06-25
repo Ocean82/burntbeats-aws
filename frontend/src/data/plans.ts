@@ -29,11 +29,11 @@ export type BillingInterval = "month" | "year";
 /** Annual effective monthly framing — matches Stripe annual prices in plan. */
 export const ANNUAL_PLAN_PRICING: Record<
   "basic" | "premium" | "studio",
-  { annualTotal: string; effectiveMonthly: string; savings: string }
+  { annualTotal: string; effectiveMonthly: string }
 > = {
-  basic: { annualTotal: "$86/yr", effectiveMonthly: "~$7.17/mo", savings: "Save $22/yr" },
-  premium: { annualTotal: "$144/yr", effectiveMonthly: "$12/mo", savings: "Save 20%" },
-  studio: { annualTotal: "$240/yr", effectiveMonthly: "$20/mo", savings: "Save 20%" },
+  basic: { annualTotal: "$86/yr", effectiveMonthly: "~$7.17/mo" },
+  premium: { annualTotal: "$144/yr", effectiveMonthly: "$12/mo" },
+  studio: { annualTotal: "$240/yr", effectiveMonthly: "$20/mo" },
 };
 
 export function planPriceLabel(

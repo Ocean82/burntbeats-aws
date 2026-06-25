@@ -18,6 +18,11 @@ import { screen } from "@testing-library/dom";
 import { describe, it, expect, vi } from "vitest";
 import type { PropsWithChildren, ComponentPropsWithoutRef } from "react";
 import * as fc from "fast-check";
+
+vi.mock("@clerk/react", () => ({
+  useAuth: () => ({ isSignedIn: false, isLoaded: true, getToken: () => Promise.resolve(null) }),
+  useUser: () => ({ isLoaded: true, isSignedIn: false, user: null }),
+}));
 import { PhaseRouter, type PhaseRouterProps } from "./PhaseRouter";
 import type { AppPhase } from "@/types/phases";
 

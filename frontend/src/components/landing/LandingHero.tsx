@@ -49,10 +49,7 @@ export function LandingHero() {
 
       <motion.div variants={heroItem} className="w-full">
         <p className="mx-auto max-w-[56ch] text-center text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground">
-          Burnt Beats is the browser workstation for producers and DJs who need
-          more than isolated files. Split tracks into stems, shape the mix
-          in-browser, reopen past jobs from My stems, and move straight into
-          MIDI or export.
+          Upload. Split. Mix. Export. All in your browser — no install, no upload limits, no compromise.
         </p>
       </motion.div>
 
@@ -65,7 +62,7 @@ export function LandingHero() {
             type="button"
             className="fire-button tap-feedback text-[clamp(1.1rem,2.5vw,1.35rem)] px-[clamp(2rem,5vw,3.5rem)] py-[clamp(1rem,2vw,1.4rem)] font-bold"
           >
-            Split your first track free
+            Try the workstation
           </button>
         </SignUpButton>
         <SignInButton mode="modal">
