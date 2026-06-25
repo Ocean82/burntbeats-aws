@@ -33,6 +33,7 @@ from stem_service.config import (
     htdemucs_available,
     stem_allow_missing_htdemucs_at_startup,
     MAX_QUEUE_DEPTH,
+    MAX_FILE_SIZE_MB,
     log_cpu_budget,
     get_config,
     _probe_onnx_models,

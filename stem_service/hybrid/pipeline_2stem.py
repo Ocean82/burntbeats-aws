@@ -12,6 +12,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+from stem_service.demucs_process import DemucsHealthMarker
 from stem_service.split import run_demucs
 from stem_service.vocal_stage1 import extract_vocals_stage1
 
