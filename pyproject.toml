@@ -43,7 +43,6 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
 
 [tool.ruff.format]
 quote-style = "double"
-indent-width = 4
 
 [tool.pyrefly]
 search_path = [

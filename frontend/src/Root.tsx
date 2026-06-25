@@ -178,7 +178,7 @@ function AuthenticatedRoot() {
       url.searchParams.delete("plan");
       window.history.replaceState({}, "", url.toString());
     }
-  }, []);
+  }, [user]);
 
   if (!isLoaded) return <ClerkLoadingShell />;
 

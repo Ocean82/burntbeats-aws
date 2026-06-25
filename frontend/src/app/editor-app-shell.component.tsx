@@ -92,7 +92,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
       window.removeEventListener("open-pricing-tab", handlePricing);
       window.removeEventListener("start-premium-checkout", handlePremiumCheckout);
     };
-  }, [ui.setActiveView, sub.subscription.startCheckout]);
+  }, [ui, sub.subscription]);
 
   // Auto-show onboarding tour for new users (post-plan-picker)
   useEffect(() => {

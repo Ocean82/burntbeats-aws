@@ -57,7 +57,7 @@ class TestHealth:
 
 
 class TestEnhance:
-    def test_enhance_accepts_valid_wav(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_enhance_accepts_valid_wav(self, client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         import speech_service.server as srv
 
         async def fake_enqueue(item: dict) -> None:
@@ -68,7 +68,7 @@ class TestEnhance:
         import soundfile as sf
         import numpy as np
 
-        wav_path = Path(client.base_url.path or ".") / "test.wav"
+        wav_path = tmp_path / "test.wav"
         sf.write(str(wav_path), np.zeros((16000,), dtype=np.float32), 16000, subtype="PCM_16")
 
         with wav_path.open("rb") as f:
@@ -93,7 +93,7 @@ class TestEnhance:
         )
         assert resp.status_code == 400
 
-    def test_enhance_returns_503_when_queue_full(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_enhance_returns_503_when_queue_full(self, client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         import speech_service.server as srv
 
         async def fake_enqueue_full(item: dict) -> None:
@@ -104,7 +104,7 @@ class TestEnhance:
         import soundfile as sf
         import numpy as np
 
-        wav_path = Path(client.base_url.path or ".") / "queue-test.wav"
+        wav_path = tmp_path / "queue-test.wav"
         sf.write(str(wav_path), np.zeros((16000,), dtype=np.float32), 16000, subtype="PCM_16")
 
         with wav_path.open("rb") as f:
