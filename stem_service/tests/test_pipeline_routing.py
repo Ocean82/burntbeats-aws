@@ -163,7 +163,7 @@ def test_run_demucs_4stem_raises_original_checkpoint_failure_without_htdemucs_fa
 
     monkeypatch.setattr(
         split_mod,
-        "demucs_speed_4stem_configs",
+        "demucs_quality_4stem_configs",
         lambda: [("04573f0d", repo, 7, "04573f0d", checkpoint)],
     )
     monkeypatch.setattr(
