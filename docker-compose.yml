@@ -38,8 +38,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
-          cpus: "0.5"
+          memory: 128M
+          cpus: "0.25"
 
   backend:
     build:
@@ -76,8 +76,8 @@ services:
       REDIS_URL: ${REDIS_URL:-}
       # PostgreSQL (AWS RDS)
       DATABASE_URL: ${DATABASE_URL:-}
-      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-20}
-      DB_IDLE_TIMEOUT: ${DB_IDLE_TIMEOUT:-30000}
+      DB_MAX_CONNECTIONS: ${DB_MAX_CONNECTIONS:-10}
+      DB_IDLE_TIMEOUT: ${DB_IDLE_TIMEOUT:-20000}
       DB_CONNECTION_TIMEOUT: ${DB_CONNECTION_TIMEOUT:-5000}
       DB_MAX_USES: ${DB_MAX_USES:-7500}
       DB_QUERY_TIMEOUT: ${DB_QUERY_TIMEOUT:-30000}
@@ -124,7 +124,14 @@ services:
       - ./tmp/speech:/app/tmp/speech
       - ./tmp/midi:/app/tmp/midi
     healthcheck:
-      test: ["CMD", "node", "--input-type=module", "-e", "import http from 'http'; http.get('http://localhost:3001/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      test:
+        [
+          "CMD",
+          "node",
+          "--input-type=module",
+          "-e",
+          "import http from 'http'; http.get('http://localhost:3001/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -133,7 +140,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 384M
           cpus: "1.0"
 
   stem_service:
@@ -156,9 +163,9 @@ services:
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
       # One CPU budget surface for queue workers + per-job threads.
       STEM_CPU_WORKERS: ${STEM_CPU_WORKERS:-1}
-      STEM_CPU_THREADS: ${STEM_CPU_THREADS:-2}
+      STEM_CPU_THREADS: ${STEM_CPU_THREADS:-1}
       STEM_CPU_INTEROP_THREADS: ${STEM_CPU_INTEROP_THREADS:-1}
-      MAX_QUEUE_DEPTH: ${MAX_QUEUE_DEPTH:-5}
+      MAX_QUEUE_DEPTH: ${MAX_QUEUE_DEPTH:-3}
       S3_ENABLED: ${S3_ENABLED:-false}
       S3_BUCKET: ${S3_BUCKET:-}
       S3_REGION: ${S3_REGION:-us-east-1}
@@ -179,7 +186,13 @@ services:
       - ./models:/repo/models
       - ./server_models:/repo/server_models
     healthcheck:
-      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      test:
+        [
+          "CMD",
+          ".venv/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')",
+        ]
       interval: 20s
       timeout: 10s
       retries: 3
@@ -188,8 +201,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6G
-          cpus: "2.0"
+          memory: 2560M
+          cpus: "1.5"
 
   speech_service:
     build:
@@ -209,7 +222,13 @@ services:
       - ./tmp/speech:/repo/tmp/speech
       - ./speech_models:/repo/speech_models
     healthcheck:
-      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      test:
+        [
+          "CMD",
+          ".venv/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')",
+        ]
       interval: 20s
       timeout: 10s
       retries: 3
@@ -218,7 +237,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 768M
           cpus: "1.0"
 
   midi_service:
@@ -231,7 +250,7 @@ services:
       MIDI_OUTPUT_DIR: /repo/tmp/midi
       MIDI_SERVICE_API_TOKEN: ${MIDI_SERVICE_API_TOKEN:-}
       INTERNAL_SERVICE_AUTH_REQUIRED: "1"
-      MIDI_MAX_QUEUE_DEPTH: ${MIDI_MAX_QUEUE_DEPTH:-8}
+      MIDI_MAX_QUEUE_DEPTH: ${MIDI_MAX_QUEUE_DEPTH:-4}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://localhost}
       SOUNDFONT_DIR: /repo/soundfonts
       DEFAULT_SOUNDFONT: ${DEFAULT_SOUNDFONT:-GeneralUser_GS.sf2}
@@ -239,7 +258,13 @@ services:
       - ./tmp/midi:/repo/tmp/midi
       - ./soundfonts:/repo/soundfonts
     healthcheck:
-      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')"]
+      test:
+        [
+          "CMD",
+          ".venv/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:5002/health')",
+        ]
       interval: 20s
       timeout: 10s
       retries: 3
@@ -248,8 +273,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: "1.0"
+          memory: 512M
+          cpus: "0.75"
 
   cleanup:
     build:
@@ -269,5 +294,5 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: 48M
           cpus: "0.1"
