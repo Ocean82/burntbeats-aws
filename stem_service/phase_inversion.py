@@ -13,16 +13,23 @@ import torchaudio
 
 
 def _load_audio_tensor(path: Path) -> tuple[torch.Tensor, int]:
-    """Load (channels_first, float32) and sample rate. Prefer soundfile for WAV/FLAC when installed."""
-    suf = path.suffix.lower()
-    if suf in (".wav", ".flac", ".ogg", ".aif", ".aiff"):
-        try:
-            import soundfile as sf
+    """Load (channels_first, float32) and sample rate. Prefer soundfile; ffmpeg fallback for MP3."""
+    # Primary path: soundfile handles WAV/FLAC/OGG without torchcodec
+    try:
+        import soundfile as sf
 
-            data, sr = sf.read(str(path), always_2d=True, dtype="float32")
-            return torch.from_numpy(data.T), int(sr)
-        except ImportError:
-            pass
+        data, sr = sf.read(str(path), always_2d=True, dtype="float32")
+        return torch.from_numpy(data.T), int(sr)
+    except Exception:
+        pass
+    # Fallback for MP3 and other formats: use torchaudio with ffmpeg backend
+    # (avoids torchcodec requirement in torchaudio 2.6+)
+    try:
+        wav, sr = torchaudio.load(str(path), backend="ffmpeg")
+        return wav, int(sr)
+    except Exception:
+        pass
+    # Last resort: let torchaudio pick its default backend
     wav, sr = torchaudio.load(str(path))
     return wav, int(sr)
 
@@ -34,11 +41,15 @@ def _write_wav(path: Path, ch_last: torch.Tensor, sr: int) -> None:
         import soundfile as sf
 
         sf.write(str(path), arr, int(sr), subtype="FLOAT")
-    except ImportError:
-        torchaudio.save(str(path), torch.from_numpy(arr.T).float(), int(sr))
+    except Exception:
+        torchaudio.save(
+            str(path), torch.from_numpy(arr.T).float(), int(sr), backend="soundfile"
+        )
 
 
-def _soft_limit(x: torch.Tensor, threshold: float = 0.98, ceiling: float = 1.0) -> torch.Tensor:
+def _soft_limit(
+    x: torch.Tensor, threshold: float = 0.98, ceiling: float = 1.0
+) -> torch.Tensor:
     """
     Tanh-based soft limiter — preserves dynamics while preventing hard clipping.
 
@@ -99,7 +110,9 @@ def create_perfect_instrumental(
     output_path = Path(output_path)
 
     if not original_path.is_file():
-        raise FileNotFoundError(f"Original audio not found or not a file: {original_path}")
+        raise FileNotFoundError(
+            f"Original audio not found or not a file: {original_path}"
+        )
     if not vocal_path.is_file():
         raise FileNotFoundError(f"Vocal audio not found or not a file: {vocal_path}")
 
@@ -142,7 +155,9 @@ def create_perfect_instrumental(
     try:
         _write_wav(output_path, instrumental.T, int(sr_orig))
     except Exception as e:
-        raise RuntimeError(f"Failed to write instrumental WAV to {output_path}: {e}") from e
+        raise RuntimeError(
+            f"Failed to write instrumental WAV to {output_path}: {e}"
+        ) from e
     return output_path
 
 
@@ -205,5 +220,7 @@ def create_residual_stem(
     try:
         _write_wav(output_path, residual.T, int(sr))
     except Exception as e:
-        raise RuntimeError(f"Failed to write residual stem to {output_path}: {e}") from e
+        raise RuntimeError(
+            f"Failed to write residual stem to {output_path}: {e}"
+        ) from e
     return output_path

@@ -94,13 +94,19 @@ def _supported_mode_health_snapshot() -> dict[str, object]:
             "ready": fast_vocal is not None,
             "required_models": ["UVR_MDXNET_3_9662.onnx"],
             "resolved_models": [fast_vocal.name] if fast_vocal is not None else [],
-            "missing_models": [] if fast_vocal is not None else ["UVR_MDXNET_3_9662.onnx"],
+            "missing_models": (
+                [] if fast_vocal is not None else ["UVR_MDXNET_3_9662.onnx"]
+            ),
         },
         "2_stem_quality": {
             "ready": quality_vocal is not None,
             "required_models": ["UVR_MDXNET_KARA.onnx"],
-            "resolved_models": [quality_vocal.name] if quality_vocal is not None else [],
-            "missing_models": [] if quality_vocal is not None else ["UVR_MDXNET_KARA.onnx"],
+            "resolved_models": (
+                [quality_vocal.name] if quality_vocal is not None else []
+            ),
+            "missing_models": (
+                [] if quality_vocal is not None else ["UVR_MDXNET_KARA.onnx"]
+            ),
         },
         "4_stem_speed": {
             "ready": speed_4.ready,
@@ -181,6 +187,7 @@ FRONTEND_ORIGINS = os.environ.get(
 
 # ── Auth helper ──────────────────────────────────────────────────────────────
 
+
 def _require_stem_service_api_token(request: Request) -> None:
     """Protect stem_service routes when it is reachable outside the trusted network."""
     require_configured_api_token(
@@ -199,11 +206,21 @@ def _safe_job_path(job_id: str, *parts: str) -> Path:
 
 # ── Lifespan ─────────────────────────────────────────────────────────────────
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Validate required models at startup so first request fails fast instead of hanging."""
 
     init_sentry()
+
+    # Force torchaudio to use soundfile backend — avoids torchcodec dependency in 2.6+
+    try:
+        import torchaudio
+
+        torchaudio.set_audio_backend("soundfile")
+        logger.info("torchaudio backend set to soundfile")
+    except Exception as e:
+        logger.warning("Could not set torchaudio backend to soundfile: %s", e)
 
     log_stem_runtime_versions(logger)
     log_cpu_budget(logger)
@@ -237,7 +254,9 @@ async def lifespan(app: FastAPI):
     if onnx_path:
         logger.info("ONNX Stage 1 available: %s", onnx_path.name)
     else:
-        logger.info("ONNX Stage 1 not available; deterministic 2-stem will fail until models are installed")
+        logger.info(
+            "ONNX Stage 1 not available; deterministic 2-stem will fail until models are installed"
+        )
 
     path_kind, stage1_models = get_2stem_stage1_preview()
     logger.info(
@@ -272,14 +291,26 @@ async def lifespan(app: FastAPI):
             )
 
     cfg = get_config()
-    logger.info("Config summary: device=%s providers=%s queue=%d timeout=%d",
-                cfg.device, list(cfg.onnx_providers), cfg.max_queue_depth, cfg.demucs_timeout_sec)
+    logger.info(
+        "Config summary: device=%s providers=%s queue=%d timeout=%d",
+        cfg.device,
+        list(cfg.onnx_providers),
+        cfg.max_queue_depth,
+        cfg.demucs_timeout_sec,
+    )
 
-    if os.environ.get("STEM_VERIFY_MODELS_AT_STARTUP", "").strip().lower() in ("1", "true", "yes"):
+    if os.environ.get("STEM_VERIFY_MODELS_AT_STARTUP", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
         failed = _probe_onnx_models(MODELS_DIR)
         if failed:
-            logger.warning("ONNX model integrity check: %d model(s) failed to load: %s",
-                           len(failed), ", ".join(failed))
+            logger.warning(
+                "ONNX model integrity check: %d model(s) failed to load: %s",
+                len(failed),
+                ", ".join(failed),
+            )
         else:
             onnx_count = sum(1 for _ in MODELS_DIR.glob("*.onnx"))
             logger.info("ONNX model integrity check: all %d model(s) OK", onnx_count)
@@ -327,6 +358,7 @@ app.add_middleware(
 
 
 # ── Route handlers ───────────────────────────────────────────────────────────
+
 
 @app.post("/split")
 async def split(
@@ -397,7 +429,8 @@ async def split(
         async with _job_queue.condition:
             if _job_queue.queued_jobs_count >= MAX_QUEUE_DEPTH:
                 logger.warning(
-                    "Rejecting split request: max queue depth %d reached", MAX_QUEUE_DEPTH
+                    "Rejecting split request: max queue depth %d reached",
+                    MAX_QUEUE_DEPTH,
                 )
                 raise HTTPException(
                     status_code=429,
@@ -466,9 +499,7 @@ async def split(
                     input_path = clipped_path
                     logger.info("Clipped input to 60s for sample mode: %s", job_id)
             except subprocess.CalledProcessError as e:
-                logger.error(
-                    "Failed to clip sample for job %s: %s", job_id, e.stderr
-                )
+                logger.error("Failed to clip sample for job %s: %s", job_id, e.stderr)
 
     correlation_id = getattr(request.state, "correlation_id", "unknown")
     job_payload: dict = {
@@ -528,7 +559,8 @@ async def expand(
         async with _job_queue.condition:
             if _job_queue.queued_jobs_count >= MAX_QUEUE_DEPTH:
                 logger.warning(
-                    "Rejecting expand request: max queue depth %d reached", MAX_QUEUE_DEPTH
+                    "Rejecting expand request: max queue depth %d reached",
+                    MAX_QUEUE_DEPTH,
                 )
                 raise HTTPException(
                     status_code=429,
