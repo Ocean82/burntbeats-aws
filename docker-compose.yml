@@ -201,7 +201,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2560M
+          memory: 3200M
           cpus: "1.5"
 
   speech_service:
@@ -237,7 +237,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M
+          memory: 512M
           cpus: "1.0"
 
   midi_service:
@@ -273,7 +273,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 384M
           cpus: "0.75"
 
   cleanup:
