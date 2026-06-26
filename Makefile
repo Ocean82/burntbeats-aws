@@ -3,6 +3,7 @@
 .PHONY: stem-install-ci stem-smoke stem-test midi-test speech-test
 .PHONY: frontend-lint frontend-typecheck frontend-build frontend-test
 .PHONY: backend-lint backend-test
+.PHONY: env-compare env-sync env-sync-restart
 
 # === UV / Workspace ===
 uv-lock:
@@ -65,3 +66,13 @@ backend-lint: backend-install
 
 backend-test: backend-install
 	cd backend && npm test
+
+# === Env sync to EC2 ===
+env-compare:
+	python3 .server-sync/compare_env.py
+
+env-sync:
+	bash .server-sync/apply_env_patches.sh
+
+env-sync-restart:
+	RESTART=1 bash .server-sync/apply_env_patches.sh

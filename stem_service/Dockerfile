@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir uv \
 
 COPY stem_service/ ./stem_service/
 COPY shared/python/ ./shared/python/
+RUN uv pip install --no-cache ./shared/python
 
 RUN groupadd --system --gid 10001 appuser \
     && useradd --system --uid 10001 --gid appuser --home /repo --shell /usr/sbin/nologin appuser \

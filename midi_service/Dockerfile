@@ -26,6 +26,7 @@ RUN pip install --no-cache-dir uv \
 
 COPY midi_service/ ./midi_service/
 COPY shared/python/ ./shared/python/
+RUN uv pip install --no-cache ./shared/python
 
 ENV MIDI_OUTPUT_DIR=/repo/tmp/midi
 

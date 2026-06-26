@@ -13,24 +13,33 @@ echo "🚀 Deploying burntbeats to EC2..."
 # 1. Create a tarball of the project (excluding heavy/unnecessary dirs)
 echo "📦 Creating deployment archive..."
 tar czf /tmp/burntbeats-deploy.tar.gz \
-  --exclude='./node_modules' \
-  --exclude='./.venv' \
-  --exclude='./.git' \
-  --exclude='./.pytest_cache' \
-  --exclude='./.ruff_cache' \
-  --exclude='./frontend/dist' \
-  --exclude='./tmp*' \
-  --exclude='./stem_test*' \
-  --exclude='./logs' \
-  --exclude='./.cursor' \
-  --exclude='./.idea' \
-  --exclude='./models' \
-  --exclude='./benchmark_out*' \
-  --exclude='./*.tgz' \
-  --exclude='./.env' \
-  --exclude='./backend/.env' \
-  --exclude='./frontend/.env' \
-  --exclude='./docs' \
+  --exclude='node_modules' \
+  --exclude='.venv' \
+  --exclude='.git' \
+  --exclude='.pytest_cache' \
+  --exclude='.ruff_cache' \
+  --exclude='frontend/dist' \
+  --exclude='tmp*' \
+  --exclude='temp' \
+  --exclude='stem_test*' \
+  --exclude='logs' \
+  --exclude='.cursor' \
+  --exclude='.idea' \
+  --exclude='models' \
+  --exclude='server_models' \
+  --exclude='speech_models' \
+  --exclude='soundfonts' \
+  --exclude='benchmark_out*' \
+  --exclude='*.tgz' \
+  --exclude='.env' \
+  --exclude='backend/.env' \
+  --exclude='frontend/.env' \
+  --exclude='docs' \
+  --exclude='reports' \
+  --exclude='session-artifacts' \
+  --exclude='archive' \
+  --exclude='gamer_tag' \
+  --exclude='burnt-beats-pricing-structure' \
   .
 
 echo "✅ Archive created"

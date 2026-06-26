@@ -47,11 +47,11 @@ services:
       dockerfile: Dockerfile
     depends_on:
       stem_service:
-        condition: service_healthy
+        condition: service_started
       speech_service:
-        condition: service_healthy
+        condition: service_started
       midi_service:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "127.0.0.1:3001:3001"
     environment:
