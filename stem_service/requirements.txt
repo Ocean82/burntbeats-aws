@@ -16,7 +16,7 @@
 # subprocess uses the venv Python (sys.executable).
 # Keep torch/torchaudio on the same minor and <2.9 so wheels resolve together and load/save paths
 # avoid torchcodec issues on some hosts (WSL/CI).
-torch>=2.0.0,<2.13
+torch>=2.12.1,<2.13
 torchaudio>=2.11.0,<2.12
 soundfile>=0.12.0
 # Bundled ffmpeg when system ffmpeg is not on PATH (matrix clip extraction)
