@@ -45,8 +45,8 @@ sentry-sdk[fastapi]>=2.63.0
 pyyaml>=6.0
 
 # Test dependencies
-pytest
-requests
+pytest>=9.0.3
+requests>=2.33.0
 httpx>=0.23.0,<0.28.0
 
 # Prometheus metrics
