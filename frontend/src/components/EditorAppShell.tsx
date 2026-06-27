@@ -159,7 +159,7 @@ export function EditorAppShell({
     setFileName("");
     setError(null);
     transitionTo("upload");
-  }, [handleFile, transitionTo]);
+  }, [handleFile, setError, transitionTo]);
 
   return (
     <PhaseProvider controller={controller}>
