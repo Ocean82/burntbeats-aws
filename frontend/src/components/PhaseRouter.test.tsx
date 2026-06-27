@@ -43,6 +43,7 @@ describe("PhaseRouter", () => {
     progress: 0,
     onRetry: vi.fn(),
     estimatedSeconds: null,
+    onChangeFile: vi.fn(),
   };
 
   beforeEach(() => {

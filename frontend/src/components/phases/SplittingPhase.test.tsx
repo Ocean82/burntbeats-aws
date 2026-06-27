@@ -19,6 +19,7 @@ describe("SplittingPhase", () => {
         progress={45}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -34,6 +35,7 @@ describe("SplittingPhase", () => {
         progress={30}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -57,6 +59,7 @@ describe("SplittingPhase", () => {
         progress={50}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -73,6 +76,7 @@ describe("SplittingPhase", () => {
         progress={10}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -86,6 +90,7 @@ describe("SplittingPhase", () => {
         progress={10}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
         estimatedSeconds={60}
       />,
     );
@@ -105,6 +110,7 @@ describe("SplittingPhase", () => {
         progress={95}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
         estimatedSeconds={10}
       />,
     );
@@ -124,6 +130,7 @@ describe("SplittingPhase", () => {
         progress={100}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -139,6 +146,7 @@ describe("SplittingPhase", () => {
         progress={100}
         error="Server error"
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -152,6 +160,7 @@ describe("SplittingPhase", () => {
         progress={60}
         error="Network timeout"
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -169,6 +178,7 @@ describe("SplittingPhase", () => {
         progress={60}
         error="Something went wrong"
         onRetry={onRetry}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -183,6 +193,7 @@ describe("SplittingPhase", () => {
         progress={30}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -198,6 +209,7 @@ describe("SplittingPhase", () => {
         progress={30}
         error="Failed"
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 
@@ -217,6 +229,7 @@ describe("SplittingPhase", () => {
         progress={50}
         error={null}
         onRetry={vi.fn()}
+        onChangeFile={vi.fn()}
       />,
     );
 

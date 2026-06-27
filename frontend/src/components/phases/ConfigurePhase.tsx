@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Zap, Sparkles, Music, Users } from "lucide-react";
+import { Zap, Sparkles, Music, Users, ArrowLeft } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useUsageBalance } from "@/hooks/useUsageBalance";
@@ -11,6 +11,7 @@ export interface ConfigurePhaseProps {
   transitionTo: (next: AppPhase) => void;
   fileName: string;
   onConfigure: (config: { quality: SplitQuality; stemCount: 2 | 4 }) => void;
+  onChangeFile: () => void;
 }
 
 const qualityOptions: Array<{
@@ -58,6 +59,7 @@ export function ConfigurePhase({
   transitionTo,
   fileName,
   onConfigure,
+  onChangeFile,
 }: ConfigurePhaseProps) {
   const subscription = useSubscription();
   const { freeMonthlyRemaining, loading: usageLoading } = useUsageBalance(true);
@@ -84,6 +86,14 @@ export function ConfigurePhase({
           >
             {fileName}
           </p>
+          <button
+            type="button"
+            onClick={onChangeFile}
+            className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-primary-300"
+          >
+            <ArrowLeft className="h-3 w-3" aria-hidden />
+            Choose a different file
+          </button>
         </div>
 
         <TokenMeter

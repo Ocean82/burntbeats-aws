@@ -29,6 +29,9 @@ export interface PhaseRouterProps {
   progress: number;
   onRetry: () => void;
   estimatedSeconds?: number | null;
+
+  // Change file (shared across configure and splitting phases)
+  onChangeFile: () => void;
 }
 
 const TRANSITION_DURATION_S = LAYOUT.TRANSITION_DURATION / 1000;
@@ -50,6 +53,7 @@ export function PhaseRouter({
   progress,
   onRetry,
   estimatedSeconds,
+  onChangeFile,
 }: PhaseRouterProps) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -86,6 +90,7 @@ export function PhaseRouter({
             transitionTo={transitionTo}
             fileName={fileName}
             onConfigure={onConfigure}
+            onChangeFile={onChangeFile}
           />
         )}
 
@@ -96,6 +101,7 @@ export function PhaseRouter({
             error={error}
             onRetry={onRetry}
             estimatedSeconds={estimatedSeconds}
+            onChangeFile={onChangeFile}
           />
         )}
 

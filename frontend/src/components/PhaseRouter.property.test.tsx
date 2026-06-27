@@ -71,6 +71,7 @@ function buildProps(phase: AppPhase): PhaseRouterProps {
     progress: 0,
     onRetry: vi.fn(),
     estimatedSeconds: null,
+    onChangeFile: vi.fn(),
   };
 }
 

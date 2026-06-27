@@ -144,7 +144,6 @@ export function EditorAppShell({
 
   const handleRetry = useCallback(() => {
     setError(null);
-    // Re-initiate split with the same configuration
     if (triggerSplit && splitConfig) {
       const intent: SplitIntent = {
         task: "full_separation",
@@ -154,6 +153,13 @@ export function EditorAppShell({
       triggerSplit(intent, false);
     }
   }, [setError, triggerSplit, splitConfig]);
+
+  const handleChangeFile = useCallback(() => {
+    handleFile?.(null);
+    setFileName("");
+    setError(null);
+    transitionTo("upload");
+  }, [handleFile, transitionTo]);
 
   return (
     <PhaseProvider controller={controller}>
@@ -179,6 +185,7 @@ export function EditorAppShell({
               onConfigure={handleConfigure}
               progress={progress}
               onRetry={handleRetry}
+              onChangeFile={handleChangeFile}
             />
           )}
         </main>

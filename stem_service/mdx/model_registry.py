@@ -50,13 +50,15 @@ _MDX_CONFIGS: dict[str, tuple[int, int, int, int, float]] = {
     "Kim_Vocal_2.onnx": (6144, 1024, 3072, 256, 1.009),
     "Kim_Inst.onnx": (6144, 1024, 3072, 256, 1.035),
     "UVR-MDX-NET-Voc_FT.onnx": (6144, 1024, 3072, 256, 1.021),
-    # Inst_HQ / MDX23C / Reverb — dim_f=3072 → n_fft=6144
+    # Inst_HQ — dim_f=2560 → n_fft=5120 (NOT dim_f=3072)
     "UVR-MDX-NET-Inst_HQ_4.onnx": (5120, 1024, 2560, 256, 1.019),
     "UVR-MDX-NET-Inst_HQ_5.onnx": (5120, 1024, 2560, 256, 1.010),
+    # MDX23C / model_int8 — dim_f=3072 → n_fft=6144
     "mdx23c_instrumental.onnx": (6144, 1024, 3072, 256, 1.035),
     "model_int8.onnx": (6144, 1024, 3072, 256, 1.035),
-    "Reverb_HQ_By_FoxJoy.onnx": (6144, 1024, 3072, 512, 1.035),
-    "UVR-MDX-NET-Drum.onnx": (6144, 1024, 3072, 128, 1.035),
+    # Special-purpose (dim_f=3072, dim_t ≠ 256)
+    "Reverb_HQ_By_FoxJoy.onnx": (6144, 1024, 3072, 512, 1.035),   # dim_t=512 for longer reverb tail context
+    "UVR-MDX-NET-Drum.onnx": (6144, 1024, 3072, 128, 1.035),      # dim_t=128 for shorter drum transient context
     # UVR MDX-Net numbered — dim_f=2048 → n_fft=4096
     "UVR_MDXNET_1_9703.onnx": (4096, 1024, 2048, 256, 1.030),
     "UVR_MDXNET_2_9682.onnx": (4096, 1024, 2048, 256, 1.035),

@@ -27,6 +27,8 @@ const WaveformIcon = () => (
   </svg>
 );
 
+const APP_URL = "https://www.burntbeats.com";
+
 interface PricingCardProps {
   name: string;
   price: string;
@@ -36,9 +38,10 @@ interface PricingCardProps {
   features: string[];
   popular?: boolean;
   accent?: boolean;
+  stripeUrl?: string;
 }
 
-const PricingCard = ({ name, price, period, tokens, description, features, popular, accent }: PricingCardProps) => (
+const PricingCard = ({ name, price, period, tokens, description, features, popular, accent, stripeUrl }: PricingCardProps) => (
   <div className={`relative flex flex-col rounded-2xl border ${accent ? 'border-orange-500/50 bg-gradient-to-b from-orange-950/20 to-zinc-900' : 'border-zinc-800 bg-zinc-900/50'} p-8 backdrop-blur-sm transition-all duration-300 hover:border-orange-500/30 hover:shadow-xl hover:shadow-orange-500/5`}>
     {popular && (
       <div className="absolute -top-4 left-1/2 -translate-x-1/2">
@@ -79,9 +82,14 @@ const PricingCard = ({ name, price, period, tokens, description, features, popul
       ))}
     </ul>
     
-    <button className={`w-full rounded-xl py-3.5 font-semibold transition-all duration-200 ${accent ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 shadow-lg shadow-orange-500/25' : 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700'}`}>
+    <a
+      href={stripeUrl ?? `${APP_URL}/pricing`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`block w-full rounded-xl py-3.5 text-center font-semibold transition-all duration-200 ${accent ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 shadow-lg shadow-orange-500/25' : 'bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700'}`}
+    >
       {name === 'Top-Up Pack' ? 'Buy Now' : 'Subscribe'}
-    </button>
+    </a>
   </div>
 );
 
@@ -98,6 +106,7 @@ export default function App() {
         'Unlimited purchases',
         'Standard processing',
       ],
+      stripeUrl: `${APP_URL}/pricing`,
     },
     {
       name: 'Basic Subscription',
@@ -112,6 +121,7 @@ export default function App() {
         'Priority processing queue',
         'Mixer & Editor access',
       ],
+      stripeUrl: `${APP_URL}/pricing`,
     },
     {
       name: 'Premium Monthly',
@@ -129,6 +139,7 @@ export default function App() {
       ],
       popular: true,
       accent: true,
+      stripeUrl: `${APP_URL}/pricing`,
     },
     {
       name: 'Studio Plan',
@@ -145,6 +156,7 @@ export default function App() {
         'Beta feature early access',
         'Royalty-free commercial license',
       ],
+      stripeUrl: `${APP_URL}/pricing`,
     },
   ];
 
@@ -161,9 +173,9 @@ export default function App() {
       <header className="relative border-b border-zinc-800/50">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <a href={APP_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 group">
               <div className="relative">
-                <div className="absolute inset-0 bg-orange-500/20 rounded-xl blur-lg" />
+                <div className="absolute inset-0 bg-orange-500/20 rounded-xl blur-lg group-hover:bg-orange-500/30 transition-colors" />
                 <div className="relative flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
                   <FireIcon />
                 </div>
@@ -175,11 +187,11 @@ export default function App() {
                 </h1>
                 <p className="text-xs text-zinc-500 tracking-wider uppercase">AI Stem Separation</p>
               </div>
-            </div>
+            </a>
             <nav className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-zinc-400 hover:text-white transition-colors text-sm">Features</a>
-              <a href="#pricing" className="text-orange-400 font-medium text-sm">Pricing</a>
-              <a href="#enterprise" className="text-zinc-400 hover:text-white transition-colors text-sm">Enterprise</a>
+              <a href="#features" onClick={(e) => { e.preventDefault(); document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-zinc-400 hover:text-white transition-colors text-sm cursor-pointer">Features</a>
+              <a href="#pricing" onClick={(e) => { e.preventDefault(); document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-orange-400 font-medium text-sm cursor-pointer">Pricing</a>
+              <a href="#enterprise" onClick={(e) => { e.preventDefault(); document.getElementById('enterprise')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-zinc-400 hover:text-white transition-colors text-sm cursor-pointer">Enterprise</a>
             </nav>
           </div>
         </div>
@@ -261,12 +273,12 @@ export default function App() {
                       </li>
                     ))}
                   </ul>
-                  <button className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-zinc-900 font-semibold hover:bg-zinc-100 transition-colors">
+                  <a href="mailto:burntbeats@burntbeats.com" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-white text-zinc-900 font-semibold hover:bg-zinc-100 transition-colors">
                     Contact Sales
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                     </svg>
-                  </button>
+                  </a>
                 </div>
                 <div className="hidden lg:flex items-center justify-center">
                   <div className="relative w-64 h-64">
@@ -325,9 +337,9 @@ export default function App() {
               <span className="font-bold text-white">BurntBeats</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-zinc-500">
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Support</a>
+              <a href={`${APP_URL}/terms-of-service`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Terms</a>
+              <a href={`${APP_URL}/privacy-policy`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Privacy</a>
+              <a href={`${APP_URL}/#support`} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Support</a>
               <span>© 2024 Burnt Beats. All rights reserved.</span>
             </div>
           </div>

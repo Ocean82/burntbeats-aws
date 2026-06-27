@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, AlertCircle, Upload } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { AppPhase } from "@/types/phases";
 
@@ -9,6 +9,7 @@ export interface SplittingPhaseProps {
   error: string | null;
   onRetry: () => void;
   estimatedSeconds?: number | null;
+  onChangeFile: () => void;
 }
 
 /** Format elapsed seconds as "Xm Ys" or "Xs". */
@@ -32,6 +33,7 @@ export function SplittingPhase({
   error,
   onRetry,
   estimatedSeconds,
+  onChangeFile,
 }: SplittingPhaseProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -103,20 +105,36 @@ export function SplittingPhase({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={onRetry}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg border border-border/50 px-4 py-2",
-                "text-sm font-medium text-foreground",
-                "transition-colors duration-150",
-                "hover:border-primary-400/50 hover:bg-primary-500/5",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(220,15%,8%)]",
-              )}
-            >
-              <RefreshCw className="h-4 w-4" />
-              Retry
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-sm">
+              <button
+                type="button"
+                onClick={onRetry}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-lg border border-border/50 px-4 py-2",
+                  "text-sm font-medium text-foreground",
+                  "transition-colors duration-150",
+                  "hover:border-primary-400/50 hover:bg-primary-500/5",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(220,15%,8%)]",
+                )}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={onChangeFile}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-lg border border-border/50 px-4 py-2",
+                  "text-sm font-medium text-foreground",
+                  "transition-colors duration-150",
+                  "hover:border-primary-400/50 hover:bg-primary-500/5",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(220,15%,8%)]",
+                )}
+              >
+                <Upload className="h-4 w-4" />
+                Choose a different file
+              </button>
+            </div>
           </>
         ) : (
           <>

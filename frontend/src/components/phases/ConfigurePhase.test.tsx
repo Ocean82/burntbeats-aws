@@ -13,6 +13,7 @@ describe("ConfigurePhase", () => {
     transitionTo: vi.fn(),
     fileName: "my-track.wav",
     onConfigure: vi.fn(),
+    onChangeFile: vi.fn(),
   };
 
   function setup(overrides = {}) {
