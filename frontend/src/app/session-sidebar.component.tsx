@@ -1,10 +1,9 @@
 import { X, LayoutPanelLeft, Sparkles, Music, Settings, FileDown } from "lucide-react";
 import { useUiStore } from "../store/uiStore";
-import { useAppStore } from "../store/appStore";
 
 export interface SessionSidebarProps {
   hasCompletedFirstExport?: boolean;
-  onViewPlans?: () => void;
+  onQuickExport?: () => void;
 }
 
 const COLLAPSED_W = "w-12";
@@ -12,11 +11,9 @@ const EXPANDED_W = "w-72";
 
 export function SessionSidebar({
   hasCompletedFirstExport = false,
-  onViewPlans,
+  onQuickExport,
 }: SessionSidebarProps) {
   const { isSidebarOpen, toggleSidebar, setSidebarOpen } = useUiStore();
-  const splitResultStems = useAppStore((s) => s.splitResultStems);
-  const showPromo = splitResultStems.length === 0 && !hasCompletedFirstExport;
 
   return (
     <aside
@@ -46,6 +43,7 @@ export function SessionSidebar({
         <nav className="flex flex-col items-center gap-3 py-4" aria-label="Sidebar quick actions">
           <button
             type="button"
+            onClick={toggleSidebar}
             className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
             title="Stems"
             aria-label="Stems"
@@ -54,6 +52,7 @@ export function SessionSidebar({
           </button>
           <button
             type="button"
+            onClick={toggleSidebar}
             className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
             title="Settings"
             aria-label="Settings"
@@ -62,6 +61,7 @@ export function SessionSidebar({
           </button>
           <button
             type="button"
+            onClick={onQuickExport ?? toggleSidebar}
             className="flex items-center justify-center rounded-lg p-2 text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
             title="Export"
             aria-label="Export"
@@ -104,20 +104,7 @@ export function SessionSidebar({
               ) : null}
             </div>
 
-            {showPromo && onViewPlans ? (
-              <div className="mt-auto rounded-2xl border border-white/5 bg-white/[0.03] p-4">
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Pro unlocks 4-stem split, HQ quality, and MIDI export.
-                </p>
-                <button
-                  type="button"
-                  onClick={onViewPlans}
-                  className="fire-button tap-feedback mt-4 w-full rounded-xl py-2.5 text-sm font-bold"
-                >
-                  View plans
-                </button>
-              </div>
-            ) : null}
+
           </div>
         </>
       )}

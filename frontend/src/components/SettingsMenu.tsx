@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Coins,
   CreditCard,
   ExternalLink,
   HelpCircle,
@@ -123,22 +122,13 @@ export function SettingsMenu({
             </p>
             <SettingsMenuItem
               icon={<CreditCard className="h-4 w-4" />}
-              label="Plans & subscriptions"
-              testId="settings-menu-pricing"
-              active={pricingActive}
-              onClick={() => {
-                onOpenPricing();
-                close();
-              }}
-            />
-            <SettingsMenuItem
-              icon={<Coins className="h-4 w-4" />}
               label={
                 tokenLabel
-                  ? `Usage & tokens (${tokenLabel})`
-                  : "Usage & tokens"
+                  ? `Plans & subscriptions (${tokenLabel})`
+                  : "Plans & subscriptions"
               }
-              testId="settings-menu-usage"
+              testId="settings-menu-pricing"
+              active={pricingActive}
               onClick={() => {
                 onOpenPricing();
                 close();

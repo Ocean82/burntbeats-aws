@@ -55,9 +55,11 @@ export function HeaderBar({ phase, className, onReset }: HeaderBarProps) {
         {phase === "workspace" && onReset && (
           <NewSplitAction onReset={onReset} />
         )}
-        {/* Account area — placeholder for future integration */}
-        <div
-          className="h-8 w-8 rounded-full bg-muted/40 border border-border/60"
+        {/* Account area — opens pricing page (tokens/usage info) */}
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("open-pricing-tab"))}
+          className="h-8 w-8 rounded-full bg-muted/40 border border-border/60 transition hover:bg-muted/60 hover:border-foreground/30 tap-feedback"
           aria-label="Account"
         />
       </div>

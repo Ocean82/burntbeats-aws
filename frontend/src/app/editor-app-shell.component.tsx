@@ -156,7 +156,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
       <AppBackgroundOrbs />
       <SessionSidebar
         hasCompletedFirstExport={exp.hasCompletedFirstExport}
-        onViewPlans={() => ui.setActiveView("pricing")}
+        onQuickExport={() => modals.openModal("export")}
       />
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">

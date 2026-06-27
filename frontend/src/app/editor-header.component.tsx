@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Undo2, Redo2, Mic2, Music, Drum, Radio, ChevronDown } from "lucide-react";
+import { Undo2, Redo2, Mic2, Music, Drum, ChevronDown } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
 import { PlanBadge } from "../components/PlanBadge";
@@ -46,12 +46,11 @@ const TAB_CLASS = (active: boolean) =>
   );
 
 const SECONDARY_TABS: Array<{
-  id: "beats" | "tuner" | "my-stems";
+  id: "beats" | "my-stems";
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
 }> = [
   { id: "beats", label: "Beats", icon: Drum },
-  { id: "tuner", label: "Tuner", icon: Radio },
   { id: "my-stems", label: "My stems" },
 ];
 
@@ -111,7 +110,7 @@ export function EditorHeader({
   return (
     <header
       className={cn(
-        "glass-panel flex flex-col gap-md rounded-2xl px-md py-md sm:px-lg sm:py-md",
+        "glass-panel flex flex-col gap-md rounded-2xl px-md py-md sm:px-lg sm:py-md overflow-visible",
         "header-sticky editor-app-header",
         !headerVisible && "header-sticky-hidden",
       )}
@@ -155,7 +154,6 @@ export function EditorHeader({
             subscriptionStatus={subscription.status}
             freeTokensRemaining={usageBalance != null && subscription.status !== "active" ? usageBalance : null}
             usageLoading={usageLoading}
-            onUpgrade={() => setActiveView("pricing")}
           />
 
           <div className="flex items-center rounded-xl border border-border bg-muted/80">
