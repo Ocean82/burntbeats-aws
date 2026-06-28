@@ -42,7 +42,7 @@ boto3>=1.43.30
 sentry-sdk[fastapi]>=2.63.0
 
 # YAML parsing for Demucs bag configs (demucs_bags.py)
-pyyaml>=6.0
+pyyaml>=6.0.3
 
 # Test dependencies
 pytest>=9.0.3
