@@ -10,6 +10,8 @@ import { useBeatMaker } from "../../hooks/useBeatMaker";
 import { useMasterBus } from "../../hooks/useMasterBus";
 import { usePatternStorage } from "../../hooks/usePatternStorage";
 import { useBeatMakerEntitlements } from "../../hooks/useBeatMakerEntitlements";
+import { PatternChainView } from "./PatternChainView";
+import { usePatternChain } from "../../hooks/usePatternChain";
 
 export interface DrumMachineWorkspaceProps {
   subscription: UseSubscriptionResult;
@@ -27,6 +29,7 @@ export function DrumMachineWorkspace({
   });
   const patternStorage = usePatternStorage();
   const entitlements = useBeatMakerEntitlements(subscription);
+  const patternChain = usePatternChain();
 
   return (
     <div className="space-y-0">
@@ -45,6 +48,11 @@ export function DrumMachineWorkspace({
         canUseVariations={entitlements.limits.canUseVariations}
         onExportGated={onViewPlans}
         onVariationGated={onViewPlans}
+      />
+      <PatternChainView
+        presets={patternStorage.savedPatterns.map(p => p.preset)}
+        patternChain={patternChain}
+        beatMaker={beatMaker}
       />
     </div>
   );

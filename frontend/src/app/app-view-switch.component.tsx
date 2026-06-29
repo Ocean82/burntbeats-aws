@@ -38,6 +38,8 @@ export interface AppViewSwitchProps {
   tunerPage: LazyExoticComponent<ComponentType<TunerPageProps>>
   /** Transitional editor shell (spec's phased split flow). */
   transitionalEditorShell: LazyExoticComponent<ComponentType<TransitionalShellProps>>
+  /** Hub page (tool selection home). */
+  hubPage: LazyExoticComponent<ComponentType<Record<string, never>>>
   /** Props forwarded to the transitional shell for split engine wiring. */
   transitionalShellProps?: TransitionalShellProps
   devLatencyStats?: UiLatencySnapshot
@@ -67,13 +69,16 @@ export function AppViewSwitch({
   libraryPage: LibraryPage,
   tunerPage: TunerPage,
   transitionalEditorShell: TransitionalEditorShell,
+  hubPage: HubPage,
   transitionalShellProps,
   devLatencyStats,
   onResetDevLatencyStats,
 }: AppViewSwitchProps) {
   return (
     <Suspense fallback={<PageSkeleton view={activeView} />}>
-      {activeView === "pricing" ? (
+      {activeView === "hub" ? (
+        <HubPage />
+      ) : activeView === "pricing" ? (
         <motion.section {...viewSwitchMotion(reduceMotion)}>
           <PricingPage
             subscription={subscription}

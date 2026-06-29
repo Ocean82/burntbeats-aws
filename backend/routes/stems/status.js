@@ -13,13 +13,14 @@ import {
 import { requireJobOwnership } from "../../middleware/ownership.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
-import { updateJobStatus, insertStems } from "../../db-jobs.js";
+import { updateJobStatus, insertStems, transitionToTerminal } from "../../db-jobs.js";
 import { getRedis } from "../../stripeRedis.js";
 
 import { writeSseJson } from "../../helpers/sse.js";
 import { publicErrorMessage } from "../../clientSafeError.js";
 
 import { resolveStemJobPath } from "./shared.js";
+import { refundUsageTokens } from "../../usageTokens.js";
 import { sendStemCompletionEmail } from "../../email/stemNotifications.js";
 
 /**
@@ -99,23 +100,35 @@ statusRouter.get(
     // Update DB job status on terminal states (best-effort, non-blocking)
     const terminalStatuses = ["completed", "failed", "cancelled"];
     if (terminalStatuses.includes(data.status)) {
-// ...
-      updateJobStatus(job_id, data.status, {
+      // Atomically transition to terminal — only succeeds for the FIRST caller.
+      // This prevents duplicate refunds, duplicate emails, and duplicate stem inserts
+      // when the status endpoint is polled repeatedly.
+      const transitioned = await transitionToTerminal(job_id, data.status, {
         errorMessage: data.error || undefined,
         modelName: data.model || undefined,
-      }).catch(() => {});
-      // Record stem metadata (including S3 keys) when job completes
-      if (data.status === "completed" && data.stems && Array.isArray(data.stems)) {
-        const s3Meta = data.s3;
-        const stemRecords = data.stems.map((s) => ({
-          stemName: s.id,
-          s3Key: s3Meta && s3Meta.keys ? s3Meta.keys[s.id] || null : null,
-          fileSizeBytes: null,
-        }));
-        insertStems(job_id, stemRecords).catch(() => {});
+      }).catch(() => null);
+
+      if (transitioned) {
+        // First caller: run one-time actions (refund on failure, insert stems, send email)
+        if ((data.status === "failed" || data.status === "cancelled") && !transitioned.is_sample) {
+          const cost = Number(transitioned.token_cost) || 0;
+          if (cost > 0 && transitioned.clerk_user_id) {
+            refundUsageTokens(transitioned.clerk_user_id, cost, { job_id, reason: `job_${data.status}` })
+              .catch((err) => console.error(`[status] refund for ${job_id} failed:`, err.message));
+            console.log(`[status] Refunded ${cost} tokens to ${transitioned.clerk_user_id} for ${data.status} job ${job_id}`);
+          }
+        }
+        if (data.status === "completed" && data.stems && Array.isArray(data.stems)) {
+          const s3Meta = data.s3;
+          const stemRecords = data.stems.map((s) => ({
+            stemName: s.id,
+            s3Key: s3Meta && s3Meta.keys ? s3Meta.keys[s.id] || null : null,
+            fileSizeBytes: null,
+          }));
+          insertStems(job_id, stemRecords).catch(() => {});
+        }
+        sendStemCompletionEmail(job_id).catch(() => {});
       }
-      // Fire-and-forget email notification
-      sendStemCompletionEmail(job_id).catch(() => {});
     } else if (data.status === "processing") {
       updateJobStatus(job_id, "processing").catch(() => {});
     }
@@ -193,11 +206,30 @@ statusRouter.get(
 
       const terminal = ["completed", "failed", "cancelled"];
       if (terminal.includes(data.status)) {
-        updateJobStatus(job_id, data.status, {
+        const transitioned = await transitionToTerminal(job_id, data.status, {
           errorMessage: data.error || undefined,
           modelName: data.model || undefined,
-        }).catch(() => {});
-        sendStemCompletionEmail(job_id).catch(() => {});
+        }).catch(() => null);
+
+        if (transitioned) {
+          if ((data.status === "failed" || data.status === "cancelled") && !transitioned.is_sample) {
+            const cost = Number(transitioned.token_cost) || 0;
+            if (cost > 0 && transitioned.clerk_user_id) {
+              refundUsageTokens(transitioned.clerk_user_id, cost, { job_id, reason: `job_${data.status}` })
+                .catch((err) => console.error(`[sse] refund for ${job_id} failed:`, err.message));
+            }
+          }
+          if (data.status === "completed" && data.stems && Array.isArray(data.stems)) {
+            const s3Meta = data.s3;
+            const stemRecords = data.stems.map((s) => ({
+              stemName: s.id,
+              s3Key: s3Meta?.keys?.[s.id] || null,
+              fileSizeBytes: null,
+            }));
+            insertStems(job_id, stemRecords).catch(() => {});
+          }
+          sendStemCompletionEmail(job_id).catch(() => {});
+        }
         return true;
       }
       return false;

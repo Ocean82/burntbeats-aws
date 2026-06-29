@@ -51,11 +51,11 @@ export function PostSplitUpsell({
           </ul>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button type="button" onClick={onStartPremium}
-              className="fire-button rounded-lg px-md py-1.5 text-xs font-semibold">
+              className="fire-button tap-feedback rounded-lg px-md py-1.5 text-xs font-semibold">
               {premiumPlan?.cta ?? "Start Premium"} · {premiumPlan?.priceLabel ?? "$15/mo"}
             </button>
             <button type="button" onClick={onViewPlans}
-              className="ghost-button rounded-lg px-md py-1.5 text-xs font-semibold">
+              className="ghost-button tap-feedback rounded-lg px-md py-1.5 text-xs font-semibold">
               See all plans
             </button>
           </div>

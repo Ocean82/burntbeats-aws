@@ -45,7 +45,7 @@ export function PlanPickerCard({
         onClick={onSelect}
         disabled={isLoading}
         className={cn(
-          "w-full rounded-xl py-2.5 text-sm font-semibold transition",
+          "tap-feedback w-full rounded-xl py-2.5 text-sm font-semibold transition",
           isHighlighted ? "fire-button" : "border border-border bg-muted text-secondary-foreground hover:bg-secondary",
         )}
       >

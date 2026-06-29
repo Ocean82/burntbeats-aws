@@ -23,3 +23,6 @@ export const LazyTransitionalEditorShell = lazy(() =>
     default: m.EditorAppShell,
   })),
 );
+export const LazyHubPage = lazy(() =>
+  import("../pages/HubPage").then((m) => ({ default: m.HubPage })),
+);

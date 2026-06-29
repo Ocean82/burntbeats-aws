@@ -21,6 +21,7 @@ import { emailRouter } from "./email-routes.js";
 import { isUsageTokensEnabled } from "./usageTokens.js";
 import { getAllowedOriginSet } from "./allowedOrigins.js";
 import { closePool } from "./db.js";
+import { reapStaleJobs } from "./db-jobs.js";
 import { rateLimitMiddleware } from "./middleware/rateLimiter.js";
 import { correlationIdMiddleware } from "./lib/correlationId.js";
 import { metricsMiddleware, metricsHandler } from "./metrics.js";
@@ -221,6 +222,15 @@ async function main() {
       `[startup] MIDI storage probe failed: ${midiStorage.error || "Unknown error"} (${midiStorage.output_dir})`,
     );
   }
+  // Reap jobs stuck in 'processing'/'accepted' from a previous crash (e.g. stem service OOM)
+  try {
+    const reaped = await reapStaleJobs();
+    if (reaped > 0) {
+      console.log(`[startup] Reaped ${reaped} stalled job(s) from previous run`);
+    }
+  } catch (reapErr) {
+    console.error("[startup] Stale job reaper failed:", reapErr);
+  }
   server = app.listen(PORT, () => {
     console.log(`Backend listening on http://localhost:${PORT}`);
     console.log(
@@ -246,6 +256,20 @@ async function main() {
     logError("[server error]", err);
     process.exit(1);
   });
+
+  // Periodic stale-job reaper: every 15 min, mark jobs stuck > 30 min as failed.
+  // Covers stem_service restarts while the Node backend stays up.
+  const STALE_JOB_REAP_INTERVAL_MS = 15 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      const reaped = await reapStaleJobs();
+      if (reaped > 0) {
+        console.log(`[reaper] Marked ${reaped} stalled job(s) as failed`);
+      }
+    } catch (err) {
+      console.error("[reaper] Stale job reaper failed:", err);
+    }
+  }, STALE_JOB_REAP_INTERVAL_MS).unref();
 }
 
 async function gracefulShutdown(signal) {

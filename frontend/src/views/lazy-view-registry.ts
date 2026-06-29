@@ -4,6 +4,7 @@ import type { AppView } from "../hooks/workflow/useEditorViewRouting";
 type ImportFn = () => Promise<unknown>;
 
 const viewImports: Record<AppView, ImportFn> = {
+  hub: () => import("../pages/HubPage"),
   editor: () => import("../components/EditorAppShell"),
   pricing: () => import("../components/PricingPage"),
   "my-stems": () => import("../components/MyStemsPage"),
@@ -18,6 +19,7 @@ export function preloadView(view: AppView) {
 }
 
 const ADJACENCY_MAP: Record<AppView, AppView[]> = {
+  hub: ["editor", "beats", "midi", "speech"],
   editor: ["pricing", "speech", "midi"],
   pricing: ["my-stems", "editor"],
   "my-stems": ["pricing", "editor"],

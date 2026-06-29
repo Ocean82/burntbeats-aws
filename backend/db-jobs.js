@@ -187,6 +187,54 @@ export async function markJobEmailNotified(jobId, error) {
 }
 
 /**
+ * Atomically transition a job to a terminal status ONLY if it's currently in a non-terminal state.
+ * Returns the job's clerk_user_id and token_cost if the transition actually happened (first caller),
+ * or null if the job was already in a terminal state (subsequent polls).
+ *
+ * This prevents duplicate token refunds and duplicate email sends when the status endpoint
+ * is polled multiple times after completion.
+ *
+ * @param {string} jobId
+ * @param {'completed' | 'failed' | 'cancelled'} status
+ * @param {{ errorMessage?: string, modelName?: string }} [extra]
+ * @returns {Promise<{ clerk_user_id: string | null, token_cost: number, is_sample: boolean } | null>}
+ */
+export async function transitionToTerminal(jobId, status, extra = {}) {
+  const pool = getPool();
+  if (!pool) return null;
+  try {
+    const sets = ["status = $2", "completed_at = now()"];
+    const params = [jobId, status];
+    let idx = 3;
+
+    if (extra.errorMessage) {
+      sets.push(`error_message = $${idx}`);
+      params.push(extra.errorMessage);
+      idx++;
+    }
+    if (extra.modelName) {
+      sets.push(`model_name = $${idx}`);
+      params.push(extra.modelName);
+      idx++;
+    }
+
+    // Only match if the job is currently in a non-terminal state
+    const result = await pool.query(
+      `UPDATE jobs SET ${sets.join(", ")}
+       WHERE job_id = $1
+         AND status NOT IN ('completed', 'failed', 'cancelled')
+       RETURNING clerk_user_id, token_cost, is_sample`,
+      params,
+    );
+
+    return result.rows[0] || null;
+  } catch (err) {
+    console.error("[db-jobs] transitionToTerminal failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
  * Get job history for a user (most recent first).
  * @param {string} clerkUserId
  * @param {{ limit?: number, offset?: number }} [opts]
@@ -262,5 +310,44 @@ export async function getJobHistoryWithStems(clerkUserId, opts = {}) {
   } catch (err) {
     console.error("[db-jobs] getJobHistoryWithStems failed:", err instanceof Error ? err.message : err);
     return { jobs: [], total: 0 };
+  }
+}
+
+/**
+ * Reap jobs that are stuck in 'processing' or 'accepted' state for longer than the timeout.
+ * Marks them as 'failed' with a clear error message. Called once on backend startup.
+ *
+ * @param {{ timeoutMinutes?: number }} [options]
+ * @returns {Promise<number>} Number of reaped jobs (0 = nothing to clean up)
+ */
+export async function reapStaleJobs(options = {}) {
+  const pool = getPool();
+  if (!pool) return 0;
+
+  const timeoutMinutes = options.timeoutMinutes ?? 30;
+  const errorMessage = `Job stalled — exceeded ${timeoutMinutes} minute timeout without completion. The stem service may have restarted or crashed during processing.`;
+
+  try {
+    const result = await pool.query(
+      `UPDATE jobs
+       SET status = 'failed',
+           error_message = $1,
+           completed_at = now()
+       WHERE status IN ('accepted', 'processing')
+         AND created_at < now() - ($2::integer * interval '1 minute')
+       RETURNING job_id, clerk_user_id, token_cost`,
+      [errorMessage, timeoutMinutes],
+    );
+
+    if (result.rowCount > 0) {
+      console.warn(
+        `[db-jobs] reapStaleJobs: marked ${result.rowCount} stalled job(s) as failed:`,
+        result.rows.map((r) => r.job_id).join(", "),
+      );
+    }
+    return result.rowCount;
+  } catch (err) {
+    console.error("[db-jobs] reapStaleJobs failed:", err instanceof Error ? err.message : err);
+    return 0;
   }
 }
