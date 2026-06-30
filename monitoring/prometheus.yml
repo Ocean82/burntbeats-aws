@@ -11,16 +11,16 @@ rule_files:
 scrape_configs:
   - job_name: 'backend'
     static_configs:
-      - targets: ['host.docker.internal:3001']
+      - targets: ['backend:3001']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   - job_name: 'midi_service'
     static_configs:
-      - targets: ['host.docker.internal:5002']
+      - targets: ['midi_service:5002']
     metrics_path: '/metrics'
     scrape_interval: 30s
 
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['prometheus:9090']

@@ -28,6 +28,9 @@ COPY midi_service/ ./midi_service/
 COPY shared/python/ ./shared/python/
 RUN uv pip install --no-cache ./shared/python
 
+COPY midi_service/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 ENV MIDI_OUTPUT_DIR=/repo/tmp/midi
 
 RUN groupadd --system --gid 10001 appuser \
@@ -39,4 +42,5 @@ RUN groupadd --system --gid 10001 appuser \
 USER appuser
 
 EXPOSE 5002
+ENTRYPOINT ["/entrypoint.sh"]
 CMD [".venv/bin/uvicorn", "midi_service.server:app", "--host", "0.0.0.0", "--port", "5002"]

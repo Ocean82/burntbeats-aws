@@ -3,6 +3,7 @@
  */
 import { API_BASE } from "../config";
 import { authHeaders, jobTokenHeader } from "./auth";
+import { apiGet } from "./client";
 
 export interface MasteringPresetSummary {
   id: string;
@@ -12,12 +13,11 @@ export interface MasteringPresetSummary {
 }
 
 export async function fetchMasteringPresets(): Promise<MasteringPresetSummary[]> {
-  const res = await fetch(`${API_BASE}/api/master/presets`, {
-    headers: await authHeaders(),
-  });
-  if (!res.ok) throw new Error("Failed to load mastering presets");
-  const data = (await res.json()) as { presets: MasteringPresetSummary[] };
-  return data.presets ?? [];
+  const result = await apiGet<{ presets: MasteringPresetSummary[] }>("/api/master/presets");
+  if (result.error || !result.data) {
+    throw new Error(result.error || "Failed to load mastering presets");
+  }
+  return result.data.presets ?? [];
 }
 
 export async function renderMasteredWav(params: {

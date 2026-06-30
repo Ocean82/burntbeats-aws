@@ -130,6 +130,20 @@
   flex-shrink: 0;
 }
 
+.ui-stepper-step__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  border-radius: 50%;
+  border: 1px solid rgba(178, 172, 160, 0.35);
+  color: rgba(178, 172, 160);
+}
+
 .ui-stepper-step--active {
   border-color: rgba(205, 165, 60, 0.5);
   color: rgba(245, 220, 170);
@@ -155,6 +169,44 @@
 
 .ui-stepper-connector--done {
   background: rgba(60, 180, 120, 0.5);
+}
+
+.ui-stepper-connector-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 12px;
+}
+
+.ui-stepper-progress-underline {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 2px;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, rgba(205, 165, 60, 0.6), rgba(230, 180, 80, 0.9));
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+@keyframes stepper-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(205, 165, 60, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(205, 165, 60, 0.3), 0 0 4px rgba(205, 165, 60, 0.2);
+  }
+}
+
+.ui-stepper-step--active {
+  border-color: rgba(205, 165, 60, 0.5);
+  color: rgba(245, 220, 170);
+  background: rgba(205, 165, 60, 0.12);
+  box-shadow: 0 0 12px rgba(205, 165, 60, 0.15);
+  transform: scale(1.02);
+  animation: stepper-pulse 2.4s ease-in-out infinite;
 }
 
 @supports (color: oklch(0% 0 0)) {
@@ -229,12 +281,22 @@
   .ui-stepper-connector--done {
     background: oklch(62% 0.14 155 / 50%);
   }
+
+  .ui-stepper-step__index {
+    border-color: oklch(72% 0.014 48 / 35%);
+    color: oklch(72% 0.014 48);
+  }
+
+  .ui-stepper-progress-underline {
+    background: linear-gradient(90deg, oklch(68% 0.14 75 / 60%), oklch(78% 0.16 80 / 90%));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .ui-stepper-step {
     transition: none;
     transform: none !important;
+    animation: none;
   }
 
   .ui-stepper-step--active {
@@ -243,6 +305,10 @@
   }
 
   .ui-stepper-connector {
+    transition: none;
+  }
+
+  .ui-stepper-progress-underline {
     transition: none;
   }
 }
