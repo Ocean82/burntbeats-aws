@@ -11,7 +11,7 @@ diffq==0.2.4
 onnxruntime==1.23.2
 numpy==2.4.6
 fastapi==0.138.1
-uvicorn==0.27.0
+uvicorn==0.49.0
 python-multipart==0.0.32
 boto3==1.43.30
 httpx==0.28.1
