@@ -47,7 +47,7 @@ pyyaml>=6.0.3
 # Test dependencies
 pytest>=9.0.3
 requests>=2.33.0
-httpx>=0.23.0,<0.28.0
+httpx>=0.23.0,<0.29.0
 
 # Prometheus metrics
 prometheus_client>=0.20.0
