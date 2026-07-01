@@ -1,0 +1,53 @@
+groups:
+  - name: burntbeats_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate on {{ $labels.route }}"
+          description: "5xx error rate is {{ $value | humanizePercentage }} for route {{ $labels.route }}"
+
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, route)) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on {{ $labels.route }}"
+          description: "p95 latency is {{ $value }}s for route {{ $labels.route }}"
+
+      - alert: RateLimitBurst
+        expr: |
+          sum(rate(rate_limit_hits_total[1m])) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limit burst on {{ $labels.job }}"
+          description: "{{ $value }} requests/sec are being rate-limited"
+
+      - alert: DatabasePoolExhaustion
+        expr: |
+          db_pool_active_connections > 15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection pool nearing exhaustion"
+          description: "Active connections: {{ $value }} (max recommended: 15)"
+
+      - alert: EventLoopLag
+        expr: |
+          nodejs_eventloop_lag_p100_seconds > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node.js event loop lag is high"
+          description: "p100 event loop lag is {{ $value }}s — possible CPU saturation or blocking I/O"

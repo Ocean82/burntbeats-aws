@@ -454,19 +454,31 @@ export function MidiConvertPanel({
           </div>
 
           {/* Per-stem status cards */}
-          <div className="flex flex-col gap-xs">
-            {batchJobs.map((job, idx) => (
-              <div
-                key={job.stemName}
-                className={cn(
-                  "midi-batch-card flex flex-col gap-xs rounded-lg border px-sm py-sm sm:flex-row sm:items-center sm:justify-between",
-                  job.status === "pending" && "border-border bg-muted",
-                  job.status === "converting" && "midi-batch-card--converting border-accent-midi/30 bg-accent-midi-950/15",
-                  job.status === "completed" && "midi-batch-card--completed border-success/30 bg-success-muted/10",
-                  job.status === "failed" && "midi-batch-card--failed border-destructive-500/30 bg-destructive-950/15",
-                  job.status === "cancelled" && "border-border/60 bg-muted/40 opacity-70",
-                )}
-              >
+          <AnimatePresence initial={false}>
+            <div className="flex flex-col gap-xs">
+              {batchJobs.map((job, idx) => (
+                <motion.div
+                  key={job.stemName}
+                  layout
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.15 } }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 350,
+                    damping: 22,
+                    mass: 0.7,
+                    delay: idx * 0.04,
+                  }}
+                  className={cn(
+                    "midi-batch-card flex flex-col gap-xs rounded-lg border px-sm py-sm sm:flex-row sm:items-center sm:justify-between",
+                    job.status === "pending" && "border-border bg-muted",
+                    job.status === "converting" && "midi-batch-card--converting border-accent-midi/30 bg-accent-midi-950/15",
+                    job.status === "completed" && "midi-batch-card--completed border-success/30 bg-success-muted/10",
+                    job.status === "failed" && "midi-batch-card--failed border-destructive-500/30 bg-destructive-950/15",
+                    job.status === "cancelled" && "border-border/60 bg-muted/40 opacity-70",
+                  )}
+                >
                 <div className="flex min-w-0 flex-1 items-start gap-xs sm:items-center">
                   {job.status === "pending" && (
                     <span className="mt-2xs h-2.5 w-2.5 shrink-0 rounded-full bg-secondary sm:mt-0" />
@@ -551,9 +563,10 @@ export function MidiConvertPanel({
                     </button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
+        </AnimatePresence>
 
           {/* Download All as ZIP + Multi-track buttons */}
           {batchJobs.some((j) => j.status === "completed") && !isBatchInProgress && (

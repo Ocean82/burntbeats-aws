@@ -33,8 +33,8 @@ export function useStemHistory(): UseStemHistoryReturn {
       try {
         const data = await fetchStemHistory({ limit: 200 });
         if (!cancelled) {
-          setJobs(data.jobs);
-          setTotalJobs(data.total);
+          setJobs(data?.jobs ?? []);
+          setTotalJobs(data?.total ?? 0);
           setError(null);
         }
       } catch (err) {
@@ -62,8 +62,8 @@ export function useStemHistory(): UseStemHistoryReturn {
     try {
       const data = await fetchStemHistory({ limit: 200 });
       if (mountedRef.current) {
-        setJobs(data.jobs);
-        setTotalJobs(data.total);
+        setJobs(data?.jobs ?? []);
+        setTotalJobs(data?.total ?? 0);
       }
     } catch (err) {
       if (mountedRef.current) {

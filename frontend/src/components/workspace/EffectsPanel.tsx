@@ -97,14 +97,14 @@ export function EffectsPanel({ activeTool, onClose, isOverlay = false, activeSte
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <h2 className="text-sm font-semibold text-white/90">
+        <h2 className="text-sm font-semibold text-foreground">
           {TOOL_LABELS[activeTool]}
         </h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close effects panel"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/10 hover:text-foreground"
         >
           <X size={16} />
         </button>
@@ -122,7 +122,7 @@ export function EffectsPanel({ activeTool, onClose, isOverlay = false, activeSte
             onUpdateMixerField={updateMixerField}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-sm text-white/50">
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
             Select a stem to adjust parameters
           </div>
         )}
@@ -212,8 +212,8 @@ interface SliderControlProps {
 function SliderControl({ label, min, max, step, value, onChange, unit = "" }: SliderControlProps) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-white/70">
-        {label}: <span className="text-white/90">{value}{unit}</span>
+      <span className="text-xs font-medium text-secondary-foreground">
+        {label}: <span className="text-foreground">{value}{unit}</span>
       </span>
       <input
         type="range"
@@ -225,7 +225,7 @@ function SliderControl({ label, min, max, step, value, onChange, unit = "" }: Sl
         aria-label={label}
         className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-purple-500"
       />
-      <div className="flex justify-between text-[10px] text-white/60">
+      <div className="flex justify-between text-[10px] text-muted-foreground">
         <span>{min}{unit}</span>
         <span>{max}{unit}</span>
       </div>

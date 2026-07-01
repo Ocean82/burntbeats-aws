@@ -71,9 +71,11 @@ export function EditorAppShell({
   const progress = phase === "splitting" ? splitProgress : 0;
 
   // When split completes (splitResultStems populated), persist to sessionStorage
-  // and transition to workspace phase (Req 1.2, 1.7)
+  // but do NOT auto-navigate to workspace. Stems are available in the user's
+  // library — they can open in editor from there, or the email notification
+  // will link them back when ready.
   useEffect(() => {
-    if (splitResultStems.length > 0 && phase !== "workspace") {
+    if (splitResultStems.length > 0) {
       try {
         const persistData = JSON.stringify({
           stemIds: splitResultStems.map((s) => s.id),
@@ -82,11 +84,10 @@ export function EditorAppShell({
         });
         sessionStorage.setItem(SPLIT_RESULT_KEY, persistData);
       } catch {
-        // sessionStorage write failed — still transition to workspace
+        // sessionStorage write failed — stems still available via library
       }
-      transitionTo("workspace");
     }
-  }, [splitResultStems, phase, transitionTo]);
+  }, [splitResultStems]);
 
   // If the split engine reports an error, surface it in the splitting phase
   useEffect(() => {

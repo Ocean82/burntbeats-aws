@@ -95,7 +95,7 @@ export function EffectsPanelBottomSheet({
             type="button"
             onClick={onClose}
             aria-label="Close effects panel"
-            className="absolute right-3 top-2 flex h-8 w-8 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            className="absolute right-3 top-2 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-white/10 hover:text-foreground transition-colors"
           >
             <X size={18} />
           </button>

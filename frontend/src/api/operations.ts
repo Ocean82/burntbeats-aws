@@ -55,36 +55,30 @@ export async function startStemSplit(
       const { upload_url, s3_key } = await getUploadUrl(file.name, file.type);
       
       // Perform direct PUT to S3
-      const uploadRes = await fetch(upload_url, {
+      const res = await fetch(upload_url, {
         method: "PUT",
         body: file,
         headers: { "Content-Type": file.type },
       });
-      
-      if (!uploadRes.ok) throw new Error(`S3 upload failed: ${uploadRes.status}`);
 
-      // Notify backend to start processing
-      const res = await fetch(`${API_BASE}/api/stems/split`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(await authHeaders()),
-        },
-        body: JSON.stringify({
+      if (!res.ok) throw new Error(`S3 upload failed: ${res.status}`);
+
+      const result = await apiPost<{ job_id: string; job_token?: string }>(
+        "/api/stems/split",
+        {
           s3_key,
           filename: file.name,
           stems,
           quality,
           intent: intent ? (quality ? withIntentQuality(intent, quality) : intent) : undefined,
-        }),
-      });
+        },
+      );
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Processing request failed: ${res.status} ${text}`);
+      if (result.error || !result.data) {
+        throw new Error(result.error || `Processing request failed: ${result.status}`);
       }
 
-      const json = await res.json();
+      const json = result.data;
       if (typeof json.job_token === "string" && json.job_token) {
         setJobToken(json.job_id, json.job_token);
       }
@@ -182,33 +176,19 @@ export async function startExpand(
   jobId: string,
   quality?: SplitQuality
 ): Promise<{ job_id: string }> {
-  const body = JSON.stringify({ job_id: jobId, quality: quality ?? "quality" });
-  const res = await fetchWithRetry(
-    `${API_BASE}/api/stems/expand`,
+  const result = await apiPost<{ job_id: string; job_token?: string }>(
+    "/api/stems/expand",
+    { job_id: jobId, quality: quality ?? "quality" },
     {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(await authHeaders()),
-        ...jobTokenHeader(jobId),
-      },
-      body,
+      headers: { ...jobTokenHeader(jobId) },
+      retry: { maxAttempts: 2, retryOn: [502, 503, 504] },
     },
-    { maxAttempts: 2, retryOn: [502, 503, 504] },
   );
-  if (!res.ok) {
-    const text = await res.text();
-    const ct = res.headers.get("content-type") || "";
-    let bodyError: string | null = null;
-    if (ct.includes("application/json") && text) {
-      bodyError = getApiErrorMessage(tryParseJson(text));
-    }
-    throw new Error(
-      userFacingHttpError(res.status, bodyError, text.slice(0, 800) || `Expand failed: ${res.status}`),
-    );
+  if (result.error || !result.data) {
+    throw new Error(result.error || `Expand failed: ${result.status}`);
   }
-  const json: unknown = await res.json();
-  if (res.status === 202 && isAcceptedJobIdResponse(json)) {
+  const json = result.data;
+  if (result.status === 202 && isAcceptedJobIdResponse(json)) {
     if (typeof json.job_token === "string" && json.job_token) {
       setJobToken(json.job_id, json.job_token);
     }

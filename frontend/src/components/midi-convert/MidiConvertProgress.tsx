@@ -148,7 +148,7 @@ export function MidiConvertProgress({
         </div>
       </div>
 
-      {/* Progress bar with gradient glow */}
+      {/* Progress bar with gradient glow + shimmer */}
       <div className="midi-progress-bar-wrap">
         <progress
           className="midi-status-panel__meter"
@@ -158,6 +158,11 @@ export function MidiConvertProgress({
         />
         <div
           className="midi-progress-bar-glow"
+          style={{ width: `${Math.min(100, Math.max(2, barPercent))}%` }}
+          aria-hidden
+        />
+        <div
+          className="midi-progress-bar-shimmer"
           style={{ width: `${Math.min(100, Math.max(2, barPercent))}%` }}
           aria-hidden
         />

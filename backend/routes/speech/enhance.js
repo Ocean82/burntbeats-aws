@@ -43,6 +43,9 @@ enhanceRouter.post(
             error: `File too large. Maximum size is ${MAX_UPLOAD_MB}MB.`,
           });
         }
+        if (err.code === "INVALID_FILE_TYPE") {
+          return res.status(415).json({ error: err.message });
+        }
         return res.status(400).json({ error: "Upload failed. Please try again." });
       }
       next();

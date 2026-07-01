@@ -128,7 +128,7 @@ function LegalAcceptanceGateInner({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={onAccept}
             disabled={!checked || submitting}
-            className="fire-button mt-lg w-full rounded-xl px-md py-sm text-sm font-semibold transition disabled:opacity-50"
+            className="fire-button tap-feedback mt-lg w-full rounded-xl px-md py-sm text-sm font-semibold transition disabled:opacity-50"
           >
             {submitting ? "Saving…" : "Agree and continue"}
           </button>

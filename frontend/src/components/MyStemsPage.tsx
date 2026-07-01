@@ -619,7 +619,7 @@ export function MyStemsPage({
                                     type="button"
                                     onClick={() => onOpenInMixer(job)}
                                     disabled={loadingMixerJobId === job.job_id}
-                                    className="fire-button flex flex-1 items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:opacity-50"
+                                    className="fire-button tap-feedback flex flex-1 items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:opacity-50"
                                   >
                                     {loadingMixerJobId === job.job_id ? (
                                       <>
@@ -667,7 +667,7 @@ export function MyStemsPage({
                               <button
                                 onClick={() => handleDownloadAll(job.job_id)}
                                 disabled={jobZipping}
-                                className="fire-button mt-sm flex w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:opacity-50"
+                                className="fire-button tap-feedback mt-sm flex w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold transition disabled:opacity-50"
                                 aria-label="Download all stems as ZIP"
                               >
                                 {jobZipping ? (

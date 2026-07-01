@@ -1,3 +1,13 @@
+# OS / editor junk
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
 # Dependencies
 node_modules/
 .venv/
@@ -63,6 +73,10 @@ dist/
 *.local
 
 # IDE / OS
+.calude/
+.codex/
+.windsurf/
+
 .cursor/
 .cursorignore/
 .kiro/
@@ -96,6 +110,7 @@ tmp_test*/
 temp/
 *.tmp
 *.temp
+TO-DO-ASAP.md
 stem_test*/
 logs/
 server_models/
@@ -120,8 +135,16 @@ backend/cache/**
 backend/logs/**
 
 # Add any additional sensitive files
+.kilo/
+.kilocode/
+.kiro/
+.cursor/
+.codex/
+.agents/
+archive/
 backend/.env
 backend/.env.*
+.burnt-beats-pricing-structure/
 docs/deploy-reports/**
 docs/deploy-reports/*
 docs/**
@@ -133,6 +156,7 @@ docs/**
 # Local path to benchmark WAV (see benchmark_song.local.example.txt)
 benchmark_song.local.txt
 agent-transcripts/
+vocal_sample/
 
 # Playwright (frontend)
 frontend/test-results/

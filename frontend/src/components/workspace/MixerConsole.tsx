@@ -74,7 +74,7 @@ function ChannelStrip({
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
           style={{ "--strip-color": color } as React.CSSProperties}
         />
-        <span className="text-[8px] text-white/40 tabular-nums">
+        <span className="text-[8px] text-muted-foreground tabular-nums">
           {mixer.gain >= 0 ? "+" : ""}
           {mixer.gain.toFixed(1)} dB
         </span>
@@ -93,7 +93,7 @@ function ChannelStrip({
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer"
           style={{ "--strip-color": color } as React.CSSProperties}
         />
-        <span className="text-[8px] text-white/40 tabular-nums">
+        <span className="text-[8px] text-muted-foreground tabular-nums">
           {mixer.pan === 0 ? "C" : mixer.pan < 0 ? `L${Math.abs(mixer.pan)}` : `R${mixer.pan}`}
         </span>
       </div>
@@ -107,9 +107,9 @@ function ChannelStrip({
           aria-pressed={stemState.muted}
           className={cn(
             "w-6 h-5 rounded text-[8px] font-bold transition",
-            stemState.muted
-              ? "bg-red-500/30 text-red-300 border border-red-500/50"
-              : "bg-white/5 text-white/40 hover:text-white/70 border border-white/10",
+             stemState.muted
+               ? "bg-red-500/30 text-red-300 border border-red-500/50"
+               : "bg-white/5 text-muted-foreground hover:text-white/70 border border-white/10",
           )}
         >
           M
@@ -121,9 +121,9 @@ function ChannelStrip({
           aria-pressed={stemState.soloed}
           className={cn(
             "w-6 h-5 rounded text-[8px] font-bold transition",
-            stemState.soloed
-              ? "bg-amber-500/30 text-amber-300 border border-amber-500/50"
-              : "bg-white/5 text-white/40 hover:text-white/70 border border-white/10",
+             stemState.soloed
+               ? "bg-amber-500/30 text-amber-300 border border-amber-500/50"
+               : "bg-white/5 text-muted-foreground hover:text-white/70 border border-white/10",
           )}
         >
           S
@@ -168,7 +168,7 @@ function MasterStrip({ stemCount, masterVolume, onMasterVolumeChange }: MasterSt
       </div>
 
       {/* Stem count */}
-      <span className="text-[8px] text-white/30">{stemCount} stems</span>
+      <span className="text-[8px] text-muted-foreground">{stemCount} stems</span>
 
       {/* Volume fader — wired to audio engine master gain */}
       <div className="flex flex-col items-center gap-0.5 w-full">
@@ -182,7 +182,7 @@ function MasterStrip({ stemCount, masterVolume, onMasterVolumeChange }: MasterSt
           aria-label="Master volume"
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-violet-500 cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
         />
-        <span className="text-[8px] text-white/40 tabular-nums">
+        <span className="text-[8px] text-muted-foreground tabular-nums">
           {displayDb >= 0 ? "+" : ""}
           {displayDb.toFixed(1)} dB
         </span>
@@ -317,7 +317,7 @@ export function MixerConsole({ className }: MixerConsoleProps) {
           aria-expanded={mixerExpanded}
           className={cn(
             "flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer",
-            "text-white/60 hover:text-white/90 hover:bg-white/5",
+            "text-muted-foreground hover:text-foreground hover:bg-white/5",
             "transition-colors min-h-[36px]",
           )}
           data-testid="mixer-toggle"
@@ -334,7 +334,7 @@ export function MixerConsole({ className }: MixerConsoleProps) {
 
         <div className="flex-1" />
 
-        <span className="text-[9px] text-white/30">
+        <span className="text-[9px] text-muted-foreground">
           {stemIds.length} channel{stemIds.length !== 1 ? "s" : ""}
         </span>
       </div>

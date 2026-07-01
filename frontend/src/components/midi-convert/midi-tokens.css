@@ -1719,9 +1719,42 @@
     filter: blur(3px);
 }
 
+.midi-progress-bar-shimmer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.08) 40%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.08) 60%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    pointer-events: none;
+    animation: midi-progress-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes midi-progress-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .midi-progress-bar-glow {
         filter: none;
+        background: none;
+    }
+
+    .midi-progress-bar-shimmer {
+        animation: none;
         background: none;
     }
 }

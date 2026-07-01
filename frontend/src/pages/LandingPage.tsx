@@ -109,7 +109,7 @@ export function LandingPage({ focusSection }: LandingPageProps = {}) {
             <SignInButton mode="modal">
               <button
                 type="button"
-                className="ghost-button px-md py-xs text-xs sm:px-lg sm:text-sm"
+                className="ghost-button tap-feedback px-md py-xs text-xs sm:px-lg sm:text-sm"
               >
                 Sign in
               </button>
@@ -117,7 +117,7 @@ export function LandingPage({ focusSection }: LandingPageProps = {}) {
             <SignUpButton mode="modal">
               <button
                 type="button"
-                className="fire-button px-md py-xs text-xs sm:px-lg sm:text-sm"
+                className="fire-button tap-feedback px-md py-xs text-xs sm:px-lg sm:text-sm"
               >
                 Get started
               </button>

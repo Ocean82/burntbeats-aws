@@ -6,10 +6,36 @@ import { AudioProvider } from "./contexts/AudioContext";
 import { StemMediaProvider } from "./contexts/StemMediaContext";
 import { WorkflowProvider } from "./contexts/WorkflowContext";
 
+vi.mock("./hooks/workflow/useEditorViewRouting", () => ({
+  useEditorViewRouting: () => ({ activeView: "editor", setActiveView: () => {} }),
+}));
+
 vi.mock("./views/lazy-view-registry", () => ({
   useViewPreloading: () => {},
   preloadView: vi.fn(),
   getViewsToPreload: () => [],
+}));
+
+vi.mock("../api/stemHistory", () => ({
+  fetchStemHistory: () =>
+    Promise.resolve({
+      jobs: [
+        {
+          job_id: "test-job",
+          status: "completed",
+          stems: 2,
+          quality: null,
+          original_filename: "test.wav",
+          duration_seconds: 180,
+          token_cost: 10,
+          model_name: "test-model",
+          created_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          stem_files: [],
+        },
+      ],
+      total: 1,
+    }),
 }));
 
 // Mock Clerk so App can render without ClerkProvider in tests

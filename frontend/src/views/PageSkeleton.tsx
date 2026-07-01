@@ -37,6 +37,7 @@ function EditorSkeleton() {
 }
 
 const SKELETON_MAP: Record<AppView, () => React.ReactNode> = {
+  hub: GenericPageSkeleton,
   editor: EditorSkeleton,
   pricing: GenericPageSkeleton,
   "my-stems": MyStemsPageSkeleton,
