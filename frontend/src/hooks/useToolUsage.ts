@@ -17,7 +17,7 @@ function loadUsage(): ToolUsage {
     if (!raw) return {};
     const parsed = JSON.parse(raw) as ToolUsage;
     if (typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    for (const [key, value] of Object.entries(parsed)) {
+    for (const [_key, value] of Object.entries(parsed)) {
       if (typeof value !== "object" || value === null || typeof value.count !== "number" || typeof value.lastUsed !== "string") {
         return {};
       }

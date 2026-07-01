@@ -26,6 +26,10 @@ import { MidiPianoRoll } from "./MidiPianoRoll";
 import { MidiRenderAudioControl } from "./MidiRenderAudioControl";
 import { MidiLaneDrawer } from "./MidiLaneDrawer";
 import {
+  MidiComparisonPanel,
+  type MidiComparisonSource,
+} from "./MidiComparisonPanel";
+import {
   readMidiResultModeFromUrl,
   syncMidiResultModeToUrl,
 } from "./midiResultUrlMode";
@@ -48,6 +52,7 @@ interface MidiResultPanelProps {
   sourceLabel?: string;
   initialMode?: "view" | "edit";
   e2eMode?: boolean;
+  comparisonSource?: MidiComparisonSource | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -72,6 +77,7 @@ export function MidiResultPanel({
   sourceLabel,
   initialMode = "edit",
   e2eMode = false,
+  comparisonSource = null,
 }: MidiResultPanelProps) {
   const hasNotes = result.pianoRollNotes.length > 0;
   const isEmpty = result.emptyTranscription || result.notesDetected === 0;
@@ -214,6 +220,14 @@ export function MidiResultPanel({
           notesDetected={result.notesDetected}
           onApplyEditorBpm={handleApplyEditorBpm}
           onApplyReconvertBpm={onApplyReconvertBpm}
+        />
+      ) : null}
+
+      {hasNotes && comparisonSource ? (
+        <MidiComparisonPanel
+          notes={result.pianoRollNotes}
+          bpm={suggestedBpm}
+          source={comparisonSource}
         />
       ) : null}
 

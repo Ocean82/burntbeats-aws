@@ -1122,9 +1122,9 @@
     .midi-editor-shell--wide {
         display: grid;
         grid-template-areas:
-            "controls controls controls"
-            "body     body     inspector"
-            "shortcuts shortcuts shortcuts";
+            "controls controls"
+            "body     inspector"
+            "shortcuts shortcuts";
         grid-template-columns: minmax(0, 1fr) 280px;
         grid-template-rows: auto minmax(280px, 1fr) auto;
     }

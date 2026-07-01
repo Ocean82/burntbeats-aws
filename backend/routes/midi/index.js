@@ -11,6 +11,8 @@ import { midiExportRouter } from "./export.js";
 import { midiWaveformRouter, midiSpectrumRouter } from "./waveform.js";
 import { midiJobsRouter } from "./jobs.js";
 import { midiRenderRouter } from "./render.js";
+import { midiAnalyzeRouter } from "./analyze.js";
+import { midiSoundfontsRouter } from "./soundfonts.js";
 
 export const midiRouter = Router();
 
@@ -25,3 +27,5 @@ midiRouter.use("/waveform", midiWaveformRouter);
 midiRouter.use("/spectrum", midiSpectrumRouter);
 midiRouter.use("/jobs", midiJobsRouter);
 midiRouter.use("/render", midiRenderRouter);
+midiRouter.use("/analyze", midiAnalyzeRouter);
+midiRouter.use("/soundfonts", midiSoundfontsRouter);

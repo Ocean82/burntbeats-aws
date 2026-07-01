@@ -1079,17 +1079,9 @@ export function MidiNoteEditor({
                   }
                 >
                   <MidiRenderAudioControl
-                    notes={editor.notes.map((n) => ({
-                      pitch: n.pitch,
-                      start: n.start,
-                      duration: n.duration,
-                      velocity: n.velocity,
-                    }))}
+                    tracks={editor.tracks}
                     bpm={editor.bpm}
-                    instrument={
-                      editor.tracks.find((t) => t.id === editor.activeTrackId)
-                        ?.instrument
-                    }
+                    preferLiveState={editor.isModified}
                     sourceJobId={jobId}
                   />
                 </MidiInspectorSection>
@@ -1149,6 +1141,7 @@ export function MidiNoteEditor({
                     notes={editor.notes}
                     bpm={editor.bpm}
                     timeSignature={editor.timeSignature}
+                    autoAnalyze={inspectorOpen.harmony}
                   />
                 </MidiInspectorSection>
               </>

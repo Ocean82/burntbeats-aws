@@ -37,6 +37,7 @@ export function KitSelector({ value, onChange, disabled }: KitSelectorProps) {
       role="radiogroup"
       aria-label="Drum kit"
       aria-orientation="horizontal"
+      tabIndex={disabled ? -1 : 0}
       onKeyDown={handleKeyDown}
     >
       {presets.map((preset) => {

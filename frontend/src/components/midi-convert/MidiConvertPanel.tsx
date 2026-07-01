@@ -4,7 +4,7 @@
  * Includes batch conversion support for converting all stems at once.
  */
 import { Check, Download, Layers, Loader2, Music, Pencil, RefreshCw, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMidiConvert, type MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useAppStore } from "../../store/appStore";
@@ -108,6 +108,24 @@ export function MidiConvertPanel({
   const displayResult = result ?? batchViewResult?.result ?? null;
   const displayJobId = result ? activeMidiJobId : batchViewResult?.jobId ?? null;
   const displayJobToken = result ? jobToken : batchViewResult?.jobToken ?? null;
+
+  const comparisonSource = useMemo(
+    () => ({
+      sourceMode,
+      uploadedFile,
+      splitStemUrl: selectedSplitStemUrl,
+      loadedStemUrl: selectedLoadedStem?.url ?? null,
+      loadedStemLabel: selectedLoadedStem?.label,
+      midiJobId: displayJobId,
+    }),
+    [
+      sourceMode,
+      uploadedFile,
+      selectedSplitStemUrl,
+      selectedLoadedStem,
+      displayJobId,
+    ],
+  );
 
   const batchCompletedCount = batchJobs.filter((j) => j.status === "completed").length;
   const batchFailedCount = batchJobs.filter((j) => j.status === "failed").length;
@@ -917,6 +935,7 @@ export function MidiConvertPanel({
                   void triggerConvert(splitJobId);
                 }}
                 onOpenExportHistory={onOpenExportHistory ?? undefined}
+                comparisonSource={comparisonSource}
               />
             )}
           </motion.div>
@@ -1004,6 +1023,7 @@ export function MidiConvertPanel({
               void triggerConvert(splitJobId);
             }}
             onOpenExportHistory={onOpenExportHistory ?? undefined}
+            comparisonSource={comparisonSource}
           />
 
           <button

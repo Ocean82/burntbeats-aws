@@ -3,7 +3,8 @@
  */
 
 export const EDITOR_PIXELS_PER_SECOND = 80;
-export const PREVIEW_PIXELS_PER_SECOND = 60;
+/** Match editor timeline scale so view → edit transition feels consistent. */
+export const PREVIEW_PIXELS_PER_SECOND = EDITOR_PIXELS_PER_SECOND;
 
 export function secondsToBarBeat(
   seconds: number,

@@ -27,15 +27,25 @@ jobs:
         working-directory: frontend
         run: |
           node -e "
-            const fs = require('fs');
             const path = require('path');
             const { execSync } = require('child_process');
             const eslintPath = path.resolve('node_modules/.bin/eslint');
-            const raw = execSync(\`\"\${eslintPath}\" . --format json\`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+            let raw = '';
+            try {
+              raw = execSync(\`\"\${eslintPath}\" . --format json\`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+            } catch (err) {
+              raw = err.stdout?.toString() ?? '';
+              if (!raw) throw err;
+            }
             const results = JSON.parse(raw);
             const totalWarnings = results.reduce((sum, r) => sum + (r.warningCount || 0), 0);
             const totalErrors = results.reduce((sum, r) => sum + (r.errorCount || 0), 0);
             if (totalWarnings > 0 || totalErrors > 0) {
+              for (const file of results) {
+                for (const msg of file.messages || []) {
+                  console.error(\`\${file.filePath}:\${msg.line}:\${msg.column} [\${msg.ruleId}] \${msg.message}\`);
+                }
+              }
               console.error(\`ESLint budget exceeded: \${totalWarnings} warnings, \${totalErrors} errors\`);
               process.exit(1);
             }
