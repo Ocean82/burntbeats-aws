@@ -5,7 +5,7 @@
 torch==2.12.1
 torchaudio==2.11.0
 soundfile==0.13.1
-imageio-ffmpeg==0.5.1
+imageio-ffmpeg==0.6.0
 demucs==4.0.1
 diffq==0.2.4
 onnxruntime==1.23.2
