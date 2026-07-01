@@ -111,7 +111,7 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.62.2",
-    "@rollup/rollup-win32-x64-msvc": "^4.60.1"
+    "@rollup/rollup-win32-x64-msvc": "^4.62.2"
   },
   "overrides": {
     "js-cookie": "^3.0.7",
