@@ -2,7 +2,7 @@
  * MidiConvertPage — dedicated page for Audio-to-MIDI conversion.
  */
 import { motion } from "framer-motion";
-import { History, Piano } from "lucide-react";
+import { History, Piano, Home } from "lucide-react";
 import { useState } from "react";
 import { MidiConvertPanel } from "../components/midi-convert/MidiConvertPanel";
 import { MidiResultPanel } from "../components/midi-convert/MidiResultPanel";
@@ -20,6 +20,7 @@ export interface MidiConvertPageProps {
   usageLoading: boolean;
   checkoutNotice: string | null;
   onViewPlans?: () => void;
+  onBackToHub?: () => void;
 }
 
 type PageTab = "workstation" | "history";
@@ -31,6 +32,7 @@ export function MidiConvertPage({
   usageLoading,
   checkoutNotice,
   onViewPlans,
+  onBackToHub,
 }: MidiConvertPageProps) {
   const [activeTab, setActiveTab] = useState<PageTab>("workstation");
   const showE2eMidiEditor =
@@ -76,7 +78,22 @@ export function MidiConvertPage({
               ? "Browse and batch-export past conversions"
               : "Transcribe stems or uploads, refine in the editor, export to your DAW"
           }
-          actions={tabs}
+          actions={
+            <div className="flex items-center gap-2">
+              {onBackToHub && (
+                <button
+                  type="button"
+                  onClick={onBackToHub}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition hover:border-border hover:text-primary-200 tap-feedback"
+                  aria-label="Back to Hub"
+                >
+                  <Home className="h-3.5 w-3.5" aria-hidden />
+                  <span className="hidden sm:inline">Hub</span>
+                </button>
+              )}
+              {tabs}
+            </div>
+          }
         />
         <div className="midi-workspace px-md pb-lg pt-sm sm:px-lg">
           {activeTab === "history" ? (

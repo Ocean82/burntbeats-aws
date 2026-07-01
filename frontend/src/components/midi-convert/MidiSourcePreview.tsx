@@ -122,11 +122,12 @@ export function MidiSourcePreview({
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
+    ctx.fillStyle = "rgba(19, 18, 16, 0.85)";
     ctx.fillRect(0, 0, w, h);
     const mid = h / 2;
     const step = w / displayWaveform.length;
-    ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
+
+    ctx.strokeStyle = "rgba(205, 165, 60, 0.85)";
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 0; i < displayWaveform.length; i++) {
@@ -140,7 +141,7 @@ export function MidiSourcePreview({
       ctx.lineTo(i * step, mid + amp);
     }
     ctx.closePath();
-    ctx.fillStyle = "rgba(56, 189, 248, 0.25)";
+    ctx.fillStyle = "rgba(205, 165, 60, 0.18)";
     ctx.fill();
     ctx.stroke();
   }, [displayWaveform]);

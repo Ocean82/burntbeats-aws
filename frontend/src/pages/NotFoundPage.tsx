@@ -21,7 +21,7 @@ export function NotFoundPage() {
 
       <a
         href="/"
-        className="fire-button inline-flex items-center gap-xs rounded-xl px-lg py-sm text-sm font-semibold"
+        className="fire-button tap-feedback inline-flex items-center gap-xs rounded-xl px-lg py-sm text-sm font-semibold"
       >
         <Home className="h-4 w-4" />
         Back to Burnt Beats

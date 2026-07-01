@@ -10,6 +10,7 @@ import { PricingTabToggle } from "./PricingTabToggle";
 import { BillingIntervalToggle } from "./BillingIntervalToggle";
 import { PricingFeatureComparison } from "./PricingFeatureComparison";
 import { BillingRules } from "./BillingRules";
+import { PricingPageSkeleton } from "./PricingPageSkeleton";
 import { trackEvent } from "../analytics/events";
 import type { BillingInterval } from "../analytics/billingEvents";
 
@@ -41,6 +42,7 @@ export function PricingPage({
   const [studioExpanded, setStudioExpanded] = useState(false);
   const isCurrentPlan = (plan: Plan) =>
     subscription.status === "active" && subscription.plan === plan;
+  const isLoading = subscription.status === "loading";
 
   const handleSelectPlan = (plan: Plan) => {
     if (isCurrentPlan(plan)) return;
@@ -97,8 +99,11 @@ export function PricingPage({
       className="relative mx-auto flex w-full max-w-[1200px] flex-col gap-2xl overflow-x-clip px-sm py-md sm:px-lg lg:px-xl"
       {...viewSwitchMotion(Boolean(reduceMotion))}
     >
-      {/* Wayfinding: in-app pricing view — always offer an explicit path back without browser Back */}
-      <nav
+      {isLoading ? (
+        <PricingPageSkeleton />
+      ) : (
+        <>
+          <nav
         aria-label="Breadcrumb"
         className="flex flex-col gap-sm rounded-2xl border border-border bg-muted px-md py-sm sm:flex-row sm:items-center sm:justify-between sm:px-lg"
       >
@@ -130,7 +135,6 @@ export function PricingPage({
         </p>
       </nav>
 
-      {/* Header / hero */}
       <section className="glass-panel mirror-sheen rounded-[2rem] px-md py-lg sm:px-lg sm:py-xl lg:px-10">
         <div className="flex flex-col gap-lg lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl space-y-sm">
@@ -182,7 +186,7 @@ export function PricingPage({
                   type="button"
                   onClick={() => handleSelectPlan("premium")}
                   disabled={
-                    subscription.status === "loading" ||
+                    isLoading ||
                     checkoutLoadingPlan !== null
                   }
                   aria-label="Pay now with Stripe and start Premium plan"
@@ -202,7 +206,7 @@ export function PricingPage({
                   type="button"
                   onClick={() => handleSelectPlan("single")}
                   disabled={
-                    subscription.status === "loading" ||
+                    isLoading ||
                     checkoutLoadingPlan !== null
                   }
                   className="ghost-button tap-feedback min-h-[40px] w-full px-md py-xs text-xs sm:min-w-[240px]"
@@ -336,6 +340,8 @@ export function PricingPage({
           Back to editor
         </button>
       </p>
+      </>
+      )}
     </motion.div>
   );
 }

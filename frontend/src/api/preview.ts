@@ -4,6 +4,7 @@
 import { API_BASE } from "../config";
 import { authHeaders } from "./auth";
 import { downloadBlob } from "../utils/downloadHelper";
+import { apiPost } from "./client";
 
 export interface PreviewGenerateResponse {
   preview_id: string;
@@ -14,21 +15,11 @@ export interface PreviewGenerateResponse {
 }
 
 export async function generatePreview(jobId: string): Promise<PreviewGenerateResponse> {
-  const res = await fetch(`${API_BASE}/api/preview/generate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
-    },
-    body: JSON.stringify({ job_id: jobId }),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(
-      typeof data.error === "string" ? data.error : "Preview generation failed",
-    );
+  const result = await apiPost<PreviewGenerateResponse>("/api/preview/generate", { job_id: jobId });
+  if (result.error || !result.data) {
+    throw new Error(result.error || "Preview generation failed");
   }
-  return res.json() as Promise<PreviewGenerateResponse>;
+  return result.data;
 }
 
 export async function downloadPreview(

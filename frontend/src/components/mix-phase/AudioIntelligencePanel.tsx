@@ -32,16 +32,16 @@ function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType
         <Icon size={16} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-white/50">{label}</p>
-        <p className="truncate text-sm font-semibold text-white/90">{value}</p>
-        {sub && <p className="truncate text-xs text-white/50">{sub}</p>}
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="truncate text-sm font-semibold text-foreground">{value}</p>
+        {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
       </div>
     </div>
   );
 }
 
 function SectionHeader({ title }: { title: string }) {
-  return <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/60">{title}</h3>;
+  return <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-secondary-foreground">{title}</h3>;
 }
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -55,17 +55,17 @@ function ConfidenceBar({ value }: { value: number }) {
           style={{ width: `${pct}%`, backgroundColor: `oklch(0.6 ${hue === 140 ? 0.15 : hue === 45 ? 0.12 : 0.14} ${hue})` }}
         />
       </div>
-      <span className="w-8 text-right text-[11px] tabular-nums text-white/50">{pct}%</span>
+      <span className="w-8 text-right text-[11px] tabular-nums text-muted-foreground">{pct}%</span>
     </div>
   );
 }
 
 function GenreTag({ label, confidence }: { label: string; confidence?: number }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-white/80">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs text-secondary-foreground">
       {label}
       {confidence !== undefined && (
-        <span className="text-[10px] text-white/40">{(confidence * 100).toFixed(0)}%</span>
+        <span className="text-[10px] text-muted-foreground">{(confidence * 100).toFixed(0)}%</span>
       )}
     </span>
   );
@@ -114,15 +114,15 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
   return (
     <div data-testid="audio-intelligence-panel" className="space-y-5">
       {!hasAudio && (
-        <div className="flex flex-col items-center justify-center h-full text-sm text-white/50 text-center gap-2">
-          <Waves size={32} className="text-white/20" />
+        <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground text-center gap-2">
+          <Waves size={32} className="text-white/20" aria-hidden />
           <p>Load audio first</p>
         </div>
       )}
 
       {hasAudio && state === "idle" && (
-        <div className="flex flex-col items-center justify-center h-full text-sm text-white/50 text-center gap-4">
-          <Radio size={32} className="text-white/20" />
+        <div className="flex flex-col items-center justify-center h-full text-sm text-muted-foreground text-center gap-4">
+          <Radio size={32} className="text-white/20" aria-hidden />
           <p>Analyze your track to detect<br />BPM, key, genre, and mood</p>
           <button
             type="button"
@@ -138,7 +138,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
       {state === "analyzing" && (
         <div className="flex flex-col items-center justify-center h-full gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-          <p className="text-sm text-white/60">Analyzing...</p>
+          <p className="text-sm text-secondary-foreground">Analyzing...</p>
         </div>
       )}
 
@@ -148,7 +148,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
           <button
             type="button"
             onClick={handleAnalyze}
-            className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/20"
+            className="rounded-lg bg-white/10 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/20 hover:text-foreground"
           >
             Retry
           </button>
@@ -174,7 +174,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
               <StatCard icon={Brain} label="Stability" value={`${(results.bpm.tempoStability * 100).toFixed(0)}%`} sub={results.bpm.rhythmPattern.groove} />
             </div>
             <div className="mt-2">
-              <p className="mb-1 text-[11px] text-white/50">Confidence</p>
+               <p className="mb-1 text-[11px] text-muted-foreground">Confidence</p>
               <ConfidenceBar value={results.bpm.confidence} />
             </div>
           </section>
@@ -203,7 +203,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
             {results.genre.characteristics.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {results.genre.characteristics.map((c) => (
-                  <span key={c} className="rounded-md bg-white/[0.04] px-2 py-0.5 text-[11px] text-white/60">{c}</span>
+                   <span key={c} className="rounded-md bg-white/[0.04] px-2 py-0.5 text-[11px] text-secondary-foreground">{c}</span>
                 ))}
               </div>
             )}
@@ -219,7 +219,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
               <StatCard icon={Brain} label="Valence" value={results.mood.valence.category.replace("-", " ")} sub={`${results.mood.valence.level.toFixed(0)}%`} />
               <StatCard icon={Activity} label="Arousal" value={results.mood.arousal.category.replace("-", " ")} sub={`${results.mood.arousal.level.toFixed(0)}%`} />
             </div>
-            <p className="text-[11px] text-white/50 leading-relaxed">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
               {results.mood.musicalCharacteristics.keyMood} &middot; {results.mood.musicalCharacteristics.tempoMood}
             </p>
           </section>
@@ -229,7 +229,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
               <SectionHeader title="Suggestions" />
               <ul className="space-y-1.5">
                 {results.mood.recommendations.map((r, i) => (
-                  <li key={i} className="flex items-start gap-2 rounded-md bg-white/[0.03] px-3 py-2 text-xs text-white/70">
+                  <li key={i} className="flex items-start gap-2 rounded-md bg-white/[0.03] px-3 py-2 text-xs text-secondary-foreground">
                     <span className="mt-0.5 text-primary">&bull;</span>
                     <span>{r.suggestion}</span>
                   </li>

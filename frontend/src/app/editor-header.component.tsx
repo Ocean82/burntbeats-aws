@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Undo2, Redo2, Mic2, Music, Drum, ChevronDown } from "lucide-react";
+import { Home, Undo2, Redo2, Mic2, Music, Drum, ChevronDown } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
 import { PlanBadge } from "../components/PlanBadge";
@@ -18,9 +18,9 @@ import {
 
 interface EditorHeaderProps {
   headerVisible: boolean;
-  activeView: "editor" | "speech" | "midi" | "beats" | "tuner" | "pricing" | "my-stems";
+  activeView: "hub" | "editor" | "speech" | "midi" | "beats" | "tuner" | "pricing" | "my-stems";
   setActiveView: (
-    view: "editor" | "speech" | "midi" | "beats" | "tuner" | "pricing" | "my-stems",
+    view: "hub" | "editor" | "speech" | "midi" | "beats" | "tuner" | "pricing" | "my-stems",
   ) => void;
   canUndo: boolean;
   canRedo: boolean;
@@ -98,7 +98,7 @@ export function EditorHeader({
   }, [moreOpen]);
 
   const handleTabClick = (
-    view: "editor" | "speech" | "midi" | "beats" | "tuner" | "my-stems",
+    view: "hub" | "editor" | "speech" | "midi" | "beats" | "tuner" | "my-stems",
   ) => {
     setActiveView(view);
     markTabSeen(view);
@@ -149,6 +149,18 @@ export function EditorHeader({
         </div>
 
         <div className="flex flex-wrap items-center gap-xs">
+          {activeView !== "hub" && (
+            <button
+              type="button"
+              onClick={() => setActiveView("hub")}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-border bg-muted/60 text-muted-foreground transition hover:border-primary-400/40 hover:text-primary-200 tap-feedback"
+              title="Back to Hub"
+              aria-label="Back to Hub"
+            >
+              <Home className="h-4 w-4" aria-hidden />
+            </button>
+          )}
+
           <PlanBadge
             plan={subscription.plan}
             subscriptionStatus={subscription.status}

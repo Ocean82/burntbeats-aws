@@ -28,9 +28,63 @@ export interface ApiRequestOptions {
   signal?: AbortSignal;
   /** Called before each retry (for showing "retrying..." UI). */
   onRetry?: (attempt: number, delayMs: number) => void;
+  /** Cache key for deduplicating identical requests within TTL. */
+  cacheKey?: string;
+  /** Cache TTL in ms. Default: 30000. Ignored if cacheKey is absent. */
+  cacheTtlMs?: number;
 }
 
 const DEFAULT_TIMEOUT = 30_000;
+const DEFAULT_CACHE_TTL_MS = 30_000;
+const MAX_CACHE_ENTRIES = 50;
+
+// ── Response cache (for stable endpoints like /health, billing/subscription) ──
+interface CacheEntry<T> {
+  value: ApiResponse<T>;
+  expiresAt: number;
+  accessOrder: number;
+}
+
+const responseCache = new Map<string, CacheEntry<unknown>>();
+let cacheAccessCounter = 0;
+
+function getCacheEntry<T>(key: string): ApiResponse<T> | undefined {
+  const entry = responseCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiresAt) {
+    responseCache.delete(key);
+    return undefined;
+  }
+  entry.accessOrder = ++cacheAccessCounter;
+  return entry.value as ApiResponse<T>;
+}
+
+function setCacheEntry(key: string, value: ApiResponse<unknown>, ttlMs: number): void {
+  if (responseCache.size >= MAX_CACHE_ENTRIES && !responseCache.has(key)) {
+    let oldestKey: string | undefined;
+    let oldestOrder = Infinity;
+    for (const [k, v] of responseCache.entries()) {
+      if (v.accessOrder < oldestOrder) {
+        oldestOrder = v.accessOrder;
+        oldestKey = k;
+      }
+    }
+    if (oldestKey !== undefined) {
+      responseCache.delete(oldestKey);
+    }
+  }
+  responseCache.set(key, { value, expiresAt: Date.now() + ttlMs, accessOrder: ++cacheAccessCounter });
+}
+
+export function clearResponseCache(): void {
+  responseCache.clear();
+}
+
+function headersFingerprint(headers?: Record<string, string>): string {
+  if (!headers || Object.keys(headers).length === 0) return "";
+  const sorted = Object.entries(headers).sort(([a], [b]) => a.localeCompare(b));
+  return sorted.map(([k, v]) => `${k}:${v}`).join(";");
+}
 
 /** Get the API base URL (empty string for same-origin). */
 function getBaseUrl(): string {
@@ -142,6 +196,15 @@ async function apiRequest<T>(
   body?: unknown,
   options: ApiRequestOptions = {},
 ): Promise<ApiResponse<T>> {
+  const hFingerprint = headersFingerprint(options.headers);
+  const cacheKey = options.cacheKey ? `${method}:${options.cacheKey}:${hFingerprint}` : undefined;
+  const cacheTtl = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
+
+  if (cacheKey) {
+    const cached = getCacheEntry<T>(cacheKey);
+    if (cached) return cached;
+  }
+
   const url = `${getBaseUrl()}${path}`;
   const timeout = options.timeout ?? DEFAULT_TIMEOUT;
 
@@ -173,17 +236,24 @@ async function apiRequest<T>(
 
     const response = await fetchWithRetry(url, init, retryConfig);
 
+    let result: ApiResponse<T>;
     if (response.ok || response.status === 202) {
-      // Some endpoints return empty body (204)
       if (response.status === 204) {
-        return { data: null as unknown as T, error: null, status: 204 };
+        result = { data: null as unknown as T, error: null, status: 204 };
+      } else {
+        const data = (await response.json()) as T;
+        result = { data, error: null, status: response.status };
       }
-      const data = (await response.json()) as T;
-      return { data, error: null, status: response.status };
+    } else {
+      const error = await extractErrorMessage(response);
+      result = { data: null, error, status: response.status };
     }
 
-    const error = await extractErrorMessage(response);
-    return { data: null, error, status: response.status };
+    if (cacheKey && result.error === null) {
+      setCacheEntry(cacheKey, result, cacheTtl);
+    }
+
+    return result;
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       return { data: null, error: "Request timed out", status: 0 };

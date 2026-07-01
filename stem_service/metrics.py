@@ -40,7 +40,7 @@ jobs_total = Counter(
 
 queue_depth = Gauge(
     "stem_queue_depth",
-    "Current number of jobs in the stem split queue",
+    "Current number of jobs in the stem job queue (split and expand)",
     registry=REGISTRY,
 )
 

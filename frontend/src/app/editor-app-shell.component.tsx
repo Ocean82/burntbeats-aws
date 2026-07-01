@@ -24,6 +24,7 @@ import {
   LazySpeechCleanPage,
   LazyTransitionalEditorShell,
   LazyTunerPage,
+  LazyHubPage,
 } from "./lazy-app-pages";
 import type { EditorSession } from "../hooks/app/useEditorSession";
 
@@ -153,46 +154,50 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
         onResetStemMediaState={session.resetStemMediaState}
       />
 
-      <AppBackgroundOrbs />
-      <SessionSidebar
-        hasCompletedFirstExport={exp.hasCompletedFirstExport}
-        onQuickExport={() => modals.openModal("export")}
-      />
+      {ui.activeView !== "hub" && <AppBackgroundOrbs />}
+      {ui.activeView !== "hub" && (
+        <SessionSidebar
+          hasCompletedFirstExport={exp.hasCompletedFirstExport}
+          onQuickExport={() => modals.openModal("export")}
+        />
+      )}
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg px-md py-md sm:px-lg lg:px-xl">
-          <EditorHeader
-            headerVisible={ui.headerVisible}
-            activeView={ui.activeView}
-            setActiveView={ui.setActiveView}
-            canUndo={workflow.canUndo}
-            canRedo={workflow.canRedo}
-            onUndo={() => {
-              workflow.undoStemStates();
-              dev.toast(getBurntQuip("undo"), { type: "undo" });
-            }}
-            onRedo={() => {
-              workflow.redoStemStates();
-              dev.toast(getBurntQuip("redo"), { type: "undo" });
-            }}
-            openModal={modals.openModal}
-            localDevFullApp={ui.localDevFullApp}
-            subscription={sub.subscription}
-            usageBalance={sub.usageBalance}
-            usageLoading={sub.usageLoading}
-            openFeedback={() => dev.emit("open-feedback")}
-            openOnboarding={() => dev.emit("open-onboarding")}
-            editorWorkflow={
-              ui.activeView === "editor"
-                ? {
-                    uploadedFile: split.uploadedFile,
-                    isSplitting: split.isSplitting,
-                    mixStemsLength: mixer.mixStems.length,
-                    isExporting: exp.isExporting,
-                  }
-                : null
-            }
-          />
+          {ui.activeView !== "hub" && (
+            <EditorHeader
+              headerVisible={ui.headerVisible}
+              activeView={ui.activeView}
+              setActiveView={ui.setActiveView}
+              canUndo={workflow.canUndo}
+              canRedo={workflow.canRedo}
+              onUndo={() => {
+                workflow.undoStemStates();
+                dev.toast(getBurntQuip("undo"), { type: "undo" });
+              }}
+              onRedo={() => {
+                workflow.redoStemStates();
+                dev.toast(getBurntQuip("undo"), { type: "undo" });
+              }}
+              openModal={modals.openModal}
+              localDevFullApp={ui.localDevFullApp}
+              subscription={sub.subscription}
+              usageBalance={sub.usageBalance}
+              usageLoading={sub.usageLoading}
+              openFeedback={() => dev.emit("open-feedback")}
+              openOnboarding={() => dev.emit("open-onboarding")}
+              editorWorkflow={
+                ui.activeView === "editor"
+                  ? {
+                      uploadedFile: split.uploadedFile,
+                      isSplitting: split.isSplitting,
+                      mixStemsLength: mixer.mixStems.length,
+                      isExporting: exp.isExporting,
+                    }
+                  : null
+              }
+            />
+          )}
 
           {showTransport ? (
             <AppTransportBar {...transportBarProps} />
@@ -226,6 +231,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
               midiPage={LazyMidiConvertPage}
               libraryPage={LazyLibraryPage}
               tunerPage={LazyTunerPage}
+              hubPage={LazyHubPage}
               transitionalEditorShell={LazyTransitionalEditorShell}
               transitionalShellProps={{
                 handleFile: split.handleFile,

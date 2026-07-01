@@ -220,6 +220,11 @@ export function SplitActions({
                   />
                 </div>
               </div>
+              {!isUploading && queuePosition == null && splitProgress > 5 && (
+                <p className="mt-1 text-helper text-muted-foreground/70">
+                  We&apos;ll email you when your stems are ready &mdash; you can safely close this tab.
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

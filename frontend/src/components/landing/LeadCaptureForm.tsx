@@ -52,7 +52,7 @@ export function LeadCaptureForm() {
           />
         </div>
         <button type="submit" disabled={status === "submitting"}
-          className="fire-button shrink-0 rounded-xl px-md py-2.5 text-sm font-semibold disabled:opacity-60">
+          className="fire-button tap-feedback shrink-0 rounded-xl px-md py-2.5 text-sm font-semibold disabled:opacity-60">
           {status === "submitting" ? "Sending..." : "Subscribe"}
         </button>
       </div>

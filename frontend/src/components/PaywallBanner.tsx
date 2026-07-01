@@ -61,7 +61,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
             type="button"
             onClick={() => void handleCheckout("single", "teaser", "teaser_single_pack")}
             disabled={loading !== null}
-            className="ghost-button flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold disabled:opacity-60"
+            className="ghost-button tap-feedback flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold disabled:opacity-60"
           >
             {loading === "single" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -72,7 +72,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
             type="button"
             onClick={() => void handleCheckout("premium", "teaser", "teaser_premium_sub")}
             disabled={loading !== null}
-            className="fire-button flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold disabled:opacity-60"
+            className="fire-button tap-feedback flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold disabled:opacity-60"
           >
             {loading === "premium" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -83,7 +83,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
             <button
               type="button"
               onClick={onViewPlans}
-              className="ghost-button flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold"
+              className="ghost-button tap-feedback flex min-h-[40px] items-center gap-xs px-md py-xs text-xs font-semibold"
             >
               View all plans
               <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -131,7 +131,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
           aria-label="Start Premium subscription"
           aria-live="polite"
           className={cn(
-            "fire-button flex min-h-[48px] w-full items-center justify-center gap-xs px-md py-sm text-sm font-semibold sm:col-span-1",
+            "fire-button tap-feedback flex min-h-[48px] w-full items-center justify-center gap-xs px-md py-sm text-sm font-semibold sm:col-span-1",
             "disabled:cursor-not-allowed disabled:opacity-60",
           )}
         >
@@ -165,7 +165,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
           onClick={() => void handleSelect("topup", "blocked_split_checkout_topup")}
           disabled={loading !== null}
           aria-label="Buy one-time top-up credits"
-          className="ghost-button min-h-[48px] w-full px-md py-sm text-sm font-semibold disabled:opacity-60"
+          className="ghost-button tap-feedback min-h-[48px] w-full px-md py-sm text-sm font-semibold disabled:opacity-60"
         >
           {loading === "topup" ? (
             <span className="inline-flex items-center justify-center gap-xs">
@@ -191,7 +191,7 @@ export function PaywallBanner({ subscription, variant = "full", onViewPlans }: P
                 : `Choose ${plan.name} plan`
             }
             className={cn(
-              "flex items-center justify-between rounded-xl border px-md py-md text-left transition",
+              "tap-feedback flex items-center justify-between rounded-xl border px-md py-md text-left transition",
               "border-border bg-muted hover:border-primary-400/40 hover:bg-primary-500/10",
               "disabled:cursor-not-allowed disabled:opacity-60",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60",

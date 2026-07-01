@@ -23,9 +23,24 @@ jobs:
       - name: Frontend npm audit
         working-directory: frontend
         run: npm audit --audit-level=high
-      - name: Frontend ESLint
+      - name: Frontend ESLint budget gate
         working-directory: frontend
-        run: npm run lint
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const { execSync } = require('child_process');
+            const eslintPath = path.resolve('node_modules/.bin/eslint');
+            const raw = execSync(\`\"\${eslintPath}\" . --format json\`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+            const results = JSON.parse(raw);
+            const totalWarnings = results.reduce((sum, r) => sum + (r.warningCount || 0), 0);
+            const totalErrors = results.reduce((sum, r) => sum + (r.errorCount || 0), 0);
+            if (totalWarnings > 0 || totalErrors > 0) {
+              console.error(\`ESLint budget exceeded: \${totalWarnings} warnings, \${totalErrors} errors\`);
+              process.exit(1);
+            }
+            console.log(\`ESLint budget clean: 0 warnings, 0 errors\`);
+          "
       - name: Frontend typecheck
         working-directory: frontend
         run: npx tsc --noEmit

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useLocation } from "wouter";
 
 export type AppView =
+  | "hub"
   | "editor"
   | "speech"
   | "midi"
@@ -13,11 +14,12 @@ export type AppView =
 function locationToView(location: string): AppView {
   if (location === "/pricing") return "pricing";
   if (location === "/my-stems") return "my-stems";
+  if (location === "/editor") return "editor";
   if (location === "/beats" || location === "/library") return "beats";
   if (location === "/tuner") return "tuner";
   if (location === "/speech") return "speech";
   if (location === "/midi") return "midi";
-  return "editor";
+  return "hub";
 }
 
 export function useEditorViewRouting() {
@@ -26,7 +28,13 @@ export function useEditorViewRouting() {
 
   const setActiveView = useCallback(
     (view: AppView) => {
-      navigate(view === "editor" ? "/" : `/${view}`);
+      if (view === "hub") {
+        navigate("/");
+      } else if (view === "editor") {
+        navigate("/editor");
+      } else {
+        navigate(`/${view}`);
+      }
     },
     [navigate],
   );
