@@ -32,7 +32,7 @@ numpy>=2.4.6,<2.6
 # Offline master export: server_export.py (fftconvolve, resample, lfilter) — routed from Node when SERVER_EXPORT_ENABLED
 scipy>=1.9.0
 fastapi>=0.138.1
-uvicorn[standard]>=0.22.0
+uvicorn[standard]>=0.49.0
 python-multipart>=0.0.32
 
 # Optional: upload stems to S3 after each job (S3_ENABLED=true; see docs/ARCHITECTURE-FLOW.md)
