@@ -35,10 +35,9 @@ export function PrimaryActionCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-2xl bg-surface-raised border border-border transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left",
+        "group relative overflow-hidden rounded-2xl bg-surface-raised border border-border transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left min-h-[180px] md:min-h-[240px]",
         className,
       )}
-      style={{ minHeight: 240 }}
     >
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
         <div

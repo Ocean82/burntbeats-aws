@@ -23,6 +23,8 @@ export default mergeConfig(
     test: {
       environment: "jsdom",
       setupFiles: ["./vitest.setup.ts"],
+      // forks pool times out starting workers on Windows; threads is stable here.
+      pool: "threads",
       // Playwright specs live under e2e/; they must run via `npm run test:e2e`, not Vitest.
       exclude: [...defaultExclude, "**/e2e/**"],
     },
