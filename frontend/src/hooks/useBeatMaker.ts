@@ -18,11 +18,12 @@
  * transport by the parent component — they are never mutated by the overlay.
  * ═══════════════════════════════════════════════════════════════════════════════
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { playDrumVoice } from "../audio/drumSynth";
 import { getSwungStepTime } from "../audio/swingQuantize";
 import {
   DEFAULT_KIT,
+  KIT_DEFINITIONS,
   VELOCITY_ACCENT,
   VELOCITY_GHOST,
   VELOCITY_NORMAL,
@@ -31,6 +32,7 @@ import {
 import type {
   CellVelocity,
   DrumVoice,
+  KitId,
   PatternLength,
   RowState,
   VelocityPattern,
@@ -90,6 +92,8 @@ export interface BeatPreset {
 export interface UseBeatMakerReturn {
   // Kit
   kit: DrumVoice[];
+  kitId: KitId;
+  setKit: (id: KitId) => void;
 
   // Pattern state
   pattern: VelocityPattern;
@@ -140,6 +144,17 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
   const kit = DEFAULT_KIT;
   const rowCount = kit.length;
 
+  const [kitId, setKitIdState] = useState<KitId>("default");
+
+  const setKit = useCallback((id: KitId) => {
+    setKitIdState(id);
+  }, []);
+
+  const kitParams = useMemo(() => {
+    const def = KIT_DEFINITIONS.find((k) => k.id === kitId);
+    return def?.params as Record<string, Record<string, number>> | undefined;
+  }, [kitId]);
+
   // Pattern state
   const [steps, setStepsState] = useState<PatternLength>(16);
   const [pattern, setPattern] = useState<VelocityPattern>(() =>
@@ -167,6 +182,10 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
   const bpmRef = useRef(bpm);
   const swingRef = useRef(swing);
   const stepsRef = useRef(steps);
+  const kitParamsRef = useRef(kitParams);
+  useEffect(() => {
+    kitParamsRef.current = kitParams;
+  }, [kitParams]);
 
   useEffect(() => {
     patternRef.current = pattern;
@@ -339,6 +358,7 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
         const currentBpm = bpmRef.current;
         const currentSwing = swingRef.current;
         const totalSteps = stepsRef.current;
+        const currentKitParams = kitParamsRef.current;
         const stepDuration = 60 / currentBpm / 4;
         const audible = getAudibleRows(rs);
 
@@ -348,9 +368,14 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
 
           // Play audible hits at this step, routing through the provided output node
           pat.forEach((row, ri) => {
-            if (audible[ri] && row[stepIdx] > VELOCITY_OFF) {
+             if (audible[ri] && row[stepIdx] > VELOCITY_OFF) {
               const vel = Math.round(row[stepIdx] * rs[ri].volume);
-              playDrumVoice(ctx, kit[ri].id, stepTime, vel, output);
+              const instParams = currentKitParams?.[kit[ri].id];
+              if (instParams) {
+                playDrumVoice(ctx, kit[ri].id, stepTime, vel, output, instParams);
+              } else {
+                playDrumVoice(ctx, kit[ri].id, stepTime, vel, output);
+              }
             }
           });
 
@@ -418,6 +443,8 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
 
   return {
     kit,
+    kitId,
+    setKit,
     pattern,
     steps,
     rowStates,

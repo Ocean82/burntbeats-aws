@@ -106,6 +106,7 @@ export function AppViewSwitch({
           usageLoading={usageLoading}
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
+          onBackToHub={() => onSetActiveView("hub")}
         />
       ) : activeView === "midi" ? (
         <MidiPage
@@ -115,6 +116,7 @@ export function AppViewSwitch({
           usageLoading={usageLoading}
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
+          onBackToHub={() => onSetActiveView("hub")}
         />
       ) : activeView === "beats" ? (
         <LibraryPage

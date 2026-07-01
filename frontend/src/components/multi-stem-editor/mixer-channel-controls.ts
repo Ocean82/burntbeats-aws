@@ -6,7 +6,7 @@ const COMPACT_BASE =
   "tap-feedback flex h-11 w-11 items-center justify-center rounded text-meta font-bold ring-1 transition-[color,background-color,transform,box-shadow] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.95]";
 
 const COMPACT_INACTIVE =
-  "bg-white/5 text-white/50 ring-transparent hover:bg-white/10 hover:text-white/70 hover:ring-white/10";
+  "bg-white/5 text-muted-foreground ring-transparent hover:bg-white/10 hover:text-foreground hover:ring-white/10";
 
 const COMPACT_ACTIVE: Record<ChannelButtonKind, string> = {
   mute: "bg-red-500/40 text-red-100 ring-2 ring-red-400/60 shadow-[0_0_10px_rgba(239,68,68,0.45)]",
@@ -17,7 +17,7 @@ const PANEL_BASE =
   "min-h-[38px] rounded-lg border px-3 py-1.5 text-xs font-bold tracking-wide transition-all duration-150";
 
 const PANEL_INACTIVE =
-  "border-white/10 bg-white/5 text-white/70";
+  "border-white/10 bg-white/5 text-secondary-foreground";
 
 const PANEL_ACTIVE: Record<ChannelButtonKind, string> = {
   mute:

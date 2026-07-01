@@ -24,6 +24,7 @@ import { useMasterBus, type UseMasterBusReturn } from "../../hooks/useMasterBus"
 import { useOverlayTransport } from "../../hooks/useOverlayTransport";
 import { PatternLibraryPanel } from "./PatternLibraryPanel";
 import { MasterBusControls } from "./MasterBusControls";
+import { KitSelector } from "./KitSelector";
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -78,6 +79,8 @@ export function DrumMachinePanel({
 
   const {
     kit,
+    kitId,
+    setKit,
     pattern,
     steps,
     rowStates,
@@ -229,6 +232,9 @@ export function DrumMachinePanel({
             <option value={64}>64</option>
           </select>
         </label>
+
+        {/* Kit selector */}
+        <KitSelector value={kitId} onChange={setKit} />
 
         {/* Clear */}
         <button

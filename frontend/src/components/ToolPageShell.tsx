@@ -18,6 +18,8 @@ export interface ToolPageShellProps {
   testId?: string;
   /** Optional callback when user clicks "View all plans" in the teaser paywall */
   onViewPlans?: () => void;
+  /** Optional back-navigation callback rendered as a subtle link above the panel */
+  onBackToHub?: () => void;
 }
 
 export function ToolPageShell({
@@ -28,6 +30,7 @@ export function ToolPageShell({
   checkoutNotice,
   testId,
   onViewPlans,
+  onBackToHub,
 }: ToolPageShellProps) {
   return (
     <motion.section
@@ -38,6 +41,16 @@ export function ToolPageShell({
         className={`rounded-2xl border bg-muted/20 ${borderColorClass} px-lg py-lg sm:px-lg`}
         data-testid={testId}
       >
+        {onBackToHub && (
+          <button
+            type="button"
+            onClick={onBackToHub}
+            className="mb-md inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-primary-200 tap-feedback"
+          >
+            <span aria-hidden="true">←</span>
+            Back to Hub
+          </button>
+        )}
         {children}
         {subscription.status === "inactive" && (
           <div className={`mt-md border-t ${borderColorClass} pt-md`}>

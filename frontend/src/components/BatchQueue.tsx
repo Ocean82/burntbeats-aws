@@ -1,6 +1,7 @@
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { collapseMotion, panelEnterMotion } from "../motion/presets";
 import { X, Music2, Loader2, Check, AlertCircle, Trash2, ChevronUp, ChevronDown, Lock } from "lucide-react";
+import { cn } from "../utils/cn";
 
 export type QueueItemStatus = "queued" | "processing" | "complete" | "error";
 
@@ -33,13 +34,26 @@ function formatFileSize(bytes: number): string {
 function StatusIcon({ status }: { status: QueueItemStatus }) {
   switch (status) {
     case "queued":
-      return <div className="h-3 w-3 rounded-full bg-secondary" />;
+      return <div className="h-3 w-3 rounded-full bg-muted-foreground/50" />;
     case "processing":
       return <Loader2 className="h-4 w-4 animate-spin text-primary-400" />;
     case "complete":
       return <Check className="h-4 w-4 text-success-400" />;
     case "error":
       return <AlertCircle className="h-4 w-4 text-destructive-400" />;
+  }
+}
+
+function statusEdgeClass(status: QueueItemStatus): string {
+  switch (status) {
+    case "queued":
+      return "border-l-muted-foreground/30";
+    case "processing":
+      return "border-l-primary-400/60";
+    case "complete":
+      return "border-l-success-400/60";
+    case "error":
+      return "border-l-destructive-400/60";
   }
 }
 
@@ -105,11 +119,19 @@ export function BatchQueue({
         {isExpanded && (
           <motion.div {...collapse}>
             <div id="batch-queue-items" className="max-h-64 overflow-y-auto border-t border-border">
-              {items.map((item) => (
+              {items.map((item, index) => (
                 <motion.div
                   key={item.id}
                   layout={!reduceMotion}
-                  className="group relative border-b border-border px-md py-sm last:border-b-0"
+                  initial={reduceMotion ? false : { opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={reduceMotion ? { duration: 0 } : { delay: index * 0.04, duration: 0.2 }}
+                  className={cn(
+                    "group relative border-b border-border px-md py-sm last:border-b-0 border-l-[3px]",
+                    statusEdgeClass(item.status),
+                    item.status === "complete" && "bg-success-500/[0.03]",
+                    item.status === "error" && "bg-destructive-500/[0.04]",
+                  )}
                 >
                   <div className="flex items-center gap-sm">
                     <StatusIcon status={item.status} />
