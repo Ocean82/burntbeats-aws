@@ -108,6 +108,13 @@ export const PIANO_ROLL = {
   trackActiveBg: "#2a2823",
 } as const;
 
+/** Visual opacity from pre-post-process confidence (low = faint). */
+export function noteConfidenceOpacity(confidence?: number): number {
+  if (confidence == null || Number.isNaN(confidence)) return 1;
+  const clamped = Math.min(1, Math.max(0, confidence));
+  return 0.35 + clamped * 0.65;
+}
+
 export const EDITOR_TOOLS: Record<
   string,
   { label: string; shortcut: string; hint: string }

@@ -2,6 +2,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { CcLane, AutomationParam } from "./editorTypes";
 import { AUTOMATION_PARAMS } from "./editorTypes";
 import { PIANO_ROLL, CC_LANE_HEIGHT, LANE_LABEL_WIDTH } from "./pianoRollTheme";
+import {
+  computeVisibleTimelineWindow,
+  isNoteVisibleInWindow,
+} from "../../utils/useVisibleTimelineWindow";
 
 interface MidiAutomationLaneProps {
   lane: CcLane;
@@ -9,6 +13,9 @@ interface MidiAutomationLaneProps {
   pixelsPerSecond: number;
   totalDuration: number;
   timelineWidth: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
+  bpm?: number;
   onAddPoint: (time: number, value: number) => void;
   onUpdatePoint: (index: number, time: number, value: number) => void;
   onRemovePoint: (index: number) => void;
@@ -27,6 +34,9 @@ export function MidiAutomationLane({
   pixelsPerSecond,
   totalDuration: _totalDuration,
   timelineWidth,
+  scrollLeft = 0,
+  viewportWidth = timelineWidth,
+  bpm = 120,
   onAddPoint,
   onUpdatePoint,
   onRemovePoint,
@@ -34,6 +44,19 @@ export function MidiAutomationLane({
 }: MidiAutomationLaneProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const visibleWindow = useMemo(
+    () =>
+      computeVisibleTimelineWindow({
+        scrollLeft,
+        viewportWidth,
+        pixelsPerSecond,
+        leftMargin: 0,
+        marginBars: 1,
+        bpm,
+      }),
+    [scrollLeft, viewportWidth, pixelsPerSecond, bpm],
+  );
 
   const paramMeta = AUTOMATION_PARAMS.find((p) => p.param === param);
   const paramColors: Record<AutomationParam, { stroke: string; fill: string; point: string }> = {
@@ -61,6 +84,15 @@ export function MidiAutomationLane({
         y: valueToY(p.value),
       })),
     [lane.events, timeToX, valueToY],
+  );
+
+  const visiblePointRects = useMemo(
+    () =>
+      pointRects.filter((p) => {
+        const time = lane.events[p.index]?.time ?? 0;
+        return isNoteVisibleInWindow(time, time, visibleWindow);
+      }),
+    [pointRects, lane.events, visibleWindow],
   );
 
   const curvePath = useMemo(() => {
@@ -175,7 +207,7 @@ export function MidiAutomationLane({
               <path d={curvePath} fill="none" stroke={colors.stroke} strokeWidth={1.5} pointerEvents="none" />
             </>
           )}
-          {pointRects.map((p) => (
+          {visiblePointRects.map((p) => (
             <circle
               key={`ap-${p.index}`}
               cx={p.x}
@@ -187,7 +219,7 @@ export function MidiAutomationLane({
               style={{ cursor: "grab" }}
             />
           ))}
-          {pointRects.map((p, i) => (
+          {visiblePointRects.map((p, i) => (
             <line
               key={`ref-${i}`}
               x1={p.x}

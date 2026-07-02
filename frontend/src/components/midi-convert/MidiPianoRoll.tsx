@@ -9,13 +9,14 @@ import {
   formatBarBeatLabel,
   formatSecondsLabel,
   PREVIEW_PIXELS_PER_SECOND,
+  TIMELINE_LEFT_MARGIN,
 } from "../../utils/midiTimeline";
 import { cn } from "../../utils/cn";
 import { isBlackKeyPitch, PIANO_ROLL } from "./pianoRollTheme";
 import type { LoopRegion } from "./editorTypes";
 import "./midi-tokens.css";
 
-const LEFT_MARGIN = 44;
+const LEFT_MARGIN = TIMELINE_LEFT_MARGIN;
 const TOP_MARGIN = 18;
 const BOTTOM_MARGIN = 28;
 const MIN_WIDTH = 280;
@@ -27,6 +28,7 @@ interface MidiPianoRollProps {
   currentTime?: number | null;
   bpm?: number;
   zoom?: number;
+  onZoomChange?: (zoom: number) => void;
   loopRegion?: LoopRegion;
   onSeek?: (absoluteTime: number) => void;
   onLoopChange?: (region: LoopRegion) => void;
@@ -45,6 +47,7 @@ export function MidiPianoRoll({
   currentTime = null,
   bpm = 120,
   zoom = 1,
+  onZoomChange,
   loopRegion,
   onSeek,
   className = "",
@@ -241,7 +244,11 @@ export function MidiPianoRoll({
           type="button"
           className="midi-btn text-[10px] px-2 py-0.5"
           aria-label="Zoom out"
-          onClick={() => setLocalZoom((z) => Math.max(0.5, z - 0.25))}
+          onClick={() => {
+            const next = Math.max(0.5, localZoom - 0.25);
+            setLocalZoom(next);
+            onZoomChange?.(next);
+          }}
         >
           −
         </button>
@@ -252,7 +259,11 @@ export function MidiPianoRoll({
           type="button"
           className="midi-btn text-[10px] px-2 py-0.5"
           aria-label="Zoom in"
-          onClick={() => setLocalZoom((z) => Math.min(2, z + 0.25))}
+          onClick={() => {
+            const next = Math.min(2, localZoom + 0.25);
+            setLocalZoom(next);
+            onZoomChange?.(next);
+          }}
         >
           +
         </button>

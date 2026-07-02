@@ -30,10 +30,56 @@ function readUint16(data: Uint8Array, offset: number): number {
   return (data[offset] << 8) | data[offset + 1];
 }
 
+interface TimeConverter {
+  tickToSeconds: (tick: number) => number;
+  onTempoMeta?: (usPerBeat: number) => void;
+}
+
+function createTimeConverter(
+  division: number,
+  warnings: string[],
+): TimeConverter {
+  if ((division & 0x8000) === 0) {
+    let bpm = 120;
+    const ticksPerBeat = division > 0 ? division : 480;
+    return {
+      tickToSeconds(tick: number) {
+        return (tick / ticksPerBeat) * (60 / bpm);
+      },
+      onTempoMeta(usPerBeat: number) {
+        bpm = Math.round(60000000 / usPerBeat);
+      },
+    };
+  }
+
+  let fpsByte = (division >> 8) & 0xff;
+  if (fpsByte & 0x80) fpsByte -= 256;
+  const fps = Math.abs(fpsByte);
+  const ticksPerFrame = division & 0xff;
+
+  if (!fps || !ticksPerFrame) {
+    warnings.push(
+      "Invalid SMPTE division; falling back to 480 ticks per quarter note.",
+    );
+    return createTimeConverter(480, warnings);
+  }
+
+  const ticksPerSecond = fps * ticksPerFrame;
+  return {
+    tickToSeconds(tick: number) {
+      return tick / ticksPerSecond;
+    },
+  };
+}
+
 /**
  * Parse a MIDI ArrayBuffer into note events with start/duration in seconds.
  */
-export function parseMidiBuffer(buffer: ArrayBuffer): { notes: MidiNoteEvent[]; bpm: number } {
+export function parseMidiBuffer(buffer: ArrayBuffer): {
+  notes: MidiNoteEvent[];
+  bpm: number;
+  warnings?: string[];
+} {
   const data = new Uint8Array(buffer);
   if (data.length < 14) return { notes: [], bpm: 120 };
 
@@ -42,7 +88,8 @@ export function parseMidiBuffer(buffer: ArrayBuffer): { notes: MidiNoteEvent[]; 
 
   const numTracks = readUint16(data, 10);
   const division = readUint16(data, 12);
-  const ticksPerBeat = division & 0x8000 ? 480 : division;
+  const warnings: string[] = [];
+  const time = createTimeConverter(division, warnings);
   let bpm = 120;
   const notes: MidiNoteEvent[] = [];
   let offset = 14;
@@ -85,8 +132,8 @@ export function parseMidiBuffer(buffer: ArrayBuffer): { notes: MidiNoteEvent[]; 
         } else {
           const start = activeNotes.get(pitch);
           if (start) {
-            const startSec = (start.tick / ticksPerBeat) * (60 / bpm);
-            const endSec = (tick / ticksPerBeat) * (60 / bpm);
+            const startSec = time.tickToSeconds(start.tick);
+            const endSec = time.tickToSeconds(tick);
             notes.push({
               pitch,
               start: startSec,
@@ -108,6 +155,7 @@ export function parseMidiBuffer(buffer: ArrayBuffer): { notes: MidiNoteEvent[]; 
         if (metaType === 0x51 && len.value === 3 && offset + 2 < trackEnd) {
           const usPerBeat = (data[offset] << 16) | (data[offset + 1] << 8) | data[offset + 2];
           bpm = Math.round(60000000 / usPerBeat);
+          time.onTempoMeta?.(usPerBeat);
         }
         offset += len.value;
       } else if (status === 0xf0 || status === 0xf7) {
@@ -123,5 +171,9 @@ export function parseMidiBuffer(buffer: ArrayBuffer): { notes: MidiNoteEvent[]; 
     offset = trackEnd;
   }
 
-  return { notes, bpm };
+  return {
+    notes,
+    bpm,
+    ...(warnings.length ? { warnings } : {}),
+  };
 }

@@ -1,0 +1,394 @@
+# MIDI Service Investigation Report & Remediation Plan
+
+## PRE-BUILD REALITY CHECK
+
+```text
+PRE-BUILD REALITY CHECK
+
+✅ Goal:
+Audit the full MIDI stack (conversion, piano roll, soundfonts, player, related APIs)
+and produce a remediation plan so the feature works and looks as users expect.
+
+✅ Proposed approach:
+Codebase audit across midi_service, backend proxy, and frontend editor — no code changes yet.
+
+✅ Feasibility:
+Feasible. The stack is largely production-shaped; gaps are mostly wiring, UX parity,
+and a few architectural mismatches — not a ground-up rewrite.
+
+✅ Requirements:
+- midi_service (FastAPI, Basic Pitch, FluidSynth, soundfonts mount)
+- backend Express proxy at /api/midi
+- React frontend (Tone.js playback, custom piano roll)
+- audio-app / Tone.js / conversion workflow skill standards
+
+⚠️ Risks:
+- Client preview vs server render will always sound different without SoundFont in browser
+- Dense piano rolls without virtualization may degrade on mid-range laptops
+- Multi-track editing is UI-ready but conversion/render paths are still single-track
+
+❌ Problems with the current approach:
+- Broken API wiring (harmonic analysis)
+- Render ignores unsaved editor state
+- Conversion workflow missing comparison view and confidence visualization
+- Dead backend capability (rhythm generation) not exposed to UI
+
+🔄 Better alternatives:
+1. Wire missing proxies first (analyze, optional rhythm) — fastest user-visible wins
+2. Fix render to reflect live editor state (notes + tracks API) — fixes trust gap
+3. Add comparison view + soundfont picker — aligns with premium DAW expectations
+
+✅ Recommendation:
+Phased plan below: critical wiring → playback/render parity → workflow UX → performance → features.
+
+FINAL STATUS:
+SAFE TO PROCEED (planning only; implementation can follow phases)
+```
+
+---
+
+## Architecture (Current State)
+
+```text
+Frontend (React + Tone.js)  →  Backend (Express /api/midi)  →  midi_service (FastAPI)
+```
+
+| Layer | Location | Role |
+|-------|----------|------|
+| Python service | `midi_service/` | Audio→MIDI (Basic Pitch), MIDI→audio (FluidSynth), analysis, rhythm, merge/export |
+| Node proxy | `backend/routes/midi/` | Auth, tokens, ownership, job persistence |
+| React UI | `frontend/src/components/midi-convert/` | Conversion workflow + DAW-style editor |
+| Soundfonts | `soundfonts/GeneralUser_GS.sf2` | Server render only (bind-mounted at runtime) |
+
+The stack is **substantial and mostly implemented**. Unit tests exist across all three layers. The main problems are **broken wiring**, **preview vs export mismatch**, and **gaps vs premium workflow standards** — not missing core infrastructure.
+
+---
+
+## What Works Today
+
+### Audio → MIDI conversion
+- Upload → queue → SSE/poll → results flow is complete
+- Basic Pitch ONNX on CPU, post-processing (quantize, velocity, transpose)
+- Batch stem conversion, cancel, history, merge, ZIP export
+- Save edited MIDI via `PUT /api/midi/file/:job_id/output.mid`
+
+### Piano roll / editor
+- Multi-track state in `useMidiEditor.ts` (~1,400 lines): undo/redo, tools, snap, CC/automation lanes
+- Canvas2D fallback at 400+ notes (`MidiNoteCanvasLayer.tsx`)
+- Web MIDI input, MIDI FX chain, smart chord panel, markers, scale highlighting
+- E2E tests for marquee, resize, context menu (`midi-editor-interactions.spec.ts`)
+
+### MIDI player (client)
+- `useMidiPlayback.ts` uses Tone.js Transport correctly (scheduled events, loop, metronome)
+- Multi-track mute/solo with per-track `Tone.PolySynth` presets (`useMidiInstruments.ts`)
+
+### MIDI → audio (server)
+- FluidSynth + GeneralUser GS soundfont via `midi_service/services/render.py`
+- Multi-track render API exists (`tracks[]`, `soundfont`, `instrument`) but UI does not use it
+
+### Catalog
+- Static progression/rhythm catalog at `/api/catalog/midi` with Tone.js preview
+
+---
+
+## Broken or Non-Working Components
+
+### 1. Harmonic analysis — **broken at runtime** (High)
+
+`MidiHarmonyPanel` auto-calls `POST /api/midi/analyze` via `useMidiHarmonicAnalysis.ts`, but **no backend route exists**:
+
+```17:27:d:\burntbeats-aws\backend\routes\midi\index.js
+midiRouter.use("/convert", midiConvertRouter);
+// ... no analyze router
+midiRouter.use("/render", midiRenderRouter);
+```
+
+The Python service **does** implement this at `midi_service/routes/analyze.py`. Users who open the Harmony inspector see persistent errors.
+
+### 2. Rhythm generation API — **dead code** (Medium)
+
+`midi_service/routes/rhythm.py` exposes full groove generation (`/rhythm/generate`, era styles, variations). There is **no backend proxy** and **no frontend consumer**. The catalog uses static `.mid` files instead of live generation.
+
+### 3. Server render ignores live editor edits — **functional bug** (High)
+
+`MidiRenderAudioControl` always prefers `sourceJobId` when `jobId` is present:
+
+```40:49:d:\burntbeats-aws\frontend\src\components\midi-convert\MidiRenderAudioControl.tsx
+    if (sourceJobId) {
+      void submit({
+        source_job_id: sourceJobId,
+        format,
+        bpm,
+        instrument: program,
+        ...
+      });
+      return;
+    }
+```
+
+That renders the **original** `output.mid` on disk, not unsaved piano-roll changes. Users can edit notes, hit Render, and hear the pre-edit version unless they Save first — a serious trust issue.
+
+### 4. Render path drops multi-track context (Medium)
+
+When the notes path is used, only **active track** notes are sent (`editor.notes` = active track only). The server supports `tracks[]` with per-track instruments; the UI never sends it.
+
+---
+
+## Design, Layout & UX Flaws
+
+### Conversion workflow (vs audio-app skill standards)
+
+| Expected (40-conversion-workflows) | Current |
+|-------------------------------------|---------|
+| Side-by-side original vs converted comparison | **Missing** — source preview disappears after conversion |
+| Linked playhead across audio + MIDI | **Missing** |
+| Note confidence coloring | **Not possible** — confidence is a filter threshold only; per-note confidence is not stored |
+| Staged results bin / version compare | Partial — history exists, no in-session version compare |
+| Soundfont / quality preset in beginner tier | **Missing** in UI |
+
+### Playback parity
+
+| Area | Issue |
+|------|-------|
+| Client preview | `Tone.PolySynth` presets (triangle/saw/square/sine) |
+| Server render | FluidSynth + GeneralUser GS |
+| User expectation | “What I hear” ≠ “what I export” — documented in small text, still confusing |
+
+No browser SoundFont loader (`MIDI_EDITOR.md` acknowledges this). Acceptable for CPU budget, but UI must set expectations and offer server preview prominently.
+
+### Piano roll (vs 30-piano-roll skill)
+
+| Skill requirement | Status |
+|-------------------|--------|
+| Canvas + virtualization for dense rolls | Canvas at 400+ notes, but **no viewport culling** — all notes rendered |
+| Playhead via `requestAnimationFrame` + Transport | Implemented |
+| Velocity lane, quantization UI | Implemented |
+| Premium visual language | Strong tokens in `midi-tokens.css` / `pianoRollTheme.ts` |
+| Preview/editor zoom consistency | **Mismatch** — preview 60px/s (`midiTimeline.ts`), editor 80px/s (`pianoRollTheme.ts`) |
+
+### Layout concerns
+
+1. **Grid CSS mismatch** at `≥1280px`: `grid-template-areas` defines 3 columns but `grid-template-columns` only defines 2 — can cause implicit column / inspector alignment quirks in `midi-tokens.css`.
+2. **Inspector discoverability**: Harmony, Render, FX, Chords default **collapsed** in `MidiNoteEditor` — power features are hard to find.
+3. **Mobile**: Responsive rules exist (`@media max-width: 639px/1023px`) but the editor is inherently desktop-first; tablet should degrade to view-mode-first.
+4. **Conversion always single-track**: `conversion.py` sets `tracks = 1` always; editor supports multi-track but conversion loads all notes into track 1.
+
+### MIDI parser limitations (`parseMidiNotes.ts`)
+
+- Type-0 oriented; SMPTE division (`division & 0x8000`) falls back to 480 ticks without parsing
+- Used by catalog preview — some catalog files may parse incorrectly
+- No per-track channel preservation
+
+### Operations
+
+- `soundfonts/` excluded from Docker build (`.dockerignore`) — **must be bind-mounted** or render fails in fresh deploys
+- `pyfluidsynth` in `pyproject.toml` but render uses CLI `fluidsynth` subprocess only
+
+---
+
+## Areas of Concern (Risk Matrix)
+
+| Severity | Issue | User impact |
+|----------|-------|-------------|
+| **P0** | Missing `/api/midi/analyze` proxy | Harmony panel broken |
+| **P0** | Render uses stale `source_job_id` | Edits not reflected in export |
+| **P1** | No comparison view post-conversion | Users can't validate transcription |
+| **P1** | Client vs server timbre mismatch | “Sounds wrong” support tickets |
+| **P1** | No soundfont picker in UI | No control over render quality/character |
+| **P2** | No note virtualization | Jank on dense transcriptions (400+ notes) |
+| **P2** | Rhythm API unused | Missed product value; catalog is static only |
+| **P2** | Single-track conversion | Multi-track stems lose separation |
+| **P3** | Preview/editor zoom mismatch | Disorienting view → edit transition |
+| **P3** | Grid CSS column mismatch | Subtle wide-screen layout bugs |
+
+---
+
+## Remediation Plan
+
+### Phase 1 — Critical fixes (1–2 days)
+
+**Goal:** Stop broken user-facing features.
+
+1. **Add `POST /api/midi/analyze` backend proxy**
+   - Mirror `waveform.js` pattern: auth → `withMidiServiceAuthHeader` → proxy to `midi_service/analyze`
+   - Mount in `backend/routes/midi/index.js`
+   - Add `backend/tests/midi-analyze.test.mjs`
+   - Optional: client-side fallback using existing `midiChordDetection.ts` when service is down
+
+2. **Fix render WYSIWYG behavior**
+   - If `editor.isModified` or notes differ from saved file → send `notes` + `tracks[]` payload, not `source_job_id`
+   - Map all `editor.tracks` to render API:
+     ```typescript
+     tracks: editor.tracks.map(t => ({
+       stem_name: t.name,
+       instrument: INSTRUMENT_PROGRAM[t.instrument],
+       channel: t.channel,
+     }))
+     notes: flattenAllTracks(editor.tracks)
+     ```
+   - Show “Save required” or auto-save-before-render as explicit UX (prefer live notes path)
+   - Add integration test: edit note → render → verify changed pitch in output
+
+3. **Soundfont deploy guard**
+   - Health check: `GET /api/midi/render/health` or extend existing storage health to verify soundfont mount
+   - Clear error in `MidiRenderAudioControl` when soundfont missing
+
+---
+
+### Phase 2 — Playback & export parity (3–5 days)
+
+**Goal:** Align what users hear with what they export.
+
+4. **Soundfont selection UI**
+   - Beginner tier: preset dropdown (Piano / Strings / Bass / GM programs) wired to existing `instrument` + optional `soundfont` param
+   - List available soundfonts from server config (new `GET /api/midi/soundfonts` listing `soundfonts/` directory)
+   - Persist last choice in localStorage
+
+5. **Unify preview zoom**
+   - Single `PIXELS_PER_SECOND` constant (80) or shared zoom module for `MidiPianoRoll` and `MidiEditorCanvas`
+   - Preserve separate max heights (preview capped at 360px is fine)
+
+6. **Improve render UX**
+   - Inline `<audio>` preview after render (already exists)
+   - Add “A/B: Synth vs Rendered” toggle so users understand the two engines
+   - Show render metadata (soundfont, peak, render time) from `RenderJobStatus.result`
+
+7. **Do not add browser SoundFont yet** (CPU/bundle budget per audio-app skill)
+   - Document in UI: “Editor = quick synth preview; Render = studio quality”
+   - Consider `Tone.Sampler` with a **small** piano sample set only if bundle budget allows (<150KB lazy chunk)
+
+---
+
+### Phase 3 — Conversion workflow UX (5–7 days)
+
+**Goal:** Match premium conversion workflow standards.
+
+8. **Post-conversion comparison view**
+   - New `MidiComparisonPanel`: left = source waveform (`MidiSourcePreview` / `MidiWaveformPlayer`), right = piano roll or rendered preview
+   - Linked scrub: seek audio → seek MIDI playhead (read Transport position on `requestAnimationFrame` per audio-engine skill)
+   - “Play Original / Play MIDI / Play Both” controls
+   - Keep in `MidiResultPanel` as default tab after conversion completes
+
+9. **Per-note confidence (optional backend enhancement)**
+   - Extend `conversion.py` to attach `confidence` per note from Basic Pitch amplitudes
+   - Color note blocks in view mode: green/yellow/red by threshold bands
+   - Surfaces value of the confidence slider in settings
+
+10. **Settings tiering cleanup**
+    - Beginner: instrument preset, quality (fast/balanced/high), “clean up notes”
+    - Pro (collapsed): confidence, quantize strength, polyphony — map to existing `MidiConvertSettings`
+
+11. **Staged results**
+    - Within a session, keep conversion attempts as version cards (“v1”, “v2”) before user accepts one into editor
+    - Lighter alternative: “Re-run with settings” creates sibling job in history with compare link
+
+---
+
+### Phase 4 — Editor performance & polish (3–5 days)
+
+**Goal:** Pro-software feel under load.
+
+12. **Viewport virtualization in `MidiEditorCanvas`**
+    - Compute visible time/pitch range from scroll + zoom
+    - Only build `noteRects` for visible notes + buffer
+    - Target: <16ms frame budget with 1,000+ notes
+
+13. **Fix wide-screen grid layout**
+    - Align `grid-template-columns` with 3-area layout:
+      ```css
+      grid-template-columns: minmax(0, 1fr) 280px;
+      grid-template-areas:
+        "controls controls"
+        "body inspector"
+        "shortcuts shortcuts";
+      ```
+    - Verify inspector doesn't create implicit third column
+
+14. **Inspector UX**
+    - Tab bar for Selection | Harmony | FX | Render (replace nested collapsibles)
+    - Auto-run harmony only when tab is active (reduces failed/analyze noise)
+
+15. **Multi-track from conversion**
+    - Option A: Basic Pitch per stem in batch → one track per stem
+    - Option B: Use `midi_service/multi_track.py` merge in batch flow
+    - Load into editor with `notesFromConversion` per track instead of single flat list
+
+---
+
+### Phase 5 — Feature completion (5–8 days)
+
+16. **Wire rhythm generation API**
+    - Backend proxy: `POST /api/midi/rhythm/generate` → `midi_service`
+    - UI: “Generate groove” in catalog rhythm tab (style, bars, energy, swing)
+    - Import generated MIDI into drum machine or editor
+
+17. **Centralize audio engine** (audio-engine skill)
+    - Singleton `AudioEngine` service wrapping Tone.Transport + instrument pool
+    - `MidiCatalogPanel`, `MidiResultPanel`, `MidiNoteEditor` share one engine
+    - Prevents duplicate Transport instances and drift between panels
+
+18. **Harden `parseMidiNotes.ts`**
+    - SMPTE division support or explicit error for unsupported formats
+    - Multi-track merge with channel assignment
+    - Tests against catalog fixture files
+
+19. **Remove or integrate dead code**
+    - `comprehensive-midi-processor.py` at repo root — archive or delete
+    - Drop unused `pyfluidsynth` dep or switch render to Python binding for progress callbacks
+
+---
+
+### Phase 6 — QA & release gates
+
+20. **Test coverage gaps**
+    - `useMidiHarmonicAnalysis` + `MidiHarmonyPanel` integration test (mock + live proxy)
+    - Render WYSIWYG test (edit → render payload assertions)
+    - E2E: conversion → comparison view → edit → save → render download
+    - Run `scripts/midi_service_smoke.py` in CI
+
+21. **Agent checklists** (from audio-app `99-agent-checklists.md`)
+    - Conversion workflow checklist: comparison, queue, retry, metadata
+    - Audio workflow: Transport-only timing, no `setTimeout` for notes
+    - Performance: virtualization, disposal, voice count limits
+    - Premium visual: keyboard a11y, focus states, mobile degradation
+
+22. **Documentation**
+    - Update `MIDI_EDITOR.md` with comparison view, render behavior, soundfont selection
+    - Ops runbook: soundfont mount requirement in Docker
+
+---
+
+## Recommended Implementation Order
+
+```mermaid
+flowchart TD
+    P1A[Proxy /api/midi/analyze] --> P1B[Fix render WYSIWYG]
+    P1B --> P1C[Soundfont health check]
+    P1C --> P2[Soundfont picker + zoom unify]
+    P2 --> P3[Comparison view]
+    P3 --> P4[Virtualization + layout fix]
+    P4 --> P5[Rhythm API + AudioEngine singleton]
+    P5 --> P6[QA + CI smoke]
+```
+
+**Quick wins (do first):** Phase 1 entirely — fixes the only outright broken feature (harmony) and the most misleading one (render).
+
+**Highest user-perceived value:** Phase 3 comparison view + Phase 2 soundfont picker — transforms “black box converter” into a trustworthy pro tool.
+
+**Technical debt to schedule:** Virtualization (Phase 4) before marketing dense polyphonic content.
+
+---
+
+## Summary
+
+The MIDI service is **~80% complete** with a solid three-tier architecture and a capable editor. Users will hit problems in three places:
+
+1. **Harmony analysis fails** (missing proxy)
+2. **Render doesn't match edits** (`source_job_id` always wins)
+3. **Workflow feels incomplete** (no comparison view, synth vs FluidSynth confusion)
+
+The plan above addresses these in priority order while aligning with Tone.js timing discipline, conversion workflow standards, and CPU-only constraints. Phase 1 is small, high-impact, and safe to implement immediately.
+
+If you want to proceed, I can start with Phase 1 (analyze proxy + render WYSIWYG fix) in a focused PR.
+
+[REDACTED]

@@ -1,0 +1,14 @@
+﻿python : Traceback (most recent call last):
+At C:\Users\sammy\AppData\Local\Temp\ps-script-363aa6d8-2084-466c-9a24-7edd721bea20.ps1:91 char:23
++ cd d:\burntbeats-aws; python -c "
++                       ~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "<string>", line 12, in <module>
+    print(t[start:min(end,start+1200)])
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 942: character maps to <undefined>

@@ -96,3 +96,39 @@ midiRhythmRouter.post("/generate/json", authMiddleware, async (req, res) => {
     await handleMidiProxyError(e, res, "[POST /api/midi/rhythm/generate/json]");
   }
 });
+
+midiRhythmRouter.post("/generate/full", authMiddleware, async (req, res) => {
+  try {
+    const headers = withMidiServiceAuthHeader({
+      "Content-Type": "application/json",
+    });
+    if (/** @type {any} */ (req).correlationId) {
+      headers["X-Correlation-Id"] = /** @type {any} */ (req).correlationId;
+    }
+    return await proxyRhythmRequest(res, "/rhythm/generate/full", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(req.body ?? {}),
+    });
+  } catch (e) {
+    await handleMidiProxyError(e, res, "[POST /api/midi/rhythm/generate/full]");
+  }
+});
+
+midiRhythmRouter.post("/era/generate/json", authMiddleware, async (req, res) => {
+  try {
+    const headers = withMidiServiceAuthHeader({
+      "Content-Type": "application/json",
+    });
+    if (/** @type {any} */ (req).correlationId) {
+      headers["X-Correlation-Id"] = /** @type {any} */ (req).correlationId;
+    }
+    return await proxyRhythmRequest(res, "/rhythm/era/generate/json", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(req.body ?? {}),
+    });
+  } catch (e) {
+    await handleMidiProxyError(e, res, "[POST /api/midi/rhythm/era/generate/json]");
+  }
+});

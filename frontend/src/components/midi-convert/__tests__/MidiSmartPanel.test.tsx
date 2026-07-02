@@ -9,14 +9,30 @@ vi.mock("tone", () => {
       return this;
     }
     triggerAttackRelease() {}
+    releaseAll() {}
   }
 
   return {
     start: vi.fn().mockResolvedValue(undefined),
+    getTransport: () => ({
+      clear: vi.fn(),
+      stop: vi.fn(),
+      schedule: vi.fn(() => 1),
+      start: vi.fn(),
+      bpm: { value: 120 },
+      position: 0,
+    }),
     PolySynth: MockSynth,
     Synth: MockSynth,
+    Frequency: vi.fn().mockImplementation((pitch: number) => ({
+      toFrequency: () => 440 * Math.pow(2, (pitch - 69) / 12),
+    })),
   };
 });
+
+vi.mock("../../../audio/audioEngine", () => ({
+  previewChordMidiNotes: vi.fn().mockResolvedValue(undefined),
+}));
 
 import { MidiSmartPanel } from "../MidiSmartPanel";
 

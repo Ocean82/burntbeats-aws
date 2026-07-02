@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { EditableNote } from "./editorTypes";
-import { PIANO_ROLL } from "./pianoRollTheme";
+import { PIANO_ROLL, noteConfidenceOpacity } from "./pianoRollTheme";
 
 export const CANVAS_NOTE_THRESHOLD = 400;
 
@@ -60,7 +60,9 @@ export function MidiNoteCanvasLayer({
     ) => {
       const { selected, preview = false, ghost = false } = opts;
       const muted = !!r.note.muted;
-      ctx.globalAlpha = ghost ? 0.4 : 1;
+      ctx.globalAlpha = ghost
+        ? 0.4
+        : noteConfidenceOpacity(r.note.confidence);
       ctx.setLineDash(preview ? [5, 3] : []);
 
       if (selected && !preview) {

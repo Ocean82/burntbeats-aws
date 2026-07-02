@@ -60,6 +60,8 @@ export interface EditableNote {
   start: number;
   duration: number;
   velocity: number;
+  /** Pre-post-process model amplitude (0–1) when provided by conversion. */
+  confidence?: number;
   muted?: boolean;
   channel?: number;
 }

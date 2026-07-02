@@ -3,6 +3,7 @@ import { cn } from "../../utils/cn";
 import type { ProcessConfig, QualityMetrics } from "../../utils/midiProcessing";
 import { applyProcessing, calculateQualityMetrics } from "../../utils/midiProcessing";
 import type { EditableNote, SnapGrid, TimeSignature } from "./editorTypes";
+import { MidiRhythmGroovePanel } from "./MidiRhythmGroovePanel";
 
 interface MidiProcessDialogProps {
   open: boolean;
@@ -12,6 +13,11 @@ interface MidiProcessDialogProps {
   snapGrid: SnapGrid;
   timeSignature: TimeSignature;
   onApply: (notes: EditableNote[]) => void;
+  onInsertGroove?: (
+    notes: EditableNote[],
+    styleLabel: string,
+    mode?: "new-track" | "active-track",
+  ) => void;
 }
 
 export function MidiProcessDialog({
@@ -22,6 +28,7 @@ export function MidiProcessDialog({
   snapGrid,
   timeSignature,
   onApply,
+  onInsertGroove,
 }: MidiProcessDialogProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [config, setConfig] = useState<ProcessConfig>({
@@ -110,6 +117,16 @@ export function MidiProcessDialog({
         </div>
 
         <div className="midi-control-bar__overflow-divider" />
+
+        {onInsertGroove ? (
+          <>
+            <MidiRhythmGroovePanel
+              bpm={bpm}
+              onInsertNotes={onInsertGroove}
+            />
+            <div className="midi-control-bar__overflow-divider" />
+          </>
+        ) : null}
 
         {/* Velocity normalization */}
         <label className="midi-control-bar__overflow-row cursor-pointer select-none">

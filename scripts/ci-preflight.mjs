@@ -65,6 +65,9 @@ async function main() {
     "tests/midi-storage-health.test.mjs",
     "tests/midi-convert-validation.test.mjs",
     "tests/midi-status-auth.test.mjs",
+    "tests/midi-rhythm.test.mjs",
+    "routes/midi/__tests__/rhythm.proxy.test.mjs",
+    "routes/midi/__tests__/soundfonts.proxy.test.mjs",
   ], { cwd: backendDir, env, label: "backend MIDI hardening tests (node:test)" })
 
   console.log("\n[ci-preflight] ✅ All preflight checks passed")

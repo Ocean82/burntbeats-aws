@@ -13,6 +13,7 @@ import { API_BASE } from "../../config";
 import { exportTracksToMidi, downloadMidiBlob, midiMarkerExportSupported } from "../../utils/midiExport";
 import { buildMidiDownloadName } from "../../utils/midiErrors";
 import { canSaveTracksToJobs, tracksWithSourceJobs } from "../../utils/midiBatchTracks";
+import { isLikelyDrumGroove } from "../../utils/rhythmGrooveNotes";
 import { useWebMidiInput } from "../../hooks/useWebMidiInput";
 import { snapToGrid } from "../../utils/midiEditorSnap";
 import { MidiControlBar } from "./MidiControlBar";
@@ -39,6 +40,8 @@ import type { LoopRegion, EditorTrack } from "./editorTypes";
 import { midiToFreq, parseEstimatedKey, type RootNote, type Scale } from "../../utils/musicTheory";
 import { AUTOMATION_PARAMS } from "./editorTypes";
 import { MidiLaneDrawer } from "./MidiLaneDrawer";
+import type { UseMidiViewStateReturn } from "../../hooks/useMidiViewState";
+import { useMidiViewState } from "../../hooks/useMidiViewState";
 
 interface MidiNoteEditorProps {
   initialNotes: MidiNoteEvent[];
@@ -51,6 +54,7 @@ interface MidiNoteEditorProps {
   isDrumContent?: boolean;
   className?: string;
   e2eMode?: boolean;
+  sharedViewState?: UseMidiViewStateReturn;
   onRegisterEditor?: (api: {
     setBpm: (bpm: number) => void;
     quantizeSelected: () => void;
@@ -69,26 +73,31 @@ export function MidiNoteEditor({
   isDrumContent = false,
   className = "",
   e2eMode = false,
+  sharedViewState,
   onRegisterEditor,
 }: MidiNoteEditorProps) {
   const editor = useMidiEditor(initialNotes, bpm, { initialTracks });
   const playback = useMidiPlayback();
   const { getSynth } = useMidiInstruments();
+  const localViewState = useMidiViewState();
+  const viewState = sharedViewState ?? localViewState;
+  const zoomLevel = viewState.horizontalZoom;
+  const verticalZoomLevel = viewState.verticalZoom;
+  const setZoomLevel = viewState.setHorizontalZoom;
+  const setVerticalZoomLevel = viewState.setVerticalZoom;
   const containerRef = useRef<HTMLDivElement>(null);
   const laneScrollRef = useRef<HTMLDivElement>(null);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [verticalZoomLevel, setVerticalZoomLevel] = useState(1);
-  const [laneDrawerOpen, setLaneDrawerOpen] = useState(true);
-  const [fxApplyToAll, setFxApplyToAll] = useState(false);
+  const [laneDrawerOpen, setLaneDrawerOpen] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState<"tools" | "musical">("tools");
   const [inspectorOpen, setInspectorOpen] = useState({
-    selection: true,
     render: false,
     fx: false,
     chords: false,
     harmony: false,
   });
   const anyInspectorOpen = Object.values(inspectorOpen).some(Boolean);
+  const [fxApplyToAll, setFxApplyToAll] = useState(false);
   const [scaleGuide, setScaleGuide] = useState<{
     root: RootNote;
     scale: Scale;
@@ -115,6 +124,30 @@ export function MidiNoteEditor({
     },
     [editor],
   );
+
+  const handleInsertGroove = useCallback(
+    (
+      notes: import("./editorTypes").EditableNote[],
+      styleLabel: string,
+      mode: "new-track" | "active-track" = "new-track",
+    ) => {
+      editor.beginEditGesture();
+      if (mode === "active-track") {
+        editor.setTrackNotes(editor.activeTrackId, [...editor.notes, ...notes]);
+      } else {
+        const instrument = isLikelyDrumGroove(notes) ? "synth" : "piano";
+        editor.addTrackWithNotes(`${styleLabel} groove`, notes, instrument);
+      }
+      setProcessDialogOpen(false);
+    },
+    [editor],
+  );
+
+  useEffect(() => {
+    if (editor.activeLane === "notes") {
+      setLaneDrawerOpen(false);
+    }
+  }, [editor.activeLane]);
 
   useEffect(() => {
     if (isDrumContent) {
@@ -635,23 +668,25 @@ export function MidiNoteEditor({
   );
 
   const handleTimelineScroll = useCallback((scrollLeft: number) => {
+    viewState.setScrollLeft(scrollLeft);
     if (
       laneScrollRef.current &&
       laneScrollRef.current.scrollLeft !== scrollLeft
     ) {
       laneScrollRef.current.scrollLeft = scrollLeft;
     }
-  }, []);
+  }, [viewState]);
 
   const handleLaneScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
       const left = e.currentTarget.scrollLeft;
+      viewState.setScrollLeft(left);
       const el = timelineScrollRef.current;
       if (el && el.scrollLeft !== left) {
         el.scrollLeft = left;
       }
     },
-    [timelineScrollRef],
+    [viewState, timelineScrollRef],
   );
 
   const handleAddCcPoint = useCallback(
@@ -966,6 +1001,7 @@ export function MidiNoteEditor({
               onVerticalZoomLevelChange={handleVerticalZoomLevelChange}
               timelineScrollRef={timelineScrollRef}
               onTimelineScroll={handleTimelineScroll}
+              scrollLeft={viewState.scrollLeft}
               onSelectNote={editor.selectNote}
               onSelectNotes={editor.selectNotes}
               onDeselectAll={editor.deselectAll}
@@ -1047,6 +1083,9 @@ export function MidiNoteEditor({
                         pixelsPerSecond={pixelsPerSecond}
                         totalDuration={totalDuration}
                         timelineWidth={timelineWidth}
+                        scrollLeft={viewState.scrollLeft}
+                        viewportWidth={Math.max(0, viewportWidth - 56)}
+                        bpm={editor.bpm}
                         onSetNoteVelocity={handleSetNoteVelocity}
                         onSetSelectedVelocity={editor.setSelectedVelocity}
                         onBeginEditGesture={editor.beginEditGesture}
@@ -1058,6 +1097,9 @@ export function MidiNoteEditor({
                         pixelsPerSecond={pixelsPerSecond}
                         totalDuration={totalDuration}
                         timelineWidth={timelineWidth}
+                        scrollLeft={viewState.scrollLeft}
+                        viewportWidth={Math.max(0, viewportWidth - 56)}
+                        bpm={editor.bpm}
                         onAddPoint={handleAddCcPoint}
                         onUpdatePoint={handleUpdateCcPoint}
                         onRemovePoint={handleRemoveCcPoint}
@@ -1073,6 +1115,9 @@ export function MidiNoteEditor({
                           pixelsPerSecond={pixelsPerSecond}
                           totalDuration={totalDuration}
                           timelineWidth={timelineWidth}
+                          scrollLeft={viewState.scrollLeft}
+                          viewportWidth={Math.max(0, viewportWidth - 56)}
+                          bpm={editor.bpm}
                           onAddPoint={(time, value) =>
                             editor.addCcPoint(
                               automationMeta.ccNumber,
@@ -1114,8 +1159,30 @@ export function MidiNoteEditor({
         }
         inspector={
           <div className="space-y-sm">
+            <div className="flex gap-1" role="tablist" aria-label="Inspector sections">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={inspectorTab === "tools"}
+                className={`midi-inspector-tab${inspectorTab === "tools" ? " midi-inspector-tab--active" : ""}`}
+                onClick={() => setInspectorTab("tools")}
+              >
+                Tools
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={inspectorTab === "musical"}
+                className={`midi-inspector-tab${inspectorTab === "musical" ? " midi-inspector-tab--active" : ""}`}
+                onClick={() => setInspectorTab("musical")}
+              >
+                Musical
+              </button>
+            </div>
             {anyInspectorOpen ? (
               <>
+                {inspectorTab === "tools" ? (
+                  <>
                 <MidiInspectorSection
                   title="Render audio"
                   subtitle="Server-side WAV preview"
@@ -1158,6 +1225,9 @@ export function MidiNoteEditor({
                     targetCount={effectsTargetNotes.length}
                   />
                 </MidiInspectorSection>
+                  </>
+                ) : (
+                  <>
                 <MidiInspectorSection
                   title="Smart chords"
                   subtitle="Diatonic suggestions"
@@ -1190,6 +1260,8 @@ export function MidiNoteEditor({
                     autoAnalyze={inspectorOpen.harmony}
                   />
                 </MidiInspectorSection>
+                  </>
+                )}
               </>
             ) : (
               <div className="midi-inspector-tabs">
@@ -1256,6 +1328,7 @@ export function MidiNoteEditor({
         snapGrid={editor.snapGrid}
         timeSignature={editor.timeSignature}
         onApply={handleProcess}
+        onInsertGroove={handleInsertGroove}
       />
     </div>
   );

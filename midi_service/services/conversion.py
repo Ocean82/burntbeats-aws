@@ -184,6 +184,7 @@ def run_conversion_sync(
             "start": round(start_s, 4),
             "duration": round(duration, 4),
             "velocity": velocity,
+            "confidence": round(min(1.0, max(0.0, amplitude if amplitude <= 1.0 else amplitude / 127.0)), 4),
         })
 
     write_progress(out_dir, {

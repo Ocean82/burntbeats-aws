@@ -197,6 +197,11 @@ export interface UseMidiEditorReturn {
   redo: () => void;
   resetToOriginal: (originalNotes: MidiNoteEvent[]) => void;
   addEmptyTrack: () => void;
+  addTrackWithNotes: (
+    name: string,
+    notes: EditableNote[],
+    instrument?: EditorTrack["instrument"],
+  ) => void;
   removeTrack: (trackId: string) => void;
   setActiveTrack: (trackId: string) => void;
   setTrackName: (trackId: string, name: string) => void;
@@ -1116,6 +1121,29 @@ export function useMidiEditor(
     }));
   }, [state.tracks.length]);
 
+  const addTrackWithNotes = useCallback(
+    (
+      name: string,
+      notes: EditableNote[],
+      instrument: EditorTrack["instrument"] = "synth",
+    ) => {
+      const idx = state.tracks.length;
+      const track = createInitialTrack(
+        notes.map((note) => ({ ...note })),
+        idx,
+      );
+      track.name = name;
+      track.instrument = instrument;
+      setState((s) => ({
+        ...s,
+        tracks: [...s.tracks, track],
+        activeTrackId: track.id,
+        isModified: true,
+      }));
+    },
+    [state.tracks.length],
+  );
+
   const removeTrack = useCallback((trackId: string) => {
     setState((s) => {
       if (s.tracks.length <= 1) return s;
@@ -1465,6 +1493,7 @@ export function useMidiEditor(
     redo,
     resetToOriginal,
     addEmptyTrack,
+    addTrackWithNotes,
     removeTrack,
     setActiveTrack,
     setTrackName,

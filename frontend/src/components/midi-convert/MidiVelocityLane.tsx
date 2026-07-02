@@ -1,6 +1,16 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { EditableNote } from "./editorTypes";
 import { VELOCITY_LANE_HEIGHT, PIANO_ROLL } from "./pianoRollTheme";
+import {
+  computeVisibleTimelineWindow,
+  isNoteVisibleInWindow,
+} from "../../utils/useVisibleTimelineWindow";
 
 interface MidiVelocityLaneProps {
   notes: EditableNote[];
@@ -8,6 +18,9 @@ interface MidiVelocityLaneProps {
   pixelsPerSecond: number;
   totalDuration: number;
   timelineWidth: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
+  bpm?: number;
   onSetNoteVelocity: (noteId: string, velocity: number) => void;
   onSetSelectedVelocity: (velocity: number) => void;
   onBeginEditGesture?: () => void;
@@ -25,6 +38,9 @@ export function MidiVelocityLane({
   pixelsPerSecond,
   totalDuration,
   timelineWidth,
+  scrollLeft = 0,
+  viewportWidth = timelineWidth,
+  bpm = 120,
   onSetNoteVelocity,
   onSetSelectedVelocity,
   onBeginEditGesture,
@@ -32,6 +48,29 @@ export function MidiVelocityLane({
   const [dragState, setDragState] = useState<DragVelocityState | null>(null);
   const [hoveredNoteId, setHoveredNoteId] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  const visibleWindow = useMemo(
+    () =>
+      computeVisibleTimelineWindow({
+        scrollLeft,
+        viewportWidth,
+        pixelsPerSecond,
+        leftMargin: 0,
+        marginBars: 1,
+        bpm,
+      }),
+    [scrollLeft, viewportWidth, pixelsPerSecond, bpm],
+  );
+
+  const visibleNotes = useMemo(
+    () =>
+      notes.filter((note) => {
+        if (selectedIds.has(note.id)) return true;
+        const end = note.start + note.duration;
+        return isNoteVisibleInWindow(note.start, end, visibleWindow);
+      }),
+    [notes, selectedIds, visibleWindow],
+  );
 
   const timeToScreen = useCallback(
     (t: number) => t * pixelsPerSecond,
@@ -46,7 +85,7 @@ export function MidiVelocityLane({
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      const noteAtX = [...notes]
+      const noteAtX = [...visibleNotes]
         .reverse()
         .find((n) => {
           const nx = timeToScreen(n.start);
@@ -64,7 +103,7 @@ export function MidiVelocityLane({
         svg.setPointerCapture(e.pointerId);
       }
     },
-    [notes, timeToScreen, pixelsPerSecond, onBeginEditGesture],
+    [visibleNotes, timeToScreen, onBeginEditGesture],
   );
 
   const handlePointerMove = useCallback(
@@ -125,7 +164,7 @@ export function MidiVelocityLane({
           height={VELOCITY_LANE_HEIGHT}
           fill={PIANO_ROLL.velocityLaneSurface}
         />
-        {notes.map((note) => {
+        {visibleNotes.map((note) => {
           const x = timeToScreen(note.start);
           const w = Math.max(4, note.duration * pixelsPerSecond);
           const barHeight = (note.velocity / 127) * (VELOCITY_LANE_HEIGHT - 8);

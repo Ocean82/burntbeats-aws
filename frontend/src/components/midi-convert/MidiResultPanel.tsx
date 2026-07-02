@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { MidiConvertResult } from "../../hooks/useMidiConvert";
 import { useMidiPlayback } from "../../hooks/useMidiPlayback";
+import { useMidiViewState } from "../../hooks/useMidiViewState";
 import { SegmentedControl } from "../ui";
 import type { LoopRegion } from "./editorTypes";
 import { DEFAULT_LOOP } from "./editorTypes";
@@ -79,8 +80,42 @@ export function MidiResultPanel({
   e2eMode = false,
   comparisonSource = null,
 }: MidiResultPanelProps) {
-  const hasNotes = result.pianoRollNotes.length > 0;
-  const isEmpty = result.emptyTranscription || result.notesDetected === 0;
+  interface ConversionVersion {
+    jobId: string | null;
+    label: string;
+    result: MidiConvertResult;
+  }
+
+  const [conversionVersions, setConversionVersions] = useState<ConversionVersion[]>([]);
+  const [activeVersionIndex, setActiveVersionIndex] = useState(0);
+
+  useEffect(() => {
+    setConversionVersions((prev) => {
+      if (!jobId) {
+        if (!prev.length) {
+          return [{ jobId: null, label: "v1", result }];
+        }
+        return prev;
+      }
+      if (prev.some((version) => version.jobId === jobId)) {
+        return prev.map((version) =>
+          version.jobId === jobId ? { ...version, result } : version,
+        );
+      }
+      const next = [
+        ...prev,
+        { jobId, label: `v${prev.length + 1}`, result },
+      ];
+      setActiveVersionIndex(next.length - 1);
+      return next;
+    });
+  }, [jobId, result]);
+
+  const displayResult =
+    conversionVersions[activeVersionIndex]?.result ?? result;
+
+  const hasNotes = displayResult.pianoRollNotes.length > 0;
+  const isEmpty = displayResult.emptyTranscription || displayResult.notesDetected === 0;
   const { isPlaying, currentTime, play, stop, seek, isSupported } = useMidiPlayback();
   const [mode, setMode] = useState<"view" | "edit">(() => {
     if (isEmpty) return "view";
@@ -103,16 +138,17 @@ export function MidiResultPanel({
     return () => clearTimeout(timer);
   }, [prefersReducedMotion, showGlow]);
 
-  const suggestedBpm = result.analysis?.suggested_bpm ?? 120;
+  const suggestedBpm = displayResult.analysis?.suggested_bpm ?? 120;
 
   const noteSpan = useMemo(() => {
-    if (!result.pianoRollNotes.length) return { start: 0, end: 4 };
-    const starts = result.pianoRollNotes.map((n) => n.start);
-    const ends = result.pianoRollNotes.map((n) => n.start + n.duration);
+    if (!displayResult.pianoRollNotes.length) return { start: 0, end: 4 };
+    const starts = displayResult.pianoRollNotes.map((n) => n.start);
+    const ends = displayResult.pianoRollNotes.map((n) => n.start + n.duration);
     return { start: Math.min(...starts), end: Math.max(...ends) };
-  }, [result.pianoRollNotes]);
+  }, [displayResult.pianoRollNotes]);
 
   const [loopRegion, setLoopRegion] = useState<LoopRegion>(DEFAULT_LOOP);
+  const sharedViewState = useMidiViewState();
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset loop region when note span changes (new MIDI data loaded)
     setLoopRegion({
@@ -129,8 +165,8 @@ export function MidiResultPanel({
   }, [mode]);
 
   const isDrumContent = useMemo(
-    () => isDrumMidiContext(sourceLabel, result.fileAnalysis),
-    [sourceLabel, result.fileAnalysis],
+    () => isDrumMidiContext(sourceLabel, displayResult.fileAnalysis),
+    [sourceLabel, displayResult.fileAnalysis],
   );
 
   const handleApplyEditorBpm = useCallback(
@@ -213,11 +249,11 @@ export function MidiResultPanel({
         </div>
       </div>
 
-      {result.analysis && hasNotes ? (
+      {displayResult.analysis && hasNotes ? (
         <MidiAnalysisSummary
-          analysis={result.analysis}
-          fileAnalysis={result.fileAnalysis}
-          notesDetected={result.notesDetected}
+          analysis={displayResult.analysis}
+          fileAnalysis={displayResult.fileAnalysis}
+          notesDetected={displayResult.notesDetected}
           onApplyEditorBpm={handleApplyEditorBpm}
           onApplyReconvertBpm={onApplyReconvertBpm}
         />
@@ -225,13 +261,30 @@ export function MidiResultPanel({
 
       {hasNotes && comparisonSource ? (
         <MidiComparisonPanel
-          notes={result.pianoRollNotes}
+          notes={displayResult.pianoRollNotes}
           bpm={suggestedBpm}
           source={comparisonSource}
         />
       ) : null}
 
       <div className="flex flex-wrap items-center justify-end gap-sm">
+        {conversionVersions.length > 1 ? (
+          <label className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span>Version</span>
+            <select
+              className="midi-select rounded border border-border/60 bg-muted/30 px-2 py-1 text-xs"
+              value={activeVersionIndex}
+              onChange={(e) => setActiveVersionIndex(Number(e.target.value))}
+              data-testid="midi-conversion-version-select"
+            >
+              {conversionVersions.map((version, index) => (
+                <option key={`${version.jobId ?? "local"}-${index}`} value={index}>
+                  {version.label} ({version.result.notesDetected} notes)
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         {hasNotes && (
           <SegmentedControl
             aria-label="Result view mode"
@@ -264,10 +317,12 @@ export function MidiResultPanel({
           >
             <div className={prefersReducedMotion ? "" : "midi-piano-roll-reveal"}>
               <MidiPianoRoll
-                notes={result.pianoRollNotes}
+                notes={displayResult.pianoRollNotes}
                 currentTime={isPlaying ? currentTime : null}
                 bpm={suggestedBpm}
                 loopRegion={loopRegion}
+                zoom={sharedViewState.horizontalZoom}
+                onZoomChange={sharedViewState.setHorizontalZoom}
                 onSeek={(time) => seek(time)}
               />
             </div>
@@ -281,28 +336,29 @@ export function MidiResultPanel({
             transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
           >
             <MidiNoteEditor
-              initialNotes={result.pianoRollNotes}
+              initialNotes={displayResult.pianoRollNotes}
               bpm={suggestedBpm}
               jobId={jobId}
               jobToken={jobToken}
               sourceLabel={sourceLabel ?? jobId ?? undefined}
-              estimatedKey={result.analysis?.estimated_key}
+              estimatedKey={displayResult.analysis?.estimated_key}
               isDrumContent={isDrumContent}
               onRegisterEditor={handleRegisterEditor}
               e2eMode={e2eMode}
+              sharedViewState={sharedViewState}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {result.analysis && mode === "view" && hasNotes ? (
+      {displayResult.analysis && mode === "view" && hasNotes ? (
         <MidiAnalysisPanel
-          analysis={result.analysis}
-          fileAnalysis={result.fileAnalysis}
+          analysis={displayResult.analysis}
+          fileAnalysis={displayResult.fileAnalysis}
         />
       ) : null}
 
-      {result.analysis && mode === "edit" && hasNotes ? (
+      {displayResult.analysis && mode === "edit" && hasNotes ? (
         <MidiLaneDrawer
           title="More analysis"
           subtitle="Genre hints, track list, pitch range"
@@ -310,8 +366,8 @@ export function MidiResultPanel({
           onToggle={() => setAnalysisExpanded((v) => !v)}
         >
           <MidiAnalysisPanel
-            analysis={result.analysis}
-            fileAnalysis={result.fileAnalysis}
+            analysis={displayResult.analysis}
+            fileAnalysis={displayResult.fileAnalysis}
           />
         </MidiLaneDrawer>
       ) : null}
@@ -331,25 +387,25 @@ export function MidiResultPanel({
       >
         <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className={`font-medium ${isEmpty ? "text-amber-300" : "text-accent-midi-200"}`}>
-            {result.notesDetected}
+            {displayResult.notesDetected}
           </span>{" "}
           notes detected
         </motion.span>
         <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">
-            {formatDuration(result.durationSeconds)}
+            {formatDuration(displayResult.durationSeconds)}
           </span>{" "}
           duration
         </motion.span>
         <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">
-            {result.tracks}
+            {displayResult.tracks}
           </span>{" "}
-          {result.tracks === 1 ? "track" : "tracks"}
+          {displayResult.tracks === 1 ? "track" : "tracks"}
         </motion.span>
         <motion.span variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
           <span className="font-medium text-accent-midi-200">
-            {result.inferenceTimeSeconds.toFixed(1)}s
+            {displayResult.inferenceTimeSeconds.toFixed(1)}s
           </span>{" "}
           processing time
         </motion.span>
@@ -393,7 +449,7 @@ export function MidiResultPanel({
               onClick={() =>
                 isPlaying
                   ? stop()
-                  : play(result.pianoRollNotes, playbackOptions)
+                  : play(displayResult.pianoRollNotes, playbackOptions)
               }
               className="midi-btn midi-btn--play"
               aria-label={isPlaying ? "Stop playback" : "Play MIDI"}

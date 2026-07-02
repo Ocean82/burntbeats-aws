@@ -20,6 +20,7 @@ import {
   clampEditorVerticalZoom,
   clampEditorZoom,
   isBlackKeyPitch,
+  noteConfidenceOpacity,
   PIANO_ROLL,
 } from "./pianoRollTheme";
 import { useEditorCanvasZoomGestures } from "./useEditorCanvasZoomGestures";
@@ -30,8 +31,13 @@ import {
   MidiNoteCanvasLayer,
 } from "./MidiNoteCanvasLayer";
 import { MidiContextMenu } from "./MidiContextMenu";
+import { TIMELINE_LEFT_MARGIN } from "../../utils/midiTimeline";
+import {
+  findOverlappingNoteRange,
+  useVisibleTimelineWindow,
+} from "../../utils/useVisibleTimelineWindow";
 
-const LEFT_MARGIN = 56;
+const LEFT_MARGIN = TIMELINE_LEFT_MARGIN;
 const RULER_HEIGHT = 28;
 const CONTENT_TOP = RULER_HEIGHT + 2;
 const BOTTOM_MARGIN = 24;
@@ -85,6 +91,7 @@ interface MidiEditorCanvasProps {
   onLoopChange?: (region: LoopRegion) => void;
   timelineScrollRef?: React.RefObject<HTMLDivElement | null>;
   onTimelineScroll?: (scrollLeft: number) => void;
+  scrollLeft?: number;
 }
 
 interface NoteRect {
@@ -178,6 +185,7 @@ export function MidiEditorCanvas({
   onLoopChange,
   timelineScrollRef,
   onTimelineScroll,
+  scrollLeft = 0,
 }: MidiEditorCanvasProps) {
   const pixelsPerSecond = BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
   const verticalZoom = clampEditorVerticalZoom(verticalZoomLevel);
@@ -334,16 +342,65 @@ export function MidiEditorCanvas({
     [notes, timeToScreen, pitchToScreen, noteHeight, pixelsPerSecond],
   );
 
+  const visibleWindow = useVisibleTimelineWindow({
+    scrollLeft,
+    viewportWidth,
+    pixelsPerSecond,
+    leftMargin: LEFT_MARGIN,
+    marginBars: 1,
+    bpm,
+  });
+
+  const sortedNoteRects = useMemo(
+    () =>
+      [...noteRects].sort(
+        (a, b) =>
+          a.note.start - b.note.start || a.note.pitch - b.note.pitch,
+      ),
+    [noteRects],
+  );
+
+  const overlappingRange = useMemo(
+    () => findOverlappingNoteRange(sortedNoteRects, visibleWindow),
+    [sortedNoteRects, visibleWindow],
+  );
+
+  const renderNoteRects = useMemo(() => {
+    const visibleIds = new Set<string>();
+    if (overlappingRange.end >= overlappingRange.start) {
+      for (let i = overlappingRange.start; i <= overlappingRange.end; i += 1) {
+        visibleIds.add(sortedNoteRects[i].note.id);
+      }
+    }
+    selectedIds.forEach((id) => visibleIds.add(id));
+    return noteRects.filter((rect) => visibleIds.has(rect.note.id));
+  }, [noteRects, sortedNoteRects, overlappingRange, selectedIds]);
+
+  const hitCandidateIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (overlappingRange.end >= overlappingRange.start) {
+      for (let i = overlappingRange.start; i <= overlappingRange.end; i += 1) {
+        ids.add(sortedNoteRects[i].note.id);
+      }
+    }
+    selectedIds.forEach((id) => ids.add(id));
+    return ids;
+  }, [sortedNoteRects, overlappingRange, selectedIds]);
+
   const gridLines = useMemo(() => {
     const lines: Array<{ x: number; level: "subdivision" | "beat" | "bar" }> =
       [];
     const barSec = secondsPerBar(bpm, timeSignature);
     const subdivisionStep =
       snapGrid === "free" ? beatSeconds / 2 : Math.max(gridSizeSeconds, 0.01);
+    const windowStart = isScrollable ? visibleWindow.timeStart : 0;
+    const windowEnd = isScrollable
+      ? visibleWindow.timeEnd
+      : totalDuration + subdivisionStep;
 
     for (
-      let t = 0;
-      t <= totalDuration + subdivisionStep * 0.01;
+      let t = Math.max(0, Math.floor(windowStart / subdivisionStep) * subdivisionStep);
+      t <= windowEnd + subdivisionStep * 0.01;
       t += subdivisionStep
     ) {
       const isBar = Math.abs(t % barSec) < subdivisionStep * 0.25 || t === 0;
@@ -364,6 +421,9 @@ export function MidiEditorCanvas({
     timeSignature,
     timeToScreen,
     totalDuration,
+    visibleWindow.timeEnd,
+    visibleWindow.timeStart,
+    isScrollable,
   ]);
 
   const hitTestNote = useCallback(
@@ -373,6 +433,7 @@ export function MidiEditorCanvas({
     ): { noteRect: NoteRect; resizeEdge: ResizeEdge } | null => {
       for (let index = noteRects.length - 1; index >= 0; index -= 1) {
         const rect = noteRects[index];
+        if (!hitCandidateIds.has(rect.note.id)) continue;
         if (
           x >= rect.x &&
           x <= rect.x + rect.w &&
@@ -390,7 +451,7 @@ export function MidiEditorCanvas({
       }
       return null;
     },
-    [noteRects],
+    [noteRects, hitCandidateIds],
   );
 
   const getMoveDelta = useCallback(
@@ -837,7 +898,11 @@ export function MidiEditorCanvas({
       <g
         key={isPreview ? `preview-${rect.note.id}` : rect.note.id}
         pointerEvents={isPreview ? "none" : "visiblePainted"}
-        opacity={isGhost ? 0.4 : 1}
+        opacity={
+          isGhost
+            ? 0.4
+            : noteConfidenceOpacity(rect.note.confidence)
+        }
         data-note-id={rect.note.id}
         data-note-pitch={rect.note.pitch}
         style={{
@@ -1007,7 +1072,7 @@ export function MidiEditorCanvas({
             <div className="relative" style={{ width: timelineWidth, height }}>
               {useCanvasNotes && (
                 <MidiNoteCanvasLayer
-                  noteRects={noteRects.filter(
+                  noteRects={renderNoteRects.filter(
                     (rect) => !draggingNoteIds.has(rect.note.id),
                   )}
                   selectedIds={selectedIds}
@@ -1127,7 +1192,7 @@ export function MidiEditorCanvas({
                 )}
 
                 {!useCanvasNotes &&
-                  noteRects.map((rect) =>
+                  renderNoteRects.map((rect) =>
                     renderNoteRect(rect, {
                       isSelected: selectedIds.has(rect.note.id),
                       isGhost: draggingNoteIds.has(rect.note.id),

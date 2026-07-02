@@ -1,12 +1,25 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { CcLane as CcLaneType } from "./editorTypes";
 import { CC_LANE_HEIGHT, PIANO_ROLL } from "./pianoRollTheme";
+import {
+  computeVisibleTimelineWindow,
+  isNoteVisibleInWindow,
+} from "../../utils/useVisibleTimelineWindow";
 
 interface MidiCcLaneProps {
   lane: CcLaneType;
   pixelsPerSecond: number;
   totalDuration: number;
   timelineWidth: number;
+  scrollLeft?: number;
+  viewportWidth?: number;
+  bpm?: number;
   onAddPoint: (time: number, value: number) => void;
   onUpdatePoint: (index: number, time: number, value: number) => void;
   onRemovePoint: (index: number) => void;
@@ -23,6 +36,9 @@ export function MidiCcLane({
   pixelsPerSecond,
   totalDuration,
   timelineWidth,
+  scrollLeft = 0,
+  viewportWidth = timelineWidth,
+  bpm = 120,
   onAddPoint,
   onUpdatePoint,
   onRemovePoint,
@@ -31,6 +47,29 @@ export function MidiCcLane({
   const [dragState, setDragState] = useState<DragAction>({ type: "idle" });
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  const visibleWindow = useMemo(
+    () =>
+      computeVisibleTimelineWindow({
+        scrollLeft,
+        viewportWidth,
+        pixelsPerSecond,
+        leftMargin: 0,
+        marginBars: 1,
+        bpm,
+      }),
+    [scrollLeft, viewportWidth, pixelsPerSecond, bpm],
+  );
+
+  const visibleEvents = useMemo(
+    () =>
+      lane.events
+        .map((event, index) => ({ event, index }))
+        .filter(({ event }) =>
+          isNoteVisibleInWindow(event.time, event.time, visibleWindow),
+        ),
+    [lane.events, visibleWindow],
+  );
 
   const maxTime = Math.max(totalDuration, 4);
   const svgWidth = Math.max(timelineWidth, Math.ceil(maxTime * pixelsPerSecond));
@@ -208,7 +247,7 @@ export function MidiCcLane({
           fill={PIANO_ROLL.ccLaneSurface}
         />
         {lane.events.length >= 2 && renderedCurve}
-        {lane.events.map((ev, i) => {
+        {visibleEvents.map(({ event: ev, index: i }) => {
           const px = timeToScreen(ev.time);
           const py = valueToScreen(ev.value);
           const isHovered = hoveredIndex === i;

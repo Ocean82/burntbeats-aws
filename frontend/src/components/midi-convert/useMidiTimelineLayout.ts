@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { EditableNote } from "./editorTypes";
 import { clampEditorZoom, BASE_PIXELS_PER_SECOND } from "./pianoRollTheme";
-
-const LEFT_MARGIN = 48;
+import { TIMELINE_LEFT_MARGIN } from "../../utils/midiTimeline";
 
 export interface MidiTimelineLayout {
   minStart: number;
@@ -36,7 +35,7 @@ export function useMidiTimelineLayout(
 
   const pixelsPerSecond = BASE_PIXELS_PER_SECOND * clampEditorZoom(zoomLevel);
   const timelineWidth = Math.max(
-    viewportWidth - LEFT_MARGIN,
+    viewportWidth - TIMELINE_LEFT_MARGIN,
     Math.ceil(totalDuration * pixelsPerSecond),
   );
 
@@ -46,7 +45,7 @@ export function useMidiTimelineLayout(
     totalDuration,
     pixelsPerSecond,
     timelineWidth,
-    leftMargin: LEFT_MARGIN,
+    leftMargin: TIMELINE_LEFT_MARGIN,
   };
 }
 

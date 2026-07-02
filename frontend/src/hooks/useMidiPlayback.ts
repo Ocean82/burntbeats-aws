@@ -4,6 +4,10 @@ import type { MidiNoteEvent } from "./useMidiConvert";
 import type { LoopRegion } from "../components/midi-convert/editorTypes";
 import type { TrackInstrument } from "../components/midi-convert/editorTypes";
 import { useMidiInstruments } from "./useMidiInstruments";
+import {
+  pausePreviewForEditor,
+  registerEditorTransportStopHandler,
+} from "../audio/audioEngine";
 
 /** Minimum ms between live playback reschedule operations inside refresh(). */
 const MIN_REFRESH_INTERVAL_MS = 80;
@@ -374,6 +378,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       playbackStartRelativeRef.current = relativeStart;
 
       await ensureDefaultSynth();
+      pausePreviewForEditor();
       clearScheduled();
       Tone.getTransport().stop();
       Tone.getTransport().position = 0;
@@ -564,7 +569,11 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
   );
 
   useEffect(() => {
+    registerEditorTransportStopHandler(() => {
+      stop();
+    });
     return () => {
+      registerEditorTransportStopHandler(null);
       clearRefreshTimer();
       stopRaf();
       clearScheduled();
@@ -577,7 +586,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
         clickSynthRef.current = null;
       }
     };
-  }, [clearRefreshTimer, clearScheduled, stopRaf, disposeAll]);
+  }, [clearRefreshTimer, clearScheduled, stopRaf, disposeAll, stop]);
 
   return {
     isPlaying,

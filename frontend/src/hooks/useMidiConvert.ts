@@ -80,6 +80,8 @@ export interface MidiNoteEvent {
   start: number;
   duration: number;
   velocity: number;
+  /** Pre-post-process model amplitude (0–1) when provided by the conversion service. */
+  confidence?: number;
 }
 
 export interface MidiConvertResult {

@@ -2,9 +2,7 @@
  * MidiCatalogPanel — browse progressions and rhythm patterns from the catalog.
  */
 import { Download, Loader2, Music2, Pause, Play, Search } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import * as Tone from "tone";
-import { PolySynth } from "tone";
+import { useCallback, useEffect, useState } from "react";
 import { authHeaders } from "../../api/auth";
 import { catalogFileUrl, useMidiCatalog } from "../../hooks/useMidiCatalog";
 import type { MidiCatalogEntry } from "../../hooks/useMidiCatalog";
@@ -12,6 +10,8 @@ import { parseMidiBuffer } from "../../utils/parseMidiNotes";
 import { cn } from "../../utils/cn";
 import { EmptyState, FilterBar } from "../ui";
 import { useToast } from "../../store/toastStore";
+import { playMidiPreviewNotes, stopMidiPreview } from "../../audio/audioEngine";
+import { MidiRhythmGroovePanel } from "../midi-convert/MidiRhythmGroovePanel";
 
 const EMBER = "text-primary-300";
 const ICE = "text-accent-midi-200";
@@ -31,17 +31,9 @@ export function MidiCatalogPanel() {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
-  const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
-  const scheduledRef = useRef<number[]>([]);
 
   const stopPreview = useCallback(() => {
-    for (const id of scheduledRef.current) {
-      Tone.getTransport().clear(id);
-    }
-    scheduledRef.current = [];
-    Tone.getTransport().stop();
-    Tone.getTransport().position = 0;
-    synthRef.current?.releaseAll();
+    stopMidiPreview();
     setPlayingId(null);
   }, []);
 
@@ -56,7 +48,6 @@ export function MidiCatalogPanel() {
       stopPreview();
       setPreviewLoading(entry.id);
       try {
-        await Tone.start();
         const headers = await authHeaders();
         const res = await fetch(catalogFileUrl(entry.id), { headers });
         if (!res.ok) throw new Error("Preview unavailable");
@@ -68,38 +59,8 @@ export function MidiCatalogPanel() {
           );
         }
 
-        if (!synthRef.current) {
-          synthRef.current = new PolySynth(Tone.Synth, {
-            oscillator: { type: "triangle" },
-            envelope: { attack: 0.02, decay: 0.1, sustain: 0.3, release: 0.3 },
-          }).toDestination();
-          synthRef.current.volume.value = -8;
-        }
-
-        const transport = Tone.getTransport();
-        transport.bpm.value = bpm;
-        const minStart = Math.min(...notes.map((n) => n.start));
-        const maxEnd = Math.max(...notes.map((n) => n.start + n.duration));
-        const total = maxEnd - minStart;
-
-        for (const note of notes) {
-          const t = note.start - minStart;
-          const freq = Tone.Frequency(note.pitch, "midi").toFrequency();
-          const eventId = transport.schedule((time: number) => {
-            synthRef.current?.triggerAttackRelease(
-              freq,
-              Math.max(note.duration, 0.05),
-              time,
-              Math.max(0.1, note.velocity / 127),
-            );
-          }, t);
-          scheduledRef.current.push(eventId);
-        }
-
-        const endId = transport.schedule(() => stopPreview(), total + 0.1);
-        scheduledRef.current.push(endId);
-        transport.start();
         setPlayingId(entry.id);
+        await playMidiPreviewNotes(notes, bpm, () => setPlayingId(null));
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Preview unavailable";
@@ -248,6 +209,12 @@ export function MidiCatalogPanel() {
           {catalog.total} result{catalog.total === 1 ? "" : "s"}
         </span>
       </FilterBar>
+
+      {catalog.filters.tab === "rhythm" ? (
+        <div className="mb-sm">
+          <MidiRhythmGroovePanel showCatalogActions bpm={120} />
+        </div>
+      ) : null}
 
       {catalog.isLoading ? (
         <div className="flex items-center justify-center gap-xs py-xl text-sm text-muted-foreground">

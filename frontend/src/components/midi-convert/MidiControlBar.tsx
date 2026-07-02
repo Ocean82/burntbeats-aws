@@ -534,6 +534,7 @@ export function MidiControlBar(props: MidiControlBarProps) {
                   onClick={() => { onOpenProcessDialog(); setOverflowOpen(false); }}
                   className="midi-control-bar__overflow-btn"
                   role="menuitem"
+                  data-testid="midi-open-process-dialog"
                 >
                   <Wand2 className="h-3.5 w-3.5" />
                   Process MIDI

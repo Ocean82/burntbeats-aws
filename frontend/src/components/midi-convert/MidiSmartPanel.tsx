@@ -1,9 +1,8 @@
 import { Lock, Plus, Shuffle, Unlock } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PolySynth, start, Synth } from "tone";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { previewChordMidiNotes } from "../../audio/audioEngine";
 import {
   getDiatonicChords,
-  midiToFreq,
   type RootNote,
   type Scale,
   NOTE_NAMES,
@@ -62,8 +61,6 @@ export function MidiSmartPanel({
 
   const effectiveScaleLock = scaleLockDisabled ? false : scaleLock;
 
-  const synthRef = useRef<InstanceType<typeof PolySynth> | null>(null);
-
   const chords = useMemo(() => getDiatonicChords(root, scale), [root, scale]);
 
   useEffect(() => {
@@ -71,16 +68,7 @@ export function MidiSmartPanel({
   }, [root, scale, effectiveScaleLock, onScaleChange]);
 
   const previewChord = useCallback(async (midiNotes: number[]) => {
-    await start();
-    if (!synthRef.current) {
-      synthRef.current = new PolySynth(Synth, {
-        oscillator: { type: "sine" },
-        envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 0.5 },
-      }).toDestination();
-      synthRef.current.volume.value = -10;
-    }
-    const freqs = midiNotes.map((m) => midiToFreq(m));
-    synthRef.current.triggerAttackRelease(freqs, "8n");
+    await previewChordMidiNotes(midiNotes);
   }, []);
 
   const handleChordClick = useCallback(

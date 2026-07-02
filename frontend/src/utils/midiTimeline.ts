@@ -5,6 +5,8 @@
 export const EDITOR_PIXELS_PER_SECOND = 80;
 /** Match editor timeline scale so view → edit transition feels consistent. */
 export const PREVIEW_PIXELS_PER_SECOND = EDITOR_PIXELS_PER_SECOND;
+/** Piano-key gutter width shared across preview roll, editor canvas, and lane layout. */
+export const TIMELINE_LEFT_MARGIN = 56;
 
 export function secondsToBarBeat(
   seconds: number,
