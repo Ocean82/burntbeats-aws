@@ -221,7 +221,7 @@ export function MidiCcLane({
   );
 
   return (
-    <div className="midi-cc-lane" style={{ height: CC_LANE_HEIGHT }}>
+    <div className="midi-cc-lane">
       <div className="midi-cc-lane__label">
         <span className="text-[9px] font-semibold uppercase tracking-wider">
           {lane.name}

@@ -3,6 +3,7 @@
  */
 import { Drum, Music2 } from "lucide-react";
 import { useState } from "react";
+import { useSearch } from "wouter";
 import { ToolPageShell } from "../components/ToolPageShell";
 import { PanelHeader, FilterBar } from "../components/ui";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
@@ -24,6 +25,9 @@ export interface LibraryPageProps {
   subscription: UseSubscriptionResult;
   checkoutNotice: string | null;
   onViewPlans?: () => void;
+  onBackToHub?: () => void;
+  /** Which tab to show initially (default: "catalog"). */
+  initialTab?: LibraryTab;
   devTools?: LibraryDevToolsProps;
 }
 
@@ -32,9 +36,15 @@ export function LibraryPage({
   subscription,
   checkoutNotice,
   onViewPlans,
+  onBackToHub,
+  initialTab = "catalog",
   devTools,
 }: LibraryPageProps) {
-  const [tab, setTab] = useState<LibraryTab>("catalog");
+  const search = useSearch();
+  const tabParam = new URLSearchParams(search).get("tab");
+  const resolvedInitialTab: LibraryTab =
+    tabParam === "drums" || tabParam === "catalog" ? tabParam : initialTab;
+  const [tab, setTab] = useState<LibraryTab>(resolvedInitialTab);
 
   return (
     <ToolPageShell
@@ -44,6 +54,7 @@ export function LibraryPage({
       checkoutNotice={checkoutNotice}
       testId="beats-page"
       onViewPlans={onViewPlans}
+      onBackToHub={onBackToHub}
     >
       <div className="ui-panel overflow-hidden">
         <PanelHeader

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { enhanceSpeech } from "../api/speech";
 import { ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
 import { trackEvent } from "../analytics/events";
+import { useToastStore } from "../store/toastStore";
 
 const ALLOWED_EXT = new Set([
   "wav",
@@ -28,6 +29,7 @@ export function useSpeechEnhance() {
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
+  const lastRetryToastAtRef = useRef(0);
 
   const handleBrowse = useCallback(() => {
     inputRef.current?.click();
@@ -96,6 +98,16 @@ export function useSpeechEnhance() {
         (evt) => {
           setUploadProgress(evt.percent);
           setIsUploading(true);
+        },
+        () => {
+          const now = Date.now();
+          if (now - lastRetryToastAtRef.current < 5000) return;
+          lastRetryToastAtRef.current = now;
+          useToastStore.getState().addToast({
+            message: "Connection lost, retrying...",
+            type: "info",
+            duration: 2500,
+          });
         },
       );
       setJobId(result.job_id);

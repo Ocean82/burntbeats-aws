@@ -219,6 +219,9 @@ export function Root() {
       <Route path="/">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>
+      <Route path="/editor">
+        {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
       <Route path="/speech">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
       </Route>

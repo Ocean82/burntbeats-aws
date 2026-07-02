@@ -7,6 +7,7 @@ import { viewSwitchMotion } from "../motion/presets";
 import type { ReactNode } from "react";
 import { PaywallBanner } from "./PaywallBanner";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
+import { ErrorState } from "./ui/error-state";
 
 export interface ToolPageShellProps {
   children: ReactNode;
@@ -62,9 +63,12 @@ export function ToolPageShell({
           </div>
         )}
         {subscription.billingError && (
-          <div className="mt-sm rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300">
-            {subscription.billingError}
-          </div>
+          <ErrorState
+            variant="server"
+            title="Billing issue"
+            description={subscription.billingError}
+            className="mt-sm px-md py-sm text-left"
+          />
         )}
         {checkoutNotice && (
           <div className="mt-sm rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100">

@@ -11,11 +11,11 @@ export type AppView =
   | "pricing"
   | "my-stems";
 
-function locationToView(location: string): AppView {
+export function locationToView(location: string): AppView {
   if (location === "/pricing") return "pricing";
-  if (location === "/my-stems") return "my-stems";
+  if (location === "/my-stems" || location === "/library") return "my-stems";
   if (location === "/editor") return "editor";
-  if (location === "/beats" || location === "/library") return "beats";
+  if (location === "/beats") return "beats";
   if (location === "/tuner") return "tuner";
   if (location === "/speech") return "speech";
   if (location === "/midi") return "midi";
@@ -32,6 +32,8 @@ export function useEditorViewRouting() {
         navigate("/");
       } else if (view === "editor") {
         navigate("/editor");
+      } else if (view === "my-stems") {
+        navigate("/library");
       } else {
         navigate(`/${view}`);
       }

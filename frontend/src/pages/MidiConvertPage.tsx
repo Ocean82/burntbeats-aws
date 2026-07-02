@@ -9,6 +9,7 @@ import { MidiResultPanel } from "../components/midi-convert/MidiResultPanel";
 import { MIDI_EDITOR_E2E_FIXTURE } from "../components/midi-convert/midiEditorE2eFixture";
 import { MidiExportDashboard } from "../components/library/MidiExportDashboard";
 import { PanelHeader } from "../components/ui";
+import { ErrorState } from "../components/ui/error-state";
 import { cn } from "../utils/cn";
 import { viewSwitchMotion } from "../motion/presets";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
@@ -40,7 +41,7 @@ export function MidiConvertPage({
     new URLSearchParams(window.location.search).get("e2e-midi-editor") === "1";
 
   const tabs = (
-    <div className="inline-flex rounded-md border border-border p-0.5" role="tablist">
+    <div className="inline-flex rounded-md border border-border p-0.5">
       {([
         { id: "workstation" as const, label: "Workstation", icon: Piano },
         { id: "history" as const, label: "History", icon: History },
@@ -48,8 +49,6 @@ export function MidiConvertPage({
         <button
           key={id}
           type="button"
-          role="tab"
-          aria-selected={activeTab === id}
           onClick={() => setActiveTab(id)}
           className={cn(
             "inline-flex items-center gap-1.5 rounded px-sm py-1 text-xs font-medium capitalize transition",
@@ -117,12 +116,12 @@ export function MidiConvertPage({
           )}
         </div>
         {subscription.billingError ? (
-          <div
-            className="mx-md mb-md rounded-xl border border-destructive-500/30 bg-destructive-950/20 px-md py-sm text-sm text-destructive-300 sm:mx-lg"
-            role="alert"
-          >
-            {subscription.billingError}
-          </div>
+          <ErrorState
+            variant="server"
+            title="Billing issue"
+            description={subscription.billingError}
+            className="mx-md mb-md px-md py-sm text-left sm:mx-lg"
+          />
         ) : null}
         {checkoutNotice ? (
           <div className="mx-md mb-md rounded-xl border border-primary-500/30 bg-primary-500/10 px-md py-sm text-sm text-primary-100 sm:mx-lg">

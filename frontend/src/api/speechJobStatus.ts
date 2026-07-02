@@ -50,6 +50,7 @@ export async function getSpeechJobStatus(jobId: string): Promise<SpeechJobStatus
 export async function pollSpeechJobUntilDone(
   jobId: string,
   onProgress: (status: SpeechJobStatus) => void,
+  onRetry?: () => void,
 ): Promise<SpeechJobStatus> {
   const start = Date.now();
   let backoffMs = POLL_INTERVAL_MS;
@@ -57,11 +58,44 @@ export async function pollSpeechJobUntilDone(
   while (Date.now() - start < POLL_MAX_MS) {
     await waitForOnline();
 
-    const status = await getSpeechJobStatus(jobId);
+    const status = await getSpeechJobStatusWithRetryHint(jobId, onRetry);
     requestAnimationFrame(() => onProgress(status));
     if (status.status === "completed" || status.status === "failed") return status;
     await new Promise((r) => setTimeout(r, backoffMs));
     backoffMs = Math.min(backoffMs * 1.25, 8000);
   }
   throw new Error("Speech enhancement timed out.");
+}
+
+async function getSpeechJobStatusWithRetryHint(
+  jobId: string,
+  onRetry?: () => void,
+): Promise<SpeechJobStatus> {
+  await waitForOnline();
+
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/speech/status/${jobId}`,
+    { headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) } },
+    {
+      maxAttempts: 3,
+      baseDelay: 1000,
+      retryOn: [502, 503, 504],
+      onRetry: () => onRetry?.(),
+    },
+  );
+  if (!res.ok) {
+    if (res.status === 404) throw new Error("Job not found");
+    const t = await res.text();
+    const ct = res.headers.get("content-type") || "";
+    let bodyError: string | null = null;
+    if (ct.includes("application/json") && t) {
+      bodyError = getApiErrorMessage(tryParseJson(t));
+    }
+    throw new Error(
+      userFacingHttpError(res.status, bodyError, t.slice(0, 800) || `Status failed: ${res.status}`),
+    );
+  }
+  const json: unknown = await res.json();
+  if (!isSpeechJobStatusValue(json)) throw new Error("Unexpected response from speech status");
+  return json;
 }

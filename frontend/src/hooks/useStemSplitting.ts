@@ -36,6 +36,18 @@ export function useStemSplitting({
 }: UseStemSplittingArgs) {
   const setUploadState = useAppStore((s) => s.setUploadState);
   const loadedUrlsRef = useRef<string[]>([]);
+  const lastRetryToastAtRef = useRef(0);
+
+  const notifyRetrying = useCallback(() => {
+    const now = Date.now();
+    if (now - lastRetryToastAtRef.current < 5000) return;
+    lastRetryToastAtRef.current = now;
+    useToastStore.getState().addToast({
+      message: "Connection lost, retrying...",
+      type: "info",
+      duration: 2500,
+    });
+  }, []);
 
   // Revoke all tracked object URLs on unmount
   useEffect(() => {
@@ -225,6 +237,7 @@ export function useStemSplitting({
         document.title = `(Uploading ${uploadEvt.percent}%) — Burnt Beats`;
       },
         resolvedIntent,
+        notifyRetrying,
       );
       setUploadState((prev) => ({ ...prev, splitIntent: resolvedIntent }));
       setUploadState((prev) => ({
@@ -313,7 +326,7 @@ export function useStemSplitting({
           splitStageLabel:
             s.progress_stage_label ?? prev.splitStageLabel ?? "Expanding…",
         }));
-      });
+      }, notifyRetrying);
       setUploadState((prev) => ({
         ...prev,
         splitResultStems: res.stems,
@@ -338,6 +351,7 @@ export function useStemSplitting({
     }
   }, [
     canExpandToFourStems,
+    notifyRetrying,
     splitQuality,
     stopPreview,
     setUploadState,

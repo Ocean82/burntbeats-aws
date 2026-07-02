@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { CcLane, AutomationParam } from "./editorTypes";
 import { AUTOMATION_PARAMS } from "./editorTypes";
-import { PIANO_ROLL, CC_LANE_HEIGHT, LANE_LABEL_WIDTH } from "./pianoRollTheme";
+import { PIANO_ROLL, CC_LANE_HEIGHT } from "./pianoRollTheme";
 import {
   computeVisibleTimelineWindow,
   isNoteVisibleInWindow,
@@ -59,6 +59,7 @@ export function MidiAutomationLane({
   );
 
   const paramMeta = AUTOMATION_PARAMS.find((p) => p.param === param);
+  const laneParamClassName = `midi-automation-lane__label--${param}`;
   const paramColors: Record<AutomationParam, { stroke: string; fill: string; point: string }> = {
     volume: { stroke: PIANO_ROLL.automationVolumeStroke, fill: PIANO_ROLL.automationVolumeFill, point: PIANO_ROLL.automationVolumePoint },
     pan: { stroke: PIANO_ROLL.automationPanStroke, fill: PIANO_ROLL.automationPanFill, point: PIANO_ROLL.automationPanPoint },
@@ -174,18 +175,11 @@ export function MidiAutomationLane({
 
   return (
     <div
-      className="w-full overflow-hidden rounded-lg border border-border"
-      style={{ backgroundColor: PIANO_ROLL.automationVolumeFill }}
+      className="midi-automation-lane w-full overflow-hidden rounded-lg border border-border"
     >
       <div className="flex">
         <div
-          className="flex shrink-0 items-center justify-center text-[10px] font-semibold uppercase tracking-wide"
-          style={{
-            width: LANE_LABEL_WIDTH,
-            height: CC_LANE_HEIGHT,
-            backgroundColor: PIANO_ROLL.ruler,
-            color: colors.stroke,
-          }}
+          className={`midi-automation-lane__label ${laneParamClassName} flex shrink-0 items-center justify-center text-[10px] font-semibold uppercase tracking-wide`}
         >
           {paramMeta?.label ?? param}
         </div>
@@ -216,7 +210,7 @@ export function MidiAutomationLane({
               fill={dragIndex === p.index ? colors.point : colors.stroke}
               stroke={colors.point}
               strokeWidth={1}
-              style={{ cursor: "grab" }}
+              className="cursor-grab"
             />
           ))}
           {visiblePointRects.map((p, i) => (

@@ -905,12 +905,7 @@ export function MidiEditorCanvas({
         }
         data-note-id={rect.note.id}
         data-note-pitch={rect.note.pitch}
-        style={{
-          filter:
-            isSelected && !isPreview
-              ? `drop-shadow(0 0 8px ${PIANO_ROLL.noteSelectedGlow})`
-              : undefined,
-        }}
+        filter={isSelected && !isPreview ? "url(#midi-note-selected-glow)" : undefined}
       >
         <rect
           x={rect.x}
@@ -978,12 +973,10 @@ export function MidiEditorCanvas({
     <div
       ref={shellRef}
       className="midi-editor-canvas-shell"
-      style={{ backgroundColor: PIANO_ROLL.surfaceRaised }}
     >
       <div
         ref={containerRef}
-        className="w-full overflow-hidden rounded-xl border border-border shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-        style={{ backgroundColor: PIANO_ROLL.surface }}
+        className="midi-editor-canvas-surface w-full overflow-hidden rounded-xl border border-border shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
         data-testid="midi-editor-canvas"
       >
         <MidiTimelineRuler
@@ -1003,8 +996,7 @@ export function MidiEditorCanvas({
           <svg
             width={LEFT_MARGIN}
             height={height}
-            className="shrink-0 select-none"
-            style={{ backgroundColor: PIANO_ROLL.ruler }}
+            className="midi-editor-canvas-ruler-bg shrink-0 select-none"
             aria-hidden
           >
             <rect
@@ -1058,6 +1050,7 @@ export function MidiEditorCanvas({
             className={cn(
               "min-w-0 flex-1",
               isScrollable && "overflow-x-auto overflow-y-hidden",
+              onZoomLevelChange && "midi-editor-pan-x",
             )}
             onScroll={(event) =>
               onTimelineScroll?.(event.currentTarget.scrollLeft)
@@ -1067,9 +1060,8 @@ export function MidiEditorCanvas({
                 ? "Ctrl + wheel: horizontal zoom · Shift + wheel: vertical zoom"
                 : undefined
             }
-            style={{ touchAction: onZoomLevelChange ? "pan-x" : undefined }}
           >
-            <div className="relative" style={{ width: timelineWidth, height }}>
+            <div className="relative">
               {useCanvasNotes && (
                 <MidiNoteCanvasLayer
                   noteRects={renderNoteRects.filter(
@@ -1102,6 +1094,16 @@ export function MidiEditorCanvas({
                 role="application"
                 aria-label={`MIDI note editor with ${notes.length} notes${isScrollable ? ", scroll horizontally for full timeline" : ""}`}
               >
+                <defs>
+                  <filter id="midi-note-selected-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow
+                      dx="0"
+                      dy="0"
+                      stdDeviation="3"
+                      floodColor={PIANO_ROLL.noteSelectedGlow}
+                    />
+                  </filter>
+                </defs>
                 {pitchRows.map((row) => (
                   <g key={`row-${row.pitch}`}>
                     <rect
@@ -1246,8 +1248,7 @@ export function MidiEditorCanvas({
 
         {isScrollable && (
           <p
-            className="border-t border-border px-sm py-1.5 text-[10px] text-muted-foreground"
-            style={{ backgroundColor: PIANO_ROLL.ruler }}
+            className="midi-editor-canvas-ruler-bg border-t border-border px-sm py-1.5 text-[10px] text-muted-foreground"
           >
             Scroll timeline horizontally · Ctrl + wheel zooms horizontally ·
             Shift + wheel zooms vertically

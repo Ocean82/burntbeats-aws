@@ -74,7 +74,7 @@ export function HubPage() {
                 subhead="Step sequencer with pattern presets and MIDI export"
                 cta="Open Beat Maker"
                 stemColor="drums"
-                onClick={() => handleNavigate("/beats", "beats")}
+                onClick={() => handleNavigate("/beats?tab=drums", "beats")}
                 isNew={!hasUsed("beats")}
                 icon={<Music className="w-5 h-5" style={{ color: "var(--stem-drums)" }} strokeWidth={1.5} />}
               />
@@ -126,7 +126,7 @@ export function HubPage() {
               icon={<FolderOpen className="w-5 h-5" />}
               label="My Library"
               description="Your stems & downloads"
-              onClick={() => handleNavigate("/my-stems", "my-stems")}
+              onClick={() => handleNavigate("/library", "my-stems")}
             />
           </div>
         </div>
@@ -151,7 +151,7 @@ export function HubPage() {
                 <RecentWorkCard
                   key={job.job_id}
                   job={job}
-                  onClick={() => handleNavigate(`/my-stems`, "my-stems")}
+                  onClick={() => handleNavigate("/library", "my-stems")}
                 />
               ))}
             </div>

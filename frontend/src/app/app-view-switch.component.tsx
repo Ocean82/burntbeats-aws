@@ -92,7 +92,7 @@ export function AppViewSwitch({
         </motion.section>
       ) : activeView === "my-stems" ? (
         <MyStemsPage
-          onClose={() => onSetActiveView("editor")}
+          onClose={() => onSetActiveView("hub")}
           onOpenInMixer={(job: StemHistoryJob) => void onLoadHistoryJob(job)}
           onOpenInMidi={(job: StemHistoryJob) => void onLoadHistoryJobToMidi(job)}
           loadingMixerJobId={loadingJobId}
@@ -124,6 +124,7 @@ export function AppViewSwitch({
           subscription={subscription}
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
+          onBackToHub={() => onSetActiveView("hub")}
           devTools={
             devLatencyStats && onResetDevLatencyStats
               ? {
@@ -140,6 +141,7 @@ export function AppViewSwitch({
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
           onGoToEditor={() => onSetActiveView("editor")}
+          onBackToHub={() => onSetActiveView("hub")}
         />
       ) : (
         <TransitionalEditorShell {...(transitionalShellProps ?? {})} />

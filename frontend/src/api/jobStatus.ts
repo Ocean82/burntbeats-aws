@@ -57,7 +57,8 @@ export async function getStemJobStatus(jobId: string): Promise<StemJobStatus> {
 /** Poll job status until completed or failed; returns final status. */
 export async function pollStemJobUntilDone(
   jobId: string,
-  onProgress: (status: StemJobStatus) => void
+  onProgress: (status: StemJobStatus) => void,
+  onRetry?: () => void,
 ): Promise<StemJobStatus> {
   const start = Date.now();
   let consecutive404 = 0;
@@ -70,7 +71,7 @@ export async function pollStemJobUntilDone(
     await waitForOnline();
 
     try {
-      const status = await getStemJobStatus(jobId);
+      const status = await getStemJobStatusWithRetryHint(jobId, onRetry);
       consecutive404 = 0;
       backoffMs = STATUS_POLL_INTERVAL_MS;
       requestAnimationFrame(() => onProgress(status));
@@ -97,7 +98,8 @@ export async function pollStemJobUntilDone(
  */
 export async function streamStemJobUntilDone(
   jobId: string,
-  onProgress: (status: StemJobStatus) => void
+  onProgress: (status: StemJobStatus) => void,
+  onRetry?: () => void,
 ): Promise<StemJobStatus> {
   // Don't attempt SSE while offline
   await waitForOnline();
@@ -118,12 +120,14 @@ export async function streamStemJobUntilDone(
     );
   } catch {
     // Network error — fall back to polling
-    return pollStemJobUntilDone(jobId, onProgress);
+    onRetry?.();
+    return pollStemJobUntilDone(jobId, onProgress, onRetry);
   }
 
   if (!response.ok || !response.body) {
     // SSE endpoint unavailable (e.g. older backend) — fall back to polling
-    return pollStemJobUntilDone(jobId, onProgress);
+    onRetry?.();
+    return pollStemJobUntilDone(jobId, onProgress, onRetry);
   }
 
   const reader = response.body.getReader();
@@ -167,9 +171,42 @@ export async function streamStemJobUntilDone(
   } catch {
     // Stream error — fall back to polling for the remainder
     reader.cancel().catch(() => {});
-    return pollStemJobUntilDone(jobId, onProgress);
+    onRetry?.();
+    return pollStemJobUntilDone(jobId, onProgress, onRetry);
   }
 
   reader.cancel().catch(() => {});
   throw new Error("Stem separation timed out.");
+}
+
+async function getStemJobStatusWithRetryHint(
+  jobId: string,
+  onRetry?: () => void,
+): Promise<StemJobStatus> {
+  await waitForOnline();
+  const res = await fetchWithRetry(
+    `${API_BASE}/api/stems/status/${jobId}`,
+    { headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) } },
+    {
+      maxAttempts: 3,
+      baseDelay: 1000,
+      retryOn: [502, 503, 504],
+      onRetry: () => onRetry?.(),
+    },
+  );
+  if (!res.ok) {
+    if (res.status === 404) throw new Error("Job not found");
+    const t = await res.text();
+    const ct = res.headers.get("content-type") || "";
+    let bodyError: string | null = null;
+    if (ct.includes("application/json") && t) {
+      bodyError = getApiErrorMessage(tryParseJson(t));
+    }
+    throw new Error(
+      userFacingHttpError(res.status, bodyError, t.slice(0, 800) || `Status failed: ${res.status}`),
+    );
+  }
+  const json: unknown = await res.json();
+  if (!isStemJobStatusValue(json)) throw new Error("Unexpected response from status");
+  return json;
 }

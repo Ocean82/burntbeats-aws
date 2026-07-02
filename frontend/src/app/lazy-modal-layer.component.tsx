@@ -29,6 +29,14 @@ const BatchQueue = lazy(() =>
   importBatchQueue().then((m) => ({ default: m.BatchQueue })),
 );
 
+function ModalLoadingFallback() {
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-background/40 backdrop-blur-sm">
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+    </div>
+  );
+}
+
 interface LazyModalLayerProps {
   showHelpModal: boolean;
   showExportModal: boolean;
@@ -105,7 +113,7 @@ export function LazyModalLayer({
     <>
       <ErrorBoundary fallback={null}>
         {showHelpModal ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ModalLoadingFallback />}>
             <HelpModal isOpen={showHelpModal} onClose={() => closeModal("help")} />
           </Suspense>
         ) : null}
@@ -113,7 +121,7 @@ export function LazyModalLayer({
 
       <ErrorBoundary fallback={null}>
         {showExportModal ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ModalLoadingFallback />}>
             <ExportOptionsModal
               isOpen={showExportModal}
               onClose={() => closeModal("export")}
@@ -131,7 +139,7 @@ export function LazyModalLayer({
 
       <ErrorBoundary fallback={null}>
         {showPresetsModal ? (
-          <Suspense fallback={null}>
+          <Suspense fallback={<ModalLoadingFallback />}>
             <MixerPresetsModal
               isOpen={showPresetsModal}
               onClose={() => closeModal("presets")}
@@ -149,7 +157,7 @@ export function LazyModalLayer({
 
       {batchQueue.length > 0 && (
         <ErrorBoundary fallback={null}>
-          <Suspense fallback={null}>
+          <Suspense fallback={<ModalLoadingFallback />}>
             <BatchQueue
               items={batchQueue}
               isExpanded={batchQueueExpanded}

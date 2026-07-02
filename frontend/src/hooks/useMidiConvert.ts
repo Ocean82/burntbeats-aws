@@ -21,6 +21,7 @@ import {
   classifyMidiHttpError,
   midiErrorMessage,
 } from "../utils/midiErrors";
+import { useToastStore } from "../store/toastStore";
 
 export type MidiSourceMode = "split" | "upload" | "loaded";
 
@@ -262,6 +263,7 @@ export function useMidiConvert() {
   const [midiFileUrl, setMidiFileUrl] = useState<string | null>(null);
   const [jobToken, setJobToken] = useState<string | null>(null);
   const [activeMidiJobId, setActiveMidiJobId] = useState<string | null>(null);
+  const lastRetryToastAtRef = useRef(0);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -331,6 +333,17 @@ export function useMidiConvert() {
     },
     [],
   );
+
+  const notifyRetrying = useCallback(() => {
+    const now = Date.now();
+    if (now - lastRetryToastAtRef.current < 5000) return;
+    lastRetryToastAtRef.current = now;
+    useToastStore.getState().addToast({
+      message: "Connection lost, retrying...",
+      type: "info",
+      duration: 2500,
+    });
+  }, []);
 
   const acceptFile = useCallback((file: File | null) => {
     if (!file) {
@@ -411,7 +424,7 @@ export function useMidiConvert() {
           const data = await streamMidiJobUntilDone(jobId, token, (status) => {
             setProgress(status.progress || 0);
             setStatusMessage(status.message || "");
-          });
+          }, notifyRetrying);
 
           if (data.status === "completed" && data.result) {
             setIsConverting(false);
@@ -709,6 +722,7 @@ export function useMidiConvert() {
         jobId,
         token,
         (status) => onProgress?.(status as PollResponse),
+        notifyRetrying,
       )) as PollResponse;
       if (batchAbortRef.current) {
         throw new Error("Batch cancelled");
@@ -722,7 +736,7 @@ export function useMidiConvert() {
       }
       throw new Error("Conversion ended without result");
     },
-    [],
+    [notifyRetrying],
   );
 
   const convertSingleStem = useCallback(

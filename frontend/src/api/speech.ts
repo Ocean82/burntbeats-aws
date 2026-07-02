@@ -76,9 +76,10 @@ export async function enhanceSpeech(
   options: { denoise?: boolean; batch?: boolean },
   onProgress?: (status: SpeechJobStatus) => void,
   onUploadProgress?: (event: UploadProgressEvent) => void,
+  onRetry?: () => void,
 ): Promise<{ job_id: string; output_url: string }> {
   const started = await startSpeechEnhance(file, options, onUploadProgress);
-  const final = await pollSpeechJobUntilDone(started.job_id, (s) => onProgress?.(s));
+  const final = await pollSpeechJobUntilDone(started.job_id, (s) => onProgress?.(s), onRetry);
   if (final.status === "completed") {
     const outputUrl =
       final.output_url ||

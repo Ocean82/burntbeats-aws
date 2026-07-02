@@ -1413,6 +1413,7 @@
     border-radius: 4px;
     border: 1px solid var(--midi-border);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) inset;
+    min-height: 88px;
 }
 
 .midi-cc-lane__label {
@@ -1465,6 +1466,19 @@
 
 .midi-editor-canvas-shell {
     position: relative;
+    background-color: #181b20;
+}
+
+.midi-editor-canvas-surface {
+    background-color: #121316;
+}
+
+.midi-editor-canvas-ruler-bg {
+    background-color: #17191e;
+}
+
+.midi-editor-pan-x {
+    touch-action: pan-x;
 }
 
 .midi-lane-drawer {
@@ -1634,6 +1648,28 @@
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 24%),
         var(--midi-surface-inset);
+}
+
+.midi-automation-lane {
+    background-color: rgba(114, 180, 255, 0.08);
+}
+
+.midi-automation-lane__label {
+    width: 52px;
+    height: 88px;
+    background-color: #17191e;
+}
+
+.midi-automation-lane__label--volume {
+    color: rgba(114, 180, 255, 0.96);
+}
+
+.midi-automation-lane__label--pan {
+    color: rgba(255, 190, 102, 0.95);
+}
+
+.midi-automation-lane__label--filter {
+    color: rgba(170, 255, 196, 0.95);
 }
 
 /* ═══════════════════════════════════════════════════════════════════

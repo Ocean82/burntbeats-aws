@@ -49,12 +49,18 @@ function waitForOnline(): Promise<void> {
 export async function getMidiJobStatus(
   jobId: string,
   token: string,
+  onRetry?: () => void,
 ): Promise<MidiPollStatus> {
   await waitForOnline();
   const res = await fetchWithRetry(
     `${API_BASE}/api/midi/status/${jobId}`,
     { headers: { ...(await authHeaders()), "x-job-token": token } },
-    { maxAttempts: 3, baseDelay: 1000, retryOn: [502, 503, 504] },
+    {
+      maxAttempts: 3,
+      baseDelay: 1000,
+      retryOn: [502, 503, 504],
+      onRetry: () => onRetry?.(),
+    },
   );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -69,11 +75,12 @@ export async function pollMidiJobUntilDone(
   jobId: string,
   token: string,
   onProgress: (status: MidiPollStatus) => void,
+  onRetry?: () => void,
 ): Promise<MidiPollStatus> {
   const start = Date.now();
   while (Date.now() - start < STATUS_POLL_MAX_MS) {
     await waitForOnline();
-    const status = await getMidiJobStatus(jobId, token);
+    const status = await getMidiJobStatus(jobId, token, onRetry);
     onProgress(status);
     if (status.status === "completed" || status.status === "failed" || status.status === "cancelled") {
       return status;
@@ -87,6 +94,7 @@ export async function streamMidiJobUntilDone(
   jobId: string,
   token: string,
   onProgress: (status: MidiPollStatus) => void,
+  onRetry?: () => void,
 ): Promise<MidiPollStatus> {
   await waitForOnline();
   const url = `${API_BASE}/api/midi/status/${jobId}/stream`;
@@ -104,11 +112,13 @@ export async function streamMidiJobUntilDone(
       { maxAttempts: 2, baseDelay: 500, retryOn: [502, 503, 504] },
     );
   } catch {
-    return pollMidiJobUntilDone(jobId, token, onProgress);
+    onRetry?.();
+    return pollMidiJobUntilDone(jobId, token, onProgress, onRetry);
   }
 
   if (!response.ok || !response.body) {
-    return pollMidiJobUntilDone(jobId, token, onProgress);
+    onRetry?.();
+    return pollMidiJobUntilDone(jobId, token, onProgress, onRetry);
   }
 
   const reader = response.body.getReader();
@@ -148,5 +158,6 @@ export async function streamMidiJobUntilDone(
     reader.cancel().catch(() => {});
   }
 
-  return pollMidiJobUntilDone(jobId, token, onProgress);
+  onRetry?.();
+  return pollMidiJobUntilDone(jobId, token, onProgress, onRetry);
 }

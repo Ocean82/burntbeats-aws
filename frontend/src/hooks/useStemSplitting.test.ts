@@ -93,6 +93,7 @@ describe("useStemSplitting", () => {
       expect.any(Function),
       expect.any(Function),
       expect.objectContaining({ task: "full_separation", mode: "4" }),
+      expect.any(Function),
     );
   });
 });

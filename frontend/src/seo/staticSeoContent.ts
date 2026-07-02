@@ -52,13 +52,13 @@ function homeStaticHtml(): string {
   <p>
     Burnt Beats is the browser workstation for producers and DJs who need more than isolated files.
     Split tracks into vocals, drums, bass, and melody, shape the mix in-browser, reopen past jobs from
-    My stems, and move straight into MIDI or export — no install required.
+    Library, and move straight into MIDI or export — no install required.
   </p>
   <h2>Why Burnt Beats is different</h2>
   <p>Most stem splitters stop at the download. Burnt Beats keeps the workflow moving.</p>
   <ul>
     <li><strong>In-browser mixer and editor</strong> — Level, trim, and shape stems without bouncing to another tool.</li>
-    <li><strong>Reopen past stem jobs</strong> — Return to old splits from My Stems instead of disposable downloads.</li>
+    <li><strong>Reopen past stem jobs</strong> — Return to old splits from Library instead of disposable downloads.</li>
     <li><strong>Stem-to-MIDI workflow built in</strong> — Convert separated audio to MIDI in the same session.</li>
     <li><strong>Built for producers and DJs</strong> — A lightweight browser workstation, not a one-click converter.</li>
   </ul>

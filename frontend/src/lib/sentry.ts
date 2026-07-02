@@ -26,9 +26,17 @@ export function initSentry(): void {
     dsn,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || "production",
     release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
-    tracesSampleRate: 0.1,
+    tracesSampleRate: 0.2,
     sendDefaultPii: false,
-    integrations: [Sentry.browserTracingIntegration()],
+    integrations: [
+      Sentry.browserTracingIntegration({
+        tracePropagationTargets: [
+          /^https?:\/\/localhost(:\d+)?/i,
+          /^https?:\/\/(www\.)?burntbeats\.com/i,
+          /^\/api\//,
+        ],
+      }),
+    ],
     beforeBreadcrumb(breadcrumb: Sentry.Breadcrumb) {
       if (breadcrumb.category === "xhr" || breadcrumb.category === "fetch") {
         if (breadcrumb.data) {

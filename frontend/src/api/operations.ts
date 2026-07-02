@@ -155,6 +155,7 @@ export async function splitStems(
   onProgress?: (status: StemJobStatus) => void,
   onUploadProgress?: (event: UploadProgressEvent) => void,
   intent?: SplitIntent,
+  onRetry?: () => void,
 ): Promise<SplitResponse> {
   const { job_id } = await startStemSplit(
     file,
@@ -164,7 +165,7 @@ export async function splitStems(
     onUploadProgress,
     intent,
   );
-  const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s));
+  const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s), onRetry);
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };
   }
@@ -201,10 +202,11 @@ export async function startExpand(
 export async function expandStems(
   jobId: string,
   quality?: SplitQuality,
-  onProgress?: (status: StemJobStatus) => void
+  onProgress?: (status: StemJobStatus) => void,
+  onRetry?: () => void,
 ): Promise<SplitResponse> {
   const { job_id } = await startExpand(jobId, quality);
-  const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s));
+  const final = await streamStemJobUntilDone(job_id, (s) => onProgress?.(s), onRetry);
   if (final.status === "completed" && final.stems) {
     return { job_id, status: "completed", stems: final.stems, beat_grid: final.beat_grid };
   }

@@ -51,7 +51,7 @@ const SECONDARY_TABS: Array<{
   icon?: React.ComponentType<{ className?: string }>;
 }> = [
   { id: "beats", label: "Beats", icon: Drum },
-  { id: "my-stems", label: "My stems" },
+  { id: "my-stems", label: "Library" },
 ];
 
 export function EditorHeader({
