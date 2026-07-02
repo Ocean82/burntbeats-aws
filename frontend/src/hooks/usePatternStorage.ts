@@ -158,6 +158,7 @@ export function usePatternStorage(
   }, [canCloudSync]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating cloud state on mount/auth change
     if (canCloudSync) void hydrateFromCloud();
     else {
       setSyncStatus("local");

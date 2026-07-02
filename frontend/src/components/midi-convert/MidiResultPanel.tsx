@@ -90,6 +90,7 @@ export function MidiResultPanel({
   const [activeVersionIndex, setActiveVersionIndex] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing conversion results when jobId/result changes
     setConversionVersions((prev) => {
       if (!jobId) {
         if (!prev.length) {

@@ -12,6 +12,7 @@ import re
 import shutil
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -57,6 +58,19 @@ validate_service_token_at_startup("SPEECH_SERVICE_API_TOKEN", SPEECH_SERVICE_API
 FRONTEND_ORIGINS = os.environ.get(
     "FRONTEND_ORIGINS", "http://localhost:5173,http://localhost:3000"
 ).split(",")
+ALLOWED_UPLOAD_CONTENT_TYPES = {
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/flac",
+    "audio/ogg",
+    "audio/webm",
+    "audio/aac",
+    "audio/mp4",
+    "application/octet-stream",
+}
 
 
 def _require_api_token(request: Request) -> None:
@@ -64,6 +78,17 @@ def _require_api_token(request: Request) -> None:
         SPEECH_SERVICE_API_TOKEN,
         request.headers.get("X-Speech-Service-Token"),
     )
+
+
+def _validate_upload_content_type(file: UploadFile) -> None:
+    content_type = (file.content_type or "").lower()
+    if not content_type:
+        return
+    if content_type in ALLOWED_UPLOAD_CONTENT_TYPES:
+        return
+    if content_type.startswith("audio/"):
+        return
+    raise HTTPException(status_code=415, detail=f"Unsupported content type: {content_type}")
 
 
 @asynccontextmanager
@@ -88,7 +113,7 @@ def _run_job(
 ) -> None:
     global _last_job_completed_at
     run_enhance_sync(job_id, input_path, out_dir, denoise=denoise, batch=batch)
-    _last_job_completed_at = job_id
+    _last_job_completed_at = datetime.now(timezone.utc).isoformat()
 
 
 app = FastAPI(title="Speech Enhance Service", version="1.0.0", lifespan=lifespan)
@@ -140,12 +165,16 @@ async def enhance(
     batch: str = Form("false"),
 ) -> JSONResponse:
     _require_api_token(request)
+    _validate_upload_content_type(file)
 
     job_id = str(uuid.uuid4())
     out_dir = safe_job_path(job_id)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    suffix = Path(file.filename or "upload.wav").suffix.lower() or ".wav"
+    safe_name = Path(file.filename or "upload.wav").name
+    suffix = Path(safe_name).suffix.lower() or ".wav"
+    if file.filename and safe_name != file.filename:
+        logger.warning("Sanitized upload filename from %s to %s", file.filename, safe_name)
     input_path = out_dir / f"input{suffix}"
     try:
         with open(input_path, "wb") as f:

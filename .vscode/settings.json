@@ -9,5 +9,7 @@
   "kilo-code.new.claudeCodeCompat": true,
   "java.templates.newFile.enabled": false,
   "chat.useAgentSkills": true,
-  "opencode-agent.cliPath": "\"C:\\Users\\sammy\\AppData\\Local\\Programs\\OpenCode\\opencode-cli.exe\""
+  "opencode-agent.cliPath": "\"C:\\Users\\sammy\\AppData\\Local\\Programs\\OpenCode\\opencode-cli.exe\"",
+  "typescript.autoClosingTags": false,
+  "editor.formatOnSave": false
 }

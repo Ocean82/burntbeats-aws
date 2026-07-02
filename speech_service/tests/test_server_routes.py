@@ -84,7 +84,7 @@ class TestEnhance:
             "/enhance",
             files={"file": ("bad.txt", b"not an audio file", "text/plain")},
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 415
 
     def test_enhance_rejects_empty_file(self, client: TestClient) -> None:
         resp = client.post(

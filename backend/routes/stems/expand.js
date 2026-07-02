@@ -107,6 +107,7 @@ expandRouter.post(
       const data = await stemServiceClient.breaker.call(() =>
         proxyFormRequest("/expand", form, {
           correlationId: /** @type {any} */ (req).correlationId,
+          req,
         })
       );
       if (data.statusCode === 202) {

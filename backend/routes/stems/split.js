@@ -250,6 +250,7 @@ splitRouter.post(
         proxyFormRequest("/split", form, {
           timeoutMs: SPLIT_ACCEPT_TIMEOUT_MS,
           correlationId: /** @type {any} */ (req).correlationId,
+          req,
         })
       );
 

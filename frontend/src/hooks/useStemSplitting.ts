@@ -291,6 +291,7 @@ export function useStemSplitting({
     stopPreview,
     subscription,
     setUploadState,
+    notifyRetrying,
   ]);
 
   const triggerExpand = useCallback(async () => {

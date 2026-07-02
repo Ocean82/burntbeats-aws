@@ -69,6 +69,26 @@ export interface JobStatusResponse {
   beat_grid?: BeatGridMetadata;
 }
 
+export interface SpeechJobStatus {
+  status: "queued" | "processing" | "completed" | "failed";
+  progress: number;
+  job_id?: string;
+  error?: string;
+  output?: string;
+  output_url?: string;
+  message?: string;
+  queue_depth?: number;
+}
+
+export interface MidiJobStatus {
+  status: JobStatus | "processing";
+  progress: number;
+  job_id?: string;
+  message?: string;
+  error?: string;
+  result?: Record<string, unknown>;
+}
+
 export interface BeatGridMetadata {
   bpm: number;
   beat_offset_seconds: number;
@@ -79,6 +99,27 @@ export interface CancelResponse {
   job_id: string;
   status: JobStatus;
   message?: string;
+}
+
+export interface ExpandRequest {
+  job_id: string;
+  quality?: SplitQuality;
+}
+
+export interface ConvertRequest {
+  min_confidence?: string;
+  min_note_length_ms?: string;
+  include_pitch_bends?: string;
+  quantize?: string;
+  quantize_grid?: string;
+  quantize_bpm?: string;
+  quantize_strength?: string;
+  normalize_velocity?: string;
+  target_velocity?: string;
+  max_note_length_ms?: string;
+  transpose?: string;
+  stem_job_id?: string;
+  stem_name?: string;
 }
 
 export interface ErrorResponse {

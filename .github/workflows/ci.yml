@@ -220,4 +220,3 @@ jobs:
           docker cp "$cid:/app/node_modules/@clerk/express/package.json" /tmp/clerk-express.json
           docker cp "$cid:/app/node_modules/multer/package.json" /tmp/multer.json
           node -e "const p=require('/tmp/backend-package.json'); const c=require('/tmp/clerk-express.json').version; const m=require('/tmp/multer.json').version; const semver=(range,v)=>range.replace(/^[~^]/,'').split('.').slice(0,2).join('.')===v.split('.').slice(0,2).join('.'); if(!semver(p.dependencies['@clerk/express'],c)){console.error('clerk version mismatch',p.dependencies['@clerk/express'],c); process.exit(1);} if(!semver(p.dependencies['multer'],m)){console.error('multer version mismatch',p.dependencies['multer'],m); process.exit(1);} console.log('backend docker deps OK:',c,m);"
-

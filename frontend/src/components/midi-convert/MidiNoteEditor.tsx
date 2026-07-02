@@ -145,6 +145,7 @@ export function MidiNoteEditor({
 
   useEffect(() => {
     if (editor.activeLane === "notes") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- closing drawer when lane switches to notes
       setLaneDrawerOpen(false);
     }
   }, [editor.activeLane]);
@@ -488,19 +489,19 @@ export function MidiNoteEditor({
 
   const handleZoomIn = useCallback(() => {
     setZoomLevel((z) => clampEditorZoom(z + 0.25));
-  }, []);
+  }, [setZoomLevel]);
 
   const handleZoomOut = useCallback(() => {
     setZoomLevel((z) => clampEditorZoom(z - 0.25));
-  }, []);
+  }, [setZoomLevel]);
 
   const handleZoomLevelChange = useCallback((level: number) => {
     setZoomLevel(clampEditorZoom(level));
-  }, []);
+  }, [setZoomLevel]);
 
   const handleVerticalZoomLevelChange = useCallback((level: number) => {
     setVerticalZoomLevel(clampEditorVerticalZoom(level));
-  }, []);
+  }, [setVerticalZoomLevel]);
 
   const handleAddMarker = useCallback((time: number, label: string) => {
     setMarkers((prev) => [...prev, createMarker(time, label)]);

@@ -16,7 +16,6 @@ import { ChevronDown, ChevronUp, Minus, Plus, Trash2, Play, Square, Download, Gr
 import type { BeatPreset, UseBeatMakerReturn } from "../../hooks/useBeatMaker";
 import type { UsePatternChainReturn } from "../../hooks/usePatternChain";
 import { downloadMidiBlob, exportNotesToMidi } from "../../utils/midiExport";
-import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
 import { patternToMidiNotes } from "../../audio/beatPatternExport";
 import { saveBeatHandoff } from "../../utils/beatToMidiHandoff";
 import { cn } from "../../utils/cn";

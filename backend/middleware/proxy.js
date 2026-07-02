@@ -22,6 +22,22 @@ function withCorrelationId(headers, correlationId) {
 }
 
 /**
+ * Forward distributed tracing headers to downstream services.
+ * @param {Record<string, string>} headers
+ * @param {import("express").Request | undefined} req
+ * @returns {Record<string, string>}
+ */
+function withTraceHeaders(headers, req) {
+  if (!req) return headers;
+  const sentryTrace = req.get?.("sentry-trace");
+  const baggage = req.get?.("baggage");
+  const next = { ...headers };
+  if (sentryTrace) next["sentry-trace"] = sentryTrace;
+  if (baggage) next["baggage"] = baggage;
+  return next;
+}
+
+/**
  * Attach stem-service auth header when token protection is enabled.
  * @param {Record<string, string>} headers
  * @returns {Record<string, string>}
@@ -85,7 +101,7 @@ export function extractProxyErrorMessage(body, fallback) {
  * @param {string} baseUrl
  * @param {string} endpointPath
  * @param {import("form-data")} form
- * @param {{ timeoutMs?: number, authHeaderFn?: (h: Record<string, string>) => Record<string, string>, correlationId?: string }} [options]
+ * @param {{ timeoutMs?: number, authHeaderFn?: (h: Record<string, string>) => Record<string, string>, correlationId?: string, req?: import("express").Request }} [options]
  */
 export function proxyFormRequestTo(
   baseUrl,
@@ -115,6 +131,7 @@ export function proxyFormRequestTo(
 
     let headers = authHeaderFn(form.getHeaders());
     headers = withCorrelationId(headers, options.correlationId);
+    headers = withTraceHeaders(headers, options.req);
 
     const opts = {
       hostname: targetUrl.hostname,

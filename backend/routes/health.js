@@ -17,6 +17,7 @@ import {
 } from "../lib/serviceClients.js";
 import { getMidiSharedStorageHealth, probeMidiStorage } from "./midi/shared.js";
 import { inspectCatalogHealth } from "../services/midi-catalog/index.js";
+import { getRedis, getRedisUrl } from "../lib/redisClient.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -28,9 +29,10 @@ export const healthRouter = Router();
 
 healthRouter.get("/", async (req, res) => {
   const db = await dbHealthCheck();
-  const [backendMidiStorage, midiCatalogHealth] = await Promise.all([
+  const [backendMidiStorage, midiCatalogHealth, redis] = await Promise.all([
     probeMidiStorage(),
     inspectCatalogHealth(),
+    getRedis(),
   ]);
 
   // Check downstream services (non-blocking, with short timeout)
@@ -79,6 +81,11 @@ healthRouter.get("/", async (req, res) => {
       latencyMs: db.latencyMs,
       ...(db.error ? { error: db.error } : {}),
     },
+    redis: {
+      enabled: Boolean(getRedisUrl()),
+      connected: Boolean(redis?.isOpen),
+      ...(getRedisUrl() && !redis?.isOpen ? { error: "redis unavailable" } : {}),
+    },
     services: {
       stem: serviceStatus(stemHealth),
       speech: serviceStatus(speechHealth),
@@ -93,6 +100,16 @@ healthRouter.get("/", async (req, res) => {
       midi: midiCatalogHealth,
     },
     circuits,
+    secrets: {
+      missing: [
+        "CLERK_SECRET_KEY",
+        "STRIPE_SECRET_KEY",
+        "JOB_TOKEN_SECRET",
+        "STEM_SERVICE_API_TOKEN",
+        "SPEECH_SERVICE_API_TOKEN",
+        "MIDI_SERVICE_API_TOKEN",
+      ].filter((name) => !(process.env[name] || "").trim()),
+    },
   };
   res.status(200).json(payload);
 });

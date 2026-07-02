@@ -51,3 +51,23 @@ groups:
         annotations:
           summary: "Node.js event loop lag is high"
           description: "p100 event loop lag is {{ $value }}s — possible CPU saturation or blocking I/O"
+
+      - alert: JobQueueDepthHigh
+        expr: |
+          (stem_queue_depth + speech_queue_depth + midi_queue_depth) > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Job queue depth is high"
+          description: "Combined queue depth is {{ $value }} for longer than 2 minutes"
+
+      - alert: ServiceHealthCheckFailure
+        expr: |
+          up{job=~"backend|stem_service|speech_service|midi_service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service health check failure on {{ $labels.job }}"
+          description: "Prometheus cannot scrape {{ $labels.job }} for over 1 minute"

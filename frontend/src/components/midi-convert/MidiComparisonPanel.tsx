@@ -58,6 +58,7 @@ export function MidiComparisonPanel({
 
   useEffect(() => {
     if (!previewUrl) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting derived state on prop change
       setSyncedPlayerReady(false);
       return;
     }

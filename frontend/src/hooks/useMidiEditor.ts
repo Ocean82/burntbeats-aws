@@ -238,6 +238,7 @@ export function useMidiEditor(
   initialBpm: number,
   options?: MidiEditorInitOptions,
 ): UseMidiEditorReturn {
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- initialTracks optional chaining confuses compiler inference
   const bootstrapTracks = useMemo(() => {
     if (options?.initialTracks && options.initialTracks.length > 0) {
       return options.initialTracks.map((track) => ({

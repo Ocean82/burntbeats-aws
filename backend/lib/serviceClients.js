@@ -76,10 +76,14 @@ class ServiceClient {
   _doGet(req, path, timeoutMs) {
     const url = new URL(path, this.baseUrl);
     const correlationId = getCorrelationId(req);
+    const sentryTrace = req.get?.("sentry-trace");
+    const baggage = req.get?.("baggage");
 
     /** @type {Record<string, string>} */
     const headers = { Accept: "application/json" };
     if (correlationId) headers["X-Correlation-ID"] = correlationId;
+    if (sentryTrace) headers["sentry-trace"] = sentryTrace;
+    if (baggage) headers["baggage"] = baggage;
     if (this.authHeader) headers[this.authHeader.key] = this.authHeader.value;
 
     return new Promise((resolve, reject) => {

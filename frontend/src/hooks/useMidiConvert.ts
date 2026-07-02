@@ -463,7 +463,7 @@ export function useMidiConvert() {
         }
       })();
     },
-    [stopPolling, maybeApplyDrumsPreset],
+    [stopPolling, maybeApplyDrumsPreset, notifyRetrying],
   );
 
   const submitConvertJob = useCallback(

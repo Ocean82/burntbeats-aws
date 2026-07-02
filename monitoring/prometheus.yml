@@ -21,6 +21,18 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 30s
 
+  - job_name: 'stem_service'
+    static_configs:
+      - targets: ['stem_service:5000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  - job_name: 'speech_service'
+    static_configs:
+      - targets: ['speech_service:5001']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
   - job_name: 'prometheus'
     static_configs:
       - targets: ['prometheus:9090']

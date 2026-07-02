@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import uuid
+import logging
 from pathlib import Path
 from typing import Awaitable, Callable
 
@@ -13,6 +14,32 @@ from midi_service.services.options import build_enqueue_item, parse_convert_form
 from midi_service.services.storage import safe_job_path, write_progress
 
 from .common import get_output_dir, require_api_token
+
+logger = logging.getLogger(__name__)
+ALLOWED_UPLOAD_CONTENT_TYPES = {
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/flac",
+    "audio/ogg",
+    "audio/webm",
+    "audio/aac",
+    "audio/mp4",
+    "application/octet-stream",
+}
+
+
+def _validate_upload_content_type(file: UploadFile) -> None:
+    content_type = (file.content_type or "").lower()
+    if not content_type:
+        return
+    if content_type in ALLOWED_UPLOAD_CONTENT_TYPES:
+        return
+    if content_type.startswith("audio/"):
+        return
+    raise HTTPException(status_code=415, detail=f"Unsupported content type: {content_type}")
 
 
 def build_convert_router(
@@ -42,13 +69,17 @@ def build_convert_router(
         user_id: str = Form(""),
     ) -> JSONResponse:
         require_api_token(request)
+        _validate_upload_content_type(file)
 
         job_id = str(uuid.uuid4())
         output_dir = get_output_dir(request)
         out_dir = safe_job_path(output_dir, job_id)
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        suffix = Path(file.filename or "upload.wav").suffix.lower() or ".wav"
+        safe_name = Path(file.filename or "upload.wav").name
+        suffix = Path(safe_name).suffix.lower() or ".wav"
+        if file.filename and safe_name != file.filename:
+            logger.warning("Sanitized upload filename from %s to %s", file.filename, safe_name)
         input_path = out_dir / f"input{suffix}"
         try:
             with open(input_path, "wb") as f:

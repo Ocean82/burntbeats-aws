@@ -67,7 +67,7 @@ export function MidiRhythmGroovePanel({
   }, []);
 
   useEffect(() => {
-    void loadStyles();
+    void loadStyles(); // eslint-disable-line react-hooks/set-state-in-effect -- async data fetch on mount
   }, [loadStyles]);
 
   useEffect(() => () => stopMidiPreview(), []);
@@ -135,7 +135,7 @@ export function MidiRhythmGroovePanel({
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Download failed");
     }
-  }, [generateGroove, selectedStyle]);
+  }, [generateGroove, selectedStyle, bpm]);
 
   if (stylesLoading) {
     return (

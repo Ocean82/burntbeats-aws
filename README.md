@@ -191,6 +191,28 @@ Primary file for Compose: **root `.env`** (see each service’s `.env.example` w
 
 ---
 
+## Local Observability
+
+Run optional Prometheus + Grafana locally:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+Key endpoints:
+
+- Prometheus: [http://localhost:9090](http://localhost:9090)
+- Grafana: [http://localhost:3005](http://localhost:3005)
+- Metrics:
+  - backend: `/metrics`
+  - stem_service: `/metrics`
+  - speech_service: `/metrics`
+  - midi_service: `/metrics`
+
+Alert rules live in `monitoring/alerts/burntbeats.yml`.
+
+---
+
 ## Deployment (AWS EC2 target)
 
 Typical loop (Ubuntu + Docker):

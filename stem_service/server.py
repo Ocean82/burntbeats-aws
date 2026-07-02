@@ -16,6 +16,7 @@ import signal
 import subprocess
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 from burntbeats_common.correlation import CorrelationLoggingMiddleware
@@ -77,6 +78,8 @@ _schedule_s3_upload = schedule_s3_upload
 # Module-level JobQueue instance, set during lifespan so _run_queued_job
 # (called from worker threads) can pass it to worker functions.
 _job_queue: JobQueue | None = None
+_service_started_at: datetime | None = None
+_last_job_completed_at: str | None = None
 
 
 def _supported_mode_health_snapshot() -> dict[str, object]:
@@ -131,6 +134,7 @@ def _supported_mode_health_snapshot() -> dict[str, object]:
 
 def _run_queued_job(job: dict) -> None:
     """Dispatch a queued heavy job through the canonical worker surface."""
+    global _last_job_completed_at
     jq = _job_queue
     job_type = job.get("job_type", "split")
     if job_type == "expand":
@@ -143,6 +147,7 @@ def _run_queued_job(job: dict) -> None:
             job["correlation_id"],
             jq,
         )
+        _last_job_completed_at = datetime.now(timezone.utc).isoformat()
         return
 
     _run_separation_sync(
@@ -156,6 +161,7 @@ def _run_queued_job(job: dict) -> None:
         job.get("intent"),
         jq,
     )
+    _last_job_completed_at = datetime.now(timezone.utc).isoformat()
 
 
 # ── Logging & Correlation ────────────────────────────────────────────────────
@@ -210,6 +216,9 @@ def _safe_job_path(job_id: str, *parts: str) -> Path:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Validate required models at startup so first request fails fast instead of hanging."""
+    global _service_started_at
+
+    _service_started_at = datetime.now(timezone.utc)
 
     init_sentry()
 
@@ -682,12 +691,29 @@ async def cancel_job_endpoint(job_id: str, request: Request) -> dict:
 async def health() -> dict:
     mode_health = _supported_mode_health_snapshot()
     from stem_service.routing.model_bag import intent_routing_health
+    from stem_service import __version__
 
     demucs_metrics = summarize_demucs_metrics()
     demucs_slo = evaluate_demucs_slo(demucs_metrics)
     service_ok = mode_health["all_ready"] and demucs_slo.get("healthy", True)
+    uptime_seconds = (
+        int((datetime.now(timezone.utc) - _service_started_at).total_seconds())
+        if _service_started_at is not None
+        else 0
+    )
+    models_loaded = sorted(
+        {
+            model
+            for mode in mode_health["supported_modes"].values()
+            for model in mode.get("resolved_models", [])
+        }
+    )
     payload: dict[str, object] = {
         "status": "ok" if service_ok else "degraded",
+        "version": __version__,
+        "uptime_seconds": uptime_seconds,
+        "last_job_completed_at": _last_job_completed_at,
+        "models_loaded": models_loaded,
         "runtime": get_stem_runtime_versions(),
         "four_stem_backend": FOUR_STEM_BACKEND,
         "supported_modes": mode_health["supported_modes"],

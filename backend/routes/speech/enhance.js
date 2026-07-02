@@ -115,6 +115,7 @@ enhanceRouter.post(
         proxySpeechFormRequest("/enhance", form, {
           timeoutMs: SPEECH_ACCEPT_TIMEOUT_MS,
           correlationId: /** @type {any} */ (req).correlationId,
+          req,
         })
       );
 

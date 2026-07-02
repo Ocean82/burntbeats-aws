@@ -115,6 +115,7 @@ export function MidiConvertPanel({
       (max, note) => Math.max(max, note.start + note.duration),
       0,
     );
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from sessionStorage on mount
     setBeatHandoffResult({
       notesDetected: handoff.notes.length,
       durationSeconds: maxEnd,

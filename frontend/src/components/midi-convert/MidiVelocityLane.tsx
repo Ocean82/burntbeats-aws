@@ -103,7 +103,7 @@ export function MidiVelocityLane({
         svg.setPointerCapture(e.pointerId);
       }
     },
-    [visibleNotes, timeToScreen, onBeginEditGesture],
+    [visibleNotes, timeToScreen, onBeginEditGesture, pixelsPerSecond],
   );
 
   const handlePointerMove = useCallback(

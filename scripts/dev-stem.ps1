@@ -10,11 +10,6 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
   $env:STEM_ALLOW_MISSING_HTDEMUCS = "1"
   uv run pytest stem_service/tests -q
 } else {
-  Write-Host "uv not found; install from https://docs.astral.sh/uv/getting-started/installation/"
-  python -m pip install --upgrade pip
-  python -m pip install -r stem_service/requirements.lock.txt `
-    --extra-index-url https://download.pytorch.org/whl/cpu
-  python scripts/smoke_torchaudio_io.py
-  $env:STEM_ALLOW_MISSING_HTDEMUCS = "1"
-  python -m pytest stem_service/tests -q
+  Write-Error "uv is required. Install from https://docs.astral.sh/uv/getting-started/installation/"
+  exit 1
 }

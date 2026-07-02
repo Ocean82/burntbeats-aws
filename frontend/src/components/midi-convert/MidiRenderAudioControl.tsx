@@ -46,11 +46,13 @@ export function MidiRenderAudioControl({
   const [soundfontsAvailable, setSoundfontsAvailable] = useState(true);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing prop override into local state
     if (soundfontProp) setSoundfont(soundfontProp);
   }, [soundfontProp]);
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading indicator for async fetch
     setSoundfontsLoading(true);
     fetchSoundfonts()
       .then((data) => {
@@ -128,7 +130,7 @@ export function MidiRenderAudioControl({
     busy ||
     (!sourceJobId && editorTracks.every((t) => t.notes.length === 0));
   const progress = status ? Math.round(status.progress) : 0;
-  const usesLiveNotes = preferLiveState || tracks.length > 1;
+  const _usesLiveNotes = preferLiveState || tracks.length > 1;
   const hasPerStemJobs = tracks.some((track) => Boolean(track.sourceJobId));
 
   const soundfontChoices =

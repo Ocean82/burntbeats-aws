@@ -123,6 +123,10 @@ midiMergeRouter.post("/", midiMergeRateLimitMiddleware, authMiddleware, async (r
     if (correlationId) {
       headers["X-Correlation-ID"] = correlationId;
     }
+    const sentryTrace = req.get("sentry-trace");
+    const baggage = req.get("baggage");
+    if (sentryTrace) headers["sentry-trace"] = sentryTrace;
+    if (baggage) headers["baggage"] = baggage;
 
     const payload = JSON.stringify({ jobs, bpm: bpm || 120 });
 
@@ -153,7 +157,10 @@ midiMergeRouter.post("/", midiMergeRateLimitMiddleware, authMiddleware, async (r
       let attempts = 0;
       while (attempts < 120) {
         const statusRes = await fetch(`${MIDI_SERVICE_URL}/merge/status/${mergeId}`, {
-          headers: withMidiServiceAuthHeader({}),
+          headers: withMidiServiceAuthHeader({
+            ...(sentryTrace ? { "sentry-trace": sentryTrace } : {}),
+            ...(baggage ? { baggage } : {}),
+          }),
         });
         if (!statusRes.ok) {
           return res.status(statusRes.status).json({ error: "Merge status lookup failed" });
@@ -171,7 +178,10 @@ midiMergeRouter.post("/", midiMergeRateLimitMiddleware, authMiddleware, async (r
       }
 
       const fileRes = await fetch(`${MIDI_SERVICE_URL}/merge/file/${mergeId}/multitrack.mid`, {
-        headers: withMidiServiceAuthHeader({}),
+        headers: withMidiServiceAuthHeader({
+          ...(sentryTrace ? { "sentry-trace": sentryTrace } : {}),
+          ...(baggage ? { baggage } : {}),
+        }),
       });
       if (!fileRes.ok) {
         return res.status(fileRes.status).json({ error: "Merge file not available" });
