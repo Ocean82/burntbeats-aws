@@ -94,6 +94,9 @@ export interface EditorTrack {
   midiEffects: MidiEffectsConfig;
   midiFxApplyMode: MidiFxApplyMode;
   midiFxPreview: boolean;
+  /** Batch stem conversion job — enables per-stem save back to server. */
+  sourceJobId?: string | null;
+  sourceJobToken?: string | null;
 }
 
 export type ActiveLane = "notes" | "velocity" | "cc" | "automation";

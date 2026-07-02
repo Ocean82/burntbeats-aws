@@ -17,3 +17,5 @@ def test_app_module_exposes_expected_route_paths():
     assert "/status/{job_id}" in route_paths
     assert "/file/{job_id}/{filename}" in route_paths
     assert "/merge" in route_paths
+    assert "/soundfonts" in route_paths
+    assert "/rhythm/styles" in route_paths

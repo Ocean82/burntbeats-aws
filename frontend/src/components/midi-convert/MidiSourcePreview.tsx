@@ -1,15 +1,19 @@
 /**
  * MidiSourcePreview — play source audio and show waveform before MIDI conversion.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 import { Loader2, Volume2 } from "lucide-react";
 import { fetchStemWavAsBlob } from "../../api/stems";
+import { fetchMidiSourceAudioBlob } from "../../api/midiSource";
 import { authHeaders, jobTokenHeader } from "../../api/auth";
 import { API_BASE } from "../../config";
 import type { MidiSourceMode } from "../../hooks/useMidiConvert";
 import { useAudioFileDuration } from "../../hooks/useAudioFileDuration";
 import { formatUploadMeta } from "../../utils/formatFileMeta";
-import { MidiWaveformPlayer } from "./controls/MidiWaveformPlayer";
+import {
+  MidiWaveformPlayer,
+  type MidiWaveformPlayerHandle,
+} from "./controls/MidiWaveformPlayer";
 
 interface MidiSourcePreviewProps {
   sourceMode: MidiSourceMode;
@@ -19,7 +23,13 @@ interface MidiSourcePreviewProps {
   loadedStemLabel?: string;
   /** MIDI convert job id — enables server waveform when available. */
   midiJobId?: string | null;
+  midiJobToken?: string | null;
   disabled?: boolean;
+  playerRef?: Ref<MidiWaveformPlayerHandle>;
+  onAudioSeek?: (timeSeconds: number) => void;
+  onPreviewUrlChange?: (url: string | null) => void;
+  externalPlayhead?: number | null;
+  externalIsPlaying?: boolean;
 }
 
 export function MidiSourcePreview({
@@ -29,7 +39,13 @@ export function MidiSourcePreview({
   loadedStemUrl,
   loadedStemLabel,
   midiJobId = null,
+  midiJobToken = null,
   disabled = false,
+  playerRef,
+  onAudioSeek,
+  onPreviewUrlChange,
+  externalPlayhead = null,
+  externalIsPlaying,
 }: MidiSourcePreviewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -86,6 +102,45 @@ export function MidiSourcePreview({
       }
     };
   }, [sourceMode, uploadedFile, splitStemUrl, loadedStemUrl]);
+
+  useEffect(() => {
+    onPreviewUrlChange?.(previewUrl);
+  }, [previewUrl, onPreviewUrlChange]);
+
+  // Job-only comparison: load stored input.* when no local upload/split preview exists.
+  useEffect(() => {
+    if (!midiJobId || previewUrl || hasLocalSource) return;
+
+    let cancelled = false;
+    let revoke: string | null = null;
+
+    const loadFromJob = async () => {
+      setLoadError(null);
+      setLoading(true);
+      try {
+        const blob = await fetchMidiSourceAudioBlob(midiJobId, midiJobToken);
+        if (cancelled) return;
+        if (!blob) {
+          setLoadError("Source audio is not available for this job yet.");
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        revoke = url;
+        setPreviewUrl(url);
+      } catch {
+        if (!cancelled) setLoadError("Could not load job source audio.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void loadFromJob();
+
+    return () => {
+      cancelled = true;
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [midiJobId, midiJobToken, previewUrl, hasLocalSource]);
 
   const displayWaveform = midiJobId ? waveform : null;
 
@@ -150,10 +205,12 @@ export function MidiSourcePreview({
     drawWaveform();
   }, [drawWaveform]);
 
-  const hasSource =
+  const hasLocalSource =
     (sourceMode === "upload" && uploadedFile) ||
     (sourceMode === "split" && splitStemUrl) ||
     (sourceMode === "loaded" && loadedStemUrl);
+
+  const hasSource = hasLocalSource || Boolean(midiJobId);
 
   if (!hasSource) return null;
 
@@ -205,8 +262,12 @@ export function MidiSourcePreview({
 
       {previewUrl && !loading && !loadError && (
         <MidiWaveformPlayer
+          ref={playerRef}
           src={previewUrl}
           disabled={disabled}
+          onSeek={onAudioSeek}
+          externalPlayhead={externalPlayhead}
+          externalIsPlaying={externalIsPlaying}
         />
       )}
     </div>

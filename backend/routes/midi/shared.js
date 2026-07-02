@@ -4,7 +4,7 @@
  */
 import { constants as fsConstants } from "fs";
 import path from "path";
-import { access, mkdir, readFile, realpath, rm, stat, writeFile } from "fs/promises";
+import { access, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from "fs/promises";
 import { fileURLToPath } from "url";
 
 import { resolvePathWithinBase, resolveUuidJobDir } from "../../helpers/safePath.js";
@@ -77,6 +77,60 @@ export function isValidMidiJobId(jobId) {
 export function resolveMidiJobPath(jobId, filename) {
   if (!isValidMidiJobId(jobId)) return null;
   return resolvePathWithinBase(MIDI_OUTPUT_DIR, jobId, filename);
+}
+
+const INPUT_AUDIO_EXTENSIONS = new Set([
+  ".wav",
+  ".mp3",
+  ".flac",
+  ".m4a",
+  ".ogg",
+  ".webm",
+  ".aac",
+]);
+
+/** @param {string} ext */
+export function mimeTypeForInputAudio(ext) {
+  switch (ext.toLowerCase()) {
+    case ".wav":
+      return "audio/wav";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".flac":
+      return "audio/flac";
+    case ".m4a":
+      return "audio/mp4";
+    case ".ogg":
+      return "audio/ogg";
+    case ".webm":
+      return "audio/webm";
+    case ".aac":
+      return "audio/aac";
+    default:
+      return "application/octet-stream";
+  }
+}
+
+/**
+ * Resolve the uploaded source audio for a conversion job (input.*).
+ * @param {string} jobId
+ * @returns {Promise<string | null>}
+ */
+export async function resolveMidiJobInputPath(jobId) {
+  if (!isValidMidiJobId(jobId)) return null;
+  const jobDir = resolveUuidJobDir(MIDI_OUTPUT_DIR, jobId);
+  if (!jobDir) return null;
+  let entries;
+  try {
+    entries = await readdir(jobDir);
+  } catch {
+    return null;
+  }
+  const inputName = entries.find((name) => name.startsWith("input."));
+  if (!inputName) return null;
+  const ext = path.extname(inputName).toLowerCase();
+  if (!INPUT_AUDIO_EXTENSIONS.has(ext)) return null;
+  return resolvePathWithinBase(MIDI_OUTPUT_DIR, jobId, inputName);
 }
 
 /**

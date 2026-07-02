@@ -19,6 +19,8 @@ export interface MidiPlaybackTrack {
 export interface MidiPlaybackOptions {
   bpm?: number;
   loopRegion?: LoopRegion;
+  /** When set, source audio is synced to Tone.Transport with MIDI (comparison A/B). */
+  syncedPlayer?: Tone.Player | null;
 }
 
 export interface UseMidiPlaybackReturn {
@@ -128,6 +130,14 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     tracks: MidiPlaybackTrack[];
     options?: MidiPlaybackOptions;
   } | null>(null);
+  const syncedPlayerRef = useRef<Tone.Player | null>(null);
+
+  const detachSyncedPlayer = useCallback(() => {
+    const player = syncedPlayerRef.current;
+    if (!player) return;
+    player.stop();
+    player.unsync();
+  }, []);
 
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimerRef.current !== null) {
@@ -312,6 +322,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     clearRefreshTimer();
     stopRaf();
     clearScheduled();
+    detachSyncedPlayer();
     Tone.getTransport().stop();
     Tone.getTransport().position = 0;
     releaseAll();
@@ -323,12 +334,13 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     pausedPositionRef.current = 0;
     playbackStartRelativeRef.current = 0;
     lastRefreshAtRef.current = 0;
-  }, [clearRefreshTimer, clearScheduled, stopRaf, releaseAll]);
+  }, [clearRefreshTimer, clearScheduled, stopRaf, releaseAll, detachSyncedPlayer]);
 
   const pause = useCallback(() => {
     if (!isPlayingRef.current || isPausedRef.current) return;
     clearRefreshTimer();
     clearScheduled();
+    detachSyncedPlayer();
     Tone.getTransport().stop();
     releaseAll();
     stopRaf();
@@ -340,7 +352,16 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     isPlayingRef.current = false;
     setIsPaused(true);
     setIsPlaying(false);
-  }, [clearRefreshTimer, clearScheduled, stopRaf, releaseAll]);
+  }, [clearRefreshTimer, clearScheduled, stopRaf, releaseAll, detachSyncedPlayer]);
+
+  const startSyncedAudioAt = useCallback((relativeStart: number) => {
+    const player = syncedPlayerRef.current;
+    if (!player?.loaded) return;
+    player.stop();
+    player.unsync();
+    player.sync();
+    player.start(0, relativeStart);
+  }, []);
 
   const startPlaybackAt = useCallback(
     async (relativeStart: number) => {
@@ -366,6 +387,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       });
 
       transport.start();
+      startSyncedAudioAt(relativeStart);
       startTimeRef.current = Tone.now();
       isPausedRef.current = false;
       isPlayingRef.current = true;
@@ -381,6 +403,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       stop,
       updatePlayhead,
       releaseAll,
+      startSyncedAudioAt,
     ],
   );
 
@@ -421,8 +444,9 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       void scheduleNotesFromRef.current(resumePos, () => {
         stop();
       });
+      startSyncedAudioAt(resumePos);
     },
-    [clearScheduled, getCurrentRelativePosition, releaseAll, stop],
+    [clearScheduled, getCurrentRelativePosition, releaseAll, stop, startSyncedAudioAt],
   );
 
   const seek = useCallback(
@@ -475,6 +499,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
       tracksRef.current = tracks;
       bpmRef.current = options?.bpm ?? 120;
       loopRegionRef.current = options?.loopRegion;
+      syncedPlayerRef.current = options?.syncedPlayer ?? null;
 
       const startPos = wasPaused
         ? resumePos

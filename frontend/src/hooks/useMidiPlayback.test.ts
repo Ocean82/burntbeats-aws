@@ -207,4 +207,26 @@ describe("useMidiPlayback", () => {
 
     nowSpy.mockRestore();
   });
+
+  it("starts synced audio when syncedPlayer is provided", async () => {
+    const mockPlayer = {
+      loaded: true,
+      stop: vi.fn(),
+      unsync: vi.fn(),
+      sync: vi.fn(),
+      start: vi.fn(),
+    };
+
+    const { result } = renderHook(() => useMidiPlayback());
+
+    await act(async () => {
+      result.current.play(sampleNotes, {
+        bpm: 120,
+        syncedPlayer: mockPlayer as unknown as import("tone").Player,
+      });
+    });
+
+    expect(mockPlayer.sync).toHaveBeenCalled();
+    expect(mockPlayer.start).toHaveBeenCalled();
+  });
 });

@@ -41,7 +41,9 @@ export function MidiRenderAudioControl({
   const [renderMode, setRenderMode] = useState<"live" | "saved" | null>(null);
   const [soundfont, setSoundfont] = useState(soundfontProp ?? "");
   const [soundfontOptions, setSoundfontOptions] = useState<string[]>([]);
+  const [defaultSoundfont, setDefaultSoundfont] = useState("GeneralUser_GS.sf2");
   const [soundfontsLoading, setSoundfontsLoading] = useState(false);
+  const [soundfontsAvailable, setSoundfontsAvailable] = useState(true);
 
   useEffect(() => {
     if (soundfontProp) setSoundfont(soundfontProp);
@@ -55,14 +57,19 @@ export function MidiRenderAudioControl({
         if (cancelled) return;
         const names = data.soundfonts.map((f) => f.name);
         setSoundfontOptions(names);
+        setDefaultSoundfont(data.default);
+        setSoundfontsAvailable(data.default_available || names.length > 0);
         setSoundfont((current) => {
           if (current) return current;
           if (data.default_available) return data.default;
-          return names[0] ?? "";
+          return names[0] ?? data.default;
         });
       })
       .catch(() => {
-        if (!cancelled) setSoundfontOptions([]);
+        if (!cancelled) {
+          setSoundfontOptions([]);
+          setSoundfontsAvailable(false);
+        }
       })
       .finally(() => {
         if (!cancelled) setSoundfontsLoading(false);
@@ -122,27 +129,51 @@ export function MidiRenderAudioControl({
     (!sourceJobId && editorTracks.every((t) => t.notes.length === 0));
   const progress = status ? Math.round(status.progress) : 0;
   const usesLiveNotes = preferLiveState || tracks.length > 1;
+  const hasPerStemJobs = tracks.some((track) => Boolean(track.sourceJobId));
+
+  const soundfontChoices =
+    soundfontOptions.length > 0
+      ? soundfontOptions
+      : soundfont
+        ? [soundfont]
+        : defaultSoundfont
+          ? [defaultSoundfont]
+          : [];
 
   return (
     <div className={`space-y-xs ${className}`} data-testid="midi-render-audio-control">
-      {soundfontOptions.length > 1 ? (
-        <label className="flex flex-col gap-0.5 text-[10px] text-muted-foreground">
-          <span>Soundfont</span>
+      <label className="flex flex-col gap-0.5 text-[10px] text-muted-foreground">
+        <span>Soundfont</span>
+        {soundfontsLoading ? (
+          <span className="text-xs text-muted-foreground">Loading soundfonts…</span>
+        ) : (
           <select
             className="midi-select rounded border border-border/60 bg-muted/30 px-2 py-1 text-xs text-secondary-foreground"
-            value={soundfont}
-            disabled={busy || soundfontsLoading}
+            value={soundfont || soundfontChoices[0] || ""}
+            disabled={busy || soundfontChoices.length === 0}
             onChange={(e) => setSoundfont(e.target.value)}
             aria-label="Render soundfont"
+            aria-readonly={soundfontChoices.length === 1 ? true : undefined}
+            data-testid="midi-render-soundfont-select"
           >
-            {soundfontOptions.map((name) => (
+            {soundfontChoices.map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>
             ))}
           </select>
-        </label>
-      ) : null}
+        )}
+        {soundfontChoices.length === 1 && !soundfontsLoading ? (
+          <span className="text-[10px] text-muted-foreground">
+            Only soundfont installed on server.
+          </span>
+        ) : null}
+        {!soundfontsAvailable && !soundfontsLoading ? (
+          <span className="text-[10px] text-amber-300">
+            Server soundfont mount may be missing — render can fail until fixed.
+          </span>
+        ) : null}
+      </label>
       {!downloadUrl ? (
         <MidiPhysicalButton
           variant="default"
@@ -197,7 +228,9 @@ export function MidiRenderAudioControl({
         Editor playback uses lightweight synth voices for speed. Rendered audio uses
         FluidSynth with General MIDI soundfonts on the server (~30s).
         {usesLiveState
-          ? " This render reflects your current piano-roll edits."
+          ? hasPerStemJobs
+            ? " This render reflects your current multi-stem piano-roll edits."
+            : " This render reflects your current piano-roll edits."
           : sourceJobId
             ? " Rendering the saved MIDI file for this job."
             : null}

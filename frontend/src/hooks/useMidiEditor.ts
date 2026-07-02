@@ -66,6 +66,10 @@ export function notesFromConversion(notes: MidiNoteEvent[]): EditableNote[] {
   return notes.map((n) => ({ ...n, id: generateNoteId() }));
 }
 
+export interface MidiEditorInitOptions {
+  initialTracks?: EditorTrack[];
+}
+
 function createInitialTrack(
   notes: EditableNote[],
   index: number,
@@ -227,12 +231,28 @@ export interface UseMidiEditorReturn {
 export function useMidiEditor(
   initialNotes: MidiNoteEvent[],
   initialBpm: number,
+  options?: MidiEditorInitOptions,
 ): UseMidiEditorReturn {
-  const parsed = notesFromConversion(initialNotes);
-  const firstTrack = createInitialTrack(parsed, 0);
+  const bootstrapTracks = useMemo(() => {
+    if (options?.initialTracks && options.initialTracks.length > 0) {
+      return options.initialTracks.map((track) => ({
+        ...track,
+        notes: track.notes.map((n) => ({ ...n })),
+        selectedIds: new Set(track.selectedIds),
+        ccLanes: track.ccLanes.map((l) => ({
+          ...l,
+          events: l.events.map((e) => ({ ...e })),
+        })),
+      }));
+    }
+    const parsed = notesFromConversion(initialNotes);
+    return [createInitialTrack(parsed, 0)];
+  }, [options?.initialTracks, initialNotes]);
+
+  const firstTrack = bootstrapTracks[0];
 
   const [state, setState] = useState({
-    tracks: [firstTrack],
+    tracks: bootstrapTracks,
     activeTrackId: firstTrack.id,
     tool: "select" as EditorTool,
     snapGrid: "1/16" as SnapGrid,
@@ -262,7 +282,7 @@ export function useMidiEditor(
 
   const historyRef = useRef<HistoryEntry[]>([
     {
-      tracks: [firstTrack],
+      tracks: bootstrapTracks,
       activeTrackId: firstTrack.id,
     },
   ]);

@@ -3,7 +3,7 @@
  * Replaces the native <audio controls> in MidiSourcePreview.
  * Adapted from pitch-tempo-plugin WaveformDisplay, themed to midi-gold.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { Loader2, Pause, Play, Activity } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import { MidiPhysicalButton } from "./MidiPhysicalButton";
@@ -17,6 +17,21 @@ export interface MidiWaveformPlayerProps {
   label?: string;
   className?: string;
   disabled?: boolean;
+  /** Called when the user scrubs the waveform. */
+  onSeek?: (timeSeconds: number) => void;
+  /** When set, waveform playhead follows external transport (synced comparison mode). */
+  externalPlayhead?: number | null;
+  externalIsPlaying?: boolean;
+}
+
+export interface MidiWaveformPlayerHandle {
+  play: () => Promise<void>;
+  pause: () => void;
+  stop: () => void;
+  seek: (timeSeconds: number) => void;
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  isPlaying: () => boolean;
 }
 
 // Colors matching the midi-gold token system
@@ -111,11 +126,19 @@ function MidiWaveformPlayerInner({
   label,
   className,
   disabled,
+  onSeek,
+  externalPlayhead = null,
+  externalIsPlaying,
+  handleRef,
 }: {
   src: string;
   label?: string;
   className?: string;
   disabled: boolean;
+  onSeek?: (timeSeconds: number) => void;
+  externalPlayhead?: number | null;
+  externalIsPlaying?: boolean;
+  handleRef: React.Ref<MidiWaveformPlayerHandle>;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -132,6 +155,18 @@ function MidiWaveformPlayerInner({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceConnectedRef = useRef(false);
+  const isPlayingRef = useRef(false);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  const displayTime =
+    externalPlayhead !== null && externalPlayhead !== undefined
+      ? externalPlayhead
+      : currentTime;
+  const displayPlaying =
+    externalIsPlaying !== undefined ? externalIsPlaying : isPlaying;
 
   const draw = useCallback((time: number, dur: number) => {
     const canvas = canvasRef.current;
@@ -139,6 +174,43 @@ function MidiWaveformPlayerInner({
     if (!canvas || !data || !data.length) return;
     renderWaveform(canvas, data, time, dur);
   }, []);
+
+  useImperativeHandle(
+    handleRef,
+    () => ({
+      play: async () => {
+        const audio = audioRef.current;
+        if (!audio || disabled) return;
+        await audio.play();
+        setIsPlaying(true);
+      },
+      pause: () => {
+        audioRef.current?.pause();
+        setIsPlaying(false);
+      },
+      stop: () => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        audio.pause();
+        audio.currentTime = 0;
+        setIsPlaying(false);
+        setCurrentTime(0);
+        draw(0, audio.duration);
+      },
+      seek: (timeSeconds: number) => {
+        const audio = audioRef.current;
+        if (!audio || duration <= 0) return;
+        const clamped = Math.max(0, Math.min(duration, timeSeconds));
+        audio.currentTime = clamped;
+        setCurrentTime(clamped);
+        draw(clamped, duration);
+      },
+      getCurrentTime: () => audioRef.current?.currentTime ?? 0,
+      getDuration: () => audioRef.current?.duration ?? duration,
+      isPlaying: () => isPlayingRef.current,
+    }),
+    [disabled, draw, duration],
+  );
 
   // Load audio and decode waveform
   useEffect(() => {
@@ -203,6 +275,10 @@ function MidiWaveformPlayerInner({
 
   // Animation loop during playback
   useEffect(() => {
+    if (externalPlayhead !== null && externalPlayhead !== undefined) {
+      if (duration > 0) draw(externalPlayhead, duration);
+      return;
+    }
     if (!isPlaying) return;
 
     const tick = () => {
@@ -215,14 +291,18 @@ function MidiWaveformPlayerInner({
     rafRef.current = requestAnimationFrame(tick);
 
     return () => cancelAnimationFrame(rafRef.current);
-  }, [isPlaying, draw]);
+  }, [isPlaying, draw, duration, externalPlayhead]);
 
   // Redraw on seek (when not playing)
   useEffect(() => {
+    if (externalPlayhead !== null && externalPlayhead !== undefined) {
+      if (duration > 0) draw(externalPlayhead, duration);
+      return;
+    }
     if (!isPlaying && duration > 0) {
       draw(currentTime, duration);
     }
-  }, [currentTime, duration, isPlaying, draw]);
+  }, [currentTime, duration, isPlaying, draw, externalPlayhead]);
 
   // Play / pause
   const togglePlayback = useCallback(() => {
@@ -288,8 +368,9 @@ function MidiWaveformPlayerInner({
       audio.currentTime = seekTime;
       setCurrentTime(seekTime);
       draw(seekTime, duration);
+      onSeek?.(seekTime);
     },
-    [disabled, duration, draw],
+    [disabled, duration, draw, onSeek],
   );
 
   return (
@@ -320,8 +401,8 @@ function MidiWaveformPlayerInner({
             aria-label="Audio waveform — click to seek"
             aria-valuemin={0}
             aria-valuemax={Math.round(duration)}
-            aria-valuenow={Math.round(currentTime)}
-            aria-valuetext={`${formatTime(currentTime)} of ${formatTime(duration)}`}
+            aria-valuenow={Math.round(displayTime)}
+            aria-valuetext={`${formatTime(displayTime)} of ${formatTime(duration)}`}
             tabIndex={0}
             onClick={handleCanvasClick}
           />
@@ -331,9 +412,9 @@ function MidiWaveformPlayerInner({
               variant="play"
               onClick={togglePlayback}
               disabled={disabled || duration <= 0}
-              aria-label={isPlaying ? "Pause" : "Play"}
+              aria-label={displayPlaying ? "Pause" : "Play"}
             >
-              {isPlaying ? (
+              {displayPlaying ? (
                 <Pause className="h-3.5 w-3.5 fill-current" aria-hidden />
               ) : (
                 <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
@@ -341,7 +422,7 @@ function MidiWaveformPlayerInner({
             </MidiPhysicalButton>
 
             <span className="midi-time-display text-xs tabular-nums">
-              {formatTime(currentTime)}
+              {formatTime(displayTime)}
               <span className="opacity-45"> / </span>
               {formatTime(duration)}
             </span>
@@ -365,7 +446,7 @@ function MidiWaveformPlayerInner({
           {showSpectrum && (
             <MidiSpectrumVisualizer
               analyserNode={analyserNode}
-              isActive={isPlaying}
+              isActive={displayPlaying}
               height={48}
               className="rounded-lg border border-[var(--midi-border)]"
             />
@@ -376,13 +457,21 @@ function MidiWaveformPlayerInner({
   );
 }
 
-export function MidiWaveformPlayer({
-  src,
-  label,
-  className,
-  disabled = false,
-}: MidiWaveformPlayerProps) {
-  // Key on src ensures full remount (clean state) when source changes
+export const MidiWaveformPlayer = forwardRef<
+  MidiWaveformPlayerHandle,
+  MidiWaveformPlayerProps
+>(function MidiWaveformPlayer(
+  {
+    src,
+    label,
+    className,
+    disabled = false,
+    onSeek,
+    externalPlayhead = null,
+    externalIsPlaying,
+  },
+  ref,
+) {
   if (!src) return null;
   return (
     <MidiWaveformPlayerInner
@@ -391,6 +480,10 @@ export function MidiWaveformPlayer({
       label={label}
       className={className}
       disabled={disabled}
+      onSeek={onSeek}
+      externalPlayhead={externalPlayhead}
+      externalIsPlaying={externalIsPlaying}
+      handleRef={ref}
     />
   );
-}
+});

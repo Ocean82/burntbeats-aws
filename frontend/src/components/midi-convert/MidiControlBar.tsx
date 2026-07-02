@@ -101,6 +101,7 @@ export interface MidiControlBarProps {
   timeSignature: TimeSignature;
   drawVelocity: number;
   canSaveToJob: boolean;
+  saveToJobLabel?: string;
   isSaving?: boolean;
   midiRecordSupported?: boolean;
   midiRecordEnabled?: boolean;
@@ -156,6 +157,7 @@ export function MidiControlBar(props: MidiControlBarProps) {
     timeSignature,
     drawVelocity,
     canSaveToJob,
+    saveToJobLabel = "Save to job",
     isSaving = false,
     midiRecordSupported = false,
     midiRecordEnabled = false,
@@ -561,7 +563,7 @@ export function MidiControlBar(props: MidiControlBarProps) {
                   role="menuitem"
                 >
                   <Save className="h-3.5 w-3.5" />
-                  {isSaving ? "Saving…" : "Save to job"}
+                  {isSaving ? "Saving…" : saveToJobLabel}
                 </button>
               )}
             </div>

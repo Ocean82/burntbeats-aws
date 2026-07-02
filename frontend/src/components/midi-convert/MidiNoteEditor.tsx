@@ -12,6 +12,7 @@ import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
 import { exportTracksToMidi, downloadMidiBlob, midiMarkerExportSupported } from "../../utils/midiExport";
 import { buildMidiDownloadName } from "../../utils/midiErrors";
+import { canSaveTracksToJobs, tracksWithSourceJobs } from "../../utils/midiBatchTracks";
 import { useWebMidiInput } from "../../hooks/useWebMidiInput";
 import { snapToGrid } from "../../utils/midiEditorSnap";
 import { MidiControlBar } from "./MidiControlBar";
@@ -34,13 +35,14 @@ import {
   useMidiTimelineLayout,
   useTimelineViewportWidth,
 } from "./useMidiTimelineLayout";
-import type { LoopRegion } from "./editorTypes";
+import type { LoopRegion, EditorTrack } from "./editorTypes";
 import { midiToFreq, parseEstimatedKey, type RootNote, type Scale } from "../../utils/musicTheory";
 import { AUTOMATION_PARAMS } from "./editorTypes";
 import { MidiLaneDrawer } from "./MidiLaneDrawer";
 
 interface MidiNoteEditorProps {
   initialNotes: MidiNoteEvent[];
+  initialTracks?: EditorTrack[];
   bpm: number;
   jobId?: string | null;
   jobToken?: string | null;
@@ -58,6 +60,7 @@ interface MidiNoteEditorProps {
 
 export function MidiNoteEditor({
   initialNotes,
+  initialTracks,
   bpm,
   jobId = null,
   jobToken = null,
@@ -68,7 +71,7 @@ export function MidiNoteEditor({
   e2eMode = false,
   onRegisterEditor,
 }: MidiNoteEditorProps) {
-  const editor = useMidiEditor(initialNotes, bpm);
+  const editor = useMidiEditor(initialNotes, bpm, { initialTracks });
   const playback = useMidiPlayback();
   const { getSynth } = useMidiInstruments();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -368,18 +371,60 @@ export function MidiNoteEditor({
     editor.markAsSaved();
   }, [editor, markers, sourceLabel, jobId, applyMarkerExportNotice]);
 
+  const stemSaveCount = tracksWithSourceJobs(editor.tracks).length;
+  const canSaveToJob = canSaveTracksToJobs(jobId, editor.tracks);
+  const saveToJobLabel =
+    stemSaveCount > 1 ? "Save all stems" : "Save to job";
+
   const handleSaveToJob = useCallback(async () => {
-    if (!jobId) return;
+    const stemTracks = tracksWithSourceJobs(editor.tracks);
     setIsSaving(true);
     setSaveError(null);
     try {
+      const headers = await authHeaders();
+
+      if (stemTracks.length > 0) {
+        let savedCount = 0;
+        for (const track of stemTracks) {
+          const { blob } = exportTracksToMidi([track], editor.bpm);
+          const putHeaders: Record<string, string> = {
+            ...headers,
+            "Content-Type": "audio/midi",
+          };
+          if (track.sourceJobToken) {
+            putHeaders["x-job-token"] = track.sourceJobToken;
+          }
+          const res = await fetch(
+            `${API_BASE}/api/midi/file/${track.sourceJobId}/output.mid`,
+            {
+              method: "PUT",
+              headers: putHeaders,
+              body: blob,
+            },
+          );
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(
+              typeof data.error === "string"
+                ? `${track.name}: ${data.error}`
+                : `Failed to save ${track.name}`,
+            );
+          }
+          savedCount += 1;
+        }
+        if (savedCount === 0) throw new Error("No stem jobs available to save");
+        editor.markAsSaved();
+        return;
+      }
+
+      if (!jobId) return;
+
       const { blob, markersExported, markersRequested } = exportTracksToMidi(
         editor.tracks,
         editor.bpm,
         { markers },
       );
       applyMarkerExportNotice(markersExported, markersRequested);
-      const headers = await authHeaders();
       const putHeaders: Record<string, string> = {
         ...headers,
         "Content-Type": "audio/midi",
@@ -835,7 +880,8 @@ export function MidiNoteEditor({
             zoomLevel={zoomLevel}
             verticalZoomLevel={verticalZoomLevel}
             metronomeEnabled={playback.metronomeEnabled}
-            canSaveToJob={!!jobId}
+            canSaveToJob={canSaveToJob}
+            saveToJobLabel={saveToJobLabel}
             isSaving={isSaving}
             midiRecordSupported={webMidi.isSupported}
             midiRecordEnabled={webMidi.isEnabled}
@@ -1081,7 +1127,7 @@ export function MidiNoteEditor({
                   <MidiRenderAudioControl
                     tracks={editor.tracks}
                     bpm={editor.bpm}
-                    preferLiveState={editor.isModified}
+                    preferLiveState={editor.isModified || editor.tracks.length > 1}
                     sourceJobId={jobId}
                   />
                 </MidiInspectorSection>

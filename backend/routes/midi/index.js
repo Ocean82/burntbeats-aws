@@ -13,6 +13,8 @@ import { midiJobsRouter } from "./jobs.js";
 import { midiRenderRouter } from "./render.js";
 import { midiAnalyzeRouter } from "./analyze.js";
 import { midiSoundfontsRouter } from "./soundfonts.js";
+import { midiSourceRouter } from "./source.js";
+import { midiRhythmRouter } from "./rhythm.js";
 
 export const midiRouter = Router();
 
@@ -29,3 +31,5 @@ midiRouter.use("/jobs", midiJobsRouter);
 midiRouter.use("/render", midiRenderRouter);
 midiRouter.use("/analyze", midiAnalyzeRouter);
 midiRouter.use("/soundfonts", midiSoundfontsRouter);
+midiRouter.use("/source", midiSourceRouter);
+midiRouter.use("/rhythm", midiRhythmRouter);

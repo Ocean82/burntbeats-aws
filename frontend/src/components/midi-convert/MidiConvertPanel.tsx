@@ -16,7 +16,9 @@ import { MidiSourcePreview } from "./MidiSourcePreview";
 import { MidiConvertSettings } from "./MidiConvertSettings";
 import { MidiConvertProgress } from "./MidiConvertProgress";
 import { MidiResultPanel } from "./MidiResultPanel";
+import { MidiNoteEditor } from "./MidiNoteEditor";
 import { MidiLaneDrawer } from "./MidiLaneDrawer";
+import { editorTracksFromBatchJobs } from "../../utils/midiBatchTracks";
 import { authHeaders } from "../../api/auth";
 import { API_BASE } from "../../config";
 import { trackEvent } from "../../analytics/events";
@@ -96,6 +98,7 @@ export function MidiConvertPanel({
     jobToken: string;
     stemName: string;
   } | null>(null);
+  const [batchMultiTrackOpen, setBatchMultiTrackOpen] = useState(false);
 
   const handleViewPlans = useCallback(
     (source: "token_low" | "subscription_inactive" | "batch_token_low") => {
@@ -117,6 +120,7 @@ export function MidiConvertPanel({
       loadedStemUrl: selectedLoadedStem?.url ?? null,
       loadedStemLabel: selectedLoadedStem?.label,
       midiJobId: displayJobId,
+      midiJobToken: displayJobToken,
     }),
     [
       sourceMode,
@@ -124,7 +128,13 @@ export function MidiConvertPanel({
       selectedSplitStemUrl,
       selectedLoadedStem,
       displayJobId,
+      displayJobToken,
     ],
+  );
+
+  const batchEditorTracks = useMemo(
+    () => editorTracksFromBatchJobs(batchJobs),
+    [batchJobs],
   );
 
   const batchCompletedCount = batchJobs.filter((j) => j.status === "completed").length;
@@ -609,6 +619,21 @@ export function MidiConvertPanel({
                 )}
               </button>
 
+              {batchEditorTracks.length >= 2 && (
+                <button
+                  type="button"
+                  data-testid="midi-batch-open-editor"
+                  onClick={() => {
+                    setBatchViewResult(null);
+                    setBatchMultiTrackOpen(true);
+                  }}
+                  className="midi-btn midi-btn--play text-sm"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Open multi-track editor
+                </button>
+              )}
+
               {batchJobs.filter((j) => j.status === "completed").length >= 2 && (
                 <button
                   type="button"
@@ -941,6 +966,38 @@ export function MidiConvertPanel({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Batch multi-track editor — all completed stems as separate tracks */}
+      {isBatchMode && batchMultiTrackOpen && batchEditorTracks.length >= 2 && (
+        <div className="flex flex-col gap-sm rounded-lg border border-accent-midi/25 bg-accent-midi-950/10 p-sm">
+          <div className="flex flex-wrap items-center justify-between gap-sm">
+            <div>
+              <p className="text-sm font-semibold text-secondary-foreground">
+                Multi-track editor
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {batchEditorTracks.length} stems loaded — edit, solo, and render together.
+                Use <span className="font-medium">Save all stems</span> to write each track back to its job,
+                or <span className="font-medium">Export</span> in the editor toolbar for one merged MIDI file.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="midi-btn text-xs"
+              onClick={() => setBatchMultiTrackOpen(false)}
+            >
+              Close editor
+            </button>
+          </div>
+          <MidiNoteEditor
+            key={batchEditorTracks.map((t) => t.id).join("-")}
+            initialNotes={[]}
+            initialTracks={batchEditorTracks}
+            bpm={settings.quantizeBpm || 120}
+            sourceLabel="batch-stems"
+          />
+        </div>
+      )}
 
       {/* Open editor overlay: when batch mode has batchViewResult, show result panel above stage */}
       {isBatchMode && batchViewResult && (

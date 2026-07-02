@@ -10,6 +10,7 @@ Fixtures provide:
 from __future__ import annotations
 
 import json
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from unittest.mock import patch
@@ -17,6 +18,13 @@ from unittest.mock import patch
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_SHARED_PYTHON = _REPO_ROOT / "shared" / "python"
+for _path in (_REPO_ROOT, _SHARED_PYTHON):
+    _path_str = str(_path)
+    if _path.is_dir() and _path_str not in sys.path:
+        sys.path.insert(0, _path_str)
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
