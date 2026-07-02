@@ -40,6 +40,23 @@ vi.mock("tone", () => {
   };
 });
 
+vi.mock("tone/build/esm/source/buffer/Player.js", () => {
+  class MockPlayer {
+    loaded = false;
+    toDestination() {
+      return this;
+    }
+    load() {
+      this.loaded = true;
+      return Promise.resolve();
+    }
+    stop() {}
+    unsync() {}
+    dispose() {}
+  }
+  return { Player: MockPlayer };
+});
+
 vi.mock("../MidiSourcePreview", () => ({
   MidiSourcePreview: ({
     onPreviewUrlChange,

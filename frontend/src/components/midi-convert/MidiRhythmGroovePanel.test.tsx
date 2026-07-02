@@ -46,6 +46,7 @@ describe("MidiRhythmGroovePanel", () => {
       expect(onInsertNotes).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ pitch: 36 })]),
         "Rock 8th",
+        "new-track",
       );
     });
   });

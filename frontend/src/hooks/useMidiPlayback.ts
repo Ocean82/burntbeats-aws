@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Tone from "tone";
-import { Player } from "tone/build/esm/source/buffer/Player.js";
+import type { Player } from "tone/build/esm/source/buffer/Player.js";
 import type { MidiNoteEvent } from "./useMidiConvert";
 import type { LoopRegion } from "../components/midi-convert/editorTypes";
 import type { TrackInstrument } from "../components/midi-convert/editorTypes";
