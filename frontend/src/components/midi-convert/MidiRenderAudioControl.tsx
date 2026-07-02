@@ -130,7 +130,7 @@ export function MidiRenderAudioControl({
     busy ||
     (!sourceJobId && editorTracks.every((t) => t.notes.length === 0));
   const progress = status ? Math.round(status.progress) : 0;
-  const _usesLiveNotes = preferLiveState || tracks.length > 1;
+  const usesLiveNotes = preferLiveState || tracks.length > 1;
   const hasPerStemJobs = tracks.some((track) => Boolean(track.sourceJobId));
 
   const soundfontChoices =
@@ -229,7 +229,7 @@ export function MidiRenderAudioControl({
       <p className="text-[10px] text-muted-foreground leading-relaxed">
         Editor playback uses lightweight synth voices for speed. Rendered audio uses
         FluidSynth with General MIDI soundfonts on the server (~30s).
-        {usesLiveState
+        {usesLiveNotes
           ? hasPerStemJobs
             ? " This render reflects your current multi-stem piano-roll edits."
             : " This render reflects your current piano-roll edits."

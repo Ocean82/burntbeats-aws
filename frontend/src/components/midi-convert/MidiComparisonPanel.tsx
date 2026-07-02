@@ -2,6 +2,7 @@
  * MidiComparisonPanel — side-by-side source audio vs converted MIDI preview.
  */
 import * as Tone from "tone";
+import { Player } from "tone/build/esm/source/buffer/Player.js";
 import { Play, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
@@ -37,7 +38,7 @@ export function MidiComparisonPanel({
   source,
 }: MidiComparisonPanelProps) {
   const audioRef = useRef<MidiWaveformPlayerHandle | null>(null);
-  const syncedPlayerRef = useRef<Tone.Player | null>(null);
+  const syncedPlayerRef = useRef<Player | null>(null);
   const { isPlaying, currentTime, play, pause, stop, seek, isSupported } = useMidiPlayback();
   const [loopRegion] = useState<LoopRegion>(DEFAULT_LOOP);
   const [playMode, setPlayMode] = useState<ComparisonPlayMode>("idle");
@@ -63,7 +64,7 @@ export function MidiComparisonPanel({
       return;
     }
 
-    const player = new Tone.Player().toDestination();
+    const player = new Player().toDestination();
     syncedPlayerRef.current = player;
     let cancelled = false;
 

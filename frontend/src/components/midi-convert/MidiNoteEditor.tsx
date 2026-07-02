@@ -488,12 +488,12 @@ export function MidiNoteEditor({
   }, [editor, initialNotes, playback]);
 
   const handleZoomIn = useCallback(() => {
-    setZoomLevel((z) => clampEditorZoom(z + 0.25));
-  }, [setZoomLevel]);
+    setZoomLevel(clampEditorZoom(zoomLevel + 0.25));
+  }, [setZoomLevel, zoomLevel]);
 
   const handleZoomOut = useCallback(() => {
-    setZoomLevel((z) => clampEditorZoom(z - 0.25));
-  }, [setZoomLevel]);
+    setZoomLevel(clampEditorZoom(zoomLevel - 0.25));
+  }, [setZoomLevel, zoomLevel]);
 
   const handleZoomLevelChange = useCallback((level: number) => {
     setZoomLevel(clampEditorZoom(level));

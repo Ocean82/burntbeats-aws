@@ -91,7 +91,7 @@ export function EffectsPanel({ activeTool, onClose, isOverlay = false, activeSte
 
   const transition = prefersReducedMotion
     ? { duration: 0 }
-    : { duration: LAYOUT.EFFECTS_SLIDE_DURATION / 1000, ease: "easeOut" };
+    : { duration: LAYOUT.EFFECTS_SLIDE_DURATION / 1000, ease: "easeOut" as const };
 
   const panelContent = (
     <div className="flex h-full flex-col">

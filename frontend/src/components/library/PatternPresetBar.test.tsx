@@ -39,6 +39,8 @@ const storage = {
   renamePattern: vi.fn(),
   exportAll: vi.fn(() => "[]"),
   importPatterns: vi.fn(() => 0),
+  syncStatus: "local" as const,
+  lastSyncError: null,
 } satisfies UsePatternStorageReturn;
 
 const entitlements: UseBeatMakerEntitlementsReturn = {

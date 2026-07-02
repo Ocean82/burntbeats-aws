@@ -445,7 +445,7 @@ export function MidiConvertPanel({
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
-    transition: { duration: 0.2, ease: [0.25, 1, 0.5, 1] },
+    transition: { duration: 0.2, ease: [0.25, 1, 0.5, 1] as [number, number, number, number] },
   };
 
   const settingsSubtitle = `${sourceMode === "split" ? "Split stem" : sourceMode === "loaded" ? "Loaded stem" : "Upload"} · ${(settings.minConfidence * 100).toFixed(0)}% Conf · ${settings.minNoteLengthMs}ms Min${settings.quantize ? ` · ${settings.quantizeBpm} BPM` : ""}`;

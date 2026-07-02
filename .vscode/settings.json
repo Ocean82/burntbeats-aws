@@ -11,5 +11,14 @@
   "chat.useAgentSkills": true,
   "opencode-agent.cliPath": "\"C:\\Users\\sammy\\AppData\\Local\\Programs\\OpenCode\\opencode-cli.exe\"",
   "typescript.autoClosingTags": false,
-  "editor.formatOnSave": false
+  "editor.formatOnSave": false,
+  "ga4Mcp.autoStart": false,
+  "ga4Mcp.agents.windsurf": false,
+  "ga4Mcp.agents.gemini": false,
+  "ga4Mcp.agents.cursor": false,
+  "ga4Mcp.agents.copilot": false,
+  "ga4Mcp.agents.continue": false,
+  "ga4Mcp.agents.codex": false,
+  "ga4Mcp.agents.cline": false,
+  "ga4Mcp.agents.claudeCode": false
 }

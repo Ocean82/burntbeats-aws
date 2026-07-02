@@ -28,14 +28,13 @@ export function initSentry(): void {
     release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
     tracesSampleRate: 0.2,
     sendDefaultPii: false,
+    tracePropagationTargets: [
+      /^https?:\/\/localhost(:\d+)?/i,
+      /^https?:\/\/(www\.)?burntbeats\.com/i,
+      /^\/api\//,
+    ],
     integrations: [
-      Sentry.browserTracingIntegration({
-        tracePropagationTargets: [
-          /^https?:\/\/localhost(:\d+)?/i,
-          /^https?:\/\/(www\.)?burntbeats\.com/i,
-          /^\/api\//,
-        ],
-      }),
+      Sentry.browserTracingIntegration(),
     ],
     beforeBreadcrumb(breadcrumb: Sentry.Breadcrumb) {
       if (breadcrumb.category === "xhr" || breadcrumb.category === "fetch") {

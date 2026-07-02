@@ -222,7 +222,7 @@ describe("useMidiPlayback", () => {
     await act(async () => {
       result.current.play(sampleNotes, {
         bpm: 120,
-        syncedPlayer: mockPlayer as unknown as import("tone").Player,
+        syncedPlayer: mockPlayer as unknown as import("tone/build/esm/source/buffer/Player.js").Player,
       });
     });
 

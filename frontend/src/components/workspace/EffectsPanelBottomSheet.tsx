@@ -50,7 +50,7 @@ export function EffectsPanelBottomSheet({
 
   const transition = prefersReducedMotion
     ? { duration: 0 }
-    : { duration: 0.25, ease: "easeOut" };
+    : { duration: 0.25, ease: "easeOut" as const };
 
   return (
     <>

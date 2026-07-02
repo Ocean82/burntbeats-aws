@@ -228,7 +228,7 @@ export function MidiResultPanel({
     : {
         initial: { opacity: 0, y: 12, scale: 0.98 } as const,
         animate: { opacity: 1, y: 0, scale: 1 } as const,
-        transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+        transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
       };
 
   return (
@@ -314,7 +314,7 @@ export function MidiResultPanel({
             initial={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] as [number, number, number, number] }}
           >
             <div className={prefersReducedMotion ? "" : "midi-piano-roll-reveal"}>
               <MidiPianoRoll
@@ -334,7 +334,7 @@ export function MidiResultPanel({
             initial={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={prefersReducedMotion ? undefined : { opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] as [number, number, number, number] }}
           >
             <MidiNoteEditor
               initialNotes={displayResult.pianoRollNotes}

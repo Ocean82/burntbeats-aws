@@ -57,6 +57,11 @@ export function MidiSourcePreview({
     sourceMode === "upload" ? uploadedFile : null,
   );
 
+  const hasLocalSource =
+    (sourceMode === "upload" && uploadedFile) ||
+    (sourceMode === "split" && splitStemUrl) ||
+    (sourceMode === "loaded" && loadedStemUrl);
+
   useEffect(() => {
     let revoke: string | null = null;
     let cancelled = false;
@@ -204,11 +209,6 @@ export function MidiSourcePreview({
   useEffect(() => {
     drawWaveform();
   }, [drawWaveform]);
-
-  const hasLocalSource =
-    (sourceMode === "upload" && uploadedFile) ||
-    (sourceMode === "split" && splitStemUrl) ||
-    (sourceMode === "loaded" && loadedStemUrl);
 
   const hasSource = hasLocalSource || Boolean(midiJobId);
 

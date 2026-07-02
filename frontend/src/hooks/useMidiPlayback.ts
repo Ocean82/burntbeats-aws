@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Tone from "tone";
+import { Player } from "tone/build/esm/source/buffer/Player.js";
 import type { MidiNoteEvent } from "./useMidiConvert";
 import type { LoopRegion } from "../components/midi-convert/editorTypes";
 import type { TrackInstrument } from "../components/midi-convert/editorTypes";
@@ -24,7 +25,7 @@ export interface MidiPlaybackOptions {
   bpm?: number;
   loopRegion?: LoopRegion;
   /** When set, source audio is synced to Tone.Transport with MIDI (comparison A/B). */
-  syncedPlayer?: Tone.Player | null;
+  syncedPlayer?: Player | null;
 }
 
 export interface UseMidiPlaybackReturn {
@@ -134,7 +135,7 @@ export function useMidiPlayback(): UseMidiPlaybackReturn {
     tracks: MidiPlaybackTrack[];
     options?: MidiPlaybackOptions;
   } | null>(null);
-  const syncedPlayerRef = useRef<Tone.Player | null>(null);
+  const syncedPlayerRef = useRef<Player | null>(null);
 
   const detachSyncedPlayer = useCallback(() => {
     const player = syncedPlayerRef.current;

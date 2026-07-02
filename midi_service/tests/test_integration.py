@@ -160,15 +160,15 @@ class TestMidiFileDownload:
 class TestErrorCases:
     """Test error handling for invalid inputs."""
 
-    async def test_invalid_file_returns_400(self, client, invalid_file_path: Path):
-        """Submitting a non-audio file should return 400."""
+    async def test_invalid_file_returns_415(self, client, invalid_file_path: Path):
+        """Submitting a non-audio file should return 415 Unsupported Media Type."""
         with open(invalid_file_path, "rb") as f:
             response = await client.post(
                 "/convert",
                 files={"file": ("invalid.txt", f, "text/plain")},
             )
 
-        assert response.status_code == 400
+        assert response.status_code == 415
         body = response.json()
         assert "detail" in body
 

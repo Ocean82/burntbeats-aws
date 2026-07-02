@@ -3,7 +3,7 @@ import { screen } from "@testing-library/dom";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const progressionCatalog = {
-  filters: { q: "", genre: "", key: "", tempo: "", tab: "progression" as const },
+  filters: { q: "", genre: "", key: "", tempo: "", tab: "progression" as "progression" | "rhythm" },
   entries: [
     {
       id: "midi-001",
