@@ -93,7 +93,11 @@ export function LibraryPage({
         {tab === "catalog" ? (
           <MidiCatalogPanel />
         ) : (
-          <DrumMachineWorkspace subscription={subscription} onViewPlans={onViewPlans} />
+          <DrumMachineWorkspace
+            subscription={subscription}
+            onViewPlans={onViewPlans}
+            reduceMotion={reduceMotion}
+          />
         )}
         {devTools ? (
           <LibraryDevDrawer

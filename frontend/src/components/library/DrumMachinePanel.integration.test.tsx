@@ -14,11 +14,38 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, act } from "@testing-library/react"
 import { screen, fireEvent, within } from "@testing-library/dom";
 import { DrumMachinePanel } from "./DrumMachinePanel";
+import { DrumMachineWorkspace } from "./DrumMachineWorkspace";
+import type { UseSubscriptionResult } from "../../hooks/useSubscription";
+
+const mockSubscription: UseSubscriptionResult = {
+  status: "active",
+  plan: "basic",
+  entitlementSource: "subscription",
+  capabilities: {
+    canSplitFourStems: false,
+    canExpandToFourStems: false,
+    canUsePremiumStemQualities: false,
+    canUseBatchQueue: false,
+    canDownloadFullPreview: true,
+    canShareCleanPreview: false,
+  },
+  billingStatus: "none",
+  billingError: null,
+  startCheckout: vi.fn(),
+  openPortal: vi.fn(),
+  refetch: vi.fn(),
+};
 
 // ─── Mock drumSynth to prevent actual audio and allow call verification ──
 
 vi.mock("../../audio/drumSynth", () => ({
   playDrumVoice: vi.fn(),
+  playMetronomeClick: vi.fn(),
+}));
+
+vi.mock("../../audio/drumSchedulerWorklet", () => ({
+  ensureDrumSchedulerWorklet: vi.fn().mockResolvedValue(false),
+  createDrumSchedulerNode: vi.fn(),
 }));
 
 import { playDrumVoice } from "../../audio/drumSynth";
@@ -116,10 +143,13 @@ function advanceTimers(ms: number) {
   }
 }
 
-/** Click Play button. */
-function clickPlay() {
-  const playBtn = screen.getByRole("button", { name: /start playback/i });
-  fireEvent.click(playBtn);
+/** Click Play button and flush async scheduler bootstrap. */
+async function clickPlay() {
+  await act(async () => {
+    const playBtn = screen.getByRole("button", { name: /start playback/i });
+    fireEvent.click(playBtn);
+    await Promise.resolve();
+  });
 }
 
 /** Click Stop button. */
@@ -141,7 +171,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     vi.useRealTimers();
   });
 
-  it("selects a pattern, starts playback, overlay schedules audio, then stops", () => {
+  it("selects a pattern, starts playback, overlay schedules audio, then stops", async () => {
     render(<DrumMachinePanel embedded />);
 
     // Select a pattern from the library
@@ -154,7 +184,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     expect(options[0]).toHaveAttribute("aria-selected", "true");
 
     // Start playback
-    clickPlay();
+    await clickPlay();
 
     // Advance time to allow scheduler to fire (25ms interval)
     advanceTimers(100);
@@ -173,7 +203,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     expect(mockPlayDrumVoice).not.toHaveBeenCalled();
   });
 
-  it("transport sync: overlay starts with Play and stops with Stop", () => {
+  it("transport sync: overlay starts with Play and stops with Stop", async () => {
     render(<DrumMachinePanel embedded />);
 
     // Select a pattern first
@@ -182,7 +212,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     fireEvent.click(options[0]);
 
     // Start playback
-    clickPlay();
+    await clickPlay();
     advanceTimers(100);
 
     // Audio was scheduled (both grid and overlay share the same drumSynth)
@@ -218,7 +248,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     expect(overlaySlider).toHaveValue("0.3");
   });
 
-  it("row volume slider updates state and scales grid playback velocity", () => {
+  it("row volume slider updates state and scales grid playback velocity", async () => {
     render(<DrumMachinePanel embedded />);
 
     const kickVolume = screen.getByRole("slider", { name: /kick volume/i });
@@ -230,7 +260,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     // Place a hit on kick row step 1 and start playback
     const kickStep = screen.getByRole("button", { name: "Kick step 1" });
     fireEvent.click(kickStep);
-    clickPlay();
+    await clickPlay();
     advanceTimers(100);
 
     const hitCall = mockPlayDrumVoice.mock.calls.find((call) => call[3] > 0);
@@ -240,7 +270,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     clickStop();
   });
 
-  it("pattern hot-swap during playback switches to new pattern", () => {
+  it("pattern hot-swap during playback switches to new pattern", async () => {
     render(<DrumMachinePanel embedded />);
 
     const patternList = screen.getByRole("listbox", { name: /available rhythm patterns/i });
@@ -252,7 +282,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     expect(options[0]).toHaveAttribute("aria-selected", "true");
 
     // Start playback
-    clickPlay();
+    await clickPlay();
     advanceTimers(100);
 
     // Record calls during first pattern
@@ -317,5 +347,32 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     const newFilterToolbar = screen.getByRole("toolbar", { name: /filter patterns by genre/i });
     const newAllButton = within(newFilterToolbar).getByText("All");
     expect(newAllButton).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("DrumMachinePanel keyboard shortcuts", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    setupMockAudioContext();
+    mockPlayDrumVoice.mockClear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("toggles playback with Space and cycles cell with Enter", async () => {
+    render(<DrumMachineWorkspace subscription={mockSubscription} />);
+
+    await clickPlay();
+    expect(screen.getByRole("button", { name: /stop playback/i })).toBeTruthy();
+
+    fireEvent.keyDown(window, { code: "Space" });
+    expect(screen.getByRole("button", { name: /start playback/i })).toBeTruthy();
+
+    const cell = screen.getByTestId("beat-grid-cell-0-0");
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(cell).toHaveAttribute("aria-pressed", "true");
   });
 });

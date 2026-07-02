@@ -218,6 +218,21 @@ export function PatternPresetBar({ beatMaker, storage, entitlements }: PatternPr
         >
           <Bookmark className="h-3 w-3" />
           My Patterns
+          {limits.canCloudSync && (
+            <span
+              className={cn(
+                "ml-1 rounded px-1 text-[8px] uppercase tracking-wide",
+                storage.syncStatus === "synced" && "bg-success/15 text-success",
+                storage.syncStatus === "syncing" && "bg-warning/15 text-warning",
+                storage.syncStatus === "error" && "bg-error/15 text-error",
+                storage.syncStatus === "local" && "bg-muted text-muted-foreground",
+              )}
+              title={storage.lastSyncError ?? "Cloud sync status"}
+              data-testid="beat-pattern-sync-status"
+            >
+              {storage.syncStatus}
+            </span>
+          )}
           {storage.savedPatterns.length > 0 && (
             <span className="ml-1 text-[9px] opacity-60">
               ({storage.savedPatterns.length}

@@ -359,3 +359,22 @@ function synthTom(
   osc2.start(time);
   osc2.stop(time + bodyDecay + 0.05);
 }
+
+/** Short metronome click on downbeats. */
+export function playMetronomeClick(
+  ctx: AudioContext,
+  time: number,
+  destination: AudioNode = ctx.destination,
+  accent = false,
+): void {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(accent ? 1200 : 880, time);
+  gain.gain.setValueAtTime(accent ? 0.22 : 0.14, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+  osc.connect(gain);
+  gain.connect(destination);
+  osc.start(time);
+  osc.stop(time + 0.05);
+}

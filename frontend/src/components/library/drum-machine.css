@@ -2,3 +2,28 @@
   display: grid;
   grid-template-columns: var(--sequencer-cols);
 }
+
+.beat-playhead-cell {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--fire-ember, #f59e0b) 55%, transparent),
+    0 0 10px color-mix(in srgb, var(--fire-ember, #f59e0b) 35%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .beat-playhead-cell {
+    animation: beat-playhead-pulse 0.45s ease-out;
+  }
+}
+
+@keyframes beat-playhead-pulse {
+  0% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--fire-ember, #f59e0b) 70%, transparent),
+      0 0 16px color-mix(in srgb, var(--fire-ember, #f59e0b) 55%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--fire-ember, #f59e0b) 55%, transparent),
+      0 0 10px color-mix(in srgb, var(--fire-ember, #f59e0b) 35%, transparent);
+  }
+}

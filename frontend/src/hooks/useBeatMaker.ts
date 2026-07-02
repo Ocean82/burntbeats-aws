@@ -19,7 +19,11 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { playDrumVoice } from "../audio/drumSynth";
+import { playDrumVoice, playMetronomeClick } from "../audio/drumSynth";
+import {
+  createDrumSchedulerNode,
+  ensureDrumSchedulerWorklet,
+} from "../audio/drumSchedulerWorklet";
 import { getSwungStepTime } from "../audio/swingQuantize";
 import {
   DEFAULT_KIT,
@@ -58,6 +62,26 @@ function cycleVelocity(current: CellVelocity): CellVelocity {
   if (current === VELOCITY_NORMAL) return VELOCITY_ACCENT;
   if (current === VELOCITY_ACCENT) return VELOCITY_GHOST;
   return VELOCITY_OFF;
+}
+
+function buildStepDurations(
+  totalSteps: number,
+  bpm: number,
+  swing: number,
+): number[] {
+  const stepDuration = 60 / bpm / 4;
+  const durations: number[] = [];
+  for (let i = 0; i < totalSteps; i++) {
+    const nextIdx = (i + 1) % totalSteps;
+    const currentTime = getSwungStepTime(i, stepDuration, swing);
+    const nextTime = getSwungStepTime(nextIdx, stepDuration, swing);
+    if (nextIdx === 0) {
+      durations.push(totalSteps * stepDuration - currentTime);
+    } else {
+      durations.push(nextTime - currentTime);
+    }
+  }
+  return durations;
 }
 
 /** Determine which rows should be audible given mute/solo state. */
@@ -122,6 +146,8 @@ export interface UseBeatMakerReturn {
   // Transport mutations
   setBpm: (bpm: number) => void;
   setSwing: (swing: number) => void;
+  metronomeEnabled: boolean;
+  setMetronomeEnabled: (enabled: boolean) => void;
   start: () => void;
   stop: () => void;
 }
@@ -169,12 +195,15 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
   const [swing, setSwingState] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
+  const [metronomeEnabled, setMetronomeEnabledState] = useState(false);
 
   // Audio refs
   const ctxRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<number | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const nextStepTimeRef = useRef(0);
   const stepIndexRef = useRef(0);
+  const metronomeEnabledRef = useRef(false);
 
   // Keep refs in sync for the scheduler closure
   const patternRef = useRef(pattern);
@@ -202,6 +231,28 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
   useEffect(() => {
     stepsRef.current = steps;
   }, [steps]);
+  useEffect(() => {
+    metronomeEnabledRef.current = metronomeEnabled;
+  }, [metronomeEnabled]);
+
+  const setMetronomeEnabled = useCallback((enabled: boolean) => {
+    setMetronomeEnabledState(enabled);
+  }, []);
+
+  const haltPlayback = useCallback(() => {
+    if (timerRef.current != null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (workletNodeRef.current) {
+      workletNodeRef.current.port.postMessage({ type: "stop" });
+      workletNodeRef.current.disconnect();
+      workletNodeRef.current = null;
+    }
+    setPlaying(false);
+    setCurrentStep(-1);
+    stepIndexRef.current = 0;
+  }, []);
 
   // ─── Pattern Length Resize ────────────────────────────────────
 
@@ -274,14 +325,7 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
 
   const loadPreset = useCallback(
     (preset: BeatPreset) => {
-      // Stop playback if running
-      if (timerRef.current != null) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-        setPlaying(false);
-        setCurrentStep(-1);
-        stepIndexRef.current = 0;
-      }
+      haltPlayback();
 
       // Validate and apply pattern dimensions
       const targetSteps = preset.steps;
@@ -320,7 +364,7 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
         setRowStates(defaultRowStates(rowCount));
       }
     },
-    [rowCount],
+    [rowCount, haltPlayback],
   );
 
   // ─── Transport: BPM & Swing setters ───────────────────────────
@@ -335,55 +379,54 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
 
   // ─── Playback Engine ──────────────────────────────────────────
 
-  const stop = useCallback(() => {
-    if (timerRef.current != null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    setPlaying(false);
-    setCurrentStep(-1);
-    stepIndexRef.current = 0;
-  }, []);
+  const stop = haltPlayback;
 
-  useEffect(() => () => stop(), [stop]);
+  useEffect(() => () => haltPlayback(), [haltPlayback]);
 
-  const scheduleStep = useCallback(
+  const playStepAtTime = useCallback(
+    (ctx: AudioContext, output: AudioNode, stepIdx: number, stepTime: number) => {
+      const pat = patternRef.current;
+      const rs = rowStatesRef.current;
+      const currentKitParams = kitParamsRef.current;
+      const audible = getAudibleRows(rs);
+
+      if (metronomeEnabledRef.current && stepIdx % 4 === 0) {
+        playMetronomeClick(ctx, stepTime, output, stepIdx % 16 === 0);
+      }
+
+      pat.forEach((row, ri) => {
+        if (audible[ri] && row[stepIdx] > VELOCITY_OFF) {
+          const vel = Math.round(row[stepIdx] * rs[ri].volume);
+          const instParams = currentKitParams?.[kit[ri].id];
+          if (instParams) {
+            playDrumVoice(ctx, kit[ri].id, stepTime, vel, output, instParams);
+          } else {
+            playDrumVoice(ctx, kit[ri].id, stepTime, vel, output);
+          }
+        }
+      });
+
+      setTimeout(() => setCurrentStep(stepIdx), 0);
+    },
+    [kit],
+  );
+
+  const scheduleStepTimer = useCallback(
     (ctx: AudioContext, output: AudioNode) => {
-      const lookAhead = 0.05; // 50ms
-      const scheduleInterval = 25; // check every 25ms
+      const lookAhead = 0.05;
+      const scheduleInterval = 25;
 
       const scheduler = () => {
-        const pat = patternRef.current;
-        const rs = rowStatesRef.current;
         const currentBpm = bpmRef.current;
         const currentSwing = swingRef.current;
         const totalSteps = stepsRef.current;
-        const currentKitParams = kitParamsRef.current;
         const stepDuration = 60 / currentBpm / 4;
-        const audible = getAudibleRows(rs);
 
         while (nextStepTimeRef.current < ctx.currentTime + lookAhead) {
           const stepIdx = stepIndexRef.current % totalSteps;
           const stepTime = nextStepTimeRef.current;
+          playStepAtTime(ctx, output, stepIdx, stepTime);
 
-          // Play audible hits at this step, routing through the provided output node
-          pat.forEach((row, ri) => {
-             if (audible[ri] && row[stepIdx] > VELOCITY_OFF) {
-              const vel = Math.round(row[stepIdx] * rs[ri].volume);
-              const instParams = currentKitParams?.[kit[ri].id];
-              if (instParams) {
-                playDrumVoice(ctx, kit[ri].id, stepTime, vel, output, instParams);
-              } else {
-                playDrumVoice(ctx, kit[ri].id, stepTime, vel, output);
-              }
-            }
-          });
-
-          // Update UI step
-          const displayStep = stepIdx;
-          setTimeout(() => setCurrentStep(displayStep), 0);
-
-          // Advance to next step with swing
           const nextIdx = (stepIdx + 1) % totalSteps;
           const currentStepTime = getSwungStepTime(
             stepIdx,
@@ -396,7 +439,6 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
             currentSwing,
           );
 
-          // If we wrapped around, add one full pattern duration
           if (nextIdx === 0) {
             nextStepTimeRef.current +=
               totalSteps * stepDuration - currentStepTime;
@@ -415,12 +457,11 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
 
       scheduler();
     },
-    [kit],
+    [playStepAtTime],
   );
 
   const start = useCallback(() => {
-    stop();
-    // Use externally-provided AudioContext (from master bus) or create a local one
+    haltPlayback();
     const externalCtx = options?.getAudioContext?.() ?? null;
     const ctx = externalCtx ?? ctxRef.current ?? new AudioContext();
     ctxRef.current = ctx;
@@ -429,15 +470,39 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
       void ctx.resume();
     }
 
-    // Route through the provided output node (gridGainNode) or default to destination
     const output = options?.getOutputNode?.() ?? ctx.destination;
-
     stepIndexRef.current = 0;
     nextStepTimeRef.current = ctx.currentTime + 0.05;
     setPlaying(true);
-    scheduleStep(ctx, output);
+
+    const totalSteps = stepsRef.current;
+    const stepDurations = buildStepDurations(
+      totalSteps,
+      bpmRef.current,
+      swingRef.current,
+    );
+
+    void (async () => {
+      const workletReady = await ensureDrumSchedulerWorklet(ctx);
+      if (workletReady) {
+        const node = createDrumSchedulerNode(ctx, (msg) => {
+          playStepAtTime(ctx, output, msg.index, msg.time);
+        });
+        if (node) {
+          workletNodeRef.current = node;
+          node.port.postMessage({
+            type: "configure",
+            totalSteps,
+            stepDurations,
+          });
+          node.port.postMessage({ type: "start" });
+          return;
+        }
+      }
+      scheduleStepTimer(ctx, output);
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- options is a stable object ref; including it causes infinite re-creation
-  }, [stop, scheduleStep, options?.getAudioContext, options?.getOutputNode]);
+  }, [haltPlayback, playStepAtTime, scheduleStepTimer, options?.getAudioContext, options?.getOutputNode]);
 
   // ─── Return ───────────────────────────────────────────────────
 
@@ -463,6 +528,8 @@ export function useBeatMaker(options?: UseBeatMakerOptions): UseBeatMakerReturn 
     setRowVolume,
     setBpm,
     setSwing,
+    metronomeEnabled,
+    setMetronomeEnabled,
     start,
     stop,
   };

@@ -5,6 +5,12 @@ import { VELOCITY_NORMAL, VELOCITY_OFF } from "../audio/types";
 
 vi.mock("../audio/drumSynth", () => ({
   playDrumVoice: vi.fn(),
+  playMetronomeClick: vi.fn(),
+}));
+
+vi.mock("../audio/drumSchedulerWorklet", () => ({
+  ensureDrumSchedulerWorklet: vi.fn().mockResolvedValue(false),
+  createDrumSchedulerNode: vi.fn(),
 }));
 
 import { playDrumVoice } from "../audio/drumSynth";
@@ -55,6 +61,14 @@ function patternWithHitOnFirstStep(result: ReturnType<typeof useBeatMaker>) {
   result.setPattern(next);
 }
 
+async function startPlayback(result: ReturnType<typeof useBeatMaker>) {
+  await act(async () => {
+    patternWithHitOnFirstStep(result);
+    result.start();
+    await Promise.resolve();
+  });
+}
+
 describe("useBeatMaker setRowVolume", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -81,14 +95,13 @@ describe("useBeatMaker setRowVolume", () => {
     expect(result.current.rowStates[0].volume).toBe(0);
   });
 
-  it("scales scheduled velocity by row volume during playback", () => {
+  it("scales scheduled velocity by row volume during playback", async () => {
     const { result } = renderHook(() => useBeatMaker());
 
-    act(() => {
-      patternWithHitOnFirstStep(result.current);
+    await act(async () => {
       result.current.setRowVolume(0, 0.5);
-      result.current.start();
     });
+    await startPlayback(result.current);
 
     advanceScheduler(100);
 
@@ -102,13 +115,10 @@ describe("useBeatMaker setRowVolume", () => {
     });
   });
 
-  it("uses default row volume of 0.8 when not changed", () => {
+  it("uses default row volume of 0.8 when not changed", async () => {
     const { result } = renderHook(() => useBeatMaker());
 
-    act(() => {
-      patternWithHitOnFirstStep(result.current);
-      result.current.start();
-    });
+    await startPlayback(result.current);
 
     advanceScheduler(100);
 
@@ -121,15 +131,14 @@ describe("useBeatMaker setRowVolume", () => {
     });
   });
 
-  it("does not schedule hits for muted rows regardless of volume", () => {
+  it("does not schedule hits for muted rows regardless of volume", async () => {
     const { result } = renderHook(() => useBeatMaker());
 
-    act(() => {
-      patternWithHitOnFirstStep(result.current);
+    await act(async () => {
       result.current.setRowVolume(0, 1);
       result.current.toggleMute(0);
-      result.current.start();
     });
+    await startPlayback(result.current);
 
     advanceScheduler(100);
 
@@ -139,5 +148,23 @@ describe("useBeatMaker setRowVolume", () => {
     act(() => {
       result.current.stop();
     });
+  });
+
+  it("clears scheduled playback on stop", async () => {
+    const { result } = renderHook(() => useBeatMaker());
+
+    await startPlayback(result.current);
+
+    advanceScheduler(50);
+    const callsBeforeStop = mockPlayDrumVoice.mock.calls.length;
+    expect(callsBeforeStop).toBeGreaterThan(0);
+
+    act(() => {
+      result.current.stop();
+    });
+
+    mockPlayDrumVoice.mockClear();
+    advanceScheduler(200);
+    expect(mockPlayDrumVoice).not.toHaveBeenCalled();
   });
 });

@@ -9,19 +9,25 @@
  * routed through a compressor. The overlay transport synchronizes with the main
  * beat maker transport for layered playback.
  */
-import { Download, Lock, Play, Square } from "lucide-react";
+import { Download, Lock, Music2, Play, Square } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
+import { motion } from "framer-motion";
+import { useLocation } from "wouter";
 import { downloadMidiBlob, exportNotesToMidi } from "../../utils/midiExport";
 import { cn } from "../../utils/cn";
 import { PanelHeader, SectionLabel } from "../ui";
-import { applySwingToNoteStart } from "../../audio/swingQuantize";
-import { VELOCITY_OFF } from "../../audio/types";
-import type { CellVelocity, PatternLength } from "../../audio/types";
+import { patternToMidiNotes } from "../../audio/beatPatternExport";
+import {
+  VELOCITY_OFF,
+  type CellVelocity,
+  type PatternLength,
+} from "../../audio/types";
 import { useBeatMaker, getAudibleRows } from "../../hooks/useBeatMaker";
 import type { UseBeatMakerReturn } from "../../hooks/useBeatMaker";
+import type { UseBeatMakerGridFocusReturn } from "../../hooks/useBeatMakerGridFocus";
 import { useMasterBus, type UseMasterBusReturn } from "../../hooks/useMasterBus";
 import { useOverlayTransport } from "../../hooks/useOverlayTransport";
+import { saveBeatHandoff } from "../../utils/beatToMidiHandoff";
 import { PatternLibraryPanel } from "./PatternLibraryPanel";
 import { MasterBusControls } from "./MasterBusControls";
 import { KitSelector } from "./KitSelector";
@@ -52,6 +58,10 @@ export interface DrumMachinePanelProps {
   onExportGated?: () => void;
   /** Callback when user hits a variation entitlement gate. */
   onVariationGated?: () => void;
+  /** Keyboard navigation focus (optional). */
+  gridFocus?: UseBeatMakerGridFocusReturn;
+  /** Respect reduced-motion preference for cell/playhead animation. */
+  reduceMotion?: boolean;
 }
 
 export function DrumMachinePanel({
@@ -62,7 +72,10 @@ export function DrumMachinePanel({
   canUseVariations = true,
   onExportGated,
   onVariationGated,
+  gridFocus,
+  reduceMotion = false,
 }: DrumMachinePanelProps) {
+  const [, navigate] = useLocation();
   // ─── Master Bus ─────────────────────────────────────────────────
   // Provides shared AudioContext, grid and overlay gain nodes routed
   // through a compressor to the destination.
@@ -97,6 +110,8 @@ export function DrumMachinePanel({
     setRowVolume,
     setBpm,
     setSwing,
+    metronomeEnabled,
+    setMetronomeEnabled,
     start,
     stop,
   } = bm;
@@ -127,36 +142,52 @@ export function DrumMachinePanel({
   // ─── MIDI Export ──────────────────────────────────────────────
 
   const exportMidi = useCallback(() => {
-    // Gate: free users can only export 16 steps
     if (!canExportFullMidi && steps > 16) {
       onExportGated?.();
       return;
     }
 
-    const notes: MidiNoteEvent[] = [];
-    const audible = getAudibleRows(rowStates);
-    // Free tier: limit export to first 16 steps
-    const exportSteps = canExportFullMidi ? steps : Math.min(steps, 16);
-
-    pattern.forEach((row, ri) => {
-      if (!audible[ri]) return;
-      row.forEach((vel, stepIdx) => {
-        if (stepIdx >= exportSteps) return;
-        if (vel === VELOCITY_OFF) return;
-        const startTime = applySwingToNoteStart(stepIdx, bpm, swing);
-        const stepDur = 60 / bpm / 4;
-        notes.push({
-          pitch: kit[ri].pitch,
-          start: startTime,
-          duration: stepDur * 0.8,
-          velocity: Math.round(vel * rowStates[ri].volume),
-        });
-      });
+    const notes = patternToMidiNotes({
+      pattern,
+      rowStates,
+      kit,
+      bpm,
+      swing,
+      steps,
+      canExportFullMidi,
     });
 
     const blob = exportNotesToMidi(notes, bpm, "Drum Pattern");
     downloadMidiBlob(blob, "drum-pattern.mid");
   }, [pattern, bpm, swing, rowStates, kit, steps, canExportFullMidi, onExportGated]);
+
+  const openInPianoRoll = useCallback(() => {
+    if (!canExportFullMidi && steps > 16) {
+      onExportGated?.();
+      return;
+    }
+    const notes = patternToMidiNotes({
+      pattern,
+      rowStates,
+      kit,
+      bpm,
+      swing,
+      steps,
+      canExportFullMidi,
+    });
+    saveBeatHandoff({ notes, bpm, name: "Drum Pattern" });
+    navigate("/midi?beat-handoff=1");
+  }, [
+    pattern,
+    rowStates,
+    kit,
+    bpm,
+    swing,
+    steps,
+    canExportFullMidi,
+    onExportGated,
+    navigate,
+  ]);
 
   // ─── Computed ─────────────────────────────────────────────────
 
@@ -217,6 +248,20 @@ export function DrumMachinePanel({
           <span className="w-7 tabular-nums text-right">{swing}%</span>
         </label>
 
+        <button
+          type="button"
+          onClick={() => setMetronomeEnabled(!metronomeEnabled)}
+          className={cn(
+            "midi-btn text-xs midi-physical-btn--metronome",
+            metronomeEnabled && "ring-1 ring-warning-400/60",
+          )}
+          aria-pressed={metronomeEnabled}
+          aria-label="Toggle metronome"
+          title="Metronome click on downbeats"
+        >
+          Metro
+        </button>
+
         {/* Steps */}
         <label className="flex items-center gap-xs text-xs text-muted-foreground">
           Steps
@@ -249,8 +294,19 @@ export function DrumMachinePanel({
         {/* Export */}
         <button
           type="button"
+          onClick={openInPianoRoll}
+          className="midi-btn text-xs"
+          title="Open pattern in the MIDI piano roll editor"
+          data-testid="beat-edit-piano-roll"
+        >
+          <Music2 className="h-3.5 w-3.5" />
+          Edit in piano roll
+        </button>
+
+        <button
+          type="button"
           onClick={exportMidi}
-          className={cn("midi-btn text-xs ml-auto", !canExportFullMidi && steps > 16 && "opacity-60")}
+          className={cn("midi-btn text-xs", !canExportFullMidi && steps > 16 && "opacity-60")}
           title={!canExportFullMidi && steps > 16 ? "Upgrade to export patterns longer than 16 steps" : "Export as MIDI file"}
         >
           <Download className="h-3.5 w-3.5" />
@@ -281,9 +337,9 @@ export function DrumMachinePanel({
                 className={cn(
                   "text-center text-[9px] tabular-nums select-none",
                   i % 4 === 0
-                    ? "text-primary-300 font-medium"
+                    ? "text-accent-midi-200 font-semibold"
                     : "text-muted-foreground",
-                  i % 16 === 0 && i > 0 && "border-l border-border",
+                  i % 16 === 0 && i > 0 && "border-l-2 border-accent-midi-400/40",
                 )}
               >
                 {i + 1}
@@ -360,36 +416,57 @@ export function DrumMachinePanel({
                 const isCurrent = playing && currentStep === ci;
                 const isDownbeat = ci % 4 === 0;
                 const isBarStart = ci % 16 === 0 && ci > 0;
+                const isFocused =
+                  gridFocus?.focus.row === ri && gridFocus?.focus.step === ci;
 
-                return (
+                const cellClassName = cn(
+                  "relative aspect-square min-h-[28px] rounded-sm border transition-colors duration-75 before:absolute before:-inset-1 before:content-['']",
+                  isActive
+                    ? cn(
+                        "border-primary-400/60 bg-primary-500/50",
+                        velocityOpacity(vel),
+                      )
+                    : cn(
+                        "hover:bg-muted",
+                        isDownbeat
+                          ? "border-border/80 bg-muted/40"
+                          : "border-border/50 bg-muted/20",
+                      ),
+                  isCurrent && "beat-playhead-cell ring-2 ring-warning-400/80 ring-inset",
+                  isFocused && "outline outline-1 outline-accent-midi-300/70 -outline-offset-1",
+                  isBarStart && "ml-0.5",
+                );
+
+                const cellButton = (
                   <button
-                    key={ci}
                     type="button"
+                    data-testid={`beat-grid-cell-${ri}-${ci}`}
                     onClick={() => toggleCell(ri, ci)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       clearCell(ri, ci);
                     }}
-                    className={cn(
-                      "relative aspect-square min-h-[28px] rounded-sm border transition-colors duration-75 before:absolute before:-inset-1 before:content-['']",
-                      isActive
-                        ? cn(
-                            "border-primary-400/60 bg-primary-500/50",
-                            velocityOpacity(vel),
-                          )
-                        : cn(
-                            "hover:bg-muted",
-                            isDownbeat
-                              ? "border-border/80 bg-muted/40"
-                              : "border-border/50 bg-muted/20",
-                          ),
-                      isCurrent && "ring-1 ring-warning-400/70 ring-inset",
-                      isBarStart && "ml-0.5",
-                    )}
+                    className={cellClassName}
                     aria-label={`${voice.label} step ${ci + 1}${isActive ? ` velocity ${vel}` : ""}`}
                     aria-pressed={isActive}
                   />
                 );
+
+                if (!reduceMotion && isCurrent) {
+                  return (
+                    <motion.div
+                      key={ci}
+                      className="relative"
+                      initial={{ scale: 0.92 }}
+                      animate={{ scale: 1 }}
+                      transition={{ duration: 0.08, ease: "easeOut" }}
+                    >
+                      {cellButton}
+                    </motion.div>
+                  );
+                }
+
+                return <div key={ci}>{cellButton}</div>;
               })}
             </div>
           ))}

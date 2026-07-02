@@ -24,6 +24,11 @@ import { API_BASE } from "../../config";
 import { trackEvent } from "../../analytics/events";
 import { ErrorState } from "../ui/error-state";
 import { SuccessFlash } from "../ui/success-flash";
+import {
+  clearBeatHandoff,
+  hasBeatHandoffQuery,
+  readBeatHandoff,
+} from "../../utils/beatToMidiHandoff";
 import "./midi-tokens.css";
 
 export interface MidiConvertPanelProps {
@@ -99,6 +104,27 @@ export function MidiConvertPanel({
     stemName: string;
   } | null>(null);
   const [batchMultiTrackOpen, setBatchMultiTrackOpen] = useState(false);
+  const [beatHandoffResult, setBeatHandoffResult] = useState<MidiConvertResult | null>(null);
+
+  useEffect(() => {
+    if (!hasBeatHandoffQuery()) return;
+    const handoff = readBeatHandoff();
+    if (!handoff) return;
+    clearBeatHandoff();
+    const maxEnd = handoff.notes.reduce(
+      (max, note) => Math.max(max, note.start + note.duration),
+      0,
+    );
+    setBeatHandoffResult({
+      notesDetected: handoff.notes.length,
+      durationSeconds: maxEnd,
+      tracks: 1,
+      inferenceTimeSeconds: 0,
+      pianoRollNotes: handoff.notes,
+      analysis: null,
+      fileAnalysis: null,
+    });
+  }, []);
 
   const handleViewPlans = useCallback(
     (source: "token_low" | "subscription_inactive" | "batch_token_low") => {
@@ -108,9 +134,9 @@ export function MidiConvertPanel({
     [onViewPlans],
   );
 
-  const displayResult = result ?? batchViewResult?.result ?? null;
-  const displayJobId = result ? activeMidiJobId : batchViewResult?.jobId ?? null;
-  const displayJobToken = result ? jobToken : batchViewResult?.jobToken ?? null;
+  const displayResult = beatHandoffResult ?? result ?? batchViewResult?.result ?? null;
+  const displayJobId = beatHandoffResult ? null : result ? activeMidiJobId : batchViewResult?.jobId ?? null;
+  const displayJobToken = beatHandoffResult ? null : result ? jobToken : batchViewResult?.jobToken ?? null;
 
   const comparisonSource = useMemo(
     () => ({
@@ -405,8 +431,8 @@ export function MidiConvertPanel({
   }, [batchJobs, settings.quantizeBpm, setError]);
 
   const stage: "source" | "settings" | "editor" =
-    !hasSourceSelected ? "source"
-    : result ? "editor"
+    beatHandoffResult || result ? "editor"
+    : !hasSourceSelected ? "source"
     : "settings";
 
   const sourceLabel =
@@ -936,20 +962,25 @@ export function MidiConvertPanel({
               </button>
             </MidiLaneDrawer>
 
-            {result && (
+            {(result || beatHandoffResult) && (
               <MidiResultPanel
-                result={result}
-                onDownload={downloadMidi}
-                isDownloading={isDownloadingMidi}
-                downloadError={downloadError}
+                result={result ?? beatHandoffResult!}
+                onDownload={beatHandoffResult ? () => {} : downloadMidi}
+                isDownloading={beatHandoffResult ? false : isDownloadingMidi}
+                downloadError={beatHandoffResult ? null : downloadError}
                 onNewConversion={() => {
                   setDownloadError(null);
                   setBatchViewResult(null);
+                  setBeatHandoffResult(null);
                   handleClear();
                 }}
                 jobId={displayJobId}
                 jobToken={displayJobToken}
-                sourceLabel={batchViewResult?.stemName ?? downloadSourceLabel ?? undefined}
+                sourceLabel={
+                  beatHandoffResult
+                    ? "drum pattern"
+                    : batchViewResult?.stemName ?? downloadSourceLabel ?? undefined
+                }
                 initialMode="edit"
                 onApplyReconvertBpm={(bpm) => {
                   updateSettings({ quantizeBpm: bpm, quantize: true });

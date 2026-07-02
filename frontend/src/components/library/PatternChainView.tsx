@@ -11,20 +11,21 @@
  */
 
 import { useCallback, useState } from "react";
-import { ChevronDown, ChevronUp, Minus, Plus, Trash2, Play, Square, Download, GripVertical } from "lucide-react";
+import { useLocation } from "wouter";
+import { ChevronDown, ChevronUp, Minus, Plus, Trash2, Play, Square, Download, GripVertical, Music2 } from "lucide-react";
 import type { BeatPreset, UseBeatMakerReturn } from "../../hooks/useBeatMaker";
 import type { UsePatternChainReturn } from "../../hooks/usePatternChain";
 import { downloadMidiBlob, exportNotesToMidi } from "../../utils/midiExport";
 import type { MidiNoteEvent } from "../../hooks/useMidiConvert";
-import { applySwingToNoteStart } from "../../audio/swingQuantize";
-import { VELOCITY_OFF } from "../../audio/types";
-import { getAudibleRows } from "../../hooks/useBeatMaker";
+import { patternToMidiNotes } from "../../audio/beatPatternExport";
+import { saveBeatHandoff } from "../../utils/beatToMidiHandoff";
 import { cn } from "../../utils/cn";
 
 export interface PatternChainViewProps {
   presets: BeatPreset[];
   patternChain: UsePatternChainReturn;
   beatMaker: UseBeatMakerReturn;
+  canExportFullMidi?: boolean;
   onClose?: () => void;
 }
 
@@ -32,8 +33,10 @@ export function PatternChainView({
   presets,
   patternChain: _patternChain,
   beatMaker,
+  canExportFullMidi = true,
   onClose,
 }: PatternChainViewProps) {
+  const [, navigate] = useLocation();
   const [selectedPresetId, setSelectedPresetId] = useState<string>(presets[0]?.name ?? "");
   const [chainPlaying, setChainPlaying] = useState(false);
   const { kit, rowStates, start, stop, setPattern, setBpm, setSwing, setSteps } = beatMaker;
@@ -69,27 +72,40 @@ export function PatternChainView({
     const { pattern, bpm, swing, steps } = exportFlattened();
     if (pattern.length === 0 || steps === 0) return;
 
-    const audible = getAudibleRows(rowStates);
-    const notes: MidiNoteEvent[] = [];
-    const stepDur = 60 / bpm / 4;
-
-    pattern.forEach((row, ri) => {
-      if (!audible[ri]) return;
-      row.forEach((vel, stepIdx) => {
-        if (vel === VELOCITY_OFF) return;
-        const startTime = applySwingToNoteStart(stepIdx, bpm, swing);
-        notes.push({
-          pitch: kit[ri].pitch,
-          start: startTime,
-          duration: stepDur * 0.8,
-          velocity: Math.round(vel * rowStates[ri].volume),
-        });
-      });
+    const notes = patternToMidiNotes({
+      pattern,
+      rowStates,
+      kit,
+      bpm,
+      swing,
+      steps: steps as import("../../audio/types").PatternLength,
+      canExportFullMidi: true,
     });
 
     const blob = exportNotesToMidi(notes, bpm, `Pattern Chain (${totalBars} bars)`);
     downloadMidiBlob(blob, "pattern-chain.mid");
   }, [rowStates, kit, exportFlattened, totalBars]);
+
+  const openChainInPianoRoll = useCallback(() => {
+    const { pattern, bpm, swing, steps } = exportFlattened();
+    if (pattern.length === 0 || steps === 0) return;
+
+    const notes = patternToMidiNotes({
+      pattern,
+      rowStates,
+      kit,
+      bpm,
+      swing,
+      steps: steps as import("../../audio/types").PatternLength,
+      canExportFullMidi,
+    });
+    saveBeatHandoff({
+      notes,
+      bpm,
+      name: `Pattern Chain (${totalBars} bars)`,
+    });
+    navigate("/midi?beat-handoff=1");
+  }, [exportFlattened, rowStates, kit, canExportFullMidi, totalBars, navigate]);
 
   return (
     <div className="space-y-md">
@@ -110,6 +126,17 @@ export function PatternChainView({
           >
             {chainPlaying ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
             {chainPlaying ? "Stop" : "Play Chain"}
+          </button>
+          <button
+            type="button"
+            onClick={openChainInPianoRoll}
+            disabled={chain.length === 0}
+            className={cn("midi-btn text-xs", chain.length === 0 && "opacity-50")}
+            data-testid="beat-chain-edit-piano-roll"
+            aria-label="Edit chain in piano roll"
+          >
+            <Music2 className="h-3.5 w-3.5" />
+            Piano roll
           </button>
           <button
             type="button"
