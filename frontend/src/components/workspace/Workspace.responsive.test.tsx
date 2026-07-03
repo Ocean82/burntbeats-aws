@@ -1,7 +1,7 @@
 import React from "react";
 import { render } from "@testing-library/react"
 import { screen } from "@testing-library/dom";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isSignedIn: false, isLoaded: true, getToken: () => Promise.resolve(null) }),
@@ -143,6 +143,8 @@ function setViewport(scenario: "mobile" | "tablet" | "desktop") {
 describe("Workspace responsive behavior", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Tests validate the full workspace layout — enable advanced mode
+    localStorage.setItem("bb-workspace-advanced", "1");
     // Default: no tool active, mixer collapsed
     mockUseToolDrawer.mockReturnValue({
       isOpen: false,
@@ -155,6 +157,10 @@ describe("Workspace responsive behavior", () => {
       toggleMixer: vi.fn(),
       viewportSize: { width: 1024, height: 768 },
     });
+  });
+
+  afterEach(() => {
+    localStorage.removeItem("bb-workspace-advanced");
   });
 
   describe("Mobile (< 768px) - Req 10.1: ToolSidebar horizontal toolbar", () => {

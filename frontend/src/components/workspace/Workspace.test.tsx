@@ -1,7 +1,7 @@
 import React from "react";
 import { render } from "@testing-library/react"
 import { screen } from "@testing-library/dom";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { Workspace } from "./Workspace";
 import { LAYOUT } from "@/constants/layout";
 
@@ -144,6 +144,15 @@ function setViewport(opts: {
 }
 
 describe("Workspace", () => {
+  beforeEach(() => {
+    // Tests validate the full workspace layout — enable advanced mode
+    localStorage.setItem("bb-workspace-advanced", "1");
+  });
+
+  afterEach(() => {
+    localStorage.removeItem("bb-workspace-advanced");
+  });
+
   describe("desktop layout (≥1024px wide, ≥768px tall)", () => {
     it("renders CSS Grid container occupying full height below header", () => {
       setViewport({ desktop: true, tablet: true, tall: true });

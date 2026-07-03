@@ -17,6 +17,7 @@ import { EffectsPanelBottomSheet } from "./EffectsPanelBottomSheet";
 import { MixerConsole } from "./MixerConsole";
 import { WaveformTimeline, STEM_LANE_COLORS } from "./WaveformTimeline";
 import type { WaveformTimelineStem } from "./WaveformTimeline";
+import { StemFocusOverlay } from "./StemFocusOverlay";
 import { getStemDefinition, getLoadedStemDefinition } from "@/data/stemDefinitions";
 
 /**
@@ -67,7 +68,16 @@ export function Workspace() {
   // --- Transport state ---
   const [zoom, setZoom] = useState(1);
   const [activeStemId, setActiveStemId] = useState<string | undefined>(undefined);
+  const [expandedStemId, setExpandedStemId] = useState<string | null>(null);
   const hasStemsLoaded = Object.keys(audio.stemBuffers).length > 0;
+
+  const handleStemExpand = useCallback((stemId: string) => {
+    setExpandedStemId(stemId);
+  }, []);
+
+  const handleStemFocusClose = useCallback(() => {
+    setExpandedStemId(null);
+  }, []);
 
   // --- Waveform data ---
   const loadedStems = useAppStore((s) => s.loadedStems);
@@ -289,6 +299,7 @@ export function Workspace() {
           stems={resolvedStems}
           activeStemId={activeStemId}
           onStemActivate={setActiveStemId}
+          onStemExpand={handleStemExpand}
           playheadPct={playheadPct}
           showPlayhead
           zoom={zoom}
@@ -357,6 +368,27 @@ export function Workspace() {
         )}
       </AnimatePresence>
       </div>
+
+      {/* Stem Focus Overlay — full-screen single-stem editor */}
+      <AnimatePresence>
+        {expandedStemId && (() => {
+          const focusStem = resolvedStems.find((s) => s.id === expandedStemId);
+          if (!focusStem) return null;
+          return (
+            <StemFocusOverlay
+              key={expandedStemId}
+              stem={focusStem}
+              isPlaying={audio.isPlayingMix}
+              playheadPct={playheadPct}
+              onPlayPause={handlePlayPause}
+              onStop={handleStop}
+              onRewind={handleRewind}
+              onSeek={handleSeek}
+              onClose={handleStemFocusClose}
+            />
+          );
+        })()}
+      </AnimatePresence>
     </>
   );
 }

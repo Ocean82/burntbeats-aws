@@ -19,6 +19,8 @@ export interface WaveformTimelineProps {
   /** Active/selected stem id */
   activeStemId?: string;
   onStemActivate?: (stemId: string) => void;
+  /** Called when user clicks the expand button on a stem lane */
+  onStemExpand?: (stemId: string) => void;
   /** Playhead position as percentage (0-100) */
   playheadPct?: number;
   showPlayhead?: boolean;
@@ -67,9 +69,10 @@ interface LaneProps {
   waveform: number[];
   isActive: boolean;
   onActivate: (stemId: string) => void;
+  onExpand?: (stemId: string) => void;
 }
 
-const Lane = memo(function Lane({ stem, waveform, isActive, onActivate }: LaneProps) {
+const Lane = memo(function Lane({ stem, waveform, isActive, onActivate, onExpand }: LaneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -115,7 +118,7 @@ const Lane = memo(function Lane({ stem, waveform, isActive, onActivate }: LanePr
       tabIndex={0}
       aria-label={`${stem.label} waveform lane — click to select`}
       className={cn(
-        "relative flex-1 min-h-[40px] overflow-hidden rounded-lg border transition-all cursor-pointer",
+        "group relative flex-1 min-h-[40px] overflow-hidden rounded-lg border transition-all cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         isActive
           ? "border-[color:var(--lane-color)]/50 bg-[color:var(--lane-color)]/[0.06]"
@@ -149,6 +152,27 @@ const Lane = memo(function Lane({ stem, waveform, isActive, onActivate }: LanePr
       >
         {stem.label}
       </span>
+
+      {/* Expand button — opens full-screen focused editor for this stem */}
+      {onExpand && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onExpand(stem.id);
+          }}
+          aria-label={`Expand ${stem.label} to full screen`}
+          className={cn(
+            "absolute right-2 top-1 z-10 flex h-6 w-6 items-center justify-center rounded",
+            "text-white/40 hover:text-white hover:bg-white/10 transition",
+            "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+          )}
+        >
+          <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
+            <path d="M10 2h4v4M6 14H2v-4M14 2L9.5 6.5M2 14l4.5-4.5" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 });
@@ -160,6 +184,7 @@ export function WaveformTimeline({
   waveforms,
   activeStemId,
   onStemActivate,
+  onStemExpand,
   playheadPct = 0,
   showPlayhead = false,
   zoom = 1,
@@ -204,6 +229,7 @@ export function WaveformTimeline({
             waveform={resolvedWaveforms[stem.id] ?? []}
             isActive={stem.id === activeStemId}
             onActivate={handleActivate}
+            onExpand={onStemExpand}
           />
         ))}
 
