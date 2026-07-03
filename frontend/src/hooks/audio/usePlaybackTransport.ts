@@ -17,6 +17,8 @@ export interface UsePlaybackTransportReturn {
   handleStopMix: () => void;
   handleSeekMix: (pct: number, opts?: { phase?: SeekPhase }) => void;
   mixStemRuntimesRef: React.MutableRefObject<MixStemRuntime[]>;
+  /** Update the internal stem states ref so handleSeekMix rebuilds with current mute/solo. */
+  updateStemStates: (states: Record<string, StemEditorState>) => void;
 }
 
 export function usePlaybackTransport(
@@ -312,5 +314,8 @@ export function usePlaybackTransport(
     handleStopMix,
     handleSeekMix,
     mixStemRuntimesRef,
+    updateStemStates: useCallback((states: Record<string, StemEditorState>) => {
+      lastStemStatesRef.current = states;
+    }, []),
   };
 }

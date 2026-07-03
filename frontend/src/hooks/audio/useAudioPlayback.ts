@@ -245,6 +245,25 @@ export function useAudioPlayback(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stemStatesProp, transport.isPlayingMix, preview.playingStem]);
 
+  // --- Rebuild mix routing when mute/solo changes during playback ---
+  const prevMuteSoloSigRef = useRef("");
+  useEffect(() => {
+    if (!stemStatesProp || !transport.isPlayingMix) {
+      prevMuteSoloSigRef.current = "";
+      return;
+    }
+    const ids = Object.keys(stemStatesProp);
+    const sig = stemMuteSoloSignature(stemStatesProp, ids);
+    if (prevMuteSoloSigRef.current && sig !== prevMuteSoloSigRef.current) {
+      // Mute/solo changed while playing — sync latest states and rebuild at current position
+      transport.updateStemStates(stemStatesProp);
+      const currentPct = playheadPositionRef.current;
+      transport.handleSeekMix(currentPct);
+    }
+    prevMuteSoloSigRef.current = sig;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stemStatesProp, transport.isPlayingMix]);
+
   // --- Cross-cutting callbacks ---
   const handlePlayMix = useCallback(
     async (

@@ -3,6 +3,7 @@ import {
   Pause,
   Play,
   Repeat,
+  Settings2,
   SkipBack,
   Square,
   ZoomIn,
@@ -25,6 +26,10 @@ export interface TransportBarProps {
   onLoopToggle: () => void;
   onExport?: () => void;
   disabled?: boolean;
+  /** Whether the workspace is in advanced (full mixer/tools) mode. */
+  advancedMode?: boolean;
+  /** Toggle advanced mode on/off. */
+  onToggleAdvanced?: () => void;
 }
 
 export function TransportBar({
@@ -40,6 +45,8 @@ export function TransportBar({
   onLoopToggle,
   onExport,
   disabled = false,
+  advancedMode = false,
+  onToggleAdvanced,
 }: TransportBarProps) {
   return (
     <div
@@ -177,6 +184,28 @@ export function TransportBar({
       >
         <Repeat className="h-4 w-4" />
       </button>
+
+      {/* Advanced mode toggle — reveals mixer, EQ, FX, and tool sidebar */}
+      {onToggleAdvanced && (
+        <button
+          type="button"
+          onClick={onToggleAdvanced}
+          aria-label={advancedMode ? "Switch to simple view" : "Show mixer & tools"}
+          aria-pressed={advancedMode}
+          title={advancedMode ? "Simple view" : "Mixer & tools"}
+          className={cn(
+            "flex h-8 items-center gap-1 rounded-lg px-2 transition text-xs font-medium",
+            advancedMode
+              ? "bg-primary-500/20 text-primary-100 border border-primary-500/40"
+              : "text-neutral-400 hover:text-white hover:bg-white/10 border border-transparent",
+          )}
+        >
+          <Settings2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">
+            {advancedMode ? "Simple" : "Mixer"}
+          </span>
+        </button>
+      )}
 
       {/* Export */}
       {onExport && (

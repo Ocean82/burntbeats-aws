@@ -22,12 +22,16 @@ import { getStemDefinition, getLoadedStemDefinition } from "@/data/stemDefinitio
 /**
  * Workspace — CSS Grid layout container for the post-split editing environment.
  *
+ * Default: "Listen" mode — simplified view with transport + waveform lanes only.
+ * Advanced tools (sidebar, effects, mixer) are hidden until the user asks for them.
+ * This progressive disclosure reduces cognitive load for new users.
+ *
  * Grid areas:
  *   - transport: full-width top bar
- *   - sidebar: left tool icon bar (collapses to horizontal toolbar on mobile)
+ *   - sidebar: left tool icon bar (collapses to horizontal toolbar on mobile) [advanced]
  *   - waveform: center main content
- *   - effects: right slide-out panel (conditional)
- *   - mixer: full-width bottom section
+ *   - effects: right slide-out panel (conditional) [advanced]
+ *   - mixer: full-width bottom section [advanced]
  *
  * Requirements: 3.1, 3.3, 9.1
  */
@@ -38,6 +42,20 @@ export function Workspace() {
   const audio = useAudio();
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const { status } = useSubscription();
+
+  // --- Advanced mode: hidden by default, persisted in localStorage ---
+  const [advancedMode, setAdvancedMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("bb-workspace-advanced") === "1";
+  });
+  const toggleAdvancedMode = useCallback(() => {
+    setAdvancedMode((prev) => {
+      const next = !prev;
+      localStorage.setItem("bb-workspace-advanced", next ? "1" : "0");
+      if (!next) close(); // close effects panel when leaving advanced mode
+      return next;
+    });
+  }, [close]);
 
   // Track which stem the effects panel applies to.
   // Defaults to the first available stem or empty string if no stems loaded.
@@ -131,32 +149,44 @@ export function Workspace() {
   );
 
   // Effects panel pushes waveform on desktop, overlays on tablet
-  const effectsPushes = isDesktop && isOpen;
-  const effectsOverlays = isTablet && !isDesktop && isOpen;
+  const effectsPushes = advancedMode && isDesktop && isOpen;
+  const effectsOverlays = advancedMode && isTablet && !isDesktop && isOpen;
 
   // Grid template columns:
-  // Desktop with effects open: sidebar | waveform (1fr) | effects (320px)
-  // Desktop without effects: sidebar | waveform (1fr)
+  // Listen mode: full-width waveform only (no sidebar)
+  // Advanced desktop with effects open: sidebar | waveform (1fr) | effects (320px)
+  // Advanced desktop without effects: sidebar | waveform (1fr)
   // Mobile: full-width single column
   const gridTemplateColumns = isMobile
     ? "1fr"
-    : effectsPushes
-      ? `${LAYOUT.TOOL_SIDEBAR_WIDTH}px 1fr ${LAYOUT.EFFECTS_PANEL_WIDTH}px`
-      : `${LAYOUT.TOOL_SIDEBAR_WIDTH}px 1fr`;
+    : !advancedMode
+      ? "1fr"
+      : effectsPushes
+        ? `${LAYOUT.TOOL_SIDEBAR_WIDTH}px 1fr ${LAYOUT.EFFECTS_PANEL_WIDTH}px`
+        : `${LAYOUT.TOOL_SIDEBAR_WIDTH}px 1fr`;
 
   // Grid template rows:
+  // Listen mode: transport | waveform (no mixer row)
   // Mobile: transport | toolbar | waveform | mixer
   // Desktop: transport | waveform + mixer
   const gridTemplateRows = isMobile
-    ? `${LAYOUT.TRANSPORT_HEIGHT}px auto 1fr auto`
-    : `${LAYOUT.TRANSPORT_HEIGHT}px 1fr auto`;
+    ? advancedMode
+      ? `${LAYOUT.TRANSPORT_HEIGHT}px auto 1fr auto`
+      : `${LAYOUT.TRANSPORT_HEIGHT}px 1fr`
+    : advancedMode
+      ? `${LAYOUT.TRANSPORT_HEIGHT}px 1fr auto`
+      : `${LAYOUT.TRANSPORT_HEIGHT}px 1fr`;
 
   // Grid template areas
   const gridTemplateAreas = isMobile
-    ? `"transport" "toolbar" "waveform" "mixer"`
-    : effectsPushes
-      ? `"transport transport transport" "sidebar waveform effects" "sidebar mixer mixer"`
-      : `"transport transport" "sidebar waveform" "sidebar mixer"`;
+    ? advancedMode
+      ? `"transport" "toolbar" "waveform" "mixer"`
+      : `"transport" "waveform"`
+    : !advancedMode
+      ? `"transport" "waveform"`
+      : effectsPushes
+        ? `"transport transport transport" "sidebar waveform effects" "sidebar mixer mixer"`
+        : `"transport transport" "sidebar waveform" "sidebar mixer"`;
 
   return (
     <>
@@ -211,11 +241,13 @@ export function Workspace() {
           loopEnabled={audio.loopEnabled}
           onLoopToggle={handleLoopToggle}
           disabled={!hasStemsLoaded}
+          advancedMode={advancedMode}
+          onToggleAdvanced={toggleAdvancedMode}
         />
       </div>
 
-      {/* ToolSidebar — vertical on tablet+, horizontal toolbar on mobile */}
-      {isMobile ? (
+      {/* ToolSidebar — vertical on tablet+, horizontal toolbar on mobile (advanced only) */}
+      {advancedMode && isMobile && (
         <div
           data-testid="workspace-toolbar"
           className="flex items-center gap-1 border-b border-white/5 bg-[hsl(220,15%,10%)]/70 backdrop-blur-sm px-2"
@@ -227,7 +259,8 @@ export function Workspace() {
             onToolToggle={toggle}
           />
         </div>
-      ) : (
+      )}
+      {advancedMode && !isMobile && (
         <div
           data-testid="workspace-sidebar"
           className="flex flex-col items-center gap-1 border-r border-white/5 bg-[hsl(220,15%,10%)]/70 backdrop-blur-sm py-2"
@@ -262,7 +295,7 @@ export function Workspace() {
         />
 
         {/* EffectsPanel overlay mode (tablet 768-1023px) */}
-        {effectsOverlays && activeTool && (
+        {advancedMode && effectsOverlays && activeTool && (
           <div
             data-testid="workspace-effects-overlay"
             className="absolute inset-y-0 right-0 z-10 border-l border-white/5 bg-[hsl(220,15%,12%)]/80 backdrop-blur-md"
@@ -283,7 +316,7 @@ export function Workspace() {
 
       {/* EffectsPanel — right column on desktop (only when pushed) */}
       <AnimatePresence>
-        {effectsPushes && activeTool && (
+        {advancedMode && effectsPushes && activeTool && (
           <div
             data-testid="workspace-effects"
             key="effects-panel"
@@ -303,17 +336,19 @@ export function Workspace() {
         )}
       </AnimatePresence>
 
-      {/* MixerConsole — bottom, spans full width below sidebar+waveform */}
-      <div
-        data-testid="workspace-mixer"
-        style={{ gridArea: "mixer" }}
-      >
-        <MixerConsole />
-      </div>
+      {/* MixerConsole — bottom, spans full width below sidebar+waveform (advanced only) */}
+      {advancedMode && (
+        <div
+          data-testid="workspace-mixer"
+          style={{ gridArea: "mixer" }}
+        >
+          <MixerConsole />
+        </div>
+      )}
 
-      {/* Mobile bottom sheet for EffectsPanel */}
+      {/* Mobile bottom sheet for EffectsPanel (advanced only) */}
       <AnimatePresence>
-        {isMobile && isOpen && activeTool && (
+        {advancedMode && isMobile && isOpen && activeTool && (
           <EffectsPanelBottomSheet
             activeTool={activeTool}
             onClose={close}
