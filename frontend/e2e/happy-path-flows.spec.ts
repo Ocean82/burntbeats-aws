@@ -125,12 +125,10 @@ test.describe("Stem split happy path", () => {
     });
 
     await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-    const splitButton = page.getByTestId("split-button");
+    const splitButton = page.getByRole("button", { name: /^Split$/ });
     await expect(splitButton).toBeEnabled();
 
-    // Click split — use dispatchEvent to bypass animation instability during phase transitions
-    await splitButton.scrollIntoViewIfNeeded();
-    await splitButton.dispatchEvent("click");
+    await splitButton.click();
 
     // Wait for request and assert payload has expected shape
     await page.waitForLoadState("networkidle");
