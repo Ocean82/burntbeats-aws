@@ -19,9 +19,7 @@ export interface ClerkProviderConfig {
 
 export function shouldMountClerkProvider({
   clerkPubKey,
-  isLocalDevFullApp,
 }: ClerkProviderConfig): boolean {
-  if (isLocalDevFullApp) return false;
   return Boolean(clerkPubKey);
 }
 

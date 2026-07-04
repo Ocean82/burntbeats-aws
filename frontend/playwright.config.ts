@@ -9,7 +9,7 @@ dotenv.config({ path: path.join(__dirname, ".env.local"), quiet: true });
 
 /** Non-empty placeholder so Vite can boot if `.env` is missing (Clerk may warn; full app mode skips sign-in). */
 const clerkFallback =
-  "pk_test_0000000000000000000000000000000000000000000000000000000000000000";
+  "pk_test_Y2xlcmsuYnVybnRiZWF0cy50ZXN0JA";
 
 /** When Playwright starts Vite itself, use a port that usually does not clash with `npm run dev` (5173). */
 const DEFAULT_DEV_PORT = "5180";

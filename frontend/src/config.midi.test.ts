@@ -26,13 +26,13 @@ describe("MIDI audio format config", () => {
 });
 
 describe("Clerk provider config", () => {
-  it("skips ClerkProvider in local-dev full-app mode even when a placeholder key is set", () => {
+  it("mounts ClerkProvider in local-dev full-app mode when a valid fallback key is set", () => {
     expect(
       shouldMountClerkProvider({
-        clerkPubKey: "pk_test_0000000000000000000000000000000000000000000000000000000000000000",
+        clerkPubKey: "pk_test_Y2xlcmsuYnVybnRiZWF0cy50ZXN0JA",
         isLocalDevFullApp: true,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("mounts ClerkProvider when auth is enabled and a key is present", () => {
@@ -42,5 +42,14 @@ describe("Clerk provider config", () => {
         isLocalDevFullApp: false,
       }),
     ).toBe(true);
+  });
+
+  it("skips ClerkProvider when no key is present", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: undefined,
+        isLocalDevFullApp: true,
+      }),
+    ).toBe(false);
   });
 });
