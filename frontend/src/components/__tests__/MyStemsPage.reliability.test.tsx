@@ -67,22 +67,22 @@ describe("MyStemsPage EmptyState wiring", () => {
     render(<MyStemsPage onClose={vi.fn()} />);
 
     // Title from the EmptyState
-    expect(screen.getByText("No stems yet")).toBeInTheDocument();
+    expect(screen.getByText("No tracks yet")).toBeInTheDocument();
   });
 
-  it("renders the 'Split Your First Track' action button when totalJobs is 0", () => {
+  it("renders the 'Split Your First Song' action button when totalJobs is 0", () => {
     render(<MyStemsPage onClose={vi.fn()} />);
 
     expect(
-      screen.getByRole("button", { name: /split your first track/i }),
+      screen.getByRole("button", { name: /split your first song/i }),
     ).toBeInTheDocument();
   });
 
-  it("calls onClose when the 'Split Your First Track' button is clicked", async () => {
+  it("calls onClose when the 'Split Your First Song' button is clicked", async () => {
     const onClose = vi.fn();
     render(<MyStemsPage onClose={onClose} />);
 
-    screen.getByRole("button", { name: /split your first track/i }).click();
+    screen.getByRole("button", { name: /split your first song/i }).click();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
