@@ -125,7 +125,7 @@ test.describe("Stem split happy path", () => {
     });
 
     await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
-    const splitButton = page.getByRole("button", { name: /^Split$/ });
+    const splitButton = page.getByTestId("split-button");
     await expect(splitButton).toBeEnabled();
 
     await splitButton.click();
