@@ -22,7 +22,7 @@ export interface MidiConvertPageProps {
   usageLoading: boolean;
   checkoutNotice: string | null;
   onViewPlans?: () => void;
-  onBackToHub?: () => void;
+  onBackToHome?: () => void;
 }
 
 type PageTab = "workstation" | "history";
@@ -34,7 +34,7 @@ export function MidiConvertPage({
   usageLoading,
   checkoutNotice,
   onViewPlans,
-  onBackToHub,
+  onBackToHome,
 }: MidiConvertPageProps) {
   const [activeTab, setActiveTab] = useState<PageTab>("workstation");
   const showE2eMidiEditor =
@@ -82,10 +82,10 @@ export function MidiConvertPage({
           }
           actions={
             <div className="flex items-center gap-2">
-              {onBackToHub && (
+              {onBackToHome && (
                 <button
                   type="button"
-                  onClick={onBackToHub}
+                  onClick={onBackToHome}
                   className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition hover:border-border hover:text-primary-200 tap-feedback"
                   aria-label={BACK_TO_HOME_LABEL}
                 >

@@ -1,4 +1,5 @@
 import { X, LayoutPanelLeft, Sparkles, Music, Settings, FileDown } from "lucide-react";
+import { getTool } from "../data/toolCatalog";
 import { useUiStore } from "../store/uiStore";
 
 export interface SessionSidebarProps {
@@ -14,6 +15,7 @@ export function SessionSidebar({
   onQuickExport,
 }: SessionSidebarProps) {
   const { isSidebarOpen, toggleSidebar, setSidebarOpen } = useUiStore();
+  const splitTool = getTool("editor");
 
   return (
     <aside
@@ -77,13 +79,13 @@ export function SessionSidebar({
           <div className="flex items-center justify-between px-4 pt-3 pb-1">
             <h2 className="flex items-center gap-2 text-base font-bold tracking-tight">
               <Sparkles className="h-4 w-4 text-primary-400" aria-hidden />
-              Session hub
+              Session
             </h2>
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
               className="rounded-lg p-1 text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
-              aria-label="Close session hub"
+              aria-label="Close session panel"
             >
               <X className="h-4 w-4" />
             </button>
@@ -93,7 +95,7 @@ export function SessionSidebar({
             <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm leading-relaxed text-muted-foreground">
               <p>
                 Workflow progress lives in the step bar under the header. Use{" "}
-                <span className="text-secondary-foreground">Stem editor</span> for upload,
+                <span className="text-secondary-foreground">{splitTool.headerTabLabel}</span> for upload,
                 split, and mix.
               </p>
               {hasCompletedFirstExport ? (

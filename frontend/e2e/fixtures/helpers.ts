@@ -33,11 +33,30 @@ export function minimalWavBuffer(): Buffer {
 /** Default wait for lazy-loaded editor shell (Vite cold start under parallel workers). */
 export const E2E_APP_READY_MS = 20_000;
 
-/** Suppress onboarding tour and cookie banner so they don't block the editor. */
+/** Suppress onboarding tours and cookie banner so they do not block E2E flows. */
 export function skipOnboarding(page: import("@playwright/test").Page) {
   return page.addInitScript(() => {
     localStorage.setItem("burnt-beats-onboarding-complete", "true");
+    localStorage.setItem("burnt-beats-editor-tour-complete", "true");
     localStorage.setItem("burntbeats_cookie_consent", "declined");
+  });
+}
+
+export function skipAllTours(page: import("@playwright/test").Page) {
+  return skipOnboarding(page);
+}
+
+/** Open the signed-in home hub and wait for chrome controls. */
+export async function gotoHome(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await expect(page.getByTestId("settings-menu-trigger")).toBeVisible({
+    timeout: E2E_APP_READY_MS,
+  });
+  const accountChrome = page
+    .getByTestId("account-menu")
+    .or(page.getByText("Local dev", { exact: true }));
+  await expect(accountChrome.first()).toBeVisible({
+    timeout: E2E_APP_READY_MS,
   });
 }
 

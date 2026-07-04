@@ -7,8 +7,10 @@ import { useModalA11y } from "../hooks/useModalA11y";
 import { useProductMotion } from "../motion/useProductMotion";
 import { useAppEvent } from "../store/eventBus";
 import {
+  EDITOR_ONBOARDING_KEY,
   HUB_ONBOARDING_KEY,
   HUB_ONBOARDING_STEPS,
+  EDITOR_ONBOARDING_PENDING_KEY,
   markEditorTourPending,
 } from "../data/onboardingSteps";
 import { getTool } from "../data/toolCatalog";
@@ -262,12 +264,11 @@ export function OnboardingTour({
   );
 }
 
-// Hook to reset onboarding (for testing or user request)
 export function useResetOnboarding() {
   return () => {
     localStorage.removeItem(HUB_ONBOARDING_KEY);
-    localStorage.removeItem("burnt-beats-editor-tour-complete");
-    localStorage.removeItem("burnt-beats-editor-tour-pending");
+    localStorage.removeItem(EDITOR_ONBOARDING_KEY);
+    localStorage.removeItem(EDITOR_ONBOARDING_PENDING_KEY);
     window.location.reload();
   };
 }

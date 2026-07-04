@@ -7,8 +7,18 @@ import {
   Upload,
 } from "lucide-react";
 import { StemLaneGhostPreview } from "../editor/StemLaneGhostPreview";
+import { getTool } from "../../data/toolCatalog";
 
-const WORKSPACE_TABS = ["Stem editor", "MIDI", "Beats"] as const;
+const splitTool = getTool("editor");
+const notesTool = getTool("midi");
+const beatsTool = getTool("beats");
+const splitsTool = getTool("my-stems");
+
+const WORKSPACE_TABS = [
+  splitTool.headerTabLabel,
+  notesTool.headerTabLabel,
+  beatsTool.headerTabLabel,
+] as const;
 const STEM_ROWS = [
   { label: "Vocals", value: "Ready", colorClass: "bg-[var(--stem-vocals)]" },
   { label: "Drums", value: "Ready", colorClass: "bg-[var(--stem-drums)]" },
@@ -118,8 +128,8 @@ export function LandingProductShowcase() {
                       Workflow stays live
                     </p>
                     <p className="text-xs leading-relaxed text-muted-foreground">
-                      Mix levels, reopen jobs from My stems, then hand off into
-                      MIDI or export.
+                      Mix levels, reopen jobs from {splitsTool.primaryName}, then hand off into{" "}
+                      {notesTool.headerTabLabel.toLowerCase()} or export.
                     </p>
                   </div>
                 </div>
@@ -134,7 +144,7 @@ export function LandingProductShowcase() {
                   Timeline
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Stem editor with live mix workspace
+                  {splitTool.primaryName} with live mix workspace
                 </p>
               </div>
               <div className="rounded-full border border-border/70 bg-muted/45 px-sm py-1 text-[11px] font-medium text-secondary-foreground">
@@ -188,7 +198,7 @@ export function LandingProductShowcase() {
                 className="h-4 w-4 text-primary-200"
                 aria-hidden="true"
               />
-              My stems replay
+              {splitsTool.primaryName} replay
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Reopen past jobs instead of losing the session to a download
@@ -198,7 +208,7 @@ export function LandingProductShowcase() {
           <div className="rounded-xl border border-border/70 bg-background/40 px-sm py-sm">
             <div className="flex items-center gap-xs text-sm font-medium text-foreground">
               <Piano className="h-4 w-4 text-midi-gold/90" aria-hidden="true" />
-              MIDI handoff
+              {notesTool.primaryName} handoff
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               Move from separated audio into note data inside the same

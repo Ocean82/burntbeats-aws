@@ -37,7 +37,9 @@ interface UseAppKeyboardShortcutsArgs {
   loopEnabled: boolean;
   setLoopEnabled: (enabled: boolean) => void;
   onTriggerSplit?: () => void;
-  setActiveView?: (view: "editor" | "speech" | "midi" | "pricing" | "my-stems") => void;
+  setActiveView?: (
+    view: "editor" | "speech" | "midi" | "beats" | "tuner" | "pricing" | "my-stems",
+  ) => void;
 }
 
 export function useAppKeyboardShortcuts({
@@ -168,6 +170,8 @@ export function useAppKeyboardShortcuts({
       navMidi: () => setActiveView?.("midi"),
       navPricing: () => setActiveView?.("pricing"),
       navMyStems: () => setActiveView?.("my-stems"),
+      navBeats: () => setActiveView?.("beats"),
+      navTuner: () => setActiveView?.("tuner"),
     };
   }, [
     closeModal,

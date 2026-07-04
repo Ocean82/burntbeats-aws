@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BACK_TO_HOME_LABEL,
-  getHeaderTools,
+  getHeaderToolsOrdered,
   getPrimaryTools,
   getSecondaryTools,
   getTool,
@@ -40,8 +40,19 @@ describe("toolCatalog", () => {
     expect(getTool("patterns").route).toBe("/beats?tab=drums&focus=patterns");
   });
 
+  it("orders header tools by workflow", () => {
+    expect(getHeaderToolsOrdered().map((t) => t.id)).toEqual([
+      "editor",
+      "speech",
+      "midi",
+      "beats",
+      "tuner",
+      "my-stems",
+    ]);
+  });
+
   it("includes tuner in header tools", () => {
-    const headerIds = getHeaderTools().map((t) => t.id);
+    const headerIds = getHeaderToolsOrdered().map((t) => t.id);
     expect(headerIds).toContain("tuner");
     expect(headerIds).toContain("my-stems");
   });

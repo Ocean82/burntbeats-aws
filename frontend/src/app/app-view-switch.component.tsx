@@ -106,7 +106,7 @@ export function AppViewSwitch({
           usageLoading={usageLoading}
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
-          onBackToHub={() => onSetActiveView("hub")}
+          onBackToHome={() => onSetActiveView("hub")}
         />
       ) : activeView === "midi" ? (
         <MidiPage
@@ -116,7 +116,7 @@ export function AppViewSwitch({
           usageLoading={usageLoading}
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
-          onBackToHub={() => onSetActiveView("hub")}
+          onBackToHome={() => onSetActiveView("hub")}
         />
       ) : activeView === "beats" ? (
         <LibraryPage
@@ -124,7 +124,7 @@ export function AppViewSwitch({
           subscription={subscription}
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
-          onBackToHub={() => onSetActiveView("hub")}
+          onBackToHome={() => onSetActiveView("hub")}
           devTools={
             devLatencyStats && onResetDevLatencyStats
               ? {
@@ -141,7 +141,7 @@ export function AppViewSwitch({
           checkoutNotice={checkoutNotice}
           onViewPlans={() => onSetActiveView("pricing")}
           onGoToEditor={() => onSetActiveView("editor")}
-          onBackToHub={() => onSetActiveView("hub")}
+          onBackToHome={() => onSetActiveView("hub")}
         />
       ) : (
         <TransitionalEditorShell {...(transitionalShellProps ?? {})} />

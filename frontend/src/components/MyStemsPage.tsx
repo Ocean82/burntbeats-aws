@@ -39,7 +39,7 @@ import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
 import { MyStemsPageSkeleton } from "./MyStemsPageSkeleton";
 import { SharePreviewButton } from "./SharePreviewButton";
 import { ToolNicknameBadge } from "./hub/ToolNicknameBadge";
-import { getTool } from "../data/toolCatalog";
+import { getTool, BACK_TO_HOME_LABEL } from "../data/toolCatalog";
 import { useToast } from "../store/toastStore";
 
 // ---------------------------------------------------------------------------
@@ -307,7 +307,7 @@ export function MyStemsPage({
       <div className="flex min-h-screen flex-col items-center justify-center bg-popover p-md">
         <ErrorState
           variant="server"
-          title="Couldn't load your stems"
+          title="Couldn't load your tracks"
           description={error}
           onRetry={refetch}
         />
@@ -326,7 +326,7 @@ export function MyStemsPage({
           <button
             onClick={onClose}
             className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            aria-label="Back to editor"
+            aria-label={BACK_TO_HOME_LABEL}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -360,7 +360,7 @@ export function MyStemsPage({
         <button
           onClick={onClose}
           className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground transition hover:bg-muted hover:text-foreground"
-          aria-label="Back to editor"
+          aria-label={BACK_TO_HOME_LABEL}
         >
           <ArrowLeft className="h-5 w-5" />
         </button>

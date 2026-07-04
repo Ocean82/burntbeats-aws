@@ -21,7 +21,7 @@ export interface ToolPageShellProps {
   /** Optional callback when user clicks "View all plans" in the teaser paywall */
   onViewPlans?: () => void;
   /** Optional back-navigation callback rendered as a subtle link above the panel */
-  onBackToHub?: () => void;
+  onBackToHome?: () => void;
 }
 
 export function ToolPageShell({
@@ -32,7 +32,7 @@ export function ToolPageShell({
   checkoutNotice,
   testId,
   onViewPlans,
-  onBackToHub,
+  onBackToHome,
 }: ToolPageShellProps) {
   return (
     <motion.section
@@ -43,10 +43,10 @@ export function ToolPageShell({
         className={`rounded-2xl border bg-muted/20 ${borderColorClass} px-lg py-lg sm:px-lg`}
         data-testid={testId}
       >
-        {onBackToHub && (
+        {onBackToHome && (
           <button
             type="button"
-            onClick={onBackToHub}
+            onClick={onBackToHome}
             className="mb-md inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-primary-200 tap-feedback"
           >
             <span aria-hidden="true">←</span>

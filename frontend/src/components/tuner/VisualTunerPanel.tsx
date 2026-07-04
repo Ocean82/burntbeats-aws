@@ -5,6 +5,8 @@ import { Mic, MicOff, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getFreqName } from "../../utils/musicTheory";
 import { cn } from "../../utils/cn";
+import { getTool } from "../../data/toolCatalog";
+import { ToolNicknameBadge } from "../hub/ToolNicknameBadge";
 import { PanelHeader, SectionLabel } from "../ui";
 
 const REFERENCE_PITCHES = [
@@ -43,6 +45,7 @@ export interface VisualTunerPanelProps {
 }
 
 export function VisualTunerPanel({ onGoToEditor }: VisualTunerPanelProps) {
+  const tunerTool = getTool("tuner");
   const [active, setActive] = useState(false);
   const [freq, setFreq] = useState(0);
   const [level, setLevel] = useState(0);
@@ -103,8 +106,13 @@ export function VisualTunerPanel({ onGoToEditor }: VisualTunerPanelProps) {
   return (
     <div className="ui-panel overflow-hidden" data-testid="visual-tuner-panel">
       <PanelHeader
-        title="Visual Tuner"
-        subtitle="Check pitch before converting audio to MIDI"
+        title={
+          <span className="inline-flex flex-wrap items-center gap-xs">
+            {tunerTool.primaryName}
+            {tunerTool.nickname ? <ToolNicknameBadge nickname={tunerTool.nickname} /> : null}
+          </span>
+        }
+        subtitle={tunerTool.panelSubtitle ?? tunerTool.description}
       />
 
       <div className="p-md">

@@ -11,7 +11,7 @@ export interface TunerPageProps {
   checkoutNotice: string | null;
   onViewPlans?: () => void;
   onGoToEditor?: () => void;
-  onBackToHub?: () => void;
+  onBackToHome?: () => void;
 }
 
 export function TunerPage({
@@ -20,7 +20,7 @@ export function TunerPage({
   checkoutNotice,
   onViewPlans,
   onGoToEditor,
-  onBackToHub,
+  onBackToHome,
 }: TunerPageProps) {
   return (
     <ToolPageShell
@@ -30,7 +30,7 @@ export function TunerPage({
       checkoutNotice={checkoutNotice}
       testId="tuner-page"
       onViewPlans={onViewPlans}
-      onBackToHub={onBackToHub}
+      onBackToHome={onBackToHome}
     >
       <VisualTunerPanel onGoToEditor={onGoToEditor} />
     </ToolPageShell>

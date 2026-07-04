@@ -103,7 +103,7 @@ export function SpeechCleanPanel({
           icon={<Mic2 className="h-6 w-6" />}
           title="No enhancements yet"
           description="Enhance a vocal or speech recording to get started"
-          action={{ label: "Enhance Audio", onClick: handleBrowse }}
+          action={{ label: speechTool.cta, onClick: handleBrowse }}
         />
       )}
 
@@ -176,7 +176,7 @@ export function SpeechCleanPanel({
           ) : outputUrl ? (
             "Enhancement complete"
           ) : (
-            "Clean speech"
+            speechTool.cta
           )}
         </button>
         {outputUrl && (

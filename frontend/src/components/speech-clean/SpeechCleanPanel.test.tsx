@@ -37,6 +37,6 @@ describe("SpeechCleanPanel", () => {
     expect(screen.getByRole("heading", { name: /clean up vocals/i })).toBeInTheDocument();
     expect(screen.getByText(/not for songs/i)).toBeInTheDocument();
     expect(screen.getByTestId("speech-upload-dropzone")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /clean speech/i })).toBeInTheDocument();
+    expect(screen.getByTestId("speech-enhance-button")).toHaveTextContent(/clean vocals/i);
   });
 });

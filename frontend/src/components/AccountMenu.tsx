@@ -91,6 +91,7 @@ export function AccountMenu({
         aria-controls={menuId}
         aria-expanded={open ? "true" : "false"}
         aria-label={open ? "Close account menu" : "Open account menu"}
+        data-testid="account-menu"
       >
         {userLoaded && isSignedIn && user?.imageUrl ? (
           <img

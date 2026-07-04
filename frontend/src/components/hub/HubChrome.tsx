@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from "react";
-import { PlanBadge } from "@/components/PlanBadge";
-import { SettingsMenu } from "@/components/SettingsMenu";
-import { AccountMenu } from "@/components/AccountMenu";
-import { PastDueBanner } from "@/components/PastDueBanner";
-import { CancelSubscriptionFlow } from "@/components/CancelSubscriptionFlow";
+import type { ReactNode } from "react";
+import {
+  AppChromeActions,
+  AppChromeBillingAlerts,
+  AppChromeCancelFlow,
+  useAppChromeCancelFlow,
+} from "@/components/app/AppChromeActions";
 import type { UseSubscriptionResult } from "@/hooks/useSubscription";
 import type { ModalKey } from "@/hooks/useUiModals";
 
@@ -14,10 +15,9 @@ export interface HubChromeProps {
   localDevFullApp: boolean;
   pricingActive: boolean;
   onOpenPricing: () => void;
-  onOpenPortal: () => void;
   openModal: (key: ModalKey) => void;
   openFeedback: () => void;
-  openOnboarding: () => void;
+  onRestartHomeTour: () => void;
   onOpenLegal: () => void;
   children?: ReactNode;
 }
@@ -29,29 +29,23 @@ export function HubChrome({
   localDevFullApp,
   pricingActive,
   onOpenPricing,
-  onOpenPortal,
   openModal,
   openFeedback,
-  openOnboarding,
+  onRestartHomeTour,
   onOpenLegal,
 }: HubChromeProps) {
-  const [cancelFlowOpen, setCancelFlowOpen] = useState(false);
+  const { cancelFlowOpen, openCancelFlow, closeCancelFlow } = useAppChromeCancelFlow();
 
   return (
     <header
       className="sticky top-0 z-sticky flex flex-col gap-sm border-b border-border/80 bg-background/95 px-6 py-3 backdrop-blur-md md:px-12 lg:px-16"
       aria-label="Burnt Beats"
     >
-      <PastDueBanner
-        billingStatus={subscription.billingStatus}
-        onUpdatePayment={() => void subscription.openPortal()}
-      />
-      <CancelSubscriptionFlow
+      <AppChromeBillingAlerts subscription={subscription} />
+      <AppChromeCancelFlow
+        subscription={subscription}
         open={cancelFlowOpen}
-        onClose={() => setCancelFlowOpen(false)}
-        plan={subscription.plan}
-        onOpenPortal={() => void subscription.openPortal()}
-        onOfferAccepted={() => subscription.refetch()}
+        onClose={closeCancelFlow}
       />
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-md">
         <div className="flex min-w-0 items-center gap-sm sm:gap-md">
@@ -71,44 +65,19 @@ export function HubChrome({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-xs">
-          <PlanBadge
-            plan={subscription.plan}
-            subscriptionStatus={subscription.status}
-            freeTokensRemaining={
-              usageBalance != null && subscription.status !== "active" ? usageBalance : null
-            }
-            usageLoading={usageLoading}
-          />
-
-          <SettingsMenu
-            pricingActive={pricingActive}
-            showBilling={subscription.status === "active" && !localDevFullApp}
-            usageBalance={usageBalance}
-            usageLoading={usageLoading}
-            onOpenFullPricingTab={() => {
-              const url =
-                import.meta.env.VITE_FULL_PRICING_URL ?? "https://www.burntbeats.com/pricing";
-              window.open(url, "_blank", "noopener,noreferrer");
-            }}
-            onOpenPricing={onOpenPricing}
-            onOpenPortal={onOpenPortal}
-            onCancelSubscription={() => setCancelFlowOpen(true)}
-            onOpenPresets={() => openModal("presets")}
-            onOpenHelp={() => openModal("help")}
-            onOpenFeedback={openFeedback}
-            onRestartTour={openOnboarding}
-            onOpenLegal={onOpenLegal}
-          />
-
-          <AccountMenu
-            localDevFullApp={localDevFullApp}
-            subscriptionPlan={subscription.plan}
-            subscriptionActive={subscription.status === "active"}
-            usageBalance={usageBalance}
-            usageLoading={usageLoading}
-          />
-        </div>
+        <AppChromeActions
+          subscription={subscription}
+          usageBalance={usageBalance}
+          usageLoading={usageLoading}
+          localDevFullApp={localDevFullApp}
+          pricingActive={pricingActive}
+          onOpenPricing={onOpenPricing}
+          openModal={openModal}
+          openFeedback={openFeedback}
+          onRestartHomeTour={onRestartHomeTour}
+          onOpenLegal={onOpenLegal}
+          onCancelSubscription={openCancelFlow}
+        />
       </div>
     </header>
   );

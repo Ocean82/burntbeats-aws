@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 import { useUser } from "@clerk/react";
 import { useStemHistory } from "@/hooks/useStemHistory";
+import { useMidiHistory } from "@/hooks/useMidiHistory";
 import { useToolUsage } from "@/hooks/useToolUsage";
+import { useHubKeyboardNav } from "@/hooks/useHubKeyboardNav";
 import type { StemHistoryJob } from "@/api/stemHistory";
 import {
   getPrimaryTools,
@@ -56,7 +58,9 @@ export function HubPage() {
   const [, navigate] = useLocation();
   const { user } = useUser();
   const { jobs, isLoading, totalJobs } = useStemHistory();
+  const { records: midiRecords, isLoading: midiLoading } = useMidiHistory();
   const { touch, hasUsed } = useToolUsage();
+  useHubKeyboardNav(true);
 
   const hasActivity = jobs.length > 0;
   const firstName = user?.firstName || "Creator";
@@ -80,7 +84,11 @@ export function HubPage() {
         <div className="max-w-7xl mx-auto">
           <HubHeader firstName={firstName}>
             {hasActivity && !isLoading && (
-              <HubStats songsSplit={totalJobs} finished={completedCount} />
+              <HubStats
+                songsSplit={totalJobs}
+                finished={completedCount}
+                midiConverted={!midiLoading ? midiRecords.length : undefined}
+              />
             )}
           </HubHeader>
 
@@ -190,7 +198,6 @@ function RecentWorkCard({
     <button
       type="button"
       onClick={onClick}
-      data-tour="tool-splits"
       className="flex-shrink-0 w-48 rounded-xl bg-surface-raised border border-border hover:border-primary-500/40 transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left overflow-hidden group"
     >
       <div className="aspect-[16/10] bg-surface-base flex items-center justify-center border-b border-border">

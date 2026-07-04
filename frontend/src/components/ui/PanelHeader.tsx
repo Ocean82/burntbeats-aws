@@ -3,7 +3,7 @@ import { cn } from "../../utils/cn";
 import "./ui-panel.css";
 
 export interface PanelHeaderProps {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   actions?: ReactNode;
   className?: string;

@@ -9,7 +9,7 @@ export interface SpeechCleanPageProps {
   usageLoading: boolean;
   checkoutNotice: string | null;
   onViewPlans?: () => void;
-  onBackToHub?: () => void;
+  onBackToHome?: () => void;
 }
 
 export function SpeechCleanPage({
@@ -19,7 +19,7 @@ export function SpeechCleanPage({
   usageLoading,
   checkoutNotice,
   onViewPlans,
-  onBackToHub,
+  onBackToHome,
 }: SpeechCleanPageProps) {
   return (
     <ToolPageShell
@@ -29,7 +29,7 @@ export function SpeechCleanPage({
       checkoutNotice={checkoutNotice}
       testId="speech-clean-page"
       onViewPlans={onViewPlans}
-      onBackToHub={onBackToHub}
+      onBackToHome={onBackToHome}
     >
       <SpeechCleanPanel
         usageBalance={usageBalance ?? null}

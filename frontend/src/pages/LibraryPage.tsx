@@ -1,7 +1,7 @@
 /**
  * LibraryPage — Beats hub: MIDI catalog and drum machine.
  */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Drum, Music2 } from "lucide-react";
 import { useSearch } from "wouter";
 import { ToolPageShell } from "../components/ToolPageShell";
@@ -26,7 +26,7 @@ export interface LibraryPageProps {
   subscription: UseSubscriptionResult;
   checkoutNotice: string | null;
   onViewPlans?: () => void;
-  onBackToHub?: () => void;
+  onBackToHome?: () => void;
   /** Which tab to show initially (default: "catalog"). */
   initialTab?: LibraryTab;
   devTools?: LibraryDevToolsProps;
@@ -37,7 +37,7 @@ export function LibraryPage({
   subscription,
   checkoutNotice,
   onViewPlans,
-  onBackToHub,
+  onBackToHome,
   initialTab = "catalog",
   devTools,
 }: LibraryPageProps) {
@@ -51,16 +51,32 @@ export function LibraryPage({
         ? tabParam
         : initialTab;
   const [tab, setTab] = useState<LibraryTab>(resolvedInitialTab);
-  const patternsRef = useRef<HTMLDivElement>(null);
   const beatsTool = getTool("beats");
 
   useEffect(() => {
     if (focusParam !== "patterns" || tab !== "drums") return;
-    const id = requestAnimationFrame(() => {
-      patternsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [focusParam, tab]);
+
+    let attempts = 0;
+    let frameId = 0;
+
+    const tryScroll = () => {
+      const target = document.getElementById("pattern-library");
+      if (target) {
+        target.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+        return;
+      }
+      if (attempts < 30) {
+        attempts += 1;
+        frameId = requestAnimationFrame(tryScroll);
+      }
+    };
+
+    frameId = requestAnimationFrame(tryScroll);
+    return () => cancelAnimationFrame(frameId);
+  }, [focusParam, tab, reduceMotion]);
 
   return (
     <ToolPageShell
@@ -70,7 +86,7 @@ export function LibraryPage({
       checkoutNotice={checkoutNotice}
       testId="beats-page"
       onViewPlans={onViewPlans}
-      onBackToHub={onBackToHub}
+      onBackToHome={onBackToHome}
     >
       <div className="ui-panel overflow-hidden">
         <PanelHeader
@@ -124,13 +140,11 @@ export function LibraryPage({
         {tab === "catalog" ? (
           <MidiCatalogPanel />
         ) : (
-          <div ref={patternsRef}>
-            <DrumMachineWorkspace
+          <DrumMachineWorkspace
             subscription={subscription}
             onViewPlans={onViewPlans}
             reduceMotion={reduceMotion}
           />
-          </div>
         )}
         {devTools ? (
           <LibraryDevDrawer

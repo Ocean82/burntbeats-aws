@@ -200,10 +200,9 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
             localDevFullApp={ui.localDevFullApp}
             pricingActive={false}
             onOpenPricing={() => ui.setActiveView("pricing")}
-            onOpenPortal={() => void sub.subscription.openPortal()}
             openModal={modals.openModal}
             openFeedback={() => dev.emit("open-feedback")}
-            openOnboarding={() => dev.emit("open-onboarding")}
+            onRestartHomeTour={() => dev.emit("open-onboarding")}
             onOpenLegal={() => {
               window.open("/terms-of-service", "_blank", "noopener,noreferrer");
             }}
@@ -237,6 +236,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
               usageLoading={sub.usageLoading}
               openFeedback={() => dev.emit("open-feedback")}
               openOnboarding={() => dev.emit("open-onboarding")}
+              openEditorOnboarding={() => dev.emit("open-editor-onboarding")}
               editorWorkflow={
                 ui.activeView === "editor"
                   ? {

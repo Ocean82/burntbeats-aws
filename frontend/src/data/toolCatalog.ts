@@ -1,6 +1,9 @@
 import type { ToolId } from "@/hooks/useToolUsage";
 import type { AppView } from "@/hooks/workflow/useEditorViewRouting";
 
+/** Canonical user-facing tool names, nicknames, routes, and header labels.
+ *  All in-app copy for tools should come from here — not hardcoded in pages. */
+
 /** Display ids include hub-only entries (e.g. patterns launcher). */
 export type ToolCatalogId = ToolId | "patterns";
 
@@ -19,10 +22,17 @@ export interface ToolDefinition {
   route: string;
   stemColor?: ToolStemColor;
   headerTabLabel: string;
+  /** Header tab display order (lower = earlier). */
+  headerSortOrder?: number;
   isPrimary: boolean;
   showInHeader: boolean;
   /** data-tour attribute for onboarding spotlight */
   tourId: string;
+  /** Optional panel title override (defaults to primaryName). */
+  panelTitle?: string;
+  panelSubtitle?: string;
+  emptyStateTitle?: string;
+  errorLoadTitle?: string;
 }
 
 export const BACK_TO_HOME_LABEL = "Back to Home";
@@ -40,6 +50,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     route: "/editor",
     stemColor: "vocals",
     headerTabLabel: "Split",
+    headerSortOrder: 1,
     isPrimary: true,
     showInHeader: true,
     tourId: "tool-split",
@@ -55,6 +66,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     route: "/beats?tab=drums",
     stemColor: "drums",
     headerTabLabel: "Beats",
+    headerSortOrder: 4,
     isPrimary: true,
     showInHeader: true,
     tourId: "tool-beats",
@@ -70,6 +82,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     route: "/midi",
     stemColor: "melody",
     headerTabLabel: "Notes",
+    headerSortOrder: 3,
     isPrimary: true,
     showInHeader: true,
     tourId: "tool-notes",
@@ -84,6 +97,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     cta: "Clean Vocals",
     route: "/speech",
     headerTabLabel: "Vocals",
+    headerSortOrder: 2,
     isPrimary: false,
     showInHeader: true,
     tourId: "tool-vocals",
@@ -97,6 +111,8 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     cta: "Open Tuner",
     route: "/tuner",
     headerTabLabel: "Tuner",
+    headerSortOrder: 5,
+    panelSubtitle: "Tune up before you record or convert",
     isPrimary: false,
     showInHeader: true,
     tourId: "tool-tuner",
@@ -125,6 +141,9 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     cta: "Open Vault",
     route: "/library",
     headerTabLabel: "Splits",
+    headerSortOrder: 6,
+    emptyStateTitle: "No tracks yet",
+    errorLoadTitle: "Couldn't load your tracks",
     isPrimary: false,
     showInHeader: true,
     tourId: "tool-splits",
@@ -139,6 +158,29 @@ export function getTool(id: ToolCatalogId): ToolDefinition {
   return tool;
 }
 
+export type ToolCopyField = keyof Pick<
+  ToolDefinition,
+  | "primaryName"
+  | "nickname"
+  | "description"
+  | "cta"
+  | "headerTabLabel"
+  | "panelTitle"
+  | "panelSubtitle"
+  | "emptyStateTitle"
+  | "errorLoadTitle"
+>;
+
+export function getToolCopy(id: ToolCatalogId, field: ToolCopyField): string {
+  const tool = getTool(id);
+  const value = tool[field];
+  if (field === "panelTitle") return tool.panelTitle ?? tool.primaryName;
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`Tool ${id} has no copy for field: ${field}`);
+  }
+  return value;
+}
+
 export function getPrimaryTools(): ToolDefinition[] {
   return TOOL_CATALOG.filter((t) => t.isPrimary);
 }
@@ -149,6 +191,12 @@ export function getSecondaryTools(): ToolDefinition[] {
 
 export function getHeaderTools(): ToolDefinition[] {
   return TOOL_CATALOG.filter((t) => t.showInHeader);
+}
+
+export function getHeaderToolsOrdered(): ToolDefinition[] {
+  return getHeaderTools().sort(
+    (a, b) => (a.headerSortOrder ?? 99) - (b.headerSortOrder ?? 99),
+  );
 }
 
 export function getToolByAppView(view: AppView): ToolDefinition | undefined {

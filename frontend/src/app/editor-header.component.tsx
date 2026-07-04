@@ -1,12 +1,11 @@
-import { useState } from "react";
 import { Home, Undo2, Redo2, Mic2, Music, Drum, FolderOpen, Guitar } from "lucide-react";
 import { cn } from "../utils/cn";
-import { AccountMenu } from "../components/AccountMenu";
-import { PlanBadge } from "../components/PlanBadge";
-import { SettingsMenu } from "../components/SettingsMenu";
-import { PastDueBanner } from "../components/PastDueBanner";
-import { CancelSubscriptionFlow } from "../components/CancelSubscriptionFlow";
-import { WhatsNewBadge } from "../components/WhatsNewBadge";
+import {
+  AppChromeActions,
+  AppChromeBillingAlerts,
+  AppChromeCancelFlow,
+  useAppChromeCancelFlow,
+} from "../components/app/AppChromeActions";import { WhatsNewBadge } from "../components/WhatsNewBadge";
 import { WorkflowStepper } from "../components/ui";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
 import type { ModalKey } from "../hooks/useUiModals";
@@ -15,7 +14,7 @@ import {
   useEditorWorkflowSteps,
   type EditorWorkflowInput,
 } from "../hooks/workflow/useEditorWorkflowSteps";
-import { BACK_TO_HOME_LABEL, getHeaderTools } from "../data/toolCatalog";
+import { BACK_TO_HOME_LABEL, getHeaderToolsOrdered } from "../data/toolCatalog";
 import type { AppView } from "../hooks/workflow/useEditorViewRouting";
 
 interface EditorHeaderProps {
@@ -35,6 +34,7 @@ interface EditorHeaderProps {
   usageLoading: boolean;
   openFeedback: () => void;
   openOnboarding: () => void;
+  openEditorOnboarding?: () => void;
   /** Pipeline state for stem editor workflow stepper */
   editorWorkflow?: EditorWorkflowInput | null;
 }
@@ -70,11 +70,12 @@ export function EditorHeader({
   usageLoading,
   openFeedback,
   openOnboarding,
+  openEditorOnboarding,
   editorWorkflow = null,
 }: EditorHeaderProps) {
   const { tabsWithNews, markTabSeen } = useWhatsNew();
-  const [cancelFlowOpen, setCancelFlowOpen] = useState(false);
-  const headerTools = getHeaderTools();
+  const { cancelFlowOpen, openCancelFlow, closeCancelFlow } = useAppChromeCancelFlow();
+  const headerTools = getHeaderToolsOrdered();
   const workflow = useEditorWorkflowSteps(
     editorWorkflow ?? {
       uploadedFile: null,
@@ -101,16 +102,11 @@ export function EditorHeader({
       )}
       aria-label="Burnt Beats"
     >
-      <PastDueBanner
-        billingStatus={subscription.billingStatus}
-        onUpdatePayment={() => void subscription.openPortal()}
-      />
-      <CancelSubscriptionFlow
+      <AppChromeBillingAlerts subscription={subscription} />
+      <AppChromeCancelFlow
+        subscription={subscription}
         open={cancelFlowOpen}
-        onClose={() => setCancelFlowOpen(false)}
-        plan={subscription.plan}
-        onOpenPortal={() => void subscription.openPortal()}
-        onOfferAccepted={() => subscription.refetch()}
+        onClose={closeCancelFlow}
       />
       {/* Brand row + actions */}
       <div className="flex flex-wrap items-center justify-between gap-md">
@@ -147,11 +143,21 @@ export function EditorHeader({
             </button>
           )}
 
-          <PlanBadge
-            plan={subscription.plan}
-            subscriptionStatus={subscription.status}
-            freeTokensRemaining={usageBalance != null && subscription.status !== "active" ? usageBalance : null}
+          <AppChromeActions
+            subscription={subscription}
+            usageBalance={usageBalance}
             usageLoading={usageLoading}
+            localDevFullApp={localDevFullApp}
+            pricingActive={activeView === "pricing"}
+            onOpenPricing={() => setActiveView("pricing")}
+            openModal={openModal}
+            openFeedback={openFeedback}
+            onRestartHomeTour={openOnboarding}
+            onRestartEditorTour={openEditorOnboarding}
+            onOpenLegal={() => {
+              window.open("/terms-of-service", "_blank", "noopener,noreferrer");
+            }}
+            onCancelSubscription={openCancelFlow}
           />
 
           <div className="flex items-center rounded-xl border border-border bg-muted/80">
@@ -177,37 +183,6 @@ export function EditorHeader({
               <Redo2 className="h-4 w-4" />
             </button>
           </div>
-
-          <SettingsMenu
-            pricingActive={activeView === "pricing"}
-            showBilling={subscription.status === "active" && !localDevFullApp}
-            usageBalance={usageBalance}
-            usageLoading={usageLoading}
-            onOpenFullPricingTab={() => {
-              const url =
-                import.meta.env.VITE_FULL_PRICING_URL ??
-                "https://www.burntbeats.com/pricing";
-              window.open(url, "_blank", "noopener,noreferrer");
-            }}
-            onOpenPricing={() => setActiveView("pricing")}
-            onOpenPortal={() => void subscription.openPortal()}
-            onCancelSubscription={() => setCancelFlowOpen(true)}
-            onOpenPresets={() => openModal("presets")}
-            onOpenHelp={() => openModal("help")}
-            onOpenFeedback={openFeedback}
-            onRestartTour={openOnboarding}
-            onOpenLegal={() => {
-              window.open("/terms-of-service", "_blank", "noopener,noreferrer");
-            }}
-          />
-
-          <AccountMenu
-            localDevFullApp={localDevFullApp}
-            subscriptionPlan={subscription.plan}
-            subscriptionActive={subscription.status === "active"}
-            usageBalance={usageBalance}
-            usageLoading={usageLoading}
-          />
         </div>
       </div>
 

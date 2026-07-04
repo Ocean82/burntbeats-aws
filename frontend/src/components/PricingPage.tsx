@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { viewSwitchMotion } from "../motion/presets";
 import { ArrowLeft, Loader2, ChevronDown } from "lucide-react";
+import { BACK_TO_HOME_LABEL } from "../data/toolCatalog";
 import type { Plan, UseSubscriptionResult } from "../hooks/useSubscription";
 import type { PlanConfig, PricingTableType } from "../data/plans";
 import { STUDIO_PLAN } from "../data/plans";
@@ -119,7 +120,7 @@ export function PricingPage({
                 className="h-4 w-4 shrink-0 text-primary-300/90 transition group-hover:-translate-x-0.5"
                 aria-hidden
               />
-              <span className="font-medium">Back to editor</span>
+              <span className="font-medium">{BACK_TO_HOME_LABEL}</span>
             </button>
           </li>
           <li aria-hidden="true" className="text-muted-foreground">
@@ -130,7 +131,7 @@ export function PricingPage({
           </li>
         </ol>
         <p className="text-readable text-[11px] leading-snug text-muted-foreground sm:max-w-sm sm:text-right">
-          Same as <span className="text-muted-foreground">Back to editor</span> in the
+          Same as <span className="text-muted-foreground">{BACK_TO_HOME_LABEL}</span> in the
           header — no need for the browser Back button.
         </p>
       </nav>
@@ -337,7 +338,7 @@ export function PricingPage({
           className="inline-flex min-h-[44px] items-center justify-center gap-xs rounded-xl border border-border bg-muted px-md py-xs text-sm font-medium text-primary-200/95 transition hover:border-primary-400/35 hover:bg-primary-500/10 hover:text-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-400/50 tap-feedback"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-          Back to editor
+          {BACK_TO_HOME_LABEL}
         </button>
       </p>
       </>

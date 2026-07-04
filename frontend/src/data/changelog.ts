@@ -21,22 +21,22 @@ export const CHANGELOG: ChangelogEntry[] = [
     id: 3,
     date: "2026-05-15",
     tab: "midi",
-    title: "Audio-to-MIDI Conversion",
-    description: "Convert any stem or audio file into a downloadable MIDI file. Great for remixing in your DAW.",
+    title: "Sound → Notes",
+    description: "Turn any recording into editable sheet music or MIDI files. Great for remixing in your DAW.",
   },
   {
     id: 2,
     date: "2026-04-20",
     tab: "speech",
-    title: "Speech Clean Tool",
-    description: "Denoise and restore voice recordings with AI-powered speech enhancement.",
+    title: "Clean Up Vocals",
+    description: "Denoise and restore voice recordings with AI-powered vocal cleanup.",
   },
   {
     id: 1,
     date: "2026-03-01",
     tab: "my-stems",
-    title: "My Stems Library",
-    description: "Browse and re-download all your previously separated stems from one place.",
+    title: "Your Splits Library",
+    description: "Browse and re-download all your previously separated tracks from one place.",
   },
 ];
 

@@ -92,6 +92,7 @@ export function PatternLibraryPanel({
 
   return (
     <div
+      id="pattern-library"
       aria-label="Pattern Library Panel"
       className="flex flex-col gap-2 rounded-lg border border-border bg-background/50 p-3"
     >

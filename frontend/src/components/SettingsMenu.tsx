@@ -24,7 +24,8 @@ export interface SettingsMenuProps {
   onOpenPresets: () => void;
   onOpenHelp: () => void;
   onOpenFeedback: () => void;
-  onRestartTour: () => void;
+  onRestartHomeTour: () => void;
+  onRestartEditorTour?: () => void;
   onOpenLegal: () => void;
 }
 
@@ -43,7 +44,8 @@ export function SettingsMenu({
   onOpenPresets,
   onOpenHelp,
   onOpenFeedback,
-  onRestartTour,
+  onRestartHomeTour,
+  onRestartEditorTour,
   onOpenLegal,
 }: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
@@ -191,12 +193,22 @@ export function SettingsMenu({
             />
             <SettingsMenuItem
               icon={<Sparkles className="h-4 w-4" />}
-              label="Restart guided tour"
+              label="Restart home tour"
               onClick={() => {
-                onRestartTour();
+                onRestartHomeTour();
                 close();
               }}
             />
+            {onRestartEditorTour ? (
+              <SettingsMenuItem
+                icon={<Sparkles className="h-4 w-4" />}
+                label="Restart split tour"
+                onClick={() => {
+                  onRestartEditorTour();
+                  close();
+                }}
+              />
+            ) : null}
             <SettingsMenuItem
               icon={<MessageSquarePlus className="h-4 w-4" />}
               label="Send feedback"
