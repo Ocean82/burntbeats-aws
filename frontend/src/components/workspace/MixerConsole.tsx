@@ -43,13 +43,13 @@ function ChannelStrip({
 
   return (
     <div
-      className="flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] min-w-[72px]"
+      className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] min-w-[72px]"
       data-testid={`channel-strip-${stemId}`}
     >
       {/* Color indicator */}
       <div
         className="w-full h-1 rounded-full"
-        style={{ backgroundColor: color }}
+        style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}40` }}
         aria-hidden
       />
 
@@ -61,24 +61,59 @@ function ChannelStrip({
         {label}
       </span>
 
-      {/* Volume fader */}
-      <div className="flex flex-col items-center gap-0.5 w-full">
-        <input
-          type="range"
-          min={-12}
-          max={12}
-          step={0.1}
-          value={mixer.gain}
-          onChange={(e) => onVolumeChange(stemId, Number(e.target.value))}
-          aria-label={`${label} volume`}
-          className="w-full h-1 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
-          style={{ "--strip-color": color } as React.CSSProperties}
-        />
-        <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
-          {mixer.gain >= 0 ? "+" : ""}
-          {mixer.gain.toFixed(1)} dB
-        </span>
+      {/* Fader + Meter row */}
+      <div className="flex items-stretch gap-1 w-full justify-center" style={{ height: "80px" }}>
+        {/* Level meter (left side) */}
+        <div
+          className="relative w-[6px] rounded-full bg-white/[0.06] overflow-hidden"
+          aria-label={`${label} level meter`}
+          role="meter"
+          aria-valuemin={-60}
+          aria-valuemax={6}
+          aria-valuenow={mixer.gain}
+        >
+          {/* Meter fill — height based on gain mapped to 0-100% */}
+          <div
+            className="absolute bottom-0 left-0 right-0 rounded-full transition-[height] duration-150"
+            style={{
+              height: `${Math.max(0, Math.min(100, ((mixer.gain + 20) / 26) * 100))}%`,
+              background: mixer.gain > 3
+                ? "linear-gradient(to top, #22c55e 0%, #eab308 60%, #ef4444 90%)"
+                : mixer.gain > -3
+                  ? "linear-gradient(to top, #22c55e 0%, #eab308 85%, #4ade80 100%)"
+                  : "linear-gradient(to top, #22c55e 0%, #4ade80 100%)",
+            }}
+          />
+          {/* Unity (0 dB) mark */}
+          <div
+            className="absolute left-0 right-0 h-px bg-white/30"
+            style={{ bottom: `${(20 / 26) * 100}%` }}
+            aria-hidden
+          />
+        </div>
+
+        {/* Volume fader (right side) */}
+        <div className="flex flex-col items-center">
+          <input
+            type="range"
+            min={-20}
+            max={6}
+            step={0.1}
+            value={mixer.gain}
+            onChange={(e) => onVolumeChange(stemId, Number(e.target.value))}
+            onDoubleClick={() => onVolumeChange(stemId, 0)}
+            aria-label={`${label} volume`}
+            className="channel-fader w-3 cursor-pointer appearance-none rounded-full bg-white/[0.08] [writing-mode:vertical-lr] rotate-180"
+            style={{ "--strip-color": color, height: "80px" } as React.CSSProperties}
+          />
+        </div>
       </div>
+
+      {/* dB readout */}
+      <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
+        {mixer.gain >= 0 ? "+" : ""}
+        {mixer.gain.toFixed(1)} dB
+      </span>
 
       {/* Pan knob */}
       <div className="flex flex-col items-center gap-0.5 w-full">
@@ -89,6 +124,7 @@ function ChannelStrip({
           step={1}
           value={mixer.pan}
           onChange={(e) => onPanChange(stemId, Number(e.target.value))}
+          onDoubleClick={() => onPanChange(stemId, 0)}
           aria-label={`${label} pan`}
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer"
           style={{ "--strip-color": color } as React.CSSProperties}

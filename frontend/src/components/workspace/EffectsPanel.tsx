@@ -218,8 +218,8 @@ interface SliderControlProps {
 
 function SliderControl({ label, min, max, step, value, onChange, unit = "" }: SliderControlProps) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-secondary-foreground">
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] font-medium text-secondary-foreground">
         {label}: <span className="font-mono tabular-nums text-foreground">{value}{unit}</span>
       </span>
       <input
@@ -252,10 +252,10 @@ interface PitchControlsProps {
 
 function PitchControls({ stemState, onUpdate }: PitchControlsProps) {
   return (
-    <div data-testid="pitch-controls" className="flex flex-col gap-6">
+    <div data-testid="pitch-controls" className="flex flex-col gap-4">
       {/* Quick Pitch Presets */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Quick Shift
         </h3>
         <div className="grid grid-cols-4 gap-1.5">
@@ -279,7 +279,7 @@ function PitchControls({ stemState, onUpdate }: PitchControlsProps) {
 
       {/* Fine Control */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Fine Control
         </h3>
         <SliderControl
@@ -315,10 +315,10 @@ function EQControls({ stemState, onUpdate }: EQControlsProps) {
   };
 
   return (
-    <div data-testid="eq-controls" className="flex flex-col gap-6">
+    <div data-testid="eq-controls" className="flex flex-col gap-4">
       {/* 3-Band EQ */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           3-Band EQ
         </h3>
         <div className="grid grid-cols-3 gap-3">
@@ -352,7 +352,7 @@ function EQControls({ stemState, onUpdate }: EQControlsProps) {
 
       {/* Quick Filters */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Quick Filters
         </h3>
         <div className="grid grid-cols-2 gap-2">
@@ -378,10 +378,10 @@ function EQControls({ stemState, onUpdate }: EQControlsProps) {
 
       {/* Full sliders for fine control */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Fine Control
         </h3>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5">
           <SliderControl
             label="Low"
             min={-12}
@@ -424,10 +424,10 @@ function TimeStretchControls({ stemState, onUpdate }: TimeStretchControlsProps) 
   const displayPercent = Math.round(stemState.timeStretch * 100);
 
   return (
-    <div data-testid="time-stretch-controls" className="flex flex-col gap-6">
+    <div data-testid="time-stretch-controls" className="flex flex-col gap-4">
       {/* Speed Presets */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Speed Presets
         </h3>
         <div className="grid grid-cols-4 gap-1.5">
@@ -460,7 +460,7 @@ function TimeStretchControls({ stemState, onUpdate }: TimeStretchControlsProps) 
 
       {/* Fine Control */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Fine Control
         </h3>
         <SliderControl
@@ -493,10 +493,10 @@ interface AmplitudeControlsProps {
 
 function AmplitudeControls({ stemState, onUpdate, onUpdateMixer }: AmplitudeControlsProps) {
   return (
-    <div data-testid="amplitude-controls" className="flex flex-col gap-6">
+    <div data-testid="amplitude-controls" className="flex flex-col gap-4">
       {/* Volume */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Volume
         </h3>
         <SliderControl
@@ -512,10 +512,10 @@ function AmplitudeControls({ stemState, onUpdate, onUpdateMixer }: AmplitudeCont
 
       {/* Fades */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Fades
         </h3>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5">
           <SliderControl
             label="Fade In"
             min={0}
@@ -539,10 +539,10 @@ function AmplitudeControls({ stemState, onUpdate, onUpdateMixer }: AmplitudeCont
 
       {/* Compressor */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Compressor
         </h3>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5">
           <SliderControl
             label="Threshold"
             min={-60}
@@ -584,7 +584,7 @@ function AmplitudeControls({ stemState, onUpdate, onUpdateMixer }: AmplitudeCont
 
       {/* Pan */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Pan
         </h3>
         <SliderControl
@@ -611,10 +611,10 @@ function FXControls({ stemState, onUpdate }: FXControlsProps) {
   };
 
   return (
-    <div data-testid="fx-controls" className="flex flex-col gap-6">
+    <div data-testid="fx-controls" className="flex flex-col gap-4">
       {/* FX Presets */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Quick Presets
         </h3>
         <div className="grid grid-cols-2 gap-2">
@@ -638,10 +638,10 @@ function FXControls({ stemState, onUpdate }: FXControlsProps) {
 
       {/* Reverb & Delay */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Reverb & Delay
         </h3>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5">
           <SliderControl
             label="Reverb Mix"
             min={0}
@@ -665,10 +665,10 @@ function FXControls({ stemState, onUpdate }: FXControlsProps) {
 
       {/* Character */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
           Character
         </h3>
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2.5">
           <SliderControl
             label="Warmth"
             min={0}

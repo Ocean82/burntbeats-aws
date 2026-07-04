@@ -235,6 +235,50 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Channel fader — professional vertical slider with grip-line thumb */
+  .channel-fader::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 24px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #555 0%, #333 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    cursor: grab;
+    /* Grip lines via repeating gradient */
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(255, 255, 255, 0.15) 3px,
+      rgba(255, 255, 255, 0.15) 4px
+    );
+  }
+
+  .channel-fader::-webkit-slider-thumb:active {
+    cursor: grabbing;
+    background-color: #444;
+    box-shadow: 0 0 6px var(--strip-color, rgba(255, 255, 255, 0.3));
+  }
+
+  .channel-fader::-moz-range-thumb {
+    width: 12px;
+    height: 24px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #555 0%, #333 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    cursor: grab;
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(255, 255, 255, 0.15) 3px,
+      rgba(255, 255, 255, 0.15) 4px
+    );
+  }
+
   .glass-panel {
     position: relative;
     overflow: hidden;
