@@ -43,7 +43,7 @@ export function skipOnboarding(page: import("@playwright/test").Page) {
 
 /** Open the stem editor and wait until the transitional shell is interactive. */
 export async function gotoEditor(page: import("@playwright/test").Page) {
-  await page.goto("/");
+  await page.goto("/editor");
   await expect(page.getByTestId("editor-app-shell")).toBeVisible({
     timeout: E2E_APP_READY_MS,
   });

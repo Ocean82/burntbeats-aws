@@ -28,7 +28,7 @@ test.describe("Burnt Beats app (local full app mode)", () => {
   });
 
   test("upload phase shown before stems exist", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/editor");
     await expect(page.getByTestId("editor-app-shell")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("upload-phase")).toBeVisible();
   });
