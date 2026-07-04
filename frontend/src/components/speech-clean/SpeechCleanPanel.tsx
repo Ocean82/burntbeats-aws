@@ -3,6 +3,8 @@ import { AUDIO_INPUT_ACCEPT } from "../../config";
 import { useEffect, useMemo } from "react";
 import { useSpeechEnhance } from "../../hooks/useSpeechEnhance";
 import { InfoPopover } from "../ui/InfoPopover";
+import { ToolNicknameBadge } from "../hub/ToolNicknameBadge";
+import { getTool } from "../../data/toolCatalog";
 import { useAudioFileDuration } from "../../hooks/useAudioFileDuration";
 import { computeTokensFromDurationSeconds } from "../../utils/tokenCost";
 import { UsageTokenRow } from "../processing-settings/UsageTokenRow";
@@ -23,6 +25,7 @@ export function SpeechCleanPanel({
   usageLoading = false,
   subscriptionInactive = false,
 }: SpeechCleanPanelProps) {
+  const speechTool = getTool("speech");
   const {
     inputRef,
     uploadedFile,
@@ -66,12 +69,15 @@ export function SpeechCleanPanel({
             <Mic2 className="h-5 w-5 text-info-300" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold tracking-tight text-foreground">
-              Speech Clean
+            <h2 className="text-lg font-bold tracking-tight text-foreground flex flex-wrap items-center gap-2">
+              {speechTool.primaryName}
+              {speechTool.nickname ? (
+                <ToolNicknameBadge nickname={speechTool.nickname} />
+              ) : null}
             </h2>
             <p className="w-full shrink-0 mt-0.5 text-sm text-info-100/55">
-              Denoise and restore voice recordings. This tool is tuned for
-              speech, not music stem separation.
+              {speechTool.description} This tool is tuned for speech, not music stem
+              separation.
             </p>
           </div>
         </div>

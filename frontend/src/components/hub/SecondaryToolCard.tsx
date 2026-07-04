@@ -1,5 +1,6 @@
 import { cn } from "../../utils/cn";
 import type { ReactNode } from "react";
+import { ToolNicknameBadge } from "./ToolNicknameBadge";
 
 export interface SecondaryToolCardProps {
   label: string;
@@ -7,13 +8,24 @@ export interface SecondaryToolCardProps {
   icon: ReactNode;
   onClick: () => void;
   disabled?: boolean;
+  nickname?: string;
+  tourId?: string;
 }
 
-export function SecondaryToolCard({ label, description, icon, onClick, disabled }: SecondaryToolCardProps) {
+export function SecondaryToolCard({
+  label,
+  description,
+  icon,
+  onClick,
+  disabled,
+  nickname,
+  tourId,
+}: SecondaryToolCardProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-tour={tourId}
       disabled={disabled}
       className={cn(
         "group relative overflow-hidden rounded-xl bg-surface-raised border border-border hover:border-border/80 transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left",
@@ -35,9 +47,14 @@ export function SecondaryToolCard({ label, description, icon, onClick, disabled 
         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--surface-2)" }}>
           <div className="text-muted-foreground group-hover:text-foreground transition-colors">{icon}</div>
         </div>
-        <div className="min-w-0">
-          <div className="text-sm font-medium text-foreground truncate">{label}</div>
-          {description && <div className="text-xs text-muted-foreground truncate">{description}</div>}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <div className="text-sm font-medium text-foreground">{label}</div>
+            {nickname ? <ToolNicknameBadge nickname={nickname} /> : null}
+          </div>
+          {description && (
+            <div className="text-xs text-muted-foreground leading-snug line-clamp-2">{description}</div>
+          )}
         </div>
       </div>
     </button>

@@ -4,7 +4,8 @@ import { create } from "zustand";
 export type AppEvent =
   | "open-pricing"
   | "open-feedback"
-  | "open-onboarding";
+  | "open-onboarding"
+  | "open-editor-onboarding";
 
 interface EventBusState {
   /** Incremented each time an event fires — subscribers react to the change. */
@@ -17,6 +18,7 @@ export const useEventBus = create<EventBusState>((set) => ({
     "open-pricing": 0,
     "open-feedback": 0,
     "open-onboarding": 0,
+    "open-editor-onboarding": 0,
   },
   emit: (event) =>
     set((state) => ({

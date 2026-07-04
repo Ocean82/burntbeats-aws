@@ -50,11 +50,11 @@ export const KEYBOARD_SHORTCUTS: { key: string; modifier?: string; action: Short
   { key: "Enter", modifier: "ctrl", action: "triggerSplit", label: "Ctrl + Enter", description: "Start stem split" },
   { key: "Enter", modifier: "meta", action: "triggerSplit", label: "Cmd + Enter", description: "Start stem split" },
   { key: "Escape", action: "escape", label: "Esc", description: "Close modal / Stop playback" },
-  { key: "1", modifier: "alt", action: "navEditor", label: "Alt + 1", description: "Go to Stem Editor" },
-  { key: "2", modifier: "alt", action: "navSpeech", label: "Alt + 2", description: "Go to Speech Clean" },
-  { key: "3", modifier: "alt", action: "navMidi", label: "Alt + 3", description: "Go to MIDI Convert" },
+  { key: "1", modifier: "alt", action: "navEditor", label: "Alt + 1", description: "Go to Split" },
+  { key: "2", modifier: "alt", action: "navSpeech", label: "Alt + 2", description: "Go to Clean Up Vocals" },
+  { key: "3", modifier: "alt", action: "navMidi", label: "Alt + 3", description: "Go to Sound → Notes" },
   { key: "4", modifier: "alt", action: "navPricing", label: "Alt + 4", description: "Go to pricing" },
-  { key: "5", modifier: "alt", action: "navMyStems", label: "Alt + 5", description: "Go to My Stems" },
+  { key: "5", modifier: "alt", action: "navMyStems", label: "Alt + 5", description: "Go to Your Splits" },
 ];
 
 export function useKeyboardShortcuts(handlers: ShortcutHandlers, enabled = true) {

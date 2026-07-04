@@ -1,8 +1,8 @@
 /**
  * LibraryPage — Beats hub: MIDI catalog and drum machine.
  */
+import { useState, useEffect, useRef } from "react";
 import { Drum, Music2 } from "lucide-react";
-import { useState } from "react";
 import { useSearch } from "wouter";
 import { ToolPageShell } from "../components/ToolPageShell";
 import { PanelHeader, FilterBar } from "../components/ui";
@@ -11,6 +11,7 @@ import type { UiLatencySnapshot } from "../hooks/useUiLatencyMonitor";
 import { MidiCatalogPanel } from "../components/library/MidiCatalogPanel";
 import { DrumMachineWorkspace } from "../components/library/DrumMachineWorkspace";
 import { LibraryDevDrawer } from "../components/library/LibraryDevDrawer";
+import { getTool } from "../data/toolCatalog";
 import { cn } from "../utils/cn";
 
 type LibraryTab = "catalog" | "drums";
@@ -42,9 +43,24 @@ export function LibraryPage({
 }: LibraryPageProps) {
   const search = useSearch();
   const tabParam = new URLSearchParams(search).get("tab");
+  const focusParam = new URLSearchParams(search).get("focus");
   const resolvedInitialTab: LibraryTab =
-    tabParam === "drums" || tabParam === "catalog" ? tabParam : initialTab;
+    tabParam === "drums" || tabParam === "patterns"
+      ? "drums"
+      : tabParam === "catalog"
+        ? tabParam
+        : initialTab;
   const [tab, setTab] = useState<LibraryTab>(resolvedInitialTab);
+  const patternsRef = useRef<HTMLDivElement>(null);
+  const beatsTool = getTool("beats");
+
+  useEffect(() => {
+    if (focusParam !== "patterns" || tab !== "drums") return;
+    const id = requestAnimationFrame(() => {
+      patternsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [focusParam, tab]);
 
   return (
     <ToolPageShell
@@ -58,8 +74,12 @@ export function LibraryPage({
     >
       <div className="ui-panel overflow-hidden">
         <PanelHeader
-          title="Beats"
-          subtitle={tab === "catalog" ? "Browse progressions and rhythm patterns" : "Build drum patterns in the sequencer"}
+          title={beatsTool.primaryName}
+          subtitle={
+            tab === "catalog"
+              ? "Browse progressions and rhythm patterns"
+              : "Build drum patterns in the sequencer"
+          }
           actions={
             <span className="inline-flex items-center gap-xs text-xs text-muted-foreground">
               <Drum className="h-3.5 w-3.5" aria-hidden />
@@ -104,11 +124,13 @@ export function LibraryPage({
         {tab === "catalog" ? (
           <MidiCatalogPanel />
         ) : (
-          <DrumMachineWorkspace
+          <div ref={patternsRef}>
+            <DrumMachineWorkspace
             subscription={subscription}
             onViewPlans={onViewPlans}
             reduceMotion={reduceMotion}
           />
+          </div>
         )}
         {devTools ? (
           <LibraryDevDrawer

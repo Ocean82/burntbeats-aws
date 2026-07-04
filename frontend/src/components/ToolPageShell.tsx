@@ -7,6 +7,7 @@ import { viewSwitchMotion } from "../motion/presets";
 import type { ReactNode } from "react";
 import { PaywallBanner } from "./PaywallBanner";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
+import { BACK_TO_HOME_LABEL } from "../data/toolCatalog";
 import { ErrorState } from "./ui/error-state";
 
 export interface ToolPageShellProps {
@@ -49,7 +50,7 @@ export function ToolPageShell({
             className="mb-md inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-primary-200 tap-feedback"
           >
             <span aria-hidden="true">←</span>
-            Back to Hub
+            {BACK_TO_HOME_LABEL}
           </button>
         )}
         {children}

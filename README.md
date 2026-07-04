@@ -193,23 +193,38 @@ Primary file for Compose: **root `.env`** (see each service’s `.env.example` w
 
 ## Local Observability
 
-Run optional Prometheus + Grafana locally:
+**Metrics only** (Prometheus + Grafana):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ```
 
+**Metrics + logs** (add Loki + Promtail):
+
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.monitoring.yml \
+  -f docker-compose.observability.yml \
+  up -d
+```
+
 Key endpoints:
 
 - Prometheus: [http://localhost:9090](http://localhost:9090)
-- Grafana: [http://localhost:3005](http://localhost:3005)
-- Metrics:
-  - backend: `/metrics`
-  - stem_service: `/metrics`
-  - speech_service: `/metrics`
-  - midi_service: `/metrics`
+- Grafana: [http://localhost:3000](http://localhost:3000) (default user `admin`)
+- Loki API: [http://localhost:3100](http://localhost:3100) (query logs in Grafana → Explore → Loki)
 
-Alert rules live in `monitoring/alerts/burntbeats.yml`.
+Metrics scrape targets:
+
+- backend: `/metrics`
+- stem_service: `/metrics`
+- speech_service: `/metrics`
+- midi_service: `/metrics`
+
+Alert rules: `monitoring/alerts/burntbeats.yml`  
+Ops runbooks: `docs/operations/` (e.g. secret rotation)  
+Full SRE status matrix: `docs/SRE-IMPROVEMENT-PLAN.md`
 
 ---
 

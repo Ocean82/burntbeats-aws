@@ -110,6 +110,12 @@ const quips = {
     "Limiter off. Live dangerously.",
     "Protection removed. Full send.",
   ],
+  hubGreeting: [
+    "What are you creating today?",
+    "Ready to cook?",
+    "Pick a tool and make something fire.",
+    "What are we splitting today?",
+  ],
 } as const;
 
 type QuipCategory = keyof typeof quips;

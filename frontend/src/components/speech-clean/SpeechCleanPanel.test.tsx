@@ -34,7 +34,7 @@ describe("SpeechCleanPanel", () => {
   it("renders speech-only branding and upload zone", () => {
     render(<SpeechCleanPanel />);
     expect(screen.getByTestId("speech-clean-panel")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /speech clean/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /clean up vocals/i })).toBeInTheDocument();
     expect(screen.getByText(/not for songs/i)).toBeInTheDocument();
     expect(screen.getByTestId("speech-upload-dropzone")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /clean speech/i })).toBeInTheDocument();

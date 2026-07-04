@@ -5,6 +5,7 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import { UpsellModal } from "../components/UpsellModal";
 import { FeedbackChip } from "../components/FeedbackChip";
 import { getBurntQuip } from "../utils/burntQuips";
+import { cn } from "../utils/cn";
 import { EditorHeader } from "./editor-header.component";
 import { AppTransportBar, type AppTransportBarProps } from "./app-transport-bar.component";
 import { WaitingGamePanel } from "./waiting-game-panel.component";
@@ -14,6 +15,12 @@ import { AppBackgroundOrbs } from "./app-background-orbs.component";
 import { EditorFloatingOverlays } from "./editor-floating-overlays.component";
 import { SessionSidebar } from "./session-sidebar.component";
 import { AppViewSwitch } from "./app-view-switch.component";
+import { HubChrome } from "../components/hub";
+import {
+  consumeEditorTourPending,
+  EDITOR_ONBOARDING_KEY,
+  HUB_ONBOARDING_KEY,
+} from "../data/onboardingSteps";
 import { useAudio } from "../contexts/AudioContext";
 import { useAppStore } from "../store/appStore";
 import {
@@ -31,6 +38,12 @@ import type { EditorSession } from "../hooks/app/useEditorSession";
 const OnboardingTour = lazy(() =>
   import("../components/OnboardingTour").then((m) => ({
     default: m.OnboardingTour,
+  })),
+);
+
+const EditorOnboardingTour = lazy(() =>
+  import("../components/EditorOnboardingTour").then((m) => ({
+    default: m.EditorOnboardingTour,
   })),
 );
 
@@ -95,18 +108,29 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
     };
   }, [ui, sub.subscription]);
 
-  // Auto-show onboarding tour for new users (post-plan-picker)
+  // Auto-show hub onboarding tour for new users (post-plan-picker)
   useEffect(() => {
-    const didOnboarding = localStorage.getItem("burnt-beats-onboarding-complete");
+    const didOnboarding = localStorage.getItem(HUB_ONBOARDING_KEY);
     if (!isLoaded || didOnboarding === "true") return;
+    if (ui.activeView !== "hub") return;
     const meta = user?.unsafeMetadata as Record<string, unknown> | undefined;
     if (meta?.planPickerSeen === true || !meta?.planPickerSeen) {
       const t = setTimeout(() => {
         window.dispatchEvent(new CustomEvent("open-onboarding"));
-      }, 1500);
+      }, 800);
       return () => clearTimeout(t);
     }
-  }, [isLoaded, user]);
+  }, [isLoaded, user, ui.activeView]);
+
+  useEffect(() => {
+    if (ui.activeView !== "editor") return;
+    if (localStorage.getItem(EDITOR_ONBOARDING_KEY) === "true") return;
+    if (!consumeEditorTourPending()) return;
+    const t = setTimeout(() => {
+      dev.emit("open-editor-onboarding");
+    }, 600);
+    return () => clearTimeout(t);
+  }, [ui.activeView, dev]);
 
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-[var(--bg)] text-foreground">
@@ -119,6 +143,11 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
       <ErrorBoundary fallback={null}>
         <Suspense fallback={null}>
           <OnboardingTour />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary fallback={null}>
+        <Suspense fallback={null}>
+          <EditorOnboardingTour />
         </Suspense>
       </ErrorBoundary>
       <LazyModalLayer
@@ -163,7 +192,29 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
       )}
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg px-md py-md sm:px-lg lg:px-xl">
+        {ui.activeView === "hub" ? (
+          <HubChrome
+            subscription={sub.subscription}
+            usageBalance={sub.usageBalance}
+            usageLoading={sub.usageLoading}
+            localDevFullApp={ui.localDevFullApp}
+            pricingActive={false}
+            onOpenPricing={() => ui.setActiveView("pricing")}
+            onOpenPortal={() => void sub.subscription.openPortal()}
+            openModal={modals.openModal}
+            openFeedback={() => dev.emit("open-feedback")}
+            openOnboarding={() => dev.emit("open-onboarding")}
+            onOpenLegal={() => {
+              window.open("/terms-of-service", "_blank", "noopener,noreferrer");
+            }}
+          />
+        ) : null}
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-[1600px] flex-col gap-lg",
+            ui.activeView === "hub" ? "px-0 py-0" : "px-md py-md sm:px-lg lg:px-xl",
+          )}
+        >
           {ui.activeView !== "hub" && (
             <EditorHeader
               headerVisible={ui.headerVisible}

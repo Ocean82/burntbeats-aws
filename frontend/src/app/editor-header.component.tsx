@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Home, Undo2, Redo2, Mic2, Music, Drum, FolderOpen, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { Home, Undo2, Redo2, Mic2, Music, Drum, FolderOpen, Guitar } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
 import { PlanBadge } from "../components/PlanBadge";
@@ -15,6 +15,8 @@ import {
   useEditorWorkflowSteps,
   type EditorWorkflowInput,
 } from "../hooks/workflow/useEditorWorkflowSteps";
+import { BACK_TO_HOME_LABEL, getHeaderTools } from "../data/toolCatalog";
+import type { AppView } from "../hooks/workflow/useEditorViewRouting";
 
 interface EditorHeaderProps {
   headerVisible: boolean;
@@ -45,13 +47,13 @@ const TAB_CLASS = (active: boolean) =>
       : "text-muted-foreground hover:text-foreground border border-transparent",
   );
 
-const SECONDARY_TABS: Array<{
-  id: "beats" | "my-stems";
-  label: string;
-  icon?: React.ComponentType<{ className?: string }>;
-}> = [
-  { id: "my-stems", label: "Library", icon: FolderOpen },
-];
+const HEADER_TAB_ICONS: Partial<Record<string, React.ComponentType<{ className?: string }>>> = {
+  speech: Mic2,
+  midi: Music,
+  beats: Drum,
+  tuner: Guitar,
+  "my-stems": FolderOpen,
+};
 
 export function EditorHeader({
   headerVisible,
@@ -72,8 +74,7 @@ export function EditorHeader({
 }: EditorHeaderProps) {
   const { tabsWithNews, markTabSeen } = useWhatsNew();
   const [cancelFlowOpen, setCancelFlowOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
+  const headerTools = getHeaderTools();
   const workflow = useEditorWorkflowSteps(
     editorWorkflow ?? {
       uploadedFile: null,
@@ -85,26 +86,11 @@ export function EditorHeader({
   const showWorkflow =
     activeView === "editor" && editorWorkflow != null;
 
-  useEffect(() => {
-    if (!moreOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [moreOpen]);
-
-  const handleTabClick = (
-    view: "hub" | "editor" | "speech" | "midi" | "beats" | "tuner" | "my-stems",
-  ) => {
+  const handleTabClick = (view: AppView) => {
+    if (view === "hub" || view === "pricing") return;
     setActiveView(view);
     markTabSeen(view);
-    setMoreOpen(false);
   };
-
-  const isSecondaryActive = SECONDARY_TABS.some((t) => t.id === activeView);
 
   return (
     <header
@@ -153,11 +139,11 @@ export function EditorHeader({
               type="button"
               onClick={() => setActiveView("hub")}
               className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3 text-muted-foreground transition hover:border-primary-400/40 hover:text-primary-200 tap-feedback"
-              title="Back to Hub"
-              aria-label="Back to Hub"
+              title={BACK_TO_HOME_LABEL}
+              aria-label={BACK_TO_HOME_LABEL}
             >
               <Home className="h-4 w-4" aria-hidden />
-              <span className="text-xs font-medium hidden sm:inline">Hub</span>
+              <span className="text-xs font-medium hidden sm:inline">Home</span>
             </button>
           )}
 
@@ -225,97 +211,28 @@ export function EditorHeader({
         </div>
       </div>
 
-      {/* Workspace tabs — primary visible, secondary in "More" dropdown */}
+      {/* Workspace tabs */}
       <nav
         aria-label="Workspace tabs"
         className="flex w-full max-w-full items-center gap-2xs overflow-x-auto rounded-xl border border-border/80 bg-muted/40 p-2xs [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]"
       >
-        <button
-          type="button"
-          onClick={() => handleTabClick("editor")}
-          className={TAB_CLASS(activeView === "editor")}
-          aria-current={activeView === "editor" ? "page" : undefined}
-        >
-          Stem editor
-          <WhatsNewBadge visible={tabsWithNews.has("editor")} />
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabClick("speech")}
-          className={TAB_CLASS(activeView === "speech")}
-          aria-current={activeView === "speech" ? "page" : undefined}
-        >
-          <Mic2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Speech
-          <WhatsNewBadge visible={tabsWithNews.has("speech")} />
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabClick("midi")}
-          className={TAB_CLASS(activeView === "midi")}
-          aria-current={activeView === "midi" ? "page" : undefined}
-        >
-          <Music className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          MIDI
-          <WhatsNewBadge visible={tabsWithNews.has("midi")} />
-        </button>
-        <button
-          type="button"
-          onClick={() => handleTabClick("beats")}
-          className={TAB_CLASS(activeView === "beats")}
-          aria-current={activeView === "beats" ? "page" : undefined}
-        >
-          <Drum className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Beats
-          <WhatsNewBadge visible={tabsWithNews.has("beats")} />
-        </button>
-
-        <div className="h-5 w-px bg-border/60 shrink-0" aria-hidden="true" />
-
-        {/* More dropdown for secondary tabs */}
-        <div ref={moreRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setMoreOpen(!moreOpen)}
-            className={TAB_CLASS(isSecondaryActive)}
-            aria-expanded={moreOpen}
-            aria-haspopup="true"
-          >
-            More
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
-          </button>
-
-          {moreOpen && (
-            <div
-              className="absolute left-0 top-full mt-1 min-w-[160px] rounded-xl border border-border/80 bg-popover/95 p-1 shadow-elevation-lg backdrop-blur-xl z-dropdown"
-              role="menu"
+        {headerTools.map((tool) => {
+          const Icon = HEADER_TAB_ICONS[tool.id];
+          const isActive = activeView === tool.appView;
+          return (
+            <button
+              key={tool.id}
+              type="button"
+              onClick={() => handleTabClick(tool.appView)}
+              className={TAB_CLASS(isActive)}
+              aria-current={isActive ? "page" : undefined}
             >
-              {SECONDARY_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeView === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => handleTabClick(tab.id)}
-                    role="menuitem"
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-lg px-sm py-2 text-sm font-medium transition",
-                      isActive
-                        ? "bg-primary-500/20 text-primary-100"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-                    )}
-                  >
-                    {Icon && <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />}
-                    {tab.label}
-                    <WhatsNewBadge visible={tabsWithNews.has(tab.id)} />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+              {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+              {tool.headerTabLabel}
+              <WhatsNewBadge visible={tabsWithNews.has(tool.appView)} />
+            </button>
+          );
+        })}
       </nav>
 
       {showWorkflow ? (

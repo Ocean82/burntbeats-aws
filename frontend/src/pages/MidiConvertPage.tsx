@@ -13,6 +13,7 @@ import { ErrorState } from "../components/ui/error-state";
 import { cn } from "../utils/cn";
 import { viewSwitchMotion } from "../motion/presets";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
+import { BACK_TO_HOME_LABEL, getTool } from "../data/toolCatalog";
 
 export interface MidiConvertPageProps {
   reduceMotion: boolean;
@@ -64,6 +65,8 @@ export function MidiConvertPage({
     </div>
   );
 
+  const midiTool = getTool("midi");
+
   return (
     <motion.section className="stack-md" {...viewSwitchMotion(reduceMotion)}>
       <div
@@ -71,11 +74,11 @@ export function MidiConvertPage({
         data-testid="midi-convert-page"
       >
         <PanelHeader
-          title={activeTab === "history" ? "MIDI Export" : "Audio to MIDI"}
+          title={activeTab === "history" ? "MIDI Export" : midiTool.primaryName}
           subtitle={
             activeTab === "history"
               ? "Browse and batch-export past conversions"
-              : "Transcribe stems or uploads, refine in the editor, export to your DAW"
+              : midiTool.description
           }
           actions={
             <div className="flex items-center gap-2">
@@ -84,10 +87,10 @@ export function MidiConvertPage({
                   type="button"
                   onClick={onBackToHub}
                   className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition hover:border-border hover:text-primary-200 tap-feedback"
-                  aria-label="Back to Hub"
+                  aria-label={BACK_TO_HOME_LABEL}
                 >
                   <Home className="h-3.5 w-3.5" aria-hidden />
-                  <span className="hidden sm:inline">Hub</span>
+                  <span className="hidden sm:inline">Home</span>
                 </button>
               )}
               {tabs}

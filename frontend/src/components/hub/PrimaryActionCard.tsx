@@ -1,5 +1,6 @@
 import { cn } from "../../utils/cn";
 import type { ReactNode } from "react";
+import { ToolNicknameBadge } from "./ToolNicknameBadge";
 
 export interface PrimaryActionCardProps {
   headline: string;
@@ -10,6 +11,8 @@ export interface PrimaryActionCardProps {
   onClick: () => void;
   className?: string;
   isNew?: boolean;
+  nickname?: string;
+  tourId?: string;
 }
 
 const STEM_COLORS: Record<string, { soft: string; solid: string; border: string }> = {
@@ -27,6 +30,8 @@ export function PrimaryActionCard({
   onClick,
   className,
   isNew,
+  nickname,
+  tourId,
 }: PrimaryActionCardProps) {
   const colors = STEM_COLORS[stemColor] || STEM_COLORS.vocals;
 
@@ -34,6 +39,7 @@ export function PrimaryActionCard({
     <button
       type="button"
       onClick={onClick}
+      data-tour={tourId}
       className={cn(
         "group relative overflow-hidden rounded-2xl bg-surface-raised border border-border transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left min-h-[180px] md:min-h-[240px]",
         className,
@@ -50,19 +56,17 @@ export function PrimaryActionCard({
 
       <div className="relative p-8 h-full flex flex-col justify-between">
         <div>
-          <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start mb-6">
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center"
               style={{ background: colors.soft }}
             >
               <div style={{ color: colors.solid }}>{icon}</div>
             </div>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {stemColor === "vocals" ? "Isolate & Remix" : stemColor === "drums" ? "Create" : "Transcribe"}
-            </span>
           </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2 flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-foreground mb-2 flex flex-wrap items-center gap-2">
             {headline}
+            {nickname ? <ToolNicknameBadge nickname={nickname} /> : null}
             {isNew && (
               <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary-500/20 text-primary-400 border border-primary-500/30">
                 New

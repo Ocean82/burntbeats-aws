@@ -38,6 +38,8 @@ import { fetchStemWavAsBlob } from "../api/stems";
 import { downloadBlob, isTouchDevice } from "../utils/downloadHelper";
 import { MyStemsPageSkeleton } from "./MyStemsPageSkeleton";
 import { SharePreviewButton } from "./SharePreviewButton";
+import { ToolNicknameBadge } from "./hub/ToolNicknameBadge";
+import { getTool } from "../data/toolCatalog";
 import { useToast } from "../store/toastStore";
 
 // ---------------------------------------------------------------------------
@@ -111,6 +113,7 @@ export function MyStemsPage({
   loadingMixerJobId = null,
   loadingMidiJobId = null,
 }: MyStemsPageProps) {
+  const splitsTool = getTool("my-stems");
   const reduceMotion = useReducedMotion() ?? false;
   const collapse = collapseMotion(reduceMotion);
   const { toast } = useToast();
@@ -327,14 +330,19 @@ export function MyStemsPage({
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold text-foreground">My Stems</h1>
+          <h1 className="text-lg font-semibold text-foreground flex flex-wrap items-center gap-2">
+            {splitsTool.primaryName}
+            {splitsTool.nickname ? (
+              <ToolNicknameBadge nickname={splitsTool.nickname} />
+            ) : null}
+          </h1>
         </header>
         <div className="flex flex-1 items-center justify-center p-md">
           <EmptyState
             icon={<Archive className="h-6 w-6" />}
-            title="No stems yet"
-            description="Split your first track — your separated stems will appear here for easy re-download"
-            action={{ label: "Split Your First Track", onClick: onClose }}
+            title="No tracks yet"
+            description="Split your first song — your separated tracks will appear here for easy re-download"
+            action={{ label: "Split Your First Song", onClick: onClose }}
           />
         </div>
       </div>
@@ -356,7 +364,12 @@ export function MyStemsPage({
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="text-lg font-semibold text-foreground">My Stems</h1>
+        <h1 className="text-lg font-semibold text-foreground flex flex-wrap items-center gap-2">
+          {splitsTool.primaryName}
+          {splitsTool.nickname ? (
+            <ToolNicknameBadge nickname={splitsTool.nickname} />
+          ) : null}
+        </h1>
       </header>
 
       <main className="flex-1 p-md sm:p-lg">

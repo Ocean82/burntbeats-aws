@@ -1,57 +1,28 @@
 import { useState, useRef, useLayoutEffect } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight, ChevronLeft, Upload, Sliders, Music2, Download, Sparkles } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import { cn } from "../utils/cn";
 import { useModalA11y } from "../hooks/useModalA11y";
 import { useProductMotion } from "../motion/useProductMotion";
 import { useAppEvent } from "../store/eventBus";
+import {
+  HUB_ONBOARDING_KEY,
+  HUB_ONBOARDING_STEPS,
+  markEditorTourPending,
+} from "../data/onboardingSteps";
+import { getTool } from "../data/toolCatalog";
 
 interface OnboardingTourProps {
   onComplete?: () => void;
   onSkip?: () => void;
 }
 
-const TOUR_STEPS = [
-  {
-    icon: Sparkles,
-    title: "Welcome to Burnt Beats",
-    description: "Your AI-powered stem separation studio. Split any song into individual tracks in seconds.",
-    tip: "Press ? anytime to see keyboard shortcuts",
-  },
-  {
-    icon: Upload,
-    title: "Upload Your Track",
-    description: "Drag and drop an audio file, or click to browse. We support MP3, WAV, FLAC, and more.",
-    tip: "Files up to 500MB are supported",
-    target: '[data-tour="upload-dropzone"]',
-  },
-  {
-    icon: Sliders,
-    title: "Configure Your Split",
-    description: "Choose the exact mode you want up front: 2 stems or 4 stems, each in Fast or Quality mode.",
-    tip: "Use Quality for the cleanest separation",
-    target: '[data-tour="quality-selector"]',
-  },
-  {
-    icon: Music2,
-    title: "Mix Your Stems",
-    description: "After splitting, adjust levels, pan, and trim each stem. Solo or mute tracks to perfect your mix.",
-    tip: "Use number keys 1-4 to quickly solo stems",
-  },
-  {
-    icon: Download,
-    title: "Export Your Work",
-    description: "Download individual stems or a mixed master. Choose your preferred format and quality.",
-    tip: "Use Export in the mixer, or Ctrl+E (Mac: ⌘E)",
-  },
-];
-
-const ONBOARDING_KEY = "burnt-beats-onboarding-complete";
-
 export function OnboardingTour({
   onComplete = () => {},
   onSkip = () => {},
 }: OnboardingTourProps) {
+  const [, navigate] = useLocation();
   const [currentStep, setCurrentStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
@@ -69,13 +40,13 @@ export function OnboardingTour({
   });
 
   const handleComplete = () => {
-    localStorage.setItem(ONBOARDING_KEY, "true");
+    localStorage.setItem(HUB_ONBOARDING_KEY, "true");
     setIsVisible(false);
     onComplete();
   };
 
   const handleSkip = () => {
-    localStorage.setItem(ONBOARDING_KEY, "true");
+    localStorage.setItem(HUB_ONBOARDING_KEY, "true");
     setIsVisible(false);
     onSkip();
   };
@@ -84,11 +55,13 @@ export function OnboardingTour({
   useModalA11y(isVisible, modalRef, handleSkip);
 
   const nextStep = () => {
-    if (currentStep < TOUR_STEPS.length - 1) {
+    if (currentStep < HUB_ONBOARDING_STEPS.length - 1) {
       setCurrentStep((s) => s + 1);
-    } else {
-      handleComplete();
+      return;
     }
+    markEditorTourPending();
+    navigate(getTool("editor").route);
+    handleComplete();
   };
 
   const prevStep = () => {
@@ -97,9 +70,7 @@ export function OnboardingTour({
     }
   };
 
-  const step = TOUR_STEPS[currentStep] as (typeof TOUR_STEPS)[number] & {
-    target?: string;
-  };
+  const step = HUB_ONBOARDING_STEPS[currentStep];
   const { icon: Icon, target } = step;
 
   useLayoutEffect(() => {
@@ -185,7 +156,7 @@ export function OnboardingTour({
                 <motion.div
                   className="h-full bg-linear-to-r from-primary-500 to-primary-400"
                   initial={{ width: 0 }}
-                  animate={{ width: `${((currentStep + 1) / TOUR_STEPS.length) * 100}%` }}
+                  animate={{ width: `${((currentStep + 1) / HUB_ONBOARDING_STEPS.length) * 100}%` }}
                   transition={motionCfg.transition("normal")}
                 />
               </div>
@@ -254,12 +225,12 @@ export function OnboardingTour({
 
                 {/* Step indicators */}
                 <div className="flex items-center gap-xs">
-                  {TOUR_STEPS.map((_, index) => (
+                  {HUB_ONBOARDING_STEPS.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentStep(index)}
-                      aria-label={`Go to step ${index + 1} of ${TOUR_STEPS.length}`}
-                      title={`Step ${index + 1} of ${TOUR_STEPS.length}`}
+                      aria-label={`Go to step ${index + 1} of ${HUB_ONBOARDING_STEPS.length}`}
+                      title={`Step ${index + 1} of ${HUB_ONBOARDING_STEPS.length}`}
                       className={cn(
                         "h-3 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         index === currentStep
@@ -277,8 +248,10 @@ export function OnboardingTour({
                   onClick={nextStep}
                   className="tap-feedback flex min-h-[44px] items-center gap-2xs rounded-lg bg-primary px-md py-xs text-sm font-medium text-primary-foreground transition-[color,background-color,transform] duration-(--motion-fast) hover:bg-primary-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]"
                 >
-                  {currentStep === TOUR_STEPS.length - 1 ? "Get Started" : "Next"}
-                  {currentStep < TOUR_STEPS.length - 1 && <ChevronRight className="h-4 w-4" />}
+                  {currentStep === HUB_ONBOARDING_STEPS.length - 1
+                    ? getTool("editor").cta
+                    : "Next"}
+                  {currentStep < HUB_ONBOARDING_STEPS.length - 1 && <ChevronRight className="h-4 w-4" />}
                 </button>
               </div>
             </motion.div>
@@ -292,7 +265,9 @@ export function OnboardingTour({
 // Hook to reset onboarding (for testing or user request)
 export function useResetOnboarding() {
   return () => {
-    localStorage.removeItem(ONBOARDING_KEY);
+    localStorage.removeItem(HUB_ONBOARDING_KEY);
+    localStorage.removeItem("burnt-beats-editor-tour-complete");
+    localStorage.removeItem("burnt-beats-editor-tour-pending");
     window.location.reload();
   };
 }
