@@ -129,8 +129,15 @@ export function EffectsPanel({ activeTool, onClose, isOverlay = false, activeSte
             onUpdateMixerField={updateMixerField}
           />
         ) : (
-          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-            Select a stem to adjust parameters
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-4">
+            <div className="h-10 w-10 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+              <svg className="h-5 w-5 text-muted-foreground/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M9 19V6l12-3v13M9 19c0 1.1-1.3 2-3 2s-3-.9-3-2 1.3-2 3-2 3 .9 3 2zM21 16c0 1.1-1.3 2-3 2s-3-.9-3-2 1.3-2 3-2 3 .9 3 2z" />
+              </svg>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Select a stem in the waveform view to adjust its parameters here
+            </p>
           </div>
         )}
       </div>
@@ -214,9 +221,12 @@ interface SliderControlProps {
   value: number;
   onChange: (value: number) => void;
   unit?: string;
+  /** Value to reset to on double-click. Defaults to 0 if range includes 0, otherwise min. */
+  resetValue?: number;
 }
 
-function SliderControl({ label, min, max, step, value, onChange, unit = "" }: SliderControlProps) {
+function SliderControl({ label, min, max, step, value, onChange, unit = "", resetValue }: SliderControlProps) {
+  const defaultReset = resetValue ?? (min <= 0 && max >= 0 ? 0 : min);
   return (
     <label className="flex flex-col gap-1">
       <span className="text-[11px] font-medium text-secondary-foreground">
@@ -229,11 +239,11 @@ function SliderControl({ label, min, max, step, value, onChange, unit = "" }: Sl
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        onDoubleClick={() => onChange(min <= 0 && max >= 0 ? 0 : min)}
+        onDoubleClick={() => onChange(defaultReset)}
         aria-label={label}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400"
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400"
       />
-      <div className="flex justify-between text-[10px] font-mono text-muted-foreground tabular-nums">
+      <div className="flex justify-between text-[9px] font-mono text-muted-foreground tabular-nums">
         <span>{min}{unit}</span>
         <span>{max}{unit}</span>
       </div>
@@ -471,6 +481,7 @@ function TimeStretchControls({ stemState, onUpdate }: TimeStretchControlsProps) 
           value={stemState.timeStretch}
           onChange={(v) => onUpdate("timeStretch", v)}
           unit="x"
+          resetValue={1.0}
         />
       </div>
 
@@ -560,6 +571,7 @@ function AmplitudeControls({ stemState, onUpdate, onUpdateMixer }: AmplitudeCont
             value={stemState.mixer.compRatio ?? 1}
             onChange={(v) => onUpdateMixer("compRatio", v)}
             unit=":1"
+            resetValue={1}
           />
           <SliderControl
             label="Attack"
@@ -569,6 +581,7 @@ function AmplitudeControls({ stemState, onUpdate, onUpdateMixer }: AmplitudeCont
             value={stemState.mixer.compAttackMs ?? 10}
             onChange={(v) => onUpdateMixer("compAttackMs", v)}
             unit=" ms"
+            resetValue={10}
           />
           <SliderControl
             label="Release"
@@ -578,6 +591,7 @@ function AmplitudeControls({ stemState, onUpdate, onUpdateMixer }: AmplitudeCont
             value={stemState.mixer.compReleaseMs ?? 100}
             onChange={(v) => onUpdateMixer("compReleaseMs", v)}
             unit=" ms"
+            resetValue={100}
           />
         </div>
       </div>

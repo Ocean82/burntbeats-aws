@@ -8,6 +8,7 @@ import { useWorkflow } from "@/contexts/WorkflowContext";
 import { useAudio } from "@/contexts/AudioContext";
 import { MasterProcessingPanel } from "@/components/master-processing";
 import { mergeMixerState } from "@/types";
+import { playSoundClick, playSoundSolo } from "@/utils/uiSounds";
 import type { StemEditorState } from "@/stem-editor-state";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
@@ -291,6 +292,7 @@ export function MixerConsole({ className }: MixerConsoleProps) {
 
   const handleMuteToggle = useCallback(
     (stemId: string) => {
+      playSoundClick();
       setStemStates((prev) => ({
         ...prev,
         [stemId]: {
@@ -304,6 +306,7 @@ export function MixerConsole({ className }: MixerConsoleProps) {
 
   const handleSoloToggle = useCallback(
     (stemId: string) => {
+      playSoundSolo();
       setStemStates((prev) => ({
         ...prev,
         [stemId]: {

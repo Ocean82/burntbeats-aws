@@ -253,14 +253,14 @@ export function StemFocusOverlay({
             </div>
           )}
           {activeFocusTool === "pitch" && stemState && onStemFieldChange && (
-            <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-secondary-foreground">
-                  Pitch: <span className="text-foreground">{stemState.pitchSemitones > 0 ? "+" : ""}{stemState.pitchSemitones} st</span>
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-secondary-foreground">
+                  Pitch: <span className="font-mono tabular-nums text-foreground">{stemState.pitchSemitones > 0 ? "+" : ""}{stemState.pitchSemitones} st</span>
                 </span>
                 <input type="range" min={-12} max={12} step={1} value={stemState.pitchSemitones}
                   onChange={(e) => onStemFieldChange("pitchSemitones", Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400" />
               </label>
             </div>
           )}
@@ -272,61 +272,61 @@ export function StemFocusOverlay({
                   <input type="range" min={-12} max={12} step={0.5}
                     value={stemState.mixer[field]}
                     onChange={(e) => onMixerFieldChange(field, Number(e.target.value))}
-                    className="h-16 w-2 cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400 [writing-mode:vertical-lr] rotate-180" />
+                    className="h-16 w-2 cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400 [writing-mode:vertical-lr] rotate-180" />
                   <span className="text-[10px] font-mono text-foreground">{stemState.mixer[field].toFixed(1)}</span>
                 </label>
               ))}
             </div>
           )}
           {activeFocusTool === "timeStretch" && stemState && onStemFieldChange && (
-            <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-secondary-foreground">
-                  Speed: <span className="text-foreground">{Math.round(stemState.timeStretch * 100)}%</span>
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-secondary-foreground">
+                  Speed: <span className="font-mono tabular-nums text-foreground">{Math.round(stemState.timeStretch * 100)}%</span>
                 </span>
                 <input type="range" min={0.5} max={2} step={0.01} value={stemState.timeStretch}
                   onChange={(e) => onStemFieldChange("timeStretch", Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400" />
               </label>
             </div>
           )}
           {activeFocusTool === "volume" && stemState && onMixerFieldChange && (
-            <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-secondary-foreground">
-                  Gain: <span className="text-foreground">{stemState.mixer.gain > 0 ? "+" : ""}{stemState.mixer.gain.toFixed(1)} dB</span>
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-secondary-foreground">
+                  Gain: <span className="font-mono tabular-nums text-foreground">{stemState.mixer.gain > 0 ? "+" : ""}{stemState.mixer.gain.toFixed(1)} dB</span>
                 </span>
                 <input type="range" min={-20} max={6} step={0.1} value={stemState.mixer.gain}
                   onChange={(e) => onMixerFieldChange("gain", Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400" />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-secondary-foreground">
-                  Pan: <span className="text-foreground">{stemState.mixer.pan === 0 ? "C" : stemState.mixer.pan < 0 ? `L${Math.abs(stemState.mixer.pan)}` : `R${stemState.mixer.pan}`}</span>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-secondary-foreground">
+                  Pan: <span className="font-mono tabular-nums text-foreground">{stemState.mixer.pan === 0 ? "C" : stemState.mixer.pan < 0 ? `L${Math.abs(stemState.mixer.pan)}` : `R${stemState.mixer.pan}`}</span>
                 </span>
                 <input type="range" min={-100} max={100} step={1} value={stemState.mixer.pan}
                   onChange={(e) => onMixerFieldChange("pan", Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400" />
               </label>
             </div>
           )}
           {activeFocusTool === "fx" && stemState && onMixerFieldChange && (
-            <div className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-secondary-foreground">
-                  Reverb: <span className="text-foreground">{stemState.mixer.reverbWet}%</span>
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-secondary-foreground">
+                  Reverb: <span className="font-mono tabular-nums text-foreground">{stemState.mixer.reverbWet}%</span>
                 </span>
                 <input type="range" min={0} max={100} step={1} value={stemState.mixer.reverbWet}
                   onChange={(e) => onMixerFieldChange("reverbWet", Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400" />
               </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-secondary-foreground">
-                  Delay: <span className="text-foreground">{stemState.mixer.delayWet}%</span>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-secondary-foreground">
+                  Delay: <span className="font-mono tabular-nums text-foreground">{stemState.mixer.delayWet}%</span>
                 </span>
                 <input type="range" min={0} max={100} step={1} value={stemState.mixer.delayWet}
                   onChange={(e) => onMixerFieldChange("delayWet", Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/[0.08] accent-primary-400" />
               </label>
             </div>
           )}

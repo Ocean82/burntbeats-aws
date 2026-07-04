@@ -10,6 +10,7 @@ import {
   legacyStemsFromIntent,
   withIntentQuality,
 } from "../utils/splitIntent";
+import { playSoundSuccess } from "../utils/uiSounds";
 import { MAX_UPLOAD_BYTES, PIPELINE_PROGRESS_THRESHOLDS, isAllowedAudioFile, ALLOWED_AUDIO_FORMATS_LABEL } from "../config";
 import { useAppStore } from "../store/appStore";
 import { useToastStore } from "../store/toastStore";
@@ -260,6 +261,7 @@ export function useStemSplitting({
         type: "success",
         duration: 4000,
       });
+      playSoundSuccess();
       trackEvent("split_completed", {
         stems_count: res.stems.length,
         quality: splitQuality,

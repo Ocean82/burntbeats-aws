@@ -216,6 +216,48 @@ export function WaveformTimeline({
       data-testid="waveform-timeline"
       aria-label="Waveform timeline"
     >
+      {/* Overview minimap — visible when zoomed in (zoom > 1) */}
+      {zoom > 1 && stems.length > 0 && (
+        <div
+          className="relative w-full h-6 rounded-md bg-white/[0.03] border border-white/[0.06] overflow-hidden shrink-0"
+          aria-label="Waveform overview — shows full track and current viewport"
+          role="presentation"
+        >
+          {/* Mini waveform representation (all stems combined as thin bars) */}
+          <div className="absolute inset-0 flex items-center px-1 gap-px opacity-40">
+            {Array.from({ length: 80 }, (_, i) => {
+              // Simple composite representation from first stem's waveform
+              const firstWaveform = resolvedWaveforms[stems[0]?.id];
+              const idx = Math.floor((i / 80) * (firstWaveform?.length ?? 80));
+              const val = firstWaveform?.[idx] ?? 0.3;
+              return (
+                <div
+                  key={i}
+                  className="flex-1 rounded-sm bg-white/60"
+                  style={{ height: `${Math.max(10, val * 100)}%` }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Viewport indicator (highlights visible region) */}
+          <div
+            className="absolute inset-y-0 border border-primary-400/50 bg-primary-400/10 rounded-sm"
+            style={{
+              left: `${0}%`,
+              width: `${(1 / zoom) * 100}%`,
+            }}
+          />
+
+          {/* Playhead on minimap */}
+          <div
+            className="absolute inset-y-0 w-px bg-white/70"
+            style={{ left: `${playheadPct}%` }}
+            aria-hidden
+          />
+        </div>
+      )}
+
       {/* Scrollable zoom container */}
       <div
         className="relative flex flex-1 flex-col gap-1 overflow-x-auto"
