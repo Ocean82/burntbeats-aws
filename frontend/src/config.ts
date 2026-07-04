@@ -17,10 +17,23 @@ export interface ClerkProviderConfig {
   isLocalDevFullApp: boolean;
 }
 
+export const LOCAL_DEV_CLERK_PUBLISHABLE_KEY =
+  "pk_test_Y2xlcmsuYnVybnRiZWF0cy50ZXN0JA";
+
+export function resolveClerkPublishableKey({
+  clerkPubKey,
+  isLocalDevFullApp,
+}: ClerkProviderConfig): string | undefined {
+  if (clerkPubKey) return clerkPubKey;
+  if (isLocalDevFullApp) return LOCAL_DEV_CLERK_PUBLISHABLE_KEY;
+  return undefined;
+}
+
 export function shouldMountClerkProvider({
   clerkPubKey,
+  isLocalDevFullApp,
 }: ClerkProviderConfig): boolean {
-  return Boolean(clerkPubKey);
+  return Boolean(resolveClerkPublishableKey({ clerkPubKey, isLocalDevFullApp }));
 }
 
 export function isInternalHealthPanelEnabled(): boolean {

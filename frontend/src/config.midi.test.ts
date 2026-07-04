@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   isAllowedMidiAudioFile,
   MIDI_ALLOWED_AUDIO_EXTENSIONS,
+  LOCAL_DEV_CLERK_PUBLISHABLE_KEY,
+  resolveClerkPublishableKey,
   shouldMountClerkProvider,
 } from "./config";
 
@@ -44,11 +46,26 @@ describe("Clerk provider config", () => {
     ).toBe(true);
   });
 
-  it("skips ClerkProvider when no key is present", () => {
+  it("mounts ClerkProvider with the local fallback key when local-dev full-app mode has no env key", () => {
     expect(
       shouldMountClerkProvider({
         clerkPubKey: undefined,
         isLocalDevFullApp: true,
+      }),
+    ).toBe(true);
+    expect(
+      resolveClerkPublishableKey({
+        clerkPubKey: undefined,
+        isLocalDevFullApp: true,
+      }),
+    ).toBe(LOCAL_DEV_CLERK_PUBLISHABLE_KEY);
+  });
+
+  it("skips ClerkProvider when auth is disabled and no key is present", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: undefined,
+        isLocalDevFullApp: false,
       }),
     ).toBe(false);
   });

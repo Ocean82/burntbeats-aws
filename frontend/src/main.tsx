@@ -9,7 +9,11 @@ import { hasAnalyticsConsent } from "./store/cookieConsent";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import "./index.css";
 import { Root } from "./Root";
-import { isLocalDevFullApp, shouldMountClerkProvider } from "./config";
+import {
+  isLocalDevFullApp,
+  resolveClerkPublishableKey,
+  shouldMountClerkProvider,
+} from "./config";
 import { localDevClerk } from "./lib/local-dev-clerk";
 
 // Initialize Sentry before anything else renders.
@@ -51,7 +55,10 @@ const shouldUseClerkProvider = shouldMountClerkProvider({
   clerkPubKey,
   isLocalDevFullApp: localDevFullApp,
 });
-const resolvedClerkPubKey = clerkPubKey ?? "";
+const resolvedClerkPubKey = resolveClerkPublishableKey({
+  clerkPubKey,
+  isLocalDevFullApp: localDevFullApp,
+});
 const localDevClerkProviderProps: Partial<ClerkProviderProps> = localDevFullApp
   ? {
       Clerk: localDevClerk as unknown as NonNullable<ClerkProviderProps["Clerk"]>,
@@ -61,7 +68,7 @@ const localDevClerkProviderProps: Partial<ClerkProviderProps> = localDevFullApp
 
 const appTree = shouldUseClerkProvider ? (
   <ClerkProvider
-    publishableKey={resolvedClerkPubKey}
+    publishableKey={resolvedClerkPubKey ?? ""}
     afterSignOutUrl="/"
     {...localDevClerkProviderProps}
   >
