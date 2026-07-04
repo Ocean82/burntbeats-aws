@@ -22,8 +22,23 @@ async function mockSplitWithPayloadInspection(page: Page) {
   let capturedPayload: unknown;
 
   await page.route("**/api/stems/split", async (route: Route) => {
-    const body = route.request().postDataJSON();
-    capturedPayload = body;
+    // Split uses multipart/form-data, not JSON — parse the text body for key fields
+    const postData = route.request().postData() ?? "";
+    const fields: Record<string, string> = {};
+    // Extract form fields from multipart body
+    const parts = postData.split(/------WebKitFormBoundary[^\r\n]+/);
+    for (const part of parts) {
+      const nameMatch = part.match(/name="([^"]+)"/);
+      if (nameMatch) {
+        const value = part.split("\r\n\r\n")[1]?.trim() ?? part.split("\n\n")[1]?.trim() ?? "";
+        fields[nameMatch[1]] = value;
+      }
+    }
+    // Try to parse intent as JSON if present
+    if (fields.intent) {
+      try { fields.intent = JSON.parse(fields.intent); } catch { /* keep as string */ }
+    }
+    capturedPayload = fields;
 
     await route.fulfill({
       status: 202,
@@ -156,12 +171,7 @@ test.describe("Billing checkout happy path", () => {
   });
 
   test("CTA click constructs Stripe checkout session", async ({ page }) => {
-    await gotoEditor(page);
-    await page.getByTestId("settings-menu-trigger").click();
-    await page.getByTestId("settings-menu-pricing").click();
-    await page.getByTestId("pricing-page").waitFor();
-
-    // Intercept the checkout endpoint and capture the request
+    // Intercept the checkout endpoint BEFORE navigating (ensures capture)
     let checkoutPayload: unknown;
     await page.route("**/api/billing/checkout", async (route: Route) => {
       checkoutPayload = route.request().postDataJSON();
@@ -174,6 +184,11 @@ test.describe("Billing checkout happy path", () => {
         }),
       });
     });
+
+    await gotoEditor(page);
+    await page.getByTestId("settings-menu-trigger").click();
+    await page.getByTestId("settings-menu-pricing").click();
+    await page.getByTestId("pricing-page").waitFor();
 
     const checkoutButton = page.getByTestId("pricing-cta-basic");
     await expect(checkoutButton).toBeVisible();
