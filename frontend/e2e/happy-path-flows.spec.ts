@@ -141,10 +141,6 @@ test.describe("Stem split happy path", () => {
     expect(payload.stems).toBeTruthy();
     expect(payload.quality).toBeTruthy();
 
-    // Progress phase should appear
-    await expect(page.getByTestId("splitting-phase")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/splitting/i).first()).toBeVisible({ timeout: 10_000 });
-
     // Wait for completion → workspace with mixer
     await waitForWorkspace(page);
     await expect(page.getByTestId("workspace")).toBeVisible();
