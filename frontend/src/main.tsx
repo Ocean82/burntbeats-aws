@@ -8,6 +8,7 @@ import { hasAnalyticsConsent } from "./store/cookieConsent";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import "./index.css";
 import { Root } from "./Root";
+import { isLocalDevFullApp, shouldMountClerkProvider } from "./config";
 
 // Initialize Sentry before anything else renders.
 initSentry();
@@ -43,7 +44,12 @@ if (import.meta.env.PROD && stripePubKey?.startsWith("pk_test_")) {
   );
 }
 
-const appTree = clerkPubKey ? (
+const shouldUseClerkProvider = shouldMountClerkProvider({
+  clerkPubKey,
+  isLocalDevFullApp: isLocalDevFullApp(),
+});
+
+const appTree = shouldUseClerkProvider ? (
   <ClerkProvider publishableKey={clerkPubKey} afterSignOutUrl="/">
     <Root />
   </ClerkProvider>

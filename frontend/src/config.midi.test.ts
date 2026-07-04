@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isAllowedMidiAudioFile,
   MIDI_ALLOWED_AUDIO_EXTENSIONS,
+  shouldMountClerkProvider,
 } from "./config";
 
 describe("MIDI audio format config", () => {
@@ -21,5 +22,25 @@ describe("MIDI audio format config", () => {
 
   it("rejects unknown extensions", () => {
     expect(isAllowedMidiAudioFile("readme.txt")).toBe(false);
+  });
+});
+
+describe("Clerk provider config", () => {
+  it("skips ClerkProvider in local-dev full-app mode even when a placeholder key is set", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: "pk_test_0000000000000000000000000000000000000000000000000000000000000000",
+        isLocalDevFullApp: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("mounts ClerkProvider when auth is enabled and a key is present", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: "pk_test_realistic",
+        isLocalDevFullApp: false,
+      }),
+    ).toBe(true);
   });
 });

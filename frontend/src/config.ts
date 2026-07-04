@@ -12,6 +12,19 @@ export function isLocalDevFullApp(): boolean {
   return v === "1" || v === "true";
 }
 
+export interface ClerkProviderConfig {
+  clerkPubKey: string | undefined;
+  isLocalDevFullApp: boolean;
+}
+
+export function shouldMountClerkProvider({
+  clerkPubKey,
+  isLocalDevFullApp,
+}: ClerkProviderConfig): boolean {
+  if (isLocalDevFullApp) return false;
+  return Boolean(clerkPubKey);
+}
+
 export function isInternalHealthPanelEnabled(): boolean {
   const enabled = ["1", "true", "yes"].includes(
     String(import.meta.env.VITE_INTERNAL_HEALTH_PANEL_ENABLED ?? "")
