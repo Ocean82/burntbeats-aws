@@ -21,6 +21,7 @@ fs.mkdirSync(stemOutputDir, { recursive: true });
 process.env.STEM_OUTPUT_DIR = stemOutputDir;
 
 const OTHER_STEM_JOB_ID = "88888888-8888-4888-8888-888888888888";
+const OWNER_STEM_JOB_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const OTHER_USER_ID = "user_other";
 const AUTHENTICATED_USER_ID = "user_current";
 
@@ -52,13 +53,19 @@ process.env.MIDI_SERVICE_URL = `http://127.0.0.1:${midiServiceServer.address().p
 const stemDir = path.join(stemOutputDir, OTHER_STEM_JOB_ID, "stems");
 fs.mkdirSync(stemDir, { recursive: true });
 fs.writeFileSync(path.join(stemDir, "vocals.wav"), Buffer.from("RIFF....WAVEfmt "));
+const ownedStemDir = path.join(stemOutputDir, OWNER_STEM_JOB_ID, "stems");
+fs.mkdirSync(ownedStemDir, { recursive: true });
+fs.writeFileSync(path.join(ownedStemDir, "drums.wav"), Buffer.from("RIFF....WAVEfmt "));
 
 const { app } = await import("../server.js");
 const request = supertest(app);
 
 app.locals.verifyClerkBearer = async () => AUTHENTICATED_USER_ID;
-app.locals.getJobOwner = async (jobId) =>
-  jobId === OTHER_STEM_JOB_ID ? OTHER_USER_ID : null;
+app.locals.getJobOwner = async (jobId) => {
+  if (jobId === OTHER_STEM_JOB_ID) return OTHER_USER_ID;
+  if (jobId === OWNER_STEM_JOB_ID) return AUTHENTICATED_USER_ID;
+  return null;
+};
 
 test("POST /api/midi/convert rejects stems owned by another user", async () => {
   const res = await request
@@ -69,6 +76,19 @@ test("POST /api/midi/convert rejects stems owned by another user", async () => {
 
   assert.match(res.body.error, /access/i);
   assert.equal(midiServiceCalls, 0);
+});
+
+test("POST /api/midi/convert allows stems owned by the authenticated user", async () => {
+  midiServiceCalls = 0;
+
+  const res = await request
+    .post("/api/midi/convert")
+    .field("stem_job_id", OWNER_STEM_JOB_ID)
+    .field("stem_name", "drums")
+    .expect(202);
+
+  assert.equal(res.body.job_id, "99999999-9999-4999-8999-999999999999");
+  assert.equal(midiServiceCalls, 1);
 });
 
 test.after(async () => {
