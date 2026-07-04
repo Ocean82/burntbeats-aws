@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Zap, Sparkles, Music, Users, ArrowLeft } from "lucide-react";
+import { Zap, Sparkles, Music, Users, ArrowLeft, Lock } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useUsageBalance } from "@/hooks/useUsageBalance";
@@ -143,6 +143,7 @@ export function ConfigurePhase({
             {stemCountOptions.map((opt) => {
               const Icon = opt.icon;
               const isActive = stemCount === opt.value;
+              const isPremiumLocked = opt.value === 4 && subscription.status !== "active";
               return (
                 <button
                   key={opt.value}
@@ -150,7 +151,7 @@ export function ConfigurePhase({
                   onClick={() => setStemCount(opt.value)}
                   aria-pressed={isActive}
                   className={cn(
-                    "flex flex-col items-center gap-2xs rounded-xl border px-md py-sm text-center transition",
+                    "relative flex flex-col items-center gap-2xs rounded-xl border px-md py-sm text-center transition",
                     isActive
                       ? "border-primary-500/50 bg-primary-500/20 text-primary-200"
                       : "border-border bg-muted text-muted-foreground hover:border-border hover:bg-secondary hover:text-foreground",
@@ -159,6 +160,12 @@ export function ConfigurePhase({
                   <Icon className="h-5 w-5" aria-hidden />
                   <span className="text-sm font-medium">{opt.label}</span>
                   <span className="text-xs opacity-70">{opt.description}</span>
+                  {isPremiumLocked && (
+                    <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 rounded bg-primary-500/20 px-1 py-0.5 text-[9px] font-semibold text-primary-300">
+                      <Lock className="h-2.5 w-2.5" aria-hidden />
+                      Pro
+                    </span>
+                  )}
                 </button>
               );
             })}

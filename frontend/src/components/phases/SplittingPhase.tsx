@@ -10,6 +10,8 @@ export interface SplittingPhaseProps {
   onRetry: () => void;
   estimatedSeconds?: number | null;
   onChangeFile: () => void;
+  /** Backend-reported processing stage (e.g. "Analyzing audio...", "Separating vocals...") */
+  stageLabel?: string | null;
 }
 
 /** Format elapsed seconds as "Xm Ys" or "Xs". */
@@ -34,6 +36,7 @@ export function SplittingPhase({
   onRetry,
   estimatedSeconds,
   onChangeFile,
+  stageLabel,
 }: SplittingPhaseProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -145,7 +148,7 @@ export function SplittingPhase({
 
             <div>
               <p className="text-lg font-bold text-foreground">
-                Splitting stems...
+                {stageLabel || "Splitting stems..."}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {renderEstimatedRemaining()}

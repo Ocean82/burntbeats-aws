@@ -251,9 +251,9 @@ function MixerToggleWithHint({
       <button
         type="button"
         onClick={handleClick}
-        aria-label={advancedMode ? "Switch to simple view" : "Show mixer & tools"}
+        aria-label={advancedMode ? "Switch to simple view" : "Show tools & mixer"}
         aria-pressed={advancedMode}
-        title={advancedMode ? "Simple view" : "Mixer & tools"}
+        title={advancedMode ? "Simple view" : "Tools & mixer"}
         className={cn(
           "flex h-8 items-center gap-1 rounded-lg px-2 transition text-xs font-medium",
           advancedMode
@@ -263,7 +263,7 @@ function MixerToggleWithHint({
       >
         <Settings2 className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">
-          {advancedMode ? "Simple" : "Mixer"}
+          {advancedMode ? "Simple" : "Tools"}
         </span>
       </button>
 

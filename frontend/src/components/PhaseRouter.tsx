@@ -29,6 +29,8 @@ export interface PhaseRouterProps {
   progress: number;
   onRetry: () => void;
   estimatedSeconds?: number | null;
+  /** Backend-reported processing stage label. */
+  stageLabel?: string | null;
 
   // Change file (shared across configure and splitting phases)
   onChangeFile: () => void;
@@ -53,6 +55,7 @@ export function PhaseRouter({
   progress,
   onRetry,
   estimatedSeconds,
+  stageLabel,
   onChangeFile,
 }: PhaseRouterProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -102,6 +105,7 @@ export function PhaseRouter({
             onRetry={onRetry}
             estimatedSeconds={estimatedSeconds}
             onChangeFile={onChangeFile}
+            stageLabel={stageLabel}
           />
         )}
 

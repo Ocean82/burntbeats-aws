@@ -56,6 +56,7 @@ export function EditorAppShell({
   // Subscribe to split result stems from the existing app store
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const splitProgress = useAppStore((s) => s.splitProgress);
+  const splitStageLabel = useAppStore((s) => s.splitStageLabel);
   const splitError = useAppStore((s) => s.splitError);
 
   // Phase-specific local state
@@ -187,6 +188,7 @@ export function EditorAppShell({
               progress={progress}
               onRetry={handleRetry}
               onChangeFile={handleChangeFile}
+              stageLabel={splitStageLabel}
             />
           )}
         </main>
