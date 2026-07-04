@@ -57,6 +57,6 @@ test.describe("Ship polish layout", () => {
       timeout: 10_000,
     });
     await expect(page.getByTestId("midi-convert-panel")).toBeVisible();
-    await expect(page.getByText(/Audio to MIDI/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Sound.*Notes/i })).toBeVisible();
   });
 });

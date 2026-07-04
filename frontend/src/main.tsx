@@ -9,6 +9,7 @@ import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import "./index.css";
 import { Root } from "./Root";
 import { isLocalDevFullApp, shouldMountClerkProvider } from "./config";
+import { localDevClerk } from "./lib/local-dev-clerk";
 
 // Initialize Sentry before anything else renders.
 initSentry();
@@ -44,13 +45,23 @@ if (import.meta.env.PROD && stripePubKey?.startsWith("pk_test_")) {
   );
 }
 
+const localDevFullApp = isLocalDevFullApp();
 const shouldUseClerkProvider = shouldMountClerkProvider({
   clerkPubKey,
-  isLocalDevFullApp: isLocalDevFullApp(),
+  isLocalDevFullApp: localDevFullApp,
 });
 
 const appTree = shouldUseClerkProvider ? (
-  <ClerkProvider publishableKey={clerkPubKey} afterSignOutUrl="/">
+  <ClerkProvider
+    publishableKey={clerkPubKey}
+    afterSignOutUrl="/"
+    {...(localDevFullApp
+      ? {
+          Clerk: localDevClerk,
+          experimental: { runtimeEnvironment: "headless" as const },
+        }
+      : {})}
+  >
     <Root />
   </ClerkProvider>
 ) : (
