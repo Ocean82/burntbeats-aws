@@ -1,16 +1,4 @@
-interface LocalDevClerkResources {
-  client: {
-    id: string;
-    sessions: Array<typeof localDevSession>;
-    signIn: null;
-    signUp: null;
-  };
-  session: typeof localDevSession;
-  user: typeof localDevUser;
-  organization: null;
-}
-
-type ClerkResourceListener = (resources: LocalDevClerkResources) => void;
+type ClerkResourceListener = () => void;
 
 const localDevUser = {
   id: "user_local_dev",
@@ -31,22 +19,10 @@ const localDevSession = {
   getToken: async () => null,
 };
 
-const localDevResources: LocalDevClerkResources = {
-  client: {
-    id: "client_local_dev",
-    sessions: [localDevSession],
-    signIn: null,
-    signUp: null,
-  },
-  session: localDevSession,
-  user: localDevUser,
-  organization: null,
-};
-
 const listeners = new Set<ClerkResourceListener>();
 
-function emitLocalDevResources() {
-  for (const listener of listeners) listener(localDevResources);
+function emitLocalDevChange() {
+  for (const listener of listeners) listener();
 }
 
 function mountLocalDevUserButton(node: HTMLDivElement) {
@@ -62,18 +38,21 @@ export const localDevClerk = {
   loaded: true,
   status: "ready",
   isSignedIn: true,
-  client: localDevResources.client,
+  client: {
+    id: "client_local_dev",
+    sessions: [localDevSession],
+    signIn: null,
+    signUp: null,
+  },
   session: localDevSession,
   user: localDevUser,
   organization: null,
-  __internal_lastEmittedResources: localDevResources,
   telemetry: { record: () => {} },
   load: async () => {
-    emitLocalDevResources();
+    emitLocalDevChange();
   },
   addListener: (listener: ClerkResourceListener) => {
     listeners.add(listener);
-    listener(localDevResources);
     return () => listeners.delete(listener);
   },
   on: (event: string, listener: (status: string) => void) => {
