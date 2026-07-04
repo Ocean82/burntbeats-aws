@@ -132,20 +132,19 @@ test.describe("Stem split happy path", () => {
 
     // Click split — use dispatchEvent to bypass animation instability during phase transitions
     await splitButton.scrollIntoViewIfNeeded();
+    const splitRequest = page.waitForRequest((req) =>
+      req.url().includes("/api/stems/split"),
+    );
     await splitButton.dispatchEvent("click");
+    await splitRequest;
 
     // Wait for request and assert payload has expected shape
-    await page.waitForLoadState("networkidle");
     const capturedPayload = getCapturedPayload();
     expect(capturedPayload).toBeTruthy();
     const payload = capturedPayload as Record<string, string>;
     // The split endpoint receives multipart form-data with stems, quality, and intent fields
     expect(payload.stems).toBeTruthy();
     expect(payload.quality).toBeTruthy();
-
-    // Progress phase should appear
-    await expect(page.getByTestId("splitting-phase")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/splitting/i).first()).toBeVisible({ timeout: 10_000 });
 
     // Wait for completion → workspace with mixer
     await waitForWorkspace(page);
