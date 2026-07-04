@@ -18,7 +18,10 @@ import {
 
 /** Intercept split POST and assert request payload shape. */
 async function mockSplitWithPayloadInspection(page: Page) {
-  let capturedPayload: unknown;
+  let resolvePayload!: (payload: unknown) => void;
+  const payloadPromise = new Promise<unknown>((resolve) => {
+    resolvePayload = resolve;
+  });
 
   await page.route("**/api/stems/split", async (route: Route) => {
     // Split uses multipart/form-data, not JSON — parse the text body for key fields
@@ -37,7 +40,7 @@ async function mockSplitWithPayloadInspection(page: Page) {
     if (fields.intent) {
       try { fields.intent = JSON.parse(fields.intent); } catch { /* keep as string */ }
     }
-    capturedPayload = fields;
+    resolvePayload(fields);
 
     await route.fulfill({
       status: 202,
@@ -102,7 +105,7 @@ async function mockSplitWithPayloadInspection(page: Page) {
   });
 
   return {
-    getCapturedPayload: () => capturedPayload,
+    payloadPromise,
   };
 }
 
@@ -112,7 +115,7 @@ test.describe("Stem split happy path", () => {
   });
 
   test("full upload → split → mixer state transition", async ({ page }) => {
-    const { getCapturedPayload } = await mockSplitWithPayloadInspection(page);
+    const { payloadPromise } = await mockSplitWithPayloadInspection(page);
 
     await gotoEditor(page);
 
@@ -139,7 +142,7 @@ test.describe("Stem split happy path", () => {
     await splitRequest;
 
     // Wait for request and assert payload has expected shape
-    const capturedPayload = getCapturedPayload();
+    const capturedPayload = await payloadPromise;
     expect(capturedPayload).toBeTruthy();
     const payload = capturedPayload as Record<string, string>;
     // The split endpoint receives multipart form-data with stems, quality, and intent fields
