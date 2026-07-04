@@ -101,7 +101,9 @@ async function mockSplitWithPayloadInspection(page: Page) {
     });
   });
 
-  return { capturedPayload };
+  return {
+    getCapturedPayload: () => capturedPayload,
+  };
 }
 
 test.describe("Stem split happy path", () => {
@@ -110,7 +112,7 @@ test.describe("Stem split happy path", () => {
   });
 
   test("full upload → split → mixer state transition", async ({ page }) => {
-    const { capturedPayload } = await mockSplitWithPayloadInspection(page);
+    const { getCapturedPayload } = await mockSplitWithPayloadInspection(page);
 
     await gotoEditor(page);
 
@@ -132,6 +134,7 @@ test.describe("Stem split happy path", () => {
 
     // Wait for request and assert payload has expected shape
     await page.waitForLoadState("networkidle");
+    const capturedPayload = getCapturedPayload();
     expect(capturedPayload).toBeTruthy();
     const payload = capturedPayload as Record<string, string>;
     // The split endpoint receives multipart form-data with stems, quality, and intent fields
