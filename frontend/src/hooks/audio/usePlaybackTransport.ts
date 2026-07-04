@@ -157,7 +157,11 @@ export function usePlaybackTransport(
       const stemBuffers = lastStemBuffersRef.current;
       const stemsToPlay = filterStemsForAudibleMix(splitResultStems, stemStates);
       if (stemsToPlay.length === 0) {
-        handleStopMix();
+        // All stems muted — pause audio but preserve playhead position so
+        // unmuting can resume from the current position instead of restarting.
+        stopMixSourcesPreservePlayhead();
+        setIsPlayingMix(false);
+        isPlayingMixRef.current = false;
         return;
       }
 

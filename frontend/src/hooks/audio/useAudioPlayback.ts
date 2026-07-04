@@ -240,6 +240,10 @@ export function useAudioPlayback(
       const st = stemStatesProp[r.stemId];
       if (st) {
         r.dsp.update(st.mixer, Math.pow(10, st.mixer.gain / 20));
+        // Stop preview if the previewed stem was muted
+        if (st.muted) {
+          stopPreview();
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -247,22 +251,43 @@ export function useAudioPlayback(
 
   // --- Rebuild mix routing when mute/solo changes during playback ---
   const prevMuteSoloSigRef = useRef("");
+  const muteSoloDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!stemStatesProp || !transport.isPlayingMix) {
       prevMuteSoloSigRef.current = "";
+      if (muteSoloDebounceRef.current) {
+        clearTimeout(muteSoloDebounceRef.current);
+        muteSoloDebounceRef.current = null;
+      }
       return;
     }
     const ids = Object.keys(stemStatesProp);
     const sig = stemMuteSoloSignature(stemStatesProp, ids);
     if (prevMuteSoloSigRef.current && sig !== prevMuteSoloSigRef.current) {
-      // Mute/solo changed while playing — sync latest states and rebuild at current position
-      transport.updateStemStates(stemStatesProp);
-      const currentPct = playheadPositionRef.current;
-      transport.handleSeekMix(currentPct);
+      // Debounce rapid mute/solo toggles (e.g. user clicking multiple stems quickly)
+      if (muteSoloDebounceRef.current) {
+        clearTimeout(muteSoloDebounceRef.current);
+      }
+      const latestStates = stemStatesProp;
+      muteSoloDebounceRef.current = setTimeout(() => {
+        muteSoloDebounceRef.current = null;
+        transport.updateStemStates(latestStates);
+        const currentPct = playheadPositionRef.current;
+        transport.handleSeekMix(currentPct);
+      }, 50);
     }
     prevMuteSoloSigRef.current = sig;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stemStatesProp, transport.isPlayingMix]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (muteSoloDebounceRef.current) {
+        clearTimeout(muteSoloDebounceRef.current);
+      }
+    };
+  }, []);
 
   // --- Cross-cutting callbacks ---
   const handlePlayMix = useCallback(

@@ -43,7 +43,23 @@ def run_mdx_target_stem(
     tier = "fast" if prefer_speed or model_tier == "fast" else "quality"
     model_path = _model_path_for_target(target, tier, stem_bag=stem_bag)
     if model_path is None:
-        raise RuntimeError(f"No specialized MDX model available for target: {target}")
+        # Retry once after a brief pause — models may still be loading
+        # after container start.
+        import time
+        logger.warning(
+            "Model for target %s not found on first check "
+            "(tier=%s, bag=%s); retrying in 2s…",
+            target, tier, stem_bag,
+        )
+        time.sleep(2)
+        model_path = _model_path_for_target(
+            target, tier, stem_bag=stem_bag,
+        )
+        if model_path is None:
+            raise RuntimeError(
+                f"No specialized MDX model available for "
+                f"target: {target}"
+            )
     overlap = 0.5
     result = _run_mdx_onnx(
         input_path,

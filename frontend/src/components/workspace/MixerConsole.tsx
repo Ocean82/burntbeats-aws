@@ -74,7 +74,7 @@ function ChannelStrip({
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
           style={{ "--strip-color": color } as React.CSSProperties}
         />
-        <span className="text-[8px] text-muted-foreground tabular-nums">
+        <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
           {mixer.gain >= 0 ? "+" : ""}
           {mixer.gain.toFixed(1)} dB
         </span>
@@ -93,7 +93,7 @@ function ChannelStrip({
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer"
           style={{ "--strip-color": color } as React.CSSProperties}
         />
-        <span className="text-[8px] text-muted-foreground tabular-nums">
+        <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
           {mixer.pan === 0 ? "C" : mixer.pan < 0 ? `L${Math.abs(mixer.pan)}` : `R${mixer.pan}`}
         </span>
       </div>
@@ -182,7 +182,7 @@ function MasterStrip({ stemCount, masterVolume, onMasterVolumeChange }: MasterSt
           aria-label="Master volume"
           className="w-full h-1 appearance-none rounded-full bg-white/20 accent-violet-500 cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
         />
-        <span className="text-[8px] text-muted-foreground tabular-nums">
+        <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
           {displayDb >= 0 ? "+" : ""}
           {displayDb.toFixed(1)} dB
         </span>

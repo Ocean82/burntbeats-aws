@@ -39,7 +39,7 @@ import { getStemDefinition, getLoadedStemDefinition } from "@/data/stemDefinitio
 export function Workspace() {
   const { isOpen, activeTool, toggle, close } = useToolDrawer();
   useWorkspaceLayout(); // MixerConsole uses this hook directly for collapse state
-  const { stemStates } = useWorkflow();
+  const { stemStates, setStemStates } = useWorkflow();
   const audio = useAudio();
   const splitResultStems = useAppStore((s) => s.splitResultStems);
   const { status } = useSubscription();
@@ -78,6 +78,38 @@ export function Workspace() {
   const handleStemFocusClose = useCallback(() => {
     setExpandedStemId(null);
   }, []);
+
+  const handleFocusStemFieldChange = useCallback(
+    (field: keyof import("@/stem-editor-state").StemEditorState, value: number | boolean) => {
+      if (!expandedStemId) return;
+      setStemStates((prev) => ({
+        ...prev,
+        [expandedStemId]: {
+          ...prev[expandedStemId],
+          [field]: value,
+        },
+      }));
+    },
+    [expandedStemId, setStemStates],
+  );
+
+  const handleFocusMixerFieldChange = useCallback(
+    (field: string, value: number) => {
+      if (!expandedStemId) return;
+      setStemStates((prev) => {
+        const current = prev[expandedStemId];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [expandedStemId]: {
+            ...current,
+            mixer: { ...current.mixer, [field]: value },
+          },
+        };
+      });
+    },
+    [expandedStemId, setStemStates],
+  );
 
   // --- Waveform data ---
   const loadedStems = useAppStore((s) => s.loadedStems);
@@ -378,6 +410,7 @@ export function Workspace() {
             <StemFocusOverlay
               key={expandedStemId}
               stem={focusStem}
+              stemState={stemStates[expandedStemId] ?? null}
               isPlaying={audio.isPlayingMix}
               playheadPct={playheadPct}
               onPlayPause={handlePlayPause}
@@ -385,6 +418,8 @@ export function Workspace() {
               onRewind={handleRewind}
               onSeek={handleSeek}
               onClose={handleStemFocusClose}
+              onStemFieldChange={handleFocusStemFieldChange}
+              onMixerFieldChange={handleFocusMixerFieldChange}
             />
           );
         })()}

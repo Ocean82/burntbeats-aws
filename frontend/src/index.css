@@ -229,6 +229,12 @@
     font-family: "Space Grotesk", sans-serif;
   }
 
+  /* Audio-grade monospace for numeric values (dB, Hz, %, BPM, timecodes) */
+  .font-mono {
+    font-family: "JetBrains Mono", "SF Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
   .glass-panel {
     position: relative;
     overflow: hidden;

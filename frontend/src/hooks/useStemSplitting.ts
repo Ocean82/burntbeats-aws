@@ -265,8 +265,14 @@ export function useStemSplitting({
         quality: splitQuality,
       });
     } catch (err) {
-      const errMsg =
+      const rawMsg =
         err instanceof Error ? err.message : "Couldn't complete split. Try again.";
+      // Translate cryptic backend model errors into user-friendly messages
+      const errMsg = rawMsg.includes("No specialized MDX model")
+        ? "Our processing servers are warming up. Please try again in a moment."
+        : rawMsg.includes("Demucs model not found")
+          ? "The processing engine is still loading. Please wait a moment and retry."
+          : rawMsg;
       document.title = "Burnt Beats — Stem Splitter";
       setUploadState((prev) => ({
         ...prev,
@@ -280,7 +286,7 @@ export function useStemSplitting({
       }));
       trackEvent("split_failed", {
         quality: splitQuality,
-        error: errMsg.slice(0, 120),
+        error: rawMsg.slice(0, 120),
       });
     } finally {
       setUploadState((prev) => ({ ...prev, isSplitting: false, isUploading: false, uploadProgress: 0 }));

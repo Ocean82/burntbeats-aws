@@ -97,9 +97,16 @@ export function EffectsPanel({ activeTool, onClose, isOverlay = false, activeSte
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-        <h2 className="text-sm font-semibold text-foreground">
-          {TOOL_LABELS[activeTool]}
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-foreground">
+            {TOOL_LABELS[activeTool]}
+          </h2>
+          {activeStemId && stemState && (
+            <span className="text-[10px] font-medium text-muted-foreground px-1.5 py-0.5 rounded bg-white/5 border border-white/10">
+              {activeStemId.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={onClose}
@@ -213,7 +220,7 @@ function SliderControl({ label, min, max, step, value, onChange, unit = "" }: Sl
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-xs font-medium text-secondary-foreground">
-        {label}: <span className="text-foreground">{value}{unit}</span>
+        {label}: <span className="font-mono tabular-nums text-foreground">{value}{unit}</span>
       </span>
       <input
         type="range"
@@ -222,10 +229,11 @@ function SliderControl({ label, min, max, step, value, onChange, unit = "" }: Sl
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        onDoubleClick={() => onChange(min <= 0 && max >= 0 ? 0 : min)}
         aria-label={label}
-        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-purple-500"
+        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400"
       />
-      <div className="flex justify-between text-[10px] text-muted-foreground">
+      <div className="flex justify-between text-[10px] font-mono text-muted-foreground tabular-nums">
         <span>{min}{unit}</span>
         <span>{max}{unit}</span>
       </div>

@@ -7,7 +7,7 @@
  *
  * Escape key or close button exits back to multi-stem overview.
  */
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   X,
@@ -24,11 +24,14 @@ import {
 import { cn } from "@/utils/cn";
 import type { WaveformTimelineStem } from "./WaveformTimeline";
 import { generateFakeWaveform, drawWaveformBars } from "@/utils/waveformCanvas";
+import type { StemEditorState } from "@/stem-editor-state";
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 
 export interface StemFocusOverlayProps {
   stem: WaveformTimelineStem;
+  /** The stem's editor state (gain, pitch, EQ, etc.) */
+  stemState?: StemEditorState | null;
   /** Whether audio is currently playing */
   isPlaying: boolean;
   /** Current playhead position 0-100 */
@@ -38,6 +41,10 @@ export interface StemFocusOverlayProps {
   onRewind: () => void;
   onSeek: (pct: number) => void;
   onClose: () => void;
+  /** Update a top-level stem field (pitchSemitones, timeStretch, fadeIn, fadeOut) */
+  onStemFieldChange?: (field: keyof StemEditorState, value: number | boolean) => void;
+  /** Update a nested mixer field (eqLow, eqMid, gain, pan, etc.) */
+  onMixerFieldChange?: (field: string, value: number) => void;
 }
 
 /* ─── Tool Drawer Tabs ──────────────────────────────────────────── */
@@ -56,6 +63,7 @@ const FOCUS_TOOLS: { id: FocusTool; label: string; icon: React.ComponentType<{ c
 
 export function StemFocusOverlay({
   stem,
+  stemState,
   isPlaying,
   playheadPct,
   onPlayPause,
@@ -63,9 +71,12 @@ export function StemFocusOverlay({
   onRewind,
   onSeek,
   onClose,
+  onStemFieldChange,
+  onMixerFieldChange,
 }: StemFocusOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [activeFocusTool, setActiveFocusTool] = useState<FocusTool | null>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -220,9 +231,13 @@ export function StemFocusOverlay({
               key={id}
               type="button"
               aria-label={label}
+              aria-pressed={activeFocusTool === id}
+              onClick={() => setActiveFocusTool(activeFocusTool === id ? null : id)}
               className={cn(
                 "flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition",
-                "text-neutral-400 hover:text-white hover:bg-white/10 border border-transparent",
+                activeFocusTool === id
+                  ? "bg-primary-500/20 text-primary-100 border border-primary-500/40"
+                  : "text-neutral-400 hover:text-white hover:bg-white/10 border border-transparent",
               )}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -230,9 +245,91 @@ export function StemFocusOverlay({
             </button>
           ))}
         </div>
-        {/* Tool content area — placeholder for future per-tool controls */}
-        <div className="mt-2 flex items-center justify-center text-xs text-muted-foreground min-h-[48px]">
-          Tap a tool above to adjust this stem
+        {/* Tool content area */}
+        <div className="mt-3 min-h-[80px] max-h-[200px] overflow-y-auto">
+          {!activeFocusTool && (
+            <div className="flex items-center justify-center text-xs text-muted-foreground py-4">
+              Tap a tool above to adjust this stem
+            </div>
+          )}
+          {activeFocusTool === "pitch" && stemState && onStemFieldChange && (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-secondary-foreground">
+                  Pitch: <span className="text-foreground">{stemState.pitchSemitones > 0 ? "+" : ""}{stemState.pitchSemitones} st</span>
+                </span>
+                <input type="range" min={-12} max={12} step={1} value={stemState.pitchSemitones}
+                  onChange={(e) => onStemFieldChange("pitchSemitones", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+              </label>
+            </div>
+          )}
+          {activeFocusTool === "eq" && stemState && onMixerFieldChange && (
+            <div className="grid grid-cols-3 gap-4">
+              {(["eqLow", "eqMid", "eqHigh"] as const).map((field) => (
+                <label key={field} className="flex flex-col items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground">{field.replace("eq", "")}</span>
+                  <input type="range" min={-12} max={12} step={0.5}
+                    value={stemState.mixer[field]}
+                    onChange={(e) => onMixerFieldChange(field, Number(e.target.value))}
+                    className="h-16 w-2 cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400 [writing-mode:vertical-lr] rotate-180" />
+                  <span className="text-[10px] font-mono text-foreground">{stemState.mixer[field].toFixed(1)}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          {activeFocusTool === "timeStretch" && stemState && onStemFieldChange && (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-secondary-foreground">
+                  Speed: <span className="text-foreground">{Math.round(stemState.timeStretch * 100)}%</span>
+                </span>
+                <input type="range" min={0.5} max={2} step={0.01} value={stemState.timeStretch}
+                  onChange={(e) => onStemFieldChange("timeStretch", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+              </label>
+            </div>
+          )}
+          {activeFocusTool === "volume" && stemState && onMixerFieldChange && (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-secondary-foreground">
+                  Gain: <span className="text-foreground">{stemState.mixer.gain > 0 ? "+" : ""}{stemState.mixer.gain.toFixed(1)} dB</span>
+                </span>
+                <input type="range" min={-20} max={6} step={0.1} value={stemState.mixer.gain}
+                  onChange={(e) => onMixerFieldChange("gain", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-secondary-foreground">
+                  Pan: <span className="text-foreground">{stemState.mixer.pan === 0 ? "C" : stemState.mixer.pan < 0 ? `L${Math.abs(stemState.mixer.pan)}` : `R${stemState.mixer.pan}`}</span>
+                </span>
+                <input type="range" min={-100} max={100} step={1} value={stemState.mixer.pan}
+                  onChange={(e) => onMixerFieldChange("pan", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+              </label>
+            </div>
+          )}
+          {activeFocusTool === "fx" && stemState && onMixerFieldChange && (
+            <div className="flex flex-col gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-secondary-foreground">
+                  Reverb: <span className="text-foreground">{stemState.mixer.reverbWet}%</span>
+                </span>
+                <input type="range" min={0} max={100} step={1} value={stemState.mixer.reverbWet}
+                  onChange={(e) => onMixerFieldChange("reverbWet", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-secondary-foreground">
+                  Delay: <span className="text-foreground">{stemState.mixer.delayWet}%</span>
+                </span>
+                <input type="range" min={0} max={100} step={1} value={stemState.mixer.delayWet}
+                  onChange={(e) => onMixerFieldChange("delayWet", Number(e.target.value))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-primary-400" />
+              </label>
+            </div>
+          )}
         </div>
       </div>
 
@@ -244,10 +341,15 @@ export function StemFocusOverlay({
           min={-20}
           max={6}
           step={0.5}
-          defaultValue={0}
+          value={stemState?.mixer.gain ?? 0}
+          onChange={(e) => onMixerFieldChange?.("gain", Number(e.target.value))}
+          onDoubleClick={() => onMixerFieldChange?.("gain", 0)}
           aria-label={`${stem.label} volume`}
           className="flex-1 h-1 appearance-none rounded-full bg-white/20 accent-primary-400 cursor-pointer"
         />
+        <span className="text-[10px] font-mono text-muted-foreground tabular-nums w-12 text-right">
+          {(stemState?.mixer.gain ?? 0) > 0 ? "+" : ""}{(stemState?.mixer.gain ?? 0).toFixed(1)} dB
+        </span>
         <button
           type="button"
           onClick={onClose}

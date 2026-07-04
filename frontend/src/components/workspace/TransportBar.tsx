@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react";
 import {
   Download,
   Pause,
@@ -148,7 +149,7 @@ export function TransportBar({
           <ZoomOut className="h-4 w-4" />
         </button>
 
-        <span className="min-w-[3rem] text-center text-xs text-neutral-300 tabular-nums">
+        <span className="min-w-[3rem] text-center text-xs font-mono text-neutral-300 tabular-nums">
           {Math.round(zoom * 100)}%
         </span>
 
@@ -187,24 +188,10 @@ export function TransportBar({
 
       {/* Advanced mode toggle — reveals mixer, EQ, FX, and tool sidebar */}
       {onToggleAdvanced && (
-        <button
-          type="button"
-          onClick={onToggleAdvanced}
-          aria-label={advancedMode ? "Switch to simple view" : "Show mixer & tools"}
-          aria-pressed={advancedMode}
-          title={advancedMode ? "Simple view" : "Mixer & tools"}
-          className={cn(
-            "flex h-8 items-center gap-1 rounded-lg px-2 transition text-xs font-medium",
-            advancedMode
-              ? "bg-primary-500/20 text-primary-100 border border-primary-500/40"
-              : "text-neutral-400 hover:text-white hover:bg-white/10 border border-transparent",
-          )}
-        >
-          <Settings2 className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">
-            {advancedMode ? "Simple" : "Mixer"}
-          </span>
-        </button>
+        <MixerToggleWithHint
+          advancedMode={advancedMode}
+          onToggleAdvanced={onToggleAdvanced}
+        />
       )}
 
       {/* Export */}
@@ -222,6 +209,73 @@ export function TransportBar({
         >
           <Download className="h-4 w-4" />
         </button>
+      )}
+    </div>
+  );
+}
+
+/* ─── Mixer Toggle with First-Time Hint ─────────────────────────── */
+
+function MixerToggleWithHint({
+  advancedMode,
+  onToggleAdvanced,
+}: {
+  advancedMode: boolean;
+  onToggleAdvanced: () => void;
+}) {
+  const [showHint, setShowHint] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("bb-mixer-hint-dismissed");
+  });
+
+  // Auto-dismiss hint after 6 seconds
+  useEffect(() => {
+    if (!showHint) return;
+    const timer = setTimeout(() => {
+      setShowHint(false);
+      localStorage.setItem("bb-mixer-hint-dismissed", "1");
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [showHint]);
+
+  const handleClick = useCallback(() => {
+    if (showHint) {
+      setShowHint(false);
+      localStorage.setItem("bb-mixer-hint-dismissed", "1");
+    }
+    onToggleAdvanced();
+  }, [showHint, onToggleAdvanced]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={handleClick}
+        aria-label={advancedMode ? "Switch to simple view" : "Show mixer & tools"}
+        aria-pressed={advancedMode}
+        title={advancedMode ? "Simple view" : "Mixer & tools"}
+        className={cn(
+          "flex h-8 items-center gap-1 rounded-lg px-2 transition text-xs font-medium",
+          advancedMode
+            ? "bg-primary-500/20 text-primary-100 border border-primary-500/40"
+            : "text-neutral-400 hover:text-white hover:bg-white/10 border border-transparent",
+        )}
+      >
+        <Settings2 className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">
+          {advancedMode ? "Simple" : "Mixer"}
+        </span>
+      </button>
+
+      {/* First-time tooltip */}
+      {showHint && !advancedMode && (
+        <div
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-30 whitespace-nowrap rounded-lg border border-primary-400/30 bg-[hsl(220,15%,12%)] px-3 py-1.5 text-[11px] text-primary-100 shadow-lg animate-in fade-in slide-in-from-top-1"
+          role="tooltip"
+        >
+          Tap for EQ, effects & mixer tools
+          <span className="absolute -top-1 left-1/2 -translate-x-1/2 h-2 w-2 rotate-45 border-l border-t border-primary-400/30 bg-[hsl(220,15%,12%)]" />
+        </div>
       )}
     </div>
   );
