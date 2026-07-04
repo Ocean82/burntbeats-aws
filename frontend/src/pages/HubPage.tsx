@@ -100,14 +100,14 @@ export function HubPage() {
       >
         <div className="max-w-7xl mx-auto">
           <h2 className="text-xl font-semibold text-foreground mb-5">
-            Additional Tools
+            More Tools
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <SecondaryToolCard
               icon={<Mic className="w-5 h-5" />}
-              label="Clean Speech"
-              description="Remove background noise"
+              label="Enhance Audio"
+              description="Remove noise & improve clarity"
               onClick={() => handleNavigate("/speech", "speech")}
             />
             <SecondaryToolCard
@@ -118,9 +118,9 @@ export function HubPage() {
             />
             <SecondaryToolCard
               icon={<Sparkles className="w-5 h-5" />}
-              label="MIDI Catalog"
-              description="Browse patterns & templates"
-              onClick={() => handleNavigate("/beats", "beats")}
+              label="Pattern Library"
+              description="Browse beat presets & templates"
+              onClick={() => handleNavigate("/beats?tab=patterns", "beats")}
             />
             <SecondaryToolCard
               icon={<FolderOpen className="w-5 h-5" />}

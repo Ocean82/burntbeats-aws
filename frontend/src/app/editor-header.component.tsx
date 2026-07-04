@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Home, Undo2, Redo2, Mic2, Music, Drum, ChevronDown } from "lucide-react";
+import { Home, Undo2, Redo2, Mic2, Music, Drum, FolderOpen, ChevronDown } from "lucide-react";
 import { cn } from "../utils/cn";
 import { AccountMenu } from "../components/AccountMenu";
 import { PlanBadge } from "../components/PlanBadge";
@@ -50,8 +50,7 @@ const SECONDARY_TABS: Array<{
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: "beats", label: "Beats", icon: Drum },
-  { id: "my-stems", label: "Library" },
+  { id: "my-stems", label: "Library", icon: FolderOpen },
 ];
 
 export function EditorHeader({
@@ -153,11 +152,12 @@ export function EditorHeader({
             <button
               type="button"
               onClick={() => setActiveView("hub")}
-              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-border bg-muted/60 text-muted-foreground transition hover:border-primary-400/40 hover:text-primary-200 tap-feedback"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3 text-muted-foreground transition hover:border-primary-400/40 hover:text-primary-200 tap-feedback"
               title="Back to Hub"
               aria-label="Back to Hub"
             >
               <Home className="h-4 w-4" aria-hidden />
+              <span className="text-xs font-medium hidden sm:inline">Hub</span>
             </button>
           )}
 
@@ -258,6 +258,16 @@ export function EditorHeader({
           <Music className="h-3.5 w-3.5 shrink-0" aria-hidden />
           MIDI
           <WhatsNewBadge visible={tabsWithNews.has("midi")} />
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTabClick("beats")}
+          className={TAB_CLASS(activeView === "beats")}
+          aria-current={activeView === "beats" ? "page" : undefined}
+        >
+          <Drum className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Beats
+          <WhatsNewBadge visible={tabsWithNews.has("beats")} />
         </button>
 
         <div className="h-5 w-px bg-border/60 shrink-0" aria-hidden="true" />
