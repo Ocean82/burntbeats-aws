@@ -50,10 +50,11 @@ const shouldUseClerkProvider = shouldMountClerkProvider({
   clerkPubKey,
   isLocalDevFullApp: localDevFullApp,
 });
+const resolvedClerkPubKey = clerkPubKey ?? "";
 
 const appTree = shouldUseClerkProvider ? (
   <ClerkProvider
-    publishableKey={clerkPubKey}
+    publishableKey={resolvedClerkPubKey}
     afterSignOutUrl="/"
     {...(localDevFullApp
       ? {
