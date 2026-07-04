@@ -130,10 +130,13 @@ test.describe("Stem split happy path", () => {
     const splitButton = page.getByTestId("split-button");
     await expect(splitButton).toBeEnabled();
 
+    const splitRequest = page.waitForRequest((request) =>
+      request.url().includes("/api/stems/split"),
+    );
     await splitButton.click();
 
     // Wait for request and assert payload has expected shape
-    await page.waitForLoadState("networkidle");
+    await splitRequest;
     const capturedPayload = getCapturedPayload();
     expect(capturedPayload).toBeTruthy();
     const payload = capturedPayload as Record<string, string>;
