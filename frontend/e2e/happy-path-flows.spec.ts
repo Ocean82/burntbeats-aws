@@ -3,7 +3,6 @@ import {
   gotoEditor,
   minimalWavBuffer,
   skipOnboarding,
-  uploadAndSplit,
   waitForWorkspace,
 } from "./fixtures/helpers";
 
@@ -118,8 +117,8 @@ test.describe("Stem split happy path", () => {
     // Verify we start at upload phase
     await expect(page.getByTestId("upload-phase")).toBeVisible();
 
-    // Upload triggers configure phase
-    await uploadAndSplit(page, {
+    // Upload triggers configure phase; click split separately so this test can inspect the request.
+    await page.locator('input[type="file"]').setInputFiles({
       name: "happy-path-test.wav",
       mimeType: "audio/wav",
       buffer: minimalWavBuffer(),
