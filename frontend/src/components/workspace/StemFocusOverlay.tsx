@@ -202,7 +202,14 @@ export function StemFocusOverlay({
         <div
           className="relative h-full w-full rounded-xl border border-white/[0.08] bg-white/[0.02] overflow-hidden cursor-crosshair"
           onClick={handleSeekFromClick}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft") onSeek(Math.max(0, playheadPct - 2));
+            else if (e.key === "ArrowRight") onSeek(Math.min(100, playheadPct + 2));
+            else if (e.key === "Home") onSeek(0);
+            else if (e.key === "End") onSeek(100);
+          }}
           role="slider"
+          tabIndex={0}
           aria-label="Seek position"
           aria-valuemin={0}
           aria-valuemax={100}
