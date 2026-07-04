@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/react";
+import type { ClerkProviderProps } from "@clerk/react";
 import { initSentry } from "./lib/sentry";
 import { SentryErrorBoundary } from "./components/SentryErrorBoundary";
 import { initGoogleTag } from "./analytics/initGoogleTag";
@@ -51,17 +52,18 @@ const shouldUseClerkProvider = shouldMountClerkProvider({
   isLocalDevFullApp: localDevFullApp,
 });
 const resolvedClerkPubKey = clerkPubKey ?? "";
+const localDevClerkProviderProps: Partial<ClerkProviderProps> = localDevFullApp
+  ? {
+      Clerk: localDevClerk as unknown as NonNullable<ClerkProviderProps["Clerk"]>,
+      experimental: { runtimeEnvironment: "headless" },
+    }
+  : {};
 
 const appTree = shouldUseClerkProvider ? (
   <ClerkProvider
     publishableKey={resolvedClerkPubKey}
     afterSignOutUrl="/"
-    {...(localDevFullApp
-      ? {
-          Clerk: localDevClerk,
-          experimental: { runtimeEnvironment: "headless" as const },
-        }
-      : {})}
+    {...localDevClerkProviderProps}
   >
     <Root />
   </ClerkProvider>
