@@ -51,7 +51,9 @@ describe("useMidiHistory", () => {
     const urlArg = firstCall[0];
     const optsArg = firstCall[1];
     expect(urlArg).toMatch(/\/api\/midi\/history$/);
-    expect(optsArg).toEqual({ headers: { Authorization: "Bearer owner-token" } });
+    expect(optsArg.method).toBe("GET");
+    expect(optsArg.headers).toEqual({ Authorization: "Bearer owner-token" });
+    expect(optsArg.signal).toBeInstanceOf(AbortSignal);
     expect(result.current.records).toHaveLength(1);
     expect(result.current.records[0].job_id).toBe("midi-job-1");
   });
