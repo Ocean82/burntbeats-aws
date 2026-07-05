@@ -53,7 +53,7 @@ test.describe("Catalog to MIDI workflow smoke", () => {
 
     await page
       .getByLabel("Workspace tabs")
-      .getByRole("button", { name: /MIDI/i })
+      .getByRole("button", { name: /Notes/i })
       .click();
     await expect(page.getByTestId("midi-convert-panel")).toBeVisible({
       timeout: 10_000,

@@ -94,21 +94,27 @@ function PlanPickerGate({ children }: { children: React.ReactNode }) {
   return <PlanPickerPage onComplete={() => setDismissed(true)} />;
 }
 
-function SignedInAppTree() {
+function SignedInAppTree({
+  shouldSkipPlanPicker = false,
+}: {
+  shouldSkipPlanPicker?: boolean;
+}) {
+  const workspaceTree = (
+    <WorkflowProvider>
+      <StemMediaProvider>
+        <AudioProvider>
+          <AppShell>
+            <App />
+          </AppShell>
+        </AudioProvider>
+      </StemMediaProvider>
+    </WorkflowProvider>
+  );
+
   return (
     <Suspense fallback={<RouteLoadingShell />}>
       <LegalAcceptanceGate>
-        <PlanPickerGate>
-          <WorkflowProvider>
-          <StemMediaProvider>
-            <AudioProvider>
-              <AppShell>
-                <App />
-              </AppShell>
-            </AudioProvider>
-          </StemMediaProvider>
-        </WorkflowProvider>
-      </PlanPickerGate>
+        {shouldSkipPlanPicker ? workspaceTree : <PlanPickerGate>{workspaceTree}</PlanPickerGate>}
       </LegalAcceptanceGate>
     </Suspense>
   );
@@ -122,7 +128,7 @@ function LocalDevRoot() {
 
   return (
     <ErrorBoundary>
-      <SignedInAppTree />
+      <SignedInAppTree shouldSkipPlanPicker />
     </ErrorBoundary>
   );
 }

@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/react";
+import type { ClerkProviderProps } from "@clerk/react";
 import { initSentry } from "./lib/sentry";
 import { SentryErrorBoundary } from "./components/SentryErrorBoundary";
 import { initGoogleTag } from "./analytics/initGoogleTag";
@@ -8,6 +9,12 @@ import { hasAnalyticsConsent } from "./store/cookieConsent";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import "./index.css";
 import { Root } from "./Root";
+import {
+  isLocalDevFullApp,
+  resolveClerkPublishableKey,
+  shouldMountClerkProvider,
+} from "./config";
+import { localDevClerk } from "./lib/local-dev-clerk";
 
 // Initialize Sentry before anything else renders.
 initSentry();
@@ -43,8 +50,28 @@ if (import.meta.env.PROD && stripePubKey?.startsWith("pk_test_")) {
   );
 }
 
-const appTree = clerkPubKey ? (
-  <ClerkProvider publishableKey={clerkPubKey} afterSignOutUrl="/">
+const localDevFullApp = isLocalDevFullApp();
+const shouldUseClerkProvider = shouldMountClerkProvider({
+  clerkPubKey,
+  isLocalDevFullApp: localDevFullApp,
+});
+const resolvedClerkPubKey = resolveClerkPublishableKey({
+  clerkPubKey,
+  isLocalDevFullApp: localDevFullApp,
+});
+const localDevClerkProviderProps: Partial<ClerkProviderProps> = localDevFullApp
+  ? {
+      Clerk: localDevClerk as unknown as NonNullable<ClerkProviderProps["Clerk"]>,
+      experimental: { runtimeEnvironment: "headless" },
+    }
+  : {};
+
+const appTree = shouldUseClerkProvider ? (
+  <ClerkProvider
+    publishableKey={resolvedClerkPubKey ?? ""}
+    afterSignOutUrl="/"
+    {...localDevClerkProviderProps}
+  >
     <Root />
   </ClerkProvider>
 ) : (

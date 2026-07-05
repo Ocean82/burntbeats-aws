@@ -12,6 +12,30 @@ export function isLocalDevFullApp(): boolean {
   return v === "1" || v === "true";
 }
 
+export interface ClerkProviderConfig {
+  clerkPubKey: string | undefined;
+  isLocalDevFullApp: boolean;
+}
+
+export const LOCAL_DEV_CLERK_PUBLISHABLE_KEY =
+  "pk_test_Y2xlcmsuYnVybnRiZWF0cy50ZXN0JA";
+
+export function resolveClerkPublishableKey({
+  clerkPubKey,
+  isLocalDevFullApp,
+}: ClerkProviderConfig): string | undefined {
+  if (clerkPubKey) return clerkPubKey;
+  if (isLocalDevFullApp) return LOCAL_DEV_CLERK_PUBLISHABLE_KEY;
+  return undefined;
+}
+
+export function shouldMountClerkProvider({
+  clerkPubKey,
+  isLocalDevFullApp,
+}: ClerkProviderConfig): boolean {
+  return Boolean(resolveClerkPublishableKey({ clerkPubKey, isLocalDevFullApp }));
+}
+
 export function isInternalHealthPanelEnabled(): boolean {
   const enabled = ["1", "true", "yes"].includes(
     String(import.meta.env.VITE_INTERNAL_HEALTH_PANEL_ENABLED ?? "")
