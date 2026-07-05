@@ -12,6 +12,7 @@ const mockStore: MockStore = {
   loadedStems: [],
 };
 const mockAuthHeaders = vi.fn();
+const mockJobTokenHeader = vi.fn();
 const mockSetJobToken = vi.fn();
 
 vi.mock("../store/appStore", () => ({
@@ -21,6 +22,7 @@ vi.mock("../store/appStore", () => ({
 
 vi.mock("../api/auth", () => ({
   authHeaders: (...args: unknown[]) => mockAuthHeaders(...args),
+  jobTokenHeader: (...args: unknown[]) => mockJobTokenHeader(...args),
   setJobToken: (...args: unknown[]) => mockSetJobToken(...args),
 }));
 
@@ -53,6 +55,10 @@ describe("useMidiConvert acceptFile", () => {
     mockStore.loadedStems = [];
     mockAuthHeaders.mockReset();
     mockAuthHeaders.mockResolvedValue({ Authorization: "Bearer token-owner" });
+    mockJobTokenHeader.mockReset();
+    mockJobTokenHeader.mockImplementation((jobId: string) => ({
+      "x-job-token": `source-token-${jobId}`,
+    }));
     mockSetJobToken.mockReset();
     vi.stubGlobal("fetch", vi.fn());
   });
@@ -103,6 +109,10 @@ describe("useMidiConvert acceptFile", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/midi/convert")) {
+        expect(init?.headers).toMatchObject({
+          Authorization: "Bearer token-owner",
+          "x-job-token": "source-token-split-job-1",
+        });
         return {
           ok: true,
           json: async () => ({
@@ -189,6 +199,10 @@ describe("useMidiConvert acceptFile", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/midi/convert")) {
+        expect(_init?.headers).toMatchObject({
+          Authorization: "Bearer token-owner",
+          "x-job-token": "source-token-split-job-1",
+        });
         return {
           ok: true,
           json: async () => ({
@@ -239,6 +253,10 @@ describe("useMidiConvert cancelBatch", () => {
       { id: "vocals", url: "/stems/vocals.wav" },
       { id: "drums", url: "/stems/drums.wav" },
     ];
+    mockJobTokenHeader.mockReset();
+    mockJobTokenHeader.mockImplementation((jobId: string) => ({
+      "x-job-token": `source-token-${jobId}`,
+    }));
     mockAuthHeaders.mockResolvedValue({ Authorization: "Bearer token-owner" });
     vi.stubGlobal("fetch", vi.fn());
   });
@@ -248,6 +266,10 @@ describe("useMidiConvert cancelBatch", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/api/midi/convert")) {
+        expect(init?.headers).toMatchObject({
+          Authorization: "Bearer token-owner",
+          "x-job-token": "source-token-split-job-1",
+        });
         const body = init?.body as FormData | undefined;
         const stemName = body?.get("stem_name");
         const jobId =

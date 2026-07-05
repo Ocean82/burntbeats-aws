@@ -4,7 +4,7 @@
  * Includes batch conversion support for converting all stems at once.
  */
 import { useCallback, useMemo, useRef, useState } from "react";
-import { authHeaders, setJobToken as storeJobToken } from "../api/auth";
+import { authHeaders, jobTokenHeader, setJobToken as storeJobToken } from "../api/auth";
 import { streamMidiJobUntilDone } from "../api/midiStatus";
 import { trackEvent } from "../analytics/events";
 import {
@@ -470,8 +470,12 @@ export function useMidiConvert() {
     async (
       formData: FormData,
       usesFileUpload: boolean,
+      sourceJobId?: string | null,
     ): Promise<ConvertJobResponse> => {
-      const headers = await authHeaders();
+      const headers = {
+        ...(await authHeaders()),
+        ...(sourceJobId ? jobTokenHeader(sourceJobId) : {}),
+      };
 
       if (usesFileUpload) {
         setIsUploading(true);
@@ -587,7 +591,11 @@ export function useMidiConvert() {
 
         appendSettingsToForm(formData, settings);
 
-        const data = await submitConvertJob(formData, usesFileUpload);
+        const sourceJobIdForAuth =
+          sourceMode === "split" && effectiveSelectedStem && splitJobId
+            ? splitJobId
+            : null;
+        const data = await submitConvertJob(formData, usesFileUpload, sourceJobIdForAuth);
         const token = data.job_token;
         setJobToken(token);
         setActiveMidiJobId(data.job_id);
@@ -755,7 +763,7 @@ export function useMidiConvert() {
       formData.append("stem_name", stemName);
       appendSettingsToForm(formData, settings);
 
-      const data = await submitConvertJob(formData, false);
+      const data = await submitConvertJob(formData, false, splitJobId);
       const token = data.job_token;
       storeJobToken(data.job_id, token);
       if (typeof batchIndex === "number") {
