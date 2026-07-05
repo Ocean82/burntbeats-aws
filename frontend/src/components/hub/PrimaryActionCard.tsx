@@ -41,7 +41,7 @@ export function PrimaryActionCard({
       onClick={onClick}
       data-tour={tourId}
       className={cn(
-        "group relative overflow-hidden rounded-2xl bg-surface-raised border border-border transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left min-h-[180px] md:min-h-[240px] motion-safe:hover:scale-[1.01]",
+        "surface-card-button group relative overflow-hidden rounded-2xl bg-surface-raised border border-border transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left min-h-[180px] md:min-h-[240px] motion-safe:hover:scale-[1.01]",
         className,
       )}
     >

@@ -12,10 +12,15 @@ const variantClass: Record<SkeletonVariant, string> = {
 function Skeleton({
   variant = "rect",
   className,
+  "aria-label": ariaLabel,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & { variant?: SkeletonVariant }) {
   return (
     <div
+      role="status"
+      aria-busy="true"
+      aria-label={ariaLabel}
+      aria-hidden={ariaLabel ? undefined : true}
       className={cn("animate-pulse bg-muted", variantClass[variant], className)}
       {...props}
     />

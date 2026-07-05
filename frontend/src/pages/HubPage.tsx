@@ -29,6 +29,7 @@ import {
   PrimaryActionCard,
   SecondaryToolCard,
 } from "@/components/hub";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const TOOL_ICONS: Record<ToolCatalogId, ComponentType<SVGProps<SVGSVGElement>>> = {
   editor: Upload,
@@ -83,13 +84,22 @@ export function HubPage() {
       >
         <div className="max-w-7xl mx-auto">
           <HubHeader firstName={firstName}>
-            {hasActivity && !isLoading && (
+            {isLoading ? (
+              <div className="flex gap-6 md:gap-8" aria-busy="true" aria-label="Loading activity stats">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="text-center">
+                    <Skeleton className="mx-auto h-9 w-12" />
+                    <Skeleton variant="line" className="mx-auto mt-2 h-4 w-20" />
+                  </div>
+                ))}
+              </div>
+            ) : hasActivity ? (
               <HubStats
                 songsSplit={totalJobs}
                 finished={completedCount}
                 midiConverted={!midiLoading ? midiRecords.length : undefined}
               />
-            )}
+            ) : null}
           </HubHeader>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
@@ -198,7 +208,8 @@ function RecentWorkCard({
     <button
       type="button"
       onClick={onClick}
-      className="flex-shrink-0 w-48 rounded-xl bg-surface-raised border border-border hover:border-primary-500/40 transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left overflow-hidden group"
+      aria-label={`Open ${job.original_filename || "Untitled"} in My Stems`}
+      className="surface-card-button flex-shrink-0 w-48 rounded-xl bg-surface-raised border border-border hover:border-primary-500/40 transition-all duration-[var(--motion-normal)] ease-[--ease-out-quart] text-left overflow-hidden group"
     >
       <div className="aspect-[16/10] bg-surface-base flex items-center justify-center border-b border-border">
         <Headphones className="w-7 h-7 text-muted-foreground" />

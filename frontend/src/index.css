@@ -88,12 +88,6 @@
     box-sizing: border-box;
   }
 
-  /* Pair unprefixed alongside webkit; text-size-adjust not yet in Firefox/Safari but harmless */
-  html {
-    -webkit-text-size-adjust: 100%; /* stylelint-disable-line property-no-vendor-prefix */
-    text-size-adjust: 100%; /* stylelint-disable-line property-no-unknown */
-  }
-
   /* Remove ineffective vertical-align from block-display media elements */
   img,
   svg,
@@ -128,6 +122,19 @@
       linear-gradient(180deg, #050302 0%, #020104 40%, #000108 100%);
     color: var(--text);
     min-height: 100%;
+  }
+
+  @supports (text-size-adjust: 100%) {
+    html {
+      -webkit-text-size-adjust: 100%; /* stylelint-disable-line property-no-vendor-prefix */
+      text-size-adjust: 100%;
+    }
+  }
+
+  @supports not (text-size-adjust: 100%) {
+    html {
+      -webkit-text-size-adjust: 100%; /* stylelint-disable-line property-no-vendor-prefix */
+    }
   }
 
   body {
@@ -194,7 +201,11 @@
   }
   .scrollbar-hide {
     -ms-overflow-style: none; /* IE/Edge legacy */
-    scrollbar-width: none; /* Firefox; Chrome 121+, not Safari — paired with ::-webkit-scrollbar above */ /* stylelint-disable-line property-no-unknown */
+  }
+  @supports (scrollbar-width: none) {
+    .scrollbar-hide {
+      scrollbar-width: none; /* Firefox, Chrome 121+ */
+    }
   }
 
   /* Tool chrome: ≥12px on mobile; compact metadata on sm+ (see RESPONSIVE-DESIGN.md) */
@@ -683,6 +694,38 @@
     box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.3);
   }
 
+  /* Hub / surface cards that act as navigation buttons */
+  .surface-card-button {
+    cursor: pointer;
+    transition:
+      transform var(--motion-fast) var(--ease-out-quart),
+      border-color var(--motion-fast) var(--ease-out-quart),
+      box-shadow var(--motion-fast) var(--ease-out-quart);
+  }
+
+  .surface-card-button:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+  }
+
+  .surface-card-button:active:not(:disabled) {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  .secondary-tool-card {
+    min-height: 100px;
+  }
+
+  .secondary-tool-card__hover-wash {
+    background: radial-gradient(ellipse at top left, rgba(255, 255, 255, 0.03) 0%, transparent 60%);
+  }
+
+  .secondary-tool-card__icon {
+    background: var(--muted);
+  }
+
   /* Subtle attention pulse (replaces bounce); disabled under prefers-reduced-motion */
   .motion-ping {
     animation: motion-ping 1.4s var(--ease-out-quart) infinite;
@@ -896,6 +939,18 @@
   .stem-label-color-melody,
   .stem-label-color-other { color: var(--stem-melody); }
   .stem-label-color-instrumental { color: var(--stem-instrumental); }
+
+  /* Workspace mixer channel strips — index palette matches STEM_COLORS in MixerConsole */
+  .mixer-channel-strip[data-strip-index="0"] { --mixer-strip-color: #06b6d4; }
+  .mixer-channel-strip[data-strip-index="1"] { --mixer-strip-color: #ec4899; }
+  .mixer-channel-strip[data-strip-index="2"] { --mixer-strip-color: #f59e0b; }
+  .mixer-channel-strip[data-strip-index="3"] { --mixer-strip-color: #10b981; }
+  .mixer-channel-strip[data-strip-index="4"] { --mixer-strip-color: #8b5cf6; }
+  .mixer-channel-label { color: var(--mixer-strip-color); }
+  .mixer-channel-accent {
+    background-color: var(--mixer-strip-color);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--mixer-strip-color) 25%, transparent);
+  }
 
   /* Trim handles: position from --trim-start-pct / --trim-end-pct (set on parent) */
   .trim-handle-start {
@@ -2731,7 +2786,8 @@
   .ghost-button:active,
   .icon-button:hover,
   .icon-button:active,
-  .tap-feedback:active {
+  .tap-feedback:active,
+  .surface-card-button:active {
     transform: none !important;
   }
 

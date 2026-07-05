@@ -11,6 +11,7 @@ import { GenreClassifier } from "@/intelligence/GenreClassifier";
 import type { GenreClassification } from "@/intelligence/GenreClassifier";
 import { MoodAnalyzer } from "@/intelligence/MoodAnalyzer";
 import type { MoodAnalysis } from "@/intelligence/MoodAnalyzer";
+import { ErrorState } from "@/components/ui/error-state";
 
 type AnalysisState = "idle" | "analyzing" | "done" | "error";
 type AnalysisResults = {
@@ -24,6 +25,9 @@ type AnalysisResults = {
 export interface AudioIntelligencePanelProps {
   onClose?: () => void;
 }
+
+const ACTION_BUTTON_CLASS =
+  "tap-feedback inline-flex items-center gap-2 rounded-lg bg-primary/20 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function StatCard({ icon: Icon, label, value, sub }: { icon: React.ComponentType<{ size?: number }>; label: string; value: string; sub?: string }) {
   return (
@@ -127,7 +131,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
           <button
             type="button"
             onClick={handleAnalyze}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary/20 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30"
+            className={ACTION_BUTTON_CLASS}
           >
             <Zap size={16} />
             Analyze Track
@@ -136,23 +140,25 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
       )}
 
       {state === "analyzing" && (
-        <div className="flex flex-col items-center justify-center h-full gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+        <div
+          className="flex flex-col items-center justify-center h-full gap-3"
+          role="status"
+          aria-live="polite"
+          aria-label="Analyzing track"
+        >
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" aria-hidden="true" />
           <p className="text-sm text-secondary-foreground">Analyzing...</p>
         </div>
       )}
 
       {state === "error" && (
-        <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
-          <p className="text-sm text-red-400">{error || "Analysis failed"}</p>
-          <button
-            type="button"
-            onClick={handleAnalyze}
-            className="rounded-lg bg-white/10 px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/20 hover:text-foreground"
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorState
+          variant="server"
+          title="Analysis failed"
+          description={error || "We couldn't analyze this track. Try again."}
+          onRetry={handleAnalyze}
+          className="border-0 bg-transparent px-0 py-md"
+        />
       )}
 
       {state === "done" && results && (
@@ -161,7 +167,7 @@ export function AudioIntelligencePanel({ onClose: _onClose }: AudioIntelligenceP
             type="button"
             onClick={handleAnalyze}
             disabled={analyzeDisabled}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary/20 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/30 disabled:opacity-50"
+            className={`w-full justify-center ${ACTION_BUTTON_CLASS} disabled:opacity-50`}
           >
             <Zap size={16} />
             {analyzeDisabled ? "Analyzing..." : "Re-analyze"}

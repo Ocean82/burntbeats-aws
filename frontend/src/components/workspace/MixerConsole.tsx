@@ -22,6 +22,7 @@ export interface MixerConsoleProps {
 interface ChannelStripProps {
   stemId: string;
   label: string;
+  stripIndex: number;
   stemState: StemEditorState;
   color: string;
   onVolumeChange: (stemId: string, gain: number) => void;
@@ -33,6 +34,7 @@ interface ChannelStripProps {
 function ChannelStrip({
   stemId,
   label,
+  stripIndex,
   stemState,
   color,
   onVolumeChange,
@@ -44,34 +46,29 @@ function ChannelStrip({
 
   return (
     <div
-      className="flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] min-w-[72px]"
+      className="mixer-channel-strip flex flex-col items-center gap-1 px-2 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] min-w-[72px]"
       data-testid={`channel-strip-${stemId}`}
+      data-strip-index={stripIndex % 5}
     >
       {/* Color indicator */}
       <div
-        className="w-full h-1 rounded-full"
-        style={{ backgroundColor: color, boxShadow: `0 0 4px ${color}40` }}
+        className="mixer-channel-accent w-full h-1 rounded-full"
         aria-hidden
       />
 
       {/* Label */}
       <span
-        className="text-[9px] font-bold uppercase tracking-wider truncate w-full text-center"
-        style={{ color }}
+        className="mixer-channel-label text-[9px] font-bold uppercase tracking-wider truncate w-full text-center"
       >
         {label}
       </span>
 
       {/* Fader + Meter row */}
-      <div className="flex items-stretch gap-1 w-full justify-center" style={{ height: "80px" }}>
+      <div className="flex items-stretch gap-1 w-full justify-center h-20">
         {/* Level meter (left side) */}
         <div
           className="relative w-[6px] rounded-full bg-white/[0.06] overflow-hidden"
-          aria-label={`${label} level meter`}
-          role="meter"
-          aria-valuemin={-60}
-          aria-valuemax={6}
-          aria-valuenow={mixer.gain}
+          aria-hidden
         >
           {/* Meter fill — height based on gain mapped to 0-100% */}
           <div
@@ -104,8 +101,8 @@ function ChannelStrip({
             onChange={(e) => onVolumeChange(stemId, Number(e.target.value))}
             onDoubleClick={() => onVolumeChange(stemId, 0)}
             aria-label={`${label} volume`}
-            className="channel-fader w-3 min-h-11 cursor-pointer appearance-none rounded-full bg-white/[0.08] [writing-mode:vertical-lr] rotate-180"
-            style={{ "--strip-color": color, height: "80px" } as React.CSSProperties}
+            className="channel-fader w-3 h-20 min-h-11 cursor-pointer appearance-none rounded-full bg-white/[0.08] [writing-mode:vertical-lr] rotate-180"
+            style={{ "--strip-color": color } as React.CSSProperties}
           />
         </div>
       </div>
@@ -141,7 +138,9 @@ function ChannelStrip({
           type="button"
           onClick={() => onMuteToggle(stemId)}
           aria-label={`${stemState.muted ? "Unmute" : "Mute"} ${label}`}
-          aria-pressed={stemState.muted}
+          {...(stemState.muted
+            ? { "aria-pressed": "true" }
+            : { "aria-pressed": "false" })}
           className={cn(
             "w-6 h-5 rounded text-[8px] font-bold transition",
              stemState.muted
@@ -155,7 +154,9 @@ function ChannelStrip({
           type="button"
           onClick={() => onSoloToggle(stemId)}
           aria-label={`${stemState.soloed ? "Unsolo" : "Solo"} ${label}`}
-          aria-pressed={stemState.soloed}
+          {...(stemState.soloed
+            ? { "aria-pressed": "true" }
+            : { "aria-pressed": "false" })}
           className={cn(
             "w-6 h-5 rounded text-[8px] font-bold transition",
              stemState.soloed
@@ -353,7 +354,9 @@ export function MixerConsole({ className }: MixerConsoleProps) {
           type="button"
           onClick={toggleMixer}
           aria-label={mixerExpanded ? "Collapse mixer" : "Expand mixer"}
-          aria-expanded={mixerExpanded}
+          {...(mixerExpanded
+            ? { "aria-expanded": "true" }
+            : { "aria-expanded": "false" })}
           className={cn(
             "flex items-center gap-1.5 px-2 py-1.5 rounded-md cursor-pointer",
             "text-muted-foreground hover:text-foreground hover:bg-white/5",
@@ -392,6 +395,7 @@ export function MixerConsole({ className }: MixerConsoleProps) {
               key={stemId}
               stemId={stemId}
               label={getStemLabel(stemId)}
+              stripIndex={index}
               stemState={stemStates[stemId]}
               color={STEM_COLORS[index % STEM_COLORS.length]}
               onVolumeChange={handleVolumeChange}

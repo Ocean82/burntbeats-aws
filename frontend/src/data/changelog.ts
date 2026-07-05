@@ -9,7 +9,7 @@ export interface ChangelogEntry {
   /** ISO date string */
   date: string;
   /** Which tab this feature belongs to */
-  tab: "editor" | "speech" | "midi" | "pricing" | "my-stems";
+  tab: "editor" | "speech" | "midi" | "pricing" | "my-stems" | "beats";
   /** Short title shown in the badge popover */
   title: string;
   /** Brief description */
@@ -17,6 +17,14 @@ export interface ChangelogEntry {
 }
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    id: 4,
+    date: "2026-07-01",
+    tab: "beats",
+    title: "Beat Maker",
+    description:
+      "Build drum patterns with swing, presets, pattern chains, and MIDI export — right in the Beats tab.",
+  },
   {
     id: 3,
     date: "2026-05-15",

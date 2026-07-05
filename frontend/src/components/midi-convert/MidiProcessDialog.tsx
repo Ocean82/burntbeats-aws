@@ -78,25 +78,17 @@ export function MidiProcessDialog({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center midi-backdrop-fade"
-      style={{ background: "rgba(0,0,0,0.55)" }}
-      role="button"
-      tabIndex={0}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClose(); }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 midi-backdrop-fade bg-black/55"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         ref={ref}
-        className="midi-control-bar__overflow midi-dialog-enter max-h-[90vh] overflow-y-auto"
-        style={{
-          position: "relative",
-          top: "auto",
-          right: "auto",
-          minWidth: "22rem",
-          maxWidth: "calc(100vw - 16px)",
-        }}
+        className="relative midi-control-bar__overflow midi-dialog-enter max-h-[90vh] overflow-y-auto min-w-[22rem] max-w-[calc(100vw-16px)]"
         role="dialog"
+        aria-modal="true"
         aria-label="Process MIDI"
       >
         <div className="flex items-center justify-between mb-sm px-1">
@@ -144,12 +136,16 @@ export function MidiProcessDialog({
         {config.velocity?.enabled && (
           <div className="flex flex-col gap-1 px-1 pb-1">
             <div className="flex items-center gap-2 px-2">
-              <span className="text-[10px] text-[var(--midi-text-muted)] w-8">Min</span>
+              <label htmlFor="process-velocity-min" className="text-[10px] text-[var(--midi-text-muted)] w-8">
+                Min
+              </label>
               <input
+                id="process-velocity-min"
                 type="range"
                 min={1}
                 max={127}
                 value={config.velocity.targetMin}
+                aria-label="Velocity minimum"
                 onChange={(e) =>
                   setConfig((c) => ({
                     ...c,
@@ -163,12 +159,16 @@ export function MidiProcessDialog({
               </span>
             </div>
             <div className="flex items-center gap-2 px-2">
-              <span className="text-[10px] text-[var(--midi-text-muted)] w-8">Max</span>
+              <label htmlFor="process-velocity-max" className="text-[10px] text-[var(--midi-text-muted)] w-8">
+                Max
+              </label>
               <input
+                id="process-velocity-max"
                 type="range"
                 min={1}
                 max={127}
                 value={config.velocity.targetMax}
+                aria-label="Velocity maximum"
                 onChange={(e) =>
                   setConfig((c) => ({
                     ...c,
@@ -204,13 +204,17 @@ export function MidiProcessDialog({
         {config.filter?.enabled && (
           <div className="flex flex-col gap-1 px-1 pb-1">
             <div className="flex items-center gap-2 px-2">
-              <span className="text-[10px] text-[var(--midi-text-muted)] w-8">Min</span>
+              <label htmlFor="process-filter-min-length" className="text-[10px] text-[var(--midi-text-muted)] w-8">
+                Min
+              </label>
               <input
+                id="process-filter-min-length"
                 type="range"
                 min={0.01}
                 max={2}
                 step={0.01}
                 value={config.filter.minNoteLength}
+                aria-label="Minimum note length"
                 onChange={(e) =>
                   setConfig((c) => ({
                     ...c,
@@ -224,13 +228,17 @@ export function MidiProcessDialog({
               </span>
             </div>
             <div className="flex items-center gap-2 px-2">
-              <span className="text-[10px] text-[var(--midi-text-muted)] w-8">Max</span>
+              <label htmlFor="process-filter-max-length" className="text-[10px] text-[var(--midi-text-muted)] w-8">
+                Max
+              </label>
               <input
+                id="process-filter-max-length"
                 type="range"
                 min={0.05}
                 max={16}
                 step={0.05}
                 value={config.filter.maxNoteLength}
+                aria-label="Maximum note length"
                 onChange={(e) =>
                   setConfig((c) => ({
                     ...c,
@@ -265,12 +273,16 @@ export function MidiProcessDialog({
         </label>
         {config.quantize?.enabled && (
           <div className="flex items-center gap-2 px-3 pb-1">
-            <span className="text-[10px] text-[var(--midi-text-muted)]">Strength</span>
+            <label htmlFor="process-quantize-strength" className="text-[10px] text-[var(--midi-text-muted)]">
+              Strength
+            </label>
             <input
+              id="process-quantize-strength"
               type="range"
               min={0}
               max={100}
               value={Math.round(config.quantize.strength * 100)}
+              aria-label="Quantize strength"
               onChange={(e) =>
                 setConfig((c) => ({
                   ...c,

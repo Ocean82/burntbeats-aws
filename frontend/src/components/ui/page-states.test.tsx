@@ -36,5 +36,6 @@ describe("page state primitives", () => {
   it("renders skeleton placeholder", () => {
     render(<Skeleton data-testid="page-state-skeleton" className="h-8 w-full" />);
     expect(screen.getByTestId("page-state-skeleton")).toBeInTheDocument();
+    expect(screen.getByTestId("page-state-skeleton")).toHaveAttribute("aria-busy", "true");
   });
 });

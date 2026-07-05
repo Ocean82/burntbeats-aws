@@ -258,7 +258,7 @@ describe("DrumMachinePanel Integration: Full Playback Cycle", () => {
     expect(kickVolume).toHaveValue("0.4");
 
     // Place a hit on kick row step 1 and start playback
-    const kickStep = screen.getByRole("button", { name: "Kick step 1" });
+    const kickStep = screen.getByTestId("beat-grid-cell-0-0");
     fireEvent.click(kickStep);
     await clickPlay();
     advanceTimers(100);
@@ -373,6 +373,6 @@ describe("DrumMachinePanel keyboard shortcuts", () => {
 
     const cell = screen.getByTestId("beat-grid-cell-0-0");
     fireEvent.keyDown(window, { key: "Enter" });
-    expect(cell).toHaveAttribute("aria-pressed", "true");
+    expect(cell).toHaveAttribute("aria-label", expect.stringMatching(/, on,/));
   });
 });

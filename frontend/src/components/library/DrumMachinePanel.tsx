@@ -23,6 +23,7 @@ import {
   type PatternLength,
 } from "../../audio/types";
 import { useBeatMaker, getAudibleRows } from "../../hooks/useBeatMaker";
+import "./drum-machine.css";
 import type { UseBeatMakerReturn } from "../../hooks/useBeatMaker";
 import type { UseBeatMakerGridFocusReturn } from "../../hooks/useBeatMakerGridFocus";
 import { useMasterBus, type UseMasterBusReturn } from "../../hooks/useMasterBus";
@@ -193,10 +194,6 @@ export function DrumMachinePanel({
 
   const audibleRows = useMemo(() => getAudibleRows(rowStates), [rowStates]);
 
-  const sequencerGridStyle = {
-    "--sequencer-cols": `96px repeat(${steps}, minmax(24px, 1fr))`,
-  } as React.CSSProperties;
-
   // ─── Render ───────────────────────────────────────────────────
 
   const body = (
@@ -255,7 +252,9 @@ export function DrumMachinePanel({
             "midi-btn text-xs midi-physical-btn--metronome",
             metronomeEnabled && "ring-1 ring-warning-400/60",
           )}
-          aria-pressed={metronomeEnabled}
+          {...(metronomeEnabled
+            ? { "aria-pressed": "true" }
+            : { "aria-pressed": "false" })}
           aria-label="Toggle metronome"
           title="Metronome click on downbeats"
         >
@@ -329,7 +328,10 @@ export function DrumMachinePanel({
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
           {/* Step numbers header */}
-          <div className="mb-0.5 sequencer-grid gap-0.5" style={sequencerGridStyle}>
+          <div
+            className="mb-0.5 sequencer-grid gap-0.5"
+            data-steps={steps}
+          >
             <div /> {/* spacer for row labels */}
             {Array.from({ length: steps }, (_, i) => (
               <div
@@ -352,7 +354,7 @@ export function DrumMachinePanel({
             <div
               key={voice.id}
               className="mb-0.5 sequencer-grid gap-0.5"
-              style={sequencerGridStyle}
+              data-steps={steps}
             >
               {/* Row label + controls */}
               <div className="flex flex-col gap-0.5 pr-1 min-w-0">
@@ -447,8 +449,7 @@ export function DrumMachinePanel({
                       clearCell(ri, ci);
                     }}
                     className={cellClassName}
-                    aria-label={`${voice.label} step ${ci + 1}${isActive ? ` velocity ${vel}` : ""}`}
-                    aria-pressed={isActive}
+                    aria-label={`${voice.label} step ${ci + 1}${isActive ? `, on, velocity ${vel}` : ", off"}`}
                   />
                 );
 

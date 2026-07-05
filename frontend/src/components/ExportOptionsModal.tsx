@@ -240,20 +240,25 @@ export function ExportOptionsModal({
                 </legend>
                 <div className="grid grid-cols-1 gap-xs sm:grid-cols-2">
                   {FORMAT_OPTIONS.map((format) => (
-                    <button
+                    <label
                       key={format.value}
-                      type="button"
-                      onClick={() =>
-                        setOptions((o) => ({ ...o, format: format.value }))
-                      }
-                      aria-pressed={options.format === format.value}
                       className={cn(
-                        "tap-feedback min-h-[44px] rounded-xl border px-sm py-sm text-left transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]",
+                        "tap-feedback min-h-[44px] rounded-xl border px-sm py-sm text-left transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 active:scale-[0.99] cursor-pointer",
                         options.format === format.value
                           ? "border-primary-400/50 bg-primary-500/15 text-foreground"
                           : "border-border bg-muted text-secondary-foreground hover:border-primary-400/30 hover:bg-secondary",
                       )}
                     >
+                      <input
+                        type="radio"
+                        name="export-format"
+                        value={format.value}
+                        checked={options.format === format.value}
+                        onChange={() =>
+                          setOptions((o) => ({ ...o, format: format.value }))
+                        }
+                        className="sr-only"
+                      />
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{format.label}</span>
                         {options.format === format.value && (
@@ -263,7 +268,7 @@ export function ExportOptionsModal({
                       <p className="mt-0.5 text-helper text-muted-foreground">
                         {format.description}
                       </p>
-                    </button>
+                    </label>
                   ))}
                 </div>
                 {isTouchDevice && options.format === "wav" && (
@@ -282,20 +287,25 @@ export function ExportOptionsModal({
                   {targetOptions.map((target) => {
                     const Icon = target.icon;
                     return (
-                      <button
+                      <label
                         key={target.value}
-                        type="button"
-                        onClick={() =>
-                          setOptions((o) => ({ ...o, target: target.value }))
-                        }
-                        aria-pressed={options.target === target.value}
                         className={cn(
-                          "tap-feedback flex min-h-[44px] w-full items-center justify-between rounded-xl border px-md py-sm transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.99]",
+                          "tap-feedback flex min-h-[44px] w-full items-center justify-between rounded-xl border px-md py-sm transition-[color,background-color,border-color,transform] duration-[var(--motion-fast)] ease-[var(--ease-out-quart)] focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 active:scale-[0.99] cursor-pointer",
                           options.target === target.value
                             ? "border-primary-400/50 bg-primary-500/15 text-foreground"
                             : "border-border bg-muted text-secondary-foreground hover:border-primary-400/30 hover:bg-secondary",
                         )}
                       >
+                        <input
+                          type="radio"
+                          name="export-target"
+                          value={target.value}
+                          checked={options.target === target.value}
+                          onChange={() =>
+                            setOptions((o) => ({ ...o, target: target.value }))
+                          }
+                          className="sr-only"
+                        />
                         <div className="flex items-center gap-sm">
                           <Icon className="h-4 w-4" />
                           <div className="min-w-0 text-left">
@@ -310,7 +320,7 @@ export function ExportOptionsModal({
                         {options.target === target.value && (
                           <Check className="h-4 w-4 text-primary-400" />
                         )}
-                      </button>
+                      </label>
                     );
                   })}
                 </div>
@@ -389,26 +399,29 @@ export function ExportOptionsModal({
                     Boost quiet mixes to a consistent loudness
                   </span>
                 </div>
-                <button
-                  type="button"
-                  aria-label="Toggle audio normalization"
-                  title="Toggle audio normalization"
-                  aria-pressed={options.normalize}
-                  onClick={() =>
-                    setOptions((o) => ({ ...o, normalize: !o.normalize }))
-                  }
+                <label
                   className={cn(
-                    "tap-target-expand relative h-7 w-12 shrink-0 rounded-full transition-[background-color,box-shadow] duration-[var(--motion-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "tap-target-expand relative h-7 w-12 shrink-0 rounded-full transition-[background-color,box-shadow] duration-[var(--motion-fast)] focus-within:outline-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 cursor-pointer",
                     options.normalize ? "bg-primary-500" : "bg-secondary",
                   )}
                 >
+                  <input
+                    type="checkbox"
+                    checked={options.normalize}
+                    onChange={(e) =>
+                      setOptions((o) => ({ ...o, normalize: e.target.checked }))
+                    }
+                    className="sr-only"
+                    aria-label="Normalize audio"
+                  />
                   <span
+                    aria-hidden
                     className={cn(
                       "absolute top-1 h-4 w-4 rounded-full bg-muted shadow transition-all",
                       options.normalize ? "left-6" : "left-1",
                     )}
                   />
-                </button>
+                </label>
               </div>
 
               {/* Export Button or Sample CTA */}
@@ -454,7 +467,7 @@ export function ExportOptionsModal({
                         if (!isExporting) void handleExport();
                       }}
                       disabled={isExporting}
-                      aria-busy={isExporting}
+                      {...(isExporting ? { "aria-busy": "true" } : {})}
                       className="fire-button tap-feedback flex min-h-[44px] w-full items-center justify-center gap-xs rounded-xl py-sm text-sm font-semibold focus-visible:outline-none disabled:pointer-events-none"
                     >
                       {isExporting ? (

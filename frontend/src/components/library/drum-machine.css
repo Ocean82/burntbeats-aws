@@ -3,6 +3,18 @@
   grid-template-columns: var(--sequencer-cols);
 }
 
+.sequencer-grid[data-steps="16"] {
+  --sequencer-cols: 96px repeat(16, minmax(24px, 1fr));
+}
+
+.sequencer-grid[data-steps="32"] {
+  --sequencer-cols: 96px repeat(32, minmax(24px, 1fr));
+}
+
+.sequencer-grid[data-steps="64"] {
+  --sequencer-cols: 96px repeat(64, minmax(24px, 1fr));
+}
+
 .beat-playhead-cell {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--fire-ember, #f59e0b) 55%, transparent),

@@ -211,7 +211,7 @@ export function MixerPresetsModal({
                     value={newPresetName}
                     onChange={(e) => setNewPresetName(e.target.value)}
                     placeholder="Enter preset name..."
-                    className="mb-sm w-full min-w-0 rounded-lg border border-border bg-muted px-sm py-xs text-sm text-foreground placeholder:text-muted-foreground focus:border-primary-400/50 focus:outline-none"
+                    className="mb-sm w-full min-w-0 rounded-lg border border-border bg-muted px-sm py-xs text-sm text-foreground placeholder:text-muted-foreground focus:border-primary-400/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: modal just opened, user expects focus in name field
                     autoFocus
                   />
