@@ -61,7 +61,7 @@
     "cmdk": "^1.1.1",
     "dompurify": "^3.4.11",
     "embla-carousel-react": "^8.6.0",
-    "framer-motion": "^12.42.0",
+    "framer-motion": "^12.42.2",
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "lamejs": "^1.2.1",
