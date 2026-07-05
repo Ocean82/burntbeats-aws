@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { gotoLibrary, skipOnboarding } from "./fixtures/helpers";
+import { gotoLibrary, openNotesWorkspaceTab, skipOnboarding } from "./fixtures/helpers";
 
 /**
  * Smoke: catalog browse → open MIDI tool (edit path entry point).
@@ -51,10 +51,7 @@ test.describe("Catalog to MIDI workflow smoke", () => {
       timeout: 10_000,
     });
 
-    await page
-      .getByLabel("Workspace tabs")
-      .getByRole("button", { name: /MIDI/i })
-      .click();
+    await openNotesWorkspaceTab(page);
     await expect(page.getByTestId("midi-convert-panel")).toBeVisible({
       timeout: 10_000,
     });

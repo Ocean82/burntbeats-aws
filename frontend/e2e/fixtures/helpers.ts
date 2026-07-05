@@ -107,11 +107,29 @@ export async function uploadAndSplit(
     | string
     | { name: string; mimeType: string; buffer: Buffer },
 ) {
-  const fileInput = page.locator('input[type="file"]');
-  await fileInput.setInputFiles(file);
-  await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+  await uploadAudioFile(page, file);
   const splitButton = page.getByTestId("split-button");
   await splitButton.scrollIntoViewIfNeeded();
   // Use dispatchEvent to bypass any fixed overlay interception on mobile viewports
   await splitButton.dispatchEvent("click");
+}
+
+/** Upload an audio file and wait for the configure phase without starting the split. */
+export async function uploadAudioFile(
+  page: import("@playwright/test").Page,
+  file:
+    | string
+    | { name: string; mimeType: string; buffer: Buffer },
+) {
+  const fileInput = page.locator('input[type="file"]');
+  await fileInput.setInputFiles(file);
+  await expect(page.getByTestId("configure-phase")).toBeVisible({ timeout: 5000 });
+}
+
+/** Open the MIDI/Notes workspace tab using the current user-facing header label. */
+export async function openNotesWorkspaceTab(page: import("@playwright/test").Page) {
+  await page
+    .getByLabel("Workspace tabs")
+    .getByRole("button", { name: /Notes/i })
+    .click();
 }

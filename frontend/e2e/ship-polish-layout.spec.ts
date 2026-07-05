@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   gotoEditor,
   minimalWavBuffer,
+  openNotesWorkspaceTab,
   skipOnboarding,
   uploadAndSplit,
   waitForWorkspace,
@@ -49,10 +50,7 @@ test.describe("Ship polish layout", () => {
   test("MIDI convert page is usable at mobile width", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await gotoEditor(page);
-    await page
-      .getByLabel("Workspace tabs")
-      .getByRole("button", { name: /MIDI/i })
-      .click();
+    await openNotesWorkspaceTab(page);
     await expect(page.getByTestId("midi-convert-page")).toBeVisible({
       timeout: 10_000,
     });
