@@ -14,6 +14,8 @@ const mockStore: MockStore = {
 const mockAuthHeaders = vi.fn();
 const mockJobTokenHeader = vi.fn();
 const mockSetJobToken = vi.fn();
+const mockApiPostForm = vi.fn();
+const mockApiDelete = vi.fn();
 
 vi.mock("../store/appStore", () => ({
   useAppStore: <T>(selector: (s: MockStore) => T) =>
@@ -24,6 +26,11 @@ vi.mock("../api/auth", () => ({
   authHeaders: (...args: unknown[]) => mockAuthHeaders(...args),
   jobTokenHeader: (...args: unknown[]) => mockJobTokenHeader(...args),
   setJobToken: (...args: unknown[]) => mockSetJobToken(...args),
+}));
+
+vi.mock("../api/client", () => ({
+  apiPostForm: (...args: unknown[]) => mockApiPostForm(...args),
+  apiDelete: (...args: unknown[]) => mockApiDelete(...args),
 }));
 
 vi.mock("../analytics/events", () => ({
@@ -60,6 +67,8 @@ describe("useMidiConvert acceptFile", () => {
       "x-job-token": `source-token-${jobId}`,
     }));
     mockSetJobToken.mockReset();
+    mockApiPostForm.mockReset();
+    mockApiDelete.mockReset();
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -108,20 +117,6 @@ describe("useMidiConvert acceptFile", () => {
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/api/midi/convert")) {
-        expect(init?.headers).toMatchObject({
-          Authorization: "Bearer token-owner",
-          "x-job-token": "source-token-split-job-1",
-        });
-        return {
-          ok: true,
-          json: async () => ({
-            job_id: "midi-job-1",
-            job_token: "job-token-1",
-            file_url: "/api/midi/file/midi-job-1/output.mid",
-          }),
-        };
-      }
       const statusRoute = sseUnavailableThenStatus("midi-job-1", completedStatus)(url);
       if (statusRoute) {
         if (url.endsWith("/api/midi/status/midi-job-1")) {
@@ -143,6 +138,22 @@ describe("useMidiConvert acceptFile", () => {
         };
       }
       throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    mockApiPostForm.mockImplementation(async (_path, formData, options) => {
+      expect(formData.get("stem_job_id")).toBe("split-job-1");
+      expect(options?.headers).toMatchObject({
+        "x-job-token": "source-token-split-job-1",
+      });
+      return {
+        data: {
+          job_id: "midi-job-1",
+          job_token: "job-token-1",
+          file_url: "/api/midi/file/midi-job-1/output.mid",
+        },
+        error: null,
+        status: 200,
+      };
     });
 
     vi.stubGlobal("fetch", fetchMock);
@@ -198,20 +209,6 @@ describe("useMidiConvert acceptFile", () => {
     };
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/api/midi/convert")) {
-        expect(_init?.headers).toMatchObject({
-          Authorization: "Bearer token-owner",
-          "x-job-token": "source-token-split-job-1",
-        });
-        return {
-          ok: true,
-          json: async () => ({
-            job_id: "midi-job-dup",
-            job_token: "job-token-dup",
-            file_url: "/api/midi/file/midi-job-dup/output.mid",
-          }),
-        };
-      }
       const statusRoute = sseUnavailableThenStatus("midi-job-dup", completedStatus)(url);
       if (statusRoute) return statusRoute;
       if (url.endsWith("/api/midi/file/midi-job-dup/output.mid")) {
@@ -220,6 +217,21 @@ describe("useMidiConvert acceptFile", () => {
         return { ok: true, blob: async () => midiBlob };
       }
       throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    mockApiPostForm.mockImplementation(async (_path, _formData, options) => {
+      expect(options?.headers).toMatchObject({
+        "x-job-token": "source-token-split-job-1",
+      });
+      return {
+        data: {
+          job_id: "midi-job-dup",
+          job_token: "job-token-dup",
+          file_url: "/api/midi/file/midi-job-dup/output.mid",
+        },
+        error: null,
+        status: 200,
+      };
     });
 
     vi.stubGlobal("fetch", fetchMock);
@@ -258,33 +270,36 @@ describe("useMidiConvert cancelBatch", () => {
       "x-job-token": `source-token-${jobId}`,
     }));
     mockAuthHeaders.mockResolvedValue({ Authorization: "Bearer token-owner" });
+    mockApiPostForm.mockReset();
+    mockApiDelete.mockReset();
     vi.stubGlobal("fetch", vi.fn());
   });
 
   it("cancels in-flight jobs, marks pending/converting as cancelled, and keeps batch mode", async () => {
     let pollCount = 0;
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    mockApiPostForm.mockImplementation(async (_path, formData, options) => {
+      expect(options?.headers).toMatchObject({
+        "x-job-token": "source-token-split-job-1",
+      });
+      const stemName = formData.get("stem_name");
+      const jobId =
+        stemName === "vocals" ? "batch-job-vocals" : "batch-job-drums";
+      const jobToken =
+        stemName === "vocals" ? "batch-token-vocals" : "batch-token-drums";
+      return {
+        data: {
+          job_id: jobId,
+          job_token: jobToken,
+          file_url: `/api/midi/file/${jobId}/output.mid`,
+        },
+        error: null,
+        status: 200,
+      };
+    });
+    mockApiDelete.mockResolvedValue({ data: null, error: null, status: 200 });
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
-      if (url.endsWith("/api/midi/convert")) {
-        expect(init?.headers).toMatchObject({
-          Authorization: "Bearer token-owner",
-          "x-job-token": "source-token-split-job-1",
-        });
-        const body = init?.body as FormData | undefined;
-        const stemName = body?.get("stem_name");
-        const jobId =
-          stemName === "vocals" ? "batch-job-vocals" : "batch-job-drums";
-        const jobToken =
-          stemName === "vocals" ? "batch-token-vocals" : "batch-token-drums";
-        return {
-          ok: true,
-          json: async () => ({
-            job_id: jobId,
-            job_token: jobToken,
-            file_url: `/api/midi/file/${jobId}/output.mid`,
-          }),
-        };
-      }
       if (url.endsWith("/stream")) {
         return { ok: false };
       }
@@ -327,12 +342,6 @@ describe("useMidiConvert cancelBatch", () => {
           }),
         };
       }
-      if (url.endsWith("/api/midi/jobs/batch-job-vocals") && init?.method === "DELETE") {
-        return { ok: true, json: async () => ({}) };
-      }
-      if (url.endsWith("/api/midi/jobs/batch-job-drums") && init?.method === "DELETE") {
-        return { ok: true, json: async () => ({}) };
-      }
       throw new Error(`Unexpected fetch URL: ${url}`);
     });
 
@@ -367,9 +376,10 @@ describe("useMidiConvert cancelBatch", () => {
       expect.objectContaining({ in_flight_jobs: expect.any(Number) }),
     );
     expect(
-      fetchMock.mock.calls.some(
-        ([url, init]) =>
-          String(url).includes("/api/midi/jobs/") && init?.method === "DELETE",
+      mockApiDelete.mock.calls.some(
+        ([path, options]) =>
+          String(path).includes("/api/midi/jobs/") &&
+          options?.headers?.["x-job-token"],
       ),
     ).toBe(true);
   });

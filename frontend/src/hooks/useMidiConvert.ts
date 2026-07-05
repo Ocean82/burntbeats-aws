@@ -473,10 +473,7 @@ export function useMidiConvert() {
       usesFileUpload: boolean,
       sourceJobId?: string | null,
     ): Promise<ConvertJobResponse> => {
-      const headers = {
-        ...(await authHeaders()),
-        ...(sourceJobId ? jobTokenHeader(sourceJobId) : {}),
-      };
+      const sourceHeaders = sourceJobId ? jobTokenHeader(sourceJobId) : {};
 
       if (usesFileUpload) {
         setIsUploading(true);
@@ -486,7 +483,10 @@ export function useMidiConvert() {
           const uploadResult = await uploadWithProgress({
             url: `${API_BASE}/api/midi/convert`,
             formData,
-            headers,
+            headers: {
+              ...(await authHeaders()),
+              ...sourceHeaders,
+            },
             timeoutMs: MIDI_ACCEPT_TIMEOUT_MS,
             onProgress: (evt) => {
               setUploadProgress(evt.percent);
@@ -522,7 +522,11 @@ export function useMidiConvert() {
         const result = await apiPostForm<ConvertJobResponse>(
           "/api/midi/convert",
           formData,
-          { signal: controller.signal, timeout: MIDI_ACCEPT_TIMEOUT_MS },
+          {
+            signal: controller.signal,
+            timeout: MIDI_ACCEPT_TIMEOUT_MS,
+            headers: sourceHeaders,
+          },
         );
         if (result.error || !result.data) {
           throw new Error(
