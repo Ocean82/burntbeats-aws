@@ -23,6 +23,30 @@ function runCommand(command, args, options) {
   }
 }
 
+function findHookApiBaseFetches(repoRoot) {
+  const result = spawnSync("rg", [
+    "fetch\\(`\\$\\{API_BASE\\}",
+    "frontend/src/hooks",
+    "--glob",
+    "*.ts",
+    "--glob",
+    "*.tsx",
+    "-l",
+  ], {
+    encoding: "utf8",
+    cwd: repoRoot,
+    shell: false,
+  })
+
+  if (result.status === 0) {
+    return result.stdout.trim().split("\n").filter(Boolean)
+  }
+  if (result.status === 1) return []
+
+  const stderr = result.stderr?.trim()
+  throw new Error(stderr || "raw fetch gate failed to search frontend hooks")
+}
+
 function getGitRef() {
   const ref = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
     encoding: "utf8",
@@ -74,13 +98,8 @@ async function main() {
   ], { cwd: backendDir, env, label: "backend contract + hardening tests (node:test)" })
 
   // Fail if hooks still use raw fetch with API_BASE template literals (Wave 1 gate).
-  const { execSync } = await import("node:child_process")
-  const hookFetch = execSync(
-    'rg "fetch\\(`\\$\\{API_BASE\\}" frontend/src/hooks --glob "*.ts" --glob "*.tsx" -l 2>nul || exit 0',
-    { encoding: "utf8", cwd: repoRoot, shell: true },
-  ).trim()
-  if (hookFetch) {
-    const files = hookFetch.split("\n").filter(Boolean)
+  const files = findHookApiBaseFetches(repoRoot)
+  if (files.length > 0) {
     console.error(
       `[ci-preflight] hooks still using raw fetch(API_BASE): ${files.length} file(s)`,
     )
