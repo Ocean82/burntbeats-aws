@@ -102,7 +102,9 @@ async function mockSplitWithPayloadInspection(page: Page) {
     });
   });
 
-  return { capturedPayload };
+  return {
+    getCapturedPayload: () => capturedPayload,
+  };
 }
 
 test.describe("Stem split happy path", () => {
@@ -111,7 +113,7 @@ test.describe("Stem split happy path", () => {
   });
 
   test("full upload → split → mixer state transition", async ({ page }) => {
-    const { capturedPayload } = await mockSplitWithPayloadInspection(page);
+    const splitMock = await mockSplitWithPayloadInspection(page);
 
     await gotoEditor(page);
 
@@ -129,14 +131,20 @@ test.describe("Stem split happy path", () => {
     const splitButton = page.getByTestId("split-button");
     await expect(splitButton).toBeEnabled();
 
+    const splitRequest = page.waitForRequest(
+      (req) => req.method() === "POST" && req.url().includes("/api/stems/split"),
+      { timeout: 10_000 },
+    );
+
     // Click split — use dispatchEvent to bypass animation instability during phase transitions
     await splitButton.scrollIntoViewIfNeeded();
     await splitButton.dispatchEvent("click");
+    await splitRequest;
 
     // Wait for request and assert payload has expected shape
     await page.waitForLoadState("networkidle");
-    expect(capturedPayload).toBeTruthy();
-    const payload = capturedPayload as Record<string, string>;
+    const payload = splitMock.getCapturedPayload() as Record<string, string> | undefined;
+    if (!payload) throw new Error("Expected split request payload to be captured");
     // The split endpoint receives multipart form-data with stems, quality, and intent fields
     expect(payload.stems).toBeTruthy();
     expect(payload.quality).toBeTruthy();
