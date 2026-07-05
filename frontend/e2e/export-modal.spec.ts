@@ -32,16 +32,16 @@ test.describe("Export options modal", () => {
     const dialog = page.getByRole("dialog", { name: /export options/i });
     await expect(dialog).toBeVisible();
 
-    const wavOption = dialog.getByRole("button", { name: /^WAV/i });
-    await expect(wavOption).toHaveAttribute("aria-pressed", "true");
+    const wavOption = dialog.getByRole("radio", { name: /^WAV/i });
+    await expect(wavOption).toBeChecked();
 
-    const mp3Option = dialog.getByRole("button", { name: /^MP3/i });
-    await mp3Option.click();
-    await expect(mp3Option).toHaveAttribute("aria-pressed", "true");
-    await expect(wavOption).toHaveAttribute("aria-pressed", "false");
+    const mp3Option = dialog.getByRole("radio", { name: /^MP3/i });
+    await dialog.locator('label:has(input[value="mp3"])').click();
+    await expect(mp3Option).toBeChecked();
+    await expect(wavOption).not.toBeChecked();
 
-    const masterTarget = dialog.getByRole("button", { name: /master mix/i });
-    await expect(masterTarget).toHaveAttribute("aria-pressed", "true");
+    const masterTarget = dialog.getByRole("radio", { name: /master mix/i });
+    await expect(masterTarget).toBeChecked();
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
