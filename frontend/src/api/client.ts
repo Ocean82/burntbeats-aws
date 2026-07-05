@@ -6,8 +6,12 @@
  * - Exponential backoff retry on transient failures
  * - Normalized error responses
  * - Request timeout via AbortController
+ *
+ * Binary downloads (blob/arrayBuffer) intentionally bypass this client — use raw
+ * `fetch` with auth headers in stems.ts, speech.ts, midiSource.ts, etc.
  */
 import { authHeaders } from "./auth";
+import { traceHeaders } from "../lib/sentry";
 import { fetchWithRetry, type RetryConfig } from "./retry";
 
 /** Normalized API response — always has either data or error, never both. */
@@ -128,6 +132,27 @@ export async function apiPost<T>(
 /**
  * Make an authenticated POST request with FormData body and retry.
  */
+/**
+ * Make an authenticated PUT request with JSON body and retry.
+ */
+export async function apiPut<T>(
+  path: string,
+  body?: unknown,
+  options: ApiRequestOptions = {},
+): Promise<ApiResponse<T>> {
+  return apiRequest<T>("PUT", path, body, options);
+}
+
+/**
+ * Make an authenticated DELETE request with retry.
+ */
+export async function apiDelete<T = void>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<ApiResponse<T>> {
+  return apiRequest<T>("DELETE", path, undefined, options);
+}
+
 export async function apiPostForm<T>(
   path: string,
   formData: FormData,
@@ -148,6 +173,7 @@ export async function apiPostForm<T>(
     const auth = await authHeaders();
     const headers: Record<string, string> = {
       ...auth,
+      ...traceHeaders(),
       ...(options.headers || {}),
     };
     // Don't set Content-Type for FormData — browser sets it with boundary
@@ -219,6 +245,7 @@ async function apiRequest<T>(
     const auth = await authHeaders();
     const headers: Record<string, string> = {
       ...auth,
+      ...traceHeaders(),
       ...(options.headers || {}),
     };
 

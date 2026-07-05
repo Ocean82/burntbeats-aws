@@ -5,6 +5,7 @@
  */
 import { useCallback, useMemo, useRef, useState } from "react";
 import { authHeaders, setJobToken as storeJobToken } from "../api/auth";
+import { apiDelete, apiPostForm } from "../api/client";
 import { streamMidiJobUntilDone } from "../api/midiStatus";
 import { trackEvent } from "../analytics/events";
 import {
@@ -514,19 +515,17 @@ export function useMidiConvert() {
         MIDI_ACCEPT_TIMEOUT_MS,
       );
       try {
-        const res = await fetch(`${API_BASE}/api/midi/convert`, {
-          method: "POST",
-          headers,
-          body: formData,
-          signal: controller.signal,
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
+        const result = await apiPostForm<ConvertJobResponse>(
+          "/api/midi/convert",
+          formData,
+          { signal: controller.signal, timeout: MIDI_ACCEPT_TIMEOUT_MS },
+        );
+        if (result.error || !result.data) {
           throw new Error(
-            data.error || `Conversion request failed (${res.status})`,
+            result.error ?? `Conversion request failed (${result.status})`,
           );
         }
-        return res.json() as Promise<ConvertJobResponse>;
+        return result.data;
       } finally {
         clearTimeout(timer);
       }
@@ -634,6 +633,7 @@ export function useMidiConvert() {
     trackEvent("midi_download_started");
     try {
       const headers = await authHeaders();
+      // binary download — intentional bypass of api/client (blob response)
       const res = await fetch(midiFileUrl, {
         headers: { ...headers, "x-job-token": jobToken },
       });
@@ -680,10 +680,8 @@ export function useMidiConvert() {
 
     if (activeMidiJobId && jobToken) {
       try {
-        const headers = await authHeaders();
-        await fetch(`${API_BASE}/api/midi/jobs/${activeMidiJobId}`, {
-          method: "DELETE",
-          headers: { ...headers, "x-job-token": jobToken },
+        await apiDelete(`/api/midi/jobs/${activeMidiJobId}`, {
+          headers: { "x-job-token": jobToken },
         });
       } catch {
         /* best-effort cancel */
@@ -958,10 +956,8 @@ export function useMidiConvert() {
     await Promise.all(
       activeJobs.map(async ({ jobId, token }) => {
         try {
-          const headers = await authHeaders();
-          await fetch(`${API_BASE}/api/midi/jobs/${jobId}`, {
-            method: "DELETE",
-            headers: { ...headers, "x-job-token": token },
+          await apiDelete(`/api/midi/jobs/${jobId}`, {
+            headers: { "x-job-token": token },
           });
         } catch {
           /* best-effort */

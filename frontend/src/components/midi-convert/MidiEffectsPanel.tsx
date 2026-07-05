@@ -97,7 +97,7 @@ function EffectBlock({
             aria-label={toggleLabel}
             aria-pressed={enabled}
             className={cn(
-              "rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+              "rounded px-2 py-0.5 text-meta font-semibold uppercase tracking-wide transition-colors",
               enabled
                 ? `${accentClass} text-background`
                 : "bg-muted text-muted-foreground",
@@ -131,7 +131,7 @@ function RangeRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <label className="w-16 shrink-0 text-[10px] text-muted-foreground">
+      <label className="w-16 shrink-0 text-meta text-muted-foreground">
         {label}
       </label>
       <input
@@ -144,7 +144,7 @@ function RangeRow({
         onChange={(e) => onChange(Number(e.target.value))}
         className="min-w-0 flex-1 accent-accent-midi"
       />
-      <span className="w-10 shrink-0 text-right font-mono text-[10px] tabular-nums text-foreground">
+      <span className="w-10 shrink-0 text-right font-mono text-meta tabular-nums text-foreground">
         {format ? format(value) : value}
       </span>
     </div>
@@ -196,11 +196,11 @@ export function MidiEffectsPanel({
       <div className="flex items-start justify-between gap-sm">
         <div className="min-w-0">
           <SectionLabel>MIDI FX</SectionLabel>
-          <p className="truncate text-[10px] text-muted-foreground">{trackName}</p>
+          <p className="truncate text-helper text-muted-foreground">{trackName}</p>
         </div>
         <button
           type="button"
-          className="shrink-0 text-[10px] text-muted-foreground hover:text-foreground"
+          className="shrink-0 text-meta text-muted-foreground hover:text-foreground"
           onClick={() => onChange(defaultMidiEffects())}
         >
           Reset
@@ -208,7 +208,7 @@ export function MidiEffectsPanel({
       </div>
 
       <div className="space-y-xs">
-        <span className="text-[10px] text-muted-foreground">Track preset</span>
+        <span className="text-meta text-muted-foreground">Track preset</span>
         <select
           aria-label="MIDI FX preset"
           className="w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
@@ -231,7 +231,7 @@ export function MidiEffectsPanel({
       </div>
 
       <div className="space-y-1">
-        <span className="text-[10px] text-muted-foreground">Apply mode</span>
+        <span className="text-meta text-muted-foreground">Apply mode</span>
         <SegmentedControl
           aria-label="MIDI FX apply mode"
           value={applyMode}
@@ -285,7 +285,7 @@ export function MidiEffectsPanel({
           {config.quantizer.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-meta text-muted-foreground">
                   Root
                 </span>
                 <select
@@ -304,7 +304,7 @@ export function MidiEffectsPanel({
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-meta text-muted-foreground">
                   Scale
                 </span>
                 <select
@@ -348,7 +348,7 @@ export function MidiEffectsPanel({
           {config.chordGenerator.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-meta text-muted-foreground">
                   Type
                 </span>
                 <select
@@ -369,7 +369,7 @@ export function MidiEffectsPanel({
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-meta text-muted-foreground">
                   Voicing
                 </span>
                 <select
@@ -424,7 +424,7 @@ export function MidiEffectsPanel({
           {config.noteRepeater.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-meta text-muted-foreground">
                   Rate
                 </span>
                 <select
@@ -485,7 +485,7 @@ export function MidiEffectsPanel({
           {config.arpeggiator.enabled && (
             <>
               <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-meta text-muted-foreground">
                   Pattern
                 </span>
                 <select
@@ -506,7 +506,7 @@ export function MidiEffectsPanel({
                 </select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-16 text-[10px] text-muted-foreground">
+                <span className="w-16 text-meta text-muted-foreground">
                   Rate
                 </span>
                 <select

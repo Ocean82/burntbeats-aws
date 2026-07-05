@@ -18,6 +18,7 @@ export async function fetchMidiSourceAudioBlob(
   };
   if (jobToken) headers["x-job-token"] = jobToken;
 
+  // binary download — intentional bypass of api/client (blob response)
   const res = await fetch(midiSourceAudioUrl(jobId), { headers });
   if (!res.ok) return null;
   return res.blob();

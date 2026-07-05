@@ -1,12 +1,11 @@
 /**
  * Rhythm generation API — proxied to midi_service with offline fallback.
  */
-import { API_BASE } from "../config";
 import type { EditableNote } from "../components/midi-convert/editorTypes";
 import { OFFLINE_RHYTHM_STYLES } from "../data/offlineRhythmStyles";
 import { generateOfflineGrooveNotes } from "../utils/offlineRhythmGroove";
 import { rhythmMidiBase64ToEditableNotes } from "../utils/rhythmGrooveNotes";
-import { authHeaders } from "./auth";
+import { apiGet, apiPost } from "./client";
 
 export interface RhythmStyleInfo {
   id: string;
@@ -83,18 +82,14 @@ function writeCachedStyles(styles: RhythmStyleInfo[]): void {
 }
 
 export async function fetchRhythmStyles(): Promise<RhythmStyleInfo[]> {
-  const res = await fetch(`${API_BASE}/api/midi/rhythm/styles`, {
-    headers: await authHeaders(),
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(
-      typeof body.error === "string" ? body.error : "Failed to load rhythm styles",
-    );
+  const result = await apiGet<{ styles?: Record<string, unknown>[] }>(
+    "/api/midi/rhythm/styles",
+  );
+  if (result.error || !result.data) {
+    throw new Error(result.error ?? "Failed to load rhythm styles");
   }
-  const data = (await res.json()) as { styles?: Record<string, unknown>[] };
-  if (!Array.isArray(data.styles)) return [];
-  return data.styles.map((style) => normalizeRhythmStyle(style));
+  if (!Array.isArray(result.data.styles)) return [];
+  return result.data.styles.map((style) => normalizeRhythmStyle(style));
 }
 
 export async function fetchRhythmStylesResilient(): Promise<RhythmStylesResult> {
@@ -129,21 +124,14 @@ export async function generateRhythmEraJson(body: {
   energy?: number;
   era?: string;
 }): Promise<RhythmGenerateJsonResponse> {
-  const res = await fetch(`${API_BASE}/api/midi/rhythm/era/generate/json`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new Error(
-      typeof payload.error === "string" ? payload.error : "Era rhythm generation failed",
-    );
+  const result = await apiPost<RhythmGenerateJsonResponse>(
+    "/api/midi/rhythm/era/generate/json",
+    body,
+  );
+  if (result.error || !result.data) {
+    throw new Error(result.error ?? "Era rhythm generation failed");
   }
-  return res.json();
+  return result.data;
 }
 
 export async function generateRhythmFull(body: {
@@ -152,21 +140,14 @@ export async function generateRhythmFull(body: {
   tempo?: number;
   energy?: number;
 }): Promise<RhythmGenerateJsonResponse> {
-  const res = await fetch(`${API_BASE}/api/midi/rhythm/generate/full`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new Error(
-      typeof payload.error === "string" ? payload.error : "Full rhythm generation failed",
-    );
+  const result = await apiPost<RhythmGenerateJsonResponse>(
+    "/api/midi/rhythm/generate/full",
+    body,
+  );
+  if (result.error || !result.data) {
+    throw new Error(result.error ?? "Full rhythm generation failed");
   }
-  return res.json();
+  return result.data;
 }
 
 export async function generateRhythmJson(body: {
@@ -175,21 +156,14 @@ export async function generateRhythmJson(body: {
   tempo?: number;
   energy?: number;
 }): Promise<RhythmGenerateJsonResponse> {
-  const res = await fetch(`${API_BASE}/api/midi/rhythm/generate/json`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(await authHeaders()),
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => ({}));
-    throw new Error(
-      typeof payload.error === "string" ? payload.error : "Rhythm generation failed",
-    );
+  const result = await apiPost<RhythmGenerateJsonResponse>(
+    "/api/midi/rhythm/generate/json",
+    body,
+  );
+  if (result.error || !result.data) {
+    throw new Error(result.error ?? "Rhythm generation failed");
   }
-  return res.json();
+  return result.data;
 }
 
 export async function generateRhythmGroove(body: {

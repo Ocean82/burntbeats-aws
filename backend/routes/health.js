@@ -66,14 +66,22 @@ healthRouter.get("/", async (req, res) => {
   );
   const midiStorageOk = backendMidiStorage.ok && midiSharedStorage.aligned;
 
+  const secrets = {
+    clerk: Boolean((process.env.CLERK_SECRET_KEY || "").trim()),
+    job_token: Boolean((process.env.JOB_TOKEN_SECRET || "").trim()),
+    stripe: Boolean((process.env.STRIPE_SECRET_KEY || "").trim()),
+  };
+  const secretsOk = secrets.clerk && secrets.job_token;
+  const depsOk =
+    db.ok &&
+    allServicesOk &&
+    midiStorageOk &&
+    midiCatalogHealth.status === "ok";
+  const prodSecretsOk =
+    process.env.NODE_ENV !== "production" || secretsOk;
+
   const payload = {
-    status:
-      db.ok &&
-      allServicesOk &&
-      midiStorageOk &&
-      midiCatalogHealth.status === "ok"
-        ? "ok"
-        : "degraded",
+    status: depsOk && prodSecretsOk ? "ok" : "degraded",
     version: pkg.version,
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     database: {
@@ -100,16 +108,7 @@ healthRouter.get("/", async (req, res) => {
       midi: midiCatalogHealth,
     },
     circuits,
-    secrets: {
-      missing: [
-        "CLERK_SECRET_KEY",
-        "STRIPE_SECRET_KEY",
-        "JOB_TOKEN_SECRET",
-        "STEM_SERVICE_API_TOKEN",
-        "SPEECH_SERVICE_API_TOKEN",
-        "MIDI_SERVICE_API_TOKEN",
-      ].filter((name) => !(process.env[name] || "").trim()),
-    },
+    secrets,
   };
   res.status(200).json(payload);
 });

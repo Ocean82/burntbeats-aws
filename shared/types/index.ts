@@ -126,8 +126,46 @@ export interface ErrorResponse {
   error: string;
 }
 
+/** Boolean presence flags for critical runtime secrets (backend /api/health). */
+export interface HealthSecrets {
+  clerk: boolean;
+  job_token: boolean;
+  stripe: boolean;
+}
+
+export interface ServiceReachability {
+  reachable: boolean;
+  status?: string;
+  latencyMs?: number;
+  error?: string;
+}
+
+/** Backend GET /api/health contract (enriched dependency probe). */
+export interface BackendHealthResponse {
+  status: "ok" | "degraded";
+  version: string;
+  uptime_seconds: number;
+  database: {
+    connected: boolean;
+    latencyMs?: number;
+    error?: string;
+  };
+  redis: {
+    enabled: boolean;
+    connected: boolean;
+    error?: string;
+  };
+  services: {
+    stem: ServiceReachability;
+    speech: ServiceReachability;
+    midi: ServiceReachability;
+  };
+  secrets: HealthSecrets;
+}
+
+/** Minimal health payload from Python microservices. */
 export interface HealthResponse {
-  status: "ok";
+  status: "ok" | "degraded";
   repo_root?: string;
 }
 

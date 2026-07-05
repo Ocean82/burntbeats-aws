@@ -1,6 +1,23 @@
 import * as Sentry from "@sentry/react";
 
 /**
+ * Build Sentry distributed-tracing headers for outbound API requests.
+ * Returns empty object when no active span (safe no-op for un-instrumented calls).
+ */
+export function traceHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const span = Sentry.getActiveSpan();
+  if (!span) return headers;
+
+  const trace = Sentry.spanToTraceHeader(span);
+  const baggage = Sentry.spanToBaggageHeader(span);
+
+  if (trace) headers["sentry-trace"] = trace;
+  if (baggage) headers["baggage"] = baggage;
+  return headers;
+}
+
+/**
  * Redact sensitive tokens from a string:
  * - Clerk session tokens: `__session=<value>`
  * - Stripe publishable keys: `pk_live_...` / `pk_test_...`

@@ -1,8 +1,7 @@
 /**
  * Fetch available soundfonts for server-side MIDI render.
  */
-import { API_BASE } from "../config";
-import { authHeaders } from "./auth";
+import { apiGet } from "./client";
 
 export interface SoundfontInfo {
   name: string;
@@ -16,12 +15,9 @@ export interface SoundfontListResponse {
 }
 
 export async function fetchSoundfonts(): Promise<SoundfontListResponse> {
-  const res = await fetch(`${API_BASE}/api/midi/soundfonts`, {
-    headers: await authHeaders(),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `Soundfont list failed (${res.status})`);
+  const result = await apiGet<SoundfontListResponse>("/api/midi/soundfonts");
+  if (result.error || !result.data) {
+    throw new Error(result.error ?? `Soundfont list failed (${result.status})`);
   }
-  return res.json() as Promise<SoundfontListResponse>;
+  return result.data;
 }

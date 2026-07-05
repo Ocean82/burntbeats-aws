@@ -2,7 +2,7 @@
  * useMidiCatalog — fetch and filter the MIDI template catalog with debounced search.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { authHeaders } from "../api/auth";
+import { apiGet } from "../api/client";
 import { API_BASE } from "../config";
 
 export type CatalogTab = "progression" | "rhythm";
@@ -76,13 +76,12 @@ function filterRhythmEntries(entries: MidiCatalogEntry[]): MidiCatalogEntry[] {
 async function fetchCatalog(filters: MidiCatalogFilters): Promise<MidiCatalogResponse> {
   const params = buildQueryParams(filters);
   const qs = params.toString();
-  const headers = await authHeaders();
-  const res = await fetch(`${API_BASE}/api/catalog/midi${qs ? `?${qs}` : ""}`, { headers });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Failed to load MIDI catalog");
+  const path = `/api/catalog/midi${qs ? `?${qs}` : ""}`;
+  const result = await apiGet<MidiCatalogResponse>(path);
+  if (result.error || !result.data) {
+    throw new Error(result.error ?? "Failed to load MIDI catalog");
   }
-  const data = (await res.json()) as MidiCatalogResponse;
+  const data = result.data;
   if (filters.tab === "rhythm") {
     const filtered = filterRhythmEntries(data.entries);
     return { ...data, entries: filtered, total: filtered.length };

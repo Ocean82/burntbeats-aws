@@ -12,6 +12,7 @@ import { BillingIntervalToggle } from "./BillingIntervalToggle";
 import { PricingFeatureComparison } from "./PricingFeatureComparison";
 import { BillingRules } from "./BillingRules";
 import { PricingPageSkeleton } from "./PricingPageSkeleton";
+import { ErrorState } from "./ui/error-state";
 import { trackEvent } from "../analytics/events";
 import type { BillingInterval } from "../analytics/billingEvents";
 
@@ -44,6 +45,7 @@ export function PricingPage({
   const isCurrentPlan = (plan: Plan) =>
     subscription.status === "active" && subscription.plan === plan;
   const isLoading = subscription.status === "loading";
+  const hasBillingFetchError = subscription.status === "error";
 
   const handleSelectPlan = (plan: Plan) => {
     if (isCurrentPlan(plan)) return;
@@ -102,8 +104,27 @@ export function PricingPage({
     >
       {isLoading ? (
         <PricingPageSkeleton />
+      ) : hasBillingFetchError ? (
+        <ErrorState
+          variant="network"
+          title="Could not load billing"
+          description={
+            subscription.billingError ??
+            "We could not reach billing services. Please try again."
+          }
+          onRetry={subscription.refetch}
+        />
       ) : (
         <>
+          {subscription.billingError ? (
+            <ErrorState
+              variant="server"
+              title="Billing issue"
+              description={subscription.billingError}
+              onRetry={subscription.refetch}
+              className="text-left"
+            />
+          ) : null}
           <nav
         aria-label="Breadcrumb"
         className="flex flex-col gap-sm rounded-2xl border border-border bg-muted px-md py-sm sm:flex-row sm:items-center sm:justify-between sm:px-lg"

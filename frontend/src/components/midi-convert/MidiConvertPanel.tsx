@@ -631,7 +631,7 @@ export function MidiConvertPanel({
                 data-testid="midi-batch-download-zip"
                 onClick={() => void downloadAllAsZip()}
                 disabled={isExportingZip}
-                className="midi-btn midi-btn--play text-sm"
+                className="midi-btn midi-btn--play text-sm active:scale-[0.97] transition-transform"
               >
                 {isExportingZip ? (
                   <>
@@ -654,7 +654,7 @@ export function MidiConvertPanel({
                     setBatchViewResult(null);
                     setBatchMultiTrackOpen(true);
                   }}
-                  className="midi-btn midi-btn--play text-sm"
+                  className="midi-btn midi-btn--play text-sm active:scale-[0.97] transition-transform"
                 >
                   <Pencil className="h-4 w-4" />
                   Open multi-track editor
@@ -832,7 +832,7 @@ export function MidiConvertPanel({
                       <button
                         type="button"
                         onClick={() => handleViewPlans("subscription_inactive")}
-                        className="midi-btn midi-btn--play text-sm"
+                        className="midi-btn midi-btn--play text-sm active:scale-[0.97] transition-transform"
                       >
                         View plans
                       </button>
@@ -844,7 +844,7 @@ export function MidiConvertPanel({
                     data-testid="midi-convert-button"
                     onClick={() => void triggerConvert(splitJobId)}
                     disabled={!canConvert}
-                    className="midi-btn midi-btn--play text-sm px-lg disabled:opacity-45"
+                    className="midi-btn midi-btn--play text-sm px-lg disabled:opacity-45 active:scale-[0.97] transition-transform"
                   >
                     {isConverting || isUploading ? (
                       <>

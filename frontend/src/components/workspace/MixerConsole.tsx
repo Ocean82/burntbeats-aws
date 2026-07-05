@@ -104,7 +104,7 @@ function ChannelStrip({
             onChange={(e) => onVolumeChange(stemId, Number(e.target.value))}
             onDoubleClick={() => onVolumeChange(stemId, 0)}
             aria-label={`${label} volume`}
-            className="channel-fader w-3 cursor-pointer appearance-none rounded-full bg-white/[0.08] [writing-mode:vertical-lr] rotate-180"
+            className="channel-fader w-3 min-h-11 cursor-pointer appearance-none rounded-full bg-white/[0.08] [writing-mode:vertical-lr] rotate-180"
             style={{ "--strip-color": color, height: "80px" } as React.CSSProperties}
           />
         </div>
@@ -127,7 +127,7 @@ function ChannelStrip({
           onChange={(e) => onPanChange(stemId, Number(e.target.value))}
           onDoubleClick={() => onPanChange(stemId, 0)}
           aria-label={`${label} pan`}
-          className="w-full h-1 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer"
+            className="w-full min-h-11 appearance-none rounded-full bg-white/20 accent-[color:var(--strip-color)] cursor-pointer"
           style={{ "--strip-color": color } as React.CSSProperties}
         />
         <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
@@ -217,7 +217,7 @@ function MasterStrip({ stemCount, masterVolume, onMasterVolumeChange }: MasterSt
           value={masterVolume}
           onChange={(e) => onMasterVolumeChange(Number(e.target.value))}
           aria-label="Master volume"
-          className="w-full h-1 appearance-none rounded-full bg-white/20 accent-violet-500 cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
+          className="w-full min-h-11 appearance-none rounded-full bg-white/20 accent-violet-500 cursor-pointer [writing-mode:vertical-lr] rotate-180 h-[60px]"
         />
         <span className="text-[8px] font-mono text-muted-foreground tabular-nums">
           {displayDb >= 0 ? "+" : ""}

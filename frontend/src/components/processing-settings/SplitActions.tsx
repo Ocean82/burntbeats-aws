@@ -133,7 +133,7 @@ export function SplitActions({
                 ? "Upload a new file to run separation again. Each upload is a new job."
                 : undefined
             }
-            className="fire-button tap-feedback min-h-[44px] shrink-0 inline-flex items-center justify-center gap-xs px-lg py-sm text-sm font-semibold focus-visible:outline-none disabled:cursor-not-allowed"
+            className="fire-button tap-feedback min-h-[44px] shrink-0 inline-flex items-center justify-center gap-xs px-lg py-sm text-sm font-semibold transition-transform focus-visible:outline-none disabled:cursor-not-allowed active:scale-[0.97]"
           >
             {isSplitting ? (
               <>

@@ -60,6 +60,8 @@ async function main() {
   runCommand("node", [
     "--test",
     "server.test.js",
+    "tests/contract-health.test.mjs",
+    "tests/contract-stem-status.test.mjs",
     "tests/auth-gates.test.mjs",
     "tests/midi-auth.test.mjs",
     "tests/midi-storage-health.test.mjs",
@@ -68,7 +70,23 @@ async function main() {
     "tests/midi-rhythm.test.mjs",
     "routes/midi/__tests__/rhythm.proxy.test.mjs",
     "routes/midi/__tests__/soundfonts.proxy.test.mjs",
-  ], { cwd: backendDir, env, label: "backend MIDI hardening tests (node:test)" })
+    "routes/midi/__tests__/merge.rate-limit.test.mjs",
+  ], { cwd: backendDir, env, label: "backend contract + hardening tests (node:test)" })
+
+  // Fail if hooks still use raw fetch with API_BASE template literals (Wave 1 gate).
+  const { execSync } = await import("node:child_process")
+  const hookFetch = execSync(
+    'rg "fetch\\(`\\$\\{API_BASE\\}" frontend/src/hooks --glob "*.ts" --glob "*.tsx" -l 2>nul || exit 0',
+    { encoding: "utf8", cwd: repoRoot, shell: true },
+  ).trim()
+  if (hookFetch) {
+    const files = hookFetch.split("\n").filter(Boolean)
+    console.error(
+      `[ci-preflight] hooks still using raw fetch(API_BASE): ${files.length} file(s)`,
+    )
+    for (const f of files) console.error(`  - ${f}`)
+    throw new Error("Migrate hooks to frontend/src/api/client.ts (see Wave 1 plan)")
+  }
 
   console.log("\n[ci-preflight] ✅ All preflight checks passed")
 }

@@ -3,8 +3,7 @@
  * Used by MyStemsPage to display MIDI badges and download links on job cards.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { authHeaders } from "../api/auth";
-import { API_BASE } from "../config";
+import { apiGet } from "../api/client";
 
 export interface MidiHistoryRecord {
   job_id: string;
@@ -18,11 +17,13 @@ export interface MidiHistoryRecord {
 }
 
 async function fetchMidiHistoryRecords(): Promise<MidiHistoryRecord[]> {
-  const headers = await authHeaders();
-  const res = await fetch(`${API_BASE}/api/midi/history`, { headers });
-  if (!res.ok) throw new Error("Failed to load MIDI history");
-  const data = await res.json();
-  return data.conversions || [];
+  const result = await apiGet<{ conversions?: MidiHistoryRecord[] }>(
+    "/api/midi/history",
+  );
+  if (result.error || !result.data) {
+    throw new Error(result.error ?? "Failed to load MIDI history");
+  }
+  return result.data.conversions || [];
 }
 
 export function useMidiHistory() {

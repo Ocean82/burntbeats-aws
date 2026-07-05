@@ -11,6 +11,17 @@
 // Auth
 export { setTokenProvider, clearJobToken } from "./auth";
 
+// HTTP client
+export {
+  apiGet,
+  apiPost,
+  apiPostForm,
+  apiPut,
+  apiDelete,
+  clearResponseCache,
+} from "./client";
+export type { ApiResponse, ApiRequestOptions } from "./client";
+
 // Types
 export type {
   SplitResponse,

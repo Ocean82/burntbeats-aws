@@ -195,7 +195,7 @@ export function ExportOptionsModal({
           />
           <div className="fixed inset-0 z-modal flex items-center justify-center p-sm sm:p-md">
             <motion.div
-              className="relative w-full max-w-md modal-viewport-height overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:p-lg"
+              className="relative w-full max-w-md max-h-[90vh] modal-viewport-height overflow-y-auto rounded-3xl border border-border bg-popover/95 p-md shadow-elevation-xl backdrop-blur-xl sm:p-lg"
               ref={modalRef}
               role="dialog"
               aria-modal="true"

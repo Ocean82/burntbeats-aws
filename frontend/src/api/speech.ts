@@ -102,6 +102,7 @@ export async function fetchSpeechWavAsBlob(outputUrl: string): Promise<Blob> {
   const jobId = parseJobIdFromSpeechFileUrl(outputUrl);
   if (!jobId) throw new Error("Invalid speech output URL");
   const pathUrl = outputUrl.split("?")[0];
+  // binary download — intentional bypass of api/client (blob response)
   const res = await fetch(pathUrl, {
     headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
   });

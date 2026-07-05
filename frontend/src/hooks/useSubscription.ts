@@ -5,41 +5,11 @@
  */
 import { useAuth } from "@clerk/react";
 import { useCallback, useEffect, useState } from "react";
-import { API_BASE, isLocalDevFullApp } from "../config";
-import { userFacingHttpError } from "../userFacingError";
+import { apiGet, apiPost } from "../api/client";
+import { isLocalDevFullApp } from "../config";
 import { trackCheckoutReturnedOnce } from "../analytics/checkoutTracking";
 import { trackEvent } from "../analytics/events";
 import type { BillingInterval } from "../analytics/billingEvents";
-
-async function readBillingErrorMessage(
-  res: Response,
-  kind: "checkout" | "portal",
-): Promise<string> {
-  const text = await res.text().catch(() => "");
-  let bodyError: string | null = null;
-  try {
-    const j = text ? JSON.parse(text) : null;
-    if (
-      j &&
-      typeof j === "object" &&
-      j !== null &&
-      typeof (/** @type {{ error?: unknown }} */ j.error) === "string"
-    ) {
-      bodyError = /** @type {{ error: string }} */ j.error;
-    }
-  } catch {
-    /* ignore */
-  }
-  const devFb =
-    kind === "checkout"
-      ? `Checkout failed (${res.status})`
-      : `Billing portal failed (${res.status})`;
-  return userFacingHttpError(
-    res.status,
-    bodyError,
-    text.slice(0, 800) || devFb,
-  );
-}
 
 function notifyBillingFailure(context: string, err: unknown) {
   if (import.meta.env.DEV) console.error(context, err);
@@ -58,9 +28,9 @@ function getStripeCustomerPortalLoginUrl(): string {
   return typeof u === "string" && u.startsWith("http") ? u.trim() : "";
 }
 
-function classifySubscriptionFetchFailure(res: Response): string {
-  if (res.status === 401 || res.status === 403) return "auth";
-  if (res.status >= 500) return "server";
+function classifySubscriptionFetchFailure(status: number): string {
+  if (status === 401 || status === 403) return "auth";
+  if (status >= 500) return "server";
   return "other";
 }
 
@@ -183,7 +153,7 @@ export interface UseSubscriptionResult {
 
 export function useSubscription(): UseSubscriptionResult {
   const localFullApp = isLocalDevFullApp();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
   const [status, setStatus] = useState<SubscriptionStatus>(
     localFullApp ? "active" : "loading",
   );
@@ -218,15 +188,23 @@ export function useSubscription(): UseSubscriptionResult {
       return;
     }
     try {
-      const token = await getToken();
-      const res = await fetch(`${API_BASE}/api/billing/subscription`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const result = await apiGet<{
+        active: boolean;
+        plan: ServerPlan | null;
+        entitlementSource?: EntitlementSource;
+        /** @deprecated Legacy backend field — same as entitlementSource */
+        entitlement?: "usage_tokens";
+        capabilities?: Partial<SubscriptionCapabilities>;
+        billingStatus?: BillingStatus;
+      }>("/api/billing/subscription", {
+        cacheKey: "billing-subscription",
+        cacheTtlMs: 30_000,
       });
-      if (!res.ok) {
-        const category = classifySubscriptionFetchFailure(res);
+      if (result.error || !result.data) {
+        const category = classifySubscriptionFetchFailure(result.status);
         trackEvent("subscription_fetch_failed", {
           category,
-          http_status: res.status,
+          http_status: result.status,
         });
         if (category === "auth") {
           setBillingError(
@@ -245,15 +223,7 @@ export function useSubscription(): UseSubscriptionResult {
         setCapabilities(NO_SUBSCRIPTION_CAPABILITIES);
         return;
       }
-      const data = (await res.json()) as {
-        active: boolean;
-        plan: ServerPlan | null;
-        entitlementSource?: EntitlementSource;
-        /** @deprecated Legacy backend field — same as entitlementSource */
-        entitlement?: "usage_tokens";
-        capabilities?: Partial<SubscriptionCapabilities>;
-        billingStatus?: BillingStatus;
-      };
+      const data = result.data;
       const activePlan = data.active ? data.plan : null;
       setStatus(data.active ? "active" : "inactive");
       setPlan(activePlan);
@@ -291,7 +261,7 @@ export function useSubscription(): UseSubscriptionResult {
         "We could not reach billing services. Please check your connection and try again.",
       );
     }
-  }, [getToken, isSignedIn, localFullApp]);
+  }, [isSignedIn, localFullApp]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger async fetch on mount/auth change
@@ -326,29 +296,18 @@ export function useSubscription(): UseSubscriptionResult {
       });
       trackEvent("checkout_started", { plan: selectedPlan, source, interval });
       try {
-        const token = await getToken();
-        const res = await fetch(`${API_BASE}/api/billing/checkout`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            plan: selectedPlan,
-            interval,
-            returnUrl: checkoutReturnBase(),
-            source,
-            intent: context?.intent ?? "unspecified",
-          }),
+        const result = await apiPost<{ url: string }>("/api/billing/checkout", {
+          plan: selectedPlan,
+          interval,
+          returnUrl: checkoutReturnBase(),
+          source,
+          intent: context?.intent ?? "unspecified",
         });
-        if (!res.ok) {
-          const msg = await readBillingErrorMessage(res, "checkout");
-          throw new Error(msg);
+        if (result.error || !result.data?.url) {
+          throw new Error(result.error ?? "Checkout did not return a URL");
         }
-        const { url } = (await res.json()) as { url: string };
-        if (!url) throw new Error("Checkout did not return a URL");
         trackEvent("checkout_redirected", { plan: selectedPlan, source });
-        window.location.href = url;
+        window.location.href = result.data.url;
       } catch (err) {
         notifyBillingFailure("Checkout failed:", err);
         setBillingError(
@@ -366,7 +325,7 @@ export function useSubscription(): UseSubscriptionResult {
         });
       }
     },
-    [getToken, localFullApp],
+    [localFullApp],
   );
 
   const openPortal = useCallback(async () => {
@@ -379,23 +338,14 @@ export function useSubscription(): UseSubscriptionResult {
         window.location.assign(loginUrl);
         return;
       }
-      const token = await getToken();
-      const res = await fetch(`${API_BASE}/api/billing/portal`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ returnUrl: checkoutReturnBase() }),
+      const result = await apiPost<{ url: string }>("/api/billing/portal", {
+        returnUrl: checkoutReturnBase(),
       });
-      if (!res.ok) {
-        const msg = await readBillingErrorMessage(res, "portal");
-        throw new Error(msg);
+      if (result.error || !result.data?.url) {
+        throw new Error(result.error ?? "Portal did not return a URL");
       }
-      const { url } = (await res.json()) as { url: string };
-      if (!url) throw new Error("Portal did not return a URL");
       trackEvent("billing_portal_redirected", { via: "api_portal" });
-      window.location.href = url;
+      window.location.href = result.data.url;
     } catch (err) {
       notifyBillingFailure("Portal failed:", err);
       setBillingError(
@@ -410,7 +360,7 @@ export function useSubscription(): UseSubscriptionResult {
         ).slice(0, 120),
       });
     }
-  }, [getToken, localFullApp]);
+  }, [localFullApp]);
 
   return {
     status,

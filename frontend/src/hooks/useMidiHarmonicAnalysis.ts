@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { authHeaders } from "../api/auth";
-import { API_BASE } from "../config";
+import { apiPost } from "../api/client";
 
 export interface HarmonicBarChord {
   bar: number;
@@ -54,40 +53,30 @@ export function useMidiHarmonicAnalysis(): UseMidiHarmonicAnalysisReturn {
       setLoading(true);
       setError(null);
 
-      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-
-      authHeaders()
-        .then((headers) =>
-          fetch(`${API_BASE}/api/midi/analyze`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...headers,
-            },
-            body: JSON.stringify({ notes, bpm, time_signature: timeSignature }),
-            signal: controller.signal,
-          }),
-        )
-        .then(async (res) => {
-          clearTimeout(timeout);
-          if (!res.ok) {
-            const text = await res.text().catch(() => "Unknown error");
-            throw new Error(`Analysis failed (${res.status}): ${text}`);
+      void (async () => {
+        try {
+          const apiResult = await apiPost<HarmonicAnalysisResult>(
+            "/api/midi/analyze",
+            { notes, bpm, time_signature: timeSignature },
+            { signal: controller.signal, timeout: FETCH_TIMEOUT_MS },
+          );
+          if (controller.signal.aborted) return;
+          if (apiResult.error || !apiResult.data) {
+            throw new Error(
+              apiResult.error ?? `Analysis failed (${apiResult.status})`,
+            );
           }
-          return res.json() as Promise<HarmonicAnalysisResult>;
-        })
-        .then((data) => {
+          setResult(apiResult.data);
+        } catch (e) {
+          if (controller.signal.aborted) return;
+          setError(e instanceof Error ? e.message : "Analysis failed");
+          setResult(null);
+        } finally {
           if (!controller.signal.aborted) {
-            setResult(data);
             setLoading(false);
           }
-        })
-        .catch((err) => {
-          if (err.name === "AbortError") return;
-          clearTimeout(timeout);
-          setError(err instanceof Error ? err.message : String(err));
-          setLoading(false);
-        });
+        }
+      })();
     },
     [],
   );

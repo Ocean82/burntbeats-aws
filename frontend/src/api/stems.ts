@@ -50,6 +50,7 @@ export async function fetchStemWavAsArrayBuffer(stemUrl: string): Promise<ArrayB
   const jobId = parseJobIdFromStemFileUrl(coerced);
   if (!jobId) throw new Error("Invalid stem file URL");
   const pathUrl = coerced.split("?")[0];
+  // binary download — intentional bypass of api/client (arrayBuffer response)
   const res = await fetch(pathUrl, {
     headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
   });
@@ -63,6 +64,7 @@ export async function fetchStemWavAsBlob(stemUrl: string): Promise<Blob> {
   const jobId = parseJobIdFromStemFileUrl(coerced);
   if (!jobId) throw new Error("Invalid stem file URL");
   const pathUrl = coerced.split("?")[0];
+  // binary download — intentional bypass of api/client (arrayBuffer response)
   const res = await fetch(pathUrl, {
     headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
   });

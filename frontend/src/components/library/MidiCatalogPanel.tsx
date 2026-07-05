@@ -2,6 +2,8 @@
  * MidiCatalogPanel — browse progressions and rhythm patterns from the catalog.
  */
 import { Download, Loader2, Music2, Pause, Play, Search } from "lucide-react";
+import { ErrorState } from "../ui/error-state";
+import { Skeleton } from "../ui/skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { authHeaders } from "../../api/auth";
 import { catalogFileUrl, useMidiCatalog } from "../../hooks/useMidiCatalog";
@@ -217,23 +219,33 @@ export function MidiCatalogPanel() {
       ) : null}
 
       {catalog.isLoading ? (
-        <div className="flex items-center justify-center gap-xs py-xl text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading catalog…
-        </div>
+        <ul
+          className="divide-y divide-border/60 max-h-[480px] overflow-y-auto"
+          data-testid="midi-catalog-skeleton"
+          aria-busy="true"
+        >
+          {Array.from({ length: 5 }, (_, index) => (
+            <li
+              key={index}
+              className="flex flex-col gap-xs px-md py-sm sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0 flex-1 space-y-xs">
+                <Skeleton variant="line" className="h-4 w-3/4" />
+                <Skeleton variant="line" className="h-3 w-1/2" />
+              </div>
+              <div className="flex shrink-0 gap-xs">
+                <Skeleton variant="circle" className="h-8 w-8" />
+                <Skeleton variant="circle" className="h-8 w-8" />
+              </div>
+            </li>
+          ))}
+        </ul>
       ) : catalog.error ? (
-        <EmptyState
+        <ErrorState
+          variant="server"
           title="Could not load catalog"
           description={catalog.error}
-          action={
-            <button
-              type="button"
-              onClick={catalog.refetch}
-              className="midi-btn text-xs"
-            >
-              Retry
-            </button>
-          }
+          onRetry={catalog.refetch}
         />
       ) : catalog.entries.length === 0 ? (
         <EmptyState

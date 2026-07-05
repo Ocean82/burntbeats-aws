@@ -1,6 +1,7 @@
 import { useAuth } from "@clerk/react";
 import { useCallback, useEffect, useState } from "react";
-import { API_BASE, isLocalDevFullApp } from "../config";
+import { apiGet } from "../api/client";
+import { isLocalDevFullApp } from "../config";
 
 export interface UsageBalanceState {
   balance: number | null;
@@ -12,12 +13,20 @@ export interface UsageBalanceState {
   refetch: () => void;
 }
 
+interface UsageResponse {
+  balance?: unknown;
+  periodEnd?: unknown;
+  paidBalance?: unknown;
+  freeMonthlyRemaining?: unknown;
+  welcomeGranted?: unknown;
+}
+
 /**
  * Fetches remaining usage tokens from GET /api/billing/usage (when signed in, non–local-dev).
  */
 export function useUsageBalance(enabled: boolean): UsageBalanceState {
   const localDev = isLocalDevFullApp();
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
   const [balance, setBalance] = useState<number | null>(null);
   const [periodEnd, setPeriodEnd] = useState<number | null>(null);
   const [paidBalance, setPaidBalance] = useState<number | null>(null);
@@ -25,44 +34,30 @@ export function useUsageBalance(enabled: boolean): UsageBalanceState {
   const [welcomeGranted, setWelcomeGranted] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const clearUsage = useCallback(() => {
+    setBalance(null);
+    setPeriodEnd(null);
+    setPaidBalance(null);
+    setFreeMonthlyRemaining(null);
+    setWelcomeGranted(false);
+  }, []);
+
   const refetch = useCallback(async () => {
     if (!enabled || localDev || !isSignedIn) {
-      setBalance(null);
-      setPeriodEnd(null);
-      setPaidBalance(null);
-      setFreeMonthlyRemaining(null);
-      setWelcomeGranted(false);
+      clearUsage();
       return;
     }
     setLoading(true);
     try {
-      const token = await getToken();
-      if (!token) {
-        setBalance(null);
-        setPeriodEnd(null);
-        setPaidBalance(null);
-        setFreeMonthlyRemaining(null);
-        setWelcomeGranted(false);
-        return;
-      }
-      const res = await fetch(`${API_BASE}/api/billing/usage`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const result = await apiGet<UsageResponse>("/api/billing/usage", {
+        cacheKey: "billing-usage",
+        cacheTtlMs: 15_000,
       });
-      if (!res.ok) {
-        setBalance(null);
-        setPeriodEnd(null);
-        setPaidBalance(null);
-        setFreeMonthlyRemaining(null);
-        setWelcomeGranted(false);
+      if (result.error || !result.data) {
+        clearUsage();
         return;
       }
-      const j = (await res.json()) as {
-        balance?: unknown;
-        periodEnd?: unknown;
-        paidBalance?: unknown;
-        freeMonthlyRemaining?: unknown;
-        welcomeGranted?: unknown;
-      };
+      const j = result.data;
       setBalance(typeof j.balance === "number" && Number.isFinite(j.balance) ? j.balance : null);
       setPeriodEnd(typeof j.periodEnd === "number" && Number.isFinite(j.periodEnd) ? j.periodEnd : null);
       setPaidBalance(
@@ -78,15 +73,11 @@ export function useUsageBalance(enabled: boolean): UsageBalanceState {
       );
       setWelcomeGranted(j.welcomeGranted === true);
     } catch {
-      setBalance(null);
-      setPeriodEnd(null);
-      setPaidBalance(null);
-      setFreeMonthlyRemaining(null);
-      setWelcomeGranted(false);
+      clearUsage();
     } finally {
       setLoading(false);
     }
-  }, [enabled, getToken, isSignedIn, localDev]);
+  }, [clearUsage, enabled, isSignedIn, localDev]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- trigger async fetch on mount/auth change

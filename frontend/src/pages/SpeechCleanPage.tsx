@@ -1,5 +1,6 @@
 import { SpeechCleanPanel } from "../components/speech-clean/SpeechCleanPanel";
 import { ToolPageShell } from "../components/ToolPageShell";
+import { Skeleton } from "../components/ui/skeleton";
 import type { UseSubscriptionResult } from "../hooks/useSubscription";
 
 export interface SpeechCleanPageProps {
@@ -31,6 +32,17 @@ export function SpeechCleanPage({
       onViewPlans={onViewPlans}
       onBackToHome={onBackToHome}
     >
+      {usageLoading && (
+        <div
+          className="mb-md space-y-sm rounded-xl border border-info-400/15 bg-info-500/5 p-md"
+          data-testid="speech-clean-skeleton"
+          aria-busy="true"
+        >
+          <Skeleton variant="line" className="h-4 w-40" />
+          <Skeleton variant="waveform" />
+          <Skeleton variant="line" className="h-4 w-2/3" />
+        </div>
+      )}
       <SpeechCleanPanel
         usageBalance={usageBalance ?? null}
         usageLoading={usageLoading}

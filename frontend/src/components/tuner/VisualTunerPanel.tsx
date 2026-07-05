@@ -4,10 +4,12 @@
 import { Mic, MicOff, ArrowRight } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getFreqName } from "../../utils/musicTheory";
-import { cn } from "../../utils/cn";
 import { getTool } from "../../data/toolCatalog";
 import { ToolNicknameBadge } from "../hub/ToolNicknameBadge";
 import { PanelHeader, SectionLabel } from "../ui";
+import { EmptyState } from "../ui/empty-state";
+import { ErrorState } from "../ui/error-state";
+import { Skeleton } from "../ui/skeleton";
 
 const REFERENCE_PITCHES = [
   { label: "E2", freq: 82.41 },
@@ -117,62 +119,92 @@ export function VisualTunerPanel({ onGoToEditor }: VisualTunerPanelProps) {
 
       <div className="p-md">
         <SectionLabel>Input</SectionLabel>
-        <div className="mt-sm flex flex-wrap items-center gap-sm">
-          <button
-            type="button"
-            onClick={() => (active ? stopMic() : void startMic())}
-            className={cn(
-              "inline-flex items-center gap-xs rounded-lg border px-md py-sm text-sm font-medium transition",
-              active
-                ? "border-primary-400/40 bg-primary-500/15 text-primary-200"
-                : "border-accent-midi/30 bg-accent-midi/10 text-accent-midi-200 hover:bg-accent-midi/20",
-            )}
-          >
-            {active ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
-            {active ? "Stop mic" : "Start mic"}
-          </button>
-          {error && <p className="text-xs text-destructive-300">{error}</p>}
-        </div>
+        {error ? (
+          <ErrorState
+            variant="auth"
+            title="Microphone unavailable"
+            description={error}
+            onRetry={() => void startMic()}
+            className="mt-sm text-left"
+          />
+        ) : !active ? (
+          <EmptyState
+            icon={<MicOff className="h-6 w-6" />}
+            title="Ready to tune"
+            description="Allow microphone access to see live pitch and cents offset."
+            action={{ label: "Start mic", onClick: () => void startMic() }}
+            className="mt-sm"
+          />
+        ) : (
+          <>
+            <div className="mt-sm flex flex-wrap items-center gap-sm">
+              <button
+                type="button"
+                onClick={stopMic}
+                className="inline-flex items-center gap-xs rounded-lg border border-primary-400/40 bg-primary-500/15 px-md py-sm text-sm font-medium text-primary-200 transition"
+              >
+                <Mic className="h-4 w-4" />
+                Stop mic
+              </button>
+            </div>
 
-        <div className="mt-lg flex flex-col items-center">
-          <div
-            className="relative h-40 w-64 rounded-t-full border border-primary-400/25 bg-gradient-to-b from-primary-950/40 to-muted/60"
-            aria-live="polite"
-          >
-            <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden rounded-t-full">
+            <div className="mt-lg flex flex-col items-center">
               <div
-                className="absolute bottom-0 left-1/2 h-[90%] w-0.5 origin-bottom bg-gradient-to-t from-primary-400 to-warning-300 transition-transform duration-75"
-                style={{ transform: `translateX(-50%) rotate(${needleRotation}deg)` }}
-              />
-            </div>
-            <div className="absolute inset-x-0 bottom-2 text-center">
-              {noteInfo ? (
-                <>
-                  <p className="text-3xl font-bold text-accent-midi-100">
-                    {noteInfo.note}
-                    <span className="text-lg text-accent-midi-300">{noteInfo.octave}</span>
-                  </p>
-                  <p className="text-sm tabular-nums text-warning-300">
-                    {cents >= 0 ? "+" : ""}
-                    {cents.toFixed(0)} cents
-                  </p>
-                  <p className="text-xs tabular-nums text-muted-foreground">{freq.toFixed(1)} Hz</p>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {active ? "Listening…" : "Start mic to tune"}
-                </p>
-              )}
-            </div>
-          </div>
+                className="relative h-40 w-64 rounded-t-full border border-primary-400/25 bg-gradient-to-b from-primary-950/40 to-muted/60"
+                aria-live="polite"
+                data-testid="tuner-meter"
+              >
+                {!noteInfo ? (
+                  <div
+                    className="absolute inset-0 flex flex-col items-center justify-end gap-sm rounded-t-full px-md pb-6"
+                    data-testid="tuner-meter-skeleton"
+                    aria-busy="true"
+                  >
+                    <Skeleton variant="line" className="h-8 w-16" />
+                    <Skeleton variant="line" className="h-4 w-24" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden rounded-t-full">
+                      <div
+                        className="absolute bottom-0 left-1/2 h-[90%] w-0.5 origin-bottom bg-gradient-to-t from-primary-400 to-warning-300 transition-transform duration-75"
+                        style={{
+                          transform: `translateX(-50%) rotate(${needleRotation}deg)`,
+                        }}
+                      />
+                    </div>
+                    <div className="absolute inset-x-0 bottom-2 text-center">
+                      <p className="text-3xl font-bold text-accent-midi-100">
+                        {noteInfo.note}
+                        <span className="text-lg text-accent-midi-300">
+                          {noteInfo.octave}
+                        </span>
+                      </p>
+                      <p className="text-sm tabular-nums text-warning-300">
+                        {cents >= 0 ? "+" : ""}
+                        {cents.toFixed(0)} cents
+                      </p>
+                      <p className="text-xs tabular-nums text-muted-foreground">
+                        {freq.toFixed(1)} Hz
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
 
-          <div className="mt-sm h-2 w-64 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full bg-gradient-to-r from-accent-midi-400 to-primary-400 transition-all duration-75"
-              style={{ width: `${level * 100}%` }}
-            />
-          </div>
-        </div>
+              <div className="mt-sm h-2 w-64 overflow-hidden rounded-full bg-muted">
+                {!noteInfo ? (
+                  <Skeleton className="h-full w-1/3 rounded-full" />
+                ) : (
+                  <div
+                    className="h-full bg-gradient-to-r from-accent-midi-400 to-primary-400 transition-all duration-75"
+                    style={{ width: `${level * 100}%` }}
+                  />
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="mt-lg">
           <SectionLabel>Reference pitches</SectionLabel>

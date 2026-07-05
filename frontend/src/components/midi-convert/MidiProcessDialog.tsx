@@ -88,15 +88,13 @@ export function MidiProcessDialog({
     >
       <div
         ref={ref}
-        className="midi-control-bar__overflow midi-dialog-enter"
+        className="midi-control-bar__overflow midi-dialog-enter max-h-[90vh] overflow-y-auto"
         style={{
           position: "relative",
           top: "auto",
           right: "auto",
           minWidth: "22rem",
           maxWidth: "calc(100vw - 16px)",
-          maxHeight: "85vh",
-          overflowY: "auto",
         }}
         role="dialog"
         aria-label="Process MIDI"

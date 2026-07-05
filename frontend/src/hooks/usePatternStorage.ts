@@ -3,8 +3,7 @@
  * with optional Premium cloud sync via /api/beat-patterns.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { authHeaders } from "../api/auth";
-import { API_BASE } from "../config";
+import { apiDelete, apiGet, apiPost, apiPut } from "../api/client";
 import type { BeatPreset } from "./useBeatMaker";
 
 const STORAGE_KEY = "burntbeats-drum-patterns-v1";
@@ -139,14 +138,13 @@ export function usePatternStorage(
     setSyncStatus("syncing");
     setLastSyncError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/beat-patterns`, {
-        headers: await authHeaders(),
-      });
-      if (!res.ok) {
-        throw new Error(`Sync failed (${res.status})`);
+      const result = await apiGet<{ patterns: CloudBeatPatternRow[] }>(
+        "/api/beat-patterns",
+      );
+      if (result.error || !result.data) {
+        throw new Error(result.error ?? `Sync failed (${result.status})`);
       }
-      const body = (await res.json()) as { patterns: CloudBeatPatternRow[] };
-      const remote = (body.patterns ?? []).map(cloudRowToSaved);
+      const remote = (result.data.patterns ?? []).map(cloudRowToSaved);
       setSavedPatterns((prev) => mergePatterns(prev, remote));
       setSyncStatus("synced");
     } catch (e) {
@@ -169,21 +167,18 @@ export function usePatternStorage(
   const pushPatternToCloud = useCallback(
     async (pattern: SavedPattern) => {
       if (!canCloudSync) return pattern;
-      const res = await fetch(`${API_BASE}/api/beat-patterns`, {
-        method: "POST",
-        headers: {
-          ...(await authHeaders()),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const result = await apiPost<{ pattern: CloudBeatPatternRow }>(
+        "/api/beat-patterns",
+        {
           name: pattern.name,
           preset: pattern.preset,
           tags: pattern.tags,
-        }),
-      });
-      if (!res.ok) throw new Error(`Save sync failed (${res.status})`);
-      const body = (await res.json()) as { pattern: CloudBeatPatternRow };
-      return cloudRowToSaved(body.pattern);
+        },
+      );
+      if (result.error || !result.data) {
+        throw new Error(result.error ?? `Save sync failed (${result.status})`);
+      }
+      return cloudRowToSaved(result.data.pattern);
     },
     [canCloudSync],
   );
@@ -234,12 +229,9 @@ export function usePatternStorage(
         setSyncStatus("syncing");
         void (async () => {
           try {
-            const res = await fetch(`${API_BASE}/api/beat-patterns/${cloudId}`, {
-              method: "DELETE",
-              headers: await authHeaders(),
-            });
-            if (!res.ok && res.status !== 404) {
-              throw new Error(`Delete sync failed (${res.status})`);
+            const result = await apiDelete(`/api/beat-patterns/${cloudId}`);
+            if (result.error && result.status !== 404) {
+              throw new Error(result.error ?? `Delete sync failed (${result.status})`);
             }
             setSyncStatus("synced");
             setLastSyncError(null);
@@ -272,15 +264,12 @@ export function usePatternStorage(
         setSyncStatus("syncing");
         void (async () => {
           try {
-            const res = await fetch(`${API_BASE}/api/beat-patterns/${remoteId}`, {
-              method: "PUT",
-              headers: {
-                ...(await authHeaders()),
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ name: trimmed }),
+            const result = await apiPut(`/api/beat-patterns/${remoteId}`, {
+              name: trimmed,
             });
-            if (!res.ok) throw new Error(`Rename sync failed (${res.status})`);
+            if (result.error) {
+              throw new Error(result.error ?? `Rename sync failed (${result.status})`);
+            }
             setSyncStatus("synced");
             setLastSyncError(null);
           } catch (e) {

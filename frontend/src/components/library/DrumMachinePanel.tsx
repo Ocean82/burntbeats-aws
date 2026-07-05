@@ -208,7 +208,7 @@ export function DrumMachinePanel({
         <button
           type="button"
           onClick={handlePlayStop}
-          className="midi-btn text-xs"
+          className="midi-btn text-xs active:scale-[0.97] transition-transform"
           aria-label={playing ? "Stop playback" : "Start playback"}
         >
           {playing ? (
@@ -306,7 +306,7 @@ export function DrumMachinePanel({
         <button
           type="button"
           onClick={exportMidi}
-          className={cn("midi-btn text-xs", !canExportFullMidi && steps > 16 && "opacity-60")}
+          className={cn("midi-btn text-xs active:scale-[0.97] transition-transform", !canExportFullMidi && steps > 16 && "opacity-60")}
           title={!canExportFullMidi && steps > 16 ? "Upgrade to export patterns longer than 16 steps" : "Export as MIDI file"}
         >
           <Download className="h-3.5 w-3.5" />

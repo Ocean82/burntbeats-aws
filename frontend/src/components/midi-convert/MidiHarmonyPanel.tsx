@@ -103,7 +103,7 @@ export function MidiHarmonyPanel({
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
         <div>
-          <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <dt className="text-meta font-semibold uppercase tracking-wide text-muted-foreground">
             Key
           </dt>
           <dd className="mt-1 inline-flex items-center gap-1 rounded-md border border-accent-midi/20 bg-accent-midi-950/20 px-xs py-0.5 font-mono text-sm font-semibold text-accent-midi-200 midi-key-badge">
@@ -114,7 +114,7 @@ export function MidiHarmonyPanel({
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <dt className="text-meta font-semibold uppercase tracking-wide text-muted-foreground">
             Mode
           </dt>
           <dd className="mt-1 font-mono text-sm font-semibold text-accent-midi-200 capitalize">
@@ -122,7 +122,7 @@ export function MidiHarmonyPanel({
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <dt className="text-meta font-semibold uppercase tracking-wide text-muted-foreground">
             Bars
           </dt>
           <dd className="mt-1 font-mono text-sm font-semibold text-accent-midi-200">
@@ -130,7 +130,7 @@ export function MidiHarmonyPanel({
           </dd>
         </div>
         <div>
-          <dt className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <dt className="text-meta font-semibold uppercase tracking-wide text-muted-foreground">
             Progression
           </dt>
           <dd className="mt-1 font-mono text-xs text-accent-midi-200 truncate" title={result.chord_progression}>
@@ -141,7 +141,7 @@ export function MidiHarmonyPanel({
 
       {result.bars.length > 0 && (
         <div className="mt-sm max-h-40 overflow-y-auto">
-          <p className="midi-inspector__title mb-1 text-[10px]">Per-bar chords</p>
+          <p className="midi-inspector__title mb-1 text-meta">Per-bar chords</p>
           <div className="flex flex-wrap gap-1">
             {result.bars.map((bar, idx) => (
               <div
@@ -154,7 +154,7 @@ export function MidiHarmonyPanel({
                 )}
                 style={{ animationDelay: `${idx * 30}ms` }}
               >
-                <span className="font-mono text-[10px] font-bold text-accent-midi-200 leading-tight">
+                <span className="font-mono text-meta font-bold text-accent-midi-200 leading-tight">
                   {bar.chord}
                 </span>
                 <span className="text-[8px] text-[var(--midi-text-muted)] tabular-nums">

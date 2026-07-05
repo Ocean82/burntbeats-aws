@@ -55,6 +55,7 @@ export function useMidiRender(): UseMidiRenderReturn {
         stopPolling();
         setBusy(false);
         const fileRes = await fetch(getRenderDownloadUrl(jobId), {
+          // binary download — intentional bypass of api/client (blob response)
           headers: await authHeaders(),
         });
         if (!fileRes.ok) {

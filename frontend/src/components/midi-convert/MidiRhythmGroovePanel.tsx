@@ -177,12 +177,12 @@ export function MidiRhythmGroovePanel({
       </div>
 
       {sourceLabel ? (
-        <p className="text-[10px] text-amber-200/90" data-testid="midi-rhythm-source-banner">
+        <p className="text-meta text-amber-200/90" data-testid="midi-rhythm-source-banner">
           {sourceLabel}. Grooves still work locally; reconnect for full style catalog.
         </p>
       ) : null}
 
-      <label className="flex flex-col gap-0.5 text-[10px] text-muted-foreground">
+      <label className="flex flex-col gap-0.5 text-meta text-muted-foreground">
         <span>Style</span>
         <select
           className="midi-select rounded border border-border/60 bg-muted/30 px-2 py-1 text-xs"
@@ -199,11 +199,11 @@ export function MidiRhythmGroovePanel({
       </label>
 
       {selectedStyle?.description ? (
-        <p className="text-[10px] text-muted-foreground">{selectedStyle.description}</p>
+        <p className="text-meta text-muted-foreground">{selectedStyle.description}</p>
       ) : null}
 
       <div className="grid grid-cols-2 gap-sm">
-        <label className="flex flex-col gap-0.5 text-[10px] text-muted-foreground">
+        <label className="flex flex-col gap-0.5 text-meta text-muted-foreground">
           <span>Bars</span>
           <input
             type="number"
@@ -214,7 +214,7 @@ export function MidiRhythmGroovePanel({
             className="rounded border border-border/60 bg-muted/30 px-2 py-1 text-xs"
           />
         </label>
-        <label className="flex flex-col gap-0.5 text-[10px] text-muted-foreground">
+        <label className="flex flex-col gap-0.5 text-meta text-muted-foreground">
           <span>Energy {Math.round(energy * 100)}%</span>
           <input
             type="range"
@@ -229,8 +229,8 @@ export function MidiRhythmGroovePanel({
 
       {onInsertNotes ? (
         <fieldset className="space-y-1 border-0 p-0">
-          <legend className="text-[10px] text-muted-foreground">Insert target</legend>
-          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <legend className="text-meta text-muted-foreground">Insert target</legend>
+          <label className="flex items-center gap-1.5 text-meta text-muted-foreground">
             <input
               type="radio"
               name="groove-insert-mode"
@@ -240,7 +240,7 @@ export function MidiRhythmGroovePanel({
             />
             New track
           </label>
-          <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <label className="flex items-center gap-1.5 text-meta text-muted-foreground">
             <input
               type="radio"
               name="groove-insert-mode"
@@ -296,7 +296,7 @@ export function MidiRhythmGroovePanel({
       </div>
 
       {actionError ? (
-        <p className="text-[10px] text-destructive-300" role="alert">
+        <p className="text-meta text-destructive-300" role="alert">
           {actionError}
         </p>
       ) : null}
