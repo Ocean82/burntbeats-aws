@@ -75,6 +75,7 @@ setResolveStemAudioDepsForTests({
 });
 
 const { app } = await import("../../../server.js");
+const { issueJobToken } = await import("../../../middleware/auth.js");
 const { midiServiceClient } = await import("../../../lib/serviceClients.js");
 
 app.locals.verifyClerkBearer = async () => "user_convert_s3_fallback_test";
@@ -97,6 +98,7 @@ test("POST /api/midi/convert resolves stem via S3 when local WAV is absent", asy
   try {
     const res = await request
       .post("/api/midi/convert")
+      .set("x-job-token", issueJobToken(STEM_JOB_ID))
       .field("stem_job_id", STEM_JOB_ID)
       .field("stem_name", STEM_NAME);
 

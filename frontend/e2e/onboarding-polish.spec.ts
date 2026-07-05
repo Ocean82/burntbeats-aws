@@ -5,6 +5,7 @@ test.describe("Onboarding polish (design tokens)", () => {
     await page.addInitScript(() => {
       localStorage.removeItem("burnt-beats-onboarding-complete");
       localStorage.removeItem("burnt-beats-editor-tour-complete");
+      localStorage.setItem("burntbeats_cookie_consent", "declined");
     });
   });
 
@@ -27,7 +28,7 @@ test.describe("Onboarding polish (design tokens)", () => {
     await page.goto("/editor");
     await page.getByTestId("settings-menu-trigger").click();
     await page.getByRole("button", { name: /restart split tour/i }).click();
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("dialog", { name: /upload your track/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
   });
 });

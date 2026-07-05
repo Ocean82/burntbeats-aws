@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   isAllowedMidiAudioFile,
   MIDI_ALLOWED_AUDIO_EXTENSIONS,
+  LOCAL_DEV_CLERK_PUBLISHABLE_KEY,
+  resolveClerkPublishableKey,
+  shouldMountClerkProvider,
 } from "./config";
 
 describe("MIDI audio format config", () => {
@@ -21,5 +24,49 @@ describe("MIDI audio format config", () => {
 
   it("rejects unknown extensions", () => {
     expect(isAllowedMidiAudioFile("readme.txt")).toBe(false);
+  });
+});
+
+describe("Clerk provider config", () => {
+  it("mounts ClerkProvider in local-dev full-app mode when a valid fallback key is set", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: "pk_test_Y2xlcmsuYnVybnRiZWF0cy50ZXN0JA",
+        isLocalDevFullApp: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("mounts ClerkProvider when auth is enabled and a key is present", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: "pk_test_realistic",
+        isLocalDevFullApp: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("mounts ClerkProvider with the local fallback key when local-dev full-app mode has no env key", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: undefined,
+        isLocalDevFullApp: true,
+      }),
+    ).toBe(true);
+    expect(
+      resolveClerkPublishableKey({
+        clerkPubKey: undefined,
+        isLocalDevFullApp: true,
+      }),
+    ).toBe(LOCAL_DEV_CLERK_PUBLISHABLE_KEY);
+  });
+
+  it("skips ClerkProvider when auth is disabled and no key is present", () => {
+    expect(
+      shouldMountClerkProvider({
+        clerkPubKey: undefined,
+        isLocalDevFullApp: false,
+      }),
+    ).toBe(false);
   });
 });

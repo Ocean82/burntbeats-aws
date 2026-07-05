@@ -13,7 +13,9 @@ import {
   requireUsageAuthPreUpload,
   issueJobToken,
   DEV_BYPASS_UPLOAD_AUTH,
+  validateJobTokenForRequest,
 } from "../../middleware/auth.js";
+import { getJobOwner } from "../../middleware/ownership.js";
 import { proxyFormRequestTo } from "../../middleware/proxy.js";
 import { upload, MAX_UPLOAD_MB } from "../../middleware/upload.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
@@ -53,6 +55,50 @@ const MIDI_ALLOWED_UPLOAD_EXTS = new Set([
 ]);
 const MIDI_ALLOWED_UPLOAD_FORMATS_LABEL = "MP3, WAV, FLAC, OGG, M4A, WebM";
 
+/**
+ * @param {string} message
+ * @param {number} status
+ * @returns {Error & { status: number }}
+ */
+function createHttpError(message, status) {
+  return Object.assign(new Error(message), { status });
+}
+
+/**
+ * Stem-job source conversion reads the protected stem server-side, so it must
+ * enforce the same ownership boundary as direct stem downloads.
+ * @param {import("express").Request} req
+ * @param {string} stemJobId
+ * @returns {Promise<string | null>}
+ */
+async function verifyStemSourceAccess(req, stemJobId) {
+  const testGetJobOwner = req.app?.locals?.getJobOwner;
+  const owner =
+    typeof testGetJobOwner === "function"
+      ? await testGetJobOwner(stemJobId)
+      : await getJobOwner(stemJobId);
+
+  if (!owner) {
+    const tokenResult = validateJobTokenForRequest(req, stemJobId);
+    if (!tokenResult.ok) {
+      throw createHttpError(tokenResult.error, tokenResult.status);
+    }
+    return null;
+  }
+
+  const testVerifier = req.app?.locals?.verifyClerkBearer;
+  const authenticatedUserId =
+    typeof testVerifier === "function"
+      ? await testVerifier(req)
+      : await verifyClerkBearer(req);
+
+  if (authenticatedUserId !== owner) {
+    throw createHttpError("You do not have access to this stem job.", 403);
+  }
+
+  return authenticatedUserId;
+}
+
 midiConvertRouter.post(
   "/",
   authMiddleware,
@@ -81,9 +127,22 @@ midiConvertRouter.post(
     let filePath = req.file?.path || null;
     let useStemFile = false;
     let isTempStemFile = false;
+    let usageReserved = false;
+    let usageUserId = null;
+    const usageCost = MIDI_TOKEN_COST;
 
     // If referencing a stem from a previous split, resolve local disk or S3 fallback
     if (stemJobId && stemName && !req.file) {
+      try {
+        usageUserId = await verifyStemSourceAccess(req, stemJobId);
+      } catch (e) {
+        const status =
+          e && typeof e === "object" && "status" in e && typeof e.status === "number"
+            ? e.status
+            : 401;
+        const message = e instanceof Error ? e.message : "Authentication required";
+        return res.status(status).json({ error: message });
+      }
       const resolved = await resolveStemAudioPath(stemJobId, stemName);
       if (!resolved) {
         return res.status(404).json({
@@ -108,10 +167,6 @@ midiConvertRouter.post(
         error: `File too large for MIDI conversion. Maximum size is ${mb}MB.`,
       });
     }
-
-    let usageReserved = false;
-    let usageUserId = null;
-    const usageCost = MIDI_TOKEN_COST;
 
     try {
       // Validate uploaded file (skip for stem references — already validated)
