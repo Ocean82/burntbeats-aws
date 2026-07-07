@@ -1,12 +1,16 @@
 # Burnt Beats
 
+**Live app:** [burntbeats.com](https://www.burntbeats.com) — AI stem separation and in-browser mixing for producers and DJs.
+
+Split tracks into vocals, drums, bass, and melody; mix and export in one browser tab. No DAW install. Free tier includes a welcome grant; paid plans use simple per-minute tokens.
+
+This repo powers the production stack (React frontend, Node API, Python inference services). Bug reports and feature ideas welcome via [Issues](https://github.com/Ocean82/burntbeats-aws/issues).
+
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Licensed under [Apache License 2.0](LICENSE). Third-party attributions: [NOTICE](NOTICE).
 
-Personal / operator reference: **stem separation + in-browser mixer + export**, shipped as a SPA on **React (Vite)** with a **Node (Express)** API, **Python FastAPI** inference service, optional **S3** stem delivery, **Clerk** auth, and **Stripe** subscriptions / usage tokens.
-
-End users of the public site do not read this repo; this file is for **direction and deploy consistency** (especially **EC2 + Docker Compose** builds).
+**Maintainers:** deploy and architecture notes below (EC2 + Docker Compose).
 
 ---
 

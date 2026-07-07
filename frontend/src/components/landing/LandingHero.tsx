@@ -1,4 +1,4 @@
-import { SignInButton, SignUpButton } from "@clerk/react";
+import { SignUpButton } from "@clerk/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ShieldCheck, Library, Piano } from "lucide-react";
 import { WorkflowStepper } from "../ui";
@@ -49,7 +49,7 @@ export function LandingHero() {
 
       <motion.div variants={heroItem} className="w-full">
         <p className="mx-auto max-w-[56ch] text-center text-[clamp(1rem,2.5vw,1.25rem)] font-light leading-relaxed text-secondary-foreground">
-          Upload. Split. Mix. Export. All in your browser — no install, no upload limits, no compromise.
+          Upload. Split. Mix. Export. All in your browser — no install, 10 free minutes to start, pay only for what you use.
         </p>
       </motion.div>
 
@@ -65,14 +65,12 @@ export function LandingHero() {
             Try the workstation
           </button>
         </SignUpButton>
-        <SignInButton mode="modal">
-          <button
-            type="button"
-            className="ghost-button tap-feedback text-sm px-lg py-md"
-          >
-            Sign In
-          </button>
-        </SignInButton>
+        <a
+          href="#demo"
+          className="ghost-button tap-feedback text-sm px-lg py-md"
+        >
+          Hear a split first
+        </a>
       </motion.div>
 
       <motion.div

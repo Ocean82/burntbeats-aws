@@ -5,6 +5,7 @@ import { trackEvent } from "../analytics/events";
 import type { PlanConfig, PricingTableType } from "../data/plans";
 import { LandingBackground } from "../components/landing/LandingBackground";
 import { LandingDifferentiatorsSection } from "../components/landing/LandingDifferentiatorsSection";
+import { LandingAudioDemo } from "../components/landing/LandingAudioDemo";
 import { LandingFinalCta } from "../components/landing/LandingFinalCta";
 import { LandingHero } from "../components/landing/LandingHero";
 import { LandingPricingSection } from "../components/landing/LandingPricingSection";
@@ -129,6 +130,7 @@ export function LandingPage({ focusSection }: LandingPageProps = {}) {
       <div className="relative mx-auto max-w-5xl px-md sm:px-lg lg:px-xl">
         <main id="landing-main">
           <LandingHero />
+          <LandingAudioDemo />
           <LandingSocialProof />
           <LandingDifferentiatorsSection />
           <LandingPricingSection

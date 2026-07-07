@@ -26,8 +26,8 @@ export function LandingFinalCta() {
           Ready to build your first stem workflow?
         </h2>
         <p className="relative mx-auto mb-10 max-w-[56ch] text-center text-base text-secondary-foreground/80">
-          Create an account, split your first track, and keep working inside the
-          same browser session.
+          Free account includes a 10-minute welcome grant and 5 minutes every month.
+          Upload a track, split it, and keep working in the same browser session.
         </p>
         <SignUpButton mode="modal">
           <button
