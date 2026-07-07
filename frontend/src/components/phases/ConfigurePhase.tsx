@@ -12,6 +12,8 @@ export interface ConfigurePhaseProps {
   fileName: string;
   onConfigure: (config: { quality: SplitQuality; stemCount: 2 | 4 }) => void;
   onChangeFile: () => void;
+  /** Simplified UI for first-time users — fast 2-stem defaults. */
+  firstRunMode?: boolean;
 }
 
 const qualityOptions: Array<{
@@ -60,10 +62,11 @@ export function ConfigurePhase({
   fileName,
   onConfigure,
   onChangeFile,
+  firstRunMode = false,
 }: ConfigurePhaseProps) {
   const subscription = useSubscription();
   const { freeMonthlyRemaining, loading: usageLoading } = useUsageBalance(true);
-  const [quality, setQuality] = useState<SplitQuality>("quality");
+  const [quality, setQuality] = useState<SplitQuality>(firstRunMode ? "speed" : "quality");
   const [stemCount, setStemCount] = useState<2 | 4>(2);
 
   function handleSplit() {
@@ -79,7 +82,9 @@ export function ConfigurePhase({
       <div className="flex w-full max-w-md flex-col gap-lg rounded-2xl border border-border bg-muted/60 p-lg backdrop-blur-sm">
         {/* File context */}
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">Ready to split</p>
+          <p className="text-sm text-muted-foreground">
+            {firstRunMode ? "Step 2 — split your track" : "Ready to split"}
+          </p>
           <p
             className="mt-1 truncate text-base font-medium text-foreground"
             title={fileName}
@@ -103,6 +108,14 @@ export function ConfigurePhase({
           onUpgrade={() => window.dispatchEvent(new CustomEvent("open-pricing-tab"))}
         />
 
+        {firstRunMode ? (
+          <p className="rounded-lg border border-border/60 bg-background/40 px-md py-sm text-xs text-muted-foreground">
+            First split uses <strong className="text-foreground">fast 2-stem mode</strong> (vocals +
+            instrumental) — best for trying Burnt Beats on your track. Upgrade anytime for 4-stem and
+            quality modes.
+          </p>
+        ) : (
+          <>
         {/* Quality selector */}
         <fieldset className="flex flex-col gap-sm">
           <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -171,6 +184,8 @@ export function ConfigurePhase({
             })}
           </div>
         </fieldset>
+          </>
+        )}
 
         {/* Split action button */}
         <button
@@ -179,7 +194,7 @@ export function ConfigurePhase({
           onClick={handleSplit}
           className="mt-sm min-h-[44px] w-full rounded-xl bg-primary-500 px-lg py-sm text-sm font-semibold text-white transition hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
         >
-          Split
+          {firstRunMode ? "Split my track" : "Split"}
         </button>
       </div>
     </div>

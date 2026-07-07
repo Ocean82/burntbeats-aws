@@ -10,6 +10,7 @@ export interface UploadPhaseProps {
   setError: (msg: string | null) => void;
   error: string | null;
   onFileAccepted: (file: File) => void;
+  firstRunMode?: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ export function UploadPhase({
   setError,
   error,
   onFileAccepted,
+  firstRunMode = false,
 }: UploadPhaseProps) {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -131,15 +133,30 @@ export function UploadPhase({
         {/* Text */}
         <div>
           <p className="text-lg font-bold text-foreground">
-            {isDragging ? "Drop it!" : "Drop your track here"}
+            {isDragging ? "Drop it!" : firstRunMode ? "Step 1 — drop your track" : "Drop your track here"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
+            {firstRunMode
+              ? "Upload a song you want to split. We'll use fast 2-stem mode for your first run."
+              : (
+                <>
             or{" "}
             <span className="text-primary-300 underline decoration-primary-400/40 underline-offset-2">
               click to browse
             </span>
             {" · " + ALLOWED_AUDIO_FORMATS_LABEL}
+                </>
+              )}
           </p>
+          {firstRunMode ? (
+            <p className="mt-1 text-xs text-muted-foreground/80">
+              or{" "}
+              <span className="text-primary-300 underline decoration-primary-400/40 underline-offset-2">
+                click to browse
+              </span>
+              {" · " + ALLOWED_AUDIO_FORMATS_LABEL}
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-muted-foreground/70">
             Max 500 MB
           </p>

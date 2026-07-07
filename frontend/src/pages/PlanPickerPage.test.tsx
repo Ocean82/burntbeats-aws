@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { PlanPickerPage } from "./PlanPickerPage";
 
@@ -40,11 +40,20 @@ describe("PlanPickerPage", () => {
     mockStartCheckout.mockReset();
   });
 
-  it("renders all subscription plans", () => {
+  it("renders hero subscription plans in the main grid", () => {
     render(<PlanPickerPage onComplete={vi.fn()} />);
-    expect(screen.getByText("Premium")).toBeInTheDocument();
-    expect(screen.getByText("Basic")).toBeInTheDocument();
-    expect(screen.getByText("Studio")).toBeInTheDocument();
+    const subscribeSection = screen.getByText("Or subscribe monthly").parentElement;
+    expect(subscribeSection).toBeTruthy();
+    const grid = within(subscribeSection as HTMLElement);
+    expect(grid.getByText("Premium")).toBeInTheDocument();
+    expect(grid.getByText("Basic")).toBeInTheDocument();
+    expect(grid.queryByText("Studio")).not.toBeInTheDocument();
+  });
+
+  it("surfaces the single-song pack prominently", () => {
+    render(<PlanPickerPage onComplete={vi.fn()} />);
+    expect(screen.getByText("Single Song Pack")).toBeInTheDocument();
+    expect(screen.getByText("Best way to try your own song")).toBeInTheDocument();
   });
 
   it("renders the billing interval toggle", () => {
@@ -84,7 +93,7 @@ describe("PlanPickerPage", () => {
     expect(mockStartCheckout).toHaveBeenCalledWith("premium", {
       source: "plan_picker",
       intent: "picker_premium",
-      interval: "year",
+      interval: "month",
     });
   });
 

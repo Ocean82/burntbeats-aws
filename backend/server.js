@@ -38,6 +38,8 @@ import { masterRouter } from "./routes/master/index.js";
 import { previewRouter } from "./routes/preview/index.js";
 import { catalogRouter } from "./routes/catalog/index.js";
 import { newsletterRouter } from "./routes/newsletter.js";
+import { referralRouter } from "./routes/referral.js";
+import { onboardingRouter } from "./routes/onboarding.js";
 import { beatPatternsRouter } from "./routes/beat-patterns.js";
 import { getMissingInternalServiceTokens } from "./lib/internalAuth.js";
 
@@ -184,6 +186,8 @@ app.use("/api/catalog", catalogRouter);
 app.use("/api/legal", legalRouter);
 app.use("/api/health", healthRouter);
 app.use("/api/newsletter", newsletterRouter);
+app.use("/api/referral", referralRouter);
+app.use("/api/onboarding", onboardingRouter);
 app.use("/api", beatPatternsRouter);
 app.use("/api", historyRouter);
 

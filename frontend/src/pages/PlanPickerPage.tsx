@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useUser } from "@clerk/react";
 import { useSubscription, type Plan } from "../hooks/useSubscription";
-import { getPlansForType, PACK_PLANS, type BillingInterval } from "../data/plans";
+import {
+  getPlansForType,
+  PACK_PLANS,
+  type BillingInterval,
+} from "../data/plans";
 import { BillingIntervalToggle } from "../components/BillingIntervalToggle";
 import { PlanPickerCard } from "../components/PlanPickerCard";
 
@@ -9,10 +13,14 @@ interface PlanPickerPageProps {
   onComplete: () => void;
 }
 
+const SINGLE_PACK = PACK_PLANS.find((p) => p.id === "single");
+const TOPUP_PACK = PACK_PLANS.find((p) => p.id === "topup");
+const STUDIO_PLAN = getPlansForType("subscriptions").find((p) => p.id === "studio");
+
 export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
   const { user } = useUser();
   const subscription = useSubscription();
-  const [interval, setInterval] = useState<BillingInterval>("year");
+  const [interval, setInterval] = useState<BillingInterval>("month");
   const [loading, setLoading] = useState<Plan | null>(null);
 
   const handleSelectPlan = async (planId: Plan) => {
@@ -25,7 +33,9 @@ export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
         interval,
       });
       onComplete();
-    } catch { setLoading(null); }
+    } catch {
+      setLoading(null);
+    }
   };
 
   const handleContinueFree = async () => {
@@ -45,43 +55,82 @@ export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
           <img src="/logo-emblem.png" alt="" className="logo-emblem mx-auto h-12 w-12" aria-hidden />
           <h1 className="mt-md text-3xl font-bold text-foreground">Choose your setup</h1>
           <p className="mt-xs text-sm text-secondary-foreground">
-            You're 30 seconds from your first split. Pick the plan that fits your workflow.
+            Split your first track in under a minute. No subscription required to start.
           </p>
         </div>
-        <div className="mb-lg"><BillingIntervalToggle value={interval} onChange={setInterval} /></div>
-        <div className="grid w-full gap-md sm:grid-cols-3">
-          {getPlansForType("subscriptions", { interval }).map((plan) => (
+
+        {SINGLE_PACK ? (
+          <div className="mb-lg w-full max-w-md">
+            <p className="mb-sm text-center text-xs font-semibold uppercase tracking-[0.2em] text-primary-200/80">
+              Best way to try your own song
+            </p>
             <PlanPickerCard
-              key={plan.id} plan={plan}
-              isHighlighted={plan.highlight}
-              onSelect={() => handleSelectPlan(plan.id)}
-              isLoading={loading === plan.id}
+              plan={SINGLE_PACK}
+              isHighlighted
+              onSelect={() => handleSelectPlan("single")}
+              isLoading={loading === "single"}
             />
-          ))}
+          </div>
+        ) : null}
+
+        <div className="mb-md w-full">
+          <div className="mb-md flex justify-center">
+            <BillingIntervalToggle value={interval} onChange={setInterval} />
+          </div>
+          <p className="mb-sm text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Or subscribe monthly
+          </p>
+          <div className="grid w-full gap-md sm:grid-cols-2">
+            {getPlansForType("subscriptions", { heroOnly: true, interval }).map((plan) => (
+              <PlanPickerCard
+                key={plan.id}
+                plan={plan}
+                isHighlighted={plan.highlight}
+                onSelect={() => handleSelectPlan(plan.id)}
+                isLoading={loading === plan.id}
+              />
+            ))}
+          </div>
         </div>
-        {PACK_PLANS.length > 0 && (
-          <details className="mt-lg w-full max-w-md">
-            <summary className="cursor-pointer text-center text-sm text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-              One-time packs available →
-            </summary>
-            <div className="mt-md grid gap-md sm:grid-cols-2">
-              {PACK_PLANS.map((plan) => (
-                <PlanPickerCard
-                  key={plan.id} plan={plan}
-                  onSelect={() => handleSelectPlan(plan.id)}
-                  isLoading={loading === plan.id}
-                />
-              ))}
-            </div>
-          </details>
-        )}
+
+        <details className="mt-md w-full max-w-md">
+          <summary className="cursor-pointer text-center text-sm text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+            Studio plan &amp; larger packs →
+          </summary>
+          <div className="mt-md grid gap-md">
+            {STUDIO_PLAN ? (
+              <PlanPickerCard
+                plan={
+                  interval === "year"
+                    ? {
+                        ...STUDIO_PLAN,
+                        priceLabel: getPlansForType("subscriptions", { interval }).find(
+                          (p) => p.id === "studio",
+                        )?.priceLabel ?? STUDIO_PLAN.priceLabel,
+                      }
+                    : STUDIO_PLAN
+                }
+                onSelect={() => handleSelectPlan("studio")}
+                isLoading={loading === "studio"}
+              />
+            ) : null}
+            {TOPUP_PACK ? (
+              <PlanPickerCard
+                plan={TOPUP_PACK}
+                onSelect={() => handleSelectPlan("topup")}
+                isLoading={loading === "topup"}
+              />
+            ) : null}
+          </div>
+        </details>
+
         <button
           type="button"
           onClick={handleContinueFree}
           disabled={loading !== null}
-          className="mt-xl text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+          className="mt-xl rounded-xl border border-border bg-muted/50 px-lg py-sm text-sm font-semibold text-foreground transition hover:bg-muted disabled:opacity-50"
         >
-          Continue with Free (5 tokens/month)
+          Continue with Free — 10 min welcome + 5 min/month
         </button>
       </div>
     </div>

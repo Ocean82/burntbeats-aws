@@ -34,6 +34,8 @@ export interface PhaseRouterProps {
 
   // Change file (shared across configure and splitting phases)
   onChangeFile: () => void;
+  /** First-time user simplified flow */
+  firstRunMode?: boolean;
 }
 
 const TRANSITION_DURATION_S = LAYOUT.TRANSITION_DURATION / 1000;
@@ -57,6 +59,7 @@ export function PhaseRouter({
   estimatedSeconds,
   stageLabel,
   onChangeFile,
+  firstRunMode = false,
 }: PhaseRouterProps) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -85,6 +88,7 @@ export function PhaseRouter({
             setError={setError}
             error={error}
             onFileAccepted={onFileAccepted}
+            firstRunMode={firstRunMode}
           />
         )}
 
@@ -94,6 +98,7 @@ export function PhaseRouter({
             fileName={fileName}
             onConfigure={onConfigure}
             onChangeFile={onChangeFile}
+            firstRunMode={firstRunMode}
           />
         )}
 

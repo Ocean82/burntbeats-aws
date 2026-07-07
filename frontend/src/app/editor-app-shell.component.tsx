@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect } from "react";
 import { useUser } from "@clerk/react";
+import { useFirstRunMode } from "../hooks/useFirstRunMode";
 import { viewSwitchMotion } from "../motion/presets";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { UpsellModal } from "../components/UpsellModal";
@@ -53,6 +54,7 @@ export interface EditorAppShellProps {
 
 export function EditorAppShell({ session }: EditorAppShellProps) {
   const { user, isLoaded } = useUser();
+  const firstRunMode = useFirstRunMode();
   const { modals, workflow, split, subscription: sub, batch, mixer, ui, dev } = session;
   const { export: exp, recovery } = session;
   const audio = useAudio();
@@ -102,11 +104,14 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
     };
     window.addEventListener("open-pricing-tab", handlePricing);
     window.addEventListener("start-premium-checkout", handlePremiumCheckout);
+    const handleExport = () => modals.openModal("export");
+    window.addEventListener("open-export-modal", handleExport);
     return () => {
       window.removeEventListener("open-pricing-tab", handlePricing);
       window.removeEventListener("start-premium-checkout", handlePremiumCheckout);
+      window.removeEventListener("open-export-modal", handleExport);
     };
-  }, [ui, sub.subscription]);
+  }, [ui, sub.subscription, modals]);
 
   // Auto-show hub onboarding tour for new users (post-plan-picker)
   useEffect(() => {
@@ -288,6 +293,7 @@ export function EditorAppShell({ session }: EditorAppShellProps) {
                 handleFile: split.handleFile,
                 triggerSplit: split.triggerSplit,
                 mixerProps: session.mixerProps,
+                firstRunMode,
               }}
               devLatencyStats={dev.latencyStats}
               onResetDevLatencyStats={dev.resetLatencyStats}

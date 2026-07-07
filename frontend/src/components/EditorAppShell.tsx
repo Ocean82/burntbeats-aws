@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePhaseController } from "@/hooks/usePhaseController";
 import { PhaseProvider } from "@/contexts/PhaseContext";
 import { HeaderBar } from "./HeaderBar";
@@ -8,6 +8,9 @@ import { useAppStore } from "@/store/appStore";
 import type { SplitIntent } from "@shared/types";
 import { MixerWorkspace } from "@/app/mixer-workspace.component";
 import type { ComponentProps } from "react";
+import { FirstRunStepBar } from "@/components/first-run/FirstRunStepBar";
+import { FirstRunExportCue } from "@/components/first-run/FirstRunExportCue";
+import { markFirstSplitComplete } from "@/api/referral";
 
 /** Key used in sessionStorage to persist split results (matches usePhaseController). */
 const SPLIT_RESULT_KEY = "burnt-beats-split-result";
@@ -29,6 +32,8 @@ export interface TransitionalShellProps {
   triggerSplit?: (intent: SplitIntent, isSample?: boolean) => void;
   /** Props for MixerWorkspace rendered in the workspace phase. */
   mixerProps?: ComponentProps<typeof MixerWorkspace>;
+  /** Simplified first-session wizard */
+  firstRunMode?: boolean;
 }
 
 /**
@@ -49,9 +54,11 @@ export function EditorAppShell({
   handleFile,
   triggerSplit,
   mixerProps,
+  firstRunMode = false,
 }: TransitionalShellProps = {}) {
   const controller = usePhaseController();
   const { phase, transitionTo, error, setError } = controller;
+  const firstSplitMarkedRef = useRef(false);
 
   // Subscribe to split result stems from the existing app store
   const splitResultStems = useAppStore((s) => s.splitResultStems);
@@ -71,10 +78,20 @@ export function EditorAppShell({
   // transition effects run).
   const progress = phase === "splitting" ? splitProgress : 0;
 
-  // When split completes (splitResultStems populated), persist to sessionStorage
-  // but do NOT auto-navigate to workspace. Stems are available in the user's
-  // library — they can open in editor from there, or the email notification
-  // will link them back when ready.
+  // First-run: auto-open workspace when stems arrive and mark onboarding complete
+  useEffect(() => {
+    if (!firstRunMode || splitResultStems.length === 0) return;
+    if (phase === "splitting") {
+      transitionTo("workspace");
+    }
+    if (!firstSplitMarkedRef.current) {
+      firstSplitMarkedRef.current = true;
+      void markFirstSplitComplete().catch(() => {});
+      window.dispatchEvent(new CustomEvent("burntbeats-first-split-complete"));
+    }
+  }, [firstRunMode, splitResultStems.length, phase, transitionTo]);
+
+  // When split completes, persist to sessionStorage (library + session restore)
   useEffect(() => {
     if (splitResultStems.length > 0) {
       try {
@@ -172,8 +189,18 @@ export function EditorAppShell({
         <HeaderBar phase={phase} onReset={controller.reset} className="shrink-0 mx-md mt-md sm:mx-lg sm:mt-lg" />
 
         <main className="flex-1 min-h-0 overflow-y-auto">
+          {firstRunMode && phase !== "workspace" ? (
+            <div className="px-md pt-md">
+              <FirstRunStepBar phase={phase} />
+            </div>
+          ) : null}
           {phase === "workspace" && mixerProps ? (
             <div data-testid="workspace" className="h-full">
+              {firstRunMode ? (
+                <FirstRunExportCue
+                  onExport={() => window.dispatchEvent(new CustomEvent("open-export-modal"))}
+                />
+              ) : null}
               <MixerWorkspace {...mixerProps} embedded />
             </div>
           ) : (
@@ -189,6 +216,7 @@ export function EditorAppShell({
               onRetry={handleRetry}
               onChangeFile={handleChangeFile}
               stageLabel={splitStageLabel}
+              firstRunMode={firstRunMode}
             />
           )}
         </main>

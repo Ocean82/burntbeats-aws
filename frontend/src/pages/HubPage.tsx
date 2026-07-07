@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import type { ComponentType, CSSProperties, SVGProps } from "react";
+import { useEffect } from "react";
 import {
   Upload,
   Music,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { useUser } from "@clerk/react";
 import { useStemHistory } from "@/hooks/useStemHistory";
+import { useFirstRunMode } from "@/hooks/useFirstRunMode";
 import { useMidiHistory } from "@/hooks/useMidiHistory";
 import { useToolUsage } from "@/hooks/useToolUsage";
 import { useHubKeyboardNav } from "@/hooks/useHubKeyboardNav";
@@ -58,10 +60,18 @@ function renderToolIcon(tool: ToolDefinition, size: "lg" | "sm") {
 export function HubPage() {
   const [, navigate] = useLocation();
   const { user } = useUser();
+  const firstRunMode = useFirstRunMode();
   const { jobs, isLoading, totalJobs } = useStemHistory();
   const { records: midiRecords, isLoading: midiLoading } = useMidiHistory();
   const { touch, hasUsed } = useToolUsage();
   useHubKeyboardNav(true);
+
+  useEffect(() => {
+    if (!firstRunMode) return;
+    const meta = user?.unsafeMetadata as Record<string, unknown> | undefined;
+    if (meta?.planPickerSeen !== true) return;
+    navigate("/editor");
+  }, [firstRunMode, user, navigate]);
 
   const hasActivity = jobs.length > 0;
   const firstName = user?.firstName || "Creator";
@@ -187,6 +197,18 @@ export function HubPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="px-6 pb-16 md:px-12 lg:px-16">
+        <div className="max-w-7xl mx-auto text-center">
+          <button
+            type="button"
+            onClick={() => navigate("/referral")}
+            className="text-sm text-muted-foreground underline underline-offset-4 transition hover:text-primary-200"
+          >
+            Invite producer friends — earn bonus tokens
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

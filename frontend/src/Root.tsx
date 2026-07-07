@@ -78,9 +78,15 @@ function RouteLoadingShell() {
 }
 
 import { PlanPickerPage } from "./pages/PlanPickerPage";
+import { captureReferralFromUrl, useReferralAttach } from "./hooks/useReferralCapture";
+
+const ReferralPage = lazy(() =>
+  import("./pages/ReferralPage").then((m) => ({ default: m.ReferralPage })),
+);
 
 function PlanPickerGate({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
+  const [, navigate] = useLocation();
   const [dismissed, setDismissed] = useState(false);
 
   const pickerSeen = useMemo(() => {
@@ -91,7 +97,14 @@ function PlanPickerGate({ children }: { children: React.ReactNode }) {
 
   if (pickerSeen || dismissed) return <>{children}</>;
 
-  return <PlanPickerPage onComplete={() => setDismissed(true)} />;
+  return (
+    <PlanPickerPage
+      onComplete={() => {
+        setDismissed(true);
+        navigate("/editor");
+      }}
+    />
+  );
 }
 
 function SignedInAppTree({
@@ -145,6 +158,12 @@ function AuthenticatedRoot() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const { user } = useUser();
   const [location] = useLocation();
+
+  useReferralAttach();
+
+  useEffect(() => {
+    captureReferralFromUrl();
+  }, []);
 
   useEffect(() => {
     if (isLoaded) setTokenProvider(() => getToken());
@@ -207,6 +226,33 @@ function AuthenticatedRoot() {
   );
 }
 
+function ReferralRoute() {
+  const { isSignedIn, isLoaded } = useAuth();
+
+  useEffect(() => {
+    captureReferralFromUrl();
+  }, []);
+
+  if (!isLoaded) return <ClerkLoadingShell />;
+  if (!isSignedIn) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<RouteLoadingShell />}>
+          <LandingPage />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<RouteLoadingShell />}>
+        <ReferralPage />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+
 export function Root() {
   return (
     <>
@@ -248,6 +294,9 @@ export function Root() {
       </Route>
       <Route path="/tuner">
         {isLocalDevFullApp() ? <LocalDevRoot /> : <AuthenticatedRoot />}
+      </Route>
+      <Route path="/referral">
+        <ReferralRoute />
       </Route>
       <Route>
         <NotFoundPage />

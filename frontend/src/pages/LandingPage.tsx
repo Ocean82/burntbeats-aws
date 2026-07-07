@@ -11,6 +11,7 @@ import { LandingHero } from "../components/landing/LandingHero";
 import { LandingPricingSection } from "../components/landing/LandingPricingSection";
 import { LandingSocialProof } from "../components/landing/LandingSocialProof";
 import { LeadCaptureForm } from "../components/landing/LeadCaptureForm";
+import { captureReferralFromUrl } from "../hooks/useReferralCapture";
 
 interface LandingPageProps {
   /** Scroll to a landing section after mount (e.g. `/pricing` deep link). */
@@ -23,6 +24,10 @@ export function LandingPage({ focusSection }: LandingPageProps = {}) {
     useState<PricingTableType>("subscriptions");
   const [headerScrolled, setHeaderScrolled] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    captureReferralFromUrl();
+  }, []);
 
   useEffect(() => {
     if (focusSection !== "pricing") return;
