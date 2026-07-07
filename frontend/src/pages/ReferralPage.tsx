@@ -37,7 +37,7 @@ export function ReferralPage() {
     } catch {
       setCopied(false);
     }
-  }, [profile?.shareUrl]);
+  }, [profile]);
 
   const firstName = user?.firstName || "Producer";
 
