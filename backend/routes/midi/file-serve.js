@@ -84,6 +84,12 @@ midiFileRouter.put(
       });
     }
 
+    if (!Buffer.isBuffer(midiBytes)) {
+      return res.status(400).json({
+        error: "Request body must decode to MIDI bytes.",
+      });
+    }
+
     if (!midiBytes.length) {
       return res.status(400).json({ error: "Empty MIDI payload" });
     }
