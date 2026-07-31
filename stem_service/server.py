@@ -333,6 +333,12 @@ async def lifespan(app: FastAPI):
     await _job_queue.start_workers(_run_queued_job)
     app.state.job_queue = _job_queue
 
+    # Pre-create the output base directory so concurrent requests never race
+    # to create it via pathlib.mkdir(parents=True), which can cause a
+    # FileNotFoundError under simultaneous first-request load.
+    OUTPUT_BASE.mkdir(parents=True, exist_ok=True)
+    logger.info("Output directory ready: %s", OUTPUT_BASE)
+
     def graceful_shutdown(signal_name):
         logger.info(f"Received {signal_name}, initiating graceful shutdown...")
         if _job_queue is not None:
