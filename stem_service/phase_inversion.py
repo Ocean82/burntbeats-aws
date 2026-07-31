@@ -29,8 +29,8 @@ def _load_audio_tensor(path: Path) -> tuple[torch.Tensor, int]:
         return wav, int(sr)
     except Exception:
         pass
-    # Last resort: let torchaudio pick its default backend
-    wav, sr = torchaudio.load(str(path))
+    # Last resort: use torchcodec backend explicitly (required for MP3 in torchaudio 2.6+)
+    wav, sr = torchaudio.load(str(path), backend="torchcodec")
     return wav, int(sr)
 
 

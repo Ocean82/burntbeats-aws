@@ -7,6 +7,7 @@ dependencies = [
     "burntbeats-common",
     "torch>=2.12.1,<2.13",
     "torchaudio>=2.0.0,<2.13",
+    "torchcodec>=0.1.0",
     "soundfile>=0.12.0",
     "imageio-ffmpeg>=0.4.0",
     "demucs>=4.0.0",
@@ -37,6 +38,7 @@ package = false
 burntbeats-common = { workspace = true }
 torch = { index = "pytorch-cpu" }
 torchaudio = { index = "pytorch-cpu" }
+torchcodec = { index = "pytorch-cpu" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
