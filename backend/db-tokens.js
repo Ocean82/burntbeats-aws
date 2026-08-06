@@ -16,6 +16,20 @@ import { getPool } from "./db.js";
 // NOTE: ensureUser from db-jobs.js is no longer used here — user row creation
 // is done inline within each transaction to prevent FK race conditions.
 
+const STRIPE_EVENT_INDEX = "idx_token_tx_stripe_ev";
+
+/**
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+export function isDuplicateStripeCreditEventError(err) {
+  if (!err || typeof err !== "object") return false;
+  const pgErr = /** @type {{ code?: unknown, constraint?: unknown, message?: unknown }} */ (err);
+  if (pgErr.code !== "23505") return false;
+  if (pgErr.constraint === STRIPE_EVENT_INDEX) return true;
+  return typeof pgErr.message === "string" && pgErr.message.includes(STRIPE_EVENT_INDEX);
+}
+
 /**
  * Ensure a user_token_balances row exists for the user.
  * @param {import("pg").PoolClient} client - transaction client
@@ -441,6 +455,9 @@ export async function creditDbSubscription(clerkUserId, grant, meta = {}) {
     return { success: true, credited: true, balanceAfter: newBalance };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
+    if (isDuplicateStripeCreditEventError(err)) {
+      return { success: true, credited: false };
+    }
     console.error(
       "[db-tokens] creditDbSubscription failed:",
       err instanceof Error ? err.message : err,
@@ -520,6 +537,9 @@ export async function creditDbTopup(clerkUserId, grant, meta = {}) {
     return { success: true, balanceAfter: newBalance };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
+    if (isDuplicateStripeCreditEventError(err)) {
+      return { success: true };
+    }
     console.error(
       "[db-tokens] creditDbTopup failed:",
       err instanceof Error ? err.message : err,

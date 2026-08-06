@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS token_transactions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_token_tx_user      ON token_transactions (clerk_user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_token_tx_stripe_ev ON token_transactions (stripe_event_id) WHERE stripe_event_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_token_tx_stripe_ev ON token_transactions (stripe_event_id) WHERE stripe_event_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_token_tx_job       ON token_transactions (job_id) WHERE job_id IS NOT NULL;
 
 -- ── Jobs (stem separation requests) ─────────────────────────────────────────
