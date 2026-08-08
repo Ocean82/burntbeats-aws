@@ -287,7 +287,7 @@ export function useSubscription(): UseSubscriptionResult {
     ) => {
       if (localFullApp) return;
       const source = context?.source ?? "unknown";
-      const interval = context?.interval ?? "year";
+      const interval = context?.interval ?? "month";
       trackEvent("plan_selected", {
         plan: selectedPlan,
         source,
