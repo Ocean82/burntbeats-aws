@@ -24,15 +24,27 @@ function dashboardUrl(jobId) {
  * Idempotent — checks email_notified_at before sending.
  * Fire-and-forget: logs and swallows errors.
  * @param {string} jobId
+ * @param {{
+ *   getJobById?: typeof getJobById;
+ *   markJobEmailNotified?: typeof markJobEmailNotified;
+ *   getClerkClient?: typeof getClerkClient;
+ *   sendSongReadyEmail?: typeof sendSongReadyEmail;
+ *   sendErrorEmail?: typeof sendErrorEmail;
+ * }} [deps]
  */
-export async function sendStemCompletionEmail(jobId) {
+export async function sendStemCompletionEmail(jobId, deps = {}) {
   if (process.env.EMAIL_NOTIFICATIONS_ENABLED !== "true") {
     return;
   }
+  const readJob = deps.getJobById || getJobById;
+  const markNotified = deps.markJobEmailNotified || markJobEmailNotified;
+  const readClerkClient = deps.getClerkClient || getClerkClient;
+  const sendReady = deps.sendSongReadyEmail || sendSongReadyEmail;
+  const sendError = deps.sendErrorEmail || sendErrorEmail;
 
   let job;
   try {
-    job = await getJobById(jobId);
+    job = await readJob(jobId);
   } catch {
     return;
   }
@@ -43,7 +55,7 @@ export async function sendStemCompletionEmail(jobId) {
 
   let email = "";
   try {
-    const clerk = getClerkClient();
+    const clerk = readClerkClient();
     if (!clerk) {
       console.warn(`[stem-email] CLERK_SECRET_KEY not set; skipping notify for ${jobId}`);
       return;
@@ -52,13 +64,12 @@ export async function sendStemCompletionEmail(jobId) {
     email = clerkUser.emailAddresses?.[0]?.emailAddress ?? "";
     if (!email) {
       console.warn(`[stem-email] No email for user ${job.clerk_user_id}; skipping ${jobId}`);
-      await markJobEmailNotified(jobId, "no_email_on_clerk_user");
+      await markNotified(jobId, "no_email_on_clerk_user");
       return;
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[stem-email] Clerk lookup failed for ${job.clerk_user_id}: ${msg}`);
-    await markJobEmailNotified(jobId, `clerk_lookup_failed: ${msg}`);
     return;
   }
 
@@ -66,23 +77,28 @@ export async function sendStemCompletionEmail(jobId) {
   const url = dashboardUrl(jobId);
 
   try {
+    let sent = false;
     if (job.status === "completed") {
-      const result = await sendSongReadyEmail(email, filename, url);
+      const result = await sendReady(email, filename, url);
       if (!result.success) {
         console.warn(`[stem-email] sendSongReadyEmail skipped for ${jobId}:`, result.reason);
+        return;
       }
+      sent = true;
     } else if (job.status === "failed" && process.env.NOTIFY_ON_ERROR === "true") {
-      const result = await sendErrorEmail(email, filename, job.error_message || "Unknown error");
+      const result = await sendError(email, filename, job.error_message || "Unknown error");
       if (!result.success) {
         console.warn(`[stem-email] sendErrorEmail skipped for ${jobId}:`, result.reason);
+        return;
       }
+      sent = true;
     }
+    if (!sent) return;
 
-    await markJobEmailNotified(jobId);
+    await markNotified(jobId);
     console.log(`[stem-email] Notification sent for job ${jobId} (${job.status}) -> ${email}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[stem-email] Send failed for ${jobId}: ${msg}`);
-    await markJobEmailNotified(jobId, `send_failed: ${msg}`);
   }
 }

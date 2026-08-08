@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import { verifyClerkBearer } from "../clerkAuth.js";
+import { resolveEntitlementStateForUser } from "../billing/entitlements.js";
 import {
   createBeatPattern,
   deleteBeatPattern,
@@ -20,6 +21,26 @@ function authUserId(req) {
   return verifyClerkBearer(req);
 }
 
+function entitlementResolver(req) {
+  return req.app.locals.resolveEntitlementStateForUser ?? resolveEntitlementStateForUser;
+}
+
+function canUseBeatPatternCloudSync(entitlements) {
+  return entitlements?.plan === "premium" || entitlements?.plan === "studio";
+}
+
+async function requireBeatPatternCloudSync(req) {
+  const userId = await authUserId(req);
+  const entitlements = await entitlementResolver(req)(userId);
+  if (!canUseBeatPatternCloudSync(entitlements)) {
+    throw Object.assign(
+      new Error("Beat pattern cloud sync requires Premium or Studio."),
+      { status: 403 },
+    );
+  }
+  return userId;
+}
+
 /** @param {import("express").Request} req */
 function beatPatternDb(req) {
   return req.app.locals.beatPatternDb ?? {
@@ -32,7 +53,7 @@ function beatPatternDb(req) {
 
 beatPatternsRouter.get("/beat-patterns", async (req, res) => {
   try {
-    const userId = await authUserId(req);
+    const userId = await requireBeatPatternCloudSync(req);
     const patterns = await beatPatternDb(req).listBeatPatterns(userId);
     return res.json({ patterns });
   } catch (e) {
@@ -52,7 +73,7 @@ beatPatternsRouter.get("/beat-patterns", async (req, res) => {
 
 beatPatternsRouter.post("/beat-patterns", async (req, res) => {
   try {
-    const userId = await authUserId(req);
+    const userId = await requireBeatPatternCloudSync(req);
     const { name, preset, tags } = req.body ?? {};
     if (!name || typeof name !== "string" || !preset || typeof preset !== "object") {
       return res.status(400).json({ error: "name and preset are required" });
@@ -76,7 +97,7 @@ beatPatternsRouter.post("/beat-patterns", async (req, res) => {
 
 beatPatternsRouter.put("/beat-patterns/:id", async (req, res) => {
   try {
-    const userId = await authUserId(req);
+    const userId = await requireBeatPatternCloudSync(req);
     const { name, preset, tags } = req.body ?? {};
     const row = await beatPatternDb(req).updateBeatPattern(userId, req.params.id, {
       name: typeof name === "string" ? name.trim() : undefined,
@@ -98,7 +119,7 @@ beatPatternsRouter.put("/beat-patterns/:id", async (req, res) => {
 
 beatPatternsRouter.delete("/beat-patterns/:id", async (req, res) => {
   try {
-    const userId = await authUserId(req);
+    const userId = await requireBeatPatternCloudSync(req);
     const deleted = await beatPatternDb(req).deleteBeatPattern(userId, req.params.id);
     if (!deleted) return res.status(404).json({ error: "Pattern not found" });
     return res.status(204).send();
