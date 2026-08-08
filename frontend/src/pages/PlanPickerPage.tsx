@@ -17,6 +17,13 @@ const SINGLE_PACK = PACK_PLANS.find((p) => p.id === "single");
 const TOPUP_PACK = PACK_PLANS.find((p) => p.id === "topup");
 const STUDIO_PLAN = getPlansForType("subscriptions").find((p) => p.id === "studio");
 
+function withPlanPickerSeen(unsafeMetadata: unknown): Record<string, unknown> {
+  if (unsafeMetadata && typeof unsafeMetadata === "object" && !Array.isArray(unsafeMetadata)) {
+    return { ...unsafeMetadata, planPickerSeen: true };
+  }
+  return { planPickerSeen: true };
+}
+
 export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
   const { user } = useUser();
   const subscription = useSubscription();
@@ -26,20 +33,18 @@ export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
   const handleSelectPlan = async (planId: Plan) => {
     setLoading(planId);
     try {
-      await user?.update({ unsafeMetadata: { planPickerSeen: true } });
       await subscription.startCheckout(planId, {
         source: "plan_picker",
         intent: `picker_${planId}`,
         interval,
       });
-      onComplete();
-    } catch {
+    } finally {
       setLoading(null);
     }
   };
 
   const handleContinueFree = async () => {
-    await user?.update({ unsafeMetadata: { planPickerSeen: true } });
+    await user?.update({ unsafeMetadata: withPlanPickerSeen(user?.unsafeMetadata) });
     onComplete();
   };
 
