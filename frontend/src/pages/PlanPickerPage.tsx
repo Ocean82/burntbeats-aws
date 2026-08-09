@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUser } from "@clerk/react";
 import { useSubscription, type Plan } from "../hooks/useSubscription";
+import { clearPostSignupPlanIntent } from "../hooks/usePostSignupPlanCheckout";
 import {
   getPlansForType,
   PACK_PLANS,
@@ -39,6 +40,7 @@ export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
   };
 
   const handleContinueFree = async () => {
+    clearPostSignupPlanIntent();
     await user?.update({ unsafeMetadata: { planPickerSeen: true } });
     onComplete();
   };
