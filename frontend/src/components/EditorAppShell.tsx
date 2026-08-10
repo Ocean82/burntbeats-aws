@@ -86,8 +86,13 @@ export function EditorAppShell({
     }
     if (!firstSplitMarkedRef.current) {
       firstSplitMarkedRef.current = true;
-      void markFirstSplitComplete().catch(() => {});
-      window.dispatchEvent(new CustomEvent("burntbeats-first-split-complete"));
+      void markFirstSplitComplete()
+        .then(() => {
+          window.dispatchEvent(new CustomEvent("burntbeats-first-split-complete"));
+        })
+        .catch(() => {
+          firstSplitMarkedRef.current = false;
+        });
     }
   }, [firstRunMode, splitResultStems.length, phase, transitionTo]);
 
