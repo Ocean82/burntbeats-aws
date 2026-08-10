@@ -159,15 +159,15 @@ function AuthenticatedRoot() {
   const { user } = useUser();
   const [location] = useLocation();
 
-  useReferralAttach();
+  useEffect(() => {
+    if (isLoaded) setTokenProvider(() => getToken());
+  }, [isLoaded, getToken]);
 
   useEffect(() => {
     captureReferralFromUrl();
   }, []);
 
-  useEffect(() => {
-    if (isLoaded) setTokenProvider(() => getToken());
-  }, [isLoaded, getToken]);
+  useReferralAttach();
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
