@@ -144,6 +144,52 @@ export async function handleProxyError(e, res, logPrefix, usage) {
   return res.status(502).json({ error: message });
 }
 
+/**
+ * Handle a DB persistence failure after the worker service has accepted a job.
+ * Returning an accepted paid job without a DB row loses the terminal refund path,
+ * so compensate the reservation and fail the request while the user can retry.
+ * @param {{
+ *   res: import("express").Response,
+ *   error: unknown,
+ *   logPrefix: string,
+ *   usageReserved: boolean,
+ *   usageUserId: string | null,
+ *   usageCost: number,
+ *   mustPersistOwner: boolean,
+ *   refundTokens?: typeof refundUsageTokens,
+ * }} params
+ * @returns {Promise<import("express").Response | null>}
+ */
+export async function handleAcceptedJobPersistenceFailure({
+  res,
+  error,
+  logPrefix,
+  usageReserved,
+  usageUserId,
+  usageCost,
+  mustPersistOwner,
+  refundTokens = refundUsageTokens,
+}) {
+  console.error(
+    `${logPrefix} critical: failed to persist accepted job to DB:`,
+    error instanceof Error ? error.message : error,
+  );
+
+  if (usageReserved && usageUserId && usageCost > 0) {
+    try {
+      await refundTokens(usageUserId, usageCost);
+    } catch (refundErr) {
+      console.error(`${logPrefix} usage refund after DB failure failed:`, refundErr);
+    }
+  }
+
+  if (!mustPersistOwner) return null;
+
+  return res.status(502).json({
+    error: "Could not record your job. Please try again.",
+  });
+}
+
 // Re-export commonly used items so route modules can import from one place
 export {
   verifyClerkBearer,

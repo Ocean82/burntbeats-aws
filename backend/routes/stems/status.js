@@ -48,6 +48,49 @@ function prepareJobProgressResponse(data, job_id, baseUrl) {
   return out;
 }
 
+const TERMINAL_STATUSES = ["completed", "failed", "cancelled"];
+
+/**
+ * @param {unknown} status
+ * @returns {boolean}
+ */
+function isTerminalStemStatus(status) {
+  return typeof status === "string" && TERMINAL_STATUSES.includes(status);
+}
+
+/**
+ * Terminal statuses are cacheable only after the DB terminal transition succeeds.
+ * Otherwise a transient DB failure could cache the terminal payload and bypass
+ * the only polling path that triggers refunds, stem inserts, and notifications.
+ * @param {unknown} status
+ * @param {boolean} terminalTransitioned
+ * @param {number} [activeTtl]
+ * @returns {number | null}
+ */
+export function getStatusCacheTtl(status, terminalTransitioned, activeTtl = 2) {
+  if (!isTerminalStemStatus(status)) return activeTtl;
+  return terminalTransitioned ? 3600 : null;
+}
+
+/**
+ * @param {Awaited<ReturnType<typeof getRedis>> | null} redis
+ * @param {string} redisKey
+ * @param {Record<string, unknown>} data
+ * @param {Record<string, unknown>} clientData
+ * @param {boolean} terminalTransitioned
+ * @param {number} [activeTtl]
+ */
+async function cacheJobStatus(redis, redisKey, data, clientData, terminalTransitioned, activeTtl = 2) {
+  if (!redis) return;
+  const ttl = getStatusCacheTtl(data.status, terminalTransitioned, activeTtl);
+  if (ttl == null) return;
+  try {
+    await redis.set(redisKey, JSON.stringify(clientData), { EX: ttl });
+  } catch {
+    /* ignore cache write error */
+  }
+}
+
 export const statusRouter = Router();
 
 // ── GET /status/:job_id ──────────────────────────────────────────────────────
@@ -88,18 +131,9 @@ statusRouter.get(
     const baseUrl = getBaseUrl(req);
     const clientData = prepareJobProgressResponse(data, job_id, baseUrl);
 
-    // 3. Populate Redis cache
-    if (redis) {
-      try {
-        const terminal = ["completed", "failed", "cancelled"].includes(data.status);
-        const ttl = terminal ? 3600 : 2; // 1 hour for terminal, 2s for active
-        await redis.set(redisKey, JSON.stringify(clientData), { EX: ttl });
-      } catch { /* ignore cache write error */ }
-    }
-
     // Update DB job status on terminal states (best-effort, non-blocking)
-    const terminalStatuses = ["completed", "failed", "cancelled"];
-    if (terminalStatuses.includes(data.status)) {
+    let terminalTransitioned = false;
+    if (isTerminalStemStatus(data.status)) {
       // Atomically transition to terminal — only succeeds for the FIRST caller.
       // This prevents duplicate refunds, duplicate emails, and duplicate stem inserts
       // when the status endpoint is polled repeatedly.
@@ -109,11 +143,12 @@ statusRouter.get(
       }).catch(() => null);
 
       if (transitioned) {
+        terminalTransitioned = true;
         // First caller: run one-time actions (refund on failure, insert stems, send email)
         if ((data.status === "failed" || data.status === "cancelled") && !transitioned.is_sample) {
           const cost = Number(transitioned.token_cost) || 0;
           if (cost > 0 && transitioned.clerk_user_id) {
-            refundUsageTokens(transitioned.clerk_user_id, cost, { job_id, reason: `job_${data.status}` })
+            refundUsageTokens(transitioned.clerk_user_id, cost, { jobId: job_id, reason: `job_${data.status}` })
               .catch((err) => console.error(`[status] refund for ${job_id} failed:`, err.message));
             console.log(`[status] Refunded ${cost} tokens to ${transitioned.clerk_user_id} for ${data.status} job ${job_id}`);
           }
@@ -132,6 +167,7 @@ statusRouter.get(
     } else if (data.status === "processing") {
       updateJobStatus(job_id, "processing").catch(() => {});
     }
+    await cacheJobStatus(redis, redisKey, data, clientData, terminalTransitioned);
     res.json(clientData);
   },
 );
@@ -190,12 +226,6 @@ statusRouter.get(
       }
       const clientData = prepareJobProgressResponse(data, job_id, baseUrl);
 
-      if (redis) {
-        const terminal = ["completed", "failed", "cancelled"].includes(data.status);
-        const ttl = terminal ? 3600 : 5;
-        redis.set(redisKey, JSON.stringify(clientData), { EX: ttl }).catch(() => {});
-      }
-
       if (!res.writableEnded) {
         try {
           writeSseJson(res, clientData);
@@ -204,18 +234,19 @@ statusRouter.get(
         }
       }
 
-      const terminal = ["completed", "failed", "cancelled"];
-      if (terminal.includes(data.status)) {
+      let terminalTransitioned = false;
+      if (isTerminalStemStatus(data.status)) {
         const transitioned = await transitionToTerminal(job_id, data.status, {
           errorMessage: data.error || undefined,
           modelName: data.model || undefined,
         }).catch(() => null);
 
         if (transitioned) {
+          terminalTransitioned = true;
           if ((data.status === "failed" || data.status === "cancelled") && !transitioned.is_sample) {
             const cost = Number(transitioned.token_cost) || 0;
             if (cost > 0 && transitioned.clerk_user_id) {
-              refundUsageTokens(transitioned.clerk_user_id, cost, { job_id, reason: `job_${data.status}` })
+              refundUsageTokens(transitioned.clerk_user_id, cost, { jobId: job_id, reason: `job_${data.status}` })
                 .catch((err) => console.error(`[sse] refund for ${job_id} failed:`, err.message));
             }
           }
@@ -230,8 +261,10 @@ statusRouter.get(
           }
           sendStemCompletionEmail(job_id).catch(() => {});
         }
+        await cacheJobStatus(redis, redisKey, data, clientData, terminalTransitioned, 5);
         return true;
       }
+      await cacheJobStatus(redis, redisKey, data, clientData, false, 5);
       return false;
     }
 

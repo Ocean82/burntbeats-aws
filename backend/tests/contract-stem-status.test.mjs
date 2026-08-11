@@ -33,6 +33,7 @@ process.env.STEM_OUTPUT_DIR = stemOutputDir;
 
 const { app } = await import("../server.js");
 const { issueJobToken } = await import("../middleware/auth.js");
+const statusRouteModule = await import("../routes/stems/status.js");
 
 const jobToken = issueJobToken(JOB_ID);
 const request = supertest(app);
@@ -53,6 +54,14 @@ test("GET /api/stems/status/:job_id returns JobStatusResponse shape", async () =
   assert.equal(typeof res.body.stems[0].url, "string");
   assert.match(res.body.stems[0].url, /\/api\/stems\/file\//);
   assert.ok(!res.body.stems[0].url.includes("token="));
+});
+
+test("terminal status is cacheable only after terminal side effects succeed", () => {
+  assert.equal(typeof statusRouteModule.getStatusCacheTtl, "function");
+  assert.equal(statusRouteModule.getStatusCacheTtl("processing", false), 2);
+  assert.equal(statusRouteModule.getStatusCacheTtl("failed", false), null);
+  assert.equal(statusRouteModule.getStatusCacheTtl("cancelled", false), null);
+  assert.equal(statusRouteModule.getStatusCacheTtl("completed", true), 3600);
 });
 
 test.after(() => {

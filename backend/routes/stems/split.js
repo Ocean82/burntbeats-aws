@@ -21,6 +21,7 @@ import { proxyFormRequest } from "../../middleware/proxy.js";
 import { upload, MAX_UPLOAD_MB } from "../../middleware/upload.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 import { resolvePathWithinBase } from "../../helpers/safePath.js";
+import { getPool } from "../../db.js";
 
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
@@ -38,6 +39,7 @@ import {
   UPLOAD_TMP_DIR,
   usageErrorResponse,
   handleProxyError,
+  handleAcceptedJobPersistenceFailure,
 } from "./shared.js";
 import { stemServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
 import { parseSplitRequestBody } from "../../helpers/splitIntent.js";
@@ -256,6 +258,7 @@ splitRouter.post(
 
       if (data.statusCode === 202) {
         const jobId = data.data.job_id;
+        const mustPersistOwner = Boolean(usageUserId && getPool());
         // Record job in database (blocking, ensure persistence)
         try {
           await insertJob({
@@ -270,9 +273,16 @@ splitRouter.post(
             splitIntent: intent ?? null,
           });
         } catch (dbErr) {
-          console.error("[split] critical: failed to persist job to DB:", dbErr.message);
-          // If we reserved tokens but failed to record the job, we have a ledger mismatch.
-          // In a high-resilience system we might want to trigger a compensating refund here.
+          const handled = await handleAcceptedJobPersistenceFailure({
+            res,
+            error: dbErr,
+            logPrefix: "[split]",
+            usageReserved,
+            usageUserId,
+            usageCost,
+            mustPersistOwner,
+          });
+          if (handled) return handled;
         }
 
         // Mark as processing immediately (sets started_at)

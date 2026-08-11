@@ -49,6 +49,7 @@ const { app } = await import("../../../server.js");
 const { stemServiceClient, CircuitOpenError } = await import(
   "../../../lib/serviceClients.js"
 );
+const sharedRouteModule = await import("../shared.js");
 
 const request = supertest(app);
 
@@ -140,6 +141,45 @@ test("split.js — Property 1: CircuitOpenError → canonical 503", { timeout: 9
     ),
     { numRuns: 100 },
   );
+});
+
+test("accepted job persistence failure refunds reserved usage and returns 502", async () => {
+  assert.equal(
+    typeof sharedRouteModule.handleAcceptedJobPersistenceFailure,
+    "function",
+  );
+
+  const refundCalls = [];
+  const response = {
+    statusCode: 0,
+    body: null,
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    },
+  };
+
+  const result = await sharedRouteModule.handleAcceptedJobPersistenceFailure({
+    res: response,
+    error: new Error("database unavailable"),
+    logPrefix: "[split test]",
+    usageReserved: true,
+    usageUserId: "user_refund_test",
+    usageCost: 3,
+    mustPersistOwner: true,
+    refundTokens: async (userId, amount) => {
+      refundCalls.push({ userId, amount });
+    },
+  });
+
+  assert.equal(result, response);
+  assert.equal(response.statusCode, 502);
+  assert.equal(response.body.error, "Could not record your job. Please try again.");
+  assert.deepEqual(refundCalls, [{ userId: "user_refund_test", amount: 3 }]);
 });
 
 // ------------------------------------------------------------------
