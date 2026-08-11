@@ -57,6 +57,14 @@ const TEST_BYPASS_PREMIUM_ENTITLEMENTS =
 
 export const splitRouter = Router();
 
+/**
+ * @param {{ usageUserId: string | null, entitlementUserId: string | null }} params
+ * @returns {string | null}
+ */
+export function resolveSplitJobOwnerUserId({ usageUserId, entitlementUserId }) {
+  return usageUserId || entitlementUserId || null;
+}
+
 splitRouter.post(
   "/",
   authMiddleware,
@@ -258,12 +266,16 @@ splitRouter.post(
 
       if (data.statusCode === 202) {
         const jobId = data.data.job_id;
-        const mustPersistOwner = Boolean(usageUserId && getPool());
+        const jobOwnerUserId = resolveSplitJobOwnerUserId({
+          usageUserId,
+          entitlementUserId,
+        });
+        const mustPersistOwner = Boolean(jobOwnerUserId && getPool());
         // Record job in database (blocking, ensure persistence)
         try {
           await insertJob({
             jobId,
-            clerkUserId: usageUserId,
+            clerkUserId: jobOwnerUserId,
             stems: Number(stems),
             quality: quality || null,
             isSample: !!isSample,
