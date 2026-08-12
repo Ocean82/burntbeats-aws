@@ -81,7 +81,6 @@ function makePatternChain(): UsePatternChainReturn {
         id: "chain-entry-1",
         preset: {
           name: "Two Bar Pattern",
-          genre: "rock",
           bpm: 120,
           swing: 0,
           steps: 32,
