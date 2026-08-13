@@ -182,7 +182,7 @@ export async function startExpand(
     { job_id: jobId, quality: quality ?? "quality" },
     {
       headers: { ...jobTokenHeader(jobId) },
-      retry: { maxAttempts: 2, retryOn: [502, 503, 504] },
+      retry: false,
     },
   );
   if (result.error || !result.data) {
@@ -228,7 +228,7 @@ export async function serverExportMasterWav(request: ServerExportMasterRequest):
       },
       body: JSON.stringify(request),
     },
-    { maxAttempts: 2, retryOn: [502, 503, 504] },
+    { maxAttempts: 1 },
   );
 
   if (!res.ok) {
