@@ -7,20 +7,28 @@ const SESSION_DONE_KEY = "burnt-beats-first-run-done";
 /** True when the signed-in user has not finished their first successful split. */
 export function useFirstRunMode(): boolean {
   const { user, isLoaded } = useUser();
-  const [sessionDone, setSessionDone] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      sessionStorage.getItem(SESSION_DONE_KEY) === "true",
-  );
+  const userId = user?.id;
+  const sessionDoneKey = userId ? `${SESSION_DONE_KEY}:${userId}` : null;
+  const [completionVersion, setCompletionVersion] = useState(0);
 
   useEffect(() => {
     const onComplete = () => {
-      sessionStorage.setItem(SESSION_DONE_KEY, "true");
-      setSessionDone(true);
+      if (!sessionDoneKey) return;
+      sessionStorage.setItem(sessionDoneKey, "true");
+      setCompletionVersion((version) => version + 1);
     };
     window.addEventListener("burntbeats-first-split-complete", onComplete);
     return () => window.removeEventListener("burntbeats-first-split-complete", onComplete);
-  }, []);
+  }, [sessionDoneKey]);
+
+  const sessionDone = useMemo(() => {
+    void completionVersion;
+    return (
+      typeof window !== "undefined" &&
+      sessionDoneKey !== null &&
+      sessionStorage.getItem(sessionDoneKey) === "true"
+    );
+  }, [completionVersion, sessionDoneKey]);
 
   return useMemo(() => {
     if (sessionDone) return false;

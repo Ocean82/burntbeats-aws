@@ -8,15 +8,25 @@ export interface ReferralProfile {
   shareUrl: string;
 }
 
+export interface ReferralAttachResult {
+  ok: boolean;
+  status: number;
+  error: string | null;
+}
+
 export async function fetchReferralProfile(): Promise<ReferralProfile | null> {
   const result = await apiGet<ReferralProfile>("/api/referral/me");
   if (result.error || !result.data) return null;
   return result.data;
 }
 
-export async function attachReferralCode(code: string): Promise<boolean> {
+export async function attachReferralCode(code: string): Promise<ReferralAttachResult> {
   const result = await apiPost<{ ok: boolean }>("/api/referral/attach", { code });
-  return !result.error && result.data?.ok === true;
+  return {
+    ok: !result.error && result.data?.ok === true,
+    status: result.status,
+    error: result.error,
+  };
 }
 
 export async function markFirstSplitComplete(): Promise<void> {
