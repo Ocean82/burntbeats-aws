@@ -90,6 +90,20 @@ function headersFingerprint(headers?: Record<string, string>): string {
   return sorted.map(([k, v]) => `${k}:${v}`).join(";");
 }
 
+function isRetrySafeMethod(method: string): boolean {
+  return method === "GET" || method === "HEAD";
+}
+
+function retryConfigForMethod(
+  method: string,
+  options: ApiRequestOptions,
+): RetryConfig {
+  if (options.retry === false) return { maxAttempts: 1 };
+  if (options.retry) return { onRetry: options.onRetry, ...options.retry };
+  if (!isRetrySafeMethod(method)) return { maxAttempts: 1 };
+  return { onRetry: options.onRetry };
+}
+
 /** Get the API base URL (empty string for same-origin). */
 function getBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL || "";
@@ -178,10 +192,7 @@ export async function apiPostForm<T>(
     };
     // Don't set Content-Type for FormData — browser sets it with boundary
 
-    const retryConfig: RetryConfig | undefined =
-      options.retry === false
-        ? { maxAttempts: 1 }
-        : { onRetry: options.onRetry, ...(options.retry || {}) };
+    const retryConfig = retryConfigForMethod("POST", options);
 
     const response = await fetchWithRetry(
       url,
@@ -256,10 +267,7 @@ async function apiRequest<T>(
       init.body = JSON.stringify(body);
     }
 
-    const retryConfig: RetryConfig | undefined =
-      options.retry === false
-        ? { maxAttempts: 1 }
-        : { onRetry: options.onRetry, ...(options.retry || {}) };
+    const retryConfig = retryConfigForMethod(method, options);
 
     const response = await fetchWithRetry(url, init, retryConfig);
 
