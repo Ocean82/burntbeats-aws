@@ -78,12 +78,12 @@ export function PatternChainView({
       bpm,
       swing,
       steps: steps as import("../../audio/types").PatternLength,
-      canExportFullMidi: true,
+      canExportFullMidi,
     });
 
     const blob = exportNotesToMidi(notes, bpm, `Pattern Chain (${totalBars} bars)`);
     downloadMidiBlob(blob, "pattern-chain.mid");
-  }, [rowStates, kit, exportFlattened, totalBars]);
+  }, [rowStates, kit, exportFlattened, canExportFullMidi, totalBars]);
 
   const openChainInPianoRoll = useCallback(() => {
     const { pattern, bpm, swing, steps } = exportFlattened();
