@@ -13,6 +13,7 @@ import {
 import { proxyFormRequest } from "../../middleware/proxy.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { normalizeStemQuality } from "../../helpers/stemQuality.js";
+import { getPool } from "../../db.js";
 
 import {
   computeExpandCost,
@@ -27,6 +28,7 @@ import {
   findStemJobInputPath,
   usageErrorResponse,
   handleProxyError,
+  handleAcceptedJobPersistenceFailure,
 } from "./shared.js";
 import { stemServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
 import { requireExpandEntitlements } from "./entitlements.js";
@@ -112,17 +114,30 @@ expandRouter.post(
       );
       if (data.statusCode === 202) {
         const newJobId = data.data.job_id;
-        // Record expand job in database (non-blocking)
-        insertJob({
-          jobId: newJobId,
-          clerkUserId: usageUserId,
-          stems: 4, // expand always produces 4 stems
-          quality: quality || null,
-          isSample: false,
-          originalFilename: null,
-          durationSeconds: null,
-          tokenCost: usageCost,
-        }).catch((err) => console.error("[expand] db insertJob error:", err));
+        const mustPersistOwner = Boolean(usageUserId && getPool());
+        try {
+          await insertJob({
+            jobId: newJobId,
+            clerkUserId: usageUserId,
+            stems: 4, // expand always produces 4 stems
+            quality: quality || null,
+            isSample: false,
+            originalFilename: null,
+            durationSeconds: null,
+            tokenCost: usageCost,
+          });
+        } catch (dbErr) {
+          const handled = await handleAcceptedJobPersistenceFailure({
+            res,
+            error: dbErr,
+            logPrefix: "[expand]",
+            usageReserved,
+            usageUserId,
+            usageCost,
+            mustPersistOwner,
+          });
+          if (handled) return handled;
+        }
         const response = {
           job_id: newJobId,
           status: data.data.status ?? "accepted",
