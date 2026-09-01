@@ -4,6 +4,7 @@ import { PlanPickerPage } from "./PlanPickerPage";
 
 const mockUserUpdate = vi.fn();
 const mockStartCheckout = vi.fn();
+let mockUnsafeMetadata: Record<string, unknown> = {};
 
 vi.mock("@clerk/react", () => ({
   useUser: () => ({
@@ -11,7 +12,7 @@ vi.mock("@clerk/react", () => ({
     isSignedIn: true,
     user: {
       update: mockUserUpdate,
-      unsafeMetadata: {},
+      unsafeMetadata: mockUnsafeMetadata,
     },
   }),
 }));
@@ -38,6 +39,7 @@ describe("PlanPickerPage", () => {
   beforeEach(() => {
     mockUserUpdate.mockReset();
     mockStartCheckout.mockReset();
+    mockUnsafeMetadata = {};
   });
 
   it("renders hero subscription plans in the main grid", () => {
@@ -68,48 +70,41 @@ describe("PlanPickerPage", () => {
 
   it("calls user.update and onComplete when Continue with Free is clicked", async () => {
     const onComplete = vi.fn();
+    mockUnsafeMetadata = { firstSplitComplete: true };
     mockUserUpdate.mockResolvedValueOnce(undefined);
     render(<PlanPickerPage onComplete={onComplete} />);
     fireEvent.click(screen.getByText(/Continue with Free/));
     await waitFor(() => {
       expect(mockUserUpdate).toHaveBeenCalledWith({
-        unsafeMetadata: { planPickerSeen: true },
+        unsafeMetadata: { firstSplitComplete: true, planPickerSeen: true },
       });
       expect(onComplete).toHaveBeenCalledOnce();
     });
   });
 
-  it("calls user.update then startCheckout when a paid plan is selected", async () => {
-    mockUserUpdate.mockResolvedValueOnce(undefined);
+  it("starts checkout without marking the plan picker complete for paid plans", async () => {
     mockStartCheckout.mockResolvedValueOnce(undefined);
     render(<PlanPickerPage onComplete={vi.fn()} />);
     const premiumButton = screen.getByRole("button", { name: /Start Premium/ });
     fireEvent.click(premiumButton);
-    await waitFor(() => {
-      expect(mockUserUpdate).toHaveBeenCalledWith({
-        unsafeMetadata: { planPickerSeen: true },
-      });
-    });
-    expect(mockStartCheckout).toHaveBeenCalledWith("premium", {
+    await waitFor(() => expect(mockStartCheckout).toHaveBeenCalledWith("premium", {
       source: "plan_picker",
       intent: "picker_premium",
       interval: "month",
-    });
+    }));
+    expect(mockUserUpdate).not.toHaveBeenCalled();
   });
 
-  it("calls onComplete after a paid plan checkout resolves", async () => {
+  it("keeps the picker open when a paid plan checkout does not redirect", async () => {
     const onComplete = vi.fn();
-    mockUserUpdate.mockResolvedValueOnce(undefined);
     mockStartCheckout.mockResolvedValueOnce(undefined);
     render(<PlanPickerPage onComplete={onComplete} />);
     fireEvent.click(screen.getByRole("button", { name: /Start Premium/ }));
-    await waitFor(() => {
-      expect(onComplete).toHaveBeenCalledOnce();
-    });
+    await waitFor(() => expect(mockStartCheckout).toHaveBeenCalledOnce());
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   it("disables Continue with Free while a plan checkout is loading", async () => {
-    mockUserUpdate.mockResolvedValueOnce(undefined);
     mockStartCheckout.mockReturnValueOnce(new Promise(() => {}));
     render(<PlanPickerPage onComplete={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /Start Premium/ }));

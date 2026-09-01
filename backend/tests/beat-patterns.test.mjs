@@ -14,8 +14,20 @@ const { app } = await import("../server.js");
 app.locals.verifyClerkBearer = async (req) => {
   const authHeader = req.headers.authorization || "";
   if (authHeader === "Bearer token-owner") return "user-owner";
+  if (authHeader === "Bearer token-basic") return "user-basic";
   throw Object.assign(new Error("Missing auth token"), { status: 401 });
 };
+
+app.locals.resolveEntitlementStateForUser = async (userId) => ({
+  plan: userId === "user-owner" ? "premium" : "basic",
+  entitlementSource: userId === "user-owner" ? "subscription" : "usage_tokens",
+  capabilities: {
+    canSplitFourStems: userId === "user-owner",
+    canExpandToFourStems: userId === "user-owner",
+    canUsePremiumStemQualities: userId === "user-owner",
+    canUseBatchQueue: userId === "user-owner",
+  },
+});
 
 app.locals.beatPatternDb = {
   listBeatPatterns: async (userId) =>
@@ -58,6 +70,13 @@ const request = supertest(app);
 
 test("GET /api/beat-patterns requires auth", async () => {
   await request.get("/api/beat-patterns").expect(401);
+});
+
+test("GET /api/beat-patterns requires premium cloud-sync entitlement", async () => {
+  await request
+    .get("/api/beat-patterns")
+    .set("Authorization", "Bearer token-basic")
+    .expect(403);
 });
 
 test("POST and GET /api/beat-patterns round-trip for owner", async () => {
