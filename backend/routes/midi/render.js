@@ -9,8 +9,9 @@ import {
   requireUsageAuthPreUpload,
   issueJobToken,
   DEV_BYPASS_UPLOAD_AUTH,
+  validateJobTokenForRequest,
 } from "../../middleware/auth.js";
-import { requireJobOwnership } from "../../middleware/ownership.js";
+import { getJobOwner, requireJobOwnership } from "../../middleware/ownership.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
@@ -34,6 +35,55 @@ export const midiRenderRouter = Router();
 const MIDI_RENDER_TOKEN_COST = Math.ceil(
   Number(process.env.MIDI_RENDER_TOKEN_COST) || 2,
 );
+
+/**
+ * @param {string} message
+ * @param {number} status
+ * @returns {Error & { status: number }}
+ */
+function createHttpError(message, status) {
+  return Object.assign(new Error(message), { status });
+}
+
+/**
+ * Rendering from a saved MIDI conversion reads that source server-side, so the
+ * source job needs the same ownership boundary as direct MIDI downloads.
+ * @param {import("express").Request} req
+ * @param {string} sourceJobId
+ * @returns {Promise<string | null>}
+ */
+async function verifyRenderSourceAccess(req, sourceJobId) {
+  if (!isValidMidiJobId(sourceJobId)) {
+    throw createHttpError("Invalid source_job_id.", 400);
+  }
+
+  const testGetJobOwner = req.app?.locals?.getJobOwner;
+  const owner =
+    typeof testGetJobOwner === "function"
+      ? await testGetJobOwner(sourceJobId)
+      : await getJobOwner(sourceJobId);
+
+  if (!owner) {
+    const tokenResult = validateJobTokenForRequest(req, sourceJobId);
+    if (!tokenResult.ok) {
+      throw createHttpError(tokenResult.error, tokenResult.status);
+    }
+    return null;
+  }
+
+  const testVerifier = req.app?.locals?.verifyClerkBearer;
+  const authenticatedUserId =
+    /** @type {any} */ (req)._usageUserId ||
+    (typeof testVerifier === "function"
+      ? await testVerifier(req)
+      : await verifyClerkBearer(req));
+
+  if (authenticatedUserId !== owner) {
+    throw createHttpError("You do not have access to this MIDI source job.", 403);
+  }
+
+  return authenticatedUserId;
+}
 
 /**
  * POST /render — Submit a MIDI-to-audio render job.
@@ -65,9 +115,23 @@ midiRenderRouter.post(
         });
       }
 
+      if (body.source_job_id) {
+        try {
+          usageUserId = await verifyRenderSourceAccess(req, body.source_job_id);
+        } catch (e) {
+          const status =
+            e && typeof e === "object" && "status" in e && typeof e.status === "number"
+              ? e.status
+              : 401;
+          const message = e instanceof Error ? e.message : "Authentication required";
+          return res.status(status).json({ error: message });
+        }
+      }
+
       // Reserve usage tokens
       if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH) {
         usageUserId =
+          usageUserId ||
           /** @type {any} */ (req)._usageUserId ||
           (await verifyClerkBearer(req));
         if (usageUserId && usageCost > 0) {
@@ -177,10 +241,10 @@ midiRenderRouter.post(
 );
 
 /**
- * GET /render/status/:jobId — Poll render job status.
+ * GET /render/status/:job_id — Poll render job status.
  */
-midiRenderRouter.get("/status/:jobId", authMiddleware, requireJobOwnership, async (req, res) => {
-  const { jobId } = req.params;
+midiRenderRouter.get("/status/:job_id", authMiddleware, requireJobOwnership, async (req, res) => {
+  const { job_id: jobId } = req.params;
   if (!isValidMidiJobId(jobId)) {
     return res.status(400).json({ error: "Invalid job_id" });
   }
@@ -212,10 +276,10 @@ midiRenderRouter.get("/status/:jobId", authMiddleware, requireJobOwnership, asyn
 });
 
 /**
- * GET /render/file/:jobId — Download the rendered audio file.
+ * GET /render/file/:job_id — Download the rendered audio file.
  */
-midiRenderRouter.get("/file/:jobId", authMiddleware, requireJobOwnership, async (req, res) => {
-  const { jobId } = req.params;
+midiRenderRouter.get("/file/:job_id", authMiddleware, requireJobOwnership, async (req, res) => {
+  const { job_id: jobId } = req.params;
   if (!isValidMidiJobId(jobId)) {
     return res.status(400).json({ error: "Invalid job_id" });
   }
