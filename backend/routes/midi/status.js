@@ -11,11 +11,11 @@ import { authMiddleware } from "../../middleware/auth.js";
 import { requireJobOwnership } from "../../middleware/ownership.js";
 import { writeSseJson } from "../../helpers/sse.js";
 import {
-  MIDI_OUTPUT_DIR,
   MIDI_SERVICE_URL,
   resolveMidiJobPath,
   withMidiServiceAuthHeader,
 } from "./shared.js";
+import { finalizeMidiTerminalStatus } from "./refunds.js";
 
 export const midiStatusRouter = Router();
 
@@ -65,6 +65,14 @@ midiStatusRouter.get("/:job_id", authMiddleware, requireJobOwnership, async (req
 
   try {
     const data = await proxyMidiStatus(jobId);
+    await finalizeMidiTerminalStatus({
+      jobId,
+      status: data.data?.status,
+      errorMessage:
+        typeof data.data?.error === "string" ? data.data.error : undefined,
+      modelName:
+        typeof data.data?.model === "string" ? data.data.model : undefined,
+    });
     return res.status(data.statusCode).json(data.data);
   } catch (e) {
     console.error("[GET /api/midi/status] proxy error:", e?.message || e);
@@ -120,7 +128,16 @@ midiStatusRouter.get(
       }
 
       const terminal = ["completed", "failed", "cancelled"];
-      return terminal.includes(data.status);
+      const isTerminal = terminal.includes(data.status);
+      if (isTerminal) {
+        await finalizeMidiTerminalStatus({
+          jobId,
+          status: data.status,
+          errorMessage: typeof data.error === "string" ? data.error : undefined,
+          modelName: typeof data.model === "string" ? data.model : undefined,
+        });
+      }
+      return isTerminal;
     }
 
     try {
