@@ -42,6 +42,7 @@ import {
   cleanupTempStemFile,
   resolveStemAudioPath,
 } from "../../helpers/resolveStemAudio.js";
+import { refundReservedMidiUsage } from "./refunds.js";
 
 export const midiConvertRouter = Router();
 
@@ -267,6 +268,12 @@ midiConvertRouter.post(
       );
 
       if (statusCode !== 202 || !data?.job_id) {
+        await refundReservedMidiUsage({
+          usageReserved,
+          usageUserId,
+          usageCost,
+          logPrefix: "[midi/convert]",
+        });
         return res
           .status(502)
           .json({ error: "MIDI service did not accept the job" });
@@ -283,7 +290,7 @@ midiConvertRouter.post(
           isSample: false,
           originalFilename: req.file?.originalname || stemName || null,
           durationSeconds: null,
-          tokenCost: usageCost,
+          tokenCost: usageReserved ? usageCost : 0,
           splitIntent: null,
         });
       } catch (dbErr) {
@@ -294,14 +301,12 @@ midiConvertRouter.post(
           dbErr instanceof Error ? dbErr.message : dbErr,
         );
         if (mustPersistOwner) {
-          if (usageReserved && usageUserId && usageCost > 0) {
-            try {
-              const { refundUsageTokens } = await import("../../usageTokens.js");
-              await refundUsageTokens(usageUserId, usageCost);
-            } catch {
-              /* ignore refund errors */
-            }
-          }
+          await refundReservedMidiUsage({
+            usageReserved,
+            usageUserId,
+            usageCost,
+            logPrefix: "[midi/convert]",
+          });
           return res.status(502).json({
             error: "Could not record your job. Please try again.",
           });

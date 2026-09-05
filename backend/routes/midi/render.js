@@ -16,8 +16,8 @@ import { verifyClerkBearer } from "../../clerkAuth.js";
 import {
   isUsageTokensEnabled,
   reserveUsageTokens,
-  refundUsageTokens,
 } from "../../usageTokens.js";
+import { getPool } from "../../db.js";
 import { insertJob } from "../../db-jobs.js";
 
 import {
@@ -27,6 +27,10 @@ import {
   handleMidiProxyError,
   isValidMidiJobId,
 } from "./shared.js";
+import {
+  finalizeMidiTerminalStatus,
+  refundReservedMidiUsage,
+} from "./refunds.js";
 
 export const midiRenderRouter = Router();
 
@@ -111,9 +115,12 @@ midiRenderRouter.post(
           detail = errText;
         }
         // Refund if MIDI service rejected
-        if (usageReserved && usageUserId && usageCost > 0) {
-          await refundUsageTokens(usageUserId, usageCost).catch(() => {});
-        }
+        await refundReservedMidiUsage({
+          usageReserved,
+          usageUserId,
+          usageCost,
+          logPrefix: "[midi/render]",
+        });
         return res.status(serviceRes.status).json({
           error: detail?.detail || detail || "MIDI render service error",
         });
@@ -123,9 +130,12 @@ midiRenderRouter.post(
       const jobId = data.job_id;
 
       if (!jobId) {
-        if (usageReserved && usageUserId && usageCost > 0) {
-          await refundUsageTokens(usageUserId, usageCost).catch(() => {});
-        }
+        await refundReservedMidiUsage({
+          usageReserved,
+          usageUserId,
+          usageCost,
+          logPrefix: "[midi/render]",
+        });
         return res
           .status(502)
           .json({ error: "MIDI service did not return a job_id" });
@@ -139,6 +149,7 @@ midiRenderRouter.post(
           // Non-fatal
         }
       }
+      const mustPersistOwner = Boolean(usageUserId && getPool());
       try {
         await insertJob({
           jobId,
@@ -148,11 +159,27 @@ midiRenderRouter.post(
           isSample: false,
           originalFilename: "midi-render",
           durationSeconds: null,
-          tokenCost: usageCost,
+          tokenCost: usageReserved ? usageCost : 0,
           splitIntent: null,
         });
       } catch (dbErr) {
-        console.error("[midi/render] failed to persist job to DB:", dbErr);
+        console.error(
+          mustPersistOwner
+            ? "[midi/render] critical: failed to persist job to DB:"
+            : "[midi/render] failed to persist job to DB:",
+          dbErr instanceof Error ? dbErr.message : dbErr,
+        );
+        if (mustPersistOwner) {
+          await refundReservedMidiUsage({
+            usageReserved,
+            usageUserId,
+            usageCost,
+            logPrefix: "[midi/render]",
+          });
+          return res.status(502).json({
+            error: "Could not record your job. Please try again.",
+          });
+        }
       }
 
       const baseUrl = getBaseUrl(req);
@@ -204,6 +231,12 @@ midiRenderRouter.get("/status/:jobId", authMiddleware, requireJobOwnership, asyn
     }
 
     const data = await serviceRes.json();
+    await finalizeMidiTerminalStatus({
+      jobId,
+      status: data.status,
+      errorMessage: typeof data.error === "string" ? data.error : undefined,
+      modelName: typeof data.model === "string" ? data.model : undefined,
+    });
     return res.json(data);
   } catch (e) {
     console.error("[GET /api/midi/render/status] error:", e);
