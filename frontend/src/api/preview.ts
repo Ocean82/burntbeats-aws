@@ -2,7 +2,7 @@
  * Shareable audio preview generation (watermarked or clean per entitlements).
  */
 import { API_BASE } from "../config";
-import { authHeaders } from "./auth";
+import { authHeaders, jobTokenHeader } from "./auth";
 import { downloadBlob } from "../utils/downloadHelper";
 import { apiPost } from "./client";
 
@@ -14,8 +14,16 @@ export interface PreviewGenerateResponse {
   download_url: string;
 }
 
+function jobIdFromPreviewId(previewId: string): string {
+  return previewId.split("_")[0] ?? "";
+}
+
 export async function generatePreview(jobId: string): Promise<PreviewGenerateResponse> {
-  const result = await apiPost<PreviewGenerateResponse>("/api/preview/generate", { job_id: jobId });
+  const result = await apiPost<PreviewGenerateResponse>(
+    "/api/preview/generate",
+    { job_id: jobId },
+    { headers: jobTokenHeader(jobId) },
+  );
   if (result.error || !result.data) {
     throw new Error(result.error || "Preview generation failed");
   }
@@ -26,8 +34,9 @@ export async function downloadPreview(
   previewId: string,
   filename: string,
 ): Promise<void> {
+  const jobId = jobIdFromPreviewId(previewId);
   const res = await fetch(`${API_BASE}/api/preview/${previewId}/download`, {
-    headers: await authHeaders(),
+    headers: { ...(await authHeaders()), ...jobTokenHeader(jobId) },
   });
   if (!res.ok) throw new Error("Preview download failed");
   const blob = await res.blob();

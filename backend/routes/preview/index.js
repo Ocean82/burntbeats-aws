@@ -8,9 +8,9 @@ import { existsSync, unlink } from "fs";
 import { access, mkdir, readFile, stat, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
-import { randomUUID } from "crypto";
 
 import { authMiddleware } from "../../middleware/auth.js";
+import { authorizeJobAccess } from "../../middleware/ownership.js";
 import { verifyClerkBearer } from "../../clerkAuth.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { resolvePathWithinBase } from "../../helpers/safePath.js";
@@ -100,6 +100,11 @@ previewRouter.post("/generate", authMiddleware, async (req, res) => {
 
   if (!jobId || !UUID_REGEX.test(jobId)) {
     return res.status(400).json({ error: "Invalid or missing job_id" });
+  }
+
+  const access = await authorizeJobAccess(req, jobId);
+  if (!access.ok) {
+    return res.status(access.status).json({ error: access.error });
   }
 
   const inputPath = resolvePreviewInputPath(jobId);
@@ -219,6 +224,18 @@ previewRouter.get("/:preview_id/download", authMiddleware, async (req, res) => {
   }
 
   const meta = JSON.parse(await readFile(metaPath, "utf-8"));
+  const jobId =
+    typeof meta.job_id === "string" ? meta.job_id : previewId.split("_")[0];
+  if (!jobId || !UUID_REGEX.test(jobId)) {
+    return res.status(400).json({ error: "Invalid preview metadata" });
+  }
+  const accessResult = await authorizeJobAccess(req, jobId);
+  if (!accessResult.ok) {
+    return res
+      .status(accessResult.status)
+      .json({ error: accessResult.error });
+  }
+
   const expectedFile = `audio_${previewId}.mp3`;
   const metaFile =
     typeof meta.file === "string" ? path.basename(meta.file) : "";
