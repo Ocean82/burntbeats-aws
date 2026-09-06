@@ -37,6 +37,38 @@ function sanitizePartialState(update: Partial<AppState>): Partial<AppState> {
   return sanitized;
 }
 
+function revokeLoadedStemUrls(loadedStems: AppState["loadedStems"]): void {
+  if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
+  for (const stem of loadedStems) {
+    if (stem.url.startsWith("blob:")) URL.revokeObjectURL(stem.url);
+  }
+}
+
+function emptySplitSessionState(): Partial<AppState> {
+  return {
+    splitIntent: DEFAULT_SPLIT_INTENT,
+    uploadName: "",
+    uploadedFile: null,
+    splitResultStems: [],
+    splitJobId: null,
+    loadedStems: [],
+    splitError: null,
+    isSample: false,
+    isDragging: false,
+    isSplitting: false,
+    isExpanding: false,
+    splitProgress: 0,
+    uploadProgress: 0,
+    isUploading: false,
+    pipelineIndex: 0,
+    beatGrid: null,
+    queuePosition: null,
+    jobsAhead: null,
+    splitElapsedSeconds: null,
+    splitStageLabel: null,
+  };
+}
+
 export interface AppState {
   splitIntent: SplitIntent;
   quality: SplitQuality;
@@ -79,6 +111,7 @@ export interface AppState {
 
   setUploadState: (update: Partial<AppState> | ((prev: AppState) => Partial<AppState>)) => void;
   setSplitError: (msg: string | null) => void;
+  resetSplitSession: () => void;
   setMasterLimiterEnabled: (enabled: boolean) => void;
   setGlobalBpm: (bpm: number) => void;
   setGlobalPitchSemitones: (semitones: number) => void;
@@ -120,6 +153,11 @@ export const useAppStore = create<AppState>((set) => ({
       return sanitizePartialState(next);
     }),
   setSplitError: (msg) => set({ splitError: msg }),
+  resetSplitSession: () =>
+    set((state) => {
+      revokeLoadedStemUrls(state.loadedStems);
+      return emptySplitSessionState();
+    }),
   setMasterLimiterEnabled: (enabled) => set({ masterLimiterEnabled: enabled }),
   setGlobalBpm: (bpm) => set({ globalBpm: Math.max(40, Math.min(300, bpm)) }),
   setGlobalPitchSemitones: (semitones) => set({ globalPitchSemitones: Math.max(-12, Math.min(12, semitones)) }),

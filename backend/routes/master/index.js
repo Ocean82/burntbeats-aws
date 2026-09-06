@@ -10,6 +10,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 
 import { authMiddleware } from "../../middleware/auth.js";
+import { authorizeJobAccess } from "../../middleware/ownership.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import {
   resolvePathUnderAllowedBases,
@@ -103,10 +104,17 @@ masterRouter.post("/render", authMiddleware, async (req, res) => {
   const body = req.body || {};
   const jobId = typeof body.job_id === "string" ? body.job_id : "";
   const presetId = typeof body.preset_id === "string" ? body.preset_id : "";
-  const inputPathRaw =
-    typeof body.input_path === "string" ? body.input_path : undefined;
   const source =
     typeof body.source === "string" ? body.source.toLowerCase() : "auto";
+
+  if (!jobId || !UUID_REGEX.test(jobId)) {
+    return res.status(400).json({ error: "Invalid or missing job_id (UUID)." });
+  }
+
+  const access = await authorizeJobAccess(req, jobId);
+  if (!access.ok) {
+    return res.status(access.status).json({ error: access.error });
+  }
 
   if (!presetId) {
     return res.status(400).json({ error: "Missing preset_id" });
@@ -117,7 +125,7 @@ masterRouter.post("/render", authMiddleware, async (req, res) => {
     return res.status(400).json({ error: `Unknown preset_id: ${presetId}` });
   }
 
-  const inputPath = resolveMasterInputPath(inputPathRaw, jobId, source);
+  const inputPath = resolveMasterInputPath(undefined, jobId, source);
   if (!inputPath) {
     return res.status(400).json({
       error:
