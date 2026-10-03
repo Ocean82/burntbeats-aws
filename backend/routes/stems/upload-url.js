@@ -1,12 +1,15 @@
 // @ts-check
 import { Router } from "express";
 import { randomUUID } from "crypto";
-import { authMiddleware } from "../../middleware/auth.js";
+import {
+  authMiddleware,
+  requireUsageAuthPreUpload,
+} from "../../middleware/auth.js";
 import { presignStemPutUrl } from "../../s3Presign.js";
 
 export const uploadUrlRouter = Router();
 
-uploadUrlRouter.post("/", authMiddleware, async (req, res) => {
+uploadUrlRouter.post("/", authMiddleware, requireUsageAuthPreUpload, async (req, res) => {
   const bucket = process.env.S3_UPLOAD_BUCKET;
   if (!bucket) {
     return res.status(501).json({ error: "S3 upload not configured on server" });
