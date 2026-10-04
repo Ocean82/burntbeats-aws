@@ -8,7 +8,7 @@ import { getClerkClient } from "../clerkAuth.js";
 import { getRedis } from "../stripeRedis.js";
 import { isDbTokensAvailable, creditDbSubscription, creditDbTopup } from "../db-tokens.js";
 import { withUserUsageLock } from "./tokenBalance.js";
-import { subscriptionBillingPeriod, tokensPerMonthFromPrice } from "./stripeMetadata.js";
+import { subscriptionBillingPeriod, subscriptionTokenGrantFromPrice } from "./stripeMetadata.js";
 import { updateClerkBalanceCache } from "./clerkCache.js";
 
 /**
@@ -25,7 +25,7 @@ function pruneProcessedCreditEvents(m) {
 }
 
 /**
- * Idempotent monthly credit from Stripe subscription (same period not credited twice).
+ * Idempotent billing-period credit from Stripe subscription (same period not credited twice).
  * Uses optional Redis lock per (user, billing period) for multi-worker safety, plus
  * Clerk metadata for period + optional Stripe event id deduplication.
  *
@@ -46,7 +46,7 @@ export async function creditSubscriptionAllowance(
     const priceId = item?.price?.id;
     if (!priceId) return;
     const price = await stripe.prices.retrieve(priceId);
-    const grant = tokensPerMonthFromPrice(price);
+    const grant = subscriptionTokenGrantFromPrice(price, sub);
     if (!Number.isFinite(grant) || grant <= 0) return;
     const dbResult = await creditDbSubscription(clerkUserId, grant, {
       periodStart: typeof periodStart === "number" ? periodStart : undefined,
@@ -126,7 +126,7 @@ export async function creditSubscriptionAllowance(
     const priceId = item?.price?.id;
     if (!priceId) return;
     const price = await stripe.prices.retrieve(priceId);
-    const grant = tokensPerMonthFromPrice(price);
+    const grant = subscriptionTokenGrantFromPrice(price, sub);
     const periodEndMs =
       periodEnd != null && typeof periodEnd === "number"
         ? periodEnd * 1000
