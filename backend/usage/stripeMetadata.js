@@ -47,6 +47,46 @@ export function tokensPerMonthFromPrice(price) {
 }
 
 /**
+ * Subscription grant for the current Stripe billing period.
+ * Price metadata stores a monthly allowance; annual subscriptions need the
+ * full period allowance because Stripe only invoices the annual period once.
+ * @param {import("stripe").Stripe.Price} price
+ * @param {import("stripe").Stripe.Subscription} sub
+ */
+export function subscriptionTokenGrantFromPrice(price, sub) {
+  const monthlyGrant = tokensPerMonthFromPrice(price);
+  if (!Number.isFinite(monthlyGrant) || monthlyGrant <= 0) return monthlyGrant;
+  return monthlyGrant * subscriptionPeriodMonths(price, sub);
+}
+
+/**
+ * @param {import("stripe").Stripe.Price} price
+ * @param {import("stripe").Stripe.Subscription} sub
+ * @returns {number}
+ */
+function subscriptionPeriodMonths(price, sub) {
+  const interval = price?.recurring?.interval;
+  const rawCount = Number(price?.recurring?.interval_count);
+  const intervalCount =
+    Number.isFinite(rawCount) && rawCount > 0 ? Math.floor(rawCount) : 1;
+
+  if (interval === "year") return intervalCount * 12;
+  if (interval === "month") return intervalCount;
+
+  const { periodStart, periodEnd } = subscriptionBillingPeriod(sub);
+  if (
+    typeof periodStart === "number" &&
+    typeof periodEnd === "number" &&
+    periodEnd > periodStart
+  ) {
+    const secondsPerMonth = 30 * 24 * 60 * 60;
+    return Math.max(1, Math.round((periodEnd - periodStart) / secondsPerMonth));
+  }
+
+  return 1;
+}
+
+/**
  * One-time top-up grant from Stripe Price metadata.
  * Accepts dedicated top-up key first, then monthly key as fallback.
  * @param {import("stripe").Stripe.Price} price
