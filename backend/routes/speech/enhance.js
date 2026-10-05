@@ -22,6 +22,7 @@ import {
   computeSplitCost,
   getAudioDurationSeconds,
   isUsageTokensEnabled,
+  refundUsageTokens,
   reserveUsageTokens,
 } from "../../usageTokens.js";
 import { isProxyHttpError } from "../../middleware/proxy.js";
@@ -120,6 +121,17 @@ enhanceRouter.post(
       );
 
       if (statusCode !== 202 || !data?.job_id) {
+        if (usageReserved && usageUserId && usageCost > 0) {
+          try {
+            await refundUsageTokens(usageUserId, usageCost);
+            usageReserved = false;
+          } catch (refundErr) {
+            console.error(
+              "[speech/enhance] usage refund after service reject failed:",
+              refundErr instanceof Error ? refundErr.message : refundErr,
+            );
+          }
+        }
         return res.status(502).json({ error: "Speech service did not accept the job" });
       }
 
@@ -147,7 +159,6 @@ enhanceRouter.post(
         if (mustPersistOwner) {
           if (usageReserved && usageUserId && usageCost > 0) {
             try {
-              const { refundUsageTokens } = await import("../../usageTokens.js");
               await refundUsageTokens(usageUserId, usageCost);
             } catch {
               /* ignore refund errors */
@@ -173,7 +184,6 @@ enhanceRouter.post(
     } catch (e) {
       if (usageReserved && usageUserId && usageCost > 0) {
         try {
-          const { refundUsageTokens } = await import("../../usageTokens.js");
           await refundUsageTokens(usageUserId, usageCost);
         } catch {
           /* ignore refund errors */
