@@ -65,7 +65,7 @@
     "input-otp": "^1.4.2",
     "jszip": "^3.10.1",
     "lamejs": "^1.2.1",
-    "lucide-react": "^1.22.0",
+    "lucide-react": "^1.27.0",
     "midi-writer-js": "^3.1.1",
     "pitch-plugin": "file:./src/components/multi-stem-editor/pitch-tempo-plugin",
     "react": "19.2.3",
