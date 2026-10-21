@@ -225,6 +225,7 @@ export async function serverExportMasterWav(request: ServerExportMasterRequest):
       headers: {
         "Content-Type": "application/json",
         ...(await authHeaders()),
+        ...jobTokenHeader(request.job_id),
       },
       body: JSON.stringify(request),
     },

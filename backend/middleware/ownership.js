@@ -48,6 +48,52 @@ async function verifyOwner(req) {
 }
 
 /**
+ * Check whether the current request may access a job.
+ *
+ * DB-owned jobs require Clerk auth for the same user. Legacy jobs without a DB
+ * owner fall back to the signed job token, matching file/status route behavior.
+ *
+ * @param {import("express").Request} req
+ * @param {string} jobId
+ * @returns {Promise<{ ok: true } | { ok: false; status: number; error: string }>}
+ */
+export async function authorizeJobAccess(req, jobId) {
+  if (!jobId) {
+    return { ok: false, status: 400, error: "Missing job_id." };
+  }
+
+  const testGetJobOwner = req.app?.locals?.getJobOwner;
+  const owner =
+    typeof testGetJobOwner === "function"
+      ? await testGetJobOwner(jobId)
+      : await getJobOwner(jobId);
+
+  if (!owner) {
+    const tokenResult = validateJobTokenForRequest(req, jobId);
+    if (!tokenResult.ok) return tokenResult;
+    return { ok: true };
+  }
+
+  try {
+    const authenticatedUserId = await verifyOwner(req);
+    if (authenticatedUserId !== owner) {
+      return {
+        ok: false,
+        status: 403,
+        error: "You do not have access to this job.",
+      };
+    }
+    return { ok: true };
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e && typeof e.status === "number"
+        ? e.status
+        : 401;
+    return { ok: false, status, error: "Authentication required" };
+  }
+}
+
+/**
  * Express middleware: enforce job ownership when the DB has a known owner,
  * falling back to job token when the job has no DB record or no owner.
  *
@@ -58,38 +104,8 @@ async function verifyOwner(req) {
  * @param {import("express").NextFunction} next
  */
 export async function requireJobOwnership(req, res, next) {
-  const jobId = req.params.job_id;
-  if (!jobId) {
-    return res.status(400).json({ error: "Missing job_id." });
-  }
-
-  const testGetJobOwner = req.app?.locals?.getJobOwner;
-  const owner =
-    typeof testGetJobOwner === "function"
-      ? await testGetJobOwner(jobId)
-      : await getJobOwner(jobId);
-
-  // No DB owner → fall back to job token
-  if (!owner) {
-    const tokenResult = validateJobTokenForRequest(req, jobId);
-    if (!tokenResult.ok) {
-      return res.status(tokenResult.status).json({ error: tokenResult.error });
-    }
-    return next();
-  }
-
-  // DB has an owner → require Clerk auth matching that owner
-  try {
-    const authenticatedUserId = await verifyOwner(req);
-    if (authenticatedUserId !== owner) {
-      return res.status(403).json({ error: "You do not have access to this job." });
-    }
-    return next();
-  } catch (e) {
-    const status =
-      e && typeof e === "object" && "status" in e && typeof e.status === "number"
-        ? e.status
-        : 401;
-    return res.status(status).json({ error: "Authentication required" });
-  }
+  const jobId = req.params.job_id || (req.body && req.body.job_id);
+  const result = await authorizeJobAccess(req, jobId);
+  if (!result.ok) return res.status(result.status).json({ error: result.error });
+  return next();
 }

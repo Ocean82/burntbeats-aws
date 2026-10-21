@@ -13,6 +13,7 @@ import { spawn } from "child_process";
 import { randomUUID } from "crypto";
 
 import { authMiddleware } from "../../middleware/auth.js";
+import { authorizeJobAccess } from "../../middleware/ownership.js";
 import { serverExportRateLimitMiddleware } from "../../middleware/rateLimiter.js";
 import { UUID_REGEX } from "../../helpers/validation.js";
 import { resolvePathWithinBase } from "../../helpers/safePath.js";
@@ -59,6 +60,11 @@ serverExportRouter.post(
       return res
         .status(400)
         .json({ error: "Invalid or missing job_id (UUID)." });
+    }
+
+    const access = await authorizeJobAccess(req, jobId);
+    if (!access.ok) {
+      return res.status(access.status).json({ error: access.error });
     }
 
     const uploadNameRaw =
@@ -250,7 +256,7 @@ serverExportRouter.post(
             resolve(code ?? 1);
           });
         });
-      } catch (timeoutErr) {
+      } catch {
         console.error(
           "[POST /api/stems/server-export] timeout after %dms",
           exportTimeoutMs,

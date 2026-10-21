@@ -8,12 +8,13 @@
  * so the app doesn't re-trigger on refresh.
  */
 import { useAuth, useUser } from "@clerk/react";
-import { lazy, Suspense, useEffect, useState, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Route, Switch, useLocation } from "wouter";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { setTokenProvider } from "./api";
 import { isLocalDevFullApp } from "./config";
+import { useAppStore } from "./store/appStore";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { trackCheckoutReturnedOnce } from "./analytics/checkoutTracking";
 import { trackSignupCompletedOnce } from "./analytics/signupTracking";
@@ -48,6 +49,9 @@ const WorkflowProvider = lazy(() =>
     default: m.WorkflowProvider,
   })),
 );
+
+export const WORKSPACE_SPLIT_RESULT_KEY = "burnt-beats-split-result";
+export const WORKSPACE_AUTH_USER_KEY = "burntbeats-workspace-user-id";
 
 /** Shown while Clerk loads session — avoids a blank screen (perceived hang). */
 function ClerkLoadingShell() {
@@ -107,6 +111,93 @@ function PlanPickerGate({ children }: { children: React.ReactNode }) {
   );
 }
 
+interface ReconcileWorkspaceAuthSessionArgs {
+  isLoaded: boolean;
+  isSignedIn: boolean;
+  userId: string | null | undefined;
+  previousUserId: string | null;
+  storage?: Storage | null;
+  resetSplitSession: () => void;
+}
+
+export function reconcileWorkspaceAuthSession({
+  isLoaded,
+  isSignedIn,
+  userId,
+  previousUserId,
+  storage,
+  resetSplitSession,
+}: ReconcileWorkspaceAuthSessionArgs): string | null {
+  if (!isLoaded) return previousUserId;
+
+  const activeStorage =
+    storage ?? (typeof window !== "undefined" ? window.sessionStorage : null);
+
+  function removePersistedWorkspace() {
+    try {
+      activeStorage?.removeItem(WORKSPACE_SPLIT_RESULT_KEY);
+      activeStorage?.removeItem(WORKSPACE_AUTH_USER_KEY);
+    } catch {
+      // Storage can be unavailable in private modes; in-memory reset is still enough for user switches.
+    }
+  }
+
+  if (!isSignedIn || !userId) {
+    resetSplitSession();
+    removePersistedWorkspace();
+    return null;
+  }
+
+  let knownUserId = previousUserId;
+  let hasPersistedWorkspace = false;
+  try {
+    knownUserId = knownUserId ?? activeStorage?.getItem(WORKSPACE_AUTH_USER_KEY) ?? null;
+    hasPersistedWorkspace = activeStorage?.getItem(WORKSPACE_SPLIT_RESULT_KEY) !== null;
+  } catch {
+    knownUserId = knownUserId ?? null;
+  }
+
+  if ((knownUserId && knownUserId !== userId) || (!knownUserId && hasPersistedWorkspace)) {
+    resetSplitSession();
+    try {
+      activeStorage?.removeItem(WORKSPACE_SPLIT_RESULT_KEY);
+    } catch {
+      // Ignore storage failures; the app store has already been cleared.
+    }
+  }
+
+  try {
+    activeStorage?.setItem(WORKSPACE_AUTH_USER_KEY, userId);
+  } catch {
+    // Non-persistent storage should not block the signed-in app.
+  }
+
+  return userId;
+}
+
+function useWorkspaceAuthSessionBoundary({
+  isLoaded,
+  isSignedIn,
+  userId,
+}: {
+  isLoaded: boolean;
+  isSignedIn: boolean;
+  userId: string | null | undefined;
+}) {
+  const previousUserIdRef = useRef<string | null>(null);
+  const resetSplitSession = useAppStore((s) => s.resetSplitSession);
+
+  useEffect(() => {
+    previousUserIdRef.current = reconcileWorkspaceAuthSession({
+      isLoaded,
+      isSignedIn,
+      userId,
+      previousUserId: previousUserIdRef.current,
+      resetSplitSession,
+    });
+  }, [isLoaded, isSignedIn, resetSplitSession, userId]);
+}
+
 function SignedInAppTree({
   shouldSkipPlanPicker = false,
 }: {
@@ -158,6 +249,9 @@ function AuthenticatedRoot() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
   const { user } = useUser();
   const [location] = useLocation();
+  const userId = user?.id ?? null;
+
+  useWorkspaceAuthSessionBoundary({ isLoaded, isSignedIn: !!isSignedIn, userId });
 
   useReferralAttach();
 
