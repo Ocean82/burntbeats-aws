@@ -7,6 +7,8 @@ import { UUID_REGEX } from "../helpers/validation.js";
 
 const JOB_TOKEN_TTL_MS =
   Number(process.env.JOB_TOKEN_TTL_MS) || 60 * 60 * 1000; // 1 hour default
+const UPLOAD_TOKEN_TTL_MS =
+  Number(process.env.S3_UPLOAD_TOKEN_TTL_MS) || 15 * 60 * 1000; // 15 minutes default
 
 const DEV_BYPASS_UPLOAD_AUTH =
   process.env.NODE_ENV !== "production" &&
@@ -78,6 +80,70 @@ export function validateJobTokenForRequest(req, jobId) {
   const verified = verifyJobToken(/** @type {string} */ (token), secret);
   if (!verified || verified !== jobId) {
     return { ok: false, status: 401, error: "Missing or invalid job token." };
+  }
+  return { ok: true };
+}
+
+function getUploadTokenSecret() {
+  return process.env.S3_UPLOAD_TOKEN_SECRET || process.env.JOB_TOKEN_SECRET || "";
+}
+
+/**
+ * Issue a short-lived capability token for a server-generated S3 upload key.
+ * @param {string} s3Key
+ * @returns {string | null}
+ */
+export function issueUploadToken(s3Key) {
+  const secret = getUploadTokenSecret();
+  if (!secret || !s3Key) return null;
+  const expiresAt = Date.now() + UPLOAD_TOKEN_TTL_MS;
+  const payload = `${s3Key}.${expiresAt}`;
+  const sig = createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${expiresAt}.${sig}`;
+}
+
+/**
+ * Verify an upload token for the exact S3 key it authorizes.
+ * @param {string} token
+ * @param {string} s3Key
+ * @returns {boolean}
+ */
+export function verifyUploadToken(token, s3Key) {
+  const secret = getUploadTokenSecret();
+  if (!secret || !token || !s3Key) return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [expiresAtStr, sig] = parts;
+  const expiresAt = Number(expiresAtStr);
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) return false;
+  const payload = `${s3Key}.${expiresAtStr}`;
+  const expected = createHmac("sha256", secret)
+    .update(payload)
+    .digest("base64url");
+  try {
+    return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate the upload token supplied with an S3-backed split request.
+ * @param {import("express").Request} req
+ * @param {string | undefined | null} s3Key
+ * @returns {{ ok: true } | { ok: false; status: number; error: string }}
+ */
+export function validateUploadTokenForRequest(req, s3Key) {
+  const token =
+    (req.body && req.body.upload_token) || req.headers["x-upload-token"];
+  if (!token || typeof token !== "string") {
+    return { ok: false, status: 401, error: "Missing or invalid upload token." };
+  }
+  if (!getUploadTokenSecret()) {
+    return { ok: false, status: 503, error: "S3 upload authentication is not configured." };
+  }
+  if (!s3Key || !verifyUploadToken(token, s3Key)) {
+    return { ok: false, status: 401, error: "Missing or invalid upload token." };
   }
   return { ok: true };
 }

@@ -14,6 +14,7 @@ import {
   authMiddleware,
   requireUsageAuthPreUpload,
   issueJobToken,
+  validateUploadTokenForRequest,
   DEV_BYPASS_UPLOAD_AUTH,
 } from "../../middleware/auth.js";
 // ... (rest of imports)
@@ -93,6 +94,12 @@ splitRouter.post(
 
     // If s3_key provided, download it to temp disk for processing
     if (s3Key && !filePath) {
+      const uploadTokenCheck = validateUploadTokenForRequest(req, String(s3Key));
+      if (!uploadTokenCheck.ok) {
+        return res
+          .status(uploadTokenCheck.status)
+          .json({ error: uploadTokenCheck.error });
+      }
       const bucket = process.env.S3_UPLOAD_BUCKET;
       if (!bucket) return res.status(501).json({ error: "S3 processing not configured" });
       

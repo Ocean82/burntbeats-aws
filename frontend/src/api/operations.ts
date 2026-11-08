@@ -16,8 +16,8 @@ import { withIntentQuality } from "../utils/splitIntent";
 const SPLIT_ACCEPT_TIMEOUT_MS = Number(import.meta.env.VITE_SPLIT_ACCEPT_TIMEOUT_MS) || 5 * 60 * 1000;
 
 /** Get presigned S3 upload URL. */
-export async function getUploadUrl(filename: string, contentType: string): Promise<{ upload_url: string; s3_key: string; job_id: string }> {
-  const result = await apiPost<{ upload_url: string; s3_key: string; job_id: string }>(
+export async function getUploadUrl(filename: string, contentType: string): Promise<{ upload_url: string; s3_key: string; upload_token: string; job_id: string }> {
+  const result = await apiPost<{ upload_url: string; s3_key: string; upload_token: string; job_id: string }>(
     "/api/stems/upload-url",
     { filename, contentType },
     { retry: { maxAttempts: 2, retryOn: [502, 503, 504] } },
@@ -52,7 +52,7 @@ export async function startStemSplit(
 
   if (useS3Direct && !isSample) {
     try {
-      const { upload_url, s3_key } = await getUploadUrl(file.name, file.type);
+      const { upload_url, s3_key, upload_token } = await getUploadUrl(file.name, file.type);
       
       // Perform direct PUT to S3
       const res = await fetch(upload_url, {
@@ -67,6 +67,7 @@ export async function startStemSplit(
         "/api/stems/split",
         {
           s3_key,
+          upload_token,
           filename: file.name,
           stems,
           quality,
