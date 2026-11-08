@@ -179,6 +179,50 @@ test("POST /api/stems/split rejects unknown quality modes", async () => {
   assert.equal(lastStemServiceTokenHeader, undefined);
 });
 
+test("POST /api/stems/split rejects S3 keys without upload token", async () => {
+  lastStemServiceTokenHeader = undefined;
+  const res = await request
+    .post("/api/stems/split")
+    .set("x-api-key", process.env.API_KEY)
+    .send({
+      s3_key: `uploads/${randomUUID()}/input.wav`,
+      filename: "sample.wav",
+      stems: "2",
+    })
+    .expect(401);
+
+  assert.equal(res.body.error, "Missing or invalid upload token.");
+  assert.equal(lastStemServiceTokenHeader, undefined);
+});
+
+test("POST /api/stems/split rejects upload token minted for a different S3 key", async () => {
+  lastStemServiceTokenHeader = undefined;
+  const previousSecret = process.env.JOB_TOKEN_SECRET;
+  process.env.JOB_TOKEN_SECRET = "test-upload-token-secret";
+  try {
+    const { issueUploadToken } = await import("./middleware/auth.js");
+    const allowedKey = `uploads/${randomUUID()}/input.wav`;
+    const requestedKey = `uploads/${randomUUID()}/input.wav`;
+    const uploadToken = issueUploadToken(allowedKey);
+
+    const res = await request
+      .post("/api/stems/split")
+      .set("x-api-key", process.env.API_KEY)
+      .send({
+        s3_key: requestedKey,
+        upload_token: uploadToken,
+        filename: "sample.wav",
+        stems: "2",
+      })
+      .expect(401);
+
+    assert.equal(res.body.error, "Missing or invalid upload token.");
+    assert.equal(lastStemServiceTokenHeader, undefined);
+  } finally {
+    process.env.JOB_TOKEN_SECRET = previousSecret;
+  }
+});
+
 test("POST /api/stems/expand requires account auth before premium expand", async () => {
   lastStemServiceTokenHeader = undefined;
   const res = await request

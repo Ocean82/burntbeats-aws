@@ -1,7 +1,7 @@
 // @ts-check
 import { Router } from "express";
 import { randomUUID } from "crypto";
-import { authMiddleware } from "../../middleware/auth.js";
+import { authMiddleware, issueUploadToken } from "../../middleware/auth.js";
 import { presignStemPutUrl } from "../../s3Presign.js";
 
 export const uploadUrlRouter = Router();
@@ -20,12 +20,17 @@ uploadUrlRouter.post("/", authMiddleware, async (req, res) => {
   const jobId = randomUUID();
   const fileExt = filename.split(".").pop() || "bin";
   const s3Key = `uploads/${jobId}/input.${fileExt}`;
+  const uploadToken = issueUploadToken(s3Key);
+  if (!uploadToken) {
+    return res.status(503).json({ error: "S3 upload authentication is not configured" });
+  }
 
   try {
     const url = await presignStemPutUrl(bucket, s3Key, contentType);
     res.json({
       upload_url: url,
       s3_key: s3Key,
+      upload_token: uploadToken,
       job_id: jobId,
     });
   } catch (err) {
