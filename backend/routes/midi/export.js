@@ -10,6 +10,8 @@ import { requireJobOwnership } from "../../middleware/ownership.js";
 import { getBaseUrl } from "../../helpers/baseUrl.js";
 import {
   MIDI_SERVICE_URL,
+  readMidiJobMetadata,
+  verifyMidiOwner,
   withMidiServiceAuthHeader,
 } from "./shared.js";
 
@@ -19,7 +21,47 @@ function isValidId(id) {
   return !!id && /^[0-9a-f-]{36}$/i.test(id);
 }
 
+async function verifyExportSourceAccess(req, res) {
+  let authenticatedUserId;
+  try {
+    authenticatedUserId = await verifyMidiOwner(req);
+  } catch (e) {
+    const status =
+      e && typeof e === "object" && "status" in e && typeof e.status === "number"
+        ? e.status
+        : 401;
+    res.status(status).json({ error: "Authentication required" });
+    return false;
+  }
+
+  const sourceJobs = req.body?.source_jobs;
+  if (!Array.isArray(sourceJobs)) return true;
+
+  for (const source of sourceJobs) {
+    const jobId = source?.job_id;
+    if (!isValidId(jobId)) continue;
+
+    const metadata = await readMidiJobMetadata(jobId);
+    const ownerUserId =
+      metadata &&
+      typeof metadata.user_id === "string" &&
+      metadata.user_id.trim()
+        ? metadata.user_id.trim()
+        : null;
+    if (ownerUserId && ownerUserId !== authenticatedUserId) {
+      res.status(403).json({
+        error: `You do not have access to job ${jobId}.`,
+      });
+      return false;
+    }
+  }
+
+  return true;
+}
+
 midiExportRouter.post("/", authMiddleware, async (req, res) => {
+  if (!(await verifyExportSourceAccess(req, res))) return;
+
   const payload = JSON.stringify(req.body || {});
   try {
     const url = new URL("/export", MIDI_SERVICE_URL);

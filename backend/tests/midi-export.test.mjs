@@ -46,6 +46,7 @@ process.env.MIDI_SERVICE_URL = `http://127.0.0.1:${midiServiceServer.address().p
 
 const { app } = await import("../server.js");
 const { issueJobToken } = await import("../middleware/auth.js");
+app.locals.verifyClerkBearer = async () => "midi_export_test_user";
 const request = supertest(app);
 
 test("POST /api/midi/export returns export token and status URL", async () => {
