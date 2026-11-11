@@ -73,6 +73,19 @@ async function seedUserWithBalance(userId, balance) {
   );
 }
 
+/** Seed a user with paid balance and free monthly allowance state. */
+async function seedUserWithTokenBuckets(userId, { balance, freeMonthlyRemaining }) {
+  await seedUser(userId);
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO user_token_balances (clerk_user_id, balance, free_monthly_remaining, free_monthly_period)
+     VALUES ($1, $2, $3, NULL)
+     ON CONFLICT (clerk_user_id) DO UPDATE
+       SET balance = $2, free_monthly_remaining = $3, free_monthly_period = NULL`,
+    [userId, balance, freeMonthlyRemaining],
+  );
+}
+
 /** Clean up test user data after each test. */
 async function cleanupUser(userId) {
   const pool = getPool();
@@ -225,6 +238,47 @@ test("refundDbTokens restores balance correctly", async () => {
     assert.ok(refundTx);
     assert.equal(refundTx.amount, 20);
     assert.equal(refundTx.balance_after, 50);
+    assert.equal(refundTx.job_id, jobId);
+  } finally {
+    await cleanupUser(userId);
+  }
+});
+
+test("refundDbTokens restores failed free monthly debits to the free bucket", async () => {
+  const userId = testUserId();
+  const jobId = randomUUID();
+  await seedUserWithTokenBuckets(userId, {
+    balance: 0,
+    freeMonthlyRemaining: 5,
+  });
+  try {
+    const reserveResult = await reserveDbTokens(userId, 3, {
+      jobId,
+      note: "free monthly split debit",
+    });
+    assert.equal(reserveResult.success, true);
+    assert.equal(reserveResult.source, "free_monthly");
+
+    const afterReserve = await getDbBalance(userId);
+    assert.equal(afterReserve.balance, 0);
+    assert.equal(afterReserve.freeMonthlyRemaining, 2);
+
+    const refundResult = await refundDbTokens(userId, 3, {
+      job_id: jobId,
+      note: "failed free monthly job refund",
+    });
+    assert.equal(refundResult.success, true);
+    assert.equal(refundResult.balanceAfter, 0);
+
+    const afterRefund = await getDbBalance(userId);
+    assert.equal(afterRefund.balance, 0);
+    assert.equal(afterRefund.freeMonthlyRemaining, 5);
+
+    const history = await getTokenHistory(userId, { limit: 5 });
+    const refundTx = history.find((tx) => tx.tx_type === "refund");
+    assert.ok(refundTx);
+    assert.equal(refundTx.amount, 3);
+    assert.equal(refundTx.balance_after, 0);
     assert.equal(refundTx.job_id, jobId);
   } finally {
     await cleanupUser(userId);

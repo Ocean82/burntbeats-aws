@@ -103,6 +103,54 @@ function currentMonthPeriod() {
 }
 
 /**
+ * @param {Record<string, unknown>} [meta]
+ * @returns {string | null}
+ */
+export function normalizeRefundJobId(meta = {}) {
+  const jobId = meta.jobId || meta.job_id;
+  return typeof jobId === "string" && jobId.trim() ? jobId.trim() : null;
+}
+
+/**
+ * @param {{ tx_type?: unknown, note?: unknown } | null | undefined} row
+ * @returns {"paid" | "free_monthly"}
+ */
+export function resolveRefundBucketFromDebitRow(row) {
+  const txType = typeof row?.tx_type === "string" ? row.tx_type : "";
+  const note = typeof row?.note === "string" ? row.note.toLowerCase() : "";
+  if (txType === "free_monthly_debit" || note.includes("free monthly")) {
+    return "free_monthly";
+  }
+  return "paid";
+}
+
+/**
+ * @param {import("pg").PoolClient} client
+ * @param {string} clerkUserId
+ * @param {string | null} jobId
+ * @param {unknown} explicitSource
+ * @returns {Promise<"paid" | "free_monthly">}
+ */
+async function resolveRefundBucket(client, clerkUserId, jobId, explicitSource) {
+  if (explicitSource === "free_monthly") return "free_monthly";
+  if (explicitSource === "paid") return "paid";
+  if (!jobId) return "paid";
+
+  const debit = await client.query(
+    `SELECT tx_type::text AS tx_type, note
+     FROM token_transactions
+     WHERE clerk_user_id = $1
+       AND job_id = $2
+       AND amount < 0
+       AND tx_type::text IN ('debit', 'free_monthly_debit')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [clerkUserId, jobId],
+  );
+  return resolveRefundBucketFromDebitRow(debit.rows[0]);
+}
+
+/**
  * @param {import("pg").PoolClient} client
  * @param {string} clerkUserId
  * @param {{ free_monthly_remaining?: number, free_monthly_period?: string | null }} row
@@ -128,7 +176,7 @@ async function syncFreeMonthlyPeriod(client, clerkUserId, row) {
  * @param {string} clerkUserId
  * @param {number} cost
  * @param {{ jobId?: string, note?: string }} [meta]
- * @returns {Promise<{ success: boolean, balanceAfter?: number, error?: string }>}
+ * @returns {Promise<{ success: boolean, balanceAfter?: number, error?: string, source?: "paid" | "free_monthly", transactionId?: string | null }>}
  */
 export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
   const pool = getPool();
@@ -184,9 +232,10 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
         `UPDATE user_token_balances SET balance = $2 WHERE clerk_user_id = $1`,
         [clerkUserId, newBalance],
       );
-      await client.query(
+      const tx = await client.query(
         `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
-         VALUES ($1, 'debit', $2, $3, $4, $5)`,
+         VALUES ($1, 'debit', $2, $3, $4, $5)
+         RETURNING id`,
         [
           clerkUserId,
           -intCost,
@@ -196,7 +245,12 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
         ],
       );
       await client.query("COMMIT");
-      return { success: true, balanceAfter: newBalance, source: "paid" };
+      return {
+        success: true,
+        balanceAfter: newBalance,
+        source: "paid",
+        transactionId: tx.rows[0]?.id || null,
+      };
     }
 
     // Free monthly allowance path — only if columns exist on the row
@@ -218,10 +272,12 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
         );
         // Use 'debit' tx_type as fallback if 'free_monthly_debit' enum value doesn't exist yet
         let txType = "free_monthly_debit";
+        let transactionId = null;
         try {
-          await client.query(
+          const tx = await client.query(
             `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
-             VALUES ($1, $2::token_tx_type, $3, $4, $5, $6)`,
+             VALUES ($1, $2::token_tx_type, $3, $4, $5, $6)
+             RETURNING id`,
             [
               clerkUserId,
               txType,
@@ -231,6 +287,7 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
               meta.note || "free monthly allowance debit",
             ],
           );
+          transactionId = tx.rows[0]?.id || null;
         } catch (enumErr) {
           // If 'free_monthly_debit' enum value doesn't exist (migration 003 not fully applied),
           // fall back to 'debit' which always exists in the base schema
@@ -239,9 +296,10 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
               "[db-tokens] 'free_monthly_debit' enum missing — using 'debit' fallback. Run db:migrate.",
             );
             txType = "debit";
-            await client.query(
+            const tx = await client.query(
               `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
-               VALUES ($1, $2::token_tx_type, $3, $4, $5, $6)`,
+               VALUES ($1, $2::token_tx_type, $3, $4, $5, $6)
+               RETURNING id`,
               [
                 clerkUserId,
                 txType,
@@ -251,6 +309,7 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
                 meta.note || "free monthly allowance debit (enum fallback)",
               ],
             );
+            transactionId = tx.rows[0]?.id || null;
           } else {
             throw enumErr;
           }
@@ -260,6 +319,7 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
           success: true,
           balanceAfter: currentBalance,
           source: "free_monthly",
+          transactionId,
         };
       }
     }
@@ -296,7 +356,7 @@ export async function reserveDbTokens(clerkUserId, cost, meta = {}) {
  * Refund tokens (compensating action for failed jobs).
  * @param {string} clerkUserId
  * @param {number} amount
- * @param {{ jobId?: string, note?: string }} [meta]
+ * @param {{ jobId?: string, job_id?: string, source?: "paid" | "free_monthly", note?: string }} [meta]
  * @returns {Promise<{ success: boolean, balanceAfter?: number }>}
  */
 export async function refundDbTokens(clerkUserId, amount, meta = {}) {
@@ -307,6 +367,7 @@ export async function refundDbTokens(clerkUserId, amount, meta = {}) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    const jobId = normalizeRefundJobId(meta);
     // Ensure user row exists within the transaction (FK for user_token_balances)
     await client.query(
       `INSERT INTO users (clerk_user_id) VALUES ($1) ON CONFLICT (clerk_user_id) DO NOTHING`,
@@ -314,17 +375,36 @@ export async function refundDbTokens(clerkUserId, amount, meta = {}) {
     );
     await ensureBalanceRow(client, clerkUserId);
 
+    const refundBucket = await resolveRefundBucket(
+      client,
+      clerkUserId,
+      jobId,
+      meta.source,
+    );
     const lockRes = await client.query(
-      `SELECT balance FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
+      `SELECT balance, free_monthly_remaining FROM user_token_balances WHERE clerk_user_id = $1 FOR UPDATE`,
       [clerkUserId],
     );
     const currentBalance = lockRes.rows[0]?.balance ?? 0;
-    const newBalance = currentBalance + amount;
+    const currentFreeMonthly = lockRes.rows[0]?.free_monthly_remaining ?? 0;
+    let balanceAfter = currentBalance;
 
-    await client.query(
-      `UPDATE user_token_balances SET balance = $2 WHERE clerk_user_id = $1`,
-      [clerkUserId, newBalance],
-    );
+    if (refundBucket === "free_monthly") {
+      const restoredFreeMonthly = Math.min(
+        currentFreeMonthly + amount,
+        freeMonthlyAllowanceDefault(),
+      );
+      await client.query(
+        `UPDATE user_token_balances SET free_monthly_remaining = $2 WHERE clerk_user_id = $1`,
+        [clerkUserId, restoredFreeMonthly],
+      );
+    } else {
+      balanceAfter = currentBalance + amount;
+      await client.query(
+        `UPDATE user_token_balances SET balance = $2 WHERE clerk_user_id = $1`,
+        [clerkUserId, balanceAfter],
+      );
+    }
 
     await client.query(
       `INSERT INTO token_transactions (clerk_user_id, tx_type, amount, balance_after, job_id, note)
@@ -332,14 +412,14 @@ export async function refundDbTokens(clerkUserId, amount, meta = {}) {
       [
         clerkUserId,
         amount,
-        newBalance,
-        meta.jobId || null,
+        balanceAfter,
+        jobId,
         meta.note || "job refund",
       ],
     );
 
     await client.query("COMMIT");
-    return { success: true, balanceAfter: newBalance };
+    return { success: true, balanceAfter };
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
     console.error(

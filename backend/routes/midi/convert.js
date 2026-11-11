@@ -129,6 +129,7 @@ midiConvertRouter.post(
     let isTempStemFile = false;
     let usageReserved = false;
     let usageUserId = null;
+    let usageReservation = null;
     const usageCost = MIDI_TOKEN_COST;
 
     // If referencing a stem from a previous split, resolve local disk or S3 fallback
@@ -203,7 +204,7 @@ midiConvertRouter.post(
           /** @type {any} */ (req)._usageUserId ||
           (await verifyClerkBearer(req));
         if (usageUserId && usageCost > 0) {
-          await reserveUsageTokens(usageUserId, usageCost);
+          usageReservation = await reserveUsageTokens(usageUserId, usageCost);
           usageReserved = true;
         }
       }
@@ -284,6 +285,7 @@ midiConvertRouter.post(
           originalFilename: req.file?.originalname || stemName || null,
           durationSeconds: null,
           tokenCost: usageCost,
+          tokenTransactionId: usageReservation?.transactionId || null,
           splitIntent: null,
         });
       } catch (dbErr) {
@@ -297,7 +299,9 @@ midiConvertRouter.post(
           if (usageReserved && usageUserId && usageCost > 0) {
             try {
               const { refundUsageTokens } = await import("../../usageTokens.js");
-              await refundUsageTokens(usageUserId, usageCost);
+              await refundUsageTokens(usageUserId, usageCost, {
+                source: usageReservation?.source,
+              });
             } catch {
               /* ignore refund errors */
             }
@@ -330,6 +334,7 @@ midiConvertRouter.post(
         usageReserved,
         usageUserId,
         usageCost,
+        usageReservation,
       });
     } finally {
       if (isTempStemFile && filePath) {

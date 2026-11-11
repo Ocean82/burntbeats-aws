@@ -204,6 +204,7 @@ splitRouter.post(
     let usageUserId = null;
     let usageCost = 0;
     let usageReserved = false;
+    let usageReservation = null;
     /** @type {number | null} */
     let durationSeconds = null;
     const isSample =
@@ -221,7 +222,7 @@ splitRouter.post(
         const durationSec = await getAudioDurationSeconds(filePath);
         durationSeconds = durationSec;
         usageCost = computeSplitCost(durationSec, quality, stems, isSample);
-        await reserveUsageTokens(usageUserId, usageCost);
+        usageReservation = await reserveUsageTokens(usageUserId, usageCost);
         usageReserved = usageCost > 0;
       } catch (e) {
         await unlinkPromise(filePath).catch(() => {});
@@ -267,6 +268,7 @@ splitRouter.post(
             originalFilename: originalFilename,
             durationSeconds,
             tokenCost: usageCost,
+            tokenTransactionId: usageReservation?.transactionId || null,
             splitIntent: intent ?? null,
           });
         } catch (dbErr) {
@@ -304,6 +306,7 @@ splitRouter.post(
         usageReserved,
         usageUserId,
         usageCost,
+        usageReservation,
       });
     } finally {
       unlink(filePath, (unlinkErr) => {

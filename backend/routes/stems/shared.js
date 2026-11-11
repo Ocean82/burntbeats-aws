@@ -113,12 +113,14 @@ export function usageErrorResponse(e, logPrefix, fallback401, fallbackOther) {
  * @param {unknown} e - The caught error
  * @param {import("express").Response} res
  * @param {string} logPrefix - e.g. "[POST /api/stems/split]"
- * @param {{ usageReserved: boolean; usageUserId: string | null; usageCost: number }} usage
+ * @param {{ usageReserved: boolean; usageUserId: string | null; usageCost: number; usageReservation?: { source?: "paid" | "free_monthly" } | null }} usage
  */
 export async function handleProxyError(e, res, logPrefix, usage) {
   if (usage.usageReserved && usage.usageUserId && usage.usageCost > 0) {
     try {
-      await refundUsageTokens(usage.usageUserId, usage.usageCost);
+      await refundUsageTokens(usage.usageUserId, usage.usageCost, {
+        source: usage.usageReservation?.source,
+      });
     } catch (refundErr) {
       console.error(`${logPrefix} usage refund failed:`, refundErr);
     }

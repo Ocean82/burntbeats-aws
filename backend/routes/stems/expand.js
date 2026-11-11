@@ -77,6 +77,7 @@ expandRouter.post(
     let usageUserId = entitlementUserId;
     let usageCost = 0;
     let usageReserved = false;
+    let usageReservation = null;
     if (isUsageTokensEnabled() && !DEV_BYPASS_UPLOAD_AUTH) {
       try {
         const inputPath = findStemJobInputPath(jobId);
@@ -87,7 +88,7 @@ expandRouter.post(
         }
         const durationSec = await getAudioDurationSeconds(inputPath);
         usageCost = computeExpandCost(durationSec, quality);
-        await reserveUsageTokens(usageUserId, usageCost);
+        usageReservation = await reserveUsageTokens(usageUserId, usageCost);
         usageReserved = usageCost > 0;
       } catch (e) {
         const { status, message } = usageErrorResponse(
@@ -122,6 +123,7 @@ expandRouter.post(
           originalFilename: null,
           durationSeconds: null,
           tokenCost: usageCost,
+          tokenTransactionId: usageReservation?.transactionId || null,
         }).catch((err) => console.error("[expand] db insertJob error:", err));
         const response = {
           job_id: newJobId,
@@ -147,6 +149,7 @@ expandRouter.post(
         usageReserved,
         usageUserId,
         usageCost,
+        usageReservation,
       });
     }
   },

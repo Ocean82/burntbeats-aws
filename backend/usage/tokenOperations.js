@@ -30,10 +30,11 @@ async function tryUpdateClerkCache(userId, balance) {
  * @param {string} userId
  * @param {number} cost
  * @param {{ jobId?: string }} [meta]
+ * @returns {Promise<{ success: boolean, balanceAfter?: number, source?: "paid" | "free_monthly", transactionId?: string | null } | undefined>}
  */
 export async function reserveUsageTokens(userId, cost, meta = {}) {
   if (isUsageTokensDevUnlimited()) return;
-  if (!Number.isFinite(cost) || cost <= 0) return;
+  if (!Number.isFinite(cost) || cost <= 0) return { success: true };
 
   // Primary: DB-backed debit (transactional, with ledger)
   if (isDbTokensAvailable()) {
@@ -47,7 +48,7 @@ export async function reserveUsageTokens(userId, cost, meta = {}) {
     }
     // Also update Clerk metadata as a cache (best-effort, don't fail if this errors)
     await tryUpdateClerkCache(userId, result.balanceAfter ?? 0);
-    return;
+    return result;
   }
 
   // Fallback: Clerk-only (original behaviour)
@@ -84,13 +85,14 @@ export async function reserveUsageTokens(userId, cost, meta = {}) {
       },
     });
   });
+  return { success: true, source: "paid" };
 }
 
 /**
  * Refund previously reserved tokens (best-effort compensating action).
  * @param {string} userId
  * @param {number} amount
- * @param {{ jobId?: string }} [meta]
+ * @param {{ jobId?: string, job_id?: string, source?: "paid" | "free_monthly", note?: string }} [meta]
  */
 export async function refundUsageTokens(userId, amount, meta = {}) {
   if (isUsageTokensDevUnlimited()) return;
@@ -98,7 +100,12 @@ export async function refundUsageTokens(userId, amount, meta = {}) {
 
   // Primary: DB refund
   if (isDbTokensAvailable()) {
-    const result = await refundDbTokens(userId, amount, { jobId: meta.jobId, note: "job refund" });
+    const result = await refundDbTokens(userId, amount, {
+      jobId: meta.jobId,
+      job_id: meta.job_id,
+      source: meta.source,
+      note: meta.note || "job refund",
+    });
     if (result.success && result.balanceAfter != null) {
       await tryUpdateClerkCache(userId, result.balanceAfter);
     }
