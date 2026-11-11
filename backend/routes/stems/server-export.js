@@ -105,12 +105,15 @@ serverExportRouter.post(
     let usageUserId = null;
     let usageCost = 0;
     let usageReserved = false;
+    let usageReservation = null;
 
     async function refundIfReserved() {
       if (!usageReserved || !usageUserId || usageCost <= 0) return;
       usageReserved = false;
       try {
-        await refundUsageTokens(usageUserId, usageCost);
+        await refundUsageTokens(usageUserId, usageCost, {
+          source: usageReservation?.source,
+        });
       } catch (refundErr) {
         console.error(
           "[POST /api/stems/server-export] usage refund failed:",
@@ -131,7 +134,7 @@ serverExportRouter.post(
         }
         const durationSec = await getAudioDurationSeconds(inputPath);
         usageCost = computeServerExportCost(durationSec);
-        await reserveUsageTokens(usageUserId, usageCost);
+        usageReservation = await reserveUsageTokens(usageUserId, usageCost);
         usageReserved = usageCost > 0;
       } catch (e) {
         const { status, message } = usageErrorResponse(

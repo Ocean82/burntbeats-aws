@@ -42,6 +42,7 @@ export async function ensureUser(clerkUserId, meta = {}) {
  *   originalFilename: string | null,
  *   durationSeconds: number | null,
  *   tokenCost: number,
+ *   tokenTransactionId?: string | null,
  *   splitIntent?: Record<string, unknown> | null,
  * }} params
  */
@@ -68,6 +69,17 @@ export async function insertJob(params) {
         params.splitIntent ? JSON.stringify(params.splitIntent) : null,
       ],
     );
+    if (params.tokenTransactionId && params.clerkUserId) {
+      await pool.query(
+        `UPDATE token_transactions
+         SET job_id = $3
+         WHERE id = $1
+           AND clerk_user_id = $2
+           AND job_id IS NULL
+           AND amount < 0`,
+        [params.tokenTransactionId, params.clerkUserId, params.jobId],
+      );
+    }
   } catch (err) {
     console.error("[db-jobs] insertJob failed:", err instanceof Error ? err.message : err);
     throw err; // Re-throw so caller knows persistence failed

@@ -45,6 +45,7 @@ midiRenderRouter.post(
   async (req, res) => {
     let usageReserved = false;
     let usageUserId = null;
+    let usageReservation = null;
     const usageCost = MIDI_RENDER_TOKEN_COST;
 
     try {
@@ -71,7 +72,7 @@ midiRenderRouter.post(
           /** @type {any} */ (req)._usageUserId ||
           (await verifyClerkBearer(req));
         if (usageUserId && usageCost > 0) {
-          await reserveUsageTokens(usageUserId, usageCost);
+          usageReservation = await reserveUsageTokens(usageUserId, usageCost);
           usageReserved = true;
         }
       }
@@ -112,7 +113,9 @@ midiRenderRouter.post(
         }
         // Refund if MIDI service rejected
         if (usageReserved && usageUserId && usageCost > 0) {
-          await refundUsageTokens(usageUserId, usageCost).catch(() => {});
+          await refundUsageTokens(usageUserId, usageCost, {
+            source: usageReservation?.source,
+          }).catch(() => {});
         }
         return res.status(serviceRes.status).json({
           error: detail?.detail || detail || "MIDI render service error",
@@ -124,7 +127,9 @@ midiRenderRouter.post(
 
       if (!jobId) {
         if (usageReserved && usageUserId && usageCost > 0) {
-          await refundUsageTokens(usageUserId, usageCost).catch(() => {});
+          await refundUsageTokens(usageUserId, usageCost, {
+            source: usageReservation?.source,
+          }).catch(() => {});
         }
         return res
           .status(502)
@@ -149,6 +154,7 @@ midiRenderRouter.post(
           originalFilename: "midi-render",
           durationSeconds: null,
           tokenCost: usageCost,
+          tokenTransactionId: usageReservation?.transactionId || null,
           splitIntent: null,
         });
       } catch (dbErr) {
@@ -171,6 +177,7 @@ midiRenderRouter.post(
         usageReserved,
         usageUserId,
         usageCost,
+        usageReservation,
       });
     }
   },

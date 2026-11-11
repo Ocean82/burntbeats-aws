@@ -69,6 +69,7 @@ enhanceRouter.post(
     let usageReserved = false;
     let usageUserId = null;
     let usageCost = 0;
+    let usageReservation = null;
 
     try {
       const declaredExt =
@@ -96,7 +97,7 @@ enhanceRouter.post(
         const durationSec = await getAudioDurationSeconds(filePath);
         usageCost = computeSplitCost(durationSec);
         if (usageUserId && usageCost > 0) {
-          await reserveUsageTokens(usageUserId, usageCost);
+          usageReservation = await reserveUsageTokens(usageUserId, usageCost);
           usageReserved = true;
         }
       }
@@ -135,6 +136,7 @@ enhanceRouter.post(
           originalFilename: req.file.originalname || null,
           durationSeconds: null,
           tokenCost: usageCost,
+          tokenTransactionId: usageReservation?.transactionId || null,
           splitIntent: null,
         });
       } catch (dbErr) {
@@ -148,7 +150,9 @@ enhanceRouter.post(
           if (usageReserved && usageUserId && usageCost > 0) {
             try {
               const { refundUsageTokens } = await import("../../usageTokens.js");
-              await refundUsageTokens(usageUserId, usageCost);
+              await refundUsageTokens(usageUserId, usageCost, {
+                source: usageReservation?.source,
+              });
             } catch {
               /* ignore refund errors */
             }
@@ -174,7 +178,9 @@ enhanceRouter.post(
       if (usageReserved && usageUserId && usageCost > 0) {
         try {
           const { refundUsageTokens } = await import("../../usageTokens.js");
-          await refundUsageTokens(usageUserId, usageCost);
+          await refundUsageTokens(usageUserId, usageCost, {
+            source: usageReservation?.source,
+          });
         } catch {
           /* ignore refund errors */
         }

@@ -330,12 +330,14 @@ export function withMidiServiceAuthHeader(headers) {
  * @param {unknown} e
  * @param {import("express").Response} res
  * @param {string} logPrefix
- * @param {{ usageReserved: boolean; usageUserId: string | null; usageCost: number }} usage
+ * @param {{ usageReserved: boolean; usageUserId: string | null; usageCost: number; usageReservation?: { source?: "paid" | "free_monthly" } | null }} usage
  */
 export async function handleMidiProxyError(e, res, logPrefix, usage) {
   if (usage.usageReserved && usage.usageUserId && usage.usageCost > 0) {
     try {
-      await refundUsageTokens(usage.usageUserId, usage.usageCost);
+      await refundUsageTokens(usage.usageUserId, usage.usageCost, {
+        source: usage.usageReservation?.source,
+      });
     } catch (refundErr) {
       console.error(`${logPrefix} usage refund failed:`, refundErr);
     }
