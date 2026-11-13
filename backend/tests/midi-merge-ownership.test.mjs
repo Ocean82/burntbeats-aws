@@ -13,6 +13,7 @@ process.env.MIDI_OUTPUT_DIR = path.join(process.cwd(), "tmp", "test-midi-merge-a
 
 const OWNER_JOB_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const OTHER_JOB_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const MISSING_OWNER_JOB_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const USER_ID = "user_owner_123";
 
 const { app } = await import("../server.js");
@@ -25,6 +26,7 @@ const jobDir = (jobId) =>
 
 await mkdir(jobDir(OWNER_JOB_ID), { recursive: true });
 await mkdir(jobDir(OTHER_JOB_ID), { recursive: true });
+await mkdir(jobDir(MISSING_OWNER_JOB_ID), { recursive: true });
 await writeFile(
   path.join(jobDir(OWNER_JOB_ID), "metadata.json"),
   JSON.stringify({ user_id: USER_ID }),
@@ -42,6 +44,17 @@ test("POST /api/midi/merge rejects jobs owned by another user", async () => {
         { job_id: OWNER_JOB_ID, stem_name: "vocals" },
         { job_id: OTHER_JOB_ID, stem_name: "drums" },
       ],
+    })
+    .expect(403);
+
+  assert.match(res.body.error, /do not have access/i);
+});
+
+test("POST /api/midi/merge rejects jobs without owner metadata", async () => {
+  const res = await request
+    .post("/api/midi/merge")
+    .send({
+      jobs: [{ job_id: MISSING_OWNER_JOB_ID, stem_name: "vocals" }],
     })
     .expect(403);
 

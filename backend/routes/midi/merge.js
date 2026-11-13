@@ -107,7 +107,7 @@ midiMergeRouter.post("/", midiMergeRateLimitMiddleware, authMiddleware, async (r
       metadata.user_id.trim()
         ? metadata.user_id.trim()
         : null;
-    if (ownerUserId && ownerUserId !== authenticatedUserId) {
+    if (!ownerUserId || ownerUserId !== authenticatedUserId) {
       return res.status(403).json({
         error: `You do not have access to job ${job.job_id}.`,
       });

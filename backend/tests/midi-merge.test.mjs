@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 import supertest from "supertest";
 
@@ -9,10 +11,12 @@ process.env.BACKEND_SKIP_START = "1";
 process.env.API_KEY = "";
 process.env.JOB_TOKEN_SECRET = "";
 process.env.MIDI_SERVICE_API_TOKEN = "midi-service-test-token";
+process.env.MIDI_OUTPUT_DIR = path.join(process.cwd(), "tmp", "test-midi-merge");
 
 const FIRST_JOB_ID = "12121212-1212-4212-8212-121212121212";
 const SECOND_JOB_ID = "34343434-3434-4434-8434-343434343434";
 const MERGED_MIDI_BYTES = Buffer.from("MThd0000", "utf-8");
+const USER_ID = "user_test_merge";
 
 let lastMergeBody;
 let lastMidiServiceTokenHeader;
@@ -39,10 +43,16 @@ const midiServiceServer = http.createServer((req, res) => {
 await new Promise((resolve) => midiServiceServer.listen(0, "127.0.0.1", resolve));
 process.env.MIDI_SERVICE_URL = `http://127.0.0.1:${midiServiceServer.address().port}`;
 
+for (const jobId of [FIRST_JOB_ID, SECOND_JOB_ID]) {
+  const dir = path.join(process.env.MIDI_OUTPUT_DIR, jobId);
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, "metadata.json"), JSON.stringify({ user_id: USER_ID }));
+}
+
 const { app } = await import("../server.js");
 const request = supertest(app);
 
-app.locals.verifyClerkBearer = async () => "user_test_merge";
+app.locals.verifyClerkBearer = async () => USER_ID;
 
 test("POST /api/midi/merge streams merged MIDI and forwards auth header", async () => {
   lastMergeBody = undefined;
