@@ -38,6 +38,7 @@ describe("PlanPickerPage", () => {
   beforeEach(() => {
     mockUserUpdate.mockReset();
     mockStartCheckout.mockReset();
+    window.sessionStorage.clear();
   });
 
   it("renders hero subscription plans in the main grid", () => {
@@ -77,6 +78,21 @@ describe("PlanPickerPage", () => {
       });
       expect(onComplete).toHaveBeenCalledOnce();
     });
+  });
+
+  it("clears stored landing plan intent when Continue with Free is clicked", async () => {
+    const onComplete = vi.fn();
+    window.sessionStorage.setItem("burntbeats_post_signup_plan", "premium");
+    mockUserUpdate.mockResolvedValueOnce(undefined);
+    render(<PlanPickerPage onComplete={onComplete} />);
+
+    fireEvent.click(screen.getByText(/Continue with Free/));
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalledOnce();
+    });
+    expect(window.sessionStorage.getItem("burntbeats_post_signup_plan")).toBeNull();
+    expect(mockStartCheckout).not.toHaveBeenCalled();
   });
 
   it("calls user.update then startCheckout when a paid plan is selected", async () => {

@@ -3,6 +3,11 @@ import type { UseSubscriptionResult } from "./useSubscription";
 
 const POST_SIGNUP_PLAN_KEY = "burntbeats_post_signup_plan";
 
+export function clearPostSignupPlanIntent(): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.removeItem(POST_SIGNUP_PLAN_KEY);
+}
+
 export function usePostSignupPlanCheckout(subscription: UseSubscriptionResult) {
   useEffect(() => {
     if (subscription.status !== "inactive") return;
@@ -18,7 +23,7 @@ export function usePostSignupPlanCheckout(subscription: UseSubscriptionResult) {
       window.sessionStorage.removeItem(POST_SIGNUP_PLAN_KEY);
       return;
     }
-    window.sessionStorage.removeItem(POST_SIGNUP_PLAN_KEY);
+    clearPostSignupPlanIntent();
     void subscription.startCheckout(plan, {
       source: "pricing_page",
       intent: "post_signup_plan_intent",
