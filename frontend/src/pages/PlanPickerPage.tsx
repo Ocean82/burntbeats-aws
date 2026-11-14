@@ -16,6 +16,7 @@ interface PlanPickerPageProps {
 const SINGLE_PACK = PACK_PLANS.find((p) => p.id === "single");
 const TOPUP_PACK = PACK_PLANS.find((p) => p.id === "topup");
 const STUDIO_PLAN = getPlansForType("subscriptions").find((p) => p.id === "studio");
+const POST_SIGNUP_PLAN_KEY = "burntbeats_post_signup_plan";
 
 export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
   const { user } = useUser();
@@ -26,6 +27,7 @@ export function PlanPickerPage({ onComplete }: PlanPickerPageProps) {
   const handleSelectPlan = async (planId: Plan) => {
     setLoading(planId);
     try {
+      window.sessionStorage.removeItem(POST_SIGNUP_PLAN_KEY);
       await user?.update({ unsafeMetadata: { planPickerSeen: true } });
       await subscription.startCheckout(planId, {
         source: "plan_picker",

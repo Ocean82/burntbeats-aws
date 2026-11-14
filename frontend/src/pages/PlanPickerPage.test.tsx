@@ -38,6 +38,7 @@ describe("PlanPickerPage", () => {
   beforeEach(() => {
     mockUserUpdate.mockReset();
     mockStartCheckout.mockReset();
+    window.sessionStorage.clear();
   });
 
   it("renders hero subscription plans in the main grid", () => {
@@ -95,6 +96,20 @@ describe("PlanPickerPage", () => {
       intent: "picker_premium",
       interval: "month",
     });
+  });
+
+  it("clears stored landing plan intent when a paid plan is selected", async () => {
+    window.sessionStorage.setItem("burntbeats_post_signup_plan", "premium");
+    mockUserUpdate.mockResolvedValueOnce(undefined);
+    mockStartCheckout.mockResolvedValueOnce(undefined);
+    render(<PlanPickerPage onComplete={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Start Premium/ }));
+
+    await waitFor(() => {
+      expect(mockStartCheckout).toHaveBeenCalledOnce();
+    });
+    expect(window.sessionStorage.getItem("burntbeats_post_signup_plan")).toBeNull();
   });
 
   it("calls onComplete after a paid plan checkout resolves", async () => {
