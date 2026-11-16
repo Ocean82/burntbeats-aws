@@ -39,7 +39,7 @@ import {
   usageErrorResponse,
   handleProxyError,
 } from "./shared.js";
-import { stemServiceClient, CircuitOpenError } from "../../lib/serviceClients.js";
+import { stemServiceClient } from "../../lib/serviceClients.js";
 import { parseSplitRequestBody } from "../../helpers/splitIntent.js";
 import { normalizeStemQuality } from "../../helpers/stemQuality.js";
 import {
@@ -294,12 +294,6 @@ splitRouter.post(
       }));
       res.json(d);
     } catch (e) {
-      if (e instanceof CircuitOpenError) {
-        res.set("Retry-After", String(e.retryAfter));
-        return res.status(503).json({
-          error: "Service temporarily unavailable. Try again in 30s.",
-        });
-      }
       await handleProxyError(e, res, "[POST /api/stems/split]", {
         usageReserved,
         usageUserId,

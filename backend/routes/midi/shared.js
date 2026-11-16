@@ -20,6 +20,7 @@ import {
 } from "../../clientSafeError.js";
 import { isProxyHttpError } from "../../middleware/proxy.js";
 import { DEV_BYPASS_UPLOAD_AUTH } from "../../middleware/auth.js";
+import { CircuitOpenError } from "../../lib/circuitBreaker.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -339,6 +340,12 @@ export async function handleMidiProxyError(e, res, logPrefix, usage) {
     } catch (refundErr) {
       console.error(`${logPrefix} usage refund failed:`, refundErr);
     }
+  }
+  if (e instanceof CircuitOpenError) {
+    res.set("Retry-After", String(e.retryAfter));
+    return res.status(503).json({
+      error: "Service temporarily unavailable. Try again in 30s.",
+    });
   }
   if (isProxyHttpError(e)) {
     console.warn(`${logPrefix} MIDI service error:`, e.statusCode, e.error);
