@@ -21,11 +21,14 @@ export function useReferralAttach() {
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
+    captureReferralFromUrl();
     const code = sessionStorage.getItem(STORAGE_KEY);
     if (!code) return;
 
-    void attachReferralCode(code).finally(() => {
-      sessionStorage.removeItem(STORAGE_KEY);
+    void attachReferralCode(code).then((result) => {
+      if (result.ok || result.status === 400) {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
     });
   }, [isLoaded, isSignedIn]);
 }

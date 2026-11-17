@@ -6,6 +6,7 @@
  * so the app continues to work without a database connection.
  */
 import { getPool } from "./db.js";
+import { refundUsageTokens as defaultRefundUsageTokens } from "./usageTokens.js";
 
 /**
  * Ensure a user row exists (upsert from Clerk data).
@@ -317,15 +318,21 @@ export async function getJobHistoryWithStems(clerkUserId, opts = {}) {
  * Reap jobs that are stuck in 'processing' or 'accepted' state for longer than the timeout.
  * Marks them as 'failed' with a clear error message. Called once on backend startup.
  *
- * @param {{ timeoutMinutes?: number }} [options]
+ * @param {{
+ *   timeoutMinutes?: number,
+ *   pool?: { query: (sql: string, params: unknown[]) => Promise<{ rowCount?: number, rows: Array<Record<string, unknown>> }> },
+ *   refundUsageTokens?: (userId: string, amount: number, meta?: Record<string, unknown>) => Promise<void>,
+ * }} [options]
  * @returns {Promise<number>} Number of reaped jobs (0 = nothing to clean up)
  */
 export async function reapStaleJobs(options = {}) {
-  const pool = getPool();
+  const pool = options.pool || getPool();
   if (!pool) return 0;
 
   const timeoutMinutes = options.timeoutMinutes ?? 30;
   const errorMessage = `Job stalled — exceeded ${timeoutMinutes} minute timeout without completion. The stem service may have restarted or crashed during processing.`;
+  const refundUsageTokens =
+    options.refundUsageTokens || defaultRefundUsageTokens;
 
   try {
     const result = await pool.query(
@@ -335,17 +342,34 @@ export async function reapStaleJobs(options = {}) {
            completed_at = now()
        WHERE status IN ('accepted', 'processing')
          AND created_at < now() - ($2::integer * interval '1 minute')
-       RETURNING job_id, clerk_user_id, token_cost`,
+       RETURNING job_id, clerk_user_id, token_cost, is_sample`,
       [errorMessage, timeoutMinutes],
     );
 
-    if (result.rowCount > 0) {
+    const reapedCount = result.rowCount ?? result.rows.length;
+    for (const row of result.rows) {
+      const cost = Number(row.token_cost) || 0;
+      if (row.is_sample || !row.clerk_user_id || cost <= 0) continue;
+      try {
+        await refundUsageTokens(String(row.clerk_user_id), cost, {
+          jobId: String(row.job_id),
+          reason: "stale_job_failed",
+        });
+      } catch (refundErr) {
+        console.error(
+          `[db-jobs] reapStaleJobs refund failed for ${row.job_id}:`,
+          refundErr instanceof Error ? refundErr.message : refundErr,
+        );
+      }
+    }
+
+    if (reapedCount > 0) {
       console.warn(
-        `[db-jobs] reapStaleJobs: marked ${result.rowCount} stalled job(s) as failed:`,
+        `[db-jobs] reapStaleJobs: marked ${reapedCount} stalled job(s) as failed:`,
         result.rows.map((r) => r.job_id).join(", "),
       );
     }
-    return result.rowCount;
+    return reapedCount;
   } catch (err) {
     console.error("[db-jobs] reapStaleJobs failed:", err instanceof Error ? err.message : err);
     return 0;
